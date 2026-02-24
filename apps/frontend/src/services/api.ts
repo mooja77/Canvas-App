@@ -20,8 +20,10 @@ import type {
 
 // ─── Canvas API client (points to Canvas App backend) ───
 
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
 const canvasClient = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
 });
 
