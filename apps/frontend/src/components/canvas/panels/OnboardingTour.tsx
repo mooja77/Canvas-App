@@ -150,6 +150,14 @@ export default function OnboardingTour() {
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [animating, setAnimating] = useState(false);
 
+  // Reset to step 0 whenever the tour becomes visible again (e.g. replay)
+  useEffect(() => {
+    if (!onboardingComplete) {
+      setStep(0);
+      setAnimating(false);
+    }
+  }, [onboardingComplete]);
+
   const currentStep = TOUR_STEPS[step];
   const isLastStep = step === TOUR_STEPS.length - 1;
   const isCenter = currentStep.target === 'center' || currentStep.position === 'center';
