@@ -916,7 +916,10 @@ export default function CanvasWorkspace() {
         <CodeNavigator onFocusNode={handleFocusNode} />
       )}
       <div className="flex flex-1 flex-col min-w-0">
-        <CanvasToolbar />
+        <CanvasToolbar
+          showNavigator={showNavigator}
+          onToggleNavigator={() => setShowNavigator(s => !s)}
+        />
         <div data-tour="canvas-flow-area" className="relative flex-1">
           <ReactFlow
             nodes={nodes}

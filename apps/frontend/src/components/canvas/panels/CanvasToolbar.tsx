@@ -10,7 +10,12 @@ import ShareCanvasModal from './ShareCanvasModal';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import toast from 'react-hot-toast';
 
-export default function CanvasToolbar() {
+interface CanvasToolbarProps {
+  showNavigator?: boolean;
+  onToggleNavigator?: () => void;
+}
+
+export default function CanvasToolbar({ showNavigator, onToggleNavigator }: CanvasToolbarProps) {
   const { activeCanvas, closeCanvas, addQuestion, addMemo, showCodingStripes, toggleCodingStripes } = useCanvasStore();
   const [showQuestionInput, setShowQuestionInput] = useState(false);
   const [questionText, setQuestionText] = useState('');
@@ -55,8 +60,25 @@ export default function CanvasToolbar() {
 
   return (
     <>
-      <div data-tour="canvas-toolbar" className="relative z-10 flex items-center justify-between border-b border-gray-200/80 bg-white/90 px-4 py-2.5 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90">
-        <div className="flex items-center gap-3">
+      <div data-tour="canvas-toolbar" className="relative z-10 flex items-center justify-between border-b border-gray-200/80 bg-white/90 px-3 py-2 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90">
+        <div className="flex items-center gap-2">
+          {/* Navigator toggle */}
+          {onToggleNavigator && (
+            <button
+              onClick={onToggleNavigator}
+              className={`rounded-lg p-1.5 transition-colors ${
+                showNavigator
+                  ? 'bg-brand-50 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400'
+                  : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300'
+              }`}
+              title={showNavigator ? 'Hide navigator' : 'Show navigator'}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+              </svg>
+            </button>
+          )}
+
           <button
             onClick={closeCanvas}
             className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors"
@@ -67,27 +89,31 @@ export default function CanvasToolbar() {
             </svg>
             <span className="hidden sm:inline text-xs">Back</span>
           </button>
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate max-w-[200px]" title={activeCanvas.name}>
+
+          {/* Divider */}
+          <div className="h-5 w-px bg-gray-200/80 dark:bg-gray-700/80" />
+
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate max-w-[180px] text-sm" title={activeCanvas.name}>
             {activeCanvas.name}
           </h3>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {showQuestionInput ? (
             <div className="flex items-center gap-2 animate-fade-in">
               <input
                 type="text"
-                className="input h-9 w-72 text-sm"
+                className="input h-8 w-64 text-sm"
                 placeholder="Type your research question..."
                 value={questionText}
                 onChange={e => setQuestionText(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleAddQuestion(); if (e.key === 'Escape') setShowQuestionInput(false); }}
                 autoFocus
               />
-              <button onClick={handleAddQuestion} disabled={!questionText.trim() || addingQuestion} className="btn-primary h-9 px-4 text-xs">
-                {addingQuestion ? 'Adding...' : 'Add Question'}
+              <button onClick={handleAddQuestion} disabled={!questionText.trim() || addingQuestion} className="btn-primary h-8 px-3 text-xs">
+                {addingQuestion ? 'Adding...' : 'Add'}
               </button>
-              <button onClick={() => setShowQuestionInput(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors" title="Cancel">
+              <button onClick={() => setShowQuestionInput(false)} className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors" title="Cancel">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                 </svg>
@@ -96,24 +122,24 @@ export default function CanvasToolbar() {
           ) : (
             <>
               {/* Data tools */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <TranscriptSourceMenu />
                 <button
                   data-tour="canvas-btn-question"
                   onClick={() => setShowQuestionInput(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-purple-50 px-3 py-2 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
-                  title="Add a research question to organize your coding"
+                  className="flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
+                  title="Add a research question (code) to organize your coding"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
                   </svg>
-                  Question
+                  Code
                 </button>
                 <button
                   data-tour="canvas-btn-memo"
                   onClick={handleAddMemo}
                   disabled={addingMemo}
-                  className="flex items-center gap-1.5 rounded-lg bg-yellow-50 px-3 py-2 text-xs font-medium text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300 dark:hover:bg-yellow-900/50 disabled:opacity-50 transition-colors"
+                  className="flex items-center gap-1.5 rounded-lg bg-yellow-50 px-2.5 py-1.5 text-xs font-medium text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300 dark:hover:bg-yellow-900/50 disabled:opacity-50 transition-colors"
                   title="Add a research memo or note"
                 >
                   {addingMemo ? (
@@ -131,14 +157,14 @@ export default function CanvasToolbar() {
               </div>
 
               {/* Divider */}
-              <div className="h-5 w-px bg-gray-200/80 mx-1.5 dark:bg-gray-700/80" />
+              <div className="h-5 w-px bg-gray-200/80 mx-0.5 dark:bg-gray-700/80" />
 
               {/* Analysis tools */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <button
                   data-tour="canvas-btn-autocode"
                   onClick={() => setShowAutoCode(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50 transition-colors"
+                  className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50 transition-colors"
                   title="Automatically code transcripts by keyword or pattern"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -149,7 +175,7 @@ export default function CanvasToolbar() {
                 <button
                   data-tour="canvas-btn-cases"
                   onClick={() => setShowCaseManager(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-teal-50 px-3 py-2 text-xs font-medium text-teal-700 hover:bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300 dark:hover:bg-teal-900/50 transition-colors"
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
                   title="Group transcripts into cases (e.g. by participant)"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -160,7 +186,7 @@ export default function CanvasToolbar() {
                 <button
                   data-tour="canvas-btn-hierarchy"
                   onClick={() => setShowHierarchy(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
                   title="View and organize question hierarchy"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -171,17 +197,17 @@ export default function CanvasToolbar() {
               </div>
 
               {/* Divider */}
-              <div className="h-5 w-px bg-gray-200/80 mx-1.5 dark:bg-gray-700/80" />
+              <div className="h-5 w-px bg-gray-200/80 mx-0.5 dark:bg-gray-700/80" />
 
               {/* View tools */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <button
                   data-tour="canvas-btn-stripes"
                   onClick={toggleCodingStripes}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${showCodingStripes
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${showCodingStripes
                     ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
-                    : 'bg-gray-50 text-gray-500 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'}`}
-                  title={showCodingStripes ? 'Hide coding stripes overlay' : 'Show coding stripes alongside transcripts'}
+                    : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'}`}
+                  title={showCodingStripes ? 'Hide coding stripes' : 'Show coding stripes'}
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
@@ -190,8 +216,8 @@ export default function CanvasToolbar() {
                 </button>
                 <button
                   onClick={() => setShowCodebook(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
-                  title="Export your codebook as a summary document"
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+                  title="Export codebook"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
@@ -200,8 +226,8 @@ export default function CanvasToolbar() {
                 </button>
                 <button
                   onClick={() => setShowShare(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
-                  title="Share this canvas with collaborators"
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+                  title="Share canvas"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
@@ -210,8 +236,8 @@ export default function CanvasToolbar() {
                 </button>
                 <button
                   onClick={() => setShowShortcuts(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-gray-50 px-2 py-2 text-xs font-medium text-gray-500 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 transition-colors"
-                  title="Keyboard shortcuts"
+                  className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
+                  title="Keyboard shortcuts (?)"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
@@ -220,7 +246,7 @@ export default function CanvasToolbar() {
               </div>
 
               {/* Divider */}
-              <div className="h-5 w-px bg-gray-200/80 mx-1.5 dark:bg-gray-700/80" />
+              <div className="h-5 w-px bg-gray-200/80 mx-0.5 dark:bg-gray-700/80" />
 
               {/* Add Query dropdown */}
               <AddComputedNodeMenu />

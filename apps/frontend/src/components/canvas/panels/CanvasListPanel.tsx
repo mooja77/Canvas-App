@@ -6,6 +6,87 @@ import toast from 'react-hot-toast';
 
 type SortMode = 'newest' | 'az' | 'codings';
 
+// ─── Canvas Templates ───
+const CANVAS_TEMPLATES = [
+  {
+    id: 'blank',
+    name: 'Blank Canvas',
+    description: 'Start from scratch with an empty workspace',
+    icon: 'plus',
+    color: 'gray',
+    questions: [],
+  },
+  {
+    id: 'thematic',
+    name: 'Thematic Analysis',
+    description: 'Braun & Clarke framework with initial theme codes',
+    icon: 'theme',
+    color: 'purple',
+    questions: [
+      'Initial impressions / interesting features',
+      'Recurring patterns across data',
+      'Contradictions / tensions',
+      'Participant emotions / affect',
+      'Contextual factors',
+    ],
+  },
+  {
+    id: 'grounded',
+    name: 'Grounded Theory',
+    description: 'Open, axial, and selective coding structure',
+    icon: 'theory',
+    color: 'emerald',
+    questions: [
+      'Open codes — descriptive labels',
+      'In-vivo codes — participant language',
+      'Process codes — actions/interactions',
+      'Axial categories',
+      'Core category',
+    ],
+  },
+  {
+    id: 'ipa',
+    name: 'IPA (Interpretative)',
+    description: 'Interpretative Phenomenological Analysis template',
+    icon: 'ipa',
+    color: 'blue',
+    questions: [
+      'Descriptive comments',
+      'Linguistic comments',
+      'Conceptual comments',
+      'Emergent themes',
+      'Superordinate themes',
+    ],
+  },
+  {
+    id: 'framework',
+    name: 'Framework Analysis',
+    description: 'Structured matrix-based approach for applied research',
+    icon: 'framework',
+    color: 'orange',
+    questions: [
+      'Key concepts / definitions',
+      'Attitudes / beliefs',
+      'Experiences / practices',
+      'Barriers / challenges',
+      'Facilitators / enablers',
+    ],
+  },
+  {
+    id: 'content',
+    name: 'Content Analysis',
+    description: 'Systematic coding for frequency and pattern analysis',
+    icon: 'content',
+    color: 'teal',
+    questions: [
+      'Category A',
+      'Category B',
+      'Category C',
+      'Uncategorized / Other',
+    ],
+  },
+];
+
 function relativeDate(dateStr: string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
@@ -20,8 +101,52 @@ function relativeDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
+function TemplateIcon({ template }: { template: typeof CANVAS_TEMPLATES[0] }) {
+  const colorClasses: Record<string, string> = {
+    gray: 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400',
+    purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
+    emerald: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
+    blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+    orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400',
+    teal: 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400',
+  };
+
+  return (
+    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${colorClasses[template.color] || colorClasses.gray}`}>
+      {template.id === 'blank' ? (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+      ) : template.id === 'thematic' ? (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" />
+        </svg>
+      ) : template.id === 'grounded' ? (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
+        </svg>
+      ) : template.id === 'ipa' ? (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+        </svg>
+      ) : template.id === 'framework' ? (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0v1.5c0 .621-.504 1.125-1.125 1.125m1.125-2.625c-.621 0-1.125.504-1.125 1.125v1.5" />
+        </svg>
+      ) : (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
 export default function CanvasListPanel() {
-  const { canvases, loading, fetchCanvases, createCanvas, deleteCanvas, openCanvas } = useCanvasStore();
+  const { canvases, loading, fetchCanvases, createCanvas, deleteCanvas, openCanvas, addQuestion } = useCanvasStore();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -32,6 +157,8 @@ export default function CanvasListPanel() {
   const [search, setSearch] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('newest');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('blank');
+  const [showTemplates, setShowTemplates] = useState(false);
 
   useEffect(() => { fetchCanvases(); }, [fetchCanvases]);
 
@@ -68,11 +195,26 @@ export default function CanvasListPanel() {
     if (!name.trim()) return;
     setCreating(true);
     try {
+      const template = CANVAS_TEMPLATES.find(t => t.id === selectedTemplate);
       const canvas = await createCanvas(name.trim(), description.trim() || undefined);
+
+      // If template has predefined questions, add them
+      if (template && template.questions.length > 0) {
+        await openCanvas(canvas.id);
+        for (const qText of template.questions) {
+          try {
+            await addQuestion(qText);
+          } catch { /* ignore individual failures */ }
+        }
+        toast.success(`Canvas created with ${template.questions.length} starter codes`);
+      } else {
+        openCanvas(canvas.id);
+      }
+
       setName('');
       setDescription('');
       setShowForm(false);
-      openCanvas(canvas.id);
+      setSelectedTemplate('blank');
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to create canvas');
     } finally {
@@ -119,7 +261,7 @@ export default function CanvasListPanel() {
         </div>
         <button
           data-tour="canvas-new-btn"
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { setShowForm(!showForm); setShowTemplates(true); }}
           className={showForm ? 'btn-secondary text-sm' : 'btn-primary text-sm flex items-center gap-1.5'}
         >
           {showForm ? 'Cancel' : (
@@ -134,36 +276,94 @@ export default function CanvasListPanel() {
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreate} className="card mb-6 p-5 animate-slide-up">
-          <div className="space-y-3">
-            <div>
-              <label className="label" htmlFor="canvas-name">Canvas Name</label>
-              <input
-                id="canvas-name"
-                type="text"
-                className="input mt-1"
-                placeholder="e.g. Interview Batch 1 Coding"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                autoFocus
-              />
+        <div className="card mb-6 overflow-hidden animate-slide-up">
+          {/* Template selector */}
+          {showTemplates && (
+            <div className="border-b border-gray-200 dark:border-gray-700 p-4">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Choose a methodology template</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {CANVAS_TEMPLATES.map(template => (
+                  <button
+                    key={template.id}
+                    onClick={() => {
+                      setSelectedTemplate(template.id);
+                      if (template.id !== 'blank' && !name.trim()) {
+                        setName(template.name + ' — ');
+                      }
+                    }}
+                    className={`flex items-start gap-3 rounded-xl p-3 text-left transition-all ${
+                      selectedTemplate === template.id
+                        ? 'bg-brand-50 dark:bg-brand-900/20 ring-2 ring-brand-400 shadow-sm'
+                        : 'bg-gray-50 dark:bg-gray-750 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+                    }`}
+                  >
+                    <TemplateIcon template={template} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{template.name}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">{template.description}</p>
+                      {template.questions.length > 0 && (
+                        <p className="text-[9px] text-gray-300 dark:text-gray-600 mt-1">
+                          {template.questions.length} starter codes
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div>
-              <label className="label" htmlFor="canvas-desc">Description (optional)</label>
-              <input
-                id="canvas-desc"
-                type="text"
-                className="input mt-1"
-                placeholder="Brief description of this coding workspace"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-              />
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleCreate} className="p-4">
+            <div className="space-y-3">
+              <div>
+                <label className="label" htmlFor="canvas-name">Canvas Name</label>
+                <input
+                  id="canvas-name"
+                  type="text"
+                  className="input mt-1"
+                  placeholder="e.g. Interview Batch 1 Coding"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="label" htmlFor="canvas-desc">Description (optional)</label>
+                <input
+                  id="canvas-desc"
+                  type="text"
+                  className="input mt-1"
+                  placeholder="Brief description of this coding workspace"
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                />
+              </div>
+
+              {/* Template info */}
+              {selectedTemplate !== 'blank' && (
+                <div className="rounded-lg bg-brand-50 dark:bg-brand-900/15 px-3 py-2 text-xs text-brand-700 dark:text-brand-300">
+                  <strong>{CANVAS_TEMPLATES.find(t => t.id === selectedTemplate)?.name}</strong> template will create {CANVAS_TEMPLATES.find(t => t.id === selectedTemplate)?.questions.length} starter research codes.
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <button type="submit" disabled={creating || !name.trim()} className="btn-primary text-sm">
+                  {creating ? 'Creating...' : 'Create Canvas'}
+                </button>
+                {showTemplates && (
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplates(false)}
+                    className="text-xs text-gray-400 hover:text-gray-600"
+                  >
+                    Hide templates
+                  </button>
+                )}
+              </div>
             </div>
-            <button type="submit" disabled={creating || !name.trim()} className="btn-primary text-sm">
-              {creating ? 'Creating...' : 'Create Canvas'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       )}
 
       {/* Clone from share code - subtle/collapsible */}
@@ -266,20 +466,20 @@ export default function CanvasListPanel() {
           </div>
           <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Create your first canvas</h3>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-            A canvas is your workspace for coding interview transcripts. Add text, ask questions, and discover patterns.
+            A canvas is your workspace for coding interview transcripts. Choose a methodology template or start from scratch.
           </p>
           <div className="mt-6 flex flex-col items-center gap-3">
-            <button onClick={() => setShowForm(true)} className="btn-primary text-sm px-6">
+            <button onClick={() => { setShowForm(true); setShowTemplates(true); }} className="btn-primary text-sm px-6">
               Get Started
             </button>
             <div className="flex items-center gap-6 mt-4 text-xs text-gray-400 dark:text-gray-500">
               <div className="flex items-center gap-1.5">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold">1</span>
-                <span>Add transcripts</span>
+                <span>Pick a template</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-[10px] font-bold">2</span>
-                <span>Ask questions</span>
+                <span>Add transcripts</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">3</span>
@@ -293,7 +493,7 @@ export default function CanvasListPanel() {
       {/* No search results state */}
       {canvases.length > 0 && filteredCanvases.length === 0 && (
         <div className="py-8 text-center text-sm text-gray-400 dark:text-gray-500">
-          No canvases match "{search}"
+          No canvases match &ldquo;{search}&rdquo;
         </div>
       )}
 

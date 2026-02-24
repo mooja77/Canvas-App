@@ -320,3 +320,73 @@ input[type="checkbox"]:checked {
 .dark .sidebar-scroll:hover {
   scrollbar-color: theme('colors.gray.600') transparent;
 }
+
+/* ─── Coded segment hover effect ─── */
+.coded-segment-hover {
+  transition: filter 150ms ease, transform 50ms ease;
+  cursor: pointer;
+}
+.coded-segment-hover:hover {
+  filter: brightness(0.95) saturate(1.3);
+}
+.coded-segment-hover:hover > span:first-child {
+  opacity: 0.35 !important;
+}
+.dark .coded-segment-hover:hover {
+  filter: brightness(1.1) saturate(1.3);
+}
+
+/* ─── Slide animations ─── */
+@keyframes slideDown {
+  from { opacity: 0; max-height: 0; transform: translateY(-4px); }
+  to   { opacity: 1; max-height: 500px; transform: translateY(0); }
+}
+.animate-slide-down {
+  animation: slideDown 200ms ease-out both;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slideUp 250ms ease-out both;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-right {
+  animation: slideInRight 200ms ease-out both;
+}
+
+/* ─── Enhanced card hover ─── */
+.shadow-card-hover {
+  box-shadow: 0 8px 25px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
+}
+
+/* ─── Backdrop for modals ─── */
+.modal-backdrop {
+  animation: fadeIn 150ms ease-out both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Selection ring pulse ─── */
+@keyframes selectionPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.3); }
+  50% { box-shadow: 0 0 0 4px rgba(59,130,246,0); }
+}
+.selection-pulse {
+  animation: selectionPulse 2s ease-in-out infinite;
+}
+
+/* ─── Smooth width transitions for navigator ─── */
+.sidebar-slide-in {
+  animation: sidebarSlideIn 200ms ease-out both;
+  will-change: width, opacity;
+}

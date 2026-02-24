@@ -4,6 +4,7 @@ import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { useCanvasStore } from '../../../stores/canvasStore';
 import QuickCodePopover from '../panels/QuickCodePopover';
+import CodingSegmentPopover from '../panels/CodingSegmentPopover';
 import CodingStripesOverlay from '../panels/CodingStripesOverlay';
 import CodingDensityBar from '../CodingDensityBar';
 import TranscriptContextMenu from '../TranscriptContextMenu';
@@ -27,7 +28,7 @@ function computeOverlappingSegments(
   codings: CanvasTextCoding[],
   colorMap: Map<string, string>,
 ) {
-  if (codings.length === 0) return [{ start: 0, end: text.length, questionColors: [] as string[] }];
+  if (codings.length === 0) return [{ start: 0, end: text.length, questionColors: [] as string[], codingIds: [] as string[] }];
 
   // Collect all boundary points
   const boundaries = new Set<number>();
@@ -41,7 +42,7 @@ function computeOverlappingSegments(
   }
 
   const sorted = Array.from(boundaries).sort((a, b) => a - b);
-  const segments: { start: number; end: number; questionColors: string[] }[] = [];
+  const segments: { start: number; end: number; questionColors: string[]; codingIds: string[] }[] = [];
 
   for (let i = 0; i < sorted.length - 1; i++) {
     const start = sorted[i];
@@ -50,16 +51,18 @@ function computeOverlappingSegments(
 
     // Find which codings cover this segment
     const colors: string[] = [];
+    const ids: string[] = [];
     for (const c of codings) {
       const cStart = Math.max(0, Math.min(c.startOffset, text.length));
       const cEnd = Math.max(0, Math.min(c.endOffset, text.length));
       if (cStart <= start && cEnd >= end) {
         const color = colorMap.get(c.questionId) || '#3B82F6';
         if (!colors.includes(color)) colors.push(color);
+        ids.push(c.id);
       }
     }
 
-    segments.push({ start, end, questionColors: colors });
+    segments.push({ start, end, questionColors: colors, codingIds: ids });
   }
 
   return segments;
@@ -69,10 +72,12 @@ function HighlightedTranscript({
   text,
   codings,
   questions,
+  onSegmentClick,
 }: {
   text: string;
   codings: CanvasTextCoding[];
   questions: { id: string; color: string }[];
+  onSegmentClick: (codingIds: string[], event: React.MouseEvent) => void;
 }) {
   const colorMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -100,14 +105,18 @@ function HighlightedTranscript({
         return (
           <span
             key={i}
-            className="rounded-sm relative"
-            title={`Coded by ${layerCount} question${layerCount > 1 ? 's' : ''}`}
+            className="rounded-sm relative cursor-pointer coded-segment-hover"
+            title={`${layerCount} code${layerCount > 1 ? 's' : ''} - click to view`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSegmentClick(seg.codingIds, e);
+            }}
           >
             {/* Background layers */}
             {seg.questionColors.map((color, ci) => (
               <span
                 key={ci}
-                className="absolute inset-0 rounded-sm"
+                className="absolute inset-0 rounded-sm transition-opacity duration-150"
                 style={{
                   backgroundColor: color,
                   opacity: opacity,
@@ -115,7 +124,15 @@ function HighlightedTranscript({
                 }}
               />
             ))}
-            <span className="relative" style={{ zIndex: layerCount }}>
+            {/* Underline indicator */}
+            <span
+              className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full opacity-60"
+              style={{
+                backgroundColor: seg.questionColors[0],
+                zIndex: layerCount,
+              }}
+            />
+            <span className="relative" style={{ zIndex: layerCount + 1 }}>
               {slice}
             </span>
           </span>
@@ -131,6 +148,7 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as TranscriptNodeData;
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [quickCodePopover, setQuickCodePopover] = useState<{ x: number; y: number } | null>(null);
+  const [codingPopover, setCodingPopover] = useState<{ codingIds: string[]; x: number; y: number } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [collapsed, setCollapsed] = useState(nodeData.collapsed ?? false);
 
@@ -158,6 +176,12 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
     return activeCanvas?.cases?.find((c: CanvasCase) => c.id === caseId)?.name;
   }, [transcript?.caseId, activeCanvas?.cases]);
 
+  // Word count
+  const wordCount = useMemo(
+    () => nodeData.content.split(/\s+/).filter(Boolean).length,
+    [nodeData.content],
+  );
+
   const handleMouseUp = useCallback(() => {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !textRef.current) {
@@ -181,6 +205,9 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
       endOffset: endIdx,
       codedText: selText,
     });
+
+    // Close coding popover if open
+    setCodingPopover(null);
 
     // Show Quick Code Popover at the selection position
     const rect = range.getBoundingClientRect();
@@ -221,7 +248,33 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
     setContextMenu(null);
   }, [pendingSelection, nodeData.transcriptId, spreadToParagraph]);
 
+  const handleSegmentClick = useCallback((codingIds: string[], event: React.MouseEvent) => {
+    // Don't show coding popover if there's a text selection being made
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed) return;
+
+    // Close quick code popover
+    setQuickCodePopover(null);
+
+    setCodingPopover({
+      codingIds,
+      x: event.clientX,
+      y: event.clientY,
+    });
+  }, []);
+
+  const codingPopoverCodings = useMemo(() => {
+    if (!codingPopover) return [];
+    return codings.filter(c => codingPopover.codingIds.includes(c.id));
+  }, [codingPopover, codings]);
+
   const hasSelection = pendingSelection?.transcriptId === nodeData.transcriptId;
+
+  // Unique question count for this transcript
+  const uniqueQuestionCount = useMemo(
+    () => new Set(codings.map(c => c.questionId)).size,
+    [codings],
+  );
 
   return (
     <div className={`min-w-[280px] w-full h-full rounded-xl border border-blue-200/60 bg-white shadow-node transition-all duration-200 hover:shadow-node-hover dark:border-blue-800/60 dark:bg-gray-800 ${selected ? 'ring-2 ring-blue-400' : ''}`}>
@@ -297,19 +350,34 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
               onContextMenu={handleContextMenu}
             >
               <p className="whitespace-pre-wrap text-xs leading-relaxed text-gray-700 dark:text-gray-300 select-text">
-                <HighlightedTranscript text={nodeData.content} codings={codings} questions={questions} />
+                <HighlightedTranscript
+                  text={nodeData.content}
+                  codings={codings}
+                  questions={questions}
+                  onSegmentClick={handleSegmentClick}
+                />
               </p>
             </div>
           </div>
 
-          {/* Coding count footer */}
-          {codings.length > 0 && (
-            <div className="border-t border-blue-100 px-3 py-1.5 dark:border-blue-800">
-              <span className="text-[10px] text-blue-500 dark:text-blue-400">
-                {codings.length} coded segment{codings.length !== 1 ? 's' : ''}
-              </span>
+          {/* Enhanced footer with metadata */}
+          <div className="border-t border-blue-100 px-3 py-1.5 dark:border-blue-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {codings.length > 0 && (
+                <span className="text-[10px] text-blue-500 dark:text-blue-400">
+                  {codings.length} segment{codings.length !== 1 ? 's' : ''}
+                </span>
+              )}
+              {uniqueQuestionCount > 0 && (
+                <span className="text-[10px] text-purple-400 dark:text-purple-500">
+                  {uniqueQuestionCount} code{uniqueQuestionCount !== 1 ? 's' : ''}
+                </span>
+              )}
             </div>
-          )}
+            <span className="text-[10px] text-gray-300 dark:text-gray-600 tabular-nums">
+              {wordCount.toLocaleString()} words
+            </span>
+          </div>
         </>
       )}
 
@@ -337,8 +405,16 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
           anchorRect={quickCodePopover}
           onClose={() => {
             setQuickCodePopover(null);
-            // Don't clear pending selection — user might still want to use edge connection
           }}
+        />
+      )}
+
+      {/* Coding segment popover — appears when clicking coded text */}
+      {codingPopover && codingPopoverCodings.length > 0 && (
+        <CodingSegmentPopover
+          codings={codingPopoverCodings}
+          anchorRect={{ x: codingPopover.x, y: codingPopover.y }}
+          onClose={() => setCodingPopover(null)}
         />
       )}
 
