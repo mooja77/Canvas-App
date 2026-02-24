@@ -4,6 +4,7 @@ import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { useCanvasStore } from '../../../stores/canvasStore';
 import ConfirmDialog from '../ConfirmDialog';
+import ColorPicker from '../panels/ColorPicker';
 import type { CanvasTextCoding, CanvasQuestion } from '@canvas-app/shared';
 
 export interface QuestionNodeData {
@@ -21,6 +22,7 @@ export default function QuestionNode({ data, id, selected }: NodeProps) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(nodeData.text);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const [collapsed, setCollapsed] = useState(nodeData.collapsed ?? false);
 
   const zoomLevel = (nodeData.zoomLevel ?? 100);
@@ -94,13 +96,29 @@ export default function QuestionNode({ data, id, selected }: NodeProps) {
         style={{ background: `linear-gradient(135deg, ${nodeData.color}12, ${nodeData.color}08)` }}
       >
         <div className="flex items-center gap-2 min-w-0">
-          <div className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: nodeData.color }} />
+          <div className="relative nodrag">
+            <button
+              onClick={() => setShowColorPicker(c => !c)}
+              className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-black/10 hover:scale-125 transition-transform"
+              style={{ backgroundColor: nodeData.color }}
+              title="Change color"
+            />
+            {showColorPicker && (
+              <div className="absolute top-5 left-0 z-50">
+                <ColorPicker
+                  color={nodeData.color}
+                  onChange={(c) => updateQuestion(nodeData.questionId, { color: c })}
+                  onClose={() => setShowColorPicker(false)}
+                />
+              </div>
+            )}
+          </div>
           <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-            Research Question
+            Code
           </span>
           {childCount > 0 && (
             <span className="rounded-full bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 text-[9px] font-medium text-gray-600 dark:text-gray-300">
-              {childCount} child{childCount !== 1 ? 'ren' : ''}
+              {childCount} sub
             </span>
           )}
         </div>

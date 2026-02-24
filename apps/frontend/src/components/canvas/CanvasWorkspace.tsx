@@ -38,6 +38,8 @@ import CanvasToolbar from './panels/CanvasToolbar';
 import CodingDetailPanel from './panels/CodingDetailPanel';
 import KeyboardShortcutsModal from './panels/KeyboardShortcutsModal';
 import CanvasSearchOverlay from './panels/CanvasSearchOverlay';
+import CommandPalette from './panels/CommandPalette';
+import OnboardingTour from './panels/OnboardingTour';
 import CanvasContextMenu from './panels/CanvasContextMenu';
 import NodeContextMenu from './panels/NodeContextMenu';
 import EdgeContextMenu from './panels/EdgeContextMenu';
@@ -140,6 +142,7 @@ export default function CanvasWorkspace() {
   const [showNavigator, setShowNavigator] = useState(true);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [highlightedNodeIds, setHighlightedNodeIds] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ show: boolean; x: number; y: number } | null>(null);
   const [nodeContextMenu, setNodeContextMenu] = useState<{ show: boolean; x: number; y: number; nodeId: string; nodeType: string; collapsed: boolean } | null>(null);
@@ -646,6 +649,7 @@ export default function CanvasWorkspace() {
   useCanvasKeyboard({
     showSearch,
     showShortcuts,
+    showCommandPalette,
     contextMenu,
     nodeContextMenu,
     edgeContextMenu,
@@ -653,6 +657,7 @@ export default function CanvasWorkspace() {
     selectedQuestionId,
     setShowSearch,
     setShowShortcuts,
+    setShowCommandPalette,
     setContextMenu,
     setNodeContextMenu,
     setEdgeContextMenu,
@@ -919,6 +924,7 @@ export default function CanvasWorkspace() {
         <CanvasToolbar
           showNavigator={showNavigator}
           onToggleNavigator={() => setShowNavigator(s => !s)}
+          onOpenCommandPalette={() => setShowCommandPalette(true)}
         />
         <div data-tour="canvas-flow-area" className="relative flex-1">
           <ReactFlow
@@ -1109,7 +1115,7 @@ export default function CanvasWorkspace() {
 
                 {/* Hint */}
                 <p className="mt-6 text-[11px] text-gray-300 dark:text-gray-600">
-                  Double-click anywhere on the canvas to quick-add nodes
+                  Double-click canvas to quick-add nodes &middot; Press <kbd className="rounded bg-gray-100 dark:bg-gray-700 px-1 py-0.5 font-mono text-[10px]">Ctrl+K</kbd> for command palette
                 </p>
               </div>
             </div>
@@ -1129,10 +1135,10 @@ export default function CanvasWorkspace() {
           {mergeConfirm.show && (
             <div className="modal-backdrop absolute inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
               <div className="modal-content rounded-2xl bg-white p-4 shadow-xl ring-1 ring-black/5 dark:bg-gray-800 w-80">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Merge Questions</h4>
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Merge Codes</h4>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                   Merge <strong>"{mergeConfirm.sourceName}"</strong> into <strong>"{mergeConfirm.targetName}"</strong>?
-                  All codings from the source will be moved to the target and the source will be deleted.
+                  All codings from the source will move to the target. The source code will be deleted.
                 </p>
                 <div className="flex gap-2">
                   <button onClick={handleMerge} className="btn-primary h-8 px-3 text-xs">Merge</button>
@@ -1235,6 +1241,22 @@ export default function CanvasWorkspace() {
 
       {/* Keyboard shortcuts modal */}
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
+
+      {/* Command palette (Ctrl+K) */}
+      {showCommandPalette && (
+        <CommandPalette
+          onClose={() => setShowCommandPalette(false)}
+          onFocusNode={handleFocusNode}
+          onFitView={() => rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 0.8 })}
+          onToggleGrid={() => setSnapToGrid(s => !s)}
+          onToggleNavigator={() => setShowNavigator(s => !s)}
+          onShowShortcuts={() => { setShowCommandPalette(false); setShowShortcuts(true); }}
+          onAddComputedNode={handleQuickAddComputed}
+        />
+      )}
+
+      {/* Onboarding tour for first-time users */}
+      <OnboardingTour />
 
       {/* Delete node confirmation */}
       {deleteConfirm && (

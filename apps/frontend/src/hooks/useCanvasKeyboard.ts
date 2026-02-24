@@ -5,6 +5,7 @@ export interface CanvasKeyboardOptions {
   // UI state for Escape dismissal
   showSearch: boolean;
   showShortcuts: boolean;
+  showCommandPalette: boolean;
   contextMenu: { show: boolean } | null;
   nodeContextMenu: { show: boolean } | null;
   edgeContextMenu: { show: boolean } | null;
@@ -14,6 +15,7 @@ export interface CanvasKeyboardOptions {
   // State setters for Escape dismissal
   setShowSearch: (v: boolean) => void;
   setShowShortcuts: (v: boolean | ((prev: boolean) => boolean)) => void;
+  setShowCommandPalette: (v: boolean | ((prev: boolean) => boolean)) => void;
   setContextMenu: (v: null) => void;
   setNodeContextMenu: (v: null) => void;
   setEdgeContextMenu: (v: null) => void;
@@ -45,6 +47,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
   const {
     showSearch,
     showShortcuts,
+    showCommandPalette,
     contextMenu,
     nodeContextMenu,
     edgeContextMenu,
@@ -52,6 +55,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     selectedQuestionId,
     setShowSearch,
     setShowShortcuts,
+    setShowCommandPalette,
     setContextMenu,
     setNodeContextMenu,
     setEdgeContextMenu,
@@ -110,6 +114,11 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
           handleSelectAll();
           return;
         }
+        if (e.key === 'k') {
+          e.preventDefault();
+          setShowCommandPalette(s => !s);
+          return;
+        }
         if (e.key === 'f') {
           e.preventDefault();
           setShowSearch(true);
@@ -164,6 +173,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
       }
 
       if (e.key === 'Escape') {
+        if (showCommandPalette) { setShowCommandPalette(false); return; }
         if (quickAddMenu) { setQuickAddMenu(null); return; }
         if (showSearch) { setShowSearch(false); setHighlightedNodeIds(new Set()); return; }
         if (showShortcuts) { setShowShortcuts(false); return; }
@@ -196,6 +206,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
   }, [
     showSearch,
     showShortcuts,
+    showCommandPalette,
     contextMenu,
     nodeContextMenu,
     edgeContextMenu,
@@ -204,6 +215,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     setSelectedQuestionId,
     setShowSearch,
     setShowShortcuts,
+    setShowCommandPalette,
     setContextMenu,
     setNodeContextMenu,
     setEdgeContextMenu,

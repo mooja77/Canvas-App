@@ -13,9 +13,10 @@ import toast from 'react-hot-toast';
 interface CanvasToolbarProps {
   showNavigator?: boolean;
   onToggleNavigator?: () => void;
+  onOpenCommandPalette?: () => void;
 }
 
-export default function CanvasToolbar({ showNavigator, onToggleNavigator }: CanvasToolbarProps) {
+export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpenCommandPalette }: CanvasToolbarProps) {
   const { activeCanvas, closeCanvas, addQuestion, addMemo, showCodingStripes, toggleCodingStripes } = useCanvasStore();
   const [showQuestionInput, setShowQuestionInput] = useState(false);
   const [questionText, setQuestionText] = useState('');
@@ -234,6 +235,18 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator }: Canv
                   </svg>
                   Share
                 </button>
+                {onOpenCommandPalette && (
+                  <button
+                    onClick={onOpenCommandPalette}
+                    className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
+                    title="Command palette (Ctrl+K)"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                    </svg>
+                    <kbd className="hidden lg:inline rounded bg-gray-100 dark:bg-gray-700 px-1 py-0.5 text-[9px] font-mono">Ctrl+K</kbd>
+                  </button>
+                )}
                 <button
                   onClick={() => setShowShortcuts(true)}
                   className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
