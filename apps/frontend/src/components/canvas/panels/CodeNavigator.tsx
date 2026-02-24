@@ -197,7 +197,7 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
   };
 
   return (
-    <div className="sidebar-slide-in flex h-full w-60 shrink-0 flex-col border-r border-gray-200/80 bg-white/95 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/95">
+    <div data-tour="canvas-navigator" className="sidebar-slide-in flex h-full w-60 shrink-0 flex-col border-r border-gray-200/80 bg-white/95 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/95">
       {/* Tab switcher */}
       <div className="flex border-b border-gray-200 dark:border-gray-700">
         <button

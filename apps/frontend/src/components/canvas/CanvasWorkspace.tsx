@@ -1164,7 +1164,7 @@ export default function CanvasWorkspace() {
         </div>
 
         {/* Status bar */}
-        <div className="flex items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-400 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-500">
+        <div data-tour="canvas-status-bar" className="flex items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-400 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-500">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
               <svg className="h-3 w-3 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
