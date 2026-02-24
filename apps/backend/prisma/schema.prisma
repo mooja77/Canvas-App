@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model DashboardAccess {
+  id             String   @id @default(cuid())
+  accessCode     String   @unique
+  accessCodeHash String?
+  name           String
+  role           String // policymaker | funder | researcher
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  codingCanvases CodingCanvas[]
+}
+
+// ─── Coding Canvas ───
+
+model CodingCanvas {
+  id                String               @id @default(cuid())
+  dashboardAccessId String
+  name              String
+  description       String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  dashboardAccess   DashboardAccess      @relation(fields: [dashboardAccessId], references: [id], onDelete: Cascade)
+  transcripts       CanvasTranscript[]
+  questions         CanvasQuestion[]
+  memos             CanvasMemo[]
+  codings           CanvasTextCoding[]
+  nodePositions     CanvasNodePosition[]
+  cases             CanvasCase[]
+  relations         CanvasRelation[]
+  computedNodes     CanvasComputedNode[]
+  shares            CanvasShare[]
+
+  @@unique([dashboardAccessId, name])
+  @@index([dashboardAccessId])
+}
+
+model CanvasShare {
+  id         String       @id @default(cuid())
+  canvasId   String
+  shareCode  String       @unique
+  createdBy  String
+  expiresAt  DateTime?
+  cloneCount Int          @default(0)
+  createdAt  DateTime     @default(now())
+  canvas     CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@index([canvasId])
+  @@index([shareCode])
+}
+
+model CanvasTranscript {
+  id         String             @id @default(cuid())
+  canvasId   String
+  title      String
+  content    String
+  sortOrder  Int                @default(0)
+  caseId     String?
+  sourceType String?
+  sourceId   String?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  canvas     CodingCanvas       @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  case       CanvasCase?        @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  codings    CanvasTextCoding[]
+
+  @@index([canvasId])
+  @@index([caseId])
+}
+
+model CanvasQuestion {
+  id               String             @id @default(cuid())
+  canvasId         String
+  text             String
+  color            String             @default("#3B82F6")
+  sortOrder        Int                @default(0)
+  parentQuestionId String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  canvas           CodingCanvas       @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  parentQuestion   CanvasQuestion?    @relation("QuestionHierarchy", fields: [parentQuestionId], references: [id], onDelete: SetNull)
+  childQuestions   CanvasQuestion[]   @relation("QuestionHierarchy")
+  codings          CanvasTextCoding[]
+
+  @@index([canvasId])
+  @@index([parentQuestionId])
+}
+
+model CanvasMemo {
+  id        String       @id @default(cuid())
+  canvasId  String
+  title     String?
+  content   String
+  color     String       @default("#FEF08A")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  canvas    CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+}
+
+model CanvasTextCoding {
+  id           String           @id @default(cuid())
+  canvasId     String
+  transcriptId String
+  questionId   String
+  startOffset  Int
+  endOffset    Int
+  codedText    String
+  note         String?
+  annotation   String?
+  createdAt    DateTime         @default(now())
+  canvas       CodingCanvas     @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  transcript   CanvasTranscript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  question     CanvasQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([canvasId])
+  @@index([transcriptId])
+  @@index([questionId])
+  @@index([canvasId, transcriptId])
+}
+
+model CanvasNodePosition {
+  id        String       @id @default(cuid())
+  canvasId  String
+  nodeId    String
+  nodeType  String
+  x         Float
+  y         Float
+  width     Float?
+  height    Float?
+  collapsed Boolean      @default(false)
+  canvas    CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@unique([canvasId, nodeId])
+  @@index([canvasId])
+}
+
+model CanvasCase {
+  id          String             @id @default(cuid())
+  canvasId    String
+  name        String
+  attributes  String             @default("{}")
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  canvas      CodingCanvas       @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  transcripts CanvasTranscript[]
+
+  @@unique([canvasId, name])
+  @@index([canvasId])
+}
+
+model CanvasRelation {
+  id        String       @id @default(cuid())
+  canvasId  String
+  fromType  String
+  fromId    String
+  toType    String
+  toId      String
+  label     String
+  createdAt DateTime     @default(now())
+  canvas    CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@index([canvasId])
+}
+
+model CanvasComputedNode {
+  id        String       @id @default(cuid())
+  canvasId  String
+  nodeType  String
+  label     String
+  config    String       @default("{}")
+  result    String       @default("{}")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  canvas    CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@index([canvasId])
+}
+
+// ─── Ethics & Audit ───
+
+model ConsentRecord {
+  id             String   @id @default(cuid())
+  subjectType    String
+  subjectId      String
+  consentVersion String
+  action         String
+  ipHash         String
+  createdAt      DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  timestamp  DateTime @default(now())
+  action     String
+  resource   String
+  resourceId String?
+  actorType  String
+  actorId    String?
+  ip         String?
+  method     String?
+  path       String?
+  statusCode Int?
+  meta       String?
+
+  @@index([action])
+}

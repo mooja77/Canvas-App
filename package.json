@@ -1,0 +1,24 @@
+{
+  "name": "canvas-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone Qualitative Coding Canvas",
+  "workspaces": [
+    "shared",
+    "apps/frontend",
+    "apps/backend"
+  ],
+  "scripts": {
+    "dev": "npm run build -w shared && concurrently \"npm run dev -w apps/backend\" \"npm run dev -w apps/frontend\"",
+    "dev:frontend": "npm run dev -w apps/frontend",
+    "dev:backend": "npm run dev -w apps/backend",
+    "build": "npm run build -w shared && npm run build -w apps/backend && npm run build -w apps/frontend",
+    "start": "cd apps/backend && npm start",
+    "db:migrate": "npm run db:migrate -w apps/backend",
+    "db:seed": "npm run db:seed -w apps/backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.0"
+  }
+}

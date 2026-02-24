@@ -1,0 +1,322 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base ─── */
+@layer base {
+  body {
+    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+  }
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+  /* Smooth custom scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.gray.300') transparent;
+  }
+  .dark * {
+    scrollbar-color: theme('colors.gray.600') transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400 dark:bg-gray-500;
+  }
+}
+
+/* ─── Components ─── */
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg
+           transition-all duration-150 ease-out shadow-sm hover:shadow-md
+           focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98];
+  }
+  .btn-secondary {
+    @apply px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600
+           text-gray-700 dark:text-gray-200 font-medium rounded-lg
+           transition-all duration-150 ease-out hover:bg-gray-50 dark:hover:bg-gray-600
+           focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98];
+  }
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700;
+  }
+  .input {
+    @apply block w-full rounded-lg border border-gray-300 dark:border-gray-600
+           bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100
+           placeholder:text-gray-400 dark:placeholder:text-gray-500
+           focus:border-brand-500 focus:ring-1 focus:ring-brand-500
+           transition-colors duration-150;
+  }
+  .label {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+  }
+  .tooltip-text {
+    @apply absolute z-50 px-2.5 py-1.5 text-xs font-medium text-white bg-gray-900 dark:bg-gray-700
+           rounded-lg shadow-lg pointer-events-none whitespace-nowrap;
+  }
+}
+
+/* ─── Canvas ─── */
+
+/* Node shadow & hover */
+.react-flow__node {
+  transition: box-shadow 200ms ease, transform 200ms cubic-bezier(0.34,1.56,0.64,1);
+}
+.react-flow__node:hover {
+  z-index: 10 !important;
+}
+
+/* Node entrance */
+@keyframes nodeEnter {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.canvas-node-enter {
+  animation: nodeEnter 300ms cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+/* Hover lift */
+@keyframes hoverLift {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-2px); }
+}
+
+/* Handle */
+.react-flow__handle {
+  transition: transform 150ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 150ms ease;
+}
+.react-flow__handle:hover {
+  transform: scale(1.4);
+  box-shadow: 0 0 8px rgba(99,102,241,0.5);
+}
+
+/* Handle pulse */
+@keyframes handlePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.3); }
+  50% { box-shadow: 0 0 0 4px rgba(99,102,241,0); }
+}
+.react-flow__handle.connecting {
+  animation: handlePulse 1.5s ease-in-out infinite;
+}
+
+/* Edge hover flow */
+@keyframes edgeFlow {
+  from { stroke-dashoffset: 20; }
+  to   { stroke-dashoffset: 0; }
+}
+.react-flow__edge:hover path {
+  stroke-width: 3;
+  animation: edgeFlow 0.5s linear infinite;
+  stroke-dasharray: 5 5;
+}
+
+/* MiniMap / Controls polish */
+.react-flow__minimap {
+  @apply rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 !important;
+}
+.react-flow__controls {
+  @apply rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden !important;
+}
+.react-flow__controls-button {
+  @apply border-0 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors !important;
+}
+
+/* Modal */
+@keyframes modalEnter {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-enter {
+  animation: modalEnter 200ms cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+/* Context menu & dropdown */
+@keyframes contextMenuEnter {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.context-menu-enter {
+  animation: contextMenuEnter 150ms cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+@keyframes dropdownEnter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dropdown-enter {
+  animation: dropdownEnter 150ms ease-out both;
+}
+
+/* Edge tooltip */
+@keyframes edgeTooltipEnter {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.edge-tooltip-enter {
+  animation: edgeTooltipEnter 200ms ease-out both;
+}
+
+/* Detail panel slide */
+@keyframes detailSlideIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.detail-slide-in {
+  animation: detailSlideIn 200ms ease-out both;
+}
+
+/* Button glow */
+@keyframes btnGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.3); }
+  50% { box-shadow: 0 0 12px 2px rgba(99,102,241,0.15); }
+}
+.btn-glow:hover {
+  animation: btnGlow 2s ease-in-out infinite;
+}
+
+/* Checkbox pop */
+@keyframes checkPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+input[type="checkbox"]:checked {
+  animation: checkPop 200ms cubic-bezier(0.34,1.56,0.64,1);
+}
+
+/* Skeleton loading shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+.dark .skeleton {
+  background: linear-gradient(90deg, #374151 25%, #4B5563 50%, #374151 75%);
+  background-size: 200% 100%;
+}
+
+/* Staggered list entrance */
+@keyframes listItemEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.list-item-enter {
+  animation: listItemEnter 300ms ease-out both;
+}
+
+/* Tooltip */
+@keyframes tooltipEnter {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.tooltip-enter {
+  animation: tooltipEnter 150ms ease-out both;
+}
+
+/* Smooth page/view transitions */
+@keyframes viewFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.view-enter {
+  animation: viewFadeIn 200ms ease-out both;
+}
+
+/* Gentle pulse for empty states */
+@keyframes gentlePulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+.gentle-pulse {
+  animation: gentlePulse 3s ease-in-out infinite;
+}
+
+/* Card hover lift */
+.card-interactive {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.card-interactive:hover {
+  transform: translateY(-1px);
+}
+
+/* ─── Quick Code Popover ─── */
+@keyframes popoverEnter {
+  from { opacity: 0; transform: translateY(4px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.popover-enter {
+  animation: popoverEnter 150ms cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+/* ─── Navigator sidebar slide ─── */
+@keyframes sidebarSlideIn {
+  from { opacity: 0; transform: translateX(-8px); width: 0; }
+  to   { opacity: 1; transform: translateX(0); width: 14rem; }
+}
+.sidebar-slide-in {
+  animation: sidebarSlideIn 200ms ease-out both;
+}
+
+/* ─── Coverage progress bar ─── */
+@keyframes progressGrow {
+  from { width: 0; }
+}
+.progress-grow {
+  animation: progressGrow 600ms ease-out both;
+}
+
+/* ─── Status bar ─── */
+.status-bar {
+  @apply flex items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-400 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-500;
+}
+
+/* ─── Enhanced node shadows ─── */
+.shadow-node {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+.shadow-node-hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+}
+
+/* ─── Fade animations ─── */
+.animate-fade-in {
+  animation: fadeIn 200ms ease-out both;
+}
+
+/* ─── Grid card specific ─── */
+.grid-card-enter {
+  animation: nodeEnter 300ms cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+/* ─── Smooth focus ring ─── */
+.focus-ring {
+  @apply focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:outline-none;
+}
+
+/* ─── Enhanced scrollbar for sidebar ─── */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.sidebar-scroll:hover {
+  scrollbar-color: theme('colors.gray.300') transparent;
+}
+.dark .sidebar-scroll:hover {
+  scrollbar-color: theme('colors.gray.600') transparent;
+}
