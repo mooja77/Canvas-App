@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUIStore } from '../../../stores/uiStore';
 
 interface TourStep {
@@ -40,15 +40,13 @@ export default function OnboardingTour() {
   const [step, setStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
 
-  // Don't show if already completed
-  if (onboardingComplete) return null;
-
   const currentStep = TOUR_STEPS[step];
   const isLastStep = step === TOUR_STEPS.length - 1;
   const isCenter = currentStep.target === 'center' || currentStep.position === 'center';
 
   // Find target element
   useEffect(() => {
+    if (onboardingComplete) return;
     if (isCenter) {
       setTargetRect(null);
       return;
@@ -57,7 +55,7 @@ export default function OnboardingTour() {
     if (el) {
       setTargetRect(el.getBoundingClientRect());
     }
-  }, [step, currentStep.target, isCenter]);
+  }, [step, currentStep.target, isCenter, onboardingComplete]);
 
   const handleNext = useCallback(() => {
     if (isLastStep) {
@@ -72,7 +70,7 @@ export default function OnboardingTour() {
   }, [completeOnboarding]);
 
   // Position the tooltip
-  const getTooltipStyle = (): React.CSSProperties => {
+  const tooltipStyle = useMemo((): React.CSSProperties => {
     if (isCenter || !targetRect) {
       return {
         position: 'fixed',
@@ -120,7 +118,10 @@ export default function OnboardingTour() {
           transform: 'translate(-50%, -50%)',
         };
     }
-  };
+  }, [isCenter, targetRect, currentStep.position]);
+
+  // Don't render if already completed
+  if (onboardingComplete) return null;
 
   return (
     <div className="fixed inset-0 z-[10000]">
@@ -144,7 +145,7 @@ export default function OnboardingTour() {
       {/* Tooltip */}
       <div
         className="z-20 tour-tooltip-enter"
-        style={getTooltipStyle()}
+        style={tooltipStyle}
       >
         <div className="w-80 rounded-2xl bg-white dark:bg-gray-800 p-5 shadow-2xl ring-1 ring-black/10 dark:ring-white/10">
           {/* Step indicator */}
