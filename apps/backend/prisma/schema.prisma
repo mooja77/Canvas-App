@@ -22,25 +22,31 @@ model DashboardAccess {
 // ─── Coding Canvas ───
 
 model CodingCanvas {
-  id                String               @id @default(cuid())
-  dashboardAccessId String
-  name              String
-  description       String?
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  dashboardAccess   DashboardAccess      @relation(fields: [dashboardAccessId], references: [id], onDelete: Cascade)
-  transcripts       CanvasTranscript[]
-  questions         CanvasQuestion[]
-  memos             CanvasMemo[]
-  codings           CanvasTextCoding[]
-  nodePositions     CanvasNodePosition[]
-  cases             CanvasCase[]
-  relations         CanvasRelation[]
-  computedNodes     CanvasComputedNode[]
-  shares            CanvasShare[]
+  id                 String               @id @default(cuid())
+  dashboardAccessId  String
+  name               String
+  description        String?
+  ethicsApprovalId   String?
+  ethicsStatus       String               @default("pending")
+  dataRetentionDate  DateTime?
+  deletedAt          DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  dashboardAccess    DashboardAccess      @relation(fields: [dashboardAccessId], references: [id], onDelete: Cascade)
+  transcripts        CanvasTranscript[]
+  questions          CanvasQuestion[]
+  memos              CanvasMemo[]
+  codings            CanvasTextCoding[]
+  nodePositions      CanvasNodePosition[]
+  cases              CanvasCase[]
+  relations          CanvasRelation[]
+  computedNodes      CanvasComputedNode[]
+  shares             CanvasShare[]
+  consentRecords     ConsentRecord[]
 
   @@unique([dashboardAccessId, name])
   @@index([dashboardAccessId])
+  @@index([deletedAt])
 }
 
 model CanvasShare {
@@ -58,22 +64,26 @@ model CanvasShare {
 }
 
 model CanvasTranscript {
-  id         String             @id @default(cuid())
-  canvasId   String
-  title      String
-  content    String
-  sortOrder  Int                @default(0)
-  caseId     String?
-  sourceType String?
-  sourceId   String?
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
-  canvas     CodingCanvas       @relation(fields: [canvasId], references: [id], onDelete: Cascade)
-  case       CanvasCase?        @relation(fields: [caseId], references: [id], onDelete: SetNull)
-  codings    CanvasTextCoding[]
+  id            String             @id @default(cuid())
+  canvasId      String
+  title         String
+  content       String
+  sortOrder     Int                @default(0)
+  caseId        String?
+  sourceType    String?
+  sourceId      String?
+  deletedAt     DateTime?
+  isAnonymized  Boolean            @default(false)
+  participantId String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  canvas        CodingCanvas       @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  case          CanvasCase?        @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  codings       CanvasTextCoding[]
 
   @@index([canvasId])
   @@index([caseId])
+  @@index([deletedAt])
 }
 
 model CanvasQuestion {
@@ -187,13 +197,21 @@ model CanvasComputedNode {
 // ─── Ethics & Audit ───
 
 model ConsentRecord {
-  id             String   @id @default(cuid())
-  subjectType    String
-  subjectId      String
-  consentVersion String
-  action         String
-  ipHash         String
-  createdAt      DateTime @default(now())
+  id              String       @id @default(cuid())
+  canvasId        String
+  participantId   String
+  consentType     String       @default("informed")
+  consentStatus   String       @default("active")
+  consentDate     DateTime     @default(now())
+  withdrawalDate  DateTime?
+  ethicsProtocol  String?
+  notes           String?
+  createdAt       DateTime     @default(now())
+  canvas          CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@index([canvasId])
+  @@index([participantId])
+  @@unique([canvasId, participantId])
 }
 
 model AuditLog {

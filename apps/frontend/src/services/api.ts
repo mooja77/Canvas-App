@@ -22,7 +22,7 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
-const canvasClient = axios.create({
+export const canvasClient = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
 });

@@ -1007,6 +1007,247 @@ app.post('/api/canvas/clone/:code', authMiddleware, async (c) => {
   return c.json({ success: true, data: newCanvas }, 201);
 });
 
+// ─── Audit Log Helper ───
+
+async function logAudit(db: D1Database, entry: {
+  action: string; resource: string; resourceId: string;
+  actorType: string; actorId: string; ip: string;
+  method: string; path: string; meta?: string;
+}) {
+  const id = uid();
+  const now = new Date().toISOString();
+  await db.prepare(
+    'INSERT INTO AuditLog (id, action, resource, resourceId, actorType, actorId, ip, method, path, meta, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(id, entry.action, entry.resource, entry.resourceId, entry.actorType, entry.actorId, entry.ip, entry.method, entry.path, entry.meta || null, now).run();
+}
+
+// ─── Ethics Settings ───
+
+// GET /api/canvas/:canvasId/ethics
+app.get('/api/canvas/:canvasId/ethics', authMiddleware, async (c) => {
+  const dashboardAccessId = c.get('dashboardAccessId');
+  const canvasId = c.req.param('canvasId');
+  const canvas = await c.env.DB.prepare('SELECT * FROM CodingCanvas WHERE id = ? AND dashboardAccessId = ?')
+    .bind(canvasId, dashboardAccessId).first();
+  if (!canvas) return c.json({ success: false, error: 'Canvas not found' }, 404);
+
+  const consents = await c.env.DB.prepare('SELECT * FROM ConsentRecord WHERE canvasId = ? ORDER BY createdAt DESC')
+    .bind(canvasId).all();
+
+  return c.json({
+    success: true,
+    data: {
+      ethicsApprovalId: canvas.ethicsApprovalId,
+      ethicsStatus: canvas.ethicsStatus,
+      dataRetentionDate: canvas.dataRetentionDate,
+      consentRecords: consents.results,
+    },
+  });
+});
+
+// PUT /api/canvas/:canvasId/ethics
+app.put('/api/canvas/:canvasId/ethics', authMiddleware, async (c) => {
+  const dashboardAccessId = c.get('dashboardAccessId');
+  const canvasId = c.req.param('canvasId');
+  const canvas = await c.env.DB.prepare('SELECT * FROM CodingCanvas WHERE id = ? AND dashboardAccessId = ?')
+    .bind(canvasId, dashboardAccessId).first();
+  if (!canvas) return c.json({ success: false, error: 'Canvas not found' }, 404);
+
+  const body = await c.req.json();
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+
+  if (body.ethicsApprovalId !== undefined) { sets.push('ethicsApprovalId = ?'); vals.push(body.ethicsApprovalId); }
+  if (body.ethicsStatus !== undefined) { sets.push('ethicsStatus = ?'); vals.push(body.ethicsStatus); }
+  if (body.dataRetentionDate !== undefined) { sets.push('dataRetentionDate = ?'); vals.push(body.dataRetentionDate || null); }
+
+  if (sets.length === 0) return c.json({ success: false, error: 'No fields to update' }, 400);
+  sets.push('updatedAt = ?'); vals.push(new Date().toISOString());
+  vals.push(canvasId);
+
+  await c.env.DB.prepare(`UPDATE CodingCanvas SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
+
+  const ipHash = await sha256(c.req.header('cf-connecting-ip') || 'unknown');
+  await logAudit(c.env.DB, {
+    action: 'ethics.update', resource: 'canvas', resourceId: canvasId,
+    actorType: 'researcher', actorId: dashboardAccessId, ip: ipHash,
+    method: 'PUT', path: c.req.path,
+    meta: JSON.stringify({ ethicsApprovalId: body.ethicsApprovalId, ethicsStatus: body.ethicsStatus }),
+  });
+
+  const updated = await c.env.DB.prepare('SELECT ethicsApprovalId, ethicsStatus, dataRetentionDate FROM CodingCanvas WHERE id = ?').bind(canvasId).first();
+  return c.json({ success: true, data: updated });
+});
+
+// ─── Consent Records ───
+
+// POST /api/canvas/:canvasId/consent
+app.post('/api/canvas/:canvasId/consent', authMiddleware, async (c) => {
+  const dashboardAccessId = c.get('dashboardAccessId');
+  const canvasId = c.req.param('canvasId');
+  const canvas = await c.env.DB.prepare('SELECT id FROM CodingCanvas WHERE id = ? AND dashboardAccessId = ?')
+    .bind(canvasId, dashboardAccessId).first();
+  if (!canvas) return c.json({ success: false, error: 'Canvas not found' }, 404);
+
+  const body = await c.req.json();
+  if (!body.participantId || typeof body.participantId !== 'string') {
+    return c.json({ success: false, error: 'participantId is required' }, 400);
+  }
+
+  // Check for duplicate
+  const existing = await c.env.DB.prepare('SELECT id FROM ConsentRecord WHERE canvasId = ? AND participantId = ?')
+    .bind(canvasId, body.participantId).first();
+  if (existing) return c.json({ success: false, error: 'Consent record already exists for this participant' }, 409);
+
+  const id = uid();
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(
+    'INSERT INTO ConsentRecord (id, canvasId, participantId, consentType, consentStatus, consentDate, ethicsProtocol, notes, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(id, canvasId, body.participantId, body.consentType || 'informed', 'active', now, body.ethicsProtocol || null, body.notes || null, now).run();
+
+  const ipHash = await sha256(c.req.header('cf-connecting-ip') || 'unknown');
+  await logAudit(c.env.DB, {
+    action: 'consent.create', resource: 'consent', resourceId: id,
+    actorType: 'researcher', actorId: dashboardAccessId, ip: ipHash,
+    method: 'POST', path: c.req.path,
+    meta: JSON.stringify({ canvasId, participantId: body.participantId }),
+  });
+
+  const record = await c.env.DB.prepare('SELECT * FROM ConsentRecord WHERE id = ?').bind(id).first();
+  return c.json({ success: true, data: record }, 201);
+});
+
+// GET /api/canvas/:canvasId/consent
+app.get('/api/canvas/:canvasId/consent', authMiddleware, async (c) => {
+  const dashboardAccessId = c.get('dashboardAccessId');
+  const canvasId = c.req.param('canvasId');
+  const canvas = await c.env.DB.prepare('SELECT id FROM CodingCanvas WHERE id = ? AND dashboardAccessId = ?')
+    .bind(canvasId, dashboardAccessId).first();
+  if (!canvas) return c.json({ success: false, error: 'Canvas not found' }, 404);
+
+  const records = await c.env.DB.prepare('SELECT * FROM ConsentRecord WHERE canvasId = ? ORDER BY createdAt DESC')
+    .bind(canvasId).all();
+  return c.json({ success: true, data: records.results });
+});
+
+// PUT /api/canvas/:canvasId/consent/:consentId/withdraw
+app.put('/api/canvas/:canvasId/consent/:consentId/withdraw', authMiddleware, async (c) => {
+  const dashboardAccessId = c.get('dashboardAccessId');
+  const canvasId = c.req.param('canvasId');
+  const consentId = c.req.param('consentId');
+  const canvas = await c.env.DB.prepare('SELECT id FROM CodingCanvas WHERE id = ? AND dashboardAccessId = ?')
+    .bind(canvasId, dashboardAccessId).first();
+  if (!canvas) return c.json({ success: false, error: 'Canvas not found' }, 404);
+
+  const existing = await c.env.DB.prepare('SELECT * FROM ConsentRecord WHERE id = ? AND canvasId = ?')
+    .bind(consentId, canvasId).first();
+  if (!existing) return c.json({ success: false, error: 'Consent record not found' }, 404);
+  if (existing.consentStatus === 'withdrawn') return c.json({ success: false, error: 'Already withdrawn' }, 400);
+
+  const now = new Date().toISOString();
+  const body = await c.req.json().catch(() => ({}));
+  await c.env.DB.prepare('UPDATE ConsentRecord SET consentStatus = ?, withdrawalDate = ?, notes = ? WHERE id = ?')
+    .bind('withdrawn', now, (body as any).notes || existing.notes, consentId).run();
+
+  const ipHash = await sha256(c.req.header('cf-connecting-ip') || 'unknown');
+  await logAudit(c.env.DB, {
+    action: 'consent.withdraw', resource: 'consent', resourceId: consentId,
+    actorType: 'researcher', actorId: dashboardAccessId, ip: ipHash,
+    method: 'PUT', path: c.req.path,
+    meta: JSON.stringify({ canvasId, participantId: existing.participantId }),
+  });
+
+  const updated = await c.env.DB.prepare('SELECT * FROM ConsentRecord WHERE id = ?').bind(consentId).first();
+  return c.json({ success: true, data: updated });
+});
+
+// ─── Audit Log Export ───
+
+app.get('/api/audit-log', authMiddleware, async (c) => {
+  const dashboardAccessId = c.get('dashboardAccessId');
+  const { from, to, action, limit: lim, offset: off } = c.req.query();
+
+  const conditions = ['actorId = ?'];
+  const params: unknown[] = [dashboardAccessId];
+
+  if (from) { conditions.push('timestamp >= ?'); params.push(from); }
+  if (to) { conditions.push('timestamp <= ?'); params.push(to); }
+  if (action) { conditions.push('action = ?'); params.push(action); }
+
+  const take = Math.min(parseInt(lim) || 100, 1000);
+  const skip = parseInt(off) || 0;
+
+  const where = conditions.join(' AND ');
+  const entries = await c.env.DB.prepare(`SELECT * FROM AuditLog WHERE ${where} ORDER BY timestamp DESC LIMIT ? OFFSET ?`)
+    .bind(...params, take, skip).all();
+  const countResult = await c.env.DB.prepare(`SELECT COUNT(*) as total FROM AuditLog WHERE ${where}`)
+    .bind(...params).first();
+
+  return c.json({
+    success: true,
+    data: { entries: entries.results, total: (countResult as any)?.total || 0, limit: take, offset: skip },
+  });
+});
+
+// ─── Transcript Anonymization ───
+
+app.post('/api/canvas/:canvasId/transcripts/:transcriptId/anonymize', authMiddleware, async (c) => {
+  const dashboardAccessId = c.get('dashboardAccessId');
+  const canvasId = c.req.param('canvasId');
+  const transcriptId = c.req.param('transcriptId');
+
+  const canvas = await c.env.DB.prepare('SELECT id FROM CodingCanvas WHERE id = ? AND dashboardAccessId = ?')
+    .bind(canvasId, dashboardAccessId).first();
+  if (!canvas) return c.json({ success: false, error: 'Canvas not found' }, 404);
+
+  const body = await c.req.json();
+  const replacements = body.replacements;
+  if (!Array.isArray(replacements) || replacements.length === 0) {
+    return c.json({ success: false, error: 'replacements array required' }, 400);
+  }
+
+  const transcript = await c.env.DB.prepare('SELECT * FROM CanvasTranscript WHERE id = ? AND canvasId = ?')
+    .bind(transcriptId, canvasId).first();
+  if (!transcript) return c.json({ success: false, error: 'Transcript not found' }, 404);
+
+  // Apply replacements to content
+  let newContent = transcript.content as string;
+  for (const { find, replace } of replacements) {
+    newContent = newContent.split(find).join(replace);
+  }
+
+  // Update transcript
+  const now = new Date().toISOString();
+  await c.env.DB.prepare('UPDATE CanvasTranscript SET content = ?, isAnonymized = 1, updatedAt = ? WHERE id = ?')
+    .bind(newContent, now, transcriptId).run();
+
+  // Update coded segments
+  const codings = await c.env.DB.prepare('SELECT id, codedText FROM CanvasTextCoding WHERE transcriptId = ?')
+    .bind(transcriptId).all();
+  let codingsUpdated = 0;
+  for (const coding of codings.results) {
+    let newText = coding.codedText as string;
+    for (const { find, replace } of replacements) {
+      newText = newText.split(find).join(replace);
+    }
+    if (newText !== coding.codedText) {
+      await c.env.DB.prepare('UPDATE CanvasTextCoding SET codedText = ? WHERE id = ?').bind(newText, coding.id).run();
+      codingsUpdated++;
+    }
+  }
+
+  const ipHash = await sha256(c.req.header('cf-connecting-ip') || 'unknown');
+  await logAudit(c.env.DB, {
+    action: 'transcript.anonymize', resource: 'transcript', resourceId: transcriptId,
+    actorType: 'researcher', actorId: dashboardAccessId, ip: ipHash,
+    method: 'POST', path: c.req.path,
+    meta: JSON.stringify({ canvasId, replacementCount: replacements.length, codingsUpdated }),
+  });
+
+  const updated = await c.env.DB.prepare('SELECT * FROM CanvasTranscript WHERE id = ?').bind(transcriptId).first();
+  return c.json({ success: true, data: updated });
+});
+
 // ─── Health ───
 
 app.get('/api/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));

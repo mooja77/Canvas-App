@@ -10,6 +10,7 @@ import CodebookExportModal from './CodebookExportModal';
 import ShareCanvasModal from './ShareCanvasModal';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ProjectDashboard from './ProjectDashboard';
+import EthicsCompliancePanel from './EthicsCompliancePanel';
 import CanvasSwitcher from './CanvasSwitcher';
 import toast from 'react-hot-toast';
 
@@ -30,6 +31,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
   const [showShare, setShowShare] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showEthics, setShowEthics] = useState(false);
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [addingMemo, setAddingMemo] = useState(false);
 
@@ -229,6 +231,16 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                   Dashboard
                 </button>
                 <button
+                  onClick={() => setShowEthics(true)}
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+                  title="Ethics & compliance settings"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                  </svg>
+                  Ethics
+                </button>
+                <button
                   onClick={() => setShowCodebook(true)}
                   className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
                   title="Export codebook"
@@ -297,6 +309,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
       {showShare && <ShareCanvasModal onClose={() => setShowShare(false)} />}
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
       {showDashboard && <ProjectDashboard onClose={() => setShowDashboard(false)} />}
+      {showEthics && <EthicsCompliancePanel onClose={() => setShowEthics(false)} />}
     </>
   );
 }

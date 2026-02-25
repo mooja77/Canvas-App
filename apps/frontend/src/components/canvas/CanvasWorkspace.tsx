@@ -50,6 +50,7 @@ import { ErrorBoundary } from '../ErrorBoundary';
 import { useCanvasStore } from '../../stores/canvasStore';
 import { useCanvasHistory } from '../../hooks/useCanvasHistory';
 import { useCanvasKeyboard } from '../../hooks/useCanvasKeyboard';
+import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import type {
   CanvasTranscript,
   CanvasQuestion,
@@ -130,6 +131,8 @@ export default function CanvasWorkspace() {
     reassignCoding,
     refreshCanvas,
   } = useCanvasStore();
+
+  const { showWarning: showSessionWarning, dismissWarning: dismissSessionWarning } = useSessionTimeout();
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -1384,6 +1387,31 @@ export default function CanvasWorkspace() {
           onConfirm={confirmDeleteNode}
           onCancel={() => setDeleteConfirm(null)}
         />
+      )}
+
+      {/* Session timeout warning */}
+      {showSessionWarning && (
+        <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="modal-content rounded-2xl bg-white p-6 shadow-xl ring-1 ring-black/5 dark:bg-gray-800 w-96" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                <svg className="h-5 w-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Session Expiring</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">You have been inactive for 30 minutes</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
+              Your session will be automatically logged out in 5 minutes for security. Click below to continue working.
+            </p>
+            <button onClick={dismissSessionWarning} className="btn-primary w-full text-sm">
+              Continue Session
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

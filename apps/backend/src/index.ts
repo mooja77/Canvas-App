@@ -13,6 +13,7 @@ import { csrfProtection } from './middleware/csrf.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { canvasRoutes, canvasPublicRoutes } from './routes/canvasRoutes.js';
 import { authRoutes } from './routes/authRoutes.js';
+import { ethicsRoutes } from './routes/ethicsRoutes.js';
 import { prisma } from './lib/prisma.js';
 import { hashAccessCode } from './utils/hashing.js';
 import { signResearcherToken } from './utils/jwt.js';
@@ -73,6 +74,9 @@ app.use('/api', canvasPublicRoutes);
 
 // ─── Protected canvas routes ───
 app.use('/api', auth, auditLog, canvasRoutes);
+
+// ─── Protected ethics & compliance routes ───
+app.use('/api', auth, auditLog, ethicsRoutes);
 
 // ─── Production: serve frontend static build ───
 if (process.env.NODE_ENV === 'production') {

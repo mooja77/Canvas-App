@@ -6,7 +6,7 @@ import { verifyResearcherToken } from '../utils/jwt.js';
 
 export async function auth(
   req: Request,
-  _res: Response,
+  res: Response,
   next: NextFunction
 ) {
   const dashboardCode = req.headers['x-dashboard-code'] as string;
@@ -24,6 +24,7 @@ export async function auth(
     if (access) {
       req.dashboardAccessId = access.id;
       req.dashboardAccess = access;
+      res.setHeader('X-Session-Timeout', '1800'); // 30 minutes recommended
       return next();
     }
   }
@@ -53,5 +54,9 @@ export async function auth(
 
   req.dashboardAccessId = access.id;
   req.dashboardAccess = access;
+
+  // Session inactivity timeout recommendation header
+  res.setHeader('X-Session-Timeout', '1800'); // 30 minutes recommended
+
   next();
 }
