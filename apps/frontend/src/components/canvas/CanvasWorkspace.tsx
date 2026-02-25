@@ -128,6 +128,7 @@ export default function CanvasWorkspace() {
     deleteCoding,
     deleteRelation,
     reassignCoding,
+    refreshCanvas,
   } = useCanvasStore();
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -156,6 +157,10 @@ export default function CanvasWorkspace() {
 
   // Snap to grid
   const [snapToGrid, setSnapToGrid] = useState(false);
+
+  // Drag-and-drop file import
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const dragCounterRef = useRef(0);
 
   // Clipboard for copy/paste
   const clipboardRef = useRef<Node[]>([]);
@@ -914,6 +919,95 @@ export default function CanvasWorkspace() {
     }
   }, [nodes, setNodes]);
 
+  // ── Drag-and-drop file import handlers ──
+  const handleFileDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDraggingFile(true);
+    }
+  }, []);
+
+  const handleFileDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDraggingFile(false);
+    }
+  }, []);
+
+  const handleFileDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleFileDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDraggingFile(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const validFiles = files.filter(f =>
+      f.name.endsWith('.txt') || f.name.endsWith('.csv') || f.name.endsWith('.md')
+    );
+
+    if (validFiles.length === 0) {
+      toast.error('Drop .txt, .csv, or .md files to import transcripts');
+      return;
+    }
+
+    let imported = 0;
+    for (const file of validFiles) {
+      try {
+        const text = await file.text();
+        if (file.name.endsWith('.csv')) {
+          // Parse CSV: each row becomes a transcript
+          const lines = text.replace(/\r\n/g, '\n').split('\n').filter(l => l.trim());
+          for (const line of lines) {
+            const fields: string[] = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+              const ch = line[i];
+              if (inQuotes) {
+                if (ch === '"') {
+                  if (i + 1 < line.length && line[i + 1] === '"') { current += '"'; i++; }
+                  else inQuotes = false;
+                } else current += ch;
+              } else {
+                if (ch === '"') inQuotes = true;
+                else if (ch === ',') { fields.push(current.trim()); current = ''; }
+                else current += ch;
+              }
+            }
+            fields.push(current.trim());
+            const title = fields[0] || `Row ${imported + 1}`;
+            const content = fields.length >= 2 ? fields[1] : fields[0] || '';
+            if (content) {
+              await addTranscript(title, content);
+              imported++;
+            }
+          }
+        } else {
+          // Plain text / markdown file
+          const title = file.name.replace(/\.(txt|md)$/, '');
+          await addTranscript(title, text);
+          imported++;
+        }
+      } catch {
+        toast.error(`Failed to import ${file.name}`);
+      }
+    }
+
+    if (imported > 0) {
+      await refreshCanvas();
+      toast.success(`Imported ${imported} transcript${imported > 1 ? 's' : ''}`);
+    }
+  }, [addTranscript, refreshCanvas]);
+
   return (
     <div className="flex h-full">
       {/* Code Navigator Sidebar */}
@@ -926,7 +1020,14 @@ export default function CanvasWorkspace() {
           onToggleNavigator={() => setShowNavigator(s => !s)}
           onOpenCommandPalette={() => setShowCommandPalette(true)}
         />
-        <div data-tour="canvas-flow-area" className="relative flex-1">
+        <div
+          data-tour="canvas-flow-area"
+          className="relative flex-1"
+          onDragEnter={handleFileDragEnter}
+          onDragLeave={handleFileDragLeave}
+          onDragOver={handleFileDragOver}
+          onDrop={handleFileDrop}
+        >
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -966,6 +1067,23 @@ export default function CanvasWorkspace() {
               className="!bg-white/90 !backdrop-blur-sm !rounded-xl !shadow-node dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700"
             />
           </ReactFlow>
+
+          {/* Drag-and-drop file overlay */}
+          {isDraggingFile && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-brand-500/10 backdrop-blur-[2px] border-2 border-dashed border-brand-400 rounded-xl pointer-events-none animate-fade-in">
+              <div className="flex flex-col items-center gap-3 rounded-2xl bg-white/90 dark:bg-gray-800/90 px-8 py-6 shadow-xl">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 dark:bg-brand-900/30">
+                  <svg className="h-7 w-7 text-brand-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">Drop files to import</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">.txt, .csv, or .md files</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Selection toolbar */}
           {selectedNodes.length >= 2 && (
@@ -1115,7 +1233,7 @@ export default function CanvasWorkspace() {
 
                 {/* Hint */}
                 <p className="mt-6 text-[11px] text-gray-300 dark:text-gray-600">
-                  Double-click canvas to quick-add nodes &middot; Press <kbd className="rounded bg-gray-100 dark:bg-gray-700 px-1 py-0.5 font-mono text-[10px]">Ctrl+K</kbd> for command palette
+                  Drop .txt/.csv files to import &middot; Double-click canvas to quick-add &middot; Press <kbd className="rounded bg-gray-100 dark:bg-gray-700 px-1 py-0.5 font-mono text-[10px]">Ctrl+K</kbd> for commands
                 </p>
               </div>
             </div>

@@ -9,6 +9,8 @@ import AddComputedNodeMenu from './AddComputedNodeMenu';
 import CodebookExportModal from './CodebookExportModal';
 import ShareCanvasModal from './ShareCanvasModal';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
+import ProjectDashboard from './ProjectDashboard';
+import CanvasSwitcher from './CanvasSwitcher';
 import toast from 'react-hot-toast';
 
 interface CanvasToolbarProps {
@@ -27,6 +29,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
   const [showCodebook, setShowCodebook] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [addingMemo, setAddingMemo] = useState(false);
 
@@ -95,9 +98,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
           {/* Divider */}
           <div className="h-5 w-px bg-gray-200/80 dark:bg-gray-700/80" />
 
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate max-w-[180px] text-sm" title={activeCanvas.name}>
-            {activeCanvas.name}
-          </h3>
+          <CanvasSwitcher canvasName={activeCanvas.name} />
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -217,6 +218,17 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                   Stripes
                 </button>
                 <button
+                  onClick={() => setShowDashboard(true)}
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+                  title="Project overview dashboard"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+                  </svg>
+                  Dashboard
+                </button>
+                <button
                   onClick={() => setShowCodebook(true)}
                   className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
                   title="Export codebook"
@@ -284,6 +296,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
       {showCodebook && <CodebookExportModal onClose={() => setShowCodebook(false)} />}
       {showShare && <ShareCanvasModal onClose={() => setShowShare(false)} />}
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
+      {showDashboard && <ProjectDashboard onClose={() => setShowDashboard(false)} />}
     </>
   );
 }
