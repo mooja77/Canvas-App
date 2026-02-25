@@ -34,6 +34,7 @@ const SHORTCUT_GROUPS = [
       { keys: ['Ctrl', 'C'], description: 'Copy selected nodes' },
       { keys: ['Ctrl', 'V'], description: 'Paste nodes' },
       { keys: ['Ctrl', 'D'], description: 'Duplicate selected' },
+      { keys: ['Ctrl', 'G'], description: 'Group selected nodes' },
       { keys: ['Ctrl', 'Z'], description: 'Undo' },
       { keys: ['Ctrl', 'Shift', 'Z'], description: 'Redo' },
       { keys: ['Delete'], description: 'Delete selected' },
@@ -64,8 +65,9 @@ const SHORTCUT_GROUPS = [
     shortcuts: [
       { keys: ['G'], description: 'Toggle snap to grid' },
       { keys: ['C'], description: 'Collapse/expand node' },
+      { keys: ['Ctrl', 'Shift', '1-5'], description: 'Save viewport bookmark' },
+      { keys: ['Alt', '1-5'], description: 'Recall viewport bookmark' },
       { keys: ['Scroll'], description: 'Zoom in / out' },
-      { keys: ['Drag'], description: 'Pan canvas' },
       { keys: ['Right-click'], description: 'Context menu' },
     ],
   },

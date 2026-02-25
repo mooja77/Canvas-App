@@ -21,6 +21,7 @@ import TranscriptNode from './nodes/TranscriptNode';
 import QuestionNode from './nodes/QuestionNode';
 import MemoNode from './nodes/MemoNode';
 import CaseNode from './nodes/CaseNode';
+import GroupNode from './nodes/GroupNode';
 import SearchResultNode from './nodes/SearchResultNode';
 import CooccurrenceNode from './nodes/CooccurrenceNode';
 import MatrixNode from './nodes/MatrixNode';
@@ -50,6 +51,8 @@ import { ErrorBoundary } from '../ErrorBoundary';
 import { useCanvasStore } from '../../stores/canvasStore';
 import { useCanvasHistory } from '../../hooks/useCanvasHistory';
 import { useCanvasKeyboard } from '../../hooks/useCanvasKeyboard';
+import { useCanvasBookmarks } from '../../hooks/useCanvasBookmarks';
+import { useCanvasGroups } from '../../hooks/useCanvasGroups';
 import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import type {
   CanvasTranscript,
@@ -84,6 +87,8 @@ const nodeTypes = {
   question: QuestionNode,
   memo: MemoNode,
   case: CaseNode,
+  // Visual grouping node
+  group: GroupNode,
   // Computed node types — wrapped with error boundary
   search: withErrorBoundary(SearchResultNode),
   cooccurrence: withErrorBoundary(CooccurrenceNode),
@@ -170,6 +175,12 @@ export default function CanvasWorkspace() {
 
   // Undo/Redo
   const { pushAction, undo, redo, canUndo, canRedo } = useCanvasHistory();
+
+  // Viewport bookmarks (5 slots, persisted per canvas)
+  const { bookmarks, saveBookmark, recallBookmark, hasBookmark } = useCanvasBookmarks();
+
+  // Visual groups (persisted in localStorage)
+  const { groups, addGroup, removeGroup } = useCanvasGroups();
 
   // Build position map with dimensions and collapsed state
   const posMap = useMemo(() => {
@@ -311,8 +322,36 @@ export default function CanvasWorkspace() {
       });
     });
 
+    // Group nodes (visual-only, metadata from localStorage)
+    groups.forEach((g) => {
+      const nodeId = `group-${g.id}`;
+      const posData = posMap.get(nodeId);
+      const pos = posData ? { x: posData.x, y: posData.y } : { x: g.x, y: g.y };
+      const w = posData?.width ?? g.width;
+      const h = posData?.height ?? g.height;
+      const style: Record<string, unknown> = {
+        transition: 'opacity 0.2s',
+        zIndex: -1,
+      };
+      if (w) style.width = w;
+      if (h) style.height = h;
+      result.unshift({
+        id: nodeId,
+        type: 'group',
+        position: pos,
+        dragHandle: '.drag-handle',
+        zIndex: -1,
+        style,
+        data: {
+          title: g.title,
+          color: g.color,
+          collapsed: posData?.collapsed ?? false,
+        },
+      });
+    });
+
     return result;
-  }, [activeCanvas, highlightedNodeIds, posMap]);
+  }, [activeCanvas, highlightedNodeIds, posMap, groups]);
 
   // Build edges from codings and relations
   const buildEdges = useCallback((): Edge[] => {
@@ -489,6 +528,7 @@ export default function CanvasWorkspace() {
     else if (type === 'question') label = (node.data as any)?.text || 'question';
     else if (type === 'memo') label = (node.data as any)?.title || 'memo';
     else if (type === 'case') label = 'case';
+    else if (type === 'group') label = (node.data as any)?.title || 'group';
     else label = type + ' node';
 
     setDeleteConfirm({ nodeId: node.id, label, type });
@@ -503,6 +543,10 @@ export default function CanvasWorkspace() {
       else if (nodeId.startsWith('memo-')) await deleteMemo(nodeId.replace('memo-', ''));
       else if (nodeId.startsWith('case-')) await deleteCase(nodeId.replace('case-', ''));
       else if (nodeId.startsWith('computed-')) await deleteComputedNode(nodeId.replace('computed-', ''));
+      else if (nodeId.startsWith('group-')) {
+        removeGroup(nodeId.replace('group-', ''));
+        setNodes(nds => nds.filter(n => n.id !== nodeId));
+      }
       toast.success('Node deleted');
     } catch {
       toast.error('Failed to delete node');
@@ -519,10 +563,11 @@ export default function CanvasWorkspace() {
         else if (node.id.startsWith('memo-')) await deleteMemo(node.id.replace('memo-', ''));
         else if (node.id.startsWith('case-')) await deleteCase(node.id.replace('case-', ''));
         else if (node.id.startsWith('computed-')) await deleteComputedNode(node.id.replace('computed-', ''));
+        else if (node.id.startsWith('group-')) removeGroup(node.id.replace('group-', ''));
       } catch { /* continue */ }
     }
     toast.success(`Deleted ${selectedNodes.length} nodes`);
-  }, [selectedNodes, deleteTranscript, deleteQuestion, deleteMemo, deleteCase, deleteComputedNode]);
+  }, [selectedNodes, deleteTranscript, deleteQuestion, deleteMemo, deleteCase, deleteComputedNode, removeGroup]);
 
   // Copy selected nodes
   const handleCopy = useCallback(() => {
@@ -653,40 +698,6 @@ export default function CanvasWorkspace() {
     }, 300);
   }, [saveLayout, setNodes]);
 
-  // Global keyboard shortcuts (extracted to custom hook)
-  useCanvasKeyboard({
-    showSearch,
-    showShortcuts,
-    showCommandPalette,
-    contextMenu,
-    nodeContextMenu,
-    edgeContextMenu,
-    quickAddMenu,
-    selectedQuestionId,
-    setShowSearch,
-    setShowShortcuts,
-    setShowCommandPalette,
-    setContextMenu,
-    setNodeContextMenu,
-    setEdgeContextMenu,
-    setQuickAddMenu,
-    setSelectedQuestionId,
-    setHighlightedNodeIds,
-    setSnapToGrid,
-    nodes,
-    setNodes,
-    rfInstanceRef,
-    handleCopy,
-    handlePaste,
-    handleDuplicate,
-    handleSelectAll,
-    handleDeleteSelected,
-    handleAlignLeft,
-    handleDistributeH,
-    undo,
-    redo,
-  });
-
   // Debounced layout save on node position/dimension change
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -723,6 +734,7 @@ export default function CanvasWorkspace() {
       case 'codingquery': return '#DC2626';
       case 'sentiment': return '#F59E0B';
       case 'treemap': return '#8B5CF6';
+      case 'group': return '#94A3B8';
       default: return '#6B7280';
     }
   }, []);
@@ -908,6 +920,69 @@ export default function CanvasWorkspace() {
       toast.success(`${label} node added`);
     } catch { toast.error('Failed to add node'); }
   }, [addComputedNode]);
+
+  // Create visual group from selected nodes (Ctrl+G)
+  const handleCreateGroup = useCallback(() => {
+    if (selectedNodes.length < 2) {
+      toast('Select 2+ nodes to create a group', { icon: '\u2139\uFE0F' });
+      return;
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const node of selectedNodes) {
+      const w = (node.style?.width as number) || (node.measured?.width) || 300;
+      const h = (node.style?.height as number) || (node.measured?.height) || 200;
+      minX = Math.min(minX, node.position.x);
+      minY = Math.min(minY, node.position.y);
+      maxX = Math.max(maxX, node.position.x + w);
+      maxY = Math.max(maxY, node.position.y + h);
+    }
+    const pad = 40;
+    const gx = minX - pad;
+    const gy = minY - pad - 36;
+    const gw = maxX - minX + pad * 2;
+    const gh = maxY - minY + pad * 2 + 36;
+    const groupId = addGroup('Group', '#3B82F6', gx, gy, gw, gh);
+    if (!groupId) return;
+    triggerSaveLayout();
+    toast.success('Group created — double-click title to rename');
+  }, [selectedNodes, addGroup, setNodes, triggerSaveLayout]);
+
+  // Global keyboard shortcuts (extracted to custom hook)
+  useCanvasKeyboard({
+    showSearch,
+    showShortcuts,
+    showCommandPalette,
+    contextMenu,
+    nodeContextMenu,
+    edgeContextMenu,
+    quickAddMenu,
+    selectedQuestionId,
+    setShowSearch,
+    setShowShortcuts,
+    setShowCommandPalette,
+    setContextMenu,
+    setNodeContextMenu,
+    setEdgeContextMenu,
+    setQuickAddMenu,
+    setSelectedQuestionId,
+    setHighlightedNodeIds,
+    setSnapToGrid,
+    nodes,
+    setNodes,
+    rfInstanceRef,
+    handleCopy,
+    handlePaste,
+    handleDuplicate,
+    handleSelectAll,
+    handleDeleteSelected,
+    handleAlignLeft,
+    handleDistributeH,
+    undo,
+    redo,
+    handleCreateGroup,
+    saveBookmark,
+    recallBookmark,
+  });
 
   const handleFocusNode = useCallback((nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
@@ -1123,6 +1198,7 @@ export default function CanvasWorkspace() {
                 toast('Use the Question button in the toolbar to add questions', { icon: '\u2139\uFE0F' });
               }}
               onAddMemo={handleContextAddMemo}
+              onAddComputedNode={handleQuickAddComputed}
               onFitView={() => rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 0.8 })}
               onShowShortcuts={() => setShowShortcuts(true)}
               onSelectAll={handleSelectAll}
@@ -1346,6 +1422,16 @@ export default function CanvasWorkspace() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" />
               </svg>
             </button>
+            {/* Bookmark slot indicators */}
+            <div className="flex items-center gap-0.5" title="Viewport bookmarks (Ctrl+Shift+1-5 save, Alt+1-5 recall)">
+              {bookmarks.map((b, i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 w-1.5 rounded-full transition-colors ${b ? 'bg-blue-400 dark:bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+                  title={b ? `Bookmark ${i + 1} saved` : `Bookmark ${i + 1} empty`}
+                />
+              ))}
+            </div>
             {snapToGrid && (
               <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
                 GRID

@@ -1,5 +1,7 @@
 import { useEffect, type RefObject } from 'react';
 import type { Node, ReactFlowInstance } from '@xyflow/react';
+import toast from 'react-hot-toast';
+import type { Bookmark } from './useCanvasBookmarks';
 
 export interface CanvasKeyboardOptions {
   // UI state for Escape dismissal
@@ -41,6 +43,13 @@ export interface CanvasKeyboardOptions {
   handleDistributeH: () => void;
   undo: () => void;
   redo: () => void;
+
+  // Group creation
+  handleCreateGroup: () => void;
+
+  // Viewport bookmarks
+  saveBookmark: (slot: number, viewport: { x: number; y: number; zoom: number }) => void;
+  recallBookmark: (slot: number) => Bookmark | null;
 }
 
 export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
@@ -75,6 +84,9 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     handleDistributeH,
     undo,
     redo,
+    handleCreateGroup,
+    saveBookmark,
+    recallBookmark,
   } = options;
 
   useEffect(() => {
@@ -124,7 +136,43 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
           setShowSearch(true);
           return;
         }
+        // Ctrl+G: create group from selection
+        if (e.key === 'g') {
+          e.preventDefault();
+          handleCreateGroup();
+          return;
+        }
+        // Ctrl+Shift+1-5: save viewport bookmark
+        if (e.shiftKey) {
+          const digitMatch = e.code.match(/^Digit([1-5])$/);
+          if (digitMatch) {
+            e.preventDefault();
+            const slot = parseInt(digitMatch[1]) - 1;
+            const viewport = rfInstanceRef.current?.getViewport();
+            if (viewport) {
+              saveBookmark(slot, viewport);
+              toast.success(`Bookmark ${digitMatch[1]} saved`);
+            }
+            return;
+          }
+        }
         return;
+      }
+
+      // Alt+1-5: recall viewport bookmark
+      if (e.altKey) {
+        const digitMatch = e.code.match(/^Digit([1-5])$/);
+        if (digitMatch) {
+          e.preventDefault();
+          const slot = parseInt(digitMatch[1]) - 1;
+          const bm = recallBookmark(slot);
+          if (bm) {
+            rfInstanceRef.current?.setViewport(bm, { duration: 300 });
+          } else {
+            toast(`Bookmark ${digitMatch[1]} is empty — save with Ctrl+Shift+${digitMatch[1]}`, { icon: '\u2139\uFE0F' });
+          }
+          return;
+        }
       }
 
       if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
@@ -234,5 +282,8 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     nodes,
     setNodes,
     rfInstanceRef,
+    handleCreateGroup,
+    saveBookmark,
+    recallBookmark,
   ]);
 }
