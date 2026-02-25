@@ -9,6 +9,7 @@ interface QuickAddMenuProps {
   onAddQuestion: () => void;
   onAddMemo: () => void;
   onAddComputedNode: (type: ComputedNodeType, label: string) => void;
+  onAddStickyNote?: () => void;
   onClose: () => void;
 }
 
@@ -16,6 +17,7 @@ const ALL_ITEMS: { id: string; label: string; category: string; color: string; c
   { id: 'transcript', label: 'Transcript', category: 'Core', color: '#3B82F6' },
   { id: 'question', label: 'Research Question', category: 'Core', color: '#8B5CF6' },
   { id: 'memo', label: 'Memo', category: 'Core', color: '#F59E0B' },
+  { id: 'sticky', label: 'Sticky Note', category: 'Core', color: '#FBBF24' },
   { id: 'search', label: 'Text Search', category: 'Analysis', color: '#059669', computedType: 'search' },
   { id: 'cooccurrence', label: 'Co-occurrence', category: 'Analysis', color: '#7C3AED', computedType: 'cooccurrence' },
   { id: 'matrix', label: 'Framework Matrix', category: 'Analysis', color: '#D97706', computedType: 'matrix' },
@@ -35,6 +37,7 @@ export default function QuickAddMenu({
   onAddQuestion,
   onAddMemo,
   onAddComputedNode,
+  onAddStickyNote,
   onClose,
 }: QuickAddMenuProps) {
   const [filter, setFilter] = useState('');
@@ -67,6 +70,7 @@ export default function QuickAddMenu({
     if (item.id === 'transcript') onAddTranscript();
     else if (item.id === 'question') onAddQuestion();
     else if (item.id === 'memo') onAddMemo();
+    else if (item.id === 'sticky') onAddStickyNote?.();
     else if (item.computedType) onAddComputedNode(item.computedType, item.label);
     onClose();
   };

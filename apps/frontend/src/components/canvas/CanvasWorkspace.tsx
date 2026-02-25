@@ -22,6 +22,7 @@ import QuestionNode from './nodes/QuestionNode';
 import MemoNode from './nodes/MemoNode';
 import CaseNode from './nodes/CaseNode';
 import GroupNode from './nodes/GroupNode';
+import StickyNoteNode from './nodes/StickyNoteNode';
 import SearchResultNode from './nodes/SearchResultNode';
 import CooccurrenceNode from './nodes/CooccurrenceNode';
 import MatrixNode from './nodes/MatrixNode';
@@ -53,6 +54,8 @@ import { useCanvasHistory } from '../../hooks/useCanvasHistory';
 import { useCanvasKeyboard } from '../../hooks/useCanvasKeyboard';
 import { useCanvasBookmarks } from '../../hooks/useCanvasBookmarks';
 import { useCanvasGroups } from '../../hooks/useCanvasGroups';
+import { useCanvasStickyNotes } from '../../hooks/useCanvasStickyNotes';
+import { useAutoLayout } from '../../hooks/useAutoLayout';
 import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import type {
   CanvasTranscript,
@@ -89,6 +92,8 @@ const nodeTypes = {
   case: CaseNode,
   // Visual grouping node
   group: GroupNode,
+  // Sticky notes
+  sticky: StickyNoteNode,
   // Computed node types — wrapped with error boundary
   search: withErrorBoundary(SearchResultNode),
   cooccurrence: withErrorBoundary(CooccurrenceNode),
@@ -181,6 +186,15 @@ export default function CanvasWorkspace() {
 
   // Visual groups (persisted in localStorage)
   const { groups, addGroup, removeGroup, updateGroup } = useCanvasGroups();
+
+  // Sticky notes (persisted in localStorage)
+  const { stickyNotes, addStickyNote, removeStickyNote, updateStickyNote } = useCanvasStickyNotes();
+
+  // Auto-layout
+  const { applyLayout } = useAutoLayout(setNodes);
+
+  // Focus mode (hides toolbar, sidebar, status bar)
+  const [focusMode, setFocusMode] = useState(false);
 
   // Build position map with dimensions and collapsed state
   const posMap = useMemo(() => {
@@ -351,8 +365,33 @@ export default function CanvasWorkspace() {
       });
     });
 
+    // Sticky note nodes (visual-only, from localStorage)
+    stickyNotes.forEach((sn) => {
+      const nodeId = `sticky-${sn.id}`;
+      const posData = posMap.get(nodeId);
+      const pos = posData ? { x: posData.x, y: posData.y } : { x: sn.x, y: sn.y };
+      const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
+      if (posData?.width ?? sn.width) style.width = posData?.width ?? sn.width;
+      if (posData?.height ?? sn.height) style.height = posData?.height ?? sn.height;
+      result.push({
+        id: nodeId,
+        type: 'sticky',
+        position: pos,
+        dragHandle: '.drag-handle',
+        style,
+        data: {
+          noteId: sn.id,
+          text: sn.text,
+          color: sn.color,
+          onTextChange: (text: string) => updateStickyNote(sn.id, { text }),
+          onColorChange: (color: string) => updateStickyNote(sn.id, { color }),
+          onDelete: () => removeStickyNote(sn.id),
+        },
+      });
+    });
+
     return result;
-  }, [activeCanvas, highlightedNodeIds, posMap, groups, updateGroup]);
+  }, [activeCanvas, highlightedNodeIds, posMap, groups, updateGroup, stickyNotes, updateStickyNote, removeStickyNote]);
 
   // Build edges from codings and relations
   const buildEdges = useCallback((): Edge[] => {
@@ -736,6 +775,7 @@ export default function CanvasWorkspace() {
       case 'sentiment': return '#F59E0B';
       case 'treemap': return '#8B5CF6';
       case 'group': return '#94A3B8';
+      case 'sticky': return '#FBBF24';
       default: return '#6B7280';
     }
   }, []);
@@ -948,6 +988,50 @@ export default function CanvasWorkspace() {
     toast.success('Group created — double-click title to rename');
   }, [selectedNodes, addGroup, setNodes, triggerSaveLayout]);
 
+  // Auto-layout handler
+  const handleAutoLayout = useCallback(() => {
+    if (nodes.length === 0) {
+      toast('No nodes to arrange', { icon: '\u2139\uFE0F' });
+      return;
+    }
+    applyLayout(nodes, edges, { direction: 'LR', nodeSpacing: 60, rankSpacing: 120 });
+    // Save layout after animation
+    setTimeout(() => triggerSaveLayout(), 700);
+    toast.success('Canvas arranged');
+  }, [nodes, edges, applyLayout, triggerSaveLayout]);
+
+  // Export canvas as PNG
+  const handleExportPNG = useCallback(async () => {
+    const viewport = document.querySelector('.react-flow__viewport') as HTMLElement;
+    if (!viewport) return;
+    try {
+      toast.loading('Exporting...', { id: 'export' });
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(viewport, {
+        backgroundColor: '#ffffff',
+        style: { transform: '' },
+        width: viewport.scrollWidth || 2000,
+        height: viewport.scrollHeight || 1500,
+      });
+      const link = document.createElement('a');
+      link.download = `${activeCanvas?.name || 'canvas'}-export.png`;
+      link.href = dataUrl;
+      link.click();
+      toast.success('Canvas exported as PNG', { id: 'export' });
+    } catch {
+      toast.error('Export failed — try zooming to fit first', { id: 'export' });
+    }
+  }, [activeCanvas?.name]);
+
+  // Quick add sticky note handler
+  const handleQuickAddStickyNote = useCallback(() => {
+    const viewport = rfInstanceRef.current?.getViewport();
+    const x = viewport ? (-viewport.x + 400) / viewport.zoom : 600;
+    const y = viewport ? (-viewport.y + 300) / viewport.zoom : 300;
+    addStickyNote(x, y);
+    toast.success('Sticky note added');
+  }, [addStickyNote]);
+
   // Global keyboard shortcuts (extracted to custom hook)
   useCanvasKeyboard({
     showSearch,
@@ -983,6 +1067,8 @@ export default function CanvasWorkspace() {
     handleCreateGroup,
     saveBookmark,
     recallBookmark,
+    handleAutoLayout,
+    setFocusMode,
   });
 
   const handleFocusNode = useCallback((nodeId: string) => {
@@ -1090,15 +1176,20 @@ export default function CanvasWorkspace() {
   return (
     <div className="flex h-full">
       {/* Code Navigator Sidebar */}
-      {showNavigator && (
+      {showNavigator && !focusMode && (
         <CodeNavigator onFocusNode={handleFocusNode} />
       )}
       <div className="flex flex-1 flex-col min-w-0">
-        <CanvasToolbar
-          showNavigator={showNavigator}
-          onToggleNavigator={() => setShowNavigator(s => !s)}
-          onOpenCommandPalette={() => setShowCommandPalette(true)}
-        />
+        {!focusMode && (
+          <CanvasToolbar
+            showNavigator={showNavigator}
+            onToggleNavigator={() => setShowNavigator(s => !s)}
+            onOpenCommandPalette={() => setShowCommandPalette(true)}
+            onAutoLayout={handleAutoLayout}
+            onExportPNG={handleExportPNG}
+            onToggleFocusMode={() => setFocusMode(true)}
+          />
+        )}
         <div
           data-tour="canvas-flow-area"
           className="relative flex-1"
@@ -1146,6 +1237,22 @@ export default function CanvasWorkspace() {
               className="!bg-white/90 !backdrop-blur-sm !rounded-xl !shadow-node dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700"
             />
           </ReactFlow>
+
+          {/* Focus mode exit button */}
+          {focusMode && (
+            <div className="absolute top-4 right-4 z-50 animate-fade-in">
+              <button
+                onClick={() => setFocusMode(false)}
+                className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-gray-500 shadow-lg ring-1 ring-black/5 backdrop-blur-md hover:bg-white hover:text-gray-700 dark:bg-gray-800/90 dark:text-gray-400 dark:ring-white/10 dark:hover:bg-gray-800 transition-all"
+                title="Exit focus mode (Ctrl+. or Esc)"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25" />
+                </svg>
+                Exit Focus
+              </button>
+            </div>
+          )}
 
           {/* Drag-and-drop file overlay */}
           {isDraggingFile && (
@@ -1209,6 +1316,7 @@ export default function CanvasWorkspace() {
               canRedo={canRedo}
               onUndo={undo}
               onRedo={redo}
+              onAutoLayout={handleAutoLayout}
               onClose={() => setContextMenu(null)}
             />
           )}
@@ -1251,6 +1359,16 @@ export default function CanvasWorkspace() {
               onAddQuestion={handleQuickAddQuestion}
               onAddMemo={handleQuickAddMemo}
               onAddComputedNode={handleQuickAddComputed}
+              onAddStickyNote={() => {
+                const viewport = rfInstanceRef.current?.getViewport();
+                if (viewport) {
+                  const x = (quickAddMenu.x - viewport.x) / viewport.zoom;
+                  const y = (quickAddMenu.y - viewport.y) / viewport.zoom;
+                  addStickyNote(x, y);
+                } else {
+                  addStickyNote(quickAddMenu.x, quickAddMenu.y);
+                }
+              }}
               onClose={() => setQuickAddMenu(null)}
             />
           )}
@@ -1362,7 +1480,7 @@ export default function CanvasWorkspace() {
         </div>
 
         {/* Status bar */}
-        <div data-tour="canvas-status-bar" className="flex items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-400 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-500">
+        {!focusMode && <div data-tour="canvas-status-bar" className="flex items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-400 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-500">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
               <svg className="h-3 w-3 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -1441,7 +1559,7 @@ export default function CanvasWorkspace() {
             <span>{savingLayout ? 'Saving...' : 'Saved'}</span>
             <span className="tabular-nums">{zoomLevel}%</span>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Detail panel */}
@@ -1460,6 +1578,10 @@ export default function CanvasWorkspace() {
           onToggleNavigator={() => setShowNavigator(s => !s)}
           onShowShortcuts={() => { setShowCommandPalette(false); setShowShortcuts(true); }}
           onAddComputedNode={handleQuickAddComputed}
+          onAutoLayout={handleAutoLayout}
+          onToggleFocusMode={() => setFocusMode(f => !f)}
+          onExportPNG={handleExportPNG}
+          onAddStickyNote={handleQuickAddStickyNote}
         />
       )}
 

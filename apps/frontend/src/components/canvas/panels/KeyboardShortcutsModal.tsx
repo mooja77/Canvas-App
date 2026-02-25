@@ -35,6 +35,7 @@ const SHORTCUT_GROUPS = [
       { keys: ['Ctrl', 'V'], description: 'Paste nodes' },
       { keys: ['Ctrl', 'D'], description: 'Duplicate selected' },
       { keys: ['Ctrl', 'G'], description: 'Group selected nodes' },
+      { keys: ['Ctrl', 'Shift', 'L'], description: 'Auto-arrange layout' },
       { keys: ['Ctrl', 'Z'], description: 'Undo' },
       { keys: ['Ctrl', 'Shift', 'Z'], description: 'Redo' },
       { keys: ['Delete'], description: 'Delete selected' },
@@ -63,6 +64,7 @@ const SHORTCUT_GROUPS = [
       </svg>
     ),
     shortcuts: [
+      { keys: ['Ctrl', '.'], description: 'Toggle focus mode' },
       { keys: ['G'], description: 'Toggle snap to grid' },
       { keys: ['C'], description: 'Collapse/expand node' },
       { keys: ['Ctrl', 'Shift', '1-5'], description: 'Save viewport bookmark' },

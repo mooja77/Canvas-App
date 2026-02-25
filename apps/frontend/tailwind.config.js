@@ -32,6 +32,7 @@ export default {
         'slide-down': 'slideDown 200ms ease-out',
         'shimmer': 'shimmer 1.5s ease-in-out infinite',
         'node-enter': 'nodeEnter 300ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'smooth-appear': 'smoothAppear 400ms cubic-bezier(0.4, 0, 0.2, 1)',
       },
       keyframes: {
         fadeIn: {
@@ -53,6 +54,10 @@ export default {
         slideDown: {
           from: { opacity: '0', transform: 'translateY(-8px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        smoothAppear: {
+          from: { opacity: '0', transform: 'scale(0.97) translateY(4px)' },
+          to: { opacity: '1', transform: 'scale(1) translateY(0)' },
         },
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },

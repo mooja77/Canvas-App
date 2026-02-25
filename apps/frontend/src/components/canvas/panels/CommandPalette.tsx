@@ -11,6 +11,10 @@ interface CommandPaletteProps {
   onToggleNavigator: () => void;
   onShowShortcuts: () => void;
   onAddComputedNode: (type: ComputedNodeType, label: string) => Promise<void>;
+  onAutoLayout?: () => void;
+  onToggleFocusMode?: () => void;
+  onExportPNG?: () => void;
+  onAddStickyNote?: () => void;
 }
 
 interface CommandItem {
@@ -31,6 +35,10 @@ export default function CommandPalette({
   onToggleNavigator,
   onShowShortcuts,
   onAddComputedNode,
+  onAutoLayout,
+  onToggleFocusMode,
+  onExportPNG,
+  onAddStickyNote,
 }: CommandPaletteProps) {
   const { activeCanvas, addQuestion, addMemo, toggleCodingStripes } = useCanvasStore();
   const { toggleDarkMode, darkMode } = useUIStore();
@@ -126,6 +134,52 @@ export default function CommandPalette({
       },
     );
 
+    if (onAutoLayout) {
+      items.push({
+        id: 'action-auto-layout',
+        category: 'action',
+        icon: <IconLayout />,
+        label: 'Auto-Arrange Canvas',
+        description: 'Organize nodes automatically',
+        shortcut: 'Ctrl+Shift+L',
+        action: () => { onAutoLayout(); onClose(); },
+      });
+    }
+
+    if (onToggleFocusMode) {
+      items.push({
+        id: 'action-focus-mode',
+        category: 'action',
+        icon: <IconFocus />,
+        label: 'Focus Mode',
+        description: 'Hide toolbar and sidebar for clean view',
+        shortcut: 'Ctrl+.',
+        action: () => { onToggleFocusMode(); onClose(); },
+      });
+    }
+
+    if (onExportPNG) {
+      items.push({
+        id: 'action-export-png',
+        category: 'action',
+        icon: <IconExport />,
+        label: 'Export as PNG',
+        description: 'Save canvas as an image',
+        action: () => { onExportPNG(); onClose(); },
+      });
+    }
+
+    if (onAddStickyNote) {
+      items.push({
+        id: 'action-add-sticky',
+        category: 'action',
+        icon: <IconSticky />,
+        label: 'Add Sticky Note',
+        description: 'Quick post-it note on canvas',
+        action: () => { onAddStickyNote(); onClose(); },
+      });
+    }
+
     // ── Analysis nodes ──
     const analysisNodes: { type: ComputedNodeType; label: string; description: string }[] = [
       { type: 'search', label: 'Text Search', description: 'Find patterns across transcripts' },
@@ -200,7 +254,7 @@ export default function CommandPalette({
     }
 
     return items;
-  }, [activeCanvas, addQuestion, addMemo, toggleCodingStripes, toggleDarkMode, darkMode, onClose, onFocusNode, onFitView, onToggleGrid, onToggleNavigator, onShowShortcuts, onAddComputedNode]);
+  }, [activeCanvas, addQuestion, addMemo, toggleCodingStripes, toggleDarkMode, darkMode, onClose, onFocusNode, onFitView, onToggleGrid, onToggleNavigator, onShowShortcuts, onAddComputedNode, onAutoLayout, onToggleFocusMode, onExportPNG, onAddStickyNote]);
 
   // Filter items by search query
   const filteredItems = useMemo(() => {
@@ -444,5 +498,37 @@ function IconAnalysis() {
 function IconColorDot({ color }: { color: string }) {
   return (
     <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
+  );
+}
+
+function IconLayout() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
+    </svg>
+  );
+}
+
+function IconFocus() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+    </svg>
+  );
+}
+
+function IconExport() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5a2.25 2.25 0 0 0 2.25-2.25V5.25a2.25 2.25 0 0 0-2.25-2.25H3.75a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+    </svg>
+  );
+}
+
+function IconSticky() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
   );
 }

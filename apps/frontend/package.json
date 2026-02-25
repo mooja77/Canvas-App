@@ -17,6 +17,8 @@
     "@xyflow/react": "^12.10.1",
     "axios": "^1.7.9",
     "clsx": "^2.1.1",
+    "dagre": "^0.8.5",
+    "html-to-image": "^1.11.13",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.4.1",
@@ -25,6 +27,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@types/dagre": "^0.7.53",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",

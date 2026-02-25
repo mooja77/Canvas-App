@@ -50,6 +50,10 @@ export interface CanvasKeyboardOptions {
   // Viewport bookmarks
   saveBookmark: (slot: number, viewport: { x: number; y: number; zoom: number }) => void;
   recallBookmark: (slot: number) => Bookmark | null;
+
+  // Auto-layout & focus mode
+  handleAutoLayout: () => void;
+  setFocusMode: (v: boolean | ((prev: boolean) => boolean)) => void;
 }
 
 export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
@@ -87,6 +91,8 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     handleCreateGroup,
     saveBookmark,
     recallBookmark,
+    handleAutoLayout,
+    setFocusMode,
   } = options;
 
   useEffect(() => {
@@ -134,6 +140,18 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
         if (e.key === 'f') {
           e.preventDefault();
           setShowSearch(true);
+          return;
+        }
+        // Ctrl+.: toggle focus mode
+        if (e.key === '.') {
+          e.preventDefault();
+          setFocusMode((prev: boolean) => !prev);
+          return;
+        }
+        // Ctrl+Shift+L: auto-layout
+        if (e.key === 'l' || e.key === 'L') {
+          e.preventDefault();
+          handleAutoLayout();
           return;
         }
         // Ctrl+G: create group from selection
@@ -229,6 +247,8 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
         if (nodeContextMenu) { setNodeContextMenu(null); return; }
         if (edgeContextMenu) { setEdgeContextMenu(null); return; }
         if (selectedQuestionId) { setSelectedQuestionId(null); return; }
+        // Exit focus mode with Escape
+        setFocusMode(false);
         return;
       }
 
@@ -285,5 +305,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     handleCreateGroup,
     saveBookmark,
     recallBookmark,
+    handleAutoLayout,
+    setFocusMode,
   ]);
 }
