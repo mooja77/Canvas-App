@@ -180,7 +180,7 @@ export default function CanvasWorkspace() {
   const { bookmarks, saveBookmark, recallBookmark, hasBookmark } = useCanvasBookmarks();
 
   // Visual groups (persisted in localStorage)
-  const { groups, addGroup, removeGroup } = useCanvasGroups();
+  const { groups, addGroup, removeGroup, updateGroup } = useCanvasGroups();
 
   // Build position map with dimensions and collapsed state
   const posMap = useMemo(() => {
@@ -346,12 +346,13 @@ export default function CanvasWorkspace() {
           title: g.title,
           color: g.color,
           collapsed: posData?.collapsed ?? false,
+          onTitleChange: (newTitle: string) => updateGroup(g.id, { title: newTitle }),
         },
       });
     });
 
     return result;
-  }, [activeCanvas, highlightedNodeIds, posMap, groups]);
+  }, [activeCanvas, highlightedNodeIds, posMap, groups, updateGroup]);
 
   // Build edges from codings and relations
   const buildEdges = useCallback((): Edge[] => {

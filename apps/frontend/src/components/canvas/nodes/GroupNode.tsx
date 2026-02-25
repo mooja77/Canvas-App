@@ -6,6 +6,7 @@ export interface GroupNodeData {
   title: string;
   color: string;
   collapsed?: boolean;
+  onTitleChange?: (newTitle: string) => void;
   [key: string]: unknown;
 }
 
@@ -26,6 +27,13 @@ export default function GroupNode({ data, selected }: NodeProps) {
     setCollapsed(nodeData.collapsed ?? false);
   }, [nodeData.collapsed]);
 
+  // Sync title from external data changes
+  useEffect(() => {
+    if (!editing) {
+      setEditTitle(nodeData.title || 'Group');
+    }
+  }, [nodeData.title, editing]);
+
   // Focus input when entering edit mode
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -41,9 +49,11 @@ export default function GroupNode({ data, selected }: NodeProps) {
 
   const handleTitleSave = useCallback(() => {
     setEditing(false);
-    // Title is display-only within the node; parent manages persistence
-    // The editTitle state keeps the local display updated
-  }, []);
+    const trimmed = editTitle.trim();
+    if (trimmed && trimmed !== nodeData.title && nodeData.onTitleChange) {
+      nodeData.onTitleChange(trimmed);
+    }
+  }, [editTitle, nodeData]);
 
   const handleTitleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
