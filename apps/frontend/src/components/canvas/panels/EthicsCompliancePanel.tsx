@@ -96,13 +96,21 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
     setSettingsLoading(true);
     try {
       const res = await canvasClient.get(`/canvas/${canvasId}/ethics`);
-      if (res.data) {
+      const d = res.data?.data || res.data;
+      if (d) {
         setSettings({
-          irbNumber: res.data.irbNumber || '',
-          ethicsStatus: res.data.ethicsStatus || 'pending',
-          dataRetentionDate: res.data.dataRetentionDate || '',
-          checklist: res.data.checklist || defaultSettings.checklist,
+          irbNumber: d.ethicsApprovalId || '',
+          ethicsStatus: d.ethicsStatus || 'pending',
+          dataRetentionDate: d.dataRetentionDate ? d.dataRetentionDate.split('T')[0] : '',
+          checklist: d.checklist || defaultSettings.checklist,
         });
+        // Also load consent records if present
+        if (Array.isArray(d.consentRecords)) {
+          setConsents(d.consentRecords.map((c: any) => ({
+            ...c,
+            status: c.consentStatus || c.status || 'active',
+          })));
+        }
       }
     } catch {
       // Settings not yet created — use defaults
@@ -116,7 +124,11 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
     if (!canvasId) return;
     setSettingsSaving(true);
     try {
-      await canvasClient.put(`/canvas/${canvasId}/ethics`, settings);
+      await canvasClient.put(`/canvas/${canvasId}/ethics`, {
+        ethicsApprovalId: settings.irbNumber,
+        ethicsStatus: settings.ethicsStatus,
+        dataRetentionDate: settings.dataRetentionDate || null,
+      });
       toast.success('Ethics settings saved');
     } catch {
       toast.error('Failed to save ethics settings');
@@ -131,7 +143,8 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
     setConsentsLoading(true);
     try {
       const res = await canvasClient.get(`/canvas/${canvasId}/consent`);
-      setConsents(Array.isArray(res.data) ? res.data : []);
+      const records = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : [];
+      setConsents(records.map((c: any) => ({ ...c, status: c.consentStatus || c.status || 'active' })));
     } catch {
       // No consents yet
       setConsents([]);
@@ -148,7 +161,8 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
     }
     try {
       const res = await canvasClient.post(`/canvas/${canvasId}/consent`, newConsent);
-      setConsents(prev => [...prev, res.data]);
+      const record = res.data?.data || res.data;
+      setConsents(prev => [...prev, { ...record, status: record.consentStatus || record.status || 'active' }]);
       setNewConsent({ participantId: '', consentType: 'informed', ethicsProtocol: '', notes: '' });
       toast.success('Consent record added');
     } catch {
@@ -177,8 +191,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
     setAnonymizing(true);
     try {
       await canvasClient.post(`/canvas/${canvasId}/transcripts/${selectedTranscriptId}/anonymize`, {
-        find: findText,
-        replace: replaceText || '[REDACTED]',
+        replacements: [{ find: findText, replace: replaceText || '[REDACTED]' }],
       });
       toast.success('Anonymization applied');
       setFindText('');
@@ -203,7 +216,8 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
       params.set('offset', String(offset));
 
       const res = await canvasClient.get(`/audit-log?${params.toString()}`);
-      const entries = Array.isArray(res.data?.entries) ? res.data.entries : Array.isArray(res.data) ? res.data : [];
+      const payload = res.data?.data || res.data;
+      const entries = Array.isArray(payload?.entries) ? payload.entries : Array.isArray(payload) ? payload : [];
       if (append) {
         setAuditEntries(prev => [...prev, ...entries]);
       } else {
