@@ -25,6 +25,9 @@ export default function CanvasPage() {
 
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
+      <a href="#canvas-main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2 focus:bg-brand-600 focus:text-white focus:rounded">
+        Skip to canvas
+      </a>
       {/* Minimal header */}
       <header className="flex-shrink-0 h-12 border-b border-gray-200/80 dark:border-gray-700/80 flex items-center justify-between px-4 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md">
         <div className="flex items-center gap-3">
@@ -40,7 +43,7 @@ export default function CanvasPage() {
 
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-[10px] font-bold text-white shadow-sm">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-[10px] font-bold text-white shadow-sm" aria-hidden="true">
               {name?.charAt(0).toUpperCase()}
             </div>
             <span className="text-xs font-medium text-gray-600 dark:text-gray-300 hidden sm:inline">{name}</span>
@@ -49,6 +52,7 @@ export default function CanvasPage() {
             onClick={toggleDarkMode}
             className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {darkMode ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
           </button>
@@ -56,6 +60,7 @@ export default function CanvasPage() {
             onClick={handleLogout}
             className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
             title="Sign out"
+            aria-label="Sign out"
           >
             <ArrowRightStartOnRectangleIcon className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Sign out</span>
@@ -64,7 +69,7 @@ export default function CanvasPage() {
       </header>
 
       {/* Full-screen canvas workspace */}
-      <main className="flex-1 overflow-hidden">
+      <main id="canvas-main" className="flex-1 overflow-hidden" aria-label="Canvas workspace">
         <CodingCanvas />
       </main>
     </div>

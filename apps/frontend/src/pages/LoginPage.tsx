@@ -88,8 +88,10 @@ export default function LoginPage() {
         </div>
 
         <div className="modal-enter bg-white/95 dark:bg-gray-800/95 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none backdrop-blur-sm p-8 ring-1 ring-gray-200/50 dark:ring-gray-700/50">
-          <div className="flex mb-6 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+          <div className="flex mb-6 bg-gray-100 dark:bg-gray-700 rounded-lg p-1" role="tablist" aria-label="Authentication mode">
             <button
+              role="tab"
+              aria-selected={mode === 'login'}
               onClick={() => setMode('login')}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
                 mode === 'login' ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300' : 'text-gray-500'
@@ -98,6 +100,8 @@ export default function LoginPage() {
               Sign In
             </button>
             <button
+              role="tab"
+              aria-selected={mode === 'register'}
               onClick={() => setMode('register')}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
                 mode === 'register' ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300' : 'text-gray-500'
@@ -108,12 +112,13 @@ export default function LoginPage() {
           </div>
 
           {mode === 'login' ? (
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4" role="tabpanel">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="access-code" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Access Code
                 </label>
                 <input
+                  id="access-code"
                   type="text"
                   value={code}
                   onChange={e => setCode(e.target.value)}
@@ -142,12 +147,13 @@ export default function LoginPage() {
               </button>
             </form>
           ) : (
-            <form onSubmit={handleRegister} className="space-y-4">
+            <form onSubmit={handleRegister} className="space-y-4" role="tabpanel">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="register-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Your Name
                 </label>
                 <input
+                  id="register-name"
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
