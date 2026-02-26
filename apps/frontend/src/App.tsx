@@ -1,7 +1,9 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
-import CanvasPage from './pages/CanvasPage';
 import { useAuthStore } from './stores/authStore';
+
+const CanvasPage = lazy(() => import('./pages/CanvasPage'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const authenticated = useAuthStore(s => s.authenticated);
@@ -18,7 +20,9 @@ export default function App() {
           path="/canvas"
           element={
             <ProtectedRoute>
-              <CanvasPage />
+              <Suspense fallback={<div className="flex items-center justify-center h-screen text-gray-500">Loading...</div>}>
+                <CanvasPage />
+              </Suspense>
             </ProtectedRoute>
           }
         />

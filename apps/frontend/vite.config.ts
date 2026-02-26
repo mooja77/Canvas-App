@@ -9,6 +9,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'viz-vendor': ['@xyflow/react', 'dagre', 'recharts', '@visx/wordcloud', '@visx/text'],
+        },
+      },
+    },
+  },
   server: {
     port: 5174,
     proxy: {

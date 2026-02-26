@@ -52,14 +52,22 @@ export const canvasPublicRoutes = Router();
 canvasRoutes.get('/canvas', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    const canvases = await prisma.codingCanvas.findMany({
-      where: { dashboardAccessId },
-      orderBy: { updatedAt: 'desc' },
-      include: {
-        _count: { select: { transcripts: true, questions: true, codings: true } },
-      },
-    });
-    res.json({ success: true, data: canvases });
+    const take = Math.min(parseInt(req.query.limit as string) || 50, 200);
+    const skip = parseInt(req.query.offset as string) || 0;
+
+    const [canvases, total] = await Promise.all([
+      prisma.codingCanvas.findMany({
+        where: { dashboardAccessId },
+        orderBy: { updatedAt: 'desc' },
+        include: {
+          _count: { select: { transcripts: true, questions: true, codings: true } },
+        },
+        take,
+        skip,
+      }),
+      prisma.codingCanvas.count({ where: { dashboardAccessId } }),
+    ]);
+    res.json({ success: true, data: canvases, total, limit: take, offset: skip });
   } catch (err) { next(err); }
 });
 
@@ -578,12 +586,25 @@ canvasRoutes.post('/canvas/:id/computed/:nodeId/run', async (req, res, next) => 
 
     const config = JSON.parse(node.config);
 
-    const [transcripts, questions, codings, cases] = await Promise.all([
-      prisma.canvasTranscript.findMany({ where: { canvasId: req.params.id } }),
-      prisma.canvasQuestion.findMany({ where: { canvasId: req.params.id } }),
-      prisma.canvasTextCoding.findMany({ where: { canvasId: req.params.id } }),
-      prisma.canvasCase.findMany({ where: { canvasId: req.params.id } }),
+    const [transcripts, questions, codings, rawCases] = await Promise.all([
+      prisma.canvasTranscript.findMany({
+        where: { canvasId: req.params.id },
+        select: { id: true, title: true, content: true, caseId: true },
+      }),
+      prisma.canvasQuestion.findMany({
+        where: { canvasId: req.params.id },
+        select: { id: true, text: true, color: true, parentQuestionId: true },
+      }),
+      prisma.canvasTextCoding.findMany({
+        where: { canvasId: req.params.id },
+        select: { id: true, transcriptId: true, questionId: true, startOffset: true, endOffset: true, codedText: true },
+      }),
+      prisma.canvasCase.findMany({
+        where: { canvasId: req.params.id },
+        select: { id: true, name: true, attributes: true },
+      }),
     ]);
+    const cases = rawCases.map(c => ({ ...c, attributes: JSON.parse(c.attributes) }));
 
     let result: any = {};
 
