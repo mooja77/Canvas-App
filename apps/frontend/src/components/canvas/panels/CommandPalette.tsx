@@ -17,6 +17,8 @@ interface CommandPaletteProps {
   onAddStickyNote?: () => void;
   onShowExcerpts?: () => void;
   onShowRichExport?: () => void;
+  onShowIntercoder?: () => void;
+  onShowWeighting?: () => void;
 }
 
 interface CommandItem {
@@ -43,6 +45,8 @@ export default function CommandPalette({
   onAddStickyNote,
   onShowExcerpts,
   onShowRichExport,
+  onShowIntercoder,
+  onShowWeighting,
 }: CommandPaletteProps) {
   const { activeCanvas, addQuestion, addMemo, toggleCodingStripes } = useCanvasStore();
   const { toggleDarkMode, darkMode } = useUIStore();
@@ -206,6 +210,28 @@ export default function CommandPalette({
       });
     }
 
+    if (onShowIntercoder) {
+      items.push({
+        id: 'action-intercoder',
+        category: 'action',
+        icon: <IconKappa />,
+        label: 'Intercoder Reliability',
+        description: "Compare coding agreement with Cohen's Kappa",
+        action: () => { onShowIntercoder(); onClose(); },
+      });
+    }
+
+    if (onShowWeighting) {
+      items.push({
+        id: 'action-weighting',
+        category: 'action',
+        icon: <IconWeight />,
+        label: 'Code Weighting',
+        description: 'Rate coding importance/intensity (1-5 stars)',
+        action: () => { onShowWeighting(); onClose(); },
+      });
+    }
+
     // ── Analysis nodes ──
     const analysisNodes: { type: ComputedNodeType; label: string; description: string }[] = [
       { type: 'search', label: 'Text Search', description: 'Find patterns across transcripts' },
@@ -280,7 +306,7 @@ export default function CommandPalette({
     }
 
     return items;
-  }, [activeCanvas, addQuestion, addMemo, toggleCodingStripes, toggleDarkMode, darkMode, onClose, onFocusNode, onFitView, onToggleGrid, onToggleNavigator, onShowShortcuts, onAddComputedNode, onAutoLayout, onToggleFocusMode, onExportPNG, onAddStickyNote, onShowExcerpts, onShowRichExport]);
+  }, [activeCanvas, addQuestion, addMemo, toggleCodingStripes, toggleDarkMode, darkMode, onClose, onFocusNode, onFitView, onToggleGrid, onToggleNavigator, onShowShortcuts, onAddComputedNode, onAutoLayout, onToggleFocusMode, onExportPNG, onAddStickyNote, onShowExcerpts, onShowRichExport, onShowIntercoder, onShowWeighting]);
 
   // Filter items by search query
   const filteredItems = useMemo(() => {
@@ -571,6 +597,22 @@ function IconReport() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+    </svg>
+  );
+}
+
+function IconKappa() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+    </svg>
+  );
+}
+
+function IconWeight() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
     </svg>
   );
 }

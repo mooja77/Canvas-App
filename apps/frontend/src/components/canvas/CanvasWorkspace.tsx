@@ -49,6 +49,8 @@ import SelectionToolbar from './panels/SelectionToolbar';
 import QuickAddMenu from './panels/QuickAddMenu';
 import ExcerptBrowserModal from './panels/ExcerptBrowserModal';
 import RichExportModal from './panels/RichExportModal';
+import IntercoderReliabilityModal from './panels/IntercoderReliabilityModal';
+import CodeWeightingPanel from './panels/CodeWeightingPanel';
 import ConfirmDialog from './ConfirmDialog';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { useCanvasStore } from '../../stores/canvasStore';
@@ -161,6 +163,8 @@ export default function CanvasWorkspace() {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showExcerpts, setShowExcerpts] = useState(false);
   const [showRichExport, setShowRichExport] = useState(false);
+  const [showIntercoder, setShowIntercoder] = useState(false);
+  const [showWeighting, setShowWeighting] = useState(false);
   const [highlightedNodeIds, setHighlightedNodeIds] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ show: boolean; x: number; y: number } | null>(null);
   const [nodeContextMenu, setNodeContextMenu] = useState<{ show: boolean; x: number; y: number; nodeId: string; nodeType: string; collapsed: boolean } | null>(null);
@@ -1588,6 +1592,8 @@ export default function CanvasWorkspace() {
           onAddStickyNote={handleQuickAddStickyNote}
           onShowExcerpts={() => { setShowCommandPalette(false); setShowExcerpts(true); }}
           onShowRichExport={() => { setShowCommandPalette(false); setShowRichExport(true); }}
+          onShowIntercoder={() => { setShowCommandPalette(false); setShowIntercoder(true); }}
+          onShowWeighting={() => { setShowCommandPalette(false); setShowWeighting(true); }}
         />
       )}
 
@@ -1596,6 +1602,12 @@ export default function CanvasWorkspace() {
 
       {/* Rich Export */}
       {showRichExport && <RichExportModal onClose={() => setShowRichExport(false)} />}
+
+      {/* Intercoder Reliability */}
+      {showIntercoder && <IntercoderReliabilityModal onClose={() => setShowIntercoder(false)} />}
+
+      {/* Code Weighting */}
+      {showWeighting && <CodeWeightingPanel onClose={() => setShowWeighting(false)} />}
 
       {/* Onboarding tour for first-time users */}
       <OnboardingTour />
