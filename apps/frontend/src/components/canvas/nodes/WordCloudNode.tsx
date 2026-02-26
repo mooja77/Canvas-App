@@ -20,11 +20,11 @@ export default function WordCloudNode({ data, id, selected }: NodeProps) {
   const [selectedQId, setSelectedQId] = useState<string>('');
   const questions = activeCanvas?.questions ?? [];
 
-  if (!node) return null;
-  const config = node.config as unknown as WordCloudConfig;
-  const result = node.result as unknown as WordCloudResult;
+  const config = node?.config as unknown as WordCloudConfig | undefined;
+  const result = node?.result as unknown as WordCloudResult | undefined;
 
   const handleSaveConfig = () => {
+    if (!node) return;
     updateComputedNode(node.id, { config: { ...config, questionId: selectedQId || undefined } });
     setEditing(false);
   };
@@ -62,6 +62,8 @@ export default function WordCloudNode({ data, id, selected }: NodeProps) {
       };
     });
   }, [result]);
+
+  if (!node) return null;
 
   const icon = (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">

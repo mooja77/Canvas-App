@@ -15,8 +15,6 @@ import { canvasRoutes, canvasPublicRoutes } from './routes/canvasRoutes.js';
 import { authRoutes } from './routes/authRoutes.js';
 import { ethicsRoutes } from './routes/ethicsRoutes.js';
 import { prisma } from './lib/prisma.js';
-import { hashAccessCode } from './utils/hashing.js';
-import { signResearcherToken } from './utils/jwt.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +23,7 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3007', 10);
 
 // Security headers
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -38,6 +37,8 @@ app.use(helmet({
       childSrc: ["'self'", "blob:"],
     },
   },
+  hsts: isProduction ? { maxAge: 31536000, includeSubDomains: true } : false,
+  permittedCrossDomainPolicies: { permittedPolicies: 'none' },
 }));
 
 // CORS
@@ -49,10 +50,10 @@ app.use(cors({
 }));
 
 // Logging
-app.use(morgan('dev'));
+app.use(morgan(isProduction ? 'combined' : 'dev'));
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
+// Body parsing — default limit for most routes
+app.use(express.json({ limit: '1mb' }));
 
 // CSRF protection
 app.use(csrfProtection);
@@ -65,6 +66,31 @@ const generalLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api', generalLimiter);
+
+// Rate limiter for heavy computation endpoints
+const computeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many computation requests, please try again later' },
+});
+app.use('/api/canvas/:id/computed/:nodeId/run', computeLimiter);
+
+// Larger body limit for transcript/import routes
+app.use('/api/canvas/:id/transcripts', express.json({ limit: '10mb' }));
+app.use('/api/canvas/:id/import-narratives', express.json({ limit: '10mb' }));
+app.use('/api/canvas/:id/import-from-canvas', express.json({ limit: '10mb' }));
+
+// ─── Health check ───
+app.get('/health', async (_req, res) => {
+  try {
+    await prisma.$queryRawUnsafe('SELECT 1');
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  } catch {
+    res.status(503).json({ status: 'error', message: 'Database unavailable' });
+  }
+});
 
 // ─── Auth route (no auth middleware needed) ───
 app.use('/api', authRoutes);

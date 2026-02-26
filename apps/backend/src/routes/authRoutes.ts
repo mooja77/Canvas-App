@@ -108,10 +108,21 @@ authRoutes.post('/auth', authLimiter, async (req, res, next) => {
 // POST /api/auth/register — create a new dashboard access (for standalone use)
 authRoutes.post('/auth/register', authLimiter, async (req, res, next) => {
   try {
-    const { name, role } = req.body;
-    if (!name || typeof name !== 'string') {
-      return res.status(400).json({ success: false, error: 'Name is required' });
+    // Registration gating: require REGISTRATION_ENABLED=true in production
+    if (process.env.NODE_ENV === 'production' && process.env.REGISTRATION_ENABLED !== 'true') {
+      return res.status(403).json({
+        success: false,
+        error: 'Registration is disabled. Contact an administrator for access.',
+      });
     }
+
+    const { name, role } = req.body;
+    if (!name || typeof name !== 'string' || name.trim().length < 1 || name.length > 100) {
+      return res.status(400).json({ success: false, error: 'Name is required (1-100 characters)' });
+    }
+
+    const validRoles = ['researcher', 'policymaker', 'funder'];
+    const sanitizedRole = validRoles.includes(role) ? role : 'researcher';
 
     const code = `CANVAS-${nanoid(8).toUpperCase().replace(/[^A-Z0-9]/g, 'X')}`;
     const { sha256Index, bcryptHash } = await hashAccessCode(code);
@@ -121,7 +132,7 @@ authRoutes.post('/auth/register', authLimiter, async (req, res, next) => {
         accessCode: sha256Index,
         accessCodeHash: bcryptHash,
         name,
-        role: role || 'researcher',
+        role: sanitizedRole,
         expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
       },
     });

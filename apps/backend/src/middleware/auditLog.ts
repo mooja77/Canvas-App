@@ -88,7 +88,7 @@ export function auditLog(req: Request, res: Response, next: NextFunction): void 
       statusCode: res.statusCode,
     });
 
-    return (originalEnd as Function).apply(res, args);
+    return (originalEnd as (...a: unknown[]) => unknown).apply(res, args);
   } as any;
 
   next();

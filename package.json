@@ -15,10 +15,20 @@
     "build": "npm run build -w shared && npm run build -w apps/backend && npm run build -w apps/frontend",
     "start": "cd apps/backend && npm start",
     "db:migrate": "npm run db:migrate -w apps/backend",
-    "db:seed": "npm run db:seed -w apps/backend"
+    "db:seed": "npm run db:seed -w apps/backend",
+    "lint": "eslint apps/backend/src apps/frontend/src shared",
+    "lint:fix": "eslint --fix apps/backend/src apps/frontend/src shared",
+    "format": "prettier --write \"apps/**/*.{ts,tsx}\" \"shared/**/*.ts\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx}\" \"shared/**/*.ts\"",
+    "test": "npm run test -w apps/backend",
+    "typecheck": "tsc -b apps/backend apps/frontend"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
     "concurrently": "^9.1.0",
+    "eslint": "^9.39.3",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "typescript": "^5.7.0"
   }
 }
