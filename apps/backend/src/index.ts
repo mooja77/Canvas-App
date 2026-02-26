@@ -116,8 +116,26 @@ if (process.env.NODE_ENV === 'production') {
 // Error handler
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Canvas App backend running on port ${PORT}`);
+const server = app.listen(PORT, () => {
+  console.log(`Canvas App backend running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
 });
+
+// Graceful shutdown
+function shutdown(signal: string) {
+  console.log(`${signal} received — shutting down gracefully`);
+  server.close(async () => {
+    await prisma.$disconnect();
+    console.log('Server closed');
+    process.exit(0);
+  });
+  // Force close after 10 seconds
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10_000);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 export default app;

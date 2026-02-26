@@ -1,0 +1,18 @@
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT:-3007}:3007"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/data/canvas-app.db
+      - JWT_SECRET=${JWT_SECRET}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+      - REGISTRATION_ENABLED=${REGISTRATION_ENABLED:-false}
+      - PORT=3007
+    volumes:
+      - canvas-data:/data
+    restart: unless-stopped
+
+volumes:
+  canvas-data:
