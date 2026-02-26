@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { logAudit } from '../middleware/auditLog.js';
+import { validate, updateEthicsSchema, createConsentSchema, withdrawConsentSchema, anonymizeTranscriptSchema } from '../middleware/validation.js';
 import { sha256 } from '../utils/hashing.js';
 import { getAuthId, getOwnedCanvas } from '../utils/routeHelpers.js';
 
@@ -33,7 +34,7 @@ ethicsRoutes.get('/canvas/:canvasId/ethics', async (req, res, next) => {
 });
 
 // PUT /api/canvas/:canvasId/ethics - Update ethics settings
-ethicsRoutes.put('/canvas/:canvasId/ethics', async (req, res, next) => {
+ethicsRoutes.put('/canvas/:canvasId/ethics', validate(updateEthicsSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.canvasId, dashboardAccessId);
@@ -78,15 +79,12 @@ ethicsRoutes.put('/canvas/:canvasId/ethics', async (req, res, next) => {
 // ─── Consent Records ───
 
 // POST /api/canvas/:canvasId/consent - Record participant consent
-ethicsRoutes.post('/canvas/:canvasId/consent', async (req, res, next) => {
+ethicsRoutes.post('/canvas/:canvasId/consent', validate(createConsentSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.canvasId, dashboardAccessId);
 
     const { participantId, consentType, ethicsProtocol, notes } = req.body;
-    if (!participantId || typeof participantId !== 'string') {
-      throw new AppError('participantId is required', 400);
-    }
 
     const record = await prisma.consentRecord.create({
       data: {
@@ -136,7 +134,7 @@ ethicsRoutes.get('/canvas/:canvasId/consent', async (req, res, next) => {
 });
 
 // PUT /api/canvas/:canvasId/consent/:consentId/withdraw - Withdraw consent
-ethicsRoutes.put('/canvas/:canvasId/consent/:consentId/withdraw', async (req, res, next) => {
+ethicsRoutes.put('/canvas/:canvasId/consent/:consentId/withdraw', validate(withdrawConsentSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.canvasId, dashboardAccessId);
@@ -229,21 +227,12 @@ ethicsRoutes.get('/audit-log', async (req, res, next) => {
 // ─── Transcript Anonymization ───
 
 // POST /api/canvas/:canvasId/transcripts/:transcriptId/anonymize - Anonymize transcript
-ethicsRoutes.post('/canvas/:canvasId/transcripts/:transcriptId/anonymize', async (req, res, next) => {
+ethicsRoutes.post('/canvas/:canvasId/transcripts/:transcriptId/anonymize', validate(anonymizeTranscriptSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.canvasId, dashboardAccessId);
 
     const { replacements } = req.body;
-    if (!Array.isArray(replacements) || replacements.length === 0) {
-      throw new AppError('replacements array is required and must not be empty', 400);
-    }
-
-    for (const r of replacements) {
-      if (!r.find || typeof r.find !== 'string' || !r.replace || typeof r.replace !== 'string') {
-        throw new AppError('Each replacement must have "find" and "replace" string fields', 400);
-      }
-    }
 
     const transcript = await prisma.canvasTranscript.findUnique({
       where: { id: req.params.transcriptId },

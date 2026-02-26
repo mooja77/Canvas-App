@@ -151,3 +151,34 @@ export const autoCodeSchema = z.object({
   mode: z.enum(['keyword', 'regex']),
   transcriptIds: z.array(z.string().min(1)).optional(),
 });
+
+// ─── Ethics Schemas ───
+
+export const updateEthicsSchema = z.object({
+  ethicsApprovalId: z.string().max(200).nullable().optional(),
+  ethicsStatus: z.enum(['pending', 'approved', 'expired', 'not_required']).optional(),
+  dataRetentionDate: z.string().datetime().nullable().optional(),
+});
+
+export const createConsentSchema = z.object({
+  participantId: z.string().min(1, 'participantId is required').max(200),
+  consentType: z.enum(['informed', 'verbal', 'written', 'implied']).optional(),
+  ethicsProtocol: z.string().max(500).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+});
+
+export const withdrawConsentSchema = z.object({
+  notes: z.string().max(2000).nullable().optional(),
+});
+
+export const anonymizeTranscriptSchema = z.object({
+  replacements: z
+    .array(
+      z.object({
+        find: z.string().min(1, '"find" must not be empty'),
+        replace: z.string().min(1, '"replace" must not be empty'),
+      }),
+    )
+    .min(1, 'At least one replacement is required')
+    .max(500),
+});

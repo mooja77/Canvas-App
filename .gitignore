@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 build/
+*.tsbuildinfo
 
 # Environment files
 .env
@@ -13,6 +14,11 @@ build/
 # Database files
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
+
+# Backups
+backups/
 
 # IDE
 .vscode/
