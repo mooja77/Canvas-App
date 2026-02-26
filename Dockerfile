@@ -13,6 +13,7 @@ RUN npm ci --ignore-scripts
 FROM deps AS build-shared
 WORKDIR /app
 
+COPY tsconfig.base.json ./
 COPY shared/ shared/
 RUN npm run build -w shared
 
