@@ -92,6 +92,16 @@ app.get('/health', async (_req, res) => {
   }
 });
 
+// Request timeout (30 seconds)
+app.use((_req, res, next) => {
+  res.setTimeout(30_000, () => {
+    if (!res.headersSent) {
+      res.status(408).json({ success: false, error: 'Request timeout' });
+    }
+  });
+  next();
+});
+
 // ─── Auth route (no auth middleware needed) ───
 app.use('/api', authRoutes);
 
