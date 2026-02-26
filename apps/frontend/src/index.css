@@ -8,7 +8,9 @@
     @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
   }
   *:focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand-500;
+    outline-width: 2px;
+    outline-offset: 2px;
+    outline-color: #6366F1;
   }
   /* Smooth custom scrollbars */
   * {
@@ -36,16 +38,16 @@
 /* ─── Components ─── */
 @layer components {
   .btn-primary {
-    @apply px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg
+    @apply px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg
            transition-all duration-150 ease-out shadow-sm hover:shadow-md
-           focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
+           focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
            disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98];
   }
   .btn-secondary {
     @apply px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600
            text-gray-700 dark:text-gray-200 font-medium rounded-lg
            transition-all duration-150 ease-out hover:bg-gray-50 dark:hover:bg-gray-600
-           focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
+           focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
            disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98];
   }
   .card {
@@ -55,7 +57,7 @@
     @apply block w-full rounded-lg border border-gray-300 dark:border-gray-600
            bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-gray-100
            placeholder:text-gray-400 dark:placeholder:text-gray-500
-           focus:border-brand-500 focus:ring-1 focus:ring-brand-500
+           focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500
            transition-colors duration-150;
   }
   .label {
@@ -306,7 +308,7 @@ input[type="checkbox"]:checked {
 
 /* ─── Smooth focus ring ─── */
 .focus-ring {
-  @apply focus:ring-2 focus:ring-brand-500/40 focus:ring-offset-2 focus:outline-none;
+  @apply focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-2 focus:outline-none;
 }
 
 /* ─── Enhanced scrollbar for sidebar ─── */
@@ -448,7 +450,7 @@ input[type="checkbox"]:checked {
   left: 0;
   right: 0;
   height: 2px;
-  background: theme('colors.brand.500');
+  background: #6366F1;
   border-radius: 1px;
   animation: fadeIn 150ms ease-out both;
 }

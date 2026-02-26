@@ -47,6 +47,8 @@ import NodeContextMenu from './panels/NodeContextMenu';
 import EdgeContextMenu from './panels/EdgeContextMenu';
 import SelectionToolbar from './panels/SelectionToolbar';
 import QuickAddMenu from './panels/QuickAddMenu';
+import ExcerptBrowserModal from './panels/ExcerptBrowserModal';
+import RichExportModal from './panels/RichExportModal';
 import ConfirmDialog from './ConfirmDialog';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { useCanvasStore } from '../../stores/canvasStore';
@@ -157,6 +159,8 @@ export default function CanvasWorkspace() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showExcerpts, setShowExcerpts] = useState(false);
+  const [showRichExport, setShowRichExport] = useState(false);
   const [highlightedNodeIds, setHighlightedNodeIds] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ show: boolean; x: number; y: number } | null>(null);
   const [nodeContextMenu, setNodeContextMenu] = useState<{ show: boolean; x: number; y: number; nodeId: string; nodeType: string; collapsed: boolean } | null>(null);
@@ -1582,8 +1586,16 @@ export default function CanvasWorkspace() {
           onToggleFocusMode={() => setFocusMode(f => !f)}
           onExportPNG={handleExportPNG}
           onAddStickyNote={handleQuickAddStickyNote}
+          onShowExcerpts={() => { setShowCommandPalette(false); setShowExcerpts(true); }}
+          onShowRichExport={() => { setShowCommandPalette(false); setShowRichExport(true); }}
         />
       )}
+
+      {/* Excerpt Browser */}
+      {showExcerpts && <ExcerptBrowserModal onClose={() => setShowExcerpts(false)} />}
+
+      {/* Rich Export */}
+      {showRichExport && <RichExportModal onClose={() => setShowRichExport(false)} />}
 
       {/* Onboarding tour for first-time users */}
       <OnboardingTour />
