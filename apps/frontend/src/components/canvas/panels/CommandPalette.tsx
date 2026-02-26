@@ -19,6 +19,7 @@ interface CommandPaletteProps {
   onShowRichExport?: () => void;
   onShowIntercoder?: () => void;
   onShowWeighting?: () => void;
+  onShowCrossCase?: () => void;
 }
 
 interface CommandItem {
@@ -47,6 +48,7 @@ export default function CommandPalette({
   onShowRichExport,
   onShowIntercoder,
   onShowWeighting,
+  onShowCrossCase,
 }: CommandPaletteProps) {
   const { activeCanvas, addQuestion, addMemo, toggleCodingStripes } = useCanvasStore();
   const { toggleDarkMode, darkMode } = useUIStore();
@@ -232,6 +234,17 @@ export default function CommandPalette({
       });
     }
 
+    if (onShowCrossCase) {
+      items.push({
+        id: 'action-cross-case',
+        category: 'action',
+        icon: <IconCrossCase />,
+        label: 'Cross-Case Analysis',
+        description: 'Compare codings across case attributes',
+        action: () => { onShowCrossCase(); onClose(); },
+      });
+    }
+
     // ── Analysis nodes ──
     const analysisNodes: { type: ComputedNodeType; label: string; description: string }[] = [
       { type: 'search', label: 'Text Search', description: 'Find patterns across transcripts' },
@@ -306,7 +319,7 @@ export default function CommandPalette({
     }
 
     return items;
-  }, [activeCanvas, addQuestion, addMemo, toggleCodingStripes, toggleDarkMode, darkMode, onClose, onFocusNode, onFitView, onToggleGrid, onToggleNavigator, onShowShortcuts, onAddComputedNode, onAutoLayout, onToggleFocusMode, onExportPNG, onAddStickyNote, onShowExcerpts, onShowRichExport, onShowIntercoder, onShowWeighting]);
+  }, [activeCanvas, addQuestion, addMemo, toggleCodingStripes, toggleDarkMode, darkMode, onClose, onFocusNode, onFitView, onToggleGrid, onToggleNavigator, onShowShortcuts, onAddComputedNode, onAutoLayout, onToggleFocusMode, onExportPNG, onAddStickyNote, onShowExcerpts, onShowRichExport, onShowIntercoder, onShowWeighting, onShowCrossCase]);
 
   // Filter items by search query
   const filteredItems = useMemo(() => {
@@ -613,6 +626,14 @@ function IconWeight() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+    </svg>
+  );
+}
+
+function IconCrossCase() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0v.375" />
     </svg>
   );
 }

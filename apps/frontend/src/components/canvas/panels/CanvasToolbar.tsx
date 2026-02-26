@@ -15,6 +15,7 @@ import ProjectDashboard from './ProjectDashboard';
 import EthicsCompliancePanel from './EthicsCompliancePanel';
 import IntercoderReliabilityModal from './IntercoderReliabilityModal';
 import CodeWeightingPanel from './CodeWeightingPanel';
+import CrossCaseAnalysisModal from './CrossCaseAnalysisModal';
 import CanvasSwitcher from './CanvasSwitcher';
 import toast from 'react-hot-toast';
 
@@ -43,6 +44,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
   const [showEthics, setShowEthics] = useState(false);
   const [showIntercoder, setShowIntercoder] = useState(false);
   const [showWeighting, setShowWeighting] = useState(false);
+  const [showCrossCase, setShowCrossCase] = useState(false);
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [addingMemo, setAddingMemo] = useState(false);
 
@@ -198,6 +200,16 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                   </svg>
                   Cases
+                </button>
+                <button
+                  onClick={() => setShowCrossCase(true)}
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+                  title="Cross-case analysis by attributes"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0v.375" />
+                  </svg>
+                  Cross-Case
                 </button>
                 <button
                   data-tour="canvas-btn-hierarchy"
@@ -398,6 +410,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
       {showEthics && <EthicsCompliancePanel onClose={() => setShowEthics(false)} />}
       {showIntercoder && <IntercoderReliabilityModal onClose={() => setShowIntercoder(false)} />}
       {showWeighting && <CodeWeightingPanel onClose={() => setShowWeighting(false)} />}
+      {showCrossCase && <CrossCaseAnalysisModal onClose={() => setShowCrossCase(false)} />}
     </>
   );
 }

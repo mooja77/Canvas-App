@@ -51,6 +51,7 @@ import ExcerptBrowserModal from './panels/ExcerptBrowserModal';
 import RichExportModal from './panels/RichExportModal';
 import IntercoderReliabilityModal from './panels/IntercoderReliabilityModal';
 import CodeWeightingPanel from './panels/CodeWeightingPanel';
+import CrossCaseAnalysisModal from './panels/CrossCaseAnalysisModal';
 import ConfirmDialog from './ConfirmDialog';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { useCanvasStore } from '../../stores/canvasStore';
@@ -165,6 +166,7 @@ export default function CanvasWorkspace() {
   const [showRichExport, setShowRichExport] = useState(false);
   const [showIntercoder, setShowIntercoder] = useState(false);
   const [showWeighting, setShowWeighting] = useState(false);
+  const [showCrossCase, setShowCrossCase] = useState(false);
   const [highlightedNodeIds, setHighlightedNodeIds] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{ show: boolean; x: number; y: number } | null>(null);
   const [nodeContextMenu, setNodeContextMenu] = useState<{ show: boolean; x: number; y: number; nodeId: string; nodeType: string; collapsed: boolean } | null>(null);
@@ -1594,6 +1596,7 @@ export default function CanvasWorkspace() {
           onShowRichExport={() => { setShowCommandPalette(false); setShowRichExport(true); }}
           onShowIntercoder={() => { setShowCommandPalette(false); setShowIntercoder(true); }}
           onShowWeighting={() => { setShowCommandPalette(false); setShowWeighting(true); }}
+          onShowCrossCase={() => { setShowCommandPalette(false); setShowCrossCase(true); }}
         />
       )}
 
@@ -1608,6 +1611,9 @@ export default function CanvasWorkspace() {
 
       {/* Code Weighting */}
       {showWeighting && <CodeWeightingPanel onClose={() => setShowWeighting(false)} />}
+
+      {/* Cross-Case Analysis */}
+      {showCrossCase && <CrossCaseAnalysisModal onClose={() => setShowCrossCase(false)} />}
 
       {/* Onboarding tour for first-time users */}
       <OnboardingTour />
