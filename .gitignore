@@ -38,3 +38,5 @@ screenshots/
 
 # Prisma generated
 apps/backend/prisma/migrations/*.db
+
+.vercel
