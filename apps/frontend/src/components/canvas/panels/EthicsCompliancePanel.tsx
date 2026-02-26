@@ -7,7 +7,7 @@ interface EthicsCompliancePanelProps {
   onClose: () => void;
 }
 
-type Tab = 'settings' | 'consent' | 'anonymize' | 'audit';
+type Tab = 'settings' | 'consent' | 'anonymize' | 'audit' | 'journal';
 
 interface EthicsSettings {
   irbNumber: string;
@@ -87,6 +87,11 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
   const [auditOffset, setAuditOffset] = useState(0);
   const [auditHasMore, setAuditHasMore] = useState(false);
   const AUDIT_LIMIT = 50;
+
+  // ─── Reflexivity Journal state (localStorage per canvas) ───
+  const [journalEntries, setJournalEntries] = useState<{ id: string; date: string; content: string; category: string }[]>([]);
+  const [journalDraft, setJournalDraft] = useState('');
+  const [journalCategory, setJournalCategory] = useState('reflection');
 
   const canvasId = activeCanvas?.id;
 
@@ -250,12 +255,46 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
     toast.success('Audit log exported');
   };
 
+  // ─── Journal helpers ───
+  const journalKey = canvasId ? `canvas-journal-${canvasId}` : null;
+
+  const loadJournal = useCallback(() => {
+    if (!journalKey) return;
+    try {
+      const stored = localStorage.getItem(journalKey);
+      if (stored) setJournalEntries(JSON.parse(stored));
+    } catch { /* ignore */ }
+  }, [journalKey]);
+
+  const saveJournalEntry = useCallback(() => {
+    if (!journalDraft.trim() || !journalKey) return;
+    const entry = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      date: new Date().toISOString(),
+      content: journalDraft.trim(),
+      category: journalCategory,
+    };
+    const updated = [entry, ...journalEntries];
+    setJournalEntries(updated);
+    localStorage.setItem(journalKey, JSON.stringify(updated));
+    setJournalDraft('');
+    toast.success('Journal entry saved');
+  }, [journalDraft, journalCategory, journalEntries, journalKey]);
+
+  const deleteJournalEntry = useCallback((id: string) => {
+    if (!journalKey) return;
+    const updated = journalEntries.filter(e => e.id !== id);
+    setJournalEntries(updated);
+    localStorage.setItem(journalKey, JSON.stringify(updated));
+  }, [journalEntries, journalKey]);
+
   // ─── Load data when tab changes ───
   useEffect(() => {
     if (tab === 'settings') loadSettings();
     if (tab === 'consent') loadConsents();
     if (tab === 'audit') { setAuditOffset(0); loadAuditLog(0); }
-  }, [tab, loadSettings, loadConsents, loadAuditLog]);
+    if (tab === 'journal') loadJournal();
+  }, [tab, loadSettings, loadConsents, loadAuditLog, loadJournal]);
 
   // ─── Consent summary ───
   const activeConsents = consents.filter(c => c.status === 'active').length;
@@ -292,6 +331,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
     { key: 'consent', label: 'Consent Registry' },
     { key: 'anonymize', label: 'Anonymization' },
     { key: 'audit', label: 'Audit Trail' },
+    { key: 'journal', label: 'Reflexivity Journal' },
   ];
 
   return (
@@ -819,6 +859,146 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                     className="btn-secondary text-xs px-4 py-1.5"
                   >
                     {auditLoading ? 'Loading...' : 'Load More'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ═══════════════ TAB 5: REFLEXIVITY JOURNAL ═══════════════ */}
+          {tab === 'journal' && (
+            <div className="space-y-4">
+              <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-4">
+                <div className="flex items-start gap-3">
+                  <svg className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                  </svg>
+                  <div className="flex-1">
+                    <h4 className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-1">Researcher Reflexivity Journal</h4>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                      Document your positionality, biases, and decision-making rationale throughout the analysis.
+                      This supports research trustworthiness (Lincoln &amp; Guba) and creates an audit trail for your analytical choices.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* New entry form */}
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Category:</label>
+                  <div className="flex gap-1">
+                    {[
+                      { value: 'reflection', label: 'Reflection', color: '#8B5CF6' },
+                      { value: 'positionality', label: 'Positionality', color: '#3B82F6' },
+                      { value: 'decision', label: 'Decision', color: '#10B981' },
+                      { value: 'bias', label: 'Bias Check', color: '#F59E0B' },
+                      { value: 'methodological', label: 'Method Note', color: '#EF4444' },
+                    ].map(cat => (
+                      <button
+                        key={cat.value}
+                        onClick={() => setJournalCategory(cat.value)}
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors border ${
+                          journalCategory === cat.value
+                            ? 'shadow-sm'
+                            : 'opacity-50 hover:opacity-80'
+                        }`}
+                        style={{
+                          borderColor: cat.color + '60',
+                          color: cat.color,
+                          backgroundColor: journalCategory === cat.value ? cat.color + '15' : 'transparent',
+                        }}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <textarea
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none resize-none transition-colors"
+                  rows={3}
+                  placeholder="Write your journal entry... (e.g., 'I noticed I was drawn to participant stories that align with my own experience. Need to actively seek disconfirming evidence.')"
+                  value={journalDraft}
+                  onChange={e => setJournalDraft(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) saveJournalEntry(); }}
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-[10px] text-gray-400">Ctrl+Enter to save</span>
+                  <button
+                    onClick={saveJournalEntry}
+                    disabled={!journalDraft.trim()}
+                    className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Save Entry
+                  </button>
+                </div>
+              </div>
+
+              {/* Journal entries */}
+              <div className="space-y-2">
+                {journalEntries.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <p className="text-xs text-gray-400 dark:text-gray-500">No journal entries yet.</p>
+                    <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-1">Start documenting your analytical decisions and reflections above.</p>
+                  </div>
+                ) : (
+                  journalEntries.map(entry => {
+                    const catColors: Record<string, string> = {
+                      reflection: '#8B5CF6', positionality: '#3B82F6', decision: '#10B981', bias: '#F59E0B', methodological: '#EF4444',
+                    };
+                    const color = catColors[entry.category] || '#6B7280';
+                    return (
+                      <div key={entry.id} className="rounded-xl border border-gray-100 dark:border-gray-700 p-3 group hover:shadow-sm transition-shadow">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span
+                            className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
+                            style={{ color, backgroundColor: color + '15' }}
+                          >
+                            {entry.category}
+                          </span>
+                          <span className="text-[10px] text-gray-400 tabular-nums">
+                            {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <button
+                            onClick={() => deleteJournalEntry(entry.id)}
+                            className="ml-auto text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Delete entry"
+                          >
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{entry.content}</p>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Export journal */}
+              {journalEntries.length > 0 && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      const text = journalEntries.map(e =>
+                        `[${e.category.toUpperCase()}] ${new Date(e.date).toLocaleString()}\n${e.content}\n`
+                      ).join('\n---\n\n');
+                      const blob = new Blob([text], { type: 'text/plain' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `reflexivity-journal-${new Date().toISOString().split('T')[0]}.txt`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      toast.success('Journal exported');
+                    }}
+                    className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    Export Journal
                   </button>
                 </div>
               )}

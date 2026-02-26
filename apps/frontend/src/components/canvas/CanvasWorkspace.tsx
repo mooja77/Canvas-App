@@ -1638,6 +1638,15 @@ export default function CanvasWorkspace() {
   );
 }
 
+// Semantic relationship presets organized by category (ATLAS.ti-inspired)
+const RELATION_PRESETS: { category: string; color: string; relations: string[] }[] = [
+  { category: 'Causal', color: '#EF4444', relations: ['causes', 'leads to', 'results in', 'triggers'] },
+  { category: 'Logical', color: '#3B82F6', relations: ['supports', 'contradicts', 'explains', 'justifies'] },
+  { category: 'Structural', color: '#8B5CF6', relations: ['is part of', 'contains', 'is type of', 'is property of'] },
+  { category: 'Associative', color: '#10B981', relations: ['is associated with', 'co-occurs with', 'is similar to', 'contrasts with'] },
+  { category: 'Temporal', color: '#F59E0B', relations: ['precedes', 'follows', 'co-occurs during', 'evolves into'] },
+];
+
 // Small inline component for the relation label prompt
 function RelationLabelPrompt({
   onSubmit,
@@ -1647,20 +1656,34 @@ function RelationLabelPrompt({
   onCancel: () => void;
 }) {
   const [label, setLabel] = useState('');
-  const presets = ['influences', 'contradicts', 'supports', 'causes', 'is-part-of'];
 
   return (
-    <div className="modal-content rounded-2xl bg-white p-4 shadow-xl ring-1 ring-black/5 dark:bg-gray-800 w-72">
-      <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Relationship Label</h4>
-      <div className="flex flex-wrap gap-1 mb-2">
-        {presets.map(p => (
-          <button
-            key={p}
-            onClick={() => onSubmit(p)}
-            className="btn-canvas rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-          >
-            {p}
-          </button>
+    <div className="modal-content rounded-2xl bg-white p-5 shadow-xl ring-1 ring-black/5 dark:bg-gray-800 w-80">
+      <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Semantic Relationship</h4>
+      <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-3">Choose or type a relationship label between these nodes</p>
+      <div className="space-y-2 mb-3 max-h-[240px] overflow-y-auto">
+        {RELATION_PRESETS.map(group => (
+          <div key={group.category}>
+            <p className="text-[9px] font-semibold uppercase tracking-wider mb-1" style={{ color: group.color }}>{group.category}</p>
+            <div className="flex flex-wrap gap-1">
+              {group.relations.map(r => (
+                <button
+                  key={r}
+                  onClick={() => onSubmit(r)}
+                  className="rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors hover:shadow-sm"
+                  style={{
+                    borderColor: group.color + '40',
+                    color: group.color,
+                    backgroundColor: group.color + '08',
+                  }}
+                  onMouseEnter={e => { (e.target as HTMLElement).style.backgroundColor = group.color + '18'; }}
+                  onMouseLeave={e => { (e.target as HTMLElement).style.backgroundColor = group.color + '08'; }}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
       <div className="flex gap-2">
@@ -1677,7 +1700,7 @@ function RelationLabelPrompt({
           Add
         </button>
       </div>
-      <button onClick={onCancel} className="mt-2 text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+      <button onClick={onCancel} className="mt-2 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">Cancel</button>
     </div>
   );
 }

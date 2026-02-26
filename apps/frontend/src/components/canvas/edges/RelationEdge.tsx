@@ -11,6 +11,19 @@ interface RelationEdgeData {
   [key: string]: unknown;
 }
 
+// Map semantic relation labels to category colors
+const RELATION_COLORS: Record<string, string> = {
+  causes: '#EF4444', 'leads to': '#EF4444', 'results in': '#EF4444', triggers: '#EF4444',
+  supports: '#3B82F6', contradicts: '#3B82F6', explains: '#3B82F6', justifies: '#3B82F6',
+  'is part of': '#8B5CF6', contains: '#8B5CF6', 'is type of': '#8B5CF6', 'is property of': '#8B5CF6',
+  'is associated with': '#10B981', 'co-occurs with': '#10B981', 'is similar to': '#10B981', 'contrasts with': '#10B981',
+  precedes: '#F59E0B', follows: '#F59E0B', 'co-occurs during': '#F59E0B', 'evolves into': '#F59E0B',
+};
+
+function getRelationColor(label: string): string {
+  return RELATION_COLORS[label.toLowerCase()] || '#94A3B8';
+}
+
 export default function RelationEdge({
   id,
   sourceX,
@@ -63,12 +76,28 @@ export default function RelationEdge({
     setEditing(false);
   };
 
+  const edgeColor = getRelationColor(edgeData?.label || '');
+
   return (
     <>
+      {/* Arrow marker definition */}
+      <defs>
+        <marker
+          id={`arrow-${id}`}
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={edgeColor} opacity="0.7" />
+        </marker>
+      </defs>
       <BaseEdge
         id={id}
         path={edgePath}
-        style={{ stroke: '#94A3B8', strokeWidth: 1.5, strokeDasharray: '6 3' }}
+        style={{ stroke: edgeColor, strokeWidth: 1.5, strokeDasharray: '6 3', markerEnd: `url(#arrow-${id})` }}
       />
       <foreignObject
         width={160}
@@ -94,7 +123,13 @@ export default function RelationEdge({
           ) : (
             <span
               onDoubleClick={handleStartEdit}
-              className="cursor-pointer rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium text-gray-600 shadow-sm border border-gray-200/60 backdrop-blur-sm dark:bg-gray-800/90 dark:text-gray-300 dark:border-gray-700/60"
+              className="cursor-pointer rounded-full bg-white/90 px-2.5 py-0.5 text-[10px] font-semibold shadow-sm backdrop-blur-sm dark:bg-gray-800/90"
+              style={{
+                color: edgeColor,
+                borderWidth: 1,
+                borderStyle: 'solid',
+                borderColor: edgeColor + '40',
+              }}
               title="Double-click to edit"
             >
               {edgeData?.label || 'relates to'}
