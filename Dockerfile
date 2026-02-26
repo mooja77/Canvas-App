@@ -37,8 +37,6 @@ RUN npm run build -w apps/backend
 FROM node:20-alpine AS production
 WORKDIR /app
 
-RUN apk add --no-cache sqlite
-
 ENV NODE_ENV=production
 ENV PORT=3007
 
@@ -58,10 +56,6 @@ COPY --from=build-frontend /app/apps/frontend/dist/ apps/frontend/dist/
 
 # Generate Prisma client for production
 RUN cd apps/backend && npx prisma generate
-
-# Create data directory for SQLite
-RUN mkdir -p /data && chown -R node:node /data
-VOLUME /data
 
 USER node
 

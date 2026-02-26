@@ -1,18 +1,30 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: canvas_app
+      POSTGRES_USER: canvas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-canvas_dev_password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
   app:
     build: .
     ports:
       - "${PORT:-3007}:3007"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=file:/data/canvas-app.db
+      - DATABASE_URL=postgresql://canvas:${POSTGRES_PASSWORD:-canvas_dev_password}@db:5432/canvas_app
       - JWT_SECRET=${JWT_SECRET}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
       - REGISTRATION_ENABLED=${REGISTRATION_ENABLED:-false}
       - PORT=3007
-    volumes:
-      - canvas-data:/data
+    depends_on:
+      - db
     restart: unless-stopped
 
 volumes:
-  canvas-data:
+  pgdata:
