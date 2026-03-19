@@ -39,7 +39,6 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3007
 
 # Copy package files and install production deps only
 COPY package.json package-lock.json ./
@@ -58,12 +57,7 @@ COPY --from=build-frontend /app/apps/frontend/dist/ apps/frontend/dist/
 # Generate Prisma client for production
 RUN cd apps/backend && npx prisma generate
 
-USER node
-
-EXPOSE 3007
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3007/health || exit 1
+EXPOSE ${PORT:-3007}
 
 WORKDIR /app/apps/backend
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
