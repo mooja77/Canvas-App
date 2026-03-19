@@ -11,6 +11,7 @@ interface QuickCodePopoverProps {
   codedText: string;
   anchorRect: { x: number; y: number };
   onClose: () => void;
+  onAiSuggest?: (transcriptId: string, codedText: string, startOffset: number, endOffset: number) => void;
 }
 
 export default function QuickCodePopover({
@@ -20,6 +21,7 @@ export default function QuickCodePopover({
   codedText,
   anchorRect,
   onClose,
+  onAiSuggest,
 }: QuickCodePopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -255,6 +257,18 @@ export default function QuickCodePopover({
             </svg>
             Paragraph
           </button>
+          {onAiSuggest && (
+            <button
+              onClick={() => { onAiSuggest(transcriptId, codedText, startOffset, endOffset); onClose(); }}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/30 transition-colors"
+              title="AI suggest codes"
+            >
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+              </svg>
+              AI
+            </button>
+          )}
         </div>
 
         {/* Empty state */}

@@ -13,6 +13,7 @@ export interface QuestionNodeData {
   color: string;
   collapsed?: boolean;
   zoomLevel?: number;
+  zoomTier?: 'full' | 'reduced' | 'minimal';
   [key: string]: unknown;
 }
 
@@ -25,8 +26,9 @@ export default function QuestionNode({ data, id, selected }: NodeProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [collapsed, setCollapsed] = useState(nodeData.collapsed ?? false);
 
-  const zoomLevel = (nodeData.zoomLevel ?? 100);
-  const isZoomedOut = zoomLevel < 30;
+  const zoomTier = nodeData.zoomTier ?? 'full';
+  const isReduced = zoomTier === 'reduced';
+  const isMinimal = zoomTier === 'minimal';
 
   const codingCount = useMemo(
     () => (activeCanvas?.codings ?? []).filter((c: CanvasTextCoding) => c.questionId === nodeData.questionId).length,
@@ -123,6 +125,14 @@ export default function QuestionNode({ data, id, selected }: NodeProps) {
           )}
         </div>
         <div className="flex items-center gap-0.5">
+          {collapsed && codingCount > 0 && (
+            <span
+              className="rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white"
+              style={{ backgroundColor: nodeData.color }}
+            >
+              {codingCount}
+            </span>
+          )}
           <button
             onClick={() => setCollapsed(c => !c)}
             className="rounded p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -155,7 +165,7 @@ export default function QuestionNode({ data, id, selected }: NodeProps) {
       </div>
 
       {/* Question body - collapsible */}
-      {!collapsed && !isZoomedOut && (
+      {!collapsed && zoomTier === 'full' && (
         <div className="bg-white px-3 py-2 dark:bg-gray-800 rounded-b-xl">
           {/* Parent breadcrumb */}
           {parentQuestion && (
@@ -207,8 +217,15 @@ export default function QuestionNode({ data, id, selected }: NodeProps) {
         </div>
       )}
 
-      {/* Zoomed out simplified */}
-      {!collapsed && isZoomedOut && (
+      {/* Reduced zoom: color dot + question text only */}
+      {!collapsed && isReduced && (
+        <div className="bg-white px-3 py-1.5 dark:bg-gray-800 rounded-b-xl">
+          <p className="text-xs text-gray-700 dark:text-gray-300 truncate">{nodeData.text}</p>
+        </div>
+      )}
+
+      {/* Minimal zoom: color dot + count */}
+      {!collapsed && isMinimal && (
         <div className="bg-white px-3 py-1 dark:bg-gray-800 rounded-b-xl">
           <span className="text-[10px]" style={{ color: nodeData.color }}>{codingCount}c</span>
         </div>

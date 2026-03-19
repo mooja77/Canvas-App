@@ -10,6 +10,8 @@ export interface CaseNodeData {
   caseId: string;
   collapsed?: boolean;
   zoomLevel?: number;
+  zoomTier?: 'full' | 'reduced' | 'minimal';
+  customColor?: string;
   [key: string]: unknown;
 }
 
@@ -19,7 +21,7 @@ export default function CaseNode({ data, id, selected }: NodeProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [collapsed, setCollapsed] = useState(nodeData.collapsed ?? false);
 
-  const isZoomedOut = (nodeData.zoomLevel ?? 100) < 30;
+  const zoomTier = nodeData.zoomTier ?? 'full';
 
   const caseRecord = useMemo(
     () => activeCanvas?.cases.find((c: CanvasCase) => c.id === nodeData.caseId),
@@ -61,7 +63,9 @@ export default function CaseNode({ data, id, selected }: NodeProps) {
       />
 
       {/* Header */}
-      <div className="drag-handle flex items-center justify-between rounded-t-lg bg-gradient-to-r from-teal-50 to-teal-50/60 px-3 py-2.5 cursor-grab active:cursor-grabbing dark:from-teal-900/30 dark:to-teal-900/15">
+      <div
+        className={`drag-handle flex items-center justify-between rounded-t-lg px-3 py-2.5 cursor-grab active:cursor-grabbing ${nodeData.customColor ? '' : 'bg-gradient-to-r from-teal-50 to-teal-50/60 dark:from-teal-900/30 dark:to-teal-900/15'}`}
+        style={nodeData.customColor ? { background: `linear-gradient(135deg, ${nodeData.customColor}20, ${nodeData.customColor}10)` } : undefined}>
         <div className="flex items-center gap-2 min-w-0">
           <svg className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
@@ -91,7 +95,7 @@ export default function CaseNode({ data, id, selected }: NodeProps) {
       </div>
 
       {/* Body - collapsible */}
-      {!collapsed && !isZoomedOut && (
+      {!collapsed && zoomTier === 'full' && (
         <div className="bg-white px-3 py-2 dark:bg-gray-800 rounded-b-xl">
           {/* Attributes as badges */}
           {Object.keys(attrs).length > 0 && (

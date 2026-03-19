@@ -6,7 +6,13 @@ export interface GroupNodeData {
   title: string;
   color: string;
   collapsed?: boolean;
+  collapsedAsTheme?: boolean;
+  memberCount?: number;
+  codingCount?: number;
+  memoCount?: number;
   onTitleChange?: (newTitle: string) => void;
+  onCollapseAsTheme?: () => void;
+  onExpandTheme?: () => void;
   [key: string]: unknown;
 }
 
@@ -158,8 +164,37 @@ export default function GroupNode({ data, selected }: NodeProps) {
         </div>
       </div>
 
+      {/* Theme summary when collapsed as theme */}
+      {nodeData.collapsedAsTheme && (
+        <div
+          className="px-3 py-2 rounded-b-2xl"
+          style={{ backgroundColor: `${color}0A`, pointerEvents: 'auto' }}
+        >
+          <div className="flex items-center gap-3 text-[10px] text-gray-500 dark:text-gray-400">
+            {nodeData.memberCount != null && (
+              <span>{nodeData.memberCount} nodes</span>
+            )}
+            {(nodeData.codingCount ?? 0) > 0 && (
+              <span>{nodeData.codingCount} codings</span>
+            )}
+            {(nodeData.memoCount ?? 0) > 0 && (
+              <span>{nodeData.memoCount} memos</span>
+            )}
+          </div>
+          {nodeData.onExpandTheme && (
+            <button
+              onClick={nodeData.onExpandTheme}
+              className="mt-1.5 text-[10px] font-medium hover:underline"
+              style={{ color: `${color}CC` }}
+            >
+              Expand theme
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Body area - visible when expanded */}
-      {!collapsed && (
+      {!collapsed && !nodeData.collapsedAsTheme && (
         <div className="w-full flex-1 min-h-[60px]">
           {/* Empty body; child nodes are placed on top by React Flow */}
         </div>

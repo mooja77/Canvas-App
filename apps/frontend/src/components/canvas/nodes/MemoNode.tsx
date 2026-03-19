@@ -12,6 +12,7 @@ export interface MemoNodeData {
   color: string;
   collapsed?: boolean;
   zoomLevel?: number;
+  zoomTier?: 'full' | 'reduced' | 'minimal';
   [key: string]: unknown;
 }
 
@@ -111,8 +112,7 @@ export default function MemoNode({ data, selected }: NodeProps) {
   const [collapsed, setCollapsed] = useState(nodeData.collapsed ?? false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const zoomLevel = (nodeData.zoomLevel ?? 100);
-  const isZoomedOut = zoomLevel < 30;
+  const zoomTier = nodeData.zoomTier ?? 'full';
 
   // Auto-resize textarea
   useEffect(() => {
@@ -196,7 +196,7 @@ export default function MemoNode({ data, selected }: NodeProps) {
       </div>
 
       {/* Memo body - collapsible */}
-      {!collapsed && !isZoomedOut && (
+      {!collapsed && zoomTier === 'full' && (
         <div className="px-3 pb-2">
           {editing ? (
             <div className="nodrag space-y-1.5">
@@ -291,6 +291,13 @@ export default function MemoNode({ data, selected }: NodeProps) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Reduced zoom: title + first line */}
+      {!collapsed && zoomTier === 'reduced' && (
+        <div className="px-3 pb-1.5">
+          <p className="text-[10px] text-gray-600/70 truncate">{nodeData.content.split('\n')[0]}</p>
         </div>
       )}
 

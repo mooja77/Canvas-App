@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { BaseEdge, getBezierPath, type EdgeProps } from '@xyflow/react';
+import { BaseEdge, getBezierPath, getStraightPath, getSmoothStepPath, type EdgeProps } from '@xyflow/react';
 import { useCanvasStore } from '../../../stores/canvasStore';
+import { useUIStore } from '../../../stores/uiStore';
 import ConfirmDialog from '../ConfirmDialog';
 import toast from 'react-hot-toast';
 
@@ -41,14 +42,15 @@ export default function RelationEdge({
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-  });
+  const edgeStyle = useUIStore(s => s.edgeStyle);
+  const pathParams = { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition };
+  const [edgePath, labelX, labelY] = edgeStyle === 'straight'
+    ? getStraightPath(pathParams)
+    : edgeStyle === 'step'
+      ? getSmoothStepPath({ ...pathParams, borderRadius: 0 })
+      : edgeStyle === 'smoothstep'
+        ? getSmoothStepPath(pathParams)
+        : getBezierPath(pathParams);
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();

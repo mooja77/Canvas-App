@@ -130,7 +130,7 @@ export const updateRelationSchema = z.object({
 });
 
 export const createComputedNodeSchema = z.object({
-  nodeType: z.enum(['search', 'cooccurrence', 'matrix', 'stats', 'comparison', 'wordcloud', 'cluster', 'codingquery', 'sentiment', 'treemap']),
+  nodeType: z.enum(['search', 'cooccurrence', 'matrix', 'stats', 'comparison', 'wordcloud', 'cluster', 'codingquery', 'sentiment', 'treemap', 'documentportrait', 'timeline', 'geomap']),
   label: z.string().min(1).max(200),
   config: z.record(z.string(), z.unknown()).optional(),
 });
@@ -182,3 +182,38 @@ export const anonymizeTranscriptSchema = z.object({
     .min(1, 'At least one replacement is required')
     .max(500),
 });
+
+// ─── AI Schemas ───
+
+export const suggestCodesSchema = z.object({
+  transcriptId: z.string().min(1),
+  codedText: z.string().min(1).max(5000),
+  startOffset: z.number().int().min(0),
+  endOffset: z.number().int().min(1),
+});
+
+export const autoCodeTranscriptSchema = z.object({
+  transcriptId: z.string().min(1),
+  instructions: z.string().max(1000).optional(),
+});
+
+export const updateAiSuggestionSchema = z.object({
+  status: z.enum(['accepted', 'rejected']),
+});
+
+export const bulkActionSuggestionsSchema = z.object({
+  suggestionIds: z.array(z.string().min(1)).min(1).max(200),
+  action: z.enum(['accepted', 'rejected']),
+});
+
+// ─── Research Assistant Schemas ───
+
+export const chatQuerySchema = z.object({ message: z.string().min(1).max(2000) });
+
+export const generateSummarySchema = z.object({
+  sourceType: z.enum(['transcript', 'coding', 'question', 'canvas']),
+  sourceId: z.string().optional(),
+  summaryType: z.enum(['paraphrase', 'abstract', 'thematic']).default('paraphrase'),
+});
+
+export const updateSummarySchema = z.object({ summaryText: z.string().min(1).max(10000) });

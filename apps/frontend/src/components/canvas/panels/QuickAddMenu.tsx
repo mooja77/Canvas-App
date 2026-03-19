@@ -11,6 +11,8 @@ interface QuickAddMenuProps {
   onAddComputedNode: (type: ComputedNodeType, label: string) => void;
   onAddStickyNote?: () => void;
   onClose: () => void;
+  /** Restrict menu to only show items matching these IDs */
+  allowedItems?: string[];
 }
 
 const ALL_ITEMS: { id: string; label: string; category: string; color: string; computedType?: ComputedNodeType }[] = [
@@ -39,6 +41,7 @@ export default function QuickAddMenu({
   onAddComputedNode,
   onAddStickyNote,
   onClose,
+  allowedItems,
 }: QuickAddMenuProps) {
   const [filter, setFilter] = useState('');
   const ref = useRef<HTMLDivElement>(null);
@@ -60,9 +63,12 @@ export default function QuickAddMenu({
     };
   }, [onClose]);
 
-  const filtered = filter
-    ? ALL_ITEMS.filter(i => i.label.toLowerCase().includes(filter.toLowerCase()))
+  const baseItems = allowedItems
+    ? ALL_ITEMS.filter(i => allowedItems.includes(i.id))
     : ALL_ITEMS;
+  const filtered = filter
+    ? baseItems.filter(i => i.label.toLowerCase().includes(filter.toLowerCase()))
+    : baseItems;
 
   const categories = [...new Set(filtered.map(i => i.category))];
 

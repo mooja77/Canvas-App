@@ -97,7 +97,8 @@ export interface CanvasRelation {
 export type ComputedNodeType =
   | 'search' | 'cooccurrence' | 'matrix'
   | 'stats' | 'comparison' | 'wordcloud' | 'cluster'
-  | 'codingquery' | 'sentiment' | 'treemap';
+  | 'codingquery' | 'sentiment' | 'treemap'
+  | 'documentportrait' | 'timeline' | 'geomap';
 
 export interface CanvasComputedNode {
   id: string;
@@ -201,6 +202,34 @@ export interface TreemapResult {
   total: number;
 }
 
+// ─── AI Suggestions ───
+
+export interface AiSuggestion {
+  id: string;
+  canvasId: string;
+  transcriptId: string;
+  questionId: string | null;
+  suggestedText: string;
+  startOffset: number;
+  endOffset: number;
+  codedText: string;
+  confidence: number;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+}
+
+export interface SuggestCodesInput {
+  transcriptId: string;
+  codedText: string;
+  startOffset: number;
+  endOffset: number;
+}
+
+export interface AutoCodeTranscriptInput {
+  transcriptId: string;
+  instructions?: string;
+}
+
 // ─── Canvas Sharing ───
 
 export interface CanvasShare {
@@ -210,6 +239,17 @@ export interface CanvasShare {
   createdBy: string;
   expiresAt?: string | null;
   cloneCount: number;
+  createdAt: string;
+}
+
+// ─── Canvas Collaboration ───
+
+export interface CanvasCollaborator {
+  id: string;
+  canvasId: string;
+  userId: string;
+  role: 'owner' | 'editor' | 'viewer';
+  invitedBy?: string;
   createdAt: string;
 }
 
@@ -337,4 +377,182 @@ export interface AutoCodeInput {
   pattern: string;
   mode: 'keyword' | 'regex';
   transcriptIds?: string[];
+}
+
+// ─── User & Billing Types ───
+
+export type PlanTier = 'free' | 'pro' | 'team';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  plan: PlanTier;
+  emailVerified: boolean;
+  createdAt: string;
+}
+
+export interface SubscriptionInfo {
+  status: 'active' | 'past_due' | 'canceled' | 'trialing';
+  currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
+}
+
+export interface PlanLimitError {
+  success: false;
+  error: string;
+  code: 'PLAN_LIMIT_EXCEEDED';
+  limit: string;
+  current: number;
+  max: number;
+  upgrade: true;
+}
+
+// ─── Research Assistant Types ───
+
+export interface ChatMessage {
+  id: string;
+  canvasId: string;
+  userId?: string;
+  role: 'user' | 'assistant';
+  content: string;
+  citations: { sourceType: string; sourceId: string; text: string }[];
+  createdAt: string;
+}
+
+export interface Summary {
+  id: string;
+  canvasId: string;
+  sourceType: string;
+  sourceId?: string;
+  summaryText: string;
+  summaryType: 'paraphrase' | 'abstract' | 'thematic';
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Document & Region Coding Types ───
+
+export interface CanvasDocument {
+  id: string;
+  canvasId: string;
+  fileUploadId: string;
+  title: string;
+  docType: 'image' | 'pdf';
+  pageCount: number;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface DocumentRegionCoding {
+  id: string;
+  documentId: string;
+  questionId: string;
+  pageNumber: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  note?: string;
+  createdAt: string;
+}
+
+// ─── Training Center Types ───
+
+export interface TrainingDocument {
+  id: string;
+  canvasId: string;
+  transcriptId: string;
+  name: string;
+  instructions?: string;
+  goldCodings: { questionId: string; startOffset: number; endOffset: number; codedText: string }[];
+  passThreshold: number;
+  createdAt: string;
+}
+
+export interface TrainingAttempt {
+  id: string;
+  trainingDocumentId: string;
+  userId: string;
+  codings: unknown;
+  kappaScore?: number;
+  passed: boolean;
+  createdAt: string;
+}
+
+// ─── Timeline ───
+
+export interface TimelineConfig {
+  transcriptIds?: string[];
+}
+
+export interface TimelineResult {
+  entries: {
+    transcriptId: string;
+    title: string;
+    date: string;
+    codings: {
+      codingId: string;
+      codedText: string;
+      questionId: string;
+      questionText: string;
+      questionColor: string;
+    }[];
+    codingCount: number;
+  }[];
+  totalDated: number;
+  totalUndated: number;
+}
+
+// ─── GeoMap ───
+
+export interface GeoMapConfig {
+  transcriptIds?: string[];
+}
+
+export interface GeoMapResult {
+  points: {
+    transcriptId: string;
+    title: string;
+    latitude: number;
+    longitude: number;
+    locationName: string;
+    codingCount: number;
+  }[];
+  totalMapped: number;
+  totalUnmapped: number;
+}
+
+// ─── Research Repository ───
+
+export interface ResearchRepository {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+}
+
+export interface RepositoryInsight {
+  id: string;
+  repositoryId: string;
+  canvasId?: string;
+  title: string;
+  content: string;
+  tags: string[];
+  sourceType?: string;
+  sourceId?: string;
+  createdAt: string;
+}
+
+// ─── Integration ───
+
+export interface Integration {
+  id: string;
+  userId: string;
+  provider: string;
+  metadata: Record<string, unknown>;
+  expiresAt?: string;
+  createdAt: string;
 }

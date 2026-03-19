@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -13,8 +14,21 @@ import { csrfProtection } from './middleware/csrf.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { canvasRoutes, canvasPublicRoutes } from './routes/canvasRoutes.js';
 import { authRoutes } from './routes/authRoutes.js';
+import { userAuthRoutes } from './routes/userAuthRoutes.js';
 import { ethicsRoutes } from './routes/ethicsRoutes.js';
+import { billingRoutes, handleStripeWebhook } from './routes/billingRoutes.js';
+import { aiRoutes } from './routes/aiRoutes.js';
+import { chatRoutes } from './routes/chatRoutes.js';
+import { summaryRoutes } from './routes/summaryRoutes.js';
+import { uploadRoutes } from './routes/uploadRoutes.js';
+import { collaborationRoutes } from './routes/collaborationRoutes.js';
+import { documentRoutes } from './routes/documentRoutes.js';
+import { trainingRoutes } from './routes/trainingRoutes.js';
+import { qdpxRoutes } from './routes/qdpxRoutes.js';
+import { repositoryRoutes } from './routes/repositoryRoutes.js';
+import { integrationRoutes } from './routes/integrationRoutes.js';
 import { prisma } from './lib/prisma.js';
+import { initSocketServer } from './lib/socket.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -51,6 +65,9 @@ app.use(cors({
 
 // Logging
 app.use(morgan(isProduction ? 'combined' : 'dev'));
+
+// Stripe webhook — needs raw body BEFORE json parsing
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), handleStripeWebhook);
 
 // Body parsing — default limit for most routes
 app.use(express.json({ limit: '1mb' }));
@@ -102,17 +119,49 @@ app.use((_req, res, next) => {
   next();
 });
 
-// ─── Auth route (no auth middleware needed) ───
+// ─── Auth routes (no auth middleware needed for login/signup) ───
 app.use('/api', authRoutes);
+app.use('/api', userAuthRoutes);
 
 // ─── Public canvas routes (shared canvas viewing) ───
 app.use('/api', canvasPublicRoutes);
+
+// ─── Protected billing routes ───
+app.use('/api', billingRoutes);
 
 // ─── Protected canvas routes ───
 app.use('/api', auth, auditLog, canvasRoutes);
 
 // ─── Protected ethics & compliance routes ───
 app.use('/api', auth, auditLog, ethicsRoutes);
+
+// ─── Protected AI routes ───
+app.use('/api', auth, auditLog, aiRoutes);
+
+// ─── Protected research assistant & summary routes ───
+app.use('/api', auth, auditLog, chatRoutes);
+app.use('/api', auth, auditLog, summaryRoutes);
+
+// ─── Protected upload & transcription routes ───
+app.use('/api', auth, auditLog, uploadRoutes);
+
+// ─── Protected collaboration routes ───
+app.use('/api', auth, auditLog, collaborationRoutes);
+
+// ─── Protected document & region coding routes ───
+app.use('/api', auth, auditLog, documentRoutes);
+
+// ─── Protected training center routes ───
+app.use('/api', auth, auditLog, trainingRoutes);
+
+// ─── Protected QDPX export/import routes ───
+app.use('/api', auth, auditLog, qdpxRoutes);
+
+// ─── Protected repository routes ───
+app.use('/api', auth, auditLog, repositoryRoutes);
+
+// ─── Protected integration routes ───
+app.use('/api', auth, auditLog, integrationRoutes);
 
 // ─── Production: serve frontend static build ───
 if (process.env.NODE_ENV === 'production') {
@@ -126,7 +175,10 @@ if (process.env.NODE_ENV === 'production') {
 // Error handler
 app.use(errorHandler);
 
-const server = app.listen(PORT, () => {
+const httpServer = createServer(app);
+initSocketServer(httpServer);
+
+const server = httpServer.listen(PORT, () => {
   console.log(`Canvas App backend running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
 });
 

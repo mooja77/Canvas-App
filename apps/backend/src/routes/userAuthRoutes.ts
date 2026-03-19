@@ -1,0 +1,521 @@
+import { Router } from 'express';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { prisma } from '../lib/prisma.js';
+import { signUserToken } from '../utils/jwt.js';
+import { logAudit } from '../middleware/auditLog.js';
+import { authLimiter } from '../middleware/authLimiter.js';
+import { auth } from '../middleware/auth.js';
+import { sha256 } from '../utils/hashing.js';
+import { nanoid } from 'nanoid';
+import { AppError } from '../middleware/errorHandler.js';
+
+const BCRYPT_ROUNDS = 12;
+
+export const userAuthRoutes = Router();
+
+// POST /api/auth/signup — email/password registration
+userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
+  try {
+    const { email, password, name } = req.body;
+
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return res.status(400).json({ success: false, error: 'Valid email is required' });
+    }
+    if (!password || typeof password !== 'string' || password.length < 8) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+    }
+    if (!name || typeof name !== 'string' || name.trim().length < 1 || name.length > 100) {
+      return res.status(400).json({ success: false, error: 'Name is required (1-100 characters)' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check for existing user
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (existing) {
+      return res.status(409).json({ success: false, error: 'An account with this email already exists' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+    // Create user + linked DashboardAccess in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: normalizedEmail,
+          passwordHash,
+          name: name.trim(),
+          plan: 'free',
+        },
+      });
+
+      // Create a DashboardAccess for backward compat with existing canvas routes
+      const accessCode = `USR-${nanoid(12)}`;
+      const sha256Index = sha256(accessCode);
+      const bcryptHash = await bcrypt.hash(accessCode, BCRYPT_ROUNDS);
+
+      await tx.dashboardAccess.create({
+        data: {
+          accessCode: sha256Index,
+          accessCodeHash: bcryptHash,
+          name: name.trim(),
+          role: 'researcher',
+          expiresAt: new Date('2099-12-31'),
+          userId: user.id,
+        },
+      });
+
+      return user;
+    });
+
+    const jwt = signUserToken(result.id, result.role, result.plan);
+
+    const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
+    logAudit({
+      action: 'auth.signup',
+      resource: 'user',
+      actorType: 'user',
+      actorId: result.id,
+      ip: sha256(rawIp),
+      method: 'POST',
+      path: '/api/auth/signup',
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        jwt,
+        user: {
+          id: result.id,
+          email: result.email,
+          name: result.name,
+          role: result.role,
+          plan: result.plan,
+        },
+      },
+    });
+  } catch (err) { next(err); }
+});
+
+// POST /api/auth/email-login — email/password login
+userAuthRoutes.post('/auth/email-login', authLimiter, async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ success: false, error: 'Email is required' });
+    }
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ success: false, error: 'Password is required' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
+    const hashedIp = sha256(rawIp);
+
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (!user) {
+      logAudit({
+        action: 'auth.failed',
+        resource: 'user',
+        actorType: 'anonymous',
+        ip: hashedIp,
+        method: 'POST',
+        path: '/api/auth/email-login',
+        meta: JSON.stringify({ reason: 'unknown_email' }),
+      });
+      return res.status(401).json({ success: false, error: 'Invalid email or password' });
+    }
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      logAudit({
+        action: 'auth.failed',
+        resource: 'user',
+        actorType: 'anonymous',
+        actorId: user.id,
+        ip: hashedIp,
+        method: 'POST',
+        path: '/api/auth/email-login',
+        meta: JSON.stringify({ reason: 'invalid_password' }),
+      });
+      return res.status(401).json({ success: false, error: 'Invalid email or password' });
+    }
+
+    // Refresh plan from subscription status
+    const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
+    const currentPlan = subscription && subscription.status === 'active' ? user.plan : 'free';
+
+    // Sync plan in DB if it differs
+    if (currentPlan !== user.plan) {
+      await prisma.user.update({ where: { id: user.id }, data: { plan: currentPlan } });
+    }
+
+    const jwt = signUserToken(user.id, user.role, currentPlan);
+
+    logAudit({
+      action: 'auth.login',
+      resource: 'user',
+      actorType: 'user',
+      actorId: user.id,
+      ip: hashedIp,
+      method: 'POST',
+      path: '/api/auth/email-login',
+    });
+
+    res.json({
+      success: true,
+      data: {
+        jwt,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          plan: currentPlan,
+        },
+      },
+    });
+  } catch (err) { next(err); }
+});
+
+// POST /api/auth/forgot-password — initiate password reset
+userAuthRoutes.post('/auth/forgot-password', authLimiter, async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ success: false, error: 'Email is required' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      return res.json({ success: true, message: 'If an account exists, a reset link has been sent' });
+    }
+
+    // Generate a reset token (stored hashed, sent plain)
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenHash = sha256(resetToken);
+    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { resetTokenHash, resetTokenExpiry: resetExpiry },
+    });
+
+    // In production, send email with reset link
+    // For dev, log the token
+    const appUrl = process.env.APP_URL || 'http://localhost:5174';
+    const resetUrl = `${appUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(normalizedEmail)}`;
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`Password reset link: ${resetUrl}`);
+    }
+    // TODO: Send email via nodemailer when SMTP is configured
+
+    res.json({ success: true, message: 'If an account exists, a reset link has been sent' });
+  } catch (err) { next(err); }
+});
+
+// POST /api/auth/reset-password — complete password reset
+userAuthRoutes.post('/auth/reset-password', authLimiter, async (req, res, next) => {
+  try {
+    const { email, token, newPassword } = req.body;
+
+    if (!email || !token || !newPassword) {
+      return res.status(400).json({ success: false, error: 'Email, token, and new password are required' });
+    }
+    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (!user) {
+      return res.status(400).json({ success: false, error: 'Invalid reset request' });
+    }
+
+    const tokenHash = sha256(token);
+    if (!user.resetTokenHash || user.resetTokenHash !== tokenHash || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+      return res.status(400).json({ success: false, error: 'Invalid or expired reset token' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+
+    // Clear the reset token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { resetTokenHash: null, resetTokenExpiry: null },
+    });
+
+    res.json({ success: true, message: 'Password has been reset successfully' });
+  } catch (err) { next(err); }
+});
+
+// GET /api/auth/me — current user profile + usage
+userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    const dashboardAccessId = req.dashboardAccessId;
+
+    // Email-authenticated user
+    if (userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { subscription: true },
+      });
+      if (!user) throw new AppError('User not found', 404);
+
+      // Count resources for usage
+      const [canvasCount, totalTranscripts, totalCodes, totalShares] = await Promise.all([
+        prisma.codingCanvas.count({
+          where: { OR: [{ userId }, ...(dashboardAccessId ? [{ dashboardAccessId }] : [])] },
+        }),
+        prisma.canvasTranscript.count({
+          where: { canvas: { OR: [{ userId }, ...(dashboardAccessId ? [{ dashboardAccessId }] : [])] } },
+        }),
+        prisma.canvasQuestion.count({
+          where: { canvas: { OR: [{ userId }, ...(dashboardAccessId ? [{ dashboardAccessId }] : [])] } },
+        }),
+        prisma.canvasShare.count({
+          where: { canvas: { OR: [{ userId }, ...(dashboardAccessId ? [{ dashboardAccessId }] : [])] } },
+        }),
+      ]);
+
+      return res.json({
+        success: true,
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            plan: user.plan,
+            emailVerified: user.emailVerified,
+            createdAt: user.createdAt,
+          },
+          subscription: user.subscription ? {
+            status: user.subscription.status,
+            currentPeriodEnd: user.subscription.currentPeriodEnd,
+            cancelAtPeriodEnd: user.subscription.cancelAtPeriodEnd,
+          } : null,
+          usage: { canvasCount, totalTranscripts, totalCodes, totalShares },
+          authType: 'email',
+        },
+      });
+    }
+
+    // Legacy user
+    if (dashboardAccessId) {
+      const access = await prisma.dashboardAccess.findUnique({ where: { id: dashboardAccessId } });
+      if (!access) throw new AppError('Account not found', 404);
+
+      return res.json({
+        success: true,
+        data: {
+          user: {
+            name: access.name,
+            role: access.role,
+            plan: 'pro', // Grandfathered
+          },
+          subscription: null,
+          usage: null,
+          authType: 'legacy',
+        },
+      });
+    }
+
+    throw new AppError('Authentication required', 401);
+  } catch (err) { next(err); }
+});
+
+// POST /api/auth/link-account — legacy user adds email to their account
+userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
+  try {
+    const dashboardAccessId = req.dashboardAccessId;
+    if (!dashboardAccessId) throw new AppError('Authentication required', 401);
+
+    const { email, password, name } = req.body;
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return res.status(400).json({ success: false, error: 'Valid email is required' });
+    }
+    if (!password || typeof password !== 'string' || password.length < 8) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (existing) {
+      return res.status(409).json({ success: false, error: 'An account with this email already exists' });
+    }
+
+    const access = await prisma.dashboardAccess.findUnique({ where: { id: dashboardAccessId } });
+    if (!access) throw new AppError('Account not found', 404);
+
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+    const user = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          email: normalizedEmail,
+          passwordHash,
+          name: name?.trim() || access.name,
+          plan: 'pro', // Grandfathered
+        },
+      });
+
+      // Link DashboardAccess to User
+      await tx.dashboardAccess.update({
+        where: { id: dashboardAccessId },
+        data: { userId: newUser.id },
+      });
+
+      // Link all canvases to the new user
+      await tx.codingCanvas.updateMany({
+        where: { dashboardAccessId },
+        data: { userId: newUser.id },
+      });
+
+      return newUser;
+    });
+
+    const jwt = signUserToken(user.id, user.role, user.plan);
+
+    res.json({
+      success: true,
+      data: {
+        jwt,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          plan: user.plan,
+        },
+      },
+    });
+  } catch (err) { next(err); }
+});
+
+// PUT /api/auth/profile — update name/email
+userAuthRoutes.put('/auth/profile', auth, async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    if (!userId) throw new AppError('Email account required', 403);
+
+    const { name, email } = req.body;
+    const updateData: any = {};
+
+    if (name !== undefined) {
+      if (typeof name !== 'string' || name.trim().length < 1 || name.length > 100) {
+        return res.status(400).json({ success: false, error: 'Name must be 1-100 characters' });
+      }
+      updateData.name = name.trim();
+    }
+
+    if (email !== undefined) {
+      if (typeof email !== 'string' || !email.includes('@')) {
+        return res.status(400).json({ success: false, error: 'Valid email is required' });
+      }
+      const normalizedEmail = email.toLowerCase().trim();
+      const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+      if (existing && existing.id !== userId) {
+        return res.status(409).json({ success: false, error: 'Email already in use' });
+      }
+      updateData.email = normalizedEmail;
+      updateData.emailVerified = false; // Re-verify if email changed
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ success: false, error: 'No fields to update' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    res.json({
+      success: true,
+      data: { id: user.id, email: user.email, name: user.name, emailVerified: user.emailVerified },
+    });
+  } catch (err) { next(err); }
+});
+
+// PUT /api/auth/change-password — change password
+userAuthRoutes.put('/auth/change-password', auth, async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    if (!userId) throw new AppError('Email account required', 403);
+
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, error: 'Current and new passwords are required' });
+    }
+    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 8 characters' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError('User not found', 404);
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      return res.status(401).json({ success: false, error: 'Current password is incorrect' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+
+    res.json({ success: true, message: 'Password changed successfully' });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/auth/account — delete account
+userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    if (!userId) throw new AppError('Email account required', 403);
+
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ success: false, error: 'Password confirmation required' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { subscription: true },
+    });
+    if (!user) throw new AppError('User not found', 404);
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      return res.status(401).json({ success: false, error: 'Password is incorrect' });
+    }
+
+    // Cancel Stripe subscription if active
+    if (user.subscription && user.stripeCustomerId) {
+      try {
+        const { getStripe } = await import('../lib/stripe.js');
+        const stripe = getStripe();
+        if (user.subscription.stripeSubscriptionId) {
+          await stripe.subscriptions.cancel(user.subscription.stripeSubscriptionId);
+        }
+      } catch {
+        // Continue with deletion even if Stripe fails
+      }
+    }
+
+    // Cascade delete user (Prisma cascade handles related records)
+    await prisma.user.delete({ where: { id: userId } });
+
+    res.json({ success: true, message: 'Account deleted' });
+  } catch (err) { next(err); }
+});

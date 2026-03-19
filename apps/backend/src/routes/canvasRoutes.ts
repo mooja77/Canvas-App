@@ -29,7 +29,19 @@ import {
 import { nanoid } from 'nanoid';
 import { logAudit } from '../middleware/auditLog.js';
 import { sha256 } from '../utils/hashing.js';
-import { getAuthId, getOwnedCanvas } from '../utils/routeHelpers.js';
+import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
+import {
+  checkCanvasLimit,
+  checkTranscriptLimit,
+  checkWordLimit,
+  checkCodeLimit,
+  checkAutoCode,
+  checkAnalysisType,
+  checkAnalysisTypeOnRun,
+  checkShareLimit,
+  checkCaseAccess,
+} from '../middleware/planLimits.js';
+import { getPlanLimits } from '../config/plans.js';
 import {
   searchTranscripts,
   computeCooccurrence,
@@ -41,6 +53,7 @@ import {
   computeCodingQuery,
   computeSentiment,
   computeTreemap,
+  computeTimeline,
 } from '../utils/textAnalysis.js';
 
 export const canvasRoutes = Router();
@@ -52,12 +65,18 @@ export const canvasPublicRoutes = Router();
 canvasRoutes.get('/canvas', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
+    const userId = getAuthUserId(req);
     const take = Math.min(parseInt(req.query.limit as string) || 50, 200);
     const skip = parseInt(req.query.offset as string) || 0;
 
+    // Show canvases owned via dashboardAccess OR userId
+    const where = userId
+      ? { OR: [{ dashboardAccessId }, { userId }] }
+      : { dashboardAccessId };
+
     const [canvases, total] = await Promise.all([
       prisma.codingCanvas.findMany({
-        where: { dashboardAccessId },
+        where,
         orderBy: { updatedAt: 'desc' },
         include: {
           _count: { select: { transcripts: true, questions: true, codings: true } },
@@ -65,19 +84,25 @@ canvasRoutes.get('/canvas', async (req, res, next) => {
         take,
         skip,
       }),
-      prisma.codingCanvas.count({ where: { dashboardAccessId } }),
+      prisma.codingCanvas.count({ where }),
     ]);
     res.json({ success: true, data: canvases, total, limit: take, offset: skip });
   } catch (err) { next(err); }
 });
 
 // POST /canvas — create canvas
-canvasRoutes.post('/canvas', validate(createCanvasSchema), async (req, res, next) => {
+canvasRoutes.post('/canvas', validate(createCanvasSchema), checkCanvasLimit(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
+    const userId = getAuthUserId(req);
     const { name, description } = req.body;
     const canvas = await prisma.codingCanvas.create({
-      data: { dashboardAccessId, name, description },
+      data: {
+        dashboardAccessId,
+        name,
+        description,
+        ...(userId ? { userId } : {}),
+      },
     });
     res.status(201).json({ success: true, data: canvas });
   } catch (err: any) {
@@ -96,7 +121,7 @@ canvasRoutes.get('/canvas/:canvasId', async (req, res, next) => {
         transcripts: { orderBy: { sortOrder: 'asc' } },
         questions: { orderBy: { sortOrder: 'asc' } },
         memos: { orderBy: { createdAt: 'asc' } },
-        codings: true,
+        codings: { take: 10000 },
         nodePositions: true,
         cases: { orderBy: { createdAt: 'asc' } },
         relations: { orderBy: { createdAt: 'asc' } },
@@ -124,7 +149,7 @@ canvasRoutes.get('/canvas/:canvasId', async (req, res, next) => {
 canvasRoutes.put('/canvas/:canvasId', validate(updateCanvasSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.canvasId, dashboardAccessId);
+    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
     const canvas = await prisma.codingCanvas.update({
       where: { id: req.params.canvasId },
       data: req.body,
@@ -140,7 +165,7 @@ canvasRoutes.put('/canvas/:canvasId', validate(updateCanvasSchema), async (req, 
 canvasRoutes.delete('/canvas/:canvasId', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.canvasId, dashboardAccessId);
+    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
     await prisma.codingCanvas.delete({ where: { id: req.params.canvasId } });
     res.json({ success: true });
   } catch (err) { next(err); }
@@ -148,10 +173,10 @@ canvasRoutes.delete('/canvas/:canvasId', async (req, res, next) => {
 
 // ─── Transcripts ───
 
-canvasRoutes.post('/canvas/:id/transcripts', validate(createTranscriptSchema), async (req, res, next) => {
+canvasRoutes.post('/canvas/:id/transcripts', validate(createTranscriptSchema), checkTranscriptLimit(), checkWordLimit(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const count = await prisma.canvasTranscript.count({ where: { canvasId: req.params.id } });
     const transcript = await prisma.canvasTranscript.create({
       data: { canvasId: req.params.id, ...req.body, sortOrder: count },
@@ -160,10 +185,10 @@ canvasRoutes.post('/canvas/:id/transcripts', validate(createTranscriptSchema), a
   } catch (err) { next(err); }
 });
 
-canvasRoutes.put('/canvas/:id/transcripts/:tid', validate(updateTranscriptSchema), async (req, res, next) => {
+canvasRoutes.put('/canvas/:id/transcripts/:tid', validate(updateTranscriptSchema), checkWordLimit(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const transcript = await prisma.canvasTranscript.update({
       where: { id: req.params.tid },
       data: req.body,
@@ -175,7 +200,7 @@ canvasRoutes.put('/canvas/:id/transcripts/:tid', validate(updateTranscriptSchema
 canvasRoutes.delete('/canvas/:id/transcripts/:tid', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     await prisma.canvasTranscript.delete({ where: { id: req.params.tid } });
     res.json({ success: true });
   } catch (err) { next(err); }
@@ -183,10 +208,10 @@ canvasRoutes.delete('/canvas/:id/transcripts/:tid', async (req, res, next) => {
 
 // ─── Questions ───
 
-canvasRoutes.post('/canvas/:id/questions', validate(createCanvasQuestionSchema), async (req, res, next) => {
+canvasRoutes.post('/canvas/:id/questions', validate(createCanvasQuestionSchema), checkCodeLimit(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const count = await prisma.canvasQuestion.count({ where: { canvasId: req.params.id } });
     const question = await prisma.canvasQuestion.create({
       data: { canvasId: req.params.id, ...req.body, sortOrder: count },
@@ -198,7 +223,7 @@ canvasRoutes.post('/canvas/:id/questions', validate(createCanvasQuestionSchema),
 canvasRoutes.put('/canvas/:id/questions/:qid', validate(updateCanvasQuestionSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const question = await prisma.canvasQuestion.update({
       where: { id: req.params.qid },
       data: req.body,
@@ -210,7 +235,7 @@ canvasRoutes.put('/canvas/:id/questions/:qid', validate(updateCanvasQuestionSche
 canvasRoutes.delete('/canvas/:id/questions/:qid', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     await prisma.canvasQuestion.delete({ where: { id: req.params.qid } });
     res.json({ success: true });
   } catch (err) { next(err); }
@@ -221,7 +246,7 @@ canvasRoutes.delete('/canvas/:id/questions/:qid', async (req, res, next) => {
 canvasRoutes.post('/canvas/:id/memos', validate(createCanvasMemoSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const memo = await prisma.canvasMemo.create({
       data: { canvasId: req.params.id, ...req.body },
     });
@@ -232,7 +257,7 @@ canvasRoutes.post('/canvas/:id/memos', validate(createCanvasMemoSchema), async (
 canvasRoutes.put('/canvas/:id/memos/:mid', validate(updateCanvasMemoSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const memo = await prisma.canvasMemo.update({
       where: { id: req.params.mid },
       data: req.body,
@@ -244,7 +269,7 @@ canvasRoutes.put('/canvas/:id/memos/:mid', validate(updateCanvasMemoSchema), asy
 canvasRoutes.delete('/canvas/:id/memos/:mid', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     await prisma.canvasMemo.delete({ where: { id: req.params.mid } });
     res.json({ success: true });
   } catch (err) { next(err); }
@@ -255,7 +280,7 @@ canvasRoutes.delete('/canvas/:id/memos/:mid', async (req, res, next) => {
 canvasRoutes.post('/canvas/:id/codings', validate(createCodingSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const { transcriptId, questionId, startOffset, endOffset, codedText, note } = req.body;
 
     const [transcript, question] = await Promise.all([
@@ -293,7 +318,7 @@ canvasRoutes.post('/canvas/:id/codings', validate(createCodingSchema), async (re
 canvasRoutes.put('/canvas/:id/codings/:cid', validate(updateCodingSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const oldCoding = await prisma.canvasTextCoding.findUnique({ where: { id: req.params.cid } });
     const coding = await prisma.canvasTextCoding.update({
       where: { id: req.params.cid },
@@ -320,7 +345,7 @@ canvasRoutes.put('/canvas/:id/codings/:cid', validate(updateCodingSchema), async
 canvasRoutes.delete('/canvas/:id/codings/:cid', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const deleted = await prisma.canvasTextCoding.findUnique({ where: { id: req.params.cid } });
     await prisma.canvasTextCoding.delete({ where: { id: req.params.cid } });
 
@@ -344,7 +369,7 @@ canvasRoutes.delete('/canvas/:id/codings/:cid', async (req, res, next) => {
 canvasRoutes.put('/canvas/:id/codings/:cid/reassign', validate(reassignCodingSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const { newQuestionId } = req.body;
 
     const question = await prisma.canvasQuestion.findUnique({ where: { id: newQuestionId } });
@@ -380,7 +405,7 @@ canvasRoutes.put('/canvas/:id/codings/:cid/reassign', validate(reassignCodingSch
 canvasRoutes.put('/canvas/:id/layout', validate(saveLayoutSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const { positions } = req.body;
 
     await prisma.$transaction(
@@ -399,10 +424,10 @@ canvasRoutes.put('/canvas/:id/layout', validate(saveLayoutSchema), async (req, r
 
 // ─── Cases ───
 
-canvasRoutes.post('/canvas/:id/cases', validate(createCaseSchema), async (req, res, next) => {
+canvasRoutes.post('/canvas/:id/cases', validate(createCaseSchema), checkCaseAccess(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const { name, attributes } = req.body;
     const caseRecord = await prisma.canvasCase.create({
       data: {
@@ -424,7 +449,7 @@ canvasRoutes.post('/canvas/:id/cases', validate(createCaseSchema), async (req, r
 canvasRoutes.put('/canvas/:id/cases/:caseId', validate(updateCaseSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const updateData: any = {};
     if (req.body.name !== undefined) updateData.name = req.body.name;
     if (req.body.attributes !== undefined) updateData.attributes = JSON.stringify(req.body.attributes);
@@ -445,7 +470,7 @@ canvasRoutes.put('/canvas/:id/cases/:caseId', validate(updateCaseSchema), async 
 canvasRoutes.delete('/canvas/:id/cases/:caseId', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     await prisma.canvasCase.delete({ where: { id: req.params.caseId } });
     res.json({ success: true });
   } catch (err) { next(err); }
@@ -456,7 +481,7 @@ canvasRoutes.delete('/canvas/:id/cases/:caseId', async (req, res, next) => {
 canvasRoutes.post('/canvas/:id/questions/merge', validate(mergeQuestionsSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const { sourceId, targetId } = req.body;
 
     const [source, target] = await Promise.all([
@@ -495,7 +520,7 @@ canvasRoutes.post('/canvas/:id/questions/merge', validate(mergeQuestionsSchema),
 canvasRoutes.post('/canvas/:id/relations', validate(createRelationSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const relation = await prisma.canvasRelation.create({
       data: { canvasId: req.params.id, ...req.body },
     });
@@ -506,7 +531,7 @@ canvasRoutes.post('/canvas/:id/relations', validate(createRelationSchema), async
 canvasRoutes.put('/canvas/:id/relations/:relId', validate(updateRelationSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const relation = await prisma.canvasRelation.update({
       where: { id: req.params.relId },
       data: { label: req.body.label },
@@ -518,7 +543,7 @@ canvasRoutes.put('/canvas/:id/relations/:relId', validate(updateRelationSchema),
 canvasRoutes.delete('/canvas/:id/relations/:relId', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     await prisma.canvasRelation.delete({ where: { id: req.params.relId } });
     res.json({ success: true });
   } catch (err) { next(err); }
@@ -526,10 +551,10 @@ canvasRoutes.delete('/canvas/:id/relations/:relId', async (req, res, next) => {
 
 // ─── Computed Nodes ───
 
-canvasRoutes.post('/canvas/:id/computed', validate(createComputedNodeSchema), async (req, res, next) => {
+canvasRoutes.post('/canvas/:id/computed', validate(createComputedNodeSchema), checkAnalysisType(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const { nodeType, label, config } = req.body;
     const node = await prisma.canvasComputedNode.create({
       data: {
@@ -549,7 +574,7 @@ canvasRoutes.post('/canvas/:id/computed', validate(createComputedNodeSchema), as
 canvasRoutes.put('/canvas/:id/computed/:nodeId', validate(updateComputedNodeSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const updateData: any = {};
     if (req.body.label !== undefined) updateData.label = req.body.label;
     if (req.body.config !== undefined) updateData.config = JSON.stringify(req.body.config);
@@ -567,17 +592,17 @@ canvasRoutes.put('/canvas/:id/computed/:nodeId', validate(updateComputedNodeSche
 canvasRoutes.delete('/canvas/:id/computed/:nodeId', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     await prisma.canvasComputedNode.delete({ where: { id: req.params.nodeId } });
     res.json({ success: true });
   } catch (err) { next(err); }
 });
 
 // POST /canvas/:id/computed/:nodeId/run — execute computation
-canvasRoutes.post('/canvas/:id/computed/:nodeId/run', async (req, res, next) => {
+canvasRoutes.post('/canvas/:id/computed/:nodeId/run', checkAnalysisTypeOnRun(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
 
     const node = await prisma.canvasComputedNode.findUnique({ where: { id: req.params.nodeId } });
     if (!node || node.canvasId !== req.params.id) {
@@ -589,7 +614,7 @@ canvasRoutes.post('/canvas/:id/computed/:nodeId/run', async (req, res, next) => 
     const [transcripts, questions, codings, rawCases] = await Promise.all([
       prisma.canvasTranscript.findMany({
         where: { canvasId: req.params.id },
-        select: { id: true, title: true, content: true, caseId: true },
+        select: { id: true, title: true, content: true, caseId: true, eventDate: true },
       }),
       prisma.canvasQuestion.findMany({
         where: { canvasId: req.params.id },
@@ -651,6 +676,36 @@ canvasRoutes.post('/canvas/:id/computed/:nodeId/run', async (req, res, next) => 
           config.questionIds,
         );
         break;
+      case 'timeline':
+        result = computeTimeline(transcripts, codings, questions);
+        break;
+      case 'geomap': {
+        // GeoMap: compute geographic distribution from transcript locations
+        const geoTranscripts = await prisma.canvasTranscript.findMany({
+          where: { canvasId: req.params.id, deletedAt: null, latitude: { not: null } },
+          select: { id: true, title: true, latitude: true, longitude: true, locationName: true },
+        });
+        const codingCountMap = new Map<string, number>();
+        for (const c of codings) {
+          codingCountMap.set(c.transcriptId, (codingCountMap.get(c.transcriptId) || 0) + 1);
+        }
+        const allTranscriptCount = await prisma.canvasTranscript.count({
+          where: { canvasId: req.params.id, deletedAt: null },
+        });
+        result = {
+          points: geoTranscripts.map(t => ({
+            transcriptId: t.id,
+            title: t.title,
+            latitude: t.latitude!,
+            longitude: t.longitude!,
+            locationName: t.locationName || '',
+            codingCount: codingCountMap.get(t.id) || 0,
+          })),
+          totalMapped: geoTranscripts.length,
+          totalUnmapped: allTranscriptCount - geoTranscripts.length,
+        };
+        break;
+      }
       default:
         return next(new AppError(`Unknown node type: ${node.nodeType}`, 400));
     }
@@ -669,10 +724,10 @@ canvasRoutes.post('/canvas/:id/computed/:nodeId/run', async (req, res, next) => 
 
 // ─── Auto-Code ───
 
-canvasRoutes.post('/canvas/:id/auto-code', validate(autoCodeSchema), async (req, res, next) => {
+canvasRoutes.post('/canvas/:id/auto-code', validate(autoCodeSchema), checkAutoCode(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const { questionId, pattern, mode, transcriptIds } = req.body;
 
     const question = await prisma.canvasQuestion.findUnique({ where: { id: questionId } });
@@ -682,7 +737,7 @@ canvasRoutes.post('/canvas/:id/auto-code', validate(autoCodeSchema), async (req,
 
     const where: any = { canvasId: req.params.id };
     if (transcriptIds?.length) where.id = { in: transcriptIds };
-    const transcripts = await prisma.canvasTranscript.findMany({ where });
+    const transcripts = await prisma.canvasTranscript.findMany({ where, take: 100 });
 
     const searchResult = searchTranscripts(transcripts, pattern, mode);
     const matches = searchResult.matches;
@@ -726,10 +781,25 @@ canvasRoutes.post('/canvas/:id/auto-code', validate(autoCodeSchema), async (req,
 canvasRoutes.post('/canvas/:id/import-narratives', validate(importNarrativesSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const { narratives } = req.body;
 
     const count = await prisma.canvasTranscript.count({ where: { canvasId: req.params.id } });
+
+    // Plan limit checks for bulk import
+    const plan = req.userPlan || 'free';
+    const limits = getPlanLimits(plan);
+    if (limits.maxTranscriptsPerCanvas !== Infinity && count + narratives.length > limits.maxTranscriptsPerCanvas) {
+      return next(new AppError(`Import would exceed your plan's transcript limit (${limits.maxTranscriptsPerCanvas} per canvas). You have ${count} and are importing ${narratives.length}.`, 403));
+    }
+    if (limits.maxWordsPerTranscript !== Infinity) {
+      for (const n of narratives) {
+        const wordCount = (n.content || '').trim().split(/\s+/).filter(Boolean).length;
+        if (wordCount > limits.maxWordsPerTranscript) {
+          return next(new AppError(`"${n.title}" exceeds your plan's word limit (${limits.maxWordsPerTranscript.toLocaleString()} words per transcript)`, 403));
+        }
+      }
+    }
 
     const transcripts = await prisma.$transaction(
       narratives.map((n: any, i: number) =>
@@ -755,7 +825,7 @@ canvasRoutes.post('/canvas/:id/import-narratives', validate(importNarrativesSche
 canvasRoutes.post('/canvas/:id/import-from-canvas', validate(importFromCanvasSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const { sourceCanvasId, transcriptIds } = req.body;
 
     const sourceCanvas = await prisma.codingCanvas.findUnique({ where: { id: sourceCanvasId } });
@@ -773,6 +843,21 @@ canvasRoutes.post('/canvas/:id/import-from-canvas', validate(importFromCanvasSch
     }
 
     const count = await prisma.canvasTranscript.count({ where: { canvasId: req.params.id } });
+
+    // Plan limit checks for cross-canvas import
+    const plan = req.userPlan || 'free';
+    const limits = getPlanLimits(plan);
+    if (limits.maxTranscriptsPerCanvas !== Infinity && count + sourceTranscripts.length > limits.maxTranscriptsPerCanvas) {
+      return next(new AppError(`Import would exceed your plan's transcript limit (${limits.maxTranscriptsPerCanvas} per canvas). You have ${count} and are importing ${sourceTranscripts.length}.`, 403));
+    }
+    if (limits.maxWordsPerTranscript !== Infinity) {
+      for (const src of sourceTranscripts) {
+        const wordCount = src.content.trim().split(/\s+/).filter(Boolean).length;
+        if (wordCount > limits.maxWordsPerTranscript) {
+          return next(new AppError(`"${src.title}" exceeds your plan's word limit (${limits.maxWordsPerTranscript.toLocaleString()} words per transcript)`, 403));
+        }
+      }
+    }
 
     const results: any[] = [];
     for (let i = 0; i < sourceTranscripts.length; i++) {
@@ -796,10 +881,10 @@ canvasRoutes.post('/canvas/:id/import-from-canvas', validate(importFromCanvasSch
 
 // ─── Canvas Sharing ───
 
-canvasRoutes.post('/canvas/:id/share', async (req, res, next) => {
+canvasRoutes.post('/canvas/:id/share', checkShareLimit(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
 
     const shareCode = `SHARE-${nanoid(8).toUpperCase().replace(/[^A-Z0-9]/g, 'X')}`;
 
@@ -818,7 +903,7 @@ canvasRoutes.post('/canvas/:id/share', async (req, res, next) => {
 canvasRoutes.get('/canvas/:id/shares', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
 
     const shares = await prisma.canvasShare.findMany({
       where: { canvasId: req.params.id },
@@ -867,7 +952,7 @@ canvasPublicRoutes.get('/canvas/shared/:code', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-canvasRoutes.post('/canvas/clone/:code', async (req, res, next) => {
+canvasRoutes.post('/canvas/clone/:code', checkCanvasLimit(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
 
@@ -892,6 +977,25 @@ canvasRoutes.post('/canvas/clone/:code', async (req, res, next) => {
     });
 
     if (!source) return next(new AppError('Source canvas not found', 404));
+
+    // Enforce plan limits on cloned content
+    const plan = req.userPlan || 'free';
+    const limits = getPlanLimits(plan);
+
+    if (limits.maxTranscriptsPerCanvas !== Infinity && source.transcripts.length > limits.maxTranscriptsPerCanvas) {
+      return next(new AppError(`Clone would exceed your plan's transcript limit (${limits.maxTranscriptsPerCanvas} per canvas)`, 403));
+    }
+    if (limits.maxCodes !== Infinity && source.questions.length > limits.maxCodes) {
+      return next(new AppError(`Clone would exceed your plan's code limit (${limits.maxCodes} codes)`, 403));
+    }
+    if (limits.maxWordsPerTranscript !== Infinity) {
+      for (const t of source.transcripts) {
+        const wordCount = t.content.trim().split(/\s+/).filter(Boolean).length;
+        if (wordCount > limits.maxWordsPerTranscript) {
+          return next(new AppError(`Clone contains a transcript exceeding your plan's word limit (${limits.maxWordsPerTranscript.toLocaleString()} words)`, 403));
+        }
+      }
+    }
 
     const baseName = `${source.name} (Clone)`;
     let cloneName = baseName;
@@ -1015,7 +1119,7 @@ canvasRoutes.post('/canvas/clone/:code', async (req, res, next) => {
 canvasRoutes.delete('/canvas/:id/share/:shareId', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
 
     const share = await prisma.canvasShare.findUnique({ where: { id: req.params.shareId } });
     if (!share || share.canvasId !== req.params.id) {

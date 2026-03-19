@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCodeBookmarks } from '../../../hooks/useCodeBookmarks';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
 
@@ -19,6 +20,8 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [sortMode, setSortMode] = useState<'name' | 'count'>('count');
+  const [showFavorites, setShowFavorites] = useState(true);
+  const { bookmarkedIds, toggleBookmark, isBookmarked } = useCodeBookmarks();
 
   const questions = activeCanvas?.questions ?? [];
   const transcripts = activeCanvas?.transcripts ?? [];
@@ -169,6 +172,15 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
           <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">
             {item.question.text}
           </span>
+          <button
+            onClick={e => { e.stopPropagation(); toggleBookmark(item.question.id); }}
+            className={`shrink-0 p-0.5 rounded transition-colors ${isBookmarked(item.question.id) ? 'text-yellow-500' : 'text-gray-300 opacity-0 group-hover:opacity-100 hover:text-yellow-400'}`}
+            title={isBookmarked(item.question.id) ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <svg className="h-3 w-3" viewBox="0 0 24 24" fill={isBookmarked(item.question.id) ? 'currentColor' : 'none'} strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+            </svg>
+          </button>
 
           {/* Frequency bar + count */}
           <div className="flex items-center gap-1.5 shrink-0">
@@ -290,6 +302,36 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Favorites section */}
+            {bookmarkedIds.size > 0 && (
+              <div className="mb-1">
+                <button
+                  onClick={() => setShowFavorites(f => !f)}
+                  className="flex w-full items-center gap-1 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 rounded-lg transition-colors"
+                >
+                  <svg className={`h-3 w-3 transition-transform ${showFavorites ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                  </svg>
+                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+                  </svg>
+                  Favorites ({bookmarkedIds.size})
+                </button>
+                {showFavorites && (
+                  <div className="space-y-0.5 mt-0.5">
+                    {filteredTree
+                      .filter(item => isBookmarked(item.question.id))
+                      .map(item => renderTreeItem(item))}
+                    {/* Also include bookmarked children */}
+                    {filteredTree
+                      .flatMap(item => item.children.filter(child => isBookmarked(child.question.id)))
+                      .map(item => renderTreeItem(item))}
+                  </div>
+                )}
+                <div className="my-1 border-t border-gray-200/60 dark:border-gray-700/60" />
               </div>
             )}
 

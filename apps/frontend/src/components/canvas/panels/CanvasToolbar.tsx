@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useCanvasStore } from '../../../stores/canvasStore';
-import { useUIStore } from '../../../stores/uiStore';
+import { useUIStore, type EdgeStyleType } from '../../../stores/uiStore';
 import TranscriptSourceMenu from './TranscriptSourceMenu';
 import AutoCodeModal from './AutoCodeModal';
 import CaseManagerPanel from './CaseManagerPanel';
@@ -16,6 +16,8 @@ import EthicsCompliancePanel from './EthicsCompliancePanel';
 import IntercoderReliabilityModal from './IntercoderReliabilityModal';
 import CodeWeightingPanel from './CodeWeightingPanel';
 import CrossCaseAnalysisModal from './CrossCaseAnalysisModal';
+import ResearchAssistantPanel from './ResearchAssistantPanel';
+import SummaryPanel from './SummaryPanel';
 import CanvasSwitcher from './CanvasSwitcher';
 import toast from 'react-hot-toast';
 
@@ -26,10 +28,14 @@ interface CanvasToolbarProps {
   onAutoLayout?: () => void;
   onExportPNG?: () => void;
   onToggleFocusMode?: () => void;
+  onTogglePresentationMode?: () => void;
+  onAiAutoCode?: () => void;
 }
 
-export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpenCommandPalette, onAutoLayout, onExportPNG, onToggleFocusMode }: CanvasToolbarProps) {
+export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpenCommandPalette, onAutoLayout, onExportPNG, onToggleFocusMode, onTogglePresentationMode, onAiAutoCode }: CanvasToolbarProps) {
   const { activeCanvas, closeCanvas, addQuestion, addMemo, showCodingStripes, toggleCodingStripes } = useCanvasStore();
+  const edgeStyle = useUIStore(s => s.edgeStyle);
+  const setEdgeStyle = useUIStore(s => s.setEdgeStyle);
   const [showQuestionInput, setShowQuestionInput] = useState(false);
   const [questionText, setQuestionText] = useState('');
   const [showAutoCode, setShowAutoCode] = useState(false);
@@ -45,6 +51,8 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
   const [showIntercoder, setShowIntercoder] = useState(false);
   const [showWeighting, setShowWeighting] = useState(false);
   const [showCrossCase, setShowCrossCase] = useState(false);
+  const [showResearchAssistant, setShowResearchAssistant] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [addingMemo, setAddingMemo] = useState(false);
 
@@ -189,6 +197,38 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                     <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
                   </svg>
                   Auto-Code
+                </button>
+                {onAiAutoCode && (
+                  <button
+                    onClick={onAiAutoCode}
+                    className="flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
+                    title="AI-assisted coding — analyze transcripts with AI"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                    </svg>
+                    AI Code
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowResearchAssistant(true)}
+                  className="flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
+                  title="AI Research Assistant — ask questions about your data"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                  </svg>
+                  AI Chat
+                </button>
+                <button
+                  onClick={() => setShowSummary(true)}
+                  className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50 transition-colors"
+                  title="Generate summaries and paraphrases"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                  </svg>
+                  Summarize
                 </button>
                 <button
                   data-tour="canvas-btn-cases"
@@ -335,6 +375,28 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                   </svg>
                 </button>
+                {onTogglePresentationMode && (
+                  <button
+                    onClick={onTogglePresentationMode}
+                    className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
+                    title="Presentation mode"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
+                    </svg>
+                  </button>
+                )}
+                <select
+                  value={edgeStyle}
+                  onChange={e => setEdgeStyle(e.target.value as EdgeStyleType)}
+                  className="h-7 rounded-lg border border-gray-200 bg-gray-50 px-1.5 text-[10px] text-gray-600 outline-none hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                  title="Edge connection style"
+                >
+                  <option value="bezier">Bezier</option>
+                  <option value="straight">Straight</option>
+                  <option value="step">Step</option>
+                  <option value="smoothstep">Smooth Step</option>
+                </select>
                 {onToggleFocusMode && (
                   <button
                     onClick={onToggleFocusMode}
@@ -411,6 +473,8 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
       {showIntercoder && <IntercoderReliabilityModal onClose={() => setShowIntercoder(false)} />}
       {showWeighting && <CodeWeightingPanel onClose={() => setShowWeighting(false)} />}
       {showCrossCase && <CrossCaseAnalysisModal onClose={() => setShowCrossCase(false)} />}
+      {showResearchAssistant && <ResearchAssistantPanel onClose={() => setShowResearchAssistant(false)} />}
+      {showSummary && <SummaryPanel onClose={() => setShowSummary(false)} />}
     </>
   );
 }

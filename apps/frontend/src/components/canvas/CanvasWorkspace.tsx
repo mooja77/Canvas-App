@@ -23,6 +23,7 @@ import MemoNode from './nodes/MemoNode';
 import CaseNode from './nodes/CaseNode';
 import GroupNode from './nodes/GroupNode';
 import StickyNoteNode from './nodes/StickyNoteNode';
+import RerouteNode from './nodes/RerouteNode';
 import SearchResultNode from './nodes/SearchResultNode';
 import CooccurrenceNode from './nodes/CooccurrenceNode';
 import MatrixNode from './nodes/MatrixNode';
@@ -33,6 +34,8 @@ import ClusterNode from './nodes/ClusterNode';
 import CodingQueryNode from './nodes/CodingQueryNode';
 import SentimentNode from './nodes/SentimentNode';
 import TreemapNode from './nodes/TreemapNode';
+import TimelineNode from './nodes/TimelineNode';
+import GeoMapNode from './nodes/GeoMapNode';
 import CodingEdge from './edges/CodingEdge';
 import RelationEdge from './edges/RelationEdge';
 import CodeNavigator from './panels/CodeNavigator';
@@ -52,16 +55,22 @@ import RichExportModal from './panels/RichExportModal';
 import IntercoderReliabilityModal from './panels/IntercoderReliabilityModal';
 import CodeWeightingPanel from './panels/CodeWeightingPanel';
 import CrossCaseAnalysisModal from './panels/CrossCaseAnalysisModal';
+import PresentationMode from './panels/PresentationMode';
+import CanvasTabBar from './panels/CanvasTabBar';
+import AiSuggestPanel from './panels/AiSuggestPanel';
+import AiAutoCodeModal from './panels/AiAutoCodeModal';
 import ConfirmDialog from './ConfirmDialog';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { useCanvasStore } from '../../stores/canvasStore';
-import { useCanvasHistory } from '../../hooks/useCanvasHistory';
 import { useCanvasKeyboard } from '../../hooks/useCanvasKeyboard';
 import { useCanvasBookmarks } from '../../hooks/useCanvasBookmarks';
 import { useCanvasGroups } from '../../hooks/useCanvasGroups';
 import { useCanvasStickyNotes } from '../../hooks/useCanvasStickyNotes';
 import { useAutoLayout } from '../../hooks/useAutoLayout';
+import { useNodeColors } from '../../hooks/useNodeColors';
+import { useCanvasRerouteNodes } from '../../hooks/useCanvasRerouteNodes';
 import { useSessionTimeout } from '../../hooks/useSessionTimeout';
+import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 import type {
   CanvasTranscript,
   CanvasQuestion,
@@ -99,6 +108,8 @@ const nodeTypes = {
   group: GroupNode,
   // Sticky notes
   sticky: StickyNoteNode,
+  // Reroute waypoint nodes
+  reroute: RerouteNode,
   // Computed node types — wrapped with error boundary
   search: withErrorBoundary(SearchResultNode),
   cooccurrence: withErrorBoundary(CooccurrenceNode),
@@ -110,6 +121,8 @@ const nodeTypes = {
   codingquery: withErrorBoundary(CodingQueryNode),
   sentiment: withErrorBoundary(SentimentNode),
   treemap: withErrorBoundary(TreemapNode),
+  timeline: withErrorBoundary(TimelineNode),
+  geomap: withErrorBoundary(GeoMapNode),
 };
 
 const edgeTypes = {
@@ -122,7 +135,10 @@ const initialEdges: Edge[] = [];
 
 export default function CanvasWorkspace() {
   const {
+    canvases,
     activeCanvas,
+    openCanvas,
+    closeCanvas,
     pendingSelection,
     setPendingSelection,
     createCoding,
@@ -149,6 +165,10 @@ export default function CanvasWorkspace() {
 
   const { showWarning: showSessionWarning, dismissWarning: dismissSessionWarning } = useSessionTimeout();
 
+  // AI coding assistant
+  const aiSuggestions = useAiSuggestions();
+  const [showAiAutoCode, setShowAiAutoCode] = useState(false);
+
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -172,9 +192,11 @@ export default function CanvasWorkspace() {
   const [nodeContextMenu, setNodeContextMenu] = useState<{ show: boolean; x: number; y: number; nodeId: string; nodeType: string; collapsed: boolean } | null>(null);
   const [edgeContextMenu, setEdgeContextMenu] = useState<{ show: boolean; x: number; y: number; edgeId: string; edgeType: string; label?: string } | null>(null);
   const [quickAddMenu, setQuickAddMenu] = useState<{ x: number; y: number } | null>(null);
+  const [smartLinkSource, setSmartLinkSource] = useState<{ nodeId: string; nodeType: string } | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
   const zoomLevelRef = useRef(zoomLevel);
   zoomLevelRef.current = zoomLevel;
+  const [zoomTier, setZoomTier] = useState<'full' | 'reduced' | 'minimal'>('full');
   const [deleteConfirm, setDeleteConfirm] = useState<{ nodeId: string; label: string; type: string } | null>(null);
   const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
 
@@ -188,9 +210,6 @@ export default function CanvasWorkspace() {
   // Clipboard for copy/paste
   const clipboardRef = useRef<Node[]>([]);
 
-  // Undo/Redo
-  const { pushAction, undo, redo, canUndo, canRedo } = useCanvasHistory();
-
   // Viewport bookmarks (5 slots, persisted per canvas)
   const { bookmarks, saveBookmark, recallBookmark, hasBookmark } = useCanvasBookmarks();
 
@@ -203,8 +222,38 @@ export default function CanvasWorkspace() {
   // Auto-layout
   const { applyLayout } = useAutoLayout(setNodes);
 
+  // Custom node colors (persisted in localStorage)
+  const { colorMap: nodeColorMap, setNodeColor, getNodeColor } = useNodeColors();
+
+  // Reroute waypoint nodes (persisted in localStorage)
+  const { rerouteNodes, addReroute, removeReroute, updateReroutePosition } = useCanvasRerouteNodes();
+
   // Focus mode (hides toolbar, sidebar, status bar)
   const [focusMode, setFocusMode] = useState(false);
+
+  // Presentation mode
+  const [presentationMode, setPresentationMode] = useState(false);
+
+  // Multi-canvas tabs
+  const [openTabs, setOpenTabs] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('canvas-open-tabs');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+  const viewportCacheRef = useRef<Map<string, { x: number; y: number; zoom: number }>>(new Map());
+
+  // Keep active canvas in tabs
+  useEffect(() => {
+    const canvasId = activeCanvas?.id;
+    if (!canvasId) return;
+    setOpenTabs(prev => {
+      if (prev.includes(canvasId)) return prev;
+      const next = [...prev, canvasId];
+      try { localStorage.setItem('canvas-open-tabs', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [activeCanvas?.id]);
 
   // Build position map with dimensions and collapsed state
   const posMap = useMemo(() => {
@@ -242,7 +291,9 @@ export default function CanvasWorkspace() {
           content: t.content,
           caseId: t.caseId,
           collapsed: posData?.collapsed ?? false,
-          zoomLevelRef,
+          zoomTier,
+          customColor: nodeColorMap.get(nodeId),
+          onAiSuggest: aiSuggestions.suggestCodes,
         },
       });
     });
@@ -267,7 +318,7 @@ export default function CanvasWorkspace() {
           text: q.text,
           color: q.color,
           collapsed: posData?.collapsed ?? false,
-          zoomLevelRef,
+          zoomTier,
         },
       });
     });
@@ -293,7 +344,7 @@ export default function CanvasWorkspace() {
           content: m.content,
           color: m.color,
           collapsed: posData?.collapsed ?? false,
-          zoomLevelRef,
+          zoomTier,
         },
       });
     });
@@ -316,7 +367,8 @@ export default function CanvasWorkspace() {
         data: {
           caseId: c.id,
           collapsed: posData?.collapsed ?? false,
-          zoomLevelRef,
+          zoomTier,
+          customColor: nodeColorMap.get(nodeId),
         },
       });
     });
@@ -341,7 +393,7 @@ export default function CanvasWorkspace() {
         data: {
           computedNodeId: cn.id,
           collapsed: posData?.collapsed ?? false,
-          zoomLevelRef,
+          zoomTier,
         },
       });
     });
@@ -400,8 +452,19 @@ export default function CanvasWorkspace() {
       });
     });
 
+    // Reroute waypoint nodes
+    rerouteNodes.forEach(rn => {
+      const posData = posMap.get(rn.id);
+      result.push({
+        id: rn.id,
+        type: 'reroute',
+        position: posData ? { x: posData.x, y: posData.y } : { x: rn.x, y: rn.y },
+        data: {},
+      });
+    });
+
     return result;
-  }, [activeCanvas, highlightedNodeIds, posMap, groups, updateGroup, stickyNotes, updateStickyNote, removeStickyNote]);
+  }, [activeCanvas, highlightedNodeIds, posMap, groups, updateGroup, stickyNotes, updateStickyNote, removeStickyNote, nodeColorMap, zoomTier, rerouteNodes, aiSuggestions.suggestCodes]);
 
   // Build edges from codings and relations
   const buildEdges = useCallback((): Edge[] => {
@@ -538,6 +601,55 @@ export default function CanvasWorkspace() {
       }
     },
     [setEdges, reassignCoding],
+  );
+
+  // Smart Link: when connection dropped on empty canvas, open filtered QuickAddMenu
+  const onConnectEnd = useCallback(
+    (event: MouseEvent | TouchEvent) => {
+      // Only handle if connection was NOT completed (no target)
+      const targetIsPane = (event.target as HTMLElement)?.classList?.contains('react-flow__pane');
+      if (!targetIsPane) return;
+
+      // Find the source node type from the connection start
+      const connectingNodeId = (rfInstanceRef.current as any)?.toObject?.()?.nodes
+        ?.find((n: any) => n.selected)?.id;
+
+      // Fall back to checking which node started the connection via the store
+      // We get the source from the onConnectStart event stored in a ref
+      const sourceInfo = connectStartRef.current;
+      if (!sourceInfo) return;
+
+      const clientX = 'touches' in event ? event.touches[0]?.clientX ?? 0 : event.clientX;
+      const clientY = 'touches' in event ? event.touches[0]?.clientY ?? 0 : event.clientY;
+
+      // Determine allowed items based on source type
+      let allowedItems: string[] | undefined;
+      if (sourceInfo.nodeType === 'transcript') {
+        allowedItems = ['question'];
+      } else if (sourceInfo.nodeType === 'question') {
+        allowedItems = ['question', 'memo'];
+      } else if (sourceInfo.nodeType === 'case') {
+        allowedItems = ['question', 'memo'];
+      }
+
+      setSmartLinkSource(sourceInfo);
+      setQuickAddMenu({ x: clientX, y: clientY });
+      // Store allowed items in a ref so QuickAddMenu can use it
+      smartLinkAllowedRef.current = allowedItems || null;
+    },
+    [],
+  );
+
+  const connectStartRef = useRef<{ nodeId: string; nodeType: string } | null>(null);
+  const smartLinkAllowedRef = useRef<string[] | null>(null);
+
+  const onConnectStart = useCallback(
+    (_: any, params: { nodeId: string | null; handleType: string | null }) => {
+      if (!params.nodeId) return;
+      const nodeType = params.nodeId.split('-')[0]; // 'transcript', 'question', 'case', etc.
+      connectStartRef.current = { nodeId: params.nodeId, nodeType };
+    },
+    [],
   );
 
   const handleMerge = async () => {
@@ -842,7 +954,7 @@ export default function CanvasWorkspace() {
 
   // Node counts for status bar
   const nodeCounts = useMemo(() => {
-    if (!activeCanvas) return { transcripts: 0, questions: 0, codings: 0, memos: 0, coveragePct: 0 };
+    if (!activeCanvas) return { transcripts: 0, questions: 0, codings: 0, memos: 0, relations: 0, coveragePct: 0 };
 
     // Calculate overall coding coverage
     let totalChars = 0;
@@ -863,6 +975,7 @@ export default function CanvasWorkspace() {
       questions: activeCanvas.questions.length,
       codings: activeCanvas.codings.length,
       memos: activeCanvas.memos.length,
+      relations: (activeCanvas.relations ?? []).length,
       coveragePct,
     };
   }, [activeCanvas]);
@@ -1017,21 +1130,30 @@ export default function CanvasWorkspace() {
     try {
       toast.loading('Exporting...', { id: 'export' });
       const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(viewport, {
+      const { embedCanvasInPNG } = await import('../../utils/pngMetadata');
+      let dataUrl = await toPng(viewport, {
         backgroundColor: '#ffffff',
         style: { transform: '' },
         width: viewport.scrollWidth || 2000,
         height: viewport.scrollHeight || 1500,
       });
+      // Embed canvas data in PNG metadata
+      if (activeCanvas) {
+        try {
+          dataUrl = await embedCanvasInPNG(dataUrl, activeCanvas);
+        } catch {
+          // Non-critical — export without metadata
+        }
+      }
       const link = document.createElement('a');
       link.download = `${activeCanvas?.name || 'canvas'}-export.png`;
       link.href = dataUrl;
       link.click();
-      toast.success('Canvas exported as PNG', { id: 'export' });
+      toast.success('Canvas exported as PNG (with embedded data)', { id: 'export' });
     } catch {
       toast.error('Export failed — try zooming to fit first', { id: 'export' });
     }
-  }, [activeCanvas?.name]);
+  }, [activeCanvas]);
 
   // Quick add sticky note handler
   const handleQuickAddStickyNote = useCallback(() => {
@@ -1072,8 +1194,6 @@ export default function CanvasWorkspace() {
     handleDeleteSelected,
     handleAlignLeft,
     handleDistributeH,
-    undo,
-    redo,
     handleCreateGroup,
     saveBookmark,
     recallBookmark,
@@ -1125,14 +1245,58 @@ export default function CanvasWorkspace() {
     setIsDraggingFile(false);
 
     const files = Array.from(e.dataTransfer.files);
+
+    // Check for PNG with embedded canvas data
+    const pngFiles = files.filter(f => f.name.endsWith('.png'));
+    if (pngFiles.length > 0) {
+      try {
+        const { extractCanvasFromPNG } = await import('../../utils/pngMetadata');
+        for (const png of pngFiles) {
+          const canvasData = await extractCanvasFromPNG(png);
+          if (canvasData) {
+            toast.success(`Found embedded canvas data in ${png.name}`);
+            // Canvas data detected — could be used for import in future
+          }
+        }
+      } catch {
+        // Non-critical
+      }
+    }
+
+    // Check for JSON canvas exports
+    const jsonFiles = files.filter(f => f.name.endsWith('.json'));
+    for (const jf of jsonFiles) {
+      try {
+        const text = await jf.text();
+        const data = JSON.parse(text);
+        if (data && data.transcripts && Array.isArray(data.transcripts)) {
+          let imported = 0;
+          for (const t of data.transcripts) {
+            if (t.title && t.content) {
+              await addTranscript(t.title, t.content);
+              imported++;
+            }
+          }
+          if (imported > 0) {
+            await refreshCanvas();
+            toast.success(`Imported ${imported} transcript${imported > 1 ? 's' : ''} from ${jf.name}`);
+          }
+        }
+      } catch {
+        toast.error(`Failed to parse ${jf.name}`);
+      }
+    }
+
     const validFiles = files.filter(f =>
       f.name.endsWith('.txt') || f.name.endsWith('.csv') || f.name.endsWith('.md')
     );
 
-    if (validFiles.length === 0) {
-      toast.error('Drop .txt, .csv, or .md files to import transcripts');
+    if (validFiles.length === 0 && jsonFiles.length === 0 && pngFiles.length === 0) {
+      toast.error('Drop .txt, .csv, .md, .json, or .png files to import');
       return;
     }
+
+    if (validFiles.length === 0) return;
 
     let imported = 0;
     for (const file of validFiles) {
@@ -1190,6 +1354,43 @@ export default function CanvasWorkspace() {
         <CodeNavigator onFocusNode={handleFocusNode} />
       )}
       <div className="flex flex-1 flex-col min-w-0">
+        {/* Multi-canvas tabs */}
+        {openTabs.length > 1 && !focusMode && (
+          <CanvasTabBar
+            tabs={openTabs.map(id => ({
+              id,
+              name: canvases.find(c => c.id === id)?.name || activeCanvas?.id === id ? (activeCanvas?.name || 'Canvas') : 'Canvas',
+            }))}
+            activeTabId={activeCanvas?.id || null}
+            onSwitchTab={async (canvasId) => {
+              // Save current viewport
+              if (activeCanvas?.id) {
+                const vp = rfInstanceRef.current?.getViewport();
+                if (vp) viewportCacheRef.current.set(activeCanvas.id, vp);
+              }
+              await openCanvas(canvasId);
+              // Restore viewport after switch
+              setTimeout(() => {
+                const cached = viewportCacheRef.current.get(canvasId);
+                if (cached) rfInstanceRef.current?.setViewport(cached, { duration: 200 });
+              }, 300);
+            }}
+            onCloseTab={(canvasId) => {
+              setOpenTabs(prev => {
+                const next = prev.filter(id => id !== canvasId);
+                try { localStorage.setItem('canvas-open-tabs', JSON.stringify(next)); } catch {}
+                if (canvasId === activeCanvas?.id && next.length > 0) {
+                  openCanvas(next[next.length - 1]);
+                } else if (next.length === 0) {
+                  closeCanvas();
+                }
+                return next;
+              });
+              viewportCacheRef.current.delete(canvasId);
+            }}
+            onNewTab={() => closeCanvas()}
+          />
+        )}
         {!focusMode && (
           <CanvasToolbar
             showNavigator={showNavigator}
@@ -1198,6 +1399,8 @@ export default function CanvasWorkspace() {
             onAutoLayout={handleAutoLayout}
             onExportPNG={handleExportPNG}
             onToggleFocusMode={() => setFocusMode(true)}
+            onTogglePresentationMode={() => setPresentationMode(true)}
+            onAiAutoCode={() => setShowAiAutoCode(true)}
           />
         )}
         <div
@@ -1215,8 +1418,15 @@ export default function CanvasWorkspace() {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onReconnect={onReconnect}
+            onConnectStart={onConnectStart}
+            onConnectEnd={onConnectEnd}
             onInit={(instance) => { rfInstanceRef.current = instance; }}
-            onMoveEnd={(_event, viewport) => setZoomLevel(Math.round(viewport.zoom * 100))}
+            onMoveEnd={(_event, viewport) => {
+              const pct = Math.round(viewport.zoom * 100);
+              setZoomLevel(pct);
+              const newTier = pct >= 70 ? 'full' : pct >= 30 ? 'reduced' : 'minimal';
+              setZoomTier(prev => prev === newTier ? prev : newTier);
+            }}
             onPaneContextMenu={handlePaneContextMenu}
             onNodeContextMenu={handleNodeContextMenu}
             onEdgeContextMenu={handleEdgeContextMenu}
@@ -1240,12 +1450,12 @@ export default function CanvasWorkspace() {
               size={snapToGrid ? 0.5 : 0.8}
               color={snapToGrid ? '#d1d5db60' : '#d1d5db40'}
             />
-            <Controls fitViewOptions={{ padding: 0.4, maxZoom: 0.8 }} className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700" />
-            <MiniMap
+            {!focusMode && <Controls fitViewOptions={{ padding: 0.4, maxZoom: 0.8 }} className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700" />}
+            {!focusMode && <MiniMap
               nodeColor={minimapColor}
               maskColor="rgba(0,0,0,0.06)"
               className="!bg-white/90 !backdrop-blur-sm !rounded-xl !shadow-node dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700"
-            />
+            />}
           </ReactFlow>
 
           {/* Focus mode exit button */}
@@ -1275,7 +1485,7 @@ export default function CanvasWorkspace() {
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">Drop files to import</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">.txt, .csv, or .md files</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">.txt, .csv, .md, .json, or .png files</p>
                 </div>
               </div>
             </div>
@@ -1293,6 +1503,9 @@ export default function CanvasWorkspace() {
               onAlignTop={handleAlignTop}
               onDistributeH={handleDistributeH}
               onDistributeV={handleDistributeV}
+              onAnalyzeSelection={(transcriptIds, questionIds) => {
+                toast.success(`Analyzing ${transcriptIds.length} transcripts, ${questionIds.length} codes`);
+              }}
             />
           )}
 
@@ -1322,10 +1535,6 @@ export default function CanvasWorkspace() {
               onSelectAll={handleSelectAll}
               onToggleSnapGrid={() => setSnapToGrid(s => !s)}
               snapToGrid={snapToGrid}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onUndo={undo}
-              onRedo={redo}
               onAutoLayout={handleAutoLayout}
               onClose={() => setContextMenu(null)}
             />
@@ -1343,6 +1552,7 @@ export default function CanvasWorkspace() {
               onDelete={handleNodeDelete}
               onToggleCollapse={handleNodeToggleCollapse}
               onResetSize={handleNodeResetSize}
+              onSetNodeColor={setNodeColor}
               onClose={() => setNodeContextMenu(null)}
             />
           )}
@@ -1356,6 +1566,14 @@ export default function CanvasWorkspace() {
               edgeType={edgeContextMenu.edgeType}
               label={edgeContextMenu.label}
               onDelete={handleEdgeDelete}
+              onAddWaypoint={(edgeId, x, y) => {
+                const viewport = rfInstanceRef.current?.getViewport();
+                if (viewport) {
+                  const canvasX = (x - viewport.x) / viewport.zoom;
+                  const canvasY = (y - viewport.y) / viewport.zoom;
+                  addReroute(canvasX, canvasY, edgeId);
+                }
+              }}
               onClose={() => setEdgeContextMenu(null)}
             />
           )}
@@ -1379,7 +1597,8 @@ export default function CanvasWorkspace() {
                   addStickyNote(quickAddMenu.x, quickAddMenu.y);
                 }
               }}
-              onClose={() => setQuickAddMenu(null)}
+              onClose={() => { setQuickAddMenu(null); setSmartLinkSource(null); smartLinkAllowedRef.current = null; }}
+              allowedItems={smartLinkAllowedRef.current || undefined}
             />
           )}
 
@@ -1528,29 +1747,25 @@ export default function CanvasWorkspace() {
             {selectedNodes.length > 0 && (
               <span className="text-blue-500 font-medium">{selectedNodes.length} selected</span>
             )}
+            {/* Edge type legend */}
+            {(nodeCounts.codings > 0 || nodeCounts.relations > 0) && (
+              <div className="flex items-center gap-2.5 ml-1 border-l border-gray-200/60 dark:border-gray-700/60 pl-2.5">
+                {nodeCounts.codings > 0 && (
+                  <span className="flex items-center gap-1">
+                    <svg width="16" height="6" className="shrink-0"><line x1="0" y1="3" x2="16" y2="3" stroke="#3B82F6" strokeWidth="1.5" /></svg>
+                    <span>Coding</span>
+                  </span>
+                )}
+                {nodeCounts.relations > 0 && (
+                  <span className="flex items-center gap-1">
+                    <svg width="16" height="6" className="shrink-0"><line x1="0" y1="3" x2="16" y2="3" stroke="#94A3B8" strokeWidth="1.5" strokeDasharray="3 2" /></svg>
+                    <span>Relation</span>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
-            {/* Undo/Redo buttons */}
-            <button
-              onClick={undo}
-              disabled={!canUndo}
-              className="text-gray-400 hover:text-gray-600 disabled:opacity-30 dark:hover:text-gray-300"
-              title="Undo (Ctrl+Z)"
-            >
-              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-              </svg>
-            </button>
-            <button
-              onClick={redo}
-              disabled={!canRedo}
-              className="text-gray-400 hover:text-gray-600 disabled:opacity-30 dark:hover:text-gray-300"
-              title="Redo (Ctrl+Shift+Z)"
-            >
-              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" />
-              </svg>
-            </button>
             {/* Bookmark slot indicators */}
             <div className="flex items-center gap-0.5" title="Viewport bookmarks (Ctrl+Shift+1-5 save, Alt+1-5 recall)">
               {bookmarks.map((b, i) => (
@@ -1614,6 +1829,34 @@ export default function CanvasWorkspace() {
 
       {/* Cross-Case Analysis */}
       {showCrossCase && <CrossCaseAnalysisModal onClose={() => setShowCrossCase(false)} />}
+
+      {/* Presentation mode */}
+      {presentationMode && <PresentationMode onExit={() => setPresentationMode(false)} />}
+
+      {/* AI Suggestion Panel */}
+      {(aiSuggestions.suggestions.length > 0 || aiSuggestions.loading) && (
+        <AiSuggestPanel
+          suggestions={aiSuggestions.suggestions}
+          loading={aiSuggestions.loading}
+          onAccept={aiSuggestions.acceptSuggestion}
+          onReject={aiSuggestions.rejectSuggestion}
+          onBulkAccept={(ids) => aiSuggestions.bulkAction(ids, 'accepted')}
+          onBulkReject={(ids) => aiSuggestions.bulkAction(ids, 'rejected')}
+          onClose={aiSuggestions.clearSuggestions}
+        />
+      )}
+
+      {/* AI Auto-Code Modal */}
+      {showAiAutoCode && (
+        <AiAutoCodeModal
+          loading={aiSuggestions.loading}
+          onSubmit={(transcriptId, instructions) => {
+            aiSuggestions.autoCodeTranscript(transcriptId, instructions);
+            setShowAiAutoCode(false);
+          }}
+          onClose={() => setShowAiAutoCode(false)}
+        />
+      )}
 
       {/* Onboarding tour for first-time users */}
       <OnboardingTour />

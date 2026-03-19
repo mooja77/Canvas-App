@@ -12,6 +12,7 @@ export function useSessionTimeout() {
   const [showWarning, setShowWarning] = useState(false);
   const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const logoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActivityRef = useRef<number>(0);
 
   const resetTimers = useCallback(() => {
     // Clear existing timers
@@ -35,6 +36,9 @@ export function useSessionTimeout() {
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
 
     const handleActivity = () => {
+      const now = Date.now();
+      if (now - lastActivityRef.current < 5000) return; // Throttle: 5 seconds
+      lastActivityRef.current = now;
       resetTimers();
     };
 

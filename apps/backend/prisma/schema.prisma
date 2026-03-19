@@ -7,6 +7,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  emailVerified    Boolean   @default(false)
+  passwordHash     String
+  name             String
+  role             String    @default("researcher")
+  plan             String    @default("free")
+  stripeCustomerId String?   @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  resetTokenHash   String?
+  resetTokenExpiry DateTime?
+
+  subscription     Subscription?
+  codingCanvases   CodingCanvas[]
+  dashboardAccess  DashboardAccess?
+  repositories     ResearchRepository[]
+  integrations     Integration[]
+
+  @@index([email])
+  @@index([stripeCustomerId])
+}
+
+model Subscription {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  stripeSubscriptionId String   @unique
+  stripePriceId        String
+  status               String   // active | past_due | canceled | trialing
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model DashboardAccess {
   id             String   @id @default(cuid())
   accessCode     String   @unique
@@ -15,6 +53,8 @@ model DashboardAccess {
   role           String // policymaker | funder | researcher
   expiresAt      DateTime
   createdAt      DateTime @default(now())
+  userId         String?  @unique
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   codingCanvases CodingCanvas[]
 }
@@ -24,6 +64,7 @@ model DashboardAccess {
 model CodingCanvas {
   id                 String               @id @default(cuid())
   dashboardAccessId  String
+  userId             String?
   name               String
   description        String?
   ethicsApprovalId   String?
@@ -33,6 +74,7 @@ model CodingCanvas {
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   dashboardAccess    DashboardAccess      @relation(fields: [dashboardAccessId], references: [id], onDelete: Cascade)
+  user               User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
   transcripts        CanvasTranscript[]
   questions          CanvasQuestion[]
   memos              CanvasMemo[]
@@ -43,9 +85,18 @@ model CodingCanvas {
   computedNodes      CanvasComputedNode[]
   shares             CanvasShare[]
   consentRecords     ConsentRecord[]
+  aiSuggestions      AiSuggestion[]
+  fileUploads        FileUpload[]
+  textEmbeddings     TextEmbedding[]
+  chatMessages       ChatMessage[]
+  summaries          Summary[]
+  collaborators      CanvasCollaborator[]
+  documents          CanvasDocument[]
+  trainingDocuments  TrainingDocument[]
 
   @@unique([dashboardAccessId, name])
   @@index([dashboardAccessId])
+  @@index([userId])
   @@index([deletedAt])
 }
 
@@ -75,11 +126,18 @@ model CanvasTranscript {
   deletedAt     DateTime?
   isAnonymized  Boolean            @default(false)
   participantId String?
+  fileUploadId  String?
+  timestamps    String?            // JSON: [{start, end, text}]
+  eventDate     DateTime?
+  latitude      Float?
+  longitude     Float?
+  locationName  String?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   canvas        CodingCanvas       @relation(fields: [canvasId], references: [id], onDelete: Cascade)
   case          CanvasCase?        @relation(fields: [caseId], references: [id], onDelete: SetNull)
   codings       CanvasTextCoding[]
+  aiSuggestions AiSuggestion[]
 
   @@index([canvasId])
   @@index([caseId])
@@ -229,4 +287,245 @@ model AuditLog {
   meta       String?
 
   @@index([action])
+}
+
+model WebhookEvent {
+  id        String   @id // Stripe event ID
+  type      String
+  createdAt DateTime @default(now())
+}
+
+// ─── Collaboration ───
+
+model CanvasCollaborator {
+  id        String       @id @default(cuid())
+  canvasId  String
+  userId    String
+  role      String       @default("editor") // owner | editor | viewer
+  invitedBy String?
+  createdAt DateTime     @default(now())
+  canvas    CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@unique([canvasId, userId])
+  @@index([canvasId])
+  @@index([userId])
+}
+
+// ─── Documents & Region Coding ───
+
+model CanvasDocument {
+  id            String                @id @default(cuid())
+  canvasId      String
+  fileUploadId  String
+  title         String
+  docType       String                // image | pdf
+  pageCount     Int                   @default(1)
+  metadata      String                @default("{}")
+  createdAt     DateTime              @default(now())
+  canvas        CodingCanvas          @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  regionCodings DocumentRegionCoding[]
+  @@index([canvasId])
+}
+
+model DocumentRegionCoding {
+  id         String         @id @default(cuid())
+  documentId String
+  questionId String
+  pageNumber Int            @default(1)
+  x          Float          // percentage 0-100
+  y          Float
+  width      Float
+  height     Float
+  note       String?
+  createdAt  DateTime       @default(now())
+  document   CanvasDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  @@index([documentId])
+}
+
+// ─── Training Center ───
+
+model TrainingDocument {
+  id             String            @id @default(cuid())
+  canvasId       String
+  transcriptId   String
+  name           String
+  instructions   String?
+  goldCodings    String            // JSON: [{questionId, startOffset, endOffset, codedText}]
+  passThreshold  Float             @default(0.7)
+  createdAt      DateTime          @default(now())
+  canvas         CodingCanvas      @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  attempts       TrainingAttempt[]
+  @@index([canvasId])
+}
+
+model TrainingAttempt {
+  id                 String           @id @default(cuid())
+  trainingDocumentId String
+  userId             String
+  codings            String           // JSON
+  kappaScore         Float?
+  passed             Boolean          @default(false)
+  createdAt          DateTime         @default(now())
+  trainingDocument   TrainingDocument @relation(fields: [trainingDocumentId], references: [id], onDelete: Cascade)
+  @@index([trainingDocumentId])
+}
+
+// ─── File Upload & Transcription ───
+
+model FileUpload {
+  id                String              @id @default(cuid())
+  canvasId          String?
+  userId            String?
+  storageKey        String              @unique
+  originalName      String
+  mimeType          String
+  sizeBytes         Int
+  status            String              @default("uploaded") // uploaded | processing | ready | error
+  metadata          String              @default("{}")
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  canvas            CodingCanvas?       @relation(fields: [canvasId], references: [id], onDelete: SetNull)
+  transcriptionJobs TranscriptionJob[]
+
+  @@index([canvasId])
+  @@index([storageKey])
+}
+
+model TranscriptionJob {
+  id             String     @id @default(cuid())
+  fileUploadId   String
+  canvasId       String
+  status         String     @default("queued") // queued | processing | completed | failed
+  progress       Float      @default(0)
+  resultText     String?
+  resultSegments String?    // JSON: [{start, end, text}]
+  errorMessage   String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  fileUpload     FileUpload @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
+
+  @@index([canvasId])
+  @@index([status])
+}
+
+// ─── Research Assistant ───
+
+model TextEmbedding {
+  id         String       @id @default(cuid())
+  canvasId   String
+  sourceType String       // transcript_chunk | coding | memo
+  sourceId   String
+  chunkIndex Int          @default(0)
+  chunkText  String
+  embedding  String       // JSON float array
+  createdAt  DateTime     @default(now())
+  canvas     CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  @@unique([sourceType, sourceId, chunkIndex])
+  @@index([canvasId])
+}
+
+model ChatMessage {
+  id        String       @id @default(cuid())
+  canvasId  String
+  userId    String?
+  role      String       // user | assistant
+  content   String
+  citations String       @default("[]") // JSON: [{sourceType, sourceId, text}]
+  createdAt DateTime     @default(now())
+  canvas    CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  @@index([canvasId, createdAt])
+}
+
+model Summary {
+  id          String       @id @default(cuid())
+  canvasId    String
+  sourceType  String       // transcript | coding | question | canvas
+  sourceId    String?
+  summaryText String
+  summaryType String       @default("paraphrase") // paraphrase | abstract | thematic
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  canvas      CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  @@index([canvasId])
+  @@index([sourceType, sourceId])
+}
+
+// ─── AI Features ───
+
+model AiSuggestion {
+  id            String           @id @default(cuid())
+  canvasId      String
+  transcriptId  String
+  questionId    String?
+  suggestedText String
+  startOffset   Int
+  endOffset     Int
+  codedText     String
+  confidence    Float            @default(0)
+  status        String           @default("pending") // pending | accepted | rejected
+  createdAt     DateTime         @default(now())
+  canvas        CodingCanvas     @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  transcript    CanvasTranscript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  @@index([canvasId])
+  @@index([transcriptId])
+  @@index([status])
+}
+
+model AiUsage {
+  id           String   @id @default(cuid())
+  userId       String?
+  canvasId     String?
+  feature      String   // suggest_codes | auto_code | summarize | chat | transcribe
+  provider     String   // openai | anthropic
+  model        String
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  costCents    Float    @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ─── Research Repository ───
+
+model ResearchRepository {
+  id          String              @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  createdAt   DateTime            @default(now())
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insights    RepositoryInsight[]
+  @@unique([userId, name])
+}
+
+model RepositoryInsight {
+  id           String             @id @default(cuid())
+  repositoryId String
+  canvasId     String?
+  title        String
+  content      String
+  tags         String             @default("[]")
+  sourceType   String?
+  sourceId     String?
+  createdAt    DateTime           @default(now())
+  repository   ResearchRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  @@index([repositoryId])
+}
+
+// ─── Integrations ───
+
+model Integration {
+  id           String    @id @default(cuid())
+  userId       String
+  provider     String    // zoom | slack | qualtrics
+  accessToken  String
+  refreshToken String?
+  metadata     String    @default("{}")
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, provider])
 }

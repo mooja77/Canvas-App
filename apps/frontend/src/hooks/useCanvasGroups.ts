@@ -14,6 +14,10 @@ export interface CanvasGroup {
   y: number;
   width: number;
   height: number;
+  /** Node IDs that belong to this group/theme */
+  memberNodeIds?: string[];
+  /** Whether the group is collapsed as a theme summary card */
+  collapsedAsTheme?: boolean;
 }
 
 const STORAGE_KEY_PREFIX = 'canvas-groups-';
@@ -60,6 +64,9 @@ export interface UseCanvasGroupsReturn {
   addGroup: (title: string, color: string, x: number, y: number, width: number, height: number) => string;
   removeGroup: (id: string) => void;
   updateGroup: (id: string, updates: Partial<Omit<CanvasGroup, 'id'>>) => void;
+  setGroupMembers: (id: string, memberNodeIds: string[]) => void;
+  collapseGroupAsTheme: (id: string) => void;
+  expandGroup: (id: string) => void;
 }
 
 /**
@@ -119,5 +126,41 @@ export function useCanvasGroups(): UseCanvasGroupsReturn {
     [canvasId],
   );
 
-  return { groups, addGroup, removeGroup, updateGroup };
+  const setGroupMembers = useCallback(
+    (id: string, memberNodeIds: string[]) => {
+      if (!canvasId) return;
+      setGroups(prev => {
+        const next = prev.map(g => g.id === id ? { ...g, memberNodeIds } : g);
+        persistGroups(canvasId, next);
+        return next;
+      });
+    },
+    [canvasId],
+  );
+
+  const collapseGroupAsTheme = useCallback(
+    (id: string) => {
+      if (!canvasId) return;
+      setGroups(prev => {
+        const next = prev.map(g => g.id === id ? { ...g, collapsedAsTheme: true } : g);
+        persistGroups(canvasId, next);
+        return next;
+      });
+    },
+    [canvasId],
+  );
+
+  const expandGroup = useCallback(
+    (id: string) => {
+      if (!canvasId) return;
+      setGroups(prev => {
+        const next = prev.map(g => g.id === id ? { ...g, collapsedAsTheme: false } : g);
+        persistGroups(canvasId, next);
+        return next;
+      });
+    },
+    [canvasId],
+  );
+
+  return { groups, addGroup, removeGroup, updateGroup, setGroupMembers, collapseGroupAsTheme, expandGroup };
 }

@@ -1,0 +1,18 @@
+{
+  "name": "Canvas App - Qualitative Coding",
+  "short_name": "Canvas App",
+  "description": "A qualitative coding canvas for researchers. Organize, code, and analyze textual data visually.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3B82F6",
+  "orientation": "any",
+  "categories": ["productivity", "education"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

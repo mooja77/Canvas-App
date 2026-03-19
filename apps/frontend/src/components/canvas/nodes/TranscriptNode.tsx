@@ -19,6 +19,9 @@ export interface TranscriptNodeData {
   caseId?: string | null;
   collapsed?: boolean;
   zoomLevel?: number;
+  zoomTier?: 'full' | 'reduced' | 'minimal';
+  customColor?: string;
+  onAiSuggest?: (transcriptId: string, codedText: string, startOffset: number, endOffset: number) => void;
   [key: string]: unknown;
 }
 
@@ -152,8 +155,9 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [collapsed, setCollapsed] = useState(nodeData.collapsed ?? false);
 
-  const zoomLevel = (nodeData.zoomLevel ?? 100);
-  const isZoomedOut = zoomLevel < 30;
+  const zoomTier = nodeData.zoomTier ?? 'full';
+  const isReduced = zoomTier === 'reduced';
+  const isMinimal = zoomTier === 'minimal';
 
   const codings = useMemo(
     () => (activeCanvas?.codings ?? []).filter((c: CanvasTextCoding) => c.transcriptId === nodeData.transcriptId),
@@ -277,7 +281,10 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
   );
 
   return (
-    <div className={`min-w-[280px] w-full h-full rounded-xl border border-blue-200/60 bg-white shadow-node transition-all duration-200 hover:shadow-node-hover dark:border-blue-800/60 dark:bg-gray-800 ${selected ? 'ring-2 ring-blue-400' : ''}`}>
+    <div
+      className={`min-w-[280px] w-full h-full rounded-xl border bg-white shadow-node transition-all duration-200 hover:shadow-node-hover dark:bg-gray-800 ${nodeData.customColor ? '' : 'border-blue-200/60 dark:border-blue-800/60'} ${selected ? 'ring-2 ring-blue-400' : ''}`}
+      style={nodeData.customColor ? { borderColor: nodeData.customColor, borderLeftWidth: 4 } : undefined}
+    >
       <NodeResizer
         minWidth={280}
         minHeight={collapsed ? 44 : 100}
@@ -300,6 +307,11 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
           )}
         </div>
         <div className="flex items-center gap-0.5">
+          {collapsed && codings.length > 0 && (
+            <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+              {codings.length} coding{codings.length !== 1 ? 's' : ''}
+            </span>
+          )}
           <button
             onClick={() => setCollapsed(c => !c)}
             className="rounded p-0.5 text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800"
@@ -321,9 +333,9 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
         </div>
       </div>
 
-      {/* Body - collapsible */}
-      {!collapsed && !isZoomedOut && (
-        <>
+      {/* Body - collapsible with transition */}
+      {!collapsed && zoomTier === 'full' && (
+        <div className="overflow-hidden transition-[max-height] duration-200">
           {/* Scrollable text body with optional coding stripes + density bar */}
           <div className="relative">
             {showCodingStripes && codings.length > 0 && (
@@ -378,12 +390,24 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
               {wordCount.toLocaleString()} words
             </span>
           </div>
-        </>
+        </div>
       )}
 
-      {/* Zoomed out simplified view */}
-      {!collapsed && isZoomedOut && (
-        <div className="px-3 py-2 text-[10px] text-gray-400">{codings.length} codings</div>
+      {/* Reduced zoom: title + coding count */}
+      {!collapsed && isReduced && (
+        <div className="px-3 py-2 flex items-center justify-between">
+          <span className="text-[10px] text-blue-500 dark:text-blue-400 font-medium">
+            {codings.length} coding{codings.length !== 1 ? 's' : ''}
+          </span>
+          <span className="text-[10px] text-gray-300 dark:text-gray-600 tabular-nums">
+            {wordCount.toLocaleString()} words
+          </span>
+        </div>
+      )}
+
+      {/* Minimal zoom: colored rectangle with truncated title */}
+      {!collapsed && isMinimal && (
+        <div className="px-2 py-1 text-[9px] text-gray-400 truncate">{codings.length}c</div>
       )}
 
       {/* Source handle — visible when there's a pending selection */}
@@ -406,6 +430,7 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
           onClose={() => {
             setQuickCodePopover(null);
           }}
+          onAiSuggest={nodeData.onAiSuggest}
         />
       )}
 

@@ -110,3 +110,100 @@ All protected endpoints require the `x-dashboard-code` header containing a JWT t
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/health` | No | Health check with DB ping |
+
+## Email Authentication
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/auth/signup` | No | Create email account |
+| POST | `/auth/email-login` | No | Login with email/password |
+| POST | `/auth/forgot-password` | No | Request password reset |
+| POST | `/auth/reset-password` | No | Reset password with token |
+| GET | `/auth/me` | Yes | Get current user profile, subscription & usage |
+| POST | `/auth/link-account` | Yes | Link email to legacy access-code account |
+| PUT | `/auth/profile` | Yes | Update name/email |
+| PUT | `/auth/change-password` | Yes | Change password |
+| DELETE | `/auth/account` | Yes | Delete account (requires password) |
+
+**POST /auth/signup** — `{ email: string, password: string (min 8), name: string (1-100) }`
+Returns: `{ jwt, user: { id, email, name, role, plan } }`
+
+**POST /auth/email-login** — `{ email: string, password: string }`
+Returns: `{ jwt, user: { id, email, name, role, plan } }`
+
+**POST /auth/forgot-password** — `{ email: string }`
+Returns: `{ message: "If an account exists, a reset link has been sent" }`
+
+**POST /auth/reset-password** — `{ email: string, token: string, newPassword: string (min 8) }`
+Returns: `{ message: "Password reset successful" }`
+
+**GET /auth/me** — Returns: `{ user, subscription, usage, authType }`
+
+**PUT /auth/profile** — `{ name?: string, email?: string }`
+
+**PUT /auth/change-password** — `{ currentPassword: string, newPassword: string (min 8) }`
+
+**DELETE /auth/account** — `{ password: string }`
+
+## Billing
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/billing/create-checkout` | Yes | Create Stripe Checkout session |
+| POST | `/billing/create-portal` | Yes | Create Stripe Customer Portal session |
+| GET | `/billing/subscription` | Yes | Get current subscription status |
+| POST | `/billing/webhook` | No | Stripe webhook endpoint |
+
+**POST /billing/create-checkout** — `{ priceId: string, plan: "pro"|"team" }`
+Returns: `{ url: string }` (redirect to Stripe Checkout)
+
+**POST /billing/create-portal**
+Returns: `{ url: string }` (redirect to Stripe Customer Portal)
+
+**GET /billing/subscription**
+Returns: `{ subscription: { status, plan, currentPeriodEnd, cancelAtPeriodEnd } | null }`
+
+## Ethics
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/canvas/:id/ethics` | Yes | Get ethics settings |
+| PUT | `/canvas/:id/ethics` | Yes | Update ethics settings |
+| POST | `/canvas/:id/ethics/consent` | Yes | Record participant consent |
+| POST | `/canvas/:id/ethics/consent/withdraw` | Yes | Withdraw consent |
+| GET | `/canvas/:id/ethics/audit` | Yes | Get ethics audit log |
+| POST | `/canvas/:id/transcripts/:tid/anonymize` | Yes | Anonymize transcript |
+
+## Plan Limits
+
+Plan limit enforcement returns HTTP 403 with:
+```json
+{
+  "success": false,
+  "error": "Free plan allows max 1 canvas",
+  "code": "PLAN_LIMIT_EXCEEDED",
+  "limit": "canvases",
+  "current": 1,
+  "max": 1,
+  "upgrade": true
+}
+```
+
+The `X-User-Plan` response header is included on all authenticated responses for client-side plan sync.
+
+### Free Plan Limits
+- 1 canvas, 2 transcripts/canvas, 5,000 words/transcript
+- 5 codes, CSV export only
+- No auto-code, shares, ethics, or cases
+- Stats & Word Cloud analysis only
+
+### Pro Plan ($12/mo)
+- Unlimited canvases, transcripts, codes
+- 50,000 words/transcript
+- All 10 analysis tools, auto-code
+- 5 share codes, ethics panel, cases
+
+### Team Plan ($29/mo/seat)
+- Everything in Pro
+- Unlimited share codes
+- Intercoder reliability (Kappa)

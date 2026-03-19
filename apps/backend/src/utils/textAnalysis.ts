@@ -3,6 +3,20 @@
  * All functions are pure — they take data arrays and return result objects.
  */
 
+import { AppError } from '../middleware/errorHandler.js';
+
+/**
+ * Check if a regex pattern is safe from ReDoS attacks.
+ * Rejects overly long patterns and those with nested quantifiers.
+ */
+function isSafeRegex(pattern: string): boolean {
+  if (pattern.length > 200) return false;
+  // Detect nested quantifiers: (group+)+ etc
+  if (/\([^)]*[+*]\)\s*[+*]/.test(pattern)) return false;
+  if (/\([^)]*[+*]\)\s*\{/.test(pattern)) return false;
+  return true;
+}
+
 // Configuration constants
 const SEARCH_CONTEXT_CHARS = 50;
 const MAX_SEARCH_MATCHES = 100;
@@ -90,6 +104,9 @@ export function searchTranscripts(
     let regex: RegExp;
     try {
       if (mode === 'regex') {
+        if (!isSafeRegex(pattern)) {
+          throw new AppError('Regex pattern is too complex or potentially unsafe', 400);
+        }
         regex = new RegExp(pattern, 'gi');
       } else {
         regex = new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
@@ -755,6 +772,57 @@ export function computeSentiment(
     overall: { positive, negative, neutral, averageScore },
     items,
   };
+}
+
+// ─── 10a. Timeline ───
+
+interface TimelineTranscript {
+  id: string;
+  title: string;
+  eventDate: Date | string | null;
+}
+
+interface TimelineCoding {
+  id: string;
+  transcriptId: string;
+  questionId: string;
+  codedText: string;
+}
+
+export function computeTimeline(
+  transcripts: TimelineTranscript[],
+  codings: TimelineCoding[],
+  questions: QuestionData[],
+) {
+  // Only include transcripts with an eventDate
+  const dated = transcripts
+    .filter(t => t.eventDate)
+    .map(t => ({
+      ...t,
+      eventDate: new Date(t.eventDate as string | Date),
+    }))
+    .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
+
+  const questionMap = new Map(questions.map(q => [q.id, q]));
+
+  const entries = dated.map(t => {
+    const tCodings = codings.filter(c => c.transcriptId === t.id);
+    return {
+      transcriptId: t.id,
+      title: t.title,
+      date: t.eventDate.toISOString(),
+      codings: tCodings.map(c => ({
+        codingId: c.id,
+        codedText: c.codedText.slice(0, 100),
+        questionId: c.questionId,
+        questionText: questionMap.get(c.questionId)?.text || '',
+        questionColor: questionMap.get(c.questionId)?.color || '#3B82F6',
+      })),
+      codingCount: tCodings.length,
+    };
+  });
+
+  return { entries, totalDated: dated.length, totalUndated: transcripts.length - dated.length };
 }
 
 // ─── 10. Treemap / Theme Map ───

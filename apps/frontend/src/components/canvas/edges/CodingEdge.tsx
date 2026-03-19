@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BaseEdge, getBezierPath, EdgeLabelRenderer } from '@xyflow/react';
+import { BaseEdge, getBezierPath, getStraightPath, getSmoothStepPath, EdgeLabelRenderer } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
 import { useCanvasStore } from '../../../stores/canvasStore';
+import { useUIStore } from '../../../stores/uiStore';
 import ConfirmDialog from '../ConfirmDialog';
 
 export default function CodingEdge({
@@ -19,16 +20,17 @@ export default function CodingEdge({
   const [hovered, setHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { deleteCoding } = useCanvasStore();
+  const edgeStyle = useUIStore(s => s.edgeStyle);
   const edgeData = data as { codingId: string; codedText: string; questionColor: string } | undefined;
 
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-  });
+  const pathParams = { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition };
+  const [edgePath, labelX, labelY] = edgeStyle === 'straight'
+    ? getStraightPath(pathParams)
+    : edgeStyle === 'step'
+      ? getSmoothStepPath({ ...pathParams, borderRadius: 0 })
+      : edgeStyle === 'smoothstep'
+        ? getSmoothStepPath(pathParams)
+        : getBezierPath(pathParams);
 
   const color = edgeData?.questionColor || '#3B82F6';
 

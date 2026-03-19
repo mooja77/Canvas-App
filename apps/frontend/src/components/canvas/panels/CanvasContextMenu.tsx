@@ -31,10 +31,6 @@ interface CanvasContextMenuProps {
   onSelectAll: () => void;
   onToggleSnapGrid: () => void;
   snapToGrid: boolean;
-  canUndo: boolean;
-  canRedo: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
   onAutoLayout?: () => void;
   onClose: () => void;
 }
@@ -51,10 +47,6 @@ export default function CanvasContextMenu({
   onSelectAll,
   onToggleSnapGrid,
   snapToGrid,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
   onAutoLayout,
   onClose,
 }: CanvasContextMenuProps) {
@@ -159,16 +151,6 @@ export default function CanvasContextMenu({
         {separator}
 
         {/* ─── Section 3: Edit ─── */}
-        <button onClick={() => { onUndo(); onClose(); }} disabled={!canUndo} className={`${btnClass} ${!canUndo ? 'opacity-40' : ''}`}>
-          <Icon d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-          Undo
-          <span className={kbdClass}>Ctrl+Z</span>
-        </button>
-        <button onClick={() => { onRedo(); onClose(); }} disabled={!canRedo} className={`${btnClass} ${!canRedo ? 'opacity-40' : ''}`}>
-          <Icon d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" />
-          Redo
-          <span className={kbdClass}>Ctrl+Shift+Z</span>
-        </button>
         <button onClick={() => { onSelectAll(); onClose(); }} className={btnClass}>
           <Icon d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
           Select All

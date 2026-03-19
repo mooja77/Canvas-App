@@ -8,15 +8,18 @@ interface EdgeContextMenuProps {
   edgeType: string; // 'coding' | 'relation'
   label?: string;
   onDelete: () => void;
+  onAddWaypoint?: (edgeId: string, x: number, y: number) => void;
   onClose: () => void;
 }
 
 export default function EdgeContextMenu({
   x,
   y,
+  edgeId,
   edgeType,
   label,
   onDelete,
+  onAddWaypoint,
   onClose,
 }: EdgeContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -49,6 +52,20 @@ export default function EdgeContextMenu({
         <div className="px-3 py-1 text-xs text-gray-600 dark:text-gray-300 truncate">
           {label}
         </div>
+      )}
+      {onAddWaypoint && (
+        <>
+          <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
+          <button
+            onClick={() => { onAddWaypoint(edgeId, x, y); onClose(); }}
+            className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-750"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Add Waypoint
+          </button>
+        </>
       )}
       <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
       <button

@@ -7,16 +7,35 @@ if (!process.env.JWT_SECRET) {
 const JWT_SECRET: string = process.env.JWT_SECRET;
 const JWT_EXPIRY = '24h';
 
-interface JwtPayload {
+// Legacy JWT payload (access-code auth)
+interface LegacyJwtPayload {
   accountId: string;
   role: string;
 }
 
+// New JWT payload (email auth)
+interface UserJwtPayload {
+  userId: string;
+  role: string;
+  plan: string;
+}
+
+export type JwtPayload = LegacyJwtPayload | UserJwtPayload;
+
 /**
- * Sign a JWT for a researcher.
+ * Sign a JWT for a legacy access-code user.
  */
 export function signResearcherToken(accountId: string, role: string): string {
-  return jwt.sign({ accountId, role } satisfies JwtPayload, JWT_SECRET, {
+  return jwt.sign({ accountId, role } satisfies LegacyJwtPayload, JWT_SECRET, {
+    expiresIn: JWT_EXPIRY,
+  });
+}
+
+/**
+ * Sign a JWT for an email-authenticated user.
+ */
+export function signUserToken(userId: string, role: string, plan: string): string {
+  return jwt.sign({ userId, role, plan } satisfies UserJwtPayload, JWT_SECRET, {
     expiresIn: JWT_EXPIRY,
   });
 }
@@ -24,9 +43,9 @@ export function signResearcherToken(accountId: string, role: string): string {
 /**
  * Verify a researcher JWT. Returns payload or null if invalid/expired.
  */
-export function verifyResearcherToken(token: string): JwtPayload | null {
+export function verifyResearcherToken(token: string): LegacyJwtPayload | null {
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    const payload = jwt.verify(token, JWT_SECRET) as LegacyJwtPayload;
     if (payload.accountId && payload.role) {
       return payload;
     }
@@ -34,4 +53,25 @@ export function verifyResearcherToken(token: string): JwtPayload | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Verify any JWT token. Returns the raw decoded payload or null.
+ */
+export function verifyToken(token: string): JwtPayload | null {
+  try {
+    return jwt.verify(token, JWT_SECRET) as JwtPayload;
+  } catch {
+    return null;
+  }
+}
+
+/** Type guard: is this a user (email auth) JWT? */
+export function isUserPayload(payload: JwtPayload): payload is UserJwtPayload {
+  return 'userId' in payload;
+}
+
+/** Type guard: is this a legacy (access-code auth) JWT? */
+export function isLegacyPayload(payload: JwtPayload): payload is LegacyJwtPayload {
+  return 'accountId' in payload && !('userId' in payload);
 }

@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canvas App — Feature Recommendations from Competitive Analysis</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    line-height: 1.6;
+  }
+
+  /* ═══════════════════════ HERO ═══════════════════════ */
+  .hero {
+    text-align: center;
+    padding: 80px 40px 60px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    border-bottom: 1px solid #1e293b;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -200px; left: 50%; transform: translateX(-50%);
+    width: 800px; height: 800px;
+    background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero h1 {
+    font-size: 42px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+    letter-spacing: -1px;
+  }
+  .hero p { color: #94a3b8; font-size: 16px; max-width: 600px; margin: 0 auto; }
+  .hero .subtitle {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .hero .subtitle span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .hero .subtitle .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+
+  /* ═══════════════════════ MARKET MAP ═══════════════════════ */
+  .section { max-width: 1200px; margin: 0 auto; padding: 60px 40px; }
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #6366f1;
+    margin-bottom: 8px;
+  }
+  .section h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 32px;
+    letter-spacing: -0.5px;
+  }
+
+  .market-map {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 16px;
+  }
+  .competitor {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 24px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .competitor:hover {
+    border-color: #475569;
+    transform: translateY(-2px);
+  }
+  .competitor .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .competitor .name {
+    font-weight: 700;
+    font-size: 16px;
+    color: #f8fafc;
+  }
+  .competitor .type {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: #334155;
+    color: #94a3b8;
+  }
+  .competitor .desc {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .competitor .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid;
+  }
+  .tag-green { background: #022c22; border-color: #065f46; color: #34d399; }
+  .tag-blue { background: #172554; border-color: #1e3a5f; color: #60a5fa; }
+  .tag-purple { background: #2e1065; border-color: #4c1d95; color: #a78bfa; }
+  .tag-amber { background: #451a03; border-color: #78350f; color: #fbbf24; }
+  .tag-pink { background: #500724; border-color: #831843; color: #f472b6; }
+  .tag-teal { background: #042f2e; border-color: #115e59; color: #2dd4bf; }
+  .tag-red { background: #450a0a; border-color: #7f1d1d; color: #f87171; }
+
+  /* ═══════════════════════ GAP RADAR ═══════════════════════ */
+  .radar-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 0 auto 40px;
+  }
+  .radar-chart {
+    position: relative;
+    width: 500px;
+    height: 500px;
+  }
+  .radar-chart svg { width: 100%; height: 100%; }
+  .radar-label {
+    position: absolute;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  /* ═══════════════════════ RECOMMENDATIONS GRID ═══════════════════════ */
+  .rec-grid {
+    display: grid;
+    gap: 20px;
+  }
+
+  .priority-band {
+    margin-bottom: 40px;
+  }
+  .priority-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    padding: 6px 16px;
+    border-radius: 10px;
+  }
+  .priority-critical {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    color: #fca5a5;
+  }
+  .priority-high {
+    background: linear-gradient(135deg, #78350f, #92400e);
+    color: #fde68a;
+  }
+  .priority-medium {
+    background: linear-gradient(135deg, #1e3a5f, #1e40af);
+    color: #93c5fd;
+  }
+  .priority-future {
+    background: linear-gradient(135deg, #3b0764, #4c1d95);
+    color: #c4b5fd;
+  }
+
+  .rec-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+  }
+  .rec-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .rec-card:hover {
+    border-color: #475569;
+    transform: translateY(-2px);
+  }
+  .rec-card .accent {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .rec-card .icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    font-size: 20px;
+  }
+  .rec-card h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+  }
+  .rec-card .desc {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .rec-card .competitors {
+    font-size: 11px;
+    color: #64748b;
+    margin-bottom: 10px;
+  }
+  .rec-card .competitors strong {
+    color: #94a3b8;
+  }
+  .rec-card .impact-bar {
+    height: 4px;
+    border-radius: 4px;
+    background: #334155;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .rec-card .impact-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s;
+  }
+  .rec-card .impact-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+    font-size: 10px;
+    color: #64748b;
+    font-weight: 500;
+  }
+
+  /* ═══════════════════════ FEATURE MATRIX ═══════════════════════ */
+  .matrix-wrap { overflow-x: auto; margin-top: 20px; }
+  .matrix {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .matrix th, .matrix td {
+    padding: 10px 14px;
+    text-align: center;
+    border: 1px solid #1e293b;
+  }
+  .matrix thead th {
+    background: #1e293b;
+    color: #94a3b8;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+  }
+  .matrix thead th:first-child {
+    text-align: left;
+    min-width: 200px;
+  }
+  .matrix tbody td:first-child {
+    text-align: left;
+    font-weight: 600;
+    color: #cbd5e1;
+    background: #1e293b;
+    position: sticky;
+    left: 0;
+  }
+  .matrix tbody tr:hover td { background: #1e293b; }
+  .matrix .y { color: #34d399; font-weight: 700; }
+  .matrix .n { color: #475569; }
+  .matrix .p { color: #fbbf24; font-weight: 600; }
+  .matrix .ai { color: #a78bfa; font-weight: 700; }
+  .matrix .us { background: #172554 !important; }
+  .matrix .us-head { background: #1e3a5f !important; color: #60a5fa !important; }
+
+  /* ═══════════════════════ MOAT SECTION ═══════════════════════ */
+  .moat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  .moat-card {
+    background: linear-gradient(135deg, #172554, #1e293b);
+    border: 1px solid #1e40af;
+    border-radius: 16px;
+    padding: 28px;
+  }
+  .moat-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #93c5fd;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .moat-card p {
+    font-size: 13px;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+
+  /* ═══════════════════════ ROADMAP TIMELINE ═══════════════════════ */
+  .timeline {
+    position: relative;
+    padding-left: 40px;
+    margin-top: 30px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px; top: 0; bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #6366f1, #8b5cf6, #c084fc, #475569);
+  }
+  .tl-item {
+    position: relative;
+    margin-bottom: 32px;
+    padding-left: 24px;
+  }
+  .tl-item::before {
+    content: '';
+    position: absolute;
+    left: -29px; top: 6px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    border: 2px solid;
+  }
+  .tl-q1::before { background: #dc2626; border-color: #ef4444; }
+  .tl-q2::before { background: #f59e0b; border-color: #fbbf24; }
+  .tl-q3::before { background: #3b82f6; border-color: #60a5fa; }
+  .tl-q4::before { background: #8b5cf6; border-color: #a78bfa; }
+  .tl-item .quarter {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .tl-q1 .quarter { color: #f87171; }
+  .tl-q2 .quarter { color: #fbbf24; }
+  .tl-q3 .quarter { color: #60a5fa; }
+  .tl-q4 .quarter { color: #a78bfa; }
+  .tl-item h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+  }
+  .tl-item .features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .tl-feat {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: #334155;
+    color: #cbd5e1;
+  }
+
+  /* ═══════════════════════ FOOTER ═══════════════════════ */
+  footer {
+    text-align: center;
+    padding: 40px;
+    border-top: 1px solid #1e293b;
+    color: #475569;
+    font-size: 12px;
+  }
+
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 28px; }
+    .section { padding: 40px 20px; }
+    .moat-grid { grid-template-columns: 1fr; }
+    .rec-cards { grid-template-columns: 1fr; }
+    .market-map { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ HERO ═══════════════════════ -->
+<div class="hero">
+  <h1>Canvas App Feature Roadmap</h1>
+  <p>Competitive analysis of 10 QDA tools reveals 16 high-impact features to build. Here's what to prioritize and why.</p>
+  <div class="subtitle">
+    <span><span class="dot" style="background:#ef4444"></span> Critical Gap</span>
+    <span><span class="dot" style="background:#fbbf24"></span> High Value</span>
+    <span><span class="dot" style="background:#3b82f6"></span> Differentiator</span>
+    <span><span class="dot" style="background:#8b5cf6"></span> Future Moat</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MARKET LANDSCAPE ═══════════════════════ -->
+<div class="section">
+  <div class="section-title">Competitive Landscape</div>
+  <h2>Who We're Up Against</h2>
+
+  <div class="market-map">
+    <div class="competitor">
+      <div class="head">
+        <span class="name">NVivo</span>
+        <span class="type">Desktop &middot; $1,069/yr</span>
+      </div>
+      <div class="desc">Market leader. Deepest query language, framework matrices, coding stripes. Adding AI in v15.</div>
+      <div class="tags">
+        <span class="tag tag-green">Auto-coding</span>
+        <span class="tag tag-purple">AI Summarize</span>
+        <span class="tag tag-blue">Mixed Methods</span>
+        <span class="tag tag-amber">NCapture</span>
+      </div>
+    </div>
+
+    <div class="competitor">
+      <div class="head">
+        <span class="name">ATLAS.ti 24</span>
+        <span class="type">Desktop + Cloud &middot; $588/yr</span>
+      </div>
+      <div class="desc">Most aggressive AI integration (GPT-4). Network views are the gold standard for code relationship mapping.</div>
+      <div class="tags">
+        <span class="tag tag-purple">AI Coding (GPT-4)</span>
+        <span class="tag tag-blue">Network Views</span>
+        <span class="tag tag-teal">Geo Coding</span>
+        <span class="tag tag-green">Semantic Search</span>
+      </div>
+    </div>
+
+    <div class="competitor">
+      <div class="head">
+        <span class="name">MAXQDA 2024</span>
+        <span class="type">Desktop &middot; $835</span>
+      </div>
+      <div class="desc">Best mixed-methods integration. MAXMaps concept mapping is closest to our canvas. Code weights and paraphrasing.</div>
+      <div class="tags">
+        <span class="tag tag-blue">MAXMaps</span>
+        <span class="tag tag-amber">Code Weights</span>
+        <span class="tag tag-green">Paraphrasing</span>
+        <span class="tag tag-pink">Doc Portrait</span>
+      </div>
+    </div>
+
+    <div class="competitor">
+      <div class="head">
+        <span class="name">Dedoose</span>
+        <span class="type">Web &middot; $19/mo</span>
+      </div>
+      <div class="desc">Web-native, real-time collab from day one. Training Center for coder reliability. Strong mixed methods.</div>
+      <div class="tags">
+        <span class="tag tag-green">Real-time Collab</span>
+        <span class="tag tag-amber">Training Center</span>
+        <span class="tag tag-blue">Code Weights</span>
+        <span class="tag tag-teal">Low Cost</span>
+      </div>
+    </div>
+
+    <div class="competitor">
+      <div class="head">
+        <span class="name">Dovetail</span>
+        <span class="type">Web &middot; $29/user/mo</span>
+      </div>
+      <div class="desc">Research repository pioneer. Deepest integrations (Slack, Jira, Zoom). AI Magic features. UX-research focused.</div>
+      <div class="tags">
+        <span class="tag tag-purple">AI Magic Suite</span>
+        <span class="tag tag-pink">Research Repo</span>
+        <span class="tag tag-green">Auto-Transcribe</span>
+        <span class="tag tag-blue">50+ Integrations</span>
+      </div>
+    </div>
+
+    <div class="competitor">
+      <div class="head">
+        <span class="name">Delve</span>
+        <span class="type">Web &middot; $19/mo</span>
+      </div>
+      <div class="desc">Modern, clean, AI-forward. Structured around Braun &amp; Clarke's thematic analysis. Direct competitor to us.</div>
+      <div class="tags">
+        <span class="tag tag-purple">AI Code Suggest</span>
+        <span class="tag tag-green">Theme Workflow</span>
+        <span class="tag tag-teal">Free Tier</span>
+      </div>
+    </div>
+
+    <div class="competitor">
+      <div class="head">
+        <span class="name">Quirkos</span>
+        <span class="type">Desktop &middot; $265 academic</span>
+      </div>
+      <div class="desc">Visual bubble canvas for coding &mdash; closest UX to our React Flow approach. Prioritizes simplicity over depth.</div>
+      <div class="tags">
+        <span class="tag tag-pink">Visual Canvas</span>
+        <span class="tag tag-teal">Simple UX</span>
+        <span class="tag tag-amber">Low Cost</span>
+      </div>
+    </div>
+
+    <div class="competitor">
+      <div class="head">
+        <span class="name">Taguette / QualCoder</span>
+        <span class="type">Free &middot; Open Source</span>
+      </div>
+      <div class="desc">Free alternatives. Taguette is text-only minimal. QualCoder has audio/video coding and Kappa. Both export QDPX.</div>
+      <div class="tags">
+        <span class="tag tag-teal">Free/OSS</span>
+        <span class="tag tag-blue">QDPX Export</span>
+        <span class="tag tag-green">Privacy First</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ FEATURE MATRIX ═══════════════════════ -->
+<div class="section">
+  <div class="section-title">Feature Gap Analysis</div>
+  <h2>Where We Stand vs. Competition</h2>
+
+  <div class="matrix-wrap">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th class="us-head">Canvas App</th>
+          <th>NVivo</th>
+          <th>ATLAS.ti</th>
+          <th>MAXQDA</th>
+          <th>Dedoose</th>
+          <th>Dovetail</th>
+          <th>Delve</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Visual Node-Graph Canvas</td>
+          <td class="us"><span class="y">&#10004;</span></td>
+          <td><span class="p">~</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="n">&mdash;</span></td>
+        </tr>
+        <tr>
+          <td>AI-Assisted Coding</td>
+          <td class="us"><span class="n">&mdash;</span></td>
+          <td><span class="ai">AI</span></td>
+          <td><span class="ai">AI</span></td>
+          <td><span class="ai">AI</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="ai">AI</span></td>
+          <td><span class="ai">AI</span></td>
+        </tr>
+        <tr>
+          <td>Audio/Video Transcription</td>
+          <td class="us"><span class="n">&mdash;</span></td>
+          <td><span class="ai">AI</span></td>
+          <td><span class="ai">AI</span></td>
+          <td><span class="ai">AI</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="ai">AI</span></td>
+          <td><span class="p">~</span></td>
+        </tr>
+        <tr>
+          <td>Real-Time Collaboration</td>
+          <td class="us"><span class="n">&mdash;</span></td>
+          <td><span class="p">~</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="p">~</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="n">&mdash;</span></td>
+        </tr>
+        <tr>
+          <td>Named Code Relationships</td>
+          <td class="us"><span class="y">&#10004;</span></td>
+          <td><span class="p">~</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="p">~</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="n">&mdash;</span></td>
+        </tr>
+        <tr>
+          <td>Intercoder Reliability</td>
+          <td class="us"><span class="p">~</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="n">&mdash;</span></td>
+        </tr>
+        <tr>
+          <td>Image/PDF Region Coding</td>
+          <td class="us"><span class="n">&mdash;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="n">&mdash;</span></td>
+        </tr>
+        <tr>
+          <td>Survey Data Import</td>
+          <td class="us"><span class="n">&mdash;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="p">~</span></td>
+        </tr>
+        <tr>
+          <td>QDPX Exchange Format</td>
+          <td class="us"><span class="n">&mdash;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="n">&mdash;</span></td>
+        </tr>
+        <tr>
+          <td>Conversational AI ("Ask Your Data")</td>
+          <td class="us"><span class="n">&mdash;</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="ai">AI</span></td>
+          <td><span class="p">~</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="ai">AI</span></td>
+          <td><span class="n">&mdash;</span></td>
+        </tr>
+        <tr>
+          <td>Formatted Report Export</td>
+          <td class="us"><span class="p">~</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="y">&#10004;</span></td>
+        </tr>
+        <tr>
+          <td>Research Repository</td>
+          <td class="us"><span class="n">&mdash;</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="n">&mdash;</span></td>
+          <td><span class="y">&#10004;</span></td>
+          <td><span class="n">&mdash;</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="margin-top:12px; font-size:11px; color:#64748b;">
+    <span class="y">&#10004;</span> = Full support &nbsp;&nbsp;
+    <span class="ai">AI</span> = AI-powered &nbsp;&nbsp;
+    <span class="p">~</span> = Partial &nbsp;&nbsp;
+    <span class="n">&mdash;</span> = Missing
+  </div>
+</div>
+
+<!-- ═══════════════════════ YOUR MOAT ═══════════════════════ -->
+<div class="section">
+  <div class="section-title">Strategic Position</div>
+  <h2>Our Competitive Moat</h2>
+
+  <div class="moat-grid">
+    <div class="moat-card">
+      <h3>&#127912; Web-Native Node-Graph Canvas</h3>
+      <p>No other web-based QDA tool has a React Flow node-graph interface. ATLAS.ti's network views and MAXQDA's MAXMaps are desktop-only. Quirkos has visual bubbles but no relationships. This is our biggest differentiator.</p>
+    </div>
+    <div class="moat-card">
+      <h3>&#128176; 10x Cheaper Than Incumbents</h3>
+      <p>At $12/mo (Pro) and $29/mo (Team), we're 90% cheaper than NVivo ($1,069/yr) and ATLAS.ti ($588/yr). Only Dedoose ($19/mo) and Delve ($19/mo) are comparably priced — and they lack our visual canvas.</p>
+    </div>
+    <div class="moat-card">
+      <h3>&#128279; Semantic Code Relationships</h3>
+      <p>Our relation edges (causes, supports, contradicts, etc.) on the canvas are a native advantage. Only ATLAS.ti offers comparable semantic code-to-code linking. Doubling down here creates a deep moat.</p>
+    </div>
+    <div class="moat-card">
+      <h3>&#9889; Modern Stack, Fast Iteration</h3>
+      <p>React + Vite + Prisma + Tailwind means we can ship features 5-10x faster than legacy desktop apps rewriting for the cloud. NVivo and MAXQDA are decades-old C++/Java codebases.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ RECOMMENDATIONS ═══════════════════════ -->
+<div class="section">
+  <div class="section-title">Feature Recommendations</div>
+  <h2>What to Build Next</h2>
+
+  <!-- CRITICAL -->
+  <div class="priority-band">
+    <div class="priority-label priority-critical">&#128308; Critical — Close the Gap</div>
+    <div class="rec-cards">
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #ef4444, #f97316)"></div>
+        <div class="icon" style="background:#450a0a;">&#129302;</div>
+        <h3>AI-Assisted Coding</h3>
+        <div class="desc">When a user highlights text, suggest relevant existing codes <em>and</em> new code names via LLM. Auto-code entire uncoded transcripts with human review. Show AI-suggested codes as dashed-border nodes on canvas.</div>
+        <div class="competitors"><strong>Who has it:</strong> ATLAS.ti (GPT-4), NVivo, MAXQDA, Dovetail, Delve</div>
+        <div class="tags">
+          <span class="tag tag-purple">LLM</span>
+          <span class="tag tag-red">Table Stakes by 2025</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:95%; background: linear-gradient(90deg, #ef4444, #f97316)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>95%</span></div>
+      </div>
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #ef4444, #f97316)"></div>
+        <div class="icon" style="background:#450a0a;">&#127908;</div>
+        <h3>Audio/Video Transcription</h3>
+        <div class="desc">Upload audio/video files and auto-transcribe using Whisper API. Create transcript nodes automatically with timestamps. Clicking a coded excerpt plays the corresponding audio segment.</div>
+        <div class="competitors"><strong>Who has it:</strong> Dovetail, ATLAS.ti, NVivo, MAXQDA (all AI-powered)</div>
+        <div class="tags">
+          <span class="tag tag-green">Whisper API</span>
+          <span class="tag tag-red">Workflow Blocker</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:90%; background: linear-gradient(90deg, #ef4444, #f97316)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>90%</span></div>
+      </div>
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #ef4444, #f97316)"></div>
+        <div class="icon" style="background:#450a0a;">&#128101;</div>
+        <h3>Real-Time Collaborative Canvas</h3>
+        <div class="desc">WebSocket-based multi-user canvas editing. See teammates' cursors, live code applications, and node movements. Presence indicators in the toolbar. Conflict-free CRDT-based state sync.</div>
+        <div class="competitors"><strong>Who has it:</strong> Dedoose, Dovetail, ATLAS.ti Cloud</div>
+        <div class="tags">
+          <span class="tag tag-blue">WebSocket</span>
+          <span class="tag tag-red">Team Tier Must-Have</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:85%; background: linear-gradient(90deg, #ef4444, #f97316)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>85%</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- HIGH -->
+  <div class="priority-band">
+    <div class="priority-label priority-high">&#128992; High Value — Expand Capabilities</div>
+    <div class="rec-cards">
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #f59e0b, #eab308)"></div>
+        <div class="icon" style="background:#451a03;">&#128172;</div>
+        <h3>Conversational Research Assistant</h3>
+        <div class="desc">"Ask your data" panel powered by RAG. "What are the key differences between Theme A and Theme B?" Auto-generate analytical memos, summarize all excerpts for a code, find contradictions.</div>
+        <div class="competitors"><strong>Who has it:</strong> ATLAS.ti ("AI Conversational"), Dovetail (Magic Search)</div>
+        <div class="tags">
+          <span class="tag tag-purple">RAG</span>
+          <span class="tag tag-amber">High WOW Factor</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:82%; background: linear-gradient(90deg, #f59e0b, #eab308)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>82%</span></div>
+      </div>
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #f59e0b, #eab308)"></div>
+        <div class="icon" style="background:#451a03;">&#128444;</div>
+        <h3>Image &amp; PDF Region Coding</h3>
+        <div class="desc">Draw rectangles on images/PDFs to create coded regions. Essential for photo elicitation, document analysis, and visual research methods. Display image nodes on the canvas alongside text.</div>
+        <div class="competitors"><strong>Who has it:</strong> NVivo, ATLAS.ti, MAXQDA, QualCoder (all desktop)</div>
+        <div class="tags">
+          <span class="tag tag-blue">Canvas Element</span>
+          <span class="tag tag-amber">Academic Need</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:75%; background: linear-gradient(90deg, #f59e0b, #eab308)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>75%</span></div>
+      </div>
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #f59e0b, #eab308)"></div>
+        <div class="icon" style="background:#451a03;">&#128202;</div>
+        <h3>Survey Data Import &amp; Coding</h3>
+        <div class="desc">Import CSV/Excel with open-ended survey responses. Each response becomes a transcript node with structured metadata (demographics, Likert scores). Cross-tab codes by respondent attributes.</div>
+        <div class="competitors"><strong>Who has it:</strong> NVivo (Qualtrics), Dedoose, MAXQDA, Dovetail</div>
+        <div class="tags">
+          <span class="tag tag-green">Mixed Methods</span>
+          <span class="tag tag-amber">Market Expansion</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:72%; background: linear-gradient(90deg, #f59e0b, #eab308)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>72%</span></div>
+      </div>
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #f59e0b, #eab308)"></div>
+        <div class="icon" style="background:#451a03;">&#128221;</div>
+        <h3>Paraphrasing &amp; Summarization</h3>
+        <div class="desc">Alongside coding, let users write a short paraphrase/summary of each coded segment. AI can auto-generate paraphrases. Aggregate paraphrases into theme summaries. Unique to MAXQDA &mdash; highly valued by researchers.</div>
+        <div class="competitors"><strong>Who has it:</strong> MAXQDA (manual), ATLAS.ti (AI-generated)</div>
+        <div class="tags">
+          <span class="tag tag-purple">AI-Augmented</span>
+          <span class="tag tag-green">Unique Value</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:68%; background: linear-gradient(90deg, #f59e0b, #eab308)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>68%</span></div>
+      </div>
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #f59e0b, #eab308)"></div>
+        <div class="icon" style="background:#451a03;">&#128295;</div>
+        <h3>Coder Training Center</h3>
+        <div class="desc">Dedoose-inspired training module: create "gold standard" coded documents, have team members code them independently, compare with auto-calculated Kappa/agreement before real coding begins.</div>
+        <div class="competitors"><strong>Who has it:</strong> Dedoose (Training Center), NVivo (comparison)</div>
+        <div class="tags">
+          <span class="tag tag-blue">Team Feature</span>
+          <span class="tag tag-amber">Academic Cred</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:65%; background: linear-gradient(90deg, #f59e0b, #eab308)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>65%</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MEDIUM -->
+  <div class="priority-band">
+    <div class="priority-label priority-medium">&#128309; Differentiators — Leverage Our Canvas</div>
+    <div class="rec-cards">
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #3b82f6, #6366f1)"></div>
+        <div class="icon" style="background:#172554;">&#128332;</div>
+        <h3>Document Portrait Visualization</h3>
+        <div class="desc">MAXQDA's signature viz: render an entire transcript as a strip of colored pixels representing codes. Show on the canvas as a mini-visualization inside each transcript node. At-a-glance coding coverage.</div>
+        <div class="competitors"><strong>Who has it:</strong> MAXQDA (Document Portrait)</div>
+        <div class="tags">
+          <span class="tag tag-pink">Unique Viz</span>
+          <span class="tag tag-blue">Canvas Enhancement</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:60%; background: linear-gradient(90deg, #3b82f6, #6366f1)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>60%</span></div>
+      </div>
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #3b82f6, #6366f1)"></div>
+        <div class="icon" style="background:#172554;">&#128296;</div>
+        <h3>Boolean Coding Queries</h3>
+        <div class="desc">NVivo-style compound queries: "Show excerpts coded with BOTH 'anxiety' AND 'coping' but NOT 'avoidance' NEAR each other." Results appear as a computed node on the canvas.</div>
+        <div class="competitors"><strong>Who has it:</strong> NVivo (deepest), ATLAS.ti, MAXQDA</div>
+        <div class="tags">
+          <span class="tag tag-blue">Power Feature</span>
+          <span class="tag tag-green">Already Partial</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:58%; background: linear-gradient(90deg, #3b82f6, #6366f1)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>58%</span></div>
+      </div>
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #3b82f6, #6366f1)"></div>
+        <div class="icon" style="background:#172554;">&#128230;</div>
+        <h3>QDPX Import/Export</h3>
+        <div class="desc">Support the REFI-QDA Project Exchange standard. Let researchers migrate to/from NVivo, ATLAS.ti, and MAXQDA. Critical for academic credibility &mdash; no vendor lock-in concerns.</div>
+        <div class="competitors"><strong>Who has it:</strong> NVivo, ATLAS.ti, MAXQDA, Dedoose, QualCoder, Taguette</div>
+        <div class="tags">
+          <span class="tag tag-green">Standard</span>
+          <span class="tag tag-amber">Trust Signal</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:55%; background: linear-gradient(90deg, #3b82f6, #6366f1)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>55%</span></div>
+      </div>
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #3b82f6, #6366f1)"></div>
+        <div class="icon" style="background:#172554;">&#128337;</div>
+        <h3>Timeline / Process Nodes</h3>
+        <div class="desc">New canvas node type: arrange coded excerpts on a timeline. Visualize how themes evolve across an interview or across data collection chronologically. Process tracing for case study research.</div>
+        <div class="competitors"><strong>Who has it:</strong> MAXQDA (Codeline), NVivo (basic timeline)</div>
+        <div class="tags">
+          <span class="tag tag-pink">Novel</span>
+          <span class="tag tag-blue">Canvas Advantage</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:52%; background: linear-gradient(90deg, #3b82f6, #6366f1)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>52%</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FUTURE -->
+  <div class="priority-band">
+    <div class="priority-label priority-future">&#128995; Future Moat — Long-Term Bets</div>
+    <div class="rec-cards">
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #8b5cf6, #a855f7)"></div>
+        <div class="icon" style="background:#2e1065;">&#127758;</div>
+        <h3>Research Repository</h3>
+        <div class="desc">Dovetail-style cross-project insight library. Tag findings, make them searchable across all team canvases. "Has anyone in our org researched onboarding friction before?"</div>
+        <div class="competitors"><strong>Who has it:</strong> Dovetail (pioneer), nobody else in QDA space</div>
+        <div class="tags">
+          <span class="tag tag-purple">Team Tier</span>
+          <span class="tag tag-pink">Blue Ocean</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:50%; background: linear-gradient(90deg, #8b5cf6, #a855f7)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>50%</span></div>
+      </div>
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #8b5cf6, #a855f7)"></div>
+        <div class="icon" style="background:#2e1065;">&#127760;</div>
+        <h3>Third-Party Integrations</h3>
+        <div class="desc">Connect to Zoom (import recordings), Slack (import conversations), Qualtrics (import surveys), Notion/Confluence (push insights). Dovetail has 50+ integrations &mdash; this is table stakes for product teams.</div>
+        <div class="competitors"><strong>Who has it:</strong> Dovetail (50+), NVivo (some)</div>
+        <div class="tags">
+          <span class="tag tag-teal">API-First</span>
+          <span class="tag tag-purple">Enterprise</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:45%; background: linear-gradient(90deg, #8b5cf6, #a855f7)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>45%</span></div>
+      </div>
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #8b5cf6, #a855f7)"></div>
+        <div class="icon" style="background:#2e1065;">&#128506;</div>
+        <h3>Geographic Coding</h3>
+        <div class="desc">Map nodes on the canvas displaying geographic data. Plot coded excerpts by location. Ideal for community-based research, ethnography, and public health studies.</div>
+        <div class="competitors"><strong>Who has it:</strong> ATLAS.ti (map integration)</div>
+        <div class="tags">
+          <span class="tag tag-teal">Niche</span>
+          <span class="tag tag-blue">Ethnography</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:30%; background: linear-gradient(90deg, #8b5cf6, #a855f7)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>30%</span></div>
+      </div>
+
+      <div class="rec-card">
+        <div class="accent" style="background: linear-gradient(90deg, #8b5cf6, #a855f7)"></div>
+        <div class="icon" style="background:#2e1065;">&#128241;</div>
+        <h3>Mobile Coding App</h3>
+        <div class="desc">Companion mobile app for coding on the go. Field researchers can tag observations, record audio memos, and code text while away from their desk. Syncs to web canvas.</div>
+        <div class="competitors"><strong>Who has it:</strong> ATLAS.ti (iOS/Android), Dovetail (mobile web)</div>
+        <div class="tags">
+          <span class="tag tag-teal">PWA</span>
+          <span class="tag tag-purple">Field Research</span>
+        </div>
+        <div class="impact-bar"><div class="impact-fill" style="width:35%; background: linear-gradient(90deg, #8b5cf6, #a855f7)"></div></div>
+        <div class="impact-label"><span>User Impact</span><span>35%</span></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ROADMAP ═══════════════════════ -->
+<div class="section">
+  <div class="section-title">Suggested Roadmap</div>
+  <h2>Implementation Timeline</h2>
+
+  <div class="timeline">
+    <div class="tl-item tl-q1">
+      <div class="quarter">Q2 2026 — Foundation</div>
+      <h4>Close critical gaps, nail the basics</h4>
+      <div class="features">
+        <span class="tl-feat">&#129302; AI Code Suggestions</span>
+        <span class="tl-feat">&#127908; Whisper Transcription</span>
+        <span class="tl-feat">&#128230; QDPX Export</span>
+        <span class="tl-feat">&#128221; Paraphrase Fields</span>
+      </div>
+    </div>
+
+    <div class="tl-item tl-q2">
+      <div class="quarter">Q3 2026 — Team & Intelligence</div>
+      <h4>Real-time collab + conversational AI</h4>
+      <div class="features">
+        <span class="tl-feat">&#128101; WebSocket Collaboration</span>
+        <span class="tl-feat">&#128172; Research Assistant (RAG)</span>
+        <span class="tl-feat">&#128295; Coder Training Center</span>
+        <span class="tl-feat">&#128202; Survey Import</span>
+      </div>
+    </div>
+
+    <div class="tl-item tl-q3">
+      <div class="quarter">Q4 2026 — Rich Media & Visualization</div>
+      <h4>Expand beyond text, deepen canvas viz</h4>
+      <div class="features">
+        <span class="tl-feat">&#128444; Image/PDF Coding</span>
+        <span class="tl-feat">&#128332; Document Portraits</span>
+        <span class="tl-feat">&#128296; Boolean Queries</span>
+        <span class="tl-feat">&#128337; Timeline Nodes</span>
+      </div>
+    </div>
+
+    <div class="tl-item tl-q4">
+      <div class="quarter">2027 — Platform Play</div>
+      <h4>From tool to platform</h4>
+      <div class="features">
+        <span class="tl-feat">&#127758; Research Repository</span>
+        <span class="tl-feat">&#127760; Integrations (Zoom, Slack, Qualtrics)</span>
+        <span class="tl-feat">&#128241; Mobile PWA</span>
+        <span class="tl-feat">&#128506; Geographic Coding</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Canvas App Competitive Analysis &middot; Based on research of 10 QDA tools (NVivo, ATLAS.ti, MAXQDA, Dedoose, Dovetail, Delve, Quirkos, Taguette, QualCoder, Reframer) &middot; March 2026
+</footer>
+
+</body>
+</html>

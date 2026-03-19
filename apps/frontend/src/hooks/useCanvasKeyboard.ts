@@ -41,8 +41,6 @@ export interface CanvasKeyboardOptions {
   handleDeleteSelected: () => void;
   handleAlignLeft: () => void;
   handleDistributeH: () => void;
-  undo: () => void;
-  redo: () => void;
 
   // Group creation
   handleCreateGroup: () => void;
@@ -54,6 +52,10 @@ export interface CanvasKeyboardOptions {
   // Auto-layout & focus mode
   handleAutoLayout: () => void;
   setFocusMode: (v: boolean | ((prev: boolean) => boolean)) => void;
+
+  // Tab navigation
+  onNextTab?: () => void;
+  onPrevTab?: () => void;
 }
 
 export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
@@ -86,13 +88,13 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     handleDeleteSelected,
     handleAlignLeft,
     handleDistributeH,
-    undo,
-    redo,
     handleCreateGroup,
     saveBookmark,
     recallBookmark,
     handleAutoLayout,
     setFocusMode,
+    onNextTab,
+    onPrevTab,
   } = options;
 
   useEffect(() => {
@@ -115,16 +117,6 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
         if (e.key === 'd') {
           e.preventDefault();
           handleDuplicate();
-          return;
-        }
-        if (e.key === 'z' && !e.shiftKey) {
-          e.preventDefault();
-          undo();
-          return;
-        }
-        if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
-          e.preventDefault();
-          redo();
           return;
         }
         if (e.key === 'a') {
@@ -152,6 +144,28 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
         if (e.key === 'l' || e.key === 'L') {
           e.preventDefault();
           handleAutoLayout();
+          return;
+        }
+        // Ctrl+Tab / Ctrl+Shift+Tab: switch tabs
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          if (e.shiftKey) onPrevTab?.();
+          else onNextTab?.();
+          return;
+        }
+        // Ctrl+Shift+C: collapse/expand ALL nodes
+        if (e.shiftKey && (e.key === 'c' || e.key === 'C')) {
+          e.preventDefault();
+          // If any node is expanded, collapse all; otherwise expand all
+          setNodes(nds => {
+            const anyExpanded = nds.some(n => !(n.data as any).collapsed && ['transcript', 'question', 'memo', 'case'].includes(n.type || ''));
+            return nds.map(n => {
+              if (['transcript', 'question', 'memo', 'case'].includes(n.type || '')) {
+                return { ...n, data: { ...n.data, collapsed: anyExpanded } };
+              }
+              return n;
+            });
+          });
           return;
         }
         // Ctrl+G: create group from selection
@@ -297,8 +311,6 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     handleSelectAll,
     handleAlignLeft,
     handleDistributeH,
-    undo,
-    redo,
     nodes,
     setNodes,
     rfInstanceRef,
@@ -307,5 +319,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     recallBookmark,
     handleAutoLayout,
     setFocusMode,
+    onNextTab,
+    onPrevTab,
   ]);
 }

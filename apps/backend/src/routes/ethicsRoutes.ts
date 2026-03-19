@@ -4,17 +4,22 @@ import { AppError } from '../middleware/errorHandler.js';
 import { logAudit } from '../middleware/auditLog.js';
 import { validate, updateEthicsSchema, createConsentSchema, withdrawConsentSchema, anonymizeTranscriptSchema } from '../middleware/validation.js';
 import { sha256 } from '../utils/hashing.js';
-import { getAuthId, getOwnedCanvas } from '../utils/routeHelpers.js';
+import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
+import { checkEthicsAccess } from '../middleware/planLimits.js';
 
 export const ethicsRoutes = Router();
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 // ─── Ethics Settings ───
 
 // GET /api/canvas/:canvasId/ethics - Get ethics settings
-ethicsRoutes.get('/canvas/:canvasId/ethics', async (req, res, next) => {
+ethicsRoutes.get('/canvas/:canvasId/ethics', checkEthicsAccess(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    const canvas = await getOwnedCanvas(req.params.canvasId, dashboardAccessId);
+    const canvas = await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
 
     const consentRecords = await prisma.consentRecord.findMany({
       where: { canvasId: canvas.id },
@@ -34,10 +39,10 @@ ethicsRoutes.get('/canvas/:canvasId/ethics', async (req, res, next) => {
 });
 
 // PUT /api/canvas/:canvasId/ethics - Update ethics settings
-ethicsRoutes.put('/canvas/:canvasId/ethics', validate(updateEthicsSchema), async (req, res, next) => {
+ethicsRoutes.put('/canvas/:canvasId/ethics', validate(updateEthicsSchema), checkEthicsAccess(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.canvasId, dashboardAccessId);
+    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
 
     const { ethicsApprovalId, ethicsStatus, dataRetentionDate } = req.body;
     const updateData: Record<string, unknown> = {};
@@ -79,10 +84,10 @@ ethicsRoutes.put('/canvas/:canvasId/ethics', validate(updateEthicsSchema), async
 // ─── Consent Records ───
 
 // POST /api/canvas/:canvasId/consent - Record participant consent
-ethicsRoutes.post('/canvas/:canvasId/consent', validate(createConsentSchema), async (req, res, next) => {
+ethicsRoutes.post('/canvas/:canvasId/consent', validate(createConsentSchema), checkEthicsAccess(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.canvasId, dashboardAccessId);
+    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
 
     const { participantId, consentType, ethicsProtocol, notes } = req.body;
 
@@ -119,10 +124,10 @@ ethicsRoutes.post('/canvas/:canvasId/consent', validate(createConsentSchema), as
 });
 
 // GET /api/canvas/:canvasId/consent - List consent records
-ethicsRoutes.get('/canvas/:canvasId/consent', async (req, res, next) => {
+ethicsRoutes.get('/canvas/:canvasId/consent', checkEthicsAccess(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.canvasId, dashboardAccessId);
+    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
 
     const records = await prisma.consentRecord.findMany({
       where: { canvasId: req.params.canvasId },
@@ -134,10 +139,10 @@ ethicsRoutes.get('/canvas/:canvasId/consent', async (req, res, next) => {
 });
 
 // PUT /api/canvas/:canvasId/consent/:consentId/withdraw - Withdraw consent
-ethicsRoutes.put('/canvas/:canvasId/consent/:consentId/withdraw', validate(withdrawConsentSchema), async (req, res, next) => {
+ethicsRoutes.put('/canvas/:canvasId/consent/:consentId/withdraw', validate(withdrawConsentSchema), checkEthicsAccess(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.canvasId, dashboardAccessId);
+    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
 
     const existing = await prisma.consentRecord.findUnique({
       where: { id: req.params.consentId },
@@ -227,10 +232,10 @@ ethicsRoutes.get('/audit-log', async (req, res, next) => {
 // ─── Transcript Anonymization ───
 
 // POST /api/canvas/:canvasId/transcripts/:transcriptId/anonymize - Anonymize transcript
-ethicsRoutes.post('/canvas/:canvasId/transcripts/:transcriptId/anonymize', validate(anonymizeTranscriptSchema), async (req, res, next) => {
+ethicsRoutes.post('/canvas/:canvasId/transcripts/:transcriptId/anonymize', validate(anonymizeTranscriptSchema), checkEthicsAccess(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.canvasId, dashboardAccessId);
+    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
 
     const { replacements } = req.body;
 
@@ -244,7 +249,8 @@ ethicsRoutes.post('/canvas/:canvasId/transcripts/:transcriptId/anonymize', valid
     // Apply replacements to transcript content
     let newContent = transcript.content;
     for (const { find, replace } of replacements) {
-      newContent = newContent.split(find).join(replace);
+      const findRegex = new RegExp('\\b' + escapeRegex(find) + '\\b', 'gi');
+      newContent = newContent.replace(findRegex, replace);
     }
 
     // Apply replacements to all coded segments referencing this transcript
@@ -256,7 +262,8 @@ ethicsRoutes.post('/canvas/:canvasId/transcripts/:transcriptId/anonymize', valid
       .map((coding) => {
         let newCodedText = coding.codedText;
         for (const { find, replace } of replacements) {
-          newCodedText = newCodedText.split(find).join(replace);
+          const findRegex = new RegExp('\\b' + escapeRegex(find) + '\\b', 'gi');
+          newCodedText = newCodedText.replace(findRegex, replace);
         }
         if (newCodedText !== coding.codedText) {
           return prisma.canvasTextCoding.update({

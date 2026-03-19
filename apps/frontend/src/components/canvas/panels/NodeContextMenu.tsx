@@ -32,6 +32,7 @@ interface NodeContextMenuProps {
   onDelete: () => void;
   onToggleCollapse: () => void;
   onResetSize: () => void;
+  onSetNodeColor?: (nodeId: string, color: string) => void;
   onClose: () => void;
 }
 
@@ -55,6 +56,7 @@ export default function NodeContextMenu({
   onDelete,
   onToggleCollapse,
   onResetSize,
+  onSetNodeColor,
   onClose,
 }: NodeContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -146,6 +148,9 @@ export default function NodeContextMenu({
         toast.success('Color updated');
       } else if (nodeType === 'memo') {
         await updateMemo(entityId, { color });
+        toast.success('Color updated');
+      } else if ((nodeType === 'transcript' || nodeType === 'case') && onSetNodeColor) {
+        onSetNodeColor(nodeId, color);
         toast.success('Color updated');
       }
     } catch {
@@ -384,7 +389,16 @@ export default function NodeContextMenu({
       {/* ─── Transcript-specific items ─── */}
       {nodeType === 'transcript' && (
         <>
+          {onSetNodeColor && colorPickerSection}
           {coverageSection}
+          {separator}
+        </>
+      )}
+
+      {/* ─── Case-specific items ─── */}
+      {nodeType === 'case' && onSetNodeColor && (
+        <>
+          {colorPickerSection}
           {separator}
         </>
       )}
