@@ -5,8 +5,7 @@
  */
 
 import { prisma } from '../lib/prisma.js';
-import { embedText, complete } from '../lib/llm.js';
-import '../lib/llm-openai.js';
+import type { LlmProvider } from '../lib/llm.js';
 import { findSimilarChunks, type SimilarChunk } from './embeddings.js';
 
 export interface RagResult {
@@ -23,13 +22,14 @@ export interface RagResult {
 export async function ragQuery(
   canvasId: string,
   query: string,
+  provider: LlmProvider,
   options: { topK?: number; minSimilarity?: number } = {},
 ): Promise<RagResult> {
   const topK = options.topK ?? 6;
   const minSimilarity = options.minSimilarity ?? 0.25;
 
   // 1. Embed the query
-  const queryEmbResult = await embedText(query);
+  const queryEmbResult = await provider.embedText(query);
   const queryEmbedding = queryEmbResult.embedding;
 
   // 2. Fetch all embeddings for this canvas
@@ -71,7 +71,7 @@ export async function ragQuery(
   const context = buildContext(similar);
 
   // 5. Call LLM with context
-  const result = await complete({
+  const result = await provider.complete({
     messages: [
       {
         role: 'system',

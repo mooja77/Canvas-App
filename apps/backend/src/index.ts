@@ -27,6 +27,7 @@ import { trainingRoutes } from './routes/trainingRoutes.js';
 import { qdpxRoutes } from './routes/qdpxRoutes.js';
 import { repositoryRoutes } from './routes/repositoryRoutes.js';
 import { integrationRoutes } from './routes/integrationRoutes.js';
+import { aiSettingsRoutes } from './routes/aiSettingsRoutes.js';
 import { prisma } from './lib/prisma.js';
 import { initSocketServer } from './lib/socket.js';
 
@@ -162,6 +163,9 @@ app.use('/api', auth, auditLog, repositoryRoutes);
 
 // ─── Protected integration routes ───
 app.use('/api', auth, auditLog, integrationRoutes);
+
+// ─── Protected AI settings routes ───
+app.use('/api', auth, aiSettingsRoutes);
 
 // ─── Production: serve frontend static build ───
 if (process.env.NODE_ENV === 'production') {

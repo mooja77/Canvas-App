@@ -4,8 +4,7 @@ import { prisma } from '../lib/prisma.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
 import { checkAiAccess } from '../middleware/planLimits.js';
 import { validate, generateSummarySchema, updateSummarySchema } from '../middleware/validation.js';
-import { complete } from '../lib/llm.js';
-import '../lib/llm-openai.js';
+import { resolveAiConfig } from '../middleware/aiConfig.js';
 
 export const summaryRoutes = Router();
 
@@ -22,9 +21,14 @@ const SUMMARY_PROMPTS: Record<string, string> = {
 summaryRoutes.post(
   '/canvas/:id/ai/summarize',
   checkAiAccess(),
+  resolveAiConfig(),
   validate(generateSummarySchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!req.llmProvider) {
+        return res.status(400).json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+      }
+
       const dashboardAccessId = getAuthId(req);
       const userId = getAuthUserId(req);
       const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
@@ -108,7 +112,7 @@ summaryRoutes.post(
 
       const prompt = SUMMARY_PROMPTS[summaryType] || SUMMARY_PROMPTS.paraphrase;
 
-      const result = await complete({
+      const result = await req.llmProvider.complete({
         messages: [
           {
             role: 'system',
@@ -140,7 +144,7 @@ summaryRoutes.post(
           userId,
           canvasId: canvas.id,
           feature: 'summarize',
-          provider: 'openai',
+          provider: req.llmProvider.name,
           model: result.model,
           inputTokens: result.inputTokens,
           outputTokens: result.outputTokens,

@@ -10,9 +10,8 @@ import {
   updateAiSuggestionSchema,
   bulkActionSuggestionsSchema,
 } from '../middleware/validation.js';
-import { complete } from '../lib/llm.js';
-import '../lib/llm-openai.js'; // register OpenAI provider
 import { buildSuggestCodesPrompt, buildAutoCodeTranscriptPrompt } from '../utils/aiPrompts.js';
+import { resolveAiConfig } from '../middleware/aiConfig.js';
 
 export const aiRoutes = Router();
 
@@ -20,6 +19,7 @@ export const aiRoutes = Router();
 aiRoutes.post(
   '/canvas/:id/ai/suggest-codes',
   checkAiAccess(),
+  resolveAiConfig(),
   validate(suggestCodesSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -56,7 +56,11 @@ aiRoutes.post(
         existingCodes,
       });
 
-      const result = await complete({
+      if (!req.llmProvider) {
+        return res.status(400).json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+      }
+
+      const result = await req.llmProvider.complete({
         messages,
         responseFormat: 'json',
         temperature: 0.3,
@@ -68,7 +72,7 @@ aiRoutes.post(
           userId,
           canvasId: canvas.id,
           feature: 'suggest_codes',
-          provider: 'openai',
+          provider: req.llmProvider.name,
           model: result.model,
           inputTokens: result.inputTokens,
           outputTokens: result.outputTokens,
@@ -119,6 +123,7 @@ aiRoutes.post(
 aiRoutes.post(
   '/canvas/:id/ai/auto-code-transcript',
   checkAiAccess(),
+  resolveAiConfig(),
   validate(autoCodeTranscriptSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -154,7 +159,11 @@ aiRoutes.post(
         instructions,
       });
 
-      const result = await complete({
+      if (!req.llmProvider) {
+        return res.status(400).json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+      }
+
+      const result = await req.llmProvider.complete({
         messages,
         responseFormat: 'json',
         temperature: 0.2,
@@ -167,7 +176,7 @@ aiRoutes.post(
           userId,
           canvasId: canvas.id,
           feature: 'auto_code',
-          provider: 'openai',
+          provider: req.llmProvider.name,
           model: result.model,
           inputTokens: result.inputTokens,
           outputTokens: result.outputTokens,

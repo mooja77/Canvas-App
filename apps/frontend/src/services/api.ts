@@ -409,6 +409,19 @@ export const authApi = {
     canvasClient.delete('/auth/account', { data: { password } }),
 };
 
+// ─── AI Settings API ───
+
+export const aiSettingsApi = {
+  getSettings: () =>
+    canvasClient.get('/ai-settings'),
+
+  updateSettings: (data: { provider: string; apiKey: string; model?: string; embeddingModel?: string }) =>
+    canvasClient.put('/ai-settings', data),
+
+  deleteSettings: () =>
+    canvasClient.delete('/ai-settings'),
+};
+
 // ─── Billing API ───
 
 export const billingApi = {

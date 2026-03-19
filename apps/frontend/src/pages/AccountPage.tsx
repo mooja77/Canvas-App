@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { authApi, billingApi } from '../services/api';
+import { authApi, billingApi, aiSettingsApi } from '../services/api';
 import toast from 'react-hot-toast';
 
 interface UserProfile {
@@ -50,6 +50,15 @@ export default function AccountPage() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleting, setDeleting] = useState(false);
 
+  // AI Settings state
+  const [aiProvider, setAiProvider] = useState('openai');
+  const [aiApiKey, setAiApiKey] = useState('');
+  const [aiModel, setAiModel] = useState('');
+  const [aiHasKey, setAiHasKey] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
+  const [aiTesting, setAiTesting] = useState(false);
+  const [showAiKey, setShowAiKey] = useState(false);
+
   // Post-upgrade welcome state
   const [searchParams, setSearchParams] = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
@@ -80,6 +89,18 @@ export default function AccountPage() {
       })
       .catch(() => toast.error('Failed to load profile'))
       .finally(() => setLoading(false));
+
+    // Load AI settings
+    aiSettingsApi.getSettings()
+      .then(res => {
+        const data = res.data.data;
+        if (data) {
+          setAiProvider(data.provider || 'openai');
+          setAiModel(data.model || '');
+          setAiHasKey(data.hasApiKey || false);
+        }
+      })
+      .catch(() => { /* no AI config yet */ });
   }, [authenticated, navigate]);
 
   const handleManageBilling = async () => {
@@ -356,6 +377,135 @@ export default function AccountPage() {
                   </div>
                 ));
               })()}
+            </div>
+          </div>
+        )}
+
+        {/* AI Settings */}
+        {isEmailAuth && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+              </svg>
+              <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">AI Settings</h2>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              Connect your own AI provider API key to use AI-powered features like coding suggestions, research assistant, and transcription. Your key is encrypted and never shared.
+            </p>
+
+            <div className="space-y-3">
+              {/* Provider */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Provider</label>
+                <select
+                  value={aiProvider}
+                  onChange={e => { setAiProvider(e.target.value); setAiApiKey(''); }}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                >
+                  <option value="openai">OpenAI (GPT-4o, Whisper transcription)</option>
+                  <option value="anthropic">Anthropic (Claude)</option>
+                  <option value="google">Google (Gemini)</option>
+                </select>
+              </div>
+
+              {/* API Key */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  API Key {aiHasKey && !aiApiKey && <span className="text-green-500 ml-1">configured</span>}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showAiKey ? 'text' : 'password'}
+                    placeholder={aiHasKey ? 'Enter new key to change...' : aiProvider === 'openai' ? 'sk-...' : aiProvider === 'anthropic' ? 'sk-ant-...' : 'AI...'}
+                    value={aiApiKey}
+                    onChange={e => setAiApiKey(e.target.value)}
+                    autoComplete="off"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAiKey(!showAiKey)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      {showAiKey ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                      )}
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Model (optional) */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Model (optional)</label>
+                <input
+                  type="text"
+                  placeholder={aiProvider === 'openai' ? 'gpt-4o-mini' : aiProvider === 'anthropic' ? 'claude-sonnet-4-20250514' : 'gemini-2.0-flash'}
+                  value={aiModel}
+                  onChange={e => setAiModel(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                />
+              </div>
+
+              {/* Provider-specific note */}
+              <div className="rounded-lg bg-gray-50 dark:bg-gray-700/50 px-3 py-2">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                  {aiProvider === 'openai' && 'OpenAI supports all AI features: coding suggestions, chat, summaries, embeddings, and audio transcription.'}
+                  {aiProvider === 'anthropic' && 'Anthropic supports coding suggestions, chat, and summaries. Transcription and embeddings (RAG indexing) require an OpenAI key.'}
+                  {aiProvider === 'google' && 'Google supports coding suggestions, chat, summaries, and embeddings. Transcription requires an OpenAI key.'}
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={async () => {
+                    if (!aiApiKey && !aiHasKey) { toast.error('Enter an API key'); return; }
+                    if (!aiApiKey && aiHasKey) { toast('No changes — key already configured'); return; }
+                    setAiSaving(true);
+                    try {
+                      await aiSettingsApi.updateSettings({
+                        provider: aiProvider,
+                        apiKey: aiApiKey,
+                        model: aiModel || undefined,
+                      });
+                      setAiHasKey(true);
+                      setAiApiKey('');
+                      toast.success('AI settings saved and key verified');
+                    } catch (err: any) {
+                      toast.error(err.response?.data?.error || 'Failed to save AI settings');
+                    } finally {
+                      setAiSaving(false);
+                    }
+                  }}
+                  disabled={aiSaving || (!aiApiKey && !aiHasKey)}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {aiSaving ? 'Verifying & saving...' : 'Save AI Settings'}
+                </button>
+                {aiHasKey && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await aiSettingsApi.deleteSettings();
+                        setAiHasKey(false);
+                        setAiApiKey('');
+                        setAiModel('');
+                        toast.success('API key removed');
+                      } catch {
+                        toast.error('Failed to remove key');
+                      }
+                    }}
+                    className="px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm rounded-lg transition-colors"
+                  >
+                    Remove Key
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}

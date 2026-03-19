@@ -217,3 +217,12 @@ export const generateSummarySchema = z.object({
 });
 
 export const updateSummarySchema = z.object({ summaryText: z.string().min(1).max(10000) });
+
+// ─── AI Settings Schemas ───
+
+export const updateAiSettingsSchema = z.object({
+  provider: z.enum(['openai', 'anthropic', 'google']),
+  apiKey: z.string().min(1),
+  model: z.string().max(100).optional(),
+  embeddingModel: z.string().max(100).optional(),
+});

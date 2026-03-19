@@ -51,11 +51,34 @@ export interface LlmProvider {
   embedBatch(texts: string[], model?: string): Promise<LlmEmbeddingResult[]>;
 }
 
-// Provider registry
+// Provider factory interface — creates per-request instances with user's API key
+export interface LlmProviderFactory {
+  create(apiKey: string, defaultModel?: string): LlmProvider;
+}
+
+// Provider registry (singletons — server-side fallback)
 const providers = new Map<string, LlmProvider>();
 
 export function registerProvider(name: string, provider: LlmProvider): void {
   providers.set(name, provider);
+}
+
+// Factory registry (per-request — user BYOK)
+const factories = new Map<string, LlmProviderFactory>();
+
+export function registerProviderFactory(name: string, factory: LlmProviderFactory): void {
+  factories.set(name, factory);
+}
+
+/** Create a provider instance with a specific API key (BYOK) */
+export function createProvider(providerName: string, apiKey: string, model?: string): LlmProvider {
+  const factory = factories.get(providerName);
+  if (!factory) {
+    throw new Error(
+      `LLM provider factory "${providerName}" not registered. Available: ${[...factories.keys()].join(', ')}`,
+    );
+  }
+  return factory.create(apiKey, model);
 }
 
 let defaultProvider: LlmProvider | null = null;

@@ -6,8 +6,7 @@ import { checkAiAccess } from '../middleware/planLimits.js';
 import { validate, chatQuerySchema } from '../middleware/validation.js';
 import { chunkText } from '../utils/embeddings.js';
 import { ragQuery } from '../utils/rag.js';
-import { embedBatch } from '../lib/llm.js';
-import '../lib/llm-openai.js';
+import { resolveAiConfig } from '../middleware/aiConfig.js';
 
 export const chatRoutes = Router();
 
@@ -15,8 +14,13 @@ export const chatRoutes = Router();
 chatRoutes.post(
   '/canvas/:id/ai/embed',
   checkAiAccess(),
+  resolveAiConfig(),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!req.llmProvider) {
+        return res.status(400).json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+      }
+
       const dashboardAccessId = getAuthId(req);
       const userId = getAuthUserId(req);
       const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
@@ -96,7 +100,7 @@ chatRoutes.post(
       for (let i = 0; i < allChunks.length; i += batchSize) {
         const batch = allChunks.slice(i, i + batchSize);
         const texts = batch.map((c) => c.chunkText);
-        const embedResults = await embedBatch(texts);
+        const embedResults = await req.llmProvider.embedBatch(texts);
 
         // Save embeddings
         await prisma.textEmbedding.createMany({
@@ -120,7 +124,7 @@ chatRoutes.post(
           userId,
           canvasId: canvas.id,
           feature: 'chat',
-          provider: 'openai',
+          provider: req.llmProvider.name,
           model: 'text-embedding-3-small',
           inputTokens: totalInputTokens,
           outputTokens: 0,
@@ -138,9 +142,14 @@ chatRoutes.post(
 chatRoutes.post(
   '/canvas/:id/ai/chat',
   checkAiAccess(),
+  resolveAiConfig(),
   validate(chatQuerySchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!req.llmProvider) {
+        return res.status(400).json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+      }
+
       const dashboardAccessId = getAuthId(req);
       const userId = getAuthUserId(req);
       const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
@@ -158,7 +167,7 @@ chatRoutes.post(
       });
 
       // Run RAG query
-      const result = await ragQuery(canvas.id, message);
+      const result = await ragQuery(canvas.id, message, req.llmProvider);
 
       // Save assistant message
       const assistantMsg = await prisma.chatMessage.create({
@@ -176,7 +185,7 @@ chatRoutes.post(
           userId,
           canvasId: canvas.id,
           feature: 'chat',
-          provider: 'openai',
+          provider: req.llmProvider.name,
           model: result.model,
           inputTokens: result.inputTokens,
           outputTokens: result.outputTokens,

@@ -11,5 +11,7 @@ declare namespace Express {
     userId?: string;
     userPlan?: string;
     userRole?: string;
+    // Per-request LLM provider (set by resolveAiConfig middleware)
+    llmProvider?: import('../lib/llm.js').LlmProvider;
   }
 }
