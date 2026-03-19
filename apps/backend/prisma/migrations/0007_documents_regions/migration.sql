@@ -7,7 +7,7 @@ CREATE TABLE "CanvasDocument" (
     "docType" TEXT NOT NULL,
     "pageCount" INTEGER NOT NULL DEFAULT 1,
     "metadata" TEXT NOT NULL DEFAULT '{}',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "CanvasDocument_canvasId_fkey" FOREIGN KEY ("canvasId") REFERENCES "CodingCanvas" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -22,7 +22,7 @@ CREATE TABLE "DocumentRegionCoding" (
     "width" REAL NOT NULL,
     "height" REAL NOT NULL,
     "note" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "DocumentRegionCoding_documentId_fkey" FOREIGN KEY ("documentId") REFERENCES "CanvasDocument" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 

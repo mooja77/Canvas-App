@@ -7,7 +7,7 @@ CREATE TABLE "TrainingDocument" (
     "instructions" TEXT,
     "goldCodings" TEXT NOT NULL,
     "passThreshold" REAL NOT NULL DEFAULT 0.7,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "TrainingDocument_canvasId_fkey" FOREIGN KEY ("canvasId") REFERENCES "CodingCanvas" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -19,7 +19,7 @@ CREATE TABLE "TrainingAttempt" (
     "codings" TEXT NOT NULL,
     "kappaScore" REAL,
     "passed" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "TrainingAttempt_trainingDocumentId_fkey" FOREIGN KEY ("trainingDocumentId") REFERENCES "TrainingDocument" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
