@@ -9,6 +9,7 @@ import { auth } from '../middleware/auth.js';
 import { sha256 } from '../utils/hashing.js';
 import { nanoid } from 'nanoid';
 import { AppError } from '../middleware/errorHandler.js';
+import { sendPasswordResetEmail } from '../lib/email.js';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -211,10 +212,7 @@ userAuthRoutes.post('/auth/forgot-password', authLimiter, async (req, res, next)
     const appUrl = process.env.APP_URL || 'http://localhost:5174';
     const resetUrl = `${appUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(normalizedEmail)}`;
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`Password reset link: ${resetUrl}`);
-    }
-    // TODO: Send email via nodemailer when SMTP is configured
+    await sendPasswordResetEmail(normalizedEmail, resetUrl);
 
     res.json({ success: true, message: 'If an account exists, a reset link has been sent' });
   } catch (err) { next(err); }

@@ -36,6 +36,8 @@ import SentimentNode from './nodes/SentimentNode';
 import TreemapNode from './nodes/TreemapNode';
 import TimelineNode from './nodes/TimelineNode';
 import GeoMapNode from './nodes/GeoMapNode';
+import DocumentNode from './nodes/DocumentNode';
+import DocumentPortraitNode from './nodes/DocumentPortraitNode';
 import CodingEdge from './edges/CodingEdge';
 import RelationEdge from './edges/RelationEdge';
 import CodeNavigator from './panels/CodeNavigator';
@@ -60,6 +62,8 @@ import CanvasTabBar from './panels/CanvasTabBar';
 import AiSuggestPanel from './panels/AiSuggestPanel';
 import AiAutoCodeModal from './panels/AiAutoCodeModal';
 import AiSetupGuide from './panels/AiSetupGuide';
+import PresenceAvatars from './panels/PresenceAvatars';
+import CollabCursors from './CollabCursors';
 import ConfirmDialog from './ConfirmDialog';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { useCanvasStore } from '../../stores/canvasStore';
@@ -71,6 +75,7 @@ import { useAutoLayout } from '../../hooks/useAutoLayout';
 import { useNodeColors } from '../../hooks/useNodeColors';
 import { useCanvasRerouteNodes } from '../../hooks/useCanvasRerouteNodes';
 import { useSessionTimeout } from '../../hooks/useSessionTimeout';
+import { useCollaboration } from '../../hooks/useCollaboration';
 import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 import { useAiConfigStore } from '../../stores/aiConfigStore';
 import type {
@@ -125,6 +130,8 @@ const nodeTypes = {
   treemap: withErrorBoundary(TreemapNode),
   timeline: withErrorBoundary(TimelineNode),
   geomap: withErrorBoundary(GeoMapNode),
+  document: withErrorBoundary(DocumentNode),
+  documentportrait: withErrorBoundary(DocumentPortraitNode),
 };
 
 const edgeTypes = {
@@ -166,6 +173,9 @@ export default function CanvasWorkspace() {
   } = useCanvasStore();
 
   const { showWarning: showSessionWarning, dismissWarning: dismissSessionWarning } = useSessionTimeout();
+
+  // Real-time collaboration
+  const collaboration = useCollaboration({ canvasId: activeCanvas?.id ?? null });
 
   // AI coding assistant
   const aiSuggestions = useAiSuggestions();
@@ -1475,6 +1485,7 @@ export default function CanvasWorkspace() {
               maskColor="rgba(0,0,0,0.06)"
               className="!bg-white/90 !backdrop-blur-sm !rounded-xl !shadow-node dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700"
             />}
+            {collaboration.isConnected && <CollabCursors cursors={collaboration.cursors} />}
           </ReactFlow>
 
           {/* Focus mode exit button */}
@@ -1801,6 +1812,9 @@ export default function CanvasWorkspace() {
               </span>
             )}
             <span>{savingLayout ? 'Saving...' : 'Saved'}</span>
+            {collaboration.isConnected && collaboration.collaborators.length > 0 && (
+              <PresenceAvatars collaborators={collaboration.collaborators} isConnected={collaboration.isConnected} />
+            )}
             <span className="tabular-nums">{zoomLevel}%</span>
           </div>
         </div>}

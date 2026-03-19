@@ -19,6 +19,9 @@ import CrossCaseAnalysisModal from './CrossCaseAnalysisModal';
 import ResearchAssistantPanel from './ResearchAssistantPanel';
 import SummaryPanel from './SummaryPanel';
 import CanvasSwitcher from './CanvasSwitcher';
+import SurveyImportModal from './SurveyImportModal';
+import QdpxExportButton from './QdpxExportButton';
+import QdpxImportModal from './QdpxImportModal';
 import toast from 'react-hot-toast';
 
 interface CanvasToolbarProps {
@@ -34,7 +37,7 @@ interface CanvasToolbarProps {
 }
 
 export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpenCommandPalette, onAutoLayout, onExportPNG, onToggleFocusMode, onTogglePresentationMode, onAiAutoCode, requireAiConfig }: CanvasToolbarProps) {
-  const { activeCanvas, closeCanvas, addQuestion, addMemo, showCodingStripes, toggleCodingStripes } = useCanvasStore();
+  const { activeCanvas, closeCanvas, addQuestion, addMemo, addTranscript, refreshCanvas, showCodingStripes, toggleCodingStripes } = useCanvasStore();
   const edgeStyle = useUIStore(s => s.edgeStyle);
   const setEdgeStyle = useUIStore(s => s.setEdgeStyle);
   const [showQuestionInput, setShowQuestionInput] = useState(false);
@@ -54,6 +57,8 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
   const [showCrossCase, setShowCrossCase] = useState(false);
   const [showResearchAssistant, setShowResearchAssistant] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [showSurveyImport, setShowSurveyImport] = useState(false);
+  const [showQdpxImport, setShowQdpxImport] = useState(false);
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [addingMemo, setAddingMemo] = useState(false);
 
@@ -151,6 +156,16 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
               {/* Data tools */}
               <div className="flex items-center gap-1">
                 <TranscriptSourceMenu />
+                <button
+                  onClick={() => setShowSurveyImport(true)}
+                  className="flex items-center gap-1.5 rounded-lg bg-teal-50 px-2.5 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300 dark:hover:bg-teal-900/50 transition-colors"
+                  title="Import survey responses from CSV"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                  </svg>
+                  Survey
+                </button>
                 <button
                   data-tour="canvas-btn-question"
                   onClick={() => setShowQuestionInput(true)}
@@ -376,6 +391,16 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                   </svg>
                 </button>
+                <QdpxExportButton canvasId={activeCanvas.id} />
+                <button
+                  onClick={() => setShowQdpxImport(true)}
+                  className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
+                  title="Import QDPX file"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                </button>
                 {onTogglePresentationMode && (
                   <button
                     onClick={onTogglePresentationMode}
@@ -476,6 +501,29 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
       {showCrossCase && <CrossCaseAnalysisModal onClose={() => setShowCrossCase(false)} />}
       {showResearchAssistant && <ResearchAssistantPanel onClose={() => setShowResearchAssistant(false)} />}
       {showSummary && <SummaryPanel onClose={() => setShowSummary(false)} />}
+      {showSurveyImport && (
+        <SurveyImportModal
+          isOpen={showSurveyImport}
+          onClose={() => setShowSurveyImport(false)}
+          onImport={async (rows) => {
+            for (const row of rows) {
+              await addTranscript(row.title, row.content);
+            }
+            toast.success(`Imported ${rows.length} survey response(s)`);
+            setShowSurveyImport(false);
+          }}
+        />
+      )}
+      {showQdpxImport && (
+        <QdpxImportModal
+          canvasId={activeCanvas.id}
+          onClose={() => setShowQdpxImport(false)}
+          onImported={() => {
+            refreshCanvas();
+            setShowQdpxImport(false);
+          }}
+        />
+      )}
     </>
   );
 }
