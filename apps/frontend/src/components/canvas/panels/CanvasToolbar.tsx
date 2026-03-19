@@ -30,9 +30,10 @@ interface CanvasToolbarProps {
   onToggleFocusMode?: () => void;
   onTogglePresentationMode?: () => void;
   onAiAutoCode?: () => void;
+  requireAiConfig?: (feature: string, callback: () => void) => void;
 }
 
-export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpenCommandPalette, onAutoLayout, onExportPNG, onToggleFocusMode, onTogglePresentationMode, onAiAutoCode }: CanvasToolbarProps) {
+export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpenCommandPalette, onAutoLayout, onExportPNG, onToggleFocusMode, onTogglePresentationMode, onAiAutoCode, requireAiConfig }: CanvasToolbarProps) {
   const { activeCanvas, closeCanvas, addQuestion, addMemo, showCodingStripes, toggleCodingStripes } = useCanvasStore();
   const edgeStyle = useUIStore(s => s.edgeStyle);
   const setEdgeStyle = useUIStore(s => s.setEdgeStyle);
@@ -211,7 +212,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                   </button>
                 )}
                 <button
-                  onClick={() => setShowResearchAssistant(true)}
+                  onClick={() => requireAiConfig ? requireAiConfig('AI Research Assistant', () => setShowResearchAssistant(true)) : setShowResearchAssistant(true)}
                   className="flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
                   title="AI Research Assistant — ask questions about your data"
                 >
@@ -221,7 +222,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                   AI Chat
                 </button>
                 <button
-                  onClick={() => setShowSummary(true)}
+                  onClick={() => requireAiConfig ? requireAiConfig('AI Summarization', () => setShowSummary(true)) : setShowSummary(true)}
                   className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50 transition-colors"
                   title="Generate summaries and paraphrases"
                 >

@@ -59,6 +59,7 @@ import PresentationMode from './panels/PresentationMode';
 import CanvasTabBar from './panels/CanvasTabBar';
 import AiSuggestPanel from './panels/AiSuggestPanel';
 import AiAutoCodeModal from './panels/AiAutoCodeModal';
+import AiSetupGuide from './panels/AiSetupGuide';
 import ConfirmDialog from './ConfirmDialog';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { useCanvasStore } from '../../stores/canvasStore';
@@ -71,6 +72,7 @@ import { useNodeColors } from '../../hooks/useNodeColors';
 import { useCanvasRerouteNodes } from '../../hooks/useCanvasRerouteNodes';
 import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import { useAiSuggestions } from '../../hooks/useAiSuggestions';
+import { useAiConfigStore } from '../../stores/aiConfigStore';
 import type {
   CanvasTranscript,
   CanvasQuestion,
@@ -168,6 +170,20 @@ export default function CanvasWorkspace() {
   // AI coding assistant
   const aiSuggestions = useAiSuggestions();
   const [showAiAutoCode, setShowAiAutoCode] = useState(false);
+  const [showAiSetupGuide, setShowAiSetupGuide] = useState<string | null>(null);
+  const { configured: aiConfigured, fetchConfig: fetchAiConfig } = useAiConfigStore();
+
+  // Fetch AI config on mount
+  useEffect(() => { fetchAiConfig(); }, [fetchAiConfig]);
+
+  // Guard function: show setup guide if AI not configured
+  const requireAiConfig = useCallback((featureName: string, callback: () => void) => {
+    if (aiConfigured) {
+      callback();
+    } else {
+      setShowAiSetupGuide(featureName);
+    }
+  }, [aiConfigured]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -293,7 +309,9 @@ export default function CanvasWorkspace() {
           collapsed: posData?.collapsed ?? false,
           zoomTier,
           customColor: nodeColorMap.get(nodeId),
-          onAiSuggest: aiSuggestions.suggestCodes,
+          onAiSuggest: (tId: string, text: string, start: number, end: number) => {
+            requireAiConfig('AI Code Suggestions', () => aiSuggestions.suggestCodes(tId, text, start, end));
+          },
         },
       });
     });
@@ -1400,7 +1418,8 @@ export default function CanvasWorkspace() {
             onExportPNG={handleExportPNG}
             onToggleFocusMode={() => setFocusMode(true)}
             onTogglePresentationMode={() => setPresentationMode(true)}
-            onAiAutoCode={() => setShowAiAutoCode(true)}
+            onAiAutoCode={() => requireAiConfig('AI Auto-Code', () => setShowAiAutoCode(true))}
+            requireAiConfig={requireAiConfig}
           />
         )}
         <div
@@ -1855,6 +1874,14 @@ export default function CanvasWorkspace() {
             setShowAiAutoCode(false);
           }}
           onClose={() => setShowAiAutoCode(false)}
+        />
+      )}
+
+      {/* AI Setup Guide */}
+      {showAiSetupGuide && (
+        <AiSetupGuide
+          trigger={showAiSetupGuide}
+          onClose={() => setShowAiSetupGuide(null)}
         />
       )}
 
