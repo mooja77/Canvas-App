@@ -12,6 +12,10 @@
     {
       "source": "/health",
       "destination": "https://canvas-app-production.up.railway.app/health"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
