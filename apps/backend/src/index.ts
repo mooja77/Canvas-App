@@ -43,11 +43,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://accounts.google.com"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", "https://accounts.google.com"],
       fontSrc: ["'self'"],
+      frameSrc: ["'self'", "https://accounts.google.com"],
       workerSrc: ["'self'", "blob:"],
       childSrc: ["'self'", "blob:"],
     },

@@ -387,6 +387,9 @@ export const authApi = {
   emailLogin: (email: string, password: string) =>
     canvasClient.post('/auth/email-login', { email, password }),
 
+  googleLogin: (credential: string) =>
+    canvasClient.post('/auth/google', { credential }),
+
   forgotPassword: (email: string) =>
     canvasClient.post('/auth/forgot-password', { email }),
 

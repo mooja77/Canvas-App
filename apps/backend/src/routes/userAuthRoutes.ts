@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma.js';
 import { signUserToken } from '../utils/jwt.js';
 import { logAudit } from '../middleware/auditLog.js';
@@ -12,6 +13,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { sendPasswordResetEmail } from '../lib/email.js';
 
 const BCRYPT_ROUNDS = 12;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 
 export const userAuthRoutes = Router();
 
@@ -175,6 +177,122 @@ userAuthRoutes.post('/auth/email-login', authLimiter, async (req, res, next) => 
           name: user.name,
           role: user.role,
           plan: currentPlan,
+        },
+      },
+    });
+  } catch (err) { next(err); }
+});
+
+// POST /api/auth/google — Google OAuth login/signup
+userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
+  try {
+    const { credential } = req.body;
+    if (!credential || typeof credential !== 'string') {
+      return res.status(400).json({ success: false, error: 'Google credential is required' });
+    }
+    if (!GOOGLE_CLIENT_ID) {
+      return res.status(500).json({ success: false, error: 'Google OAuth is not configured' });
+    }
+
+    const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      return res.status(401).json({ success: false, error: 'Invalid Google credential' });
+    }
+
+    if (!payload || !payload.email) {
+      return res.status(401).json({ success: false, error: 'Unable to extract email from Google token' });
+    }
+
+    const { email, name: googleName, sub: googleId, email_verified } = payload;
+    const normalizedEmail = email.toLowerCase().trim();
+    const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
+    const hashedIp = sha256(rawIp);
+
+    let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+    if (!user) {
+      // Create new user via Google OAuth
+      user = await prisma.$transaction(async (tx) => {
+        const newUser = await tx.user.create({
+          data: {
+            email: normalizedEmail,
+            passwordHash: '',
+            name: googleName || normalizedEmail.split('@')[0],
+            plan: 'free',
+            emailVerified: true,
+          },
+        });
+
+        // Create a DashboardAccess for backward compat with existing canvas routes
+        const accessCode = `USR-${nanoid(12)}`;
+        const sha256Index = sha256(accessCode);
+        const bcryptHash = await bcrypt.hash(accessCode, BCRYPT_ROUNDS);
+
+        await tx.dashboardAccess.create({
+          data: {
+            accessCode: sha256Index,
+            accessCodeHash: bcryptHash,
+            name: googleName || normalizedEmail.split('@')[0],
+            role: 'researcher',
+            expiresAt: new Date('2099-12-31'),
+            userId: newUser.id,
+          },
+        });
+
+        return newUser;
+      });
+
+      logAudit({
+        action: 'auth.signup',
+        resource: 'user',
+        actorType: 'user',
+        actorId: user.id,
+        ip: hashedIp,
+        method: 'POST',
+        path: '/api/auth/google',
+        meta: JSON.stringify({ provider: 'google', googleId }),
+      });
+    } else {
+      logAudit({
+        action: 'auth.login',
+        resource: 'user',
+        actorType: 'user',
+        actorId: user.id,
+        ip: hashedIp,
+        method: 'POST',
+        path: '/api/auth/google',
+        meta: JSON.stringify({ provider: 'google' }),
+      });
+    }
+
+    // Refresh plan from subscription status
+    const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
+    const currentPlan = subscription && subscription.status === 'active' ? user.plan : 'free';
+
+    if (currentPlan !== user.plan) {
+      await prisma.user.update({ where: { id: user.id }, data: { plan: currentPlan } });
+    }
+
+    const jwt = signUserToken(user.id, user.role, currentPlan);
+
+    res.json({
+      success: true,
+      data: {
+        jwt,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          plan: currentPlan,
+          emailVerified: user.emailVerified,
         },
       },
     });

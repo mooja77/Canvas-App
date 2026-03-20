@@ -178,20 +178,24 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Social Proof */}
+      {/* Built for Researchers */}
       <section className="max-w-5xl mx-auto px-4 py-12">
         <div className="grid md:grid-cols-3 gap-6">
           {[
-            { quote: 'Canvas App transformed how I approach thematic analysis. Being able to see everything on one canvas is a game-changer.', author: 'Dr. Sarah M.', role: 'Sociology Researcher' },
-            { quote: 'My students picked it up in minutes. The visual interface makes qualitative coding accessible for beginners.', author: 'Prof. James T.', role: 'Research Methods Instructor' },
-            { quote: 'The auto-code feature saved me hours of work. I can now focus on interpretation instead of mechanical coding.', author: 'Maria L.', role: 'PhD Candidate, Education' },
+            { title: 'Visual Coding', description: 'See your entire codebook, transcripts, and relationships on one interactive canvas. Drag to connect, click to code.', icon: 'M2.25 7.125C2.25 6.504 2.754 6 3.375 6h6c.621 0 1.125.504 1.125 1.125v3.75c0 .621-.504 1.125-1.125 1.125h-6a1.125 1.125 0 0 1-1.125-1.125v-3.75ZM14.25 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM3.75 16.125c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v4.875c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 0 1-1.125-1.125v-4.875Z' },
+            { title: 'AI-Assisted', description: 'Bring your own API key for AI-powered coding suggestions, research chat, transcription, and thematic summarization.', icon: 'M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z' },
+            { title: 'Academic Standards', description: 'QDPX import/export for NVivo/ATLAS.ti interoperability. Cohen\'s Kappa intercoder reliability. Ethics compliance built in.', icon: 'M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5' },
           ].map(t => (
-            <div key={t.author} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400 italic mb-4">"{t.quote}"</p>
-              <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.author}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{t.role}</p>
+            <div key={t.title} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-100 dark:bg-brand-900/30">
+                  <svg className="h-5 w-5 text-brand-600 dark:text-brand-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d={t.icon} />
+                  </svg>
+                </div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.title}</p>
               </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t.description}</p>
             </div>
           ))}
         </div>

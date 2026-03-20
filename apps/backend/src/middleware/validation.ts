@@ -152,6 +152,12 @@ export const autoCodeSchema = z.object({
   transcriptIds: z.array(z.string().min(1)).optional(),
 });
 
+// ─── Google OAuth Schema ───
+
+export const googleAuthSchema = z.object({
+  credential: z.string().min(1),
+});
+
 // ─── Ethics Schemas ───
 
 export const updateEthicsSchema = z.object({

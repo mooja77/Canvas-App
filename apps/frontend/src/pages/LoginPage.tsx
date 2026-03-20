@@ -1,8 +1,35 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { authApi } from '../services/api';
 import toast from 'react-hot-toast';
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: { credential: string }) => void;
+            auto_select?: boolean;
+          }) => void;
+          renderButton: (
+            element: HTMLElement,
+            config: {
+              theme?: string;
+              size?: string;
+              width?: number;
+              text?: string;
+              shape?: string;
+              logo_alignment?: string;
+            }
+          ) => void;
+        };
+      };
+    };
+  }
+}
 
 function getPasswordStrength(pw: string): { label: string; color: string; width: string } {
   if (!pw) return { label: '', color: '', width: '0%' };
@@ -32,6 +59,63 @@ export default function LoginPage() {
   const setAuth = useAuthStore(s => s.setAuth);
   const setEmailAuth = useAuthStore(s => s.setEmailAuth);
   const navigate = useNavigate();
+
+  const googleButtonRef = useRef<HTMLDivElement>(null);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  const handleGoogleCallback = useCallback(async (response: { credential: string }) => {
+    setLoading(true);
+    try {
+      const res = await authApi.googleLogin(response.credential);
+      const { jwt, user } = res.data.data;
+      setEmailAuth({ jwt, email: user.email, userId: user.id, name: user.name, role: user.role, plan: user.plan });
+      toast.success(`Welcome, ${user.name}!`);
+      navigate('/canvas');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Google sign-in failed');
+    } finally {
+      setLoading(false);
+    }
+  }, [setEmailAuth, navigate]);
+
+  useEffect(() => {
+    if (!googleClientId) return;
+
+    const initializeGoogle = () => {
+      if (window.google && googleButtonRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleGoogleCallback,
+        });
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: 'outline',
+          size: 'large',
+          width: 400,
+          text: 'continue_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+        });
+      }
+    };
+
+    // If script already loaded, just initialize
+    if (window.google) {
+      initializeGoogle();
+      return;
+    }
+
+    // Load the GSI script
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = initializeGoogle;
+    document.head.appendChild(script);
+
+    return () => {
+      // Don't remove the script on cleanup — it's shared
+    };
+  }, [googleClientId, handleGoogleCallback]);
 
   useEffect(() => {
     if (searchParams.get('expired') === 'true') {
@@ -133,6 +217,23 @@ export default function LoginPage() {
               Sign Up
             </button>
           </div>
+
+          {/* Google Sign-In */}
+          {googleClientId && (
+            <div className="mb-6">
+              <div ref={googleButtonRef} className="flex justify-center" />
+              <div className="relative mt-5">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="bg-white dark:bg-gray-800 px-3 text-gray-500 dark:text-gray-400">
+                    or continue with email
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {mode === 'login' ? (
             <form onSubmit={handleEmailLogin} className="space-y-4" role="tabpanel">
