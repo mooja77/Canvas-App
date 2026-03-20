@@ -37,6 +37,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = parseInt(process.env.PORT || '3007', 10);
 
+// Trust proxy (Railway/Vercel run behind reverse proxies)
+app.set('trust proxy', 1);
+
 // Security headers
 const isProduction = process.env.NODE_ENV === 'production';
 app.use(helmet({
