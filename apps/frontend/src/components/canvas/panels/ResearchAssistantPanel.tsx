@@ -40,7 +40,7 @@ export default function ResearchAssistantPanel({ onClose }: ResearchAssistantPan
   };
 
   return (
-    <div className="fixed right-0 top-0 z-40 flex h-full w-96 flex-col border-l border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800 animate-slide-in-right">
+    <div className="fixed right-0 top-0 z-40 flex h-full w-full sm:w-96 flex-col border-l border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800 animate-slide-in-right">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
         <div className="flex items-center gap-2">

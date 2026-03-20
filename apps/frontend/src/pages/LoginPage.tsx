@@ -87,10 +87,11 @@ export default function LoginPage() {
           client_id: googleClientId,
           callback: handleGoogleCallback,
         });
+        const containerWidth = googleButtonRef.current.parentElement?.offsetWidth || 400;
         window.google.accounts.id.renderButton(googleButtonRef.current, {
           theme: 'outline',
           size: 'large',
-          width: 400,
+          width: Math.min(400, containerWidth - 16),
           text: 'continue_with',
           shape: 'rectangular',
           logo_alignment: 'left',

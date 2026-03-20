@@ -219,58 +219,90 @@ export default function PricingPage() {
         </div>
 
         {/* Feature Comparison Table */}
-        <div className="mt-16 overflow-x-auto relative">
+        <div className="mt-16">
           <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-8">
             Full Feature Comparison
           </h2>
-          <table className="w-full text-sm min-w-[600px]">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th scope="col" className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 font-medium">Feature</th>
-                <th scope="col" className="text-center py-3 px-4 text-gray-900 dark:text-white font-semibold">Free</th>
-                <th scope="col" className="text-center py-3 px-4 text-brand-600 dark:text-brand-400 font-semibold">Pro</th>
-                <th scope="col" className="text-center py-3 px-4 text-gray-900 dark:text-white font-semibold">Team</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {[
-                { feature: 'Canvases', free: '1', pro: 'Unlimited', team: 'Unlimited' },
-                { feature: 'Transcripts per canvas', free: '2', pro: 'Unlimited', team: 'Unlimited' },
-                { feature: 'Words per transcript', free: '5,000', pro: '50,000', team: '50,000' },
-                { feature: 'Codes', free: '5', pro: 'Unlimited', team: 'Unlimited' },
-                { feature: 'Auto-code', free: false, pro: true, team: true },
-                { feature: 'Analysis tools', free: '2 (Stats, Word Cloud)', pro: 'All 10', team: 'All 10' },
-                { feature: 'Export formats', free: 'CSV', pro: 'CSV, PNG, HTML, MD', team: 'CSV, PNG, HTML, MD' },
-                { feature: 'Share codes', free: '0', pro: '5', team: 'Unlimited' },
-                { feature: 'Ethics panel', free: false, pro: true, team: true },
-                { feature: 'Cases & cross-case', free: false, pro: true, team: true },
-                { feature: 'Intercoder reliability', free: false, pro: false, team: true },
-                { feature: 'Team management', free: false, pro: false, team: true },
-                { feature: '.edu discount', free: '-', pro: '40% off', team: '40% off' },
-              ].map(row => (
-                <tr key={row.feature} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <th scope="row" className="py-2.5 px-4 text-left font-normal text-gray-700 dark:text-gray-300">{row.feature}</th>
-                  {['free', 'pro', 'team'].map(tier => {
-                    const val = row[tier as keyof typeof row];
-                    return (
-                      <td key={tier} className="py-2.5 px-4 text-center">
-                        {typeof val === 'boolean' ? (
-                          val ? (
-                            <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                          ) : (
-                            <svg className="w-5 h-5 text-gray-300 dark:text-gray-600 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                          )
-                        ) : (
-                          <span className="text-gray-700 dark:text-gray-300">{val}</span>
-                        )}
-                      </td>
-                    );
-                  })}
+
+          {/* Desktop table — hidden on mobile */}
+          <div className="hidden md:block overflow-x-auto relative">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th scope="col" className="text-left py-3 px-4 text-gray-600 dark:text-gray-400 font-medium">Feature</th>
+                  <th scope="col" className="text-center py-3 px-4 text-gray-900 dark:text-white font-semibold">Free</th>
+                  <th scope="col" className="text-center py-3 px-4 text-brand-600 dark:text-brand-400 font-semibold">Pro</th>
+                  <th scope="col" className="text-center py-3 px-4 text-gray-900 dark:text-white font-semibold">Team</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-50 dark:from-gray-900 pointer-events-none md:hidden" />
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {[
+                  { feature: 'Canvases', free: '1', pro: 'Unlimited', team: 'Unlimited' },
+                  { feature: 'Transcripts per canvas', free: '2', pro: 'Unlimited', team: 'Unlimited' },
+                  { feature: 'Words per transcript', free: '5,000', pro: '50,000', team: '50,000' },
+                  { feature: 'Codes', free: '5', pro: 'Unlimited', team: 'Unlimited' },
+                  { feature: 'Auto-code', free: false, pro: true, team: true },
+                  { feature: 'Analysis tools', free: '2 (Stats, Word Cloud)', pro: 'All 10', team: 'All 10' },
+                  { feature: 'Export formats', free: 'CSV', pro: 'CSV, PNG, HTML, MD', team: 'CSV, PNG, HTML, MD' },
+                  { feature: 'Share codes', free: '0', pro: '5', team: 'Unlimited' },
+                  { feature: 'Ethics panel', free: false, pro: true, team: true },
+                  { feature: 'Cases & cross-case', free: false, pro: true, team: true },
+                  { feature: 'Intercoder reliability', free: false, pro: false, team: true },
+                  { feature: 'Team management', free: false, pro: false, team: true },
+                  { feature: '.edu discount', free: '-', pro: '40% off', team: '40% off' },
+                ].map(row => (
+                  <tr key={row.feature} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                    <th scope="row" className="py-2.5 px-4 text-left font-normal text-gray-700 dark:text-gray-300">{row.feature}</th>
+                    {['free', 'pro', 'team'].map(tier => {
+                      const val = row[tier as keyof typeof row];
+                      return (
+                        <td key={tier} className="py-2.5 px-4 text-center">
+                          {typeof val === 'boolean' ? (
+                            val ? (
+                              <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            ) : (
+                              <svg className="w-5 h-5 text-gray-300 dark:text-gray-600 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            )
+                          ) : (
+                            <span className="text-gray-700 dark:text-gray-300">{val}</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile stacked cards — visible only on mobile */}
+          <div className="md:hidden space-y-6">
+            {([
+              { name: 'Free', highlight: false, features: { 'Canvases': '1', 'Transcripts per canvas': '2', 'Words per transcript': '5,000', 'Codes': '5', 'Auto-code': false, 'Analysis tools': '2 (Stats, Word Cloud)', 'Export formats': 'CSV', 'Share codes': '0', 'Ethics panel': false, 'Cases & cross-case': false, 'Intercoder reliability': false, 'Team management': false, '.edu discount': '-' } },
+              { name: 'Pro', highlight: true, features: { 'Canvases': 'Unlimited', 'Transcripts per canvas': 'Unlimited', 'Words per transcript': '50,000', 'Codes': 'Unlimited', 'Auto-code': true, 'Analysis tools': 'All 10', 'Export formats': 'CSV, PNG, HTML, MD', 'Share codes': '5', 'Ethics panel': true, 'Cases & cross-case': true, 'Intercoder reliability': false, 'Team management': false, '.edu discount': '40% off' } },
+              { name: 'Team', highlight: false, features: { 'Canvases': 'Unlimited', 'Transcripts per canvas': 'Unlimited', 'Words per transcript': '50,000', 'Codes': 'Unlimited', 'Auto-code': true, 'Analysis tools': 'All 10', 'Export formats': 'CSV, PNG, HTML, MD', 'Share codes': 'Unlimited', 'Ethics panel': true, 'Cases & cross-case': true, 'Intercoder reliability': true, 'Team management': true, '.edu discount': '40% off' } },
+            ] as const).map(plan => (
+              <div key={plan.name} className={`rounded-xl p-4 ${plan.highlight ? 'ring-2 ring-brand-500 bg-white dark:bg-gray-800' : 'ring-1 ring-gray-200 dark:ring-gray-700 bg-white dark:bg-gray-800'}`}>
+                <h3 className={`text-lg font-bold mb-3 ${plan.highlight ? 'text-brand-600 dark:text-brand-400' : 'text-gray-900 dark:text-white'}`}>{plan.name}</h3>
+                <div className="space-y-2">
+                  {Object.entries(plan.features).map(([feature, val]) => (
+                    <div key={feature} className="flex items-center justify-between py-1 text-sm">
+                      <span className="text-gray-600 dark:text-gray-400">{feature}</span>
+                      {typeof val === 'boolean' ? (
+                        val ? (
+                          <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                        ) : (
+                          <svg className="w-5 h-5 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        )
+                      ) : (
+                        <span className="text-gray-900 dark:text-gray-200 font-medium text-right">{val}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Money-back guarantee */}

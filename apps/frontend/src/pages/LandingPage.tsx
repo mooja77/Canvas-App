@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const authenticated = useAuthStore(s => s.authenticated);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
@@ -17,7 +19,8 @@ export default function LandingPage() {
           </div>
           <span className="font-bold text-gray-900 dark:text-white">Canvas App</span>
         </div>
-        <div className="flex items-center gap-4">
+        {/* Desktop nav */}
+        <div className="hidden sm:flex items-center gap-4">
           <Link to="/pricing" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
             Pricing
           </Link>
@@ -39,7 +42,46 @@ export default function LandingPage() {
             </>
           )}
         </div>
+        {/* Mobile hamburger */}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="sm:hidden p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+          aria-label="Toggle menu"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            {mobileMenuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            )}
+          </svg>
+        </button>
       </nav>
+      {/* Mobile nav menu */}
+      {mobileMenuOpen && (
+        <div className="sm:hidden px-4 pb-4 space-y-2 border-b border-gray-200 dark:border-gray-700">
+          <Link to="/pricing" className="block py-2 text-sm text-gray-600 dark:text-gray-400" onClick={() => setMobileMenuOpen(false)}>
+            Pricing
+          </Link>
+          {authenticated ? (
+            <Link to="/canvas" className="block py-2 text-sm bg-brand-600 text-white px-4 rounded-lg font-medium text-center" onClick={() => setMobileMenuOpen(false)}>
+              Go to Canvas
+            </Link>
+          ) : (
+            <>
+              <Link to="/login" className="block py-2 text-sm text-gray-600 dark:text-gray-400" onClick={() => setMobileMenuOpen(false)}>
+                Sign In
+              </Link>
+              <button
+                onClick={() => { navigate('/login'); setMobileMenuOpen(false); }}
+                className="w-full text-sm bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                Get Started Free
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <main>
       {/* Hero */}

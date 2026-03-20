@@ -75,7 +75,7 @@ export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-gray-900 overflow-hidden"
+        className="w-full max-w-lg mx-4 rounded-2xl bg-white shadow-2xl dark:bg-gray-900 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

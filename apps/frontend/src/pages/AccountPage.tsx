@@ -346,7 +346,7 @@ export default function AccountPage() {
         {profile.usage && (
           <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
             <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Usage</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {(() => {
                 const limits = profile.user.plan === 'free'
                   ? { canvases: 1, transcripts: 2, codes: 5, shares: 0 }

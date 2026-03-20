@@ -405,7 +405,7 @@ export default function OnboardingTour() {
         className={`z-20 transition-opacity duration-150 ${animating ? 'opacity-0' : 'opacity-100'}`}
         style={tooltipStyle}
       >
-        <div className={`w-[360px] rounded-2xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-black/10 dark:ring-white/10 overflow-hidden ${step === 0 ? 'tour-tooltip-enter' : ''}`}>
+        <div className={`w-[calc(100vw-32px)] max-w-[360px] rounded-2xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-black/10 dark:ring-white/10 overflow-hidden ${step === 0 ? 'tour-tooltip-enter' : ''}`}>
           {/* Progress bar at top */}
           <div className="h-1 bg-gray-100 dark:bg-gray-700">
             <div
