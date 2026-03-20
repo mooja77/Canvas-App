@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUIStore } from '../../../stores/uiStore';
 
 interface TourStep {
@@ -6,7 +6,7 @@ interface TourStep {
   title: string;
   description: string;
   position: 'top' | 'bottom' | 'left' | 'right' | 'center';
-  icon: 'wave' | 'transcript' | 'code' | 'highlight' | 'link' | 'chart' | 'sidebar' | 'status' | 'search' | 'rocket';
+  icon: 'wave' | 'transcript' | 'code' | 'highlight' | 'ai' | 'collab' | 'link' | 'chart' | 'sidebar' | 'status' | 'search' | 'rocket' | 'import';
   tip?: string;
 }
 
@@ -43,6 +43,22 @@ const TOUR_STEPS: TourStep[] = [
     tip: 'Double-click anywhere on the canvas for a quick menu.',
   },
   {
+    target: 'canvas-btn-aicode',
+    title: 'AI-Powered Coding',
+    description: 'Get AI suggestions on selected text, or auto-code entire transcripts with a single click. The AI analyzes your data and applies codes intelligently based on your existing codebook.',
+    position: 'bottom',
+    icon: 'ai',
+    tip: 'Set up your API key in Account Settings first to enable AI features.',
+  },
+  {
+    target: 'canvas-btn-aichat',
+    title: 'AI Research Assistant',
+    description: 'Ask questions about your data and get answers with citations. The RAG-based chat searches across all your transcripts to find relevant passages and synthesize insights.',
+    position: 'bottom',
+    icon: 'ai',
+    tip: 'Try asking "What are the main themes across all interviews?"',
+  },
+  {
     target: 'canvas-navigator',
     title: 'Your Code Navigator',
     description: 'This sidebar shows all your codes and sources at a glance. Click any code to see what you\'ve tagged. The bar shows how many times each code was used.',
@@ -59,8 +75,24 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     target: 'canvas-toolbar',
+    title: 'Import & Export',
+    description: 'Import and export QDPX files for NVivo and ATLAS.ti interoperability. Import survey CSVs, export analysis reports in HTML/Markdown, or save your canvas as a PNG image.',
+    position: 'bottom',
+    icon: 'import',
+    tip: 'QDPX is the open standard for qualitative data exchange.',
+  },
+  {
+    target: 'canvas-status-bar',
+    title: 'Collaboration',
+    description: 'Team plan users can collaborate in real-time with presence avatars and live cursors. See who\'s working on the canvas and where they\'re focused.',
+    position: 'top',
+    icon: 'collab',
+    tip: 'Upgrade to the Team plan to unlock real-time collaboration.',
+  },
+  {
+    target: 'canvas-toolbar',
     title: 'More Powerful Tools',
-    description: 'Auto-Code finds patterns instantly. Hierarchy lets you organize codes into groups. Stripes shows color-coded highlights right in your text.',
+    description: 'AI summarization generates concise overviews. Document coding lets you code at scale. The training center helps new team members learn your codebook quickly.',
     position: 'bottom',
     icon: 'search',
   },
@@ -106,6 +138,24 @@ function StepIcon({ type, className }: { type: TourStep['icon']; className?: str
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
         </svg>
       );
+    case 'ai':
+      return (
+        <svg className={`${c} text-violet-500`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" />
+        </svg>
+      );
+    case 'collab':
+      return (
+        <svg className={`${c} text-sky-500`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+        </svg>
+      );
+    case 'import':
+      return (
+        <svg className={`${c} text-orange-500`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 7.5h-.75A2.25 2.25 0 0 0 4.5 9.75v7.5a2.25 2.25 0 0 0 2.25 2.25h7.5a2.25 2.25 0 0 0 2.25-2.25v-7.5a2.25 2.25 0 0 0-2.25-2.25h-.75m0-3-3-3m0 0-3 3m3-3v11.25m6-2.25h.75a2.25 2.25 0 0 1 2.25 2.25v7.5a2.25 2.25 0 0 1-2.25 2.25h-7.5a2.25 2.25 0 0 1-2.25-2.25v-.75" />
+        </svg>
+      );
     case 'link':
       return (
         <svg className={`${c} text-cyan-500`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -149,18 +199,57 @@ export default function OnboardingTour() {
   const [step, setStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [animating, setAnimating] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoPaused, setDemoPaused] = useState(false);
+  const demoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Reset to step 0 whenever the tour becomes visible again (e.g. replay)
   useEffect(() => {
     if (!onboardingComplete) {
       setStep(0);
       setAnimating(false);
+      setDemoMode(false);
+      setDemoPaused(false);
     }
   }, [onboardingComplete]);
 
   const currentStep = TOUR_STEPS[step];
   const isLastStep = step === TOUR_STEPS.length - 1;
   const isCenter = currentStep.target === 'center' || currentStep.position === 'center';
+
+  // Demo mode auto-advance
+  useEffect(() => {
+    if (!demoMode || demoPaused || onboardingComplete || isLastStep) {
+      if (demoTimerRef.current) {
+        clearInterval(demoTimerRef.current);
+        demoTimerRef.current = null;
+      }
+      return;
+    }
+
+    demoTimerRef.current = setInterval(() => {
+      setAnimating(true);
+      setTimeout(() => {
+        setStep(prev => {
+          const next = prev + 1;
+          if (next >= TOUR_STEPS.length - 1) {
+            // Stop at last step
+            setDemoMode(false);
+            setDemoPaused(false);
+          }
+          return Math.min(next, TOUR_STEPS.length - 1);
+        });
+        setAnimating(false);
+      }, 150);
+    }, 4000);
+
+    return () => {
+      if (demoTimerRef.current) {
+        clearInterval(demoTimerRef.current);
+        demoTimerRef.current = null;
+      }
+    };
+  }, [demoMode, demoPaused, onboardingComplete, isLastStep]);
 
   // Find target element
   useEffect(() => {
@@ -205,6 +294,20 @@ export default function OnboardingTour() {
   const handleSkip = useCallback(() => {
     completeOnboarding();
   }, [completeOnboarding]);
+
+  const toggleDemoMode = useCallback(() => {
+    if (demoMode) {
+      setDemoMode(false);
+      setDemoPaused(false);
+    } else {
+      setDemoMode(true);
+      setDemoPaused(false);
+    }
+  }, [demoMode]);
+
+  const toggleDemoPause = useCallback(() => {
+    setDemoPaused(prev => !prev);
+  }, []);
 
   // Keyboard navigation
   useEffect(() => {
@@ -312,15 +415,22 @@ export default function OnboardingTour() {
           </div>
 
           <div className="p-5">
-            {/* Icon + step number */}
+            {/* Icon + step number + demo badge */}
             <div className="flex items-center gap-3 mb-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-700/50">
                 <StepIcon type={currentStep.icon} />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-[15px] font-semibold text-gray-900 dark:text-gray-100 leading-tight">
-                  {currentStep.title}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-[15px] font-semibold text-gray-900 dark:text-gray-100 leading-tight">
+                    {currentStep.title}
+                  </h3>
+                  {demoMode && (
+                    <span className="inline-flex items-center rounded-full bg-brand-100 dark:bg-brand-900/40 px-1.5 py-0.5 text-[9px] font-semibold text-brand-700 dark:text-brand-300">
+                      Demo
+                    </span>
+                  )}
+                </div>
                 <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
                   Step {step + 1} of {TOUR_STEPS.length}
                 </p>
@@ -405,17 +515,52 @@ export default function OnboardingTour() {
               </div>
             </div>
 
-            {/* Keyboard hint */}
-            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-center gap-3 text-[10px] text-gray-400 dark:text-gray-500">
-              <span className="flex items-center gap-1">
-                <kbd className="inline-flex items-center justify-center min-w-[18px] rounded bg-gray-100 dark:bg-gray-700 px-1 py-0.5 font-mono text-[9px]">&larr;</kbd>
-                <kbd className="inline-flex items-center justify-center min-w-[18px] rounded bg-gray-100 dark:bg-gray-700 px-1 py-0.5 font-mono text-[9px]">&rarr;</kbd>
-                Navigate
-              </span>
-              <span className="flex items-center gap-1">
-                <kbd className="inline-flex items-center justify-center rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 font-mono text-[9px]">Esc</kbd>
-                Skip
-              </span>
+            {/* Keyboard hint + auto-play toggle */}
+            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  <kbd className="inline-flex items-center justify-center min-w-[18px] rounded bg-gray-100 dark:bg-gray-700 px-1 py-0.5 font-mono text-[9px]">&larr;</kbd>
+                  <kbd className="inline-flex items-center justify-center min-w-[18px] rounded bg-gray-100 dark:bg-gray-700 px-1 py-0.5 font-mono text-[9px]">&rarr;</kbd>
+                  Navigate
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="inline-flex items-center justify-center rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 font-mono text-[9px]">Esc</kbd>
+                  Skip
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {demoMode && (
+                  <button
+                    onClick={toggleDemoPause}
+                    className="flex items-center justify-center h-5 w-5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    title={demoPaused ? 'Resume auto-play' : 'Pause auto-play'}
+                  >
+                    {demoPaused ? (
+                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+                <button
+                  onClick={toggleDemoMode}
+                  className={`flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors ${
+                    demoMode
+                      ? 'bg-brand-100 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500'
+                  }`}
+                  title={demoMode ? 'Stop auto-play' : 'Auto-play tour'}
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                  </svg>
+                  <span className="text-[9px] font-medium">Auto-play</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -216,6 +216,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                 </button>
                 {onAiAutoCode && (
                   <button
+                    data-tour="canvas-btn-aicode"
                     onClick={onAiAutoCode}
                     className="flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
                     title="AI-assisted coding — analyze transcripts with AI"
@@ -227,6 +228,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                   </button>
                 )}
                 <button
+                  data-tour="canvas-btn-aichat"
                   onClick={() => requireAiConfig ? requireAiConfig('AI Research Assistant', () => setShowResearchAssistant(true)) : setShowResearchAssistant(true)}
                   className="flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
                   title="AI Research Assistant — ask questions about your data"
