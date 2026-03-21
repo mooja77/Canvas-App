@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { memo, useState, useRef, useEffect, useCallback } from 'react';
 import { NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 
@@ -14,7 +14,7 @@ export interface StickyNoteNodeData {
   [key: string]: unknown;
 }
 
-export default function StickyNoteNode({ data, selected }: NodeProps) {
+function StickyNoteNode({ data, selected }: NodeProps) {
   const nodeData = data as unknown as StickyNoteNodeData;
   const color = nodeData.color || '#FEF3C7';
   const [editing, setEditing] = useState(!nodeData.text);
@@ -144,3 +144,5 @@ export default function StickyNoteNode({ data, selected }: NodeProps) {
     </div>
   );
 }
+
+export default memo(StickyNoteNode);

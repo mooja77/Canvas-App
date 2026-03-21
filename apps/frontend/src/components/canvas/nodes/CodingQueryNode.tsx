@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
 import { useCanvasStore } from '../../../stores/canvasStore';
@@ -9,7 +9,7 @@ export interface CodingQueryNodeData {
   [key: string]: unknown;
 }
 
-export default function CodingQueryNode({ data, id, selected }: NodeProps) {
+function CodingQueryNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as CodingQueryNodeData;
   const { activeCanvas, updateComputedNode } = useCanvasStore();
   const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
@@ -131,3 +131,5 @@ export default function CodingQueryNode({ data, id, selected }: NodeProps) {
     </ComputedNodeShell>
   );
 }
+
+export default memo(CodingQueryNode);

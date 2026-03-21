@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
 import { useCanvasStore } from '../../../stores/canvasStore';
@@ -9,7 +9,7 @@ export interface SearchResultNodeData {
   [key: string]: unknown;
 }
 
-export default function SearchResultNode({ data, id, selected }: NodeProps) {
+function SearchResultNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as SearchResultNodeData;
   const { activeCanvas, updateComputedNode } = useCanvasStore();
   const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
@@ -100,3 +100,5 @@ export default function SearchResultNode({ data, id, selected }: NodeProps) {
     </ComputedNodeShell>
   );
 }
+
+export default memo(SearchResultNode);

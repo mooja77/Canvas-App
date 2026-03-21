@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { CanvasTextCoding, CanvasQuestion, CanvasTranscript } from '@canvas-app/shared';
@@ -26,7 +26,7 @@ export interface DocumentPortraitNodeData {
   [key: string]: unknown;
 }
 
-export default function DocumentPortraitNode({ data, selected }: NodeProps) {
+function DocumentPortraitNode({ data, selected }: NodeProps) {
   const nodeData = data as unknown as DocumentPortraitNodeData;
   const { label, result, collapsed, zoomTier } = nodeData;
   const strips = result?.strips || [];
@@ -99,3 +99,5 @@ export default function DocumentPortraitNode({ data, selected }: NodeProps) {
     </div>
   );
 }
+
+export default memo(DocumentPortraitNode);

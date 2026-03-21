@@ -1,4 +1,4 @@
-import { useCallback, useRef, useMemo, useState } from 'react';
+import { memo, useCallback, useRef, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
@@ -145,7 +145,7 @@ function HighlightedTranscript({
   );
 }
 
-export default function TranscriptNode({ data, id, selected }: NodeProps) {
+function TranscriptNode({ data, id, selected }: NodeProps) {
   const textRef = useRef<HTMLDivElement>(null);
   const { activeCanvas, pendingSelection, setPendingSelection, deleteTranscript, showCodingStripes, codeInVivo, spreadToParagraph } = useCanvasStore();
   const nodeData = data as unknown as TranscriptNodeData;
@@ -469,3 +469,5 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
     </div>
   );
 }
+
+export default memo(TranscriptNode);

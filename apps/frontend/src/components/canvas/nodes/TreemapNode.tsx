@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Treemap, ResponsiveContainer, Tooltip } from 'recharts';
 import ComputedNodeShell from './ComputedNodeShell';
@@ -45,7 +45,7 @@ function TreemapCell(props: any) {
   );
 }
 
-export default function TreemapNode({ data, id, selected }: NodeProps) {
+function TreemapNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as TreemapNodeData;
   const { activeCanvas, updateComputedNode } = useCanvasStore();
   const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
@@ -152,3 +152,5 @@ export default function TreemapNode({ data, id, selected }: NodeProps) {
     </ComputedNodeShell>
   );
 }
+
+export default memo(TreemapNode);

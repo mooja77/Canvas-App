@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { memo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import { useCanvasStore } from '../../../stores/canvasStore';
@@ -17,7 +17,7 @@ interface ComputedNodeShellProps {
   onConfigure?: () => void;
 }
 
-export default function ComputedNodeShell({
+function ComputedNodeShell({
   nodeId,
   computedNodeId,
   label,
@@ -153,3 +153,5 @@ export default function ComputedNodeShell({
     </div>
   );
 }
+
+export default memo(ComputedNodeShell);

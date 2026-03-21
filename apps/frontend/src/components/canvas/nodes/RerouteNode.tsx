@@ -1,7 +1,8 @@
+import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 
-export default function RerouteNode({ selected }: NodeProps) {
+function RerouteNode({ selected }: NodeProps) {
   return (
     <div
       className={`relative flex items-center justify-center ${selected ? 'ring-2 ring-blue-400 ring-offset-2' : ''}`}
@@ -23,3 +24,5 @@ export default function RerouteNode({ selected }: NodeProps) {
     </div>
   );
 }
+
+export default memo(RerouteNode);

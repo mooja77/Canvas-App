@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import ComputedNodeShell from './ComputedNodeShell';
@@ -10,7 +10,7 @@ export interface SentimentNodeData {
   [key: string]: unknown;
 }
 
-export default function SentimentNode({ data, id, selected }: NodeProps) {
+function SentimentNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as SentimentNodeData;
   const { activeCanvas, updateComputedNode } = useCanvasStore();
   const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
@@ -138,3 +138,5 @@ export default function SentimentNode({ data, id, selected }: NodeProps) {
     </ComputedNodeShell>
   );
 }
+
+export default memo(SentimentNode);

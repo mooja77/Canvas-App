@@ -576,3 +576,21 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
 
   toggleCodingStripes: () => set(s => ({ showCodingStripes: !s.showCodingStripes })),
 }));
+
+// ─── Granular selector hooks (prevent unnecessary re-renders) ───
+
+export const useActiveCanvas = () => useCanvasStore(s => s.activeCanvas);
+export const useActiveCanvasId = () => useCanvasStore(s => s.activeCanvasId);
+export const useCanvasTranscripts = () => useCanvasStore(s => s.activeCanvas?.transcripts ?? []);
+export const useCanvasQuestions = () => useCanvasStore(s => s.activeCanvas?.questions ?? []);
+export const useCanvasCodings = () => useCanvasStore(s => s.activeCanvas?.codings ?? []);
+export const useCanvasMemos = () => useCanvasStore(s => s.activeCanvas?.memos ?? []);
+export const useCanvasCases = () => useCanvasStore(s => s.activeCanvas?.cases ?? []);
+export const useCanvasRelations = () => useCanvasStore(s => s.activeCanvas?.relations ?? []);
+export const useCanvasComputedNodes = () => useCanvasStore(s => s.activeCanvas?.computedNodes ?? []);
+export const useCanvasNodePositions = () => useCanvasStore(s => s.activeCanvas?.nodePositions ?? []);
+export const useSelectedQuestionId = () => useCanvasStore(s => s.selectedQuestionId);
+export const usePendingSelection = () => useCanvasStore(s => s.pendingSelection);
+export const useCanvasLoading = () => useCanvasStore(s => s.loading);
+export const useCanvasError = () => useCanvasStore(s => s.error);
+export const useShowCodingStripes = () => useCanvasStore(s => s.showCodingStripes);

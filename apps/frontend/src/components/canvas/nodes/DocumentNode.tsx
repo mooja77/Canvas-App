@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { CanvasDocument, DocumentRegionCoding, CanvasQuestion } from '@canvas-app/shared';
@@ -13,7 +13,7 @@ export interface DocumentNodeData {
   [key: string]: unknown;
 }
 
-export default function DocumentNode({ data, selected }: NodeProps) {
+function DocumentNode({ data, selected }: NodeProps) {
   const nodeData = data as unknown as DocumentNodeData;
   const { document: doc, regions = [], questions = [], collapsed, zoomTier, customColor } = nodeData;
   const [currentPage, setCurrentPage] = useState(1);
@@ -139,3 +139,5 @@ export default function DocumentNode({ data, selected }: NodeProps) {
     </div>
   );
 }
+
+export default memo(DocumentNode);

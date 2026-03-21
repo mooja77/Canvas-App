@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
@@ -17,7 +17,7 @@ export interface QuestionNodeData {
   [key: string]: unknown;
 }
 
-export default function QuestionNode({ data, id, selected }: NodeProps) {
+function QuestionNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as QuestionNodeData;
   const { activeCanvas, deleteQuestion, updateQuestion, setSelectedQuestionId, selectedQuestionId } = useCanvasStore();
   const [editing, setEditing] = useState(false);
@@ -244,3 +244,5 @@ export default function QuestionNode({ data, id, selected }: NodeProps) {
     </div>
   );
 }
+
+export default memo(QuestionNode);

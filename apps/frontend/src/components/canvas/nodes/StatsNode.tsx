@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import ComputedNodeShell from './ComputedNodeShell';
@@ -12,7 +12,7 @@ export interface StatsNodeData {
 
 const COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444', '#6366F1', '#14B8A6'];
 
-export default function StatsNode({ data, id, selected }: NodeProps) {
+function StatsNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as StatsNodeData;
   const { activeCanvas, updateComputedNode } = useCanvasStore();
   const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
@@ -124,3 +124,5 @@ export default function StatsNode({ data, id, selected }: NodeProps) {
     </ComputedNodeShell>
   );
 }
+
+export default memo(StatsNode);

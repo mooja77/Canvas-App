@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { memo, useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
@@ -102,7 +102,7 @@ function formatInline(text: string): React.ReactNode {
   return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : <>{parts}</>;
 }
 
-export default function MemoNode({ data, selected }: NodeProps) {
+function MemoNode({ data, selected }: NodeProps) {
   const nodeData = data as unknown as MemoNodeData;
   const { updateMemo, deleteMemo } = useCanvasStore();
   const [editing, setEditing] = useState(false);
@@ -314,3 +314,5 @@ export default function MemoNode({ data, selected }: NodeProps) {
     </div>
   );
 }
+
+export default memo(MemoNode);

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { memo, useState, useRef, useEffect, useCallback } from 'react';
 import { NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 
@@ -18,7 +18,7 @@ export interface GroupNodeData {
 
 const DEFAULT_COLOR = '#3B82F6';
 
-export default function GroupNode({ data, selected }: NodeProps) {
+function GroupNode({ data, selected }: NodeProps) {
   const nodeData = data as unknown as GroupNodeData;
   const color = nodeData.color || DEFAULT_COLOR;
   const title = nodeData.title || 'Group';
@@ -202,3 +202,5 @@ export default function GroupNode({ data, selected }: NodeProps) {
     </div>
   );
 }
+
+export default memo(GroupNode);

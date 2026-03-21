@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
 import { useCanvasStore } from '../../../stores/canvasStore';
@@ -23,7 +24,7 @@ interface GeoMapResult {
   totalUnmapped: number;
 }
 
-export default function GeoMapNode({ data, id, selected }: NodeProps) {
+function GeoMapNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as GeoMapNodeData;
   const { activeCanvas } = useCanvasStore();
   const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
@@ -112,3 +113,5 @@ export default function GeoMapNode({ data, id, selected }: NodeProps) {
     </ComputedNodeShell>
   );
 }
+
+export default memo(GeoMapNode);

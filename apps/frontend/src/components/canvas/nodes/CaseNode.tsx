@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
@@ -15,7 +15,7 @@ export interface CaseNodeData {
   [key: string]: unknown;
 }
 
-export default function CaseNode({ data, id, selected }: NodeProps) {
+function CaseNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as CaseNodeData;
   const { activeCanvas, deleteCase } = useCanvasStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -129,3 +129,5 @@ export default function CaseNode({ data, id, selected }: NodeProps) {
     </div>
   );
 }
+
+export default memo(CaseNode);

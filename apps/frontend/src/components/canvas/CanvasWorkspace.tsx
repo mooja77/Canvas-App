@@ -1424,7 +1424,9 @@ export default function CanvasWorkspace() {
       {/* Code Navigator Sidebar — animated collapse */}
       {!focusMode && (
         <div className={`transition-all duration-200 overflow-hidden ${showNavigator ? 'w-60' : 'w-0'}`}>
-          <CodeNavigator onFocusNode={handleFocusNode} />
+          <ErrorBoundary>
+            <CodeNavigator onFocusNode={handleFocusNode} />
+          </ErrorBoundary>
         </div>
       )}
       <div className="flex flex-1 flex-col min-w-0">
@@ -1872,7 +1874,7 @@ export default function CanvasWorkspace() {
       </div>
 
       {/* Detail panel */}
-      {selectedQuestionId && <CodingDetailPanel />}
+      {selectedQuestionId && <ErrorBoundary><CodingDetailPanel /></ErrorBoundary>}
 
       {/* Keyboard shortcuts modal */}
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}

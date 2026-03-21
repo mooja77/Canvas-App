@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import ComputedNodeShell from './ComputedNodeShell';
@@ -12,7 +12,7 @@ export interface ComparisonNodeData {
 
 const COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444'];
 
-export default function ComparisonNode({ data, id, selected }: NodeProps) {
+function ComparisonNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as ComparisonNodeData;
   const { activeCanvas, updateComputedNode } = useCanvasStore();
   const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
@@ -105,3 +105,5 @@ export default function ComparisonNode({ data, id, selected }: NodeProps) {
     </ComputedNodeShell>
   );
 }
+
+export default memo(ComparisonNode);
