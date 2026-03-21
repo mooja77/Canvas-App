@@ -40,3 +40,21 @@ screenshots/
 apps/backend/prisma/migrations/*.db
 
 .vercel
+
+# Security - auto-added by Coda (2026-03-21 audit)
+.env.production
+.env.local
+.env.*.local
+*.env.production*
+!.env.example
+!.env.*.example
+!.env.*.template
+.playwright-mcp/
+cookies.txt
+*-cookies.txt
+*_cookies.txt
+token_response.json
+*-validation-*.json
+logs/
+*.log
+node_modules/

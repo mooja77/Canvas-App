@@ -1,0 +1,816 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3627]:
+    - link "Skip to canvas" [ref=e3628] [cursor=pointer]:
+      - /url: "#canvas-main"
+    - banner [ref=e3629]:
+      - generic [ref=e3631]:
+        - img [ref=e3633]
+        - generic [ref=e3635]: Canvas
+      - generic [ref=e3636]:
+        - generic [ref=e3637]:
+          - generic [ref=e3638]: D
+          - generic [ref=e3639]: Demo Researcher
+        - button "Switch to dark mode" [ref=e3640] [cursor=pointer]:
+          - img [ref=e3641]
+        - button "Sign out" [ref=e3643] [cursor=pointer]:
+          - img [ref=e3644]
+          - generic [ref=e3646]: Sign out
+    - main "Canvas workspace" [ref=e3647]:
+      - generic [ref=e3649]:
+        - generic [ref=e3651]:
+          - generic [ref=e3652]:
+            - button "Codes (5)" [ref=e3653] [cursor=pointer]
+            - button "Sources (3)" [ref=e3654] [cursor=pointer]
+            - button "Cases (1)" [ref=e3655] [cursor=pointer]
+          - generic [ref=e3657]:
+            - generic [ref=e3658]:
+              - generic [ref=e3659]:
+                - img [ref=e3660]
+                - textbox "Filter codes..." [ref=e3662]
+              - generic [ref=e3663]:
+                - generic [ref=e3664]:
+                  - button "By count" [ref=e3665] [cursor=pointer]
+                  - button "A-Z" [ref=e3666] [cursor=pointer]
+                - generic [ref=e3667]:
+                  - button "Expand all" [ref=e3668] [cursor=pointer]:
+                    - img [ref=e3669]
+                  - button "Collapse all" [ref=e3671] [cursor=pointer]:
+                    - img [ref=e3672]
+            - generic [ref=e3674]:
+              - button "Student Relationships 9" [ref=e4415] [cursor=pointer]:
+                - generic [ref=e3722]: Student Relationships
+                - button "Add to favorites" [ref=e3723]:
+                  - img [ref=e3724]
+                - generic [ref=e3729]: "9"
+              - button "Lack of Support 9" [ref=e4594] [cursor=pointer]:
+                - generic [ref=e3678]: Lack of Support
+                - button "Add to favorites" [ref=e3679]:
+                  - img [ref=e3680]
+                - generic [ref=e3685]: "9"
+              - button "Coping Strategies 8" [ref=e5048] [cursor=pointer]:
+                - generic [ref=e3689]: Coping Strategies
+                - button "Add to favorites" [ref=e3690]:
+                  - img [ref=e3691]
+                - generic [ref=e3696]: "8"
+              - button "Emotional Exhaustion 7" [ref=e4803] [cursor=pointer]:
+                - generic [ref=e3700]: Emotional Exhaustion
+                - button "Add to favorites" [ref=e3701]:
+                  - img [ref=e3702]
+                - generic [ref=e3707]: "7"
+              - button "Administrative Burden 4" [ref=e4290] [cursor=pointer]:
+                - generic [ref=e3711]: Administrative Burden
+                - button "Add to favorites" [ref=e3712]:
+                  - img [ref=e3713]
+                - generic [ref=e3718]: "4"
+          - generic [ref=e3731]:
+            - generic [ref=e3732]: 37 codings
+            - generic [ref=e3736]: 8%
+        - generic [ref=e3737]:
+          - generic [ref=e3738]:
+            - generic [ref=e3739]:
+              - button "Hide navigator" [ref=e3740] [cursor=pointer]:
+                - img [ref=e3741]
+              - button "Back" [ref=e3743] [cursor=pointer]:
+                - img [ref=e3744]
+                - generic [ref=e3746]: Back
+              - button "Teacher Burnout Study - Spring 2026" [ref=e3749] [cursor=pointer]:
+                - heading "Teacher Burnout Study - Spring 2026" [level=3] [ref=e3750]
+                - img [ref=e3751]
+            - generic [ref=e3753]:
+              - generic [ref=e3754]:
+                - button "Transcript" [ref=e3756] [cursor=pointer]:
+                  - img [ref=e3757]
+                  - text: Transcript
+                  - img [ref=e3759]
+                - button "Survey" [ref=e3761] [cursor=pointer]:
+                  - img [ref=e3762]
+                  - text: Survey
+                - button "Code" [ref=e3764] [cursor=pointer]:
+                  - img [ref=e3765]
+                  - text: Code
+                - button "Memo" [ref=e3767] [cursor=pointer]:
+                  - img [ref=e3768]
+                  - text: Memo
+              - generic [ref=e3771]:
+                - button "Auto-Code" [ref=e3772] [cursor=pointer]:
+                  - img [ref=e3773]
+                  - text: Auto-Code
+                - button "AI Code" [ref=e3775] [cursor=pointer]:
+                  - img [ref=e3776]
+                  - text: AI Code
+                - button "AI Chat" [ref=e3778] [cursor=pointer]:
+                  - img [ref=e3779]
+                  - text: AI Chat
+                - button "Summarize" [ref=e3781] [cursor=pointer]:
+                  - img [ref=e3782]
+                  - text: Summarize
+                - button "Cases" [ref=e3784] [cursor=pointer]:
+                  - img [ref=e3785]
+                  - text: Cases
+                - button "Cross-Case" [ref=e3787] [cursor=pointer]:
+                  - img [ref=e3788]
+                  - text: Cross-Case
+                - button "Hierarchy" [ref=e3790] [cursor=pointer]:
+                  - img [ref=e3791]
+                  - text: Hierarchy
+                - button "Kappa" [ref=e3793] [cursor=pointer]:
+                  - img [ref=e3794]
+                  - text: Kappa
+                - button "Weights" [ref=e3796] [cursor=pointer]:
+                  - img [ref=e3797]
+                  - text: Weights
+              - generic [ref=e3800]:
+                - button "Stripes" [ref=e3801] [cursor=pointer]:
+                  - img [ref=e3802]
+                  - text: Stripes
+                - button "Dashboard" [ref=e3804] [cursor=pointer]:
+                  - img [ref=e3805]
+                  - text: Dashboard
+                - button "Ethics" [ref=e3808] [cursor=pointer]:
+                  - img [ref=e3809]
+                  - text: Ethics
+                - button "Excerpts" [ref=e3811] [cursor=pointer]:
+                  - img [ref=e3812]
+                  - text: Excerpts
+                - button "Codebook" [ref=e3814] [cursor=pointer]:
+                  - img [ref=e3815]
+                  - text: Codebook
+                - button "Arrange" [ref=e3817] [cursor=pointer]:
+                  - img [ref=e3818]
+                  - text: Arrange
+                - button "Export canvas as PNG image" [ref=e3820] [cursor=pointer]:
+                  - img [ref=e3821]
+                - button "Export analysis report (HTML/Markdown)" [ref=e3823] [cursor=pointer]:
+                  - img [ref=e3824]
+                - button "QDPX" [ref=e3826] [cursor=pointer]:
+                  - img [ref=e3827]
+                  - text: QDPX
+                - button "Import QDPX file" [ref=e3829] [cursor=pointer]:
+                  - img [ref=e3830]
+                - button "Presentation mode" [ref=e3832] [cursor=pointer]:
+                  - img [ref=e3833]
+                - combobox "Edge connection style" [ref=e3835] [cursor=pointer]:
+                  - option "Bezier" [selected]
+                  - option "Straight"
+                  - option "Step"
+                  - option "Smooth Step"
+                - button "Focus mode (Ctrl+.)" [ref=e3836] [cursor=pointer]:
+                  - img [ref=e3837]
+                - button "Share" [ref=e3839] [cursor=pointer]:
+                  - img [ref=e3840]
+                  - text: Share
+                - button "Ctrl+K" [ref=e3842] [cursor=pointer]:
+                  - img [ref=e3843]
+                  - generic [ref=e3845]: Ctrl+K
+                - button "Replay guided tour" [ref=e3846] [cursor=pointer]:
+                  - img [ref=e3847]
+                - button "Keyboard shortcuts (?)" [ref=e3849] [cursor=pointer]:
+                  - img [ref=e3850]
+                - button "Take a guided tour" [ref=e3852] [cursor=pointer]:
+                  - img [ref=e3853]
+              - button "Analyze" [ref=e3858] [cursor=pointer]:
+                - img [ref=e3859]
+                - text: Analyze
+                - img [ref=e3861]
+          - application [ref=e3864]:
+            - generic [ref=e3866]:
+              - generic:
+                - generic:
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn060qvo001rwhlsrf2b75s5" [ref=e11708] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05zog2001ewhlsmny3plya to question-cmn0620sy002xwhls8qib9b6z" [ref=e11714] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05zog2001ewhlsmny3plya to question-cmn0620sy002xwhls8qib9b6z" [ref=e11720] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn060fh1001hwhlsm5va3vap to question-cmn0620sy002xwhls8qib9b6z" [ref=e11726] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn060fh1001hwhlsm5va3vap to question-cmn0620sy002xwhls8qib9b6z" [ref=e11732] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn060fh1001hwhlsm5va3vap to question-cmn062bp2003fwhlsnl4ny9t4" [ref=e11738] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn060fh1001hwhlsm5va3vap to question-cmn062bp2003fwhlsnl4ny9t4" [ref=e11744] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn060fh1001hwhlsm5va3vap to question-cmn062bp2003fwhlsnl4ny9t4" [ref=e11750] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn061btt0023whls5xau8g1a" [ref=e11756] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn061btt0023whls5xau8g1a" [ref=e11762] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn061btt0023whls5xau8g1a" [ref=e11768] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn061btt0023whls5xau8g1a" [ref=e11774] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn061p0d002hwhls16373ox9" [ref=e11780] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn061p0d002hwhls16373ox9" [ref=e11786] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn061p0d002hwhls16373ox9" [ref=e11792] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn061p0d002hwhls16373ox9" [ref=e11798] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05zog2001ewhlsmny3plya to question-cmn061p0d002hwhls16373ox9" [ref=e11804] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05zog2001ewhlsmny3plya to question-cmn061p0d002hwhls16373ox9" [ref=e11810] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05zog2001ewhlsmny3plya to question-cmn061p0d002hwhls16373ox9" [ref=e11816] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05zog2001ewhlsmny3plya to question-cmn061p0d002hwhls16373ox9" [ref=e11822] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn060fh1001hwhlsm5va3vap to question-cmn061p0d002hwhls16373ox9" [ref=e11828] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05zog2001ewhlsmny3plya to question-cmn0620sy002xwhls8qib9b6z" [ref=e11834] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05zog2001ewhlsmny3plya to question-cmn0620sy002xwhls8qib9b6z" [ref=e11840] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05zog2001ewhlsmny3plya to question-cmn0620sy002xwhls8qib9b6z" [ref=e11846] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05zog2001ewhlsmny3plya to question-cmn0620sy002xwhls8qib9b6z" [ref=e11852] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn060fh1001hwhlsm5va3vap to question-cmn0620sy002xwhls8qib9b6z" [ref=e11858] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn060qvo001rwhlsrf2b75s5" [ref=e11864] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn060qvo001rwhlsrf2b75s5" [ref=e11870] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn060qvo001rwhlsrf2b75s5" [ref=e11876] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn060qvo001rwhlsrf2b75s5" [ref=e11882] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn05yxa30018whls3d2nb6pn to question-cmn060qvo001rwhlsrf2b75s5" [ref=e11888] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn060fh1001hwhlsm5va3vap to question-cmn060qvo001rwhlsrf2b75s5" [ref=e11894] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn060fh1001hwhlsm5va3vap to question-cmn062bp2003fwhlsnl4ny9t4" [ref=e11900] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn060fh1001hwhlsm5va3vap to question-cmn062bp2003fwhlsnl4ny9t4" [ref=e11906] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn060fh1001hwhlsm5va3vap to question-cmn062bp2003fwhlsnl4ny9t4" [ref=e11912] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn060fh1001hwhlsm5va3vap to question-cmn062bp2003fwhlsnl4ny9t4" [ref=e11918] [cursor=pointer]
+                  - img:
+                    - group "Edge from transcript-cmn060fh1001hwhlsm5va3vap to question-cmn062bp2003fwhlsnl4ny9t4" [ref=e11924] [cursor=pointer]
+                - generic:
+                  - group [ref=e3915]:
+                    - generic [ref=e3916]:
+                      - generic [ref=e3917]:
+                        - generic [ref=e3918]:
+                          - img [ref=e3919]
+                          - generic [ref=e3921]: Interview 1 - Sarah M. (5th grade, 12 yrs)
+                        - generic [ref=e3922]:
+                          - button "Collapse" [ref=e3923] [cursor=pointer]:
+                            - img [ref=e3924]
+                          - button "Delete transcript" [ref=e3926] [cursor=pointer]:
+                            - img [ref=e3927]
+                      - generic [ref=e9274]: 14c
+                  - group [ref=e3933]:
+                    - generic [ref=e3934]:
+                      - generic [ref=e3935]:
+                        - generic [ref=e3936]:
+                          - img [ref=e3937]
+                          - generic [ref=e3939]: Interview 2 - James K. (HS math, 3 yrs)
+                          - generic [ref=e3940]: Secondary School Teachers
+                        - generic [ref=e3941]:
+                          - button "Collapse" [ref=e3942] [cursor=pointer]:
+                            - img [ref=e3943]
+                          - button "Delete transcript" [ref=e3945] [cursor=pointer]:
+                            - img [ref=e3946]
+                      - generic [ref=e9275]: 10c
+                  - group [ref=e3952]:
+                    - generic [ref=e3953]:
+                      - generic [ref=e3954]:
+                        - generic [ref=e3955]:
+                          - img [ref=e3956]
+                          - generic [ref=e3958]: Interview 3 - Maria L. (MS English, 8 yrs)
+                          - generic [ref=e3959]: Secondary School Teachers
+                        - generic [ref=e3960]:
+                          - button "Collapse" [ref=e3961] [cursor=pointer]:
+                            - img [ref=e3962]
+                          - button "Delete transcript" [ref=e3964] [cursor=pointer]:
+                            - img [ref=e3965]
+                      - generic [ref=e9276]: 13c
+                  - group [ref=e3971]:
+                    - generic [ref=e3972]:
+                      - generic [ref=e3975]:
+                        - generic [ref=e3976]:
+                          - button "Change color" [ref=e3978] [cursor=pointer]
+                          - generic [ref=e3979]: Code
+                        - generic [ref=e3980]:
+                          - button "Collapse" [ref=e3981] [cursor=pointer]:
+                            - img [ref=e3982]
+                          - button "View coded segments" [ref=e3984] [cursor=pointer]:
+                            - img [ref=e3985]
+                          - button "Delete question" [ref=e3988] [cursor=pointer]:
+                            - img [ref=e3989]
+                      - generic [ref=e9278]: 7c
+                  - group [ref=e3993]:
+                    - generic [ref=e3994]:
+                      - generic [ref=e3997]:
+                        - generic [ref=e3998]:
+                          - button "Change color" [ref=e4000] [cursor=pointer]
+                          - generic [ref=e4001]: Code
+                        - generic [ref=e4002]:
+                          - button "Collapse" [ref=e4003] [cursor=pointer]:
+                            - img [ref=e4004]
+                          - button "View coded segments" [ref=e4006] [cursor=pointer]:
+                            - img [ref=e4007]
+                          - button "Delete question" [ref=e4010] [cursor=pointer]:
+                            - img [ref=e4011]
+                      - generic [ref=e9280]: 4c
+                  - group [ref=e4015]:
+                    - generic [ref=e4016]:
+                      - generic [ref=e4019]:
+                        - generic [ref=e4020]:
+                          - button "Change color" [ref=e4022] [cursor=pointer]
+                          - generic [ref=e4023]: Code
+                        - generic [ref=e4024]:
+                          - button "Collapse" [ref=e4025] [cursor=pointer]:
+                            - img [ref=e4026]
+                          - button "View coded segments" [ref=e4028] [cursor=pointer]:
+                            - img [ref=e4029]
+                          - button "Delete question" [ref=e4032] [cursor=pointer]:
+                            - img [ref=e4033]
+                      - generic [ref=e9282]: 9c
+                  - group [ref=e4037]:
+                    - generic [ref=e4038]:
+                      - generic [ref=e4041]:
+                        - generic [ref=e4042]:
+                          - button "Change color" [ref=e4044] [cursor=pointer]
+                          - generic [ref=e4045]: Code
+                        - generic [ref=e4046]:
+                          - button "Collapse" [ref=e4047] [cursor=pointer]:
+                            - img [ref=e4048]
+                          - button "View coded segments" [ref=e4050] [cursor=pointer]:
+                            - img [ref=e4051]
+                          - button "Delete question" [ref=e4054] [cursor=pointer]:
+                            - img [ref=e4055]
+                      - generic [ref=e9284]: 9c
+                  - group [ref=e4059]:
+                    - generic [ref=e4060]:
+                      - generic [ref=e4063]:
+                        - generic [ref=e4064]:
+                          - button "Change color" [ref=e4066] [cursor=pointer]
+                          - generic [ref=e4067]: Code
+                        - generic [ref=e4068]:
+                          - button "Collapse" [ref=e4069] [cursor=pointer]:
+                            - img [ref=e4070]
+                          - button "View coded segments" [ref=e4072] [cursor=pointer]:
+                            - img [ref=e4073]
+                          - button "Delete question" [ref=e4076] [cursor=pointer]:
+                            - img [ref=e4077]
+                      - generic [ref=e9286]: 8c
+                  - group [ref=e4081]:
+                    - generic [ref=e4083]:
+                      - generic [ref=e4084]:
+                        - img [ref=e4085]
+                        - generic [ref=e4087]: Memo
+                      - generic [ref=e4088]:
+                        - button "Collapse" [ref=e4089] [cursor=pointer]:
+                          - img [ref=e4090]
+                        - button "Delete memo" [ref=e4092] [cursor=pointer]:
+                          - img [ref=e4093]
+                  - group [ref=e4097]:
+                    - generic [ref=e4099]:
+                      - generic [ref=e4100]:
+                        - img [ref=e4101]
+                        - generic [ref=e4103]: Memo
+                      - generic [ref=e4104]:
+                        - button "Collapse" [ref=e4105] [cursor=pointer]:
+                          - img [ref=e4106]
+                        - button "Delete memo" [ref=e4108] [cursor=pointer]:
+                          - img [ref=e4109]
+                  - group [ref=e4113]:
+                    - generic [ref=e4117]:
+                      - generic [ref=e4118]:
+                        - img [ref=e4119]
+                        - generic [ref=e4121]: Secondary School Teachers
+                      - generic [ref=e4122]:
+                        - button "Collapse" [ref=e4123] [cursor=pointer]:
+                          - img [ref=e4124]
+                        - button "Delete case" [ref=e4126] [cursor=pointer]:
+                          - img [ref=e4127]
+                  - group [ref=e4129]:
+                    - generic [ref=e4130]:
+                      - generic [ref=e4132]:
+                        - generic [ref=e4133]:
+                          - img [ref=e4135]
+                          - generic [ref=e4137]: Word Cloud
+                        - generic [ref=e4138]:
+                          - button "Collapse" [ref=e4139] [cursor=pointer]:
+                            - img [ref=e4140]
+                          - button "Configure" [ref=e4142] [cursor=pointer]:
+                            - img [ref=e4143]
+                          - button "Run computation" [ref=e4146] [cursor=pointer]:
+                            - img [ref=e4147]
+                          - button "Delete node" [ref=e4149] [cursor=pointer]:
+                            - img [ref=e4150]
+                      - img [ref=e5661]:
+                        - img [ref=e5662]:
+                          - generic [ref=e5663]: support
+                        - img [ref=e5664]:
+                          - generic [ref=e5665]: kids
+                        - img [ref=e5666]:
+                          - generic [ref=e5667]: students
+                        - img [ref=e5668]:
+                          - generic [ref=e5669]: mentor
+                        - img [ref=e5670]:
+                          - generic [ref=e5671]: exhaustion
+                        - img [ref=e5672]:
+                          - generic [ref=e5673]: mindfulness
+                        - img [ref=e5674]:
+                          - generic [ref=e5675]: peer
+                        - img [ref=e5676]:
+                          - generic [ref=e5677]: coping
+                        - img [ref=e5678]:
+                          - generic [ref=e5679]: documentation
+                        - img [ref=e5680]:
+                          - generic [ref=e5681]: forms
+                        - img [ref=e5682]:
+                          - generic [ref=e5683]: compliance
+                        - img [ref=e5684]:
+                          - generic [ref=e5685]: reports
+                        - img [ref=e5686]:
+                          - generic [ref=e5687]: jaylen
+                        - img [ref=e5688]:
+                          - generic [ref=e5689]: classroom
+                        - img [ref=e5690]:
+                          - generic [ref=e5691]: administration
+                        - img [ref=e5692]:
+                          - generic [ref=e5693]: leadership
+                        - img [ref=e5694]:
+                          - generic [ref=e5695]: observation
+                        - img [ref=e5696]:
+                          - generic [ref=e5697]: breathe
+                        - img [ref=e5698]:
+                          - generic [ref=e5699]: weight
+                        - img [ref=e5700]:
+                          - generic [ref=e5701]: crush
+                        - img [ref=e5702]:
+                          - generic [ref=e5703]: leaving
+                        - img [ref=e5704]:
+                          - generic [ref=e5705]: running
+                        - img [ref=e5706]:
+                          - generic [ref=e5707]: empty
+                        - img [ref=e5708]:
+                          - generic [ref=e5709]: panic
+                        - img [ref=e5710]:
+                          - generic [ref=e5711]: coffee
+                        - img [ref=e5712]:
+                          - generic [ref=e5713]: shop
+                        - img [ref=e5714]:
+                          - generic [ref=e5715]: honest
+                        - img [ref=e5716]:
+                          - generic [ref=e5717]: conversation
+                        - img [ref=e5718]:
+                          - generic [ref=e5719]: lifeline
+                        - img [ref=e5720]:
+                          - generic [ref=e5721]: survive
+                        - img [ref=e5722]:
+                          - generic [ref=e5723]: sustainable
+                  - group [ref=e4155]:
+                    - generic [ref=e4156]:
+                      - generic [ref=e4158]:
+                        - generic [ref=e4159]:
+                          - img [ref=e4161]
+                          - generic [ref=e4163]: Statistics
+                        - generic [ref=e4164]:
+                          - button "Collapse" [ref=e4165] [cursor=pointer]:
+                            - img [ref=e4166]
+                          - button "Configure" [ref=e4168] [cursor=pointer]:
+                            - img [ref=e4169]
+                          - button "Run computation" [ref=e4172] [cursor=pointer]:
+                            - img [ref=e4173]
+                          - button "Delete node" [ref=e4175] [cursor=pointer]:
+                            - img [ref=e4176]
+                      - generic [ref=e4179]:
+                        - generic [ref=e5960]:
+                          - button "Bar" [ref=e5961] [cursor=pointer]
+                          - button "Pie" [ref=e5962] [cursor=pointer]
+                          - generic [ref=e5963]: 37 total
+                        - img [ref=e5967]:
+                          - generic [ref=e5969]:
+                            - generic [ref=e5971]: Administrative
+                            - generic [ref=e5973]: Coping Strategi
+                          - generic [ref=e5975]:
+                            - generic [ref=e5977]: "0"
+                            - generic [ref=e5979]: "3"
+                            - generic [ref=e5981]: "6"
+                            - generic [ref=e5983]: "9"
+                            - generic [ref=e5985]: "12"
+                  - group [ref=e6312]:
+                    - generic [ref=e6313]:
+                      - generic [ref=e6315]:
+                        - generic [ref=e6316]:
+                          - img [ref=e6318]
+                          - generic [ref=e6320]: Co-occurrence
+                        - generic [ref=e6321]:
+                          - button "Collapse" [ref=e6322] [cursor=pointer]:
+                            - img [ref=e6323]
+                          - button "Configure" [ref=e6325] [cursor=pointer]:
+                            - img [ref=e6326]
+                          - button "Run computation" [ref=e6329] [cursor=pointer]:
+                            - img [ref=e6330]
+                          - button "Delete node" [ref=e6332] [cursor=pointer]:
+                            - img [ref=e6333]
+                      - paragraph [ref=e6337]: Select 2+ questions and click Run.
+                  - group [ref=e6896]:
+                    - generic [ref=e6897]:
+                      - generic [ref=e6899]:
+                        - generic [ref=e6900]:
+                          - img [ref=e6902]
+                          - generic [ref=e6904]: Sentiment
+                        - generic [ref=e6905]:
+                          - button "Collapse" [ref=e6906] [cursor=pointer]:
+                            - img [ref=e6907]
+                          - button "Configure" [ref=e6909] [cursor=pointer]:
+                            - img [ref=e6910]
+                          - button "Run computation" [ref=e6913] [cursor=pointer]:
+                            - img [ref=e6914]
+                          - button "Delete node" [ref=e6916] [cursor=pointer]:
+                            - img [ref=e6917]
+                      - generic [ref=e6920]:
+                        - generic [ref=e7166]:
+                          - generic [ref=e7167]:
+                            - generic [ref=e7168]:
+                              - text: "Avg score:"
+                              - strong [ref=e7169]: "0.24"
+                            - generic [ref=e7170]: 37 segments
+                          - img [ref=e7174]:
+                            - generic [ref=e7176]:
+                              - generic [ref=e7178]: Positive
+                              - generic [ref=e7180]: Negative
+                              - generic [ref=e7182]: Neutral
+                            - generic [ref=e7184]:
+                              - generic [ref=e7186]: "0"
+                              - generic [ref=e7188]: "8"
+                              - generic [ref=e7190]: "16"
+                              - generic [ref=e7192]: "32"
+                        - generic [ref=e7199]:
+                          - generic [ref=e7200]:
+                            - generic [ref=e7201]: "+0.9"
+                            - generic [ref=e7202]: Lack of Support
+                          - generic [ref=e7203]:
+                            - generic [ref=e7204]: "+0.2"
+                            - generic [ref=e7205]: Coping Strategies
+                          - generic [ref=e7206]:
+                            - generic [ref=e7207]: "+0.0"
+                            - generic [ref=e7208]: Emotional Exhaustion
+                          - generic [ref=e7209]:
+                            - generic [ref=e7210]: "+0.0"
+                            - generic [ref=e7211]: Administrative Burden
+                          - generic [ref=e7212]:
+                            - generic [ref=e7213]: "+0.0"
+                            - generic [ref=e7214]: Student Relationships
+                  - group [ref=e7530]:
+                    - generic [ref=e7531]:
+                      - generic [ref=e7533]:
+                        - generic [ref=e7534]:
+                          - img [ref=e7536]
+                          - generic [ref=e7538]: Text Search
+                        - generic [ref=e7539]:
+                          - button "Collapse" [ref=e7540] [cursor=pointer]:
+                            - img [ref=e7541]
+                          - button "Configure" [ref=e7543] [cursor=pointer]:
+                            - img [ref=e7544]
+                          - button "Run computation" [ref=e7547] [cursor=pointer]:
+                            - img [ref=e7548]
+                          - button "Delete node" [ref=e7550] [cursor=pointer]:
+                            - img [ref=e7551]
+                      - generic [ref=e8054]:
+                        - paragraph [ref=e8055]: 8 matches
+                        - generic [ref=e8056]:
+                          - paragraph [ref=e8057]: Interview 1 - Sarah M. (5th grade, 12 yrs)
+                          - paragraph [ref=e8058]:
+                            - generic [ref=e8059]:
+                              - text: ...hree jobs at once. Before COVID, I could focus on
+                              - mark [ref=e8060]: teaching
+                            - text: . Now there's this mountain of documentation — eve...
+                        - generic [ref=e8061]:
+                          - paragraph [ref=e8062]: Interview 1 - Sarah M. (5th grade, 12 yrs)
+                          - paragraph [ref=e8063]:
+                            - generic [ref=e8064]:
+                              - text: "...ly? Sarah: There are days I sit in my car before"
+                              - mark [ref=e8065]: school
+                            - text: and just... breathe. I love these kids. When Jayl...
+                        - generic [ref=e8066]:
+                          - paragraph [ref=e8067]: Interview 1 - Sarah M. (5th grade, 12 yrs)
+                          - paragraph [ref=e8068]:
+                            - generic [ref=e8069]:
+                              - text: ..., and I feel this weight just crush me. I've been
+                              - mark [ref=e8070]: teaching
+                            - text: twelve years, and this is the first time I've tho...
+                        - generic [ref=e8071]:
+                          - paragraph [ref=e8072]: Interview 1 - Sarah M. (5th grade, 12 yrs)
+                          - paragraph [ref=e8073]:
+                            - generic [ref=e8074]:
+                              - text: ...ought about leaving. My husband says I talk about
+                              - mark [ref=e8075]: school
+                            - text: in my sleep. The exhaustion isn't just physical —...
+                        - generic [ref=e8076]:
+                          - paragraph [ref=e8077]: Interview 2 - James K. (HS math, 3 yrs)
+                          - paragraph [ref=e8078]:
+                            - generic [ref=e8079]:
+                              - text: "Interviewer: You're relatively new to"
+                              - mark [ref=e8080]: teaching
+                            - text: . What has the experience been like so far? James...
+                        - generic [ref=e8081]:
+                          - paragraph [ref=e8082]: Interview 2 - James K. (HS math, 3 yrs)
+                          - paragraph [ref=e8083]:
+                            - generic [ref=e8084]:
+                              - text: "...back. Interviewer: Do you feel supported by your"
+                              - mark [ref=e8085]: school
+                            - text: "leadership? James: Supported? I had one observat..."
+                        - generic [ref=e8086]:
+                          - paragraph [ref=e8087]: Interview 2 - James K. (HS math, 3 yrs)
+                          - paragraph [ref=e8088]:
+                            - generic [ref=e8089]:
+                              - text: ... starting to wonder if anyone cares about quality
+                              - mark [ref=e8090]: teaching
+                            - text: or just test scores. Some mornings I wake up and ...
+                        - generic [ref=e8091]:
+                          - paragraph [ref=e8092]: Interview 3 - Maria L. (MS English, 8 yrs)
+                          - paragraph [ref=e8093]:
+                            - generic [ref=e8094]:
+                              - text: ...vive, but it shouldn't have to be about survival.
+                              - mark [ref=e8095]: Teaching
+                            - text: should be sustainable. Until the structural issue...
+                  - group [ref=e8412]:
+                    - generic [ref=e8413]:
+                      - generic [ref=e8415]:
+                        - generic [ref=e8416]:
+                          - img [ref=e8418]
+                          - generic [ref=e8420]: Coding Query
+                        - generic [ref=e8421]:
+                          - button "Collapse" [ref=e8422] [cursor=pointer]:
+                            - img [ref=e8423]
+                          - button "Configure" [ref=e8425] [cursor=pointer]:
+                            - img [ref=e8426]
+                          - button "Run computation" [ref=e8429] [cursor=pointer]:
+                            - img [ref=e8430]
+                          - button "Delete node" [ref=e8432] [cursor=pointer]:
+                            - img [ref=e8433]
+                      - paragraph [ref=e8437]: Add conditions and click Run.
+                  - group [ref=e9002]:
+                    - generic [ref=e9003]:
+                      - generic [ref=e9005]:
+                        - generic [ref=e9006]:
+                          - img [ref=e9008]
+                          - generic [ref=e9010]: Clustering
+                        - generic [ref=e9011]:
+                          - button "Collapse" [ref=e9012] [cursor=pointer]:
+                            - img [ref=e9013]
+                          - button "Configure" [ref=e9015] [cursor=pointer]:
+                            - img [ref=e9016]
+                          - button "Run computation" [ref=e9019] [cursor=pointer]:
+                            - img [ref=e9020]
+                          - button "Delete node" [ref=e9022] [cursor=pointer]:
+                            - img [ref=e9023]
+                      - generic [ref=e9288]:
+                        - generic [ref=e9289]:
+                          - generic [ref=e9290]:
+                            - generic [ref=e9292]: Cluster 1
+                            - generic [ref=e9293]: (20)
+                          - generic [ref=e9294]:
+                            - generic [ref=e9295]: kids
+                            - generic [ref=e9296]: students
+                            - generic [ref=e9297]: mentor
+                            - generic [ref=e9298]: exhaustion
+                            - generic [ref=e9299]: mindfulness
+                          - paragraph [ref=e9300]: "\"exhaustion\""
+                          - paragraph [ref=e9301]: "\"mindfulness\""
+                          - paragraph [ref=e9302]: "\"coping\""
+                        - generic [ref=e9303]:
+                          - generic [ref=e9304]:
+                            - generic [ref=e9306]: Cluster 2
+                            - generic [ref=e9307]: (5)
+                          - generic [ref=e9308]:
+                            - generic [ref=e9309]: support
+                            - generic [ref=e9310]: peer
+                          - paragraph [ref=e9311]: "\"support\""
+                          - paragraph [ref=e9312]: "\"Support\""
+                          - paragraph [ref=e9313]: "\"support\""
+                        - generic [ref=e9314]:
+                          - generic [ref=e9315]:
+                            - generic [ref=e9317]: Cluster 3
+                            - generic [ref=e9318]: (1)
+                          - generic [ref=e9320]: lifeline
+                          - paragraph [ref=e9321]: "\"lifeline\""
+                  - group [ref=e9641]:
+                    - generic [ref=e9642]:
+                      - generic [ref=e9644]:
+                        - generic [ref=e9645]:
+                          - img [ref=e9647]
+                          - generic [ref=e9649]: Framework Matrix
+                        - generic [ref=e9650]:
+                          - button "Collapse" [ref=e9651] [cursor=pointer]:
+                            - img [ref=e9652]
+                          - button "Run computation" [ref=e9654] [cursor=pointer]:
+                            - img [ref=e9655]
+                          - button "Delete node" [ref=e9657] [cursor=pointer]:
+                            - img [ref=e9658]
+                      - generic [ref=e9660]:
+                        - generic [ref=e9697]: Internal server error
+                        - paragraph [ref=e9662]: Assign transcripts to cases, then click Run.
+                  - group [ref=e10000]:
+                    - generic [ref=e10001]:
+                      - generic [ref=e10003]:
+                        - generic [ref=e10004]:
+                          - img [ref=e10006]
+                          - generic [ref=e10008]: Comparison
+                        - generic [ref=e10009]:
+                          - button "Collapse" [ref=e10010] [cursor=pointer]:
+                            - img [ref=e10011]
+                          - button "Configure" [ref=e10013] [cursor=pointer]:
+                            - img [ref=e10014]
+                          - button "Run computation" [ref=e10017] [cursor=pointer]:
+                            - img [ref=e10018]
+                          - button "Delete node" [ref=e10020] [cursor=pointer]:
+                            - img [ref=e10021]
+                      - generic [ref=e10277]:
+                        - img [ref=e10278]:
+                          - generic [ref=e10280]:
+                            - generic [ref=e10282]: Emotional Ex
+                            - generic [ref=e10284]: Student Rela
+                            - generic [ref=e10286]: Coping Strat
+                          - generic [ref=e10288]:
+                            - generic [ref=e10290]: "0"
+                            - generic [ref=e10292]: "2"
+                            - generic [ref=e10294]: "4"
+                            - generic [ref=e10296]: "6"
+                            - generic [ref=e10298]: "8"
+                        - list [ref=e10324]:
+                          - listitem [ref=e10325]:
+                            - img [ref=e10326]
+                            - text: Interview 1 - S
+                          - listitem [ref=e10328]:
+                            - img [ref=e10329]
+                            - text: Interview 2 - J
+                          - listitem [ref=e10331]:
+                            - img [ref=e10332]
+                            - text: Interview 3 - M
+                  - group [ref=e10654]:
+                    - generic [ref=e10655]:
+                      - generic [ref=e10657]:
+                        - generic [ref=e10658]:
+                          - img [ref=e10660]
+                          - generic [ref=e10662]: Theme Map
+                        - generic [ref=e10663]:
+                          - button "Collapse" [ref=e10664] [cursor=pointer]:
+                            - img [ref=e10665]
+                          - button "Configure" [ref=e10667] [cursor=pointer]:
+                            - img [ref=e10668]
+                          - button "Run computation" [ref=e10671] [cursor=pointer]:
+                            - img [ref=e10672]
+                          - button "Delete node" [ref=e10674] [cursor=pointer]:
+                            - img [ref=e10675]
+                      - generic [ref=e10678]:
+                        - generic [ref=e10930]:
+                          - generic [ref=e10931]: 5 themes
+                          - generic [ref=e10932]: "Total: 37"
+                        - region [ref=e10935]:
+                          - img [ref=e10936]:
+                            - generic [ref=e10937]:
+                              - generic [ref=e10945]: Emotional ...
+                              - generic [ref=e10950]: Administra...
+                              - generic [ref=e10955]: Student Rela...
+                              - generic [ref=e10960]: Lack of Supp...
+                              - generic [ref=e10965]: Coping Strategies
+                  - group [ref=e11930]:
+                    - textbox "Type a quick note..." [ref=e11934]
+            - img
+            - generic "Control Panel" [ref=e4181]:
+              - button "Zoom In" [ref=e4182] [cursor=pointer]:
+                - img [ref=e4183]
+              - button "Zoom Out" [ref=e4185] [cursor=pointer]:
+                - img [ref=e4186]
+              - button "Fit View" [ref=e4188] [cursor=pointer]:
+                - img [ref=e4189]
+              - button "Toggle Interactivity" [ref=e4191] [cursor=pointer]:
+                - img [ref=e4192]
+            - img "Mini Map" [ref=e4195]
+          - generic [ref=e4210]:
+            - generic [ref=e4211]:
+              - generic [ref=e4212]:
+                - img [ref=e4213]
+                - text: "3"
+              - generic [ref=e4215]:
+                - img [ref=e4216]
+                - text: "5"
+              - generic [ref=e4218]:
+                - img [ref=e4219]
+                - text: "37"
+              - generic [ref=e4224]: 8% coded
+              - generic [ref=e4226]:
+                - img [ref=e4227]
+                - generic [ref=e4228]: Coding
+            - generic [ref=e4229]:
+              - generic "Viewport bookmarks (Ctrl+Shift+1-5 save, Alt+1-5 recall)" [ref=e4230]:
+                - generic "Bookmark 1 empty" [ref=e4231]
+                - generic "Bookmark 2 empty" [ref=e4232]
+                - generic "Bookmark 3 empty" [ref=e4233]
+                - generic "Bookmark 4 empty" [ref=e4234]
+                - generic "Bookmark 5 empty" [ref=e4235]
+              - generic [ref=e4236]: Saved
+              - generic [ref=e4237]: 23%
+  - generic [ref=e5736]: sustainable
+  - generic [ref=e6010]: "2"
