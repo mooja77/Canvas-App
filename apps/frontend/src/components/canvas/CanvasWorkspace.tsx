@@ -42,6 +42,7 @@ import CodingEdge from './edges/CodingEdge';
 import RelationEdge from './edges/RelationEdge';
 import CodeNavigator from './panels/CodeNavigator';
 import CanvasToolbar from './panels/CanvasToolbar';
+import { useContainerSize } from '../../hooks/useContainerSize';
 import CodingDetailPanel from './panels/CodingDetailPanel';
 import KeyboardShortcutsModal from './panels/KeyboardShortcutsModal';
 import CanvasSearchOverlay from './panels/CanvasSearchOverlay';
@@ -235,6 +236,15 @@ export default function CanvasWorkspace() {
 
   // Clipboard for copy/paste
   const clipboardRef = useRef<Node[]>([]);
+
+  // Resize detection refs
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const userInteractedRef = useRef(false);
+  const manualNavToggleRef = useRef(false);
+  const resizeFitViewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const workspaceSize = useContainerSize(workspaceRef);
+  const canvasContainerSize = useContainerSize(canvasContainerRef);
 
   // Viewport bookmarks (5 slots, persisted per canvas)
   const { bookmarks, saveBookmark, recallBookmark, hasBookmark } = useCanvasBookmarks();
@@ -538,6 +548,37 @@ export default function CanvasWorkspace() {
       rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 0.8 });
     }, 200);
   }, [activeCanvas, buildNodes, buildEdges, setNodes, setEdges]);
+
+  // Re-fit ReactFlow view when canvas container resizes (debounced, skipped if user recently panned/zoomed)
+  useEffect(() => {
+    if (!canvasContainerSize.width || !canvasContainerSize.height) return;
+    if (userInteractedRef.current) return;
+
+    if (resizeFitViewTimeoutRef.current) clearTimeout(resizeFitViewTimeoutRef.current);
+    // Use shared fitViewTimeoutRef to prevent conflict with data-change fitView
+    if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
+    resizeFitViewTimeoutRef.current = setTimeout(() => {
+      rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 0.8 });
+    }, 300);
+
+    return () => {
+      if (resizeFitViewTimeoutRef.current) clearTimeout(resizeFitViewTimeoutRef.current);
+    };
+  }, [canvasContainerSize.width, canvasContainerSize.height]);
+
+  // Auto-collapse navigator sidebar when workspace gets narrow
+  useEffect(() => {
+    if (!workspaceSize.width) return;
+    if (workspaceSize.width < 900 && showNavigator && !focusMode) {
+      if (!manualNavToggleRef.current) {
+        setShowNavigator(false);
+      }
+    } else if (workspaceSize.width >= 900 && !showNavigator && !focusMode) {
+      if (!manualNavToggleRef.current) {
+        setShowNavigator(true);
+      }
+    }
+  }, [workspaceSize.width, focusMode]);
 
   // Handle connection: create coding or relation
   const onConnect: OnConnect = useCallback(
@@ -1376,10 +1417,12 @@ export default function CanvasWorkspace() {
   }, [addTranscript, refreshCanvas]);
 
   return (
-    <div className="flex h-full">
-      {/* Code Navigator Sidebar */}
-      {showNavigator && !focusMode && (
-        <CodeNavigator onFocusNode={handleFocusNode} />
+    <div ref={workspaceRef} className="flex h-full">
+      {/* Code Navigator Sidebar — animated collapse */}
+      {!focusMode && (
+        <div className={`transition-all duration-200 overflow-hidden ${showNavigator ? 'w-60' : 'w-0'}`}>
+          <CodeNavigator onFocusNode={handleFocusNode} />
+        </div>
       )}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Multi-canvas tabs */}
@@ -1422,7 +1465,7 @@ export default function CanvasWorkspace() {
         {!focusMode && (
           <CanvasToolbar
             showNavigator={showNavigator}
-            onToggleNavigator={() => setShowNavigator(s => !s)}
+            onToggleNavigator={() => { manualNavToggleRef.current = true; setShowNavigator(s => !s); }}
             onOpenCommandPalette={() => setShowCommandPalette(true)}
             onAutoLayout={handleAutoLayout}
             onExportPNG={handleExportPNG}
@@ -1433,6 +1476,7 @@ export default function CanvasWorkspace() {
           />
         )}
         <div
+          ref={canvasContainerRef}
           data-tour="canvas-flow-area"
           className="relative flex-1"
           onDragEnter={handleFileDragEnter}
@@ -1455,6 +1499,9 @@ export default function CanvasWorkspace() {
               setZoomLevel(pct);
               const newTier = pct >= 70 ? 'full' : pct >= 30 ? 'reduced' : 'minimal';
               setZoomTier(prev => prev === newTier ? prev : newTier);
+              // Mark that user manually panned/zoomed — suppress resize fitView for 2s
+              userInteractedRef.current = true;
+              setTimeout(() => { userInteractedRef.current = false; }, 2000);
             }}
             onPaneContextMenu={handlePaneContextMenu}
             onNodeContextMenu={handleNodeContextMenu}
@@ -1833,7 +1880,7 @@ export default function CanvasWorkspace() {
           onFocusNode={handleFocusNode}
           onFitView={() => rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 0.8 })}
           onToggleGrid={() => setSnapToGrid(s => !s)}
-          onToggleNavigator={() => setShowNavigator(s => !s)}
+          onToggleNavigator={() => { manualNavToggleRef.current = true; setShowNavigator(s => !s); }}
           onShowShortcuts={() => { setShowCommandPalette(false); setShowShortcuts(true); }}
           onAddComputedNode={handleQuickAddComputed}
           onAutoLayout={handleAutoLayout}

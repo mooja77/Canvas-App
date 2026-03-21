@@ -16,7 +16,8 @@ aiSettingsRoutes.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.userId) {
-        return res.status(401).json({ success: false, error: 'Authentication required' });
+        // Legacy access-code auth has no userId — return graceful "not configured"
+        return res.json({ success: true, data: { hasApiKey: false } });
       }
 
       const config = await prisma.userAiConfig.findUnique({
