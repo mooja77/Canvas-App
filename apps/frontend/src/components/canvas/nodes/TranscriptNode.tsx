@@ -361,14 +361,14 @@ export default function TranscriptNode({ data, id, selected }: NodeProps) {
               onMouseUp={handleMouseUp}
               onContextMenu={handleContextMenu}
             >
-              <p className="whitespace-pre-wrap text-xs leading-relaxed text-gray-700 dark:text-gray-300 select-text">
+              <div className="whitespace-pre-wrap text-xs leading-relaxed text-gray-700 dark:text-gray-300 select-text">
                 <HighlightedTranscript
                   text={nodeData.content}
                   codings={codings}
                   questions={questions}
                   onSegmentClick={handleSegmentClick}
                 />
-              </p>
+              </div>
             </div>
           </div>
 

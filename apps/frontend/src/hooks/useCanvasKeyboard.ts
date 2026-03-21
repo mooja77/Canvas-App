@@ -101,6 +101,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if ((e.target as HTMLElement)?.isContentEditable) return;
 
       // Ctrl shortcuts
       if (e.ctrlKey || e.metaKey) {
@@ -215,7 +216,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
 
       if (e.key === 'f') {
         e.preventDefault();
-        rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 0.8 });
+        rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 1.0 });
         return;
       }
 
@@ -242,13 +243,13 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
 
       if (e.key === '1') {
         e.preventDefault();
-        rfInstanceRef.current?.zoomTo(1);
+        rfInstanceRef.current?.zoomTo(1, { duration: 300 });
         return;
       }
 
       if (e.key === '0') {
         e.preventDefault();
-        rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 0.8 });
+        rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 1.0 });
         return;
       }
 

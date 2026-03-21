@@ -274,7 +274,7 @@ export default function CanvasWorkspace() {
   const [openTabs, setOpenTabs] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem('canvas-open-tabs');
-      return stored ? JSON.parse(stored) : [];
+      return stored ? [...new Set<string>(JSON.parse(stored))] : [];
     } catch { return []; }
   });
   const viewportCacheRef = useRef<Map<string, { x: number; y: number; zoom: number }>>(new Map());
@@ -285,7 +285,7 @@ export default function CanvasWorkspace() {
     if (!canvasId) return;
     setOpenTabs(prev => {
       if (prev.includes(canvasId)) return prev;
-      const next = [...prev, canvasId];
+      const next = [...new Set([...prev, canvasId])];
       try { localStorage.setItem('canvas-open-tabs', JSON.stringify(next)); } catch {}
       return next;
     });
@@ -1187,8 +1187,11 @@ export default function CanvasWorkspace() {
       return;
     }
     applyLayout(nodes, edges, { direction: 'LR', nodeSpacing: 60, rankSpacing: 120 });
-    // Save layout after animation
-    setTimeout(() => triggerSaveLayout(), 700);
+    // Save layout after animation and fit view
+    setTimeout(() => {
+      triggerSaveLayout();
+      rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 1.0, duration: 300 });
+    }, 700);
     toast.success('Canvas arranged');
   }, [nodes, edges, applyLayout, triggerSaveLayout]);
 
@@ -1497,7 +1500,7 @@ export default function CanvasWorkspace() {
             onMoveEnd={(_event, viewport) => {
               const pct = Math.round(viewport.zoom * 100);
               setZoomLevel(pct);
-              const newTier = pct >= 70 ? 'full' : pct >= 30 ? 'reduced' : 'minimal';
+              const newTier = pct >= 35 ? 'full' : pct >= 18 ? 'reduced' : 'minimal';
               setZoomTier(prev => prev === newTier ? prev : newTier);
               // Mark that user manually panned/zoomed — suppress resize fitView for 2s
               userInteractedRef.current = true;
@@ -1515,8 +1518,9 @@ export default function CanvasWorkspace() {
             edgesReconnectable
             panActivationKeyCode="Space"
             fitView
-            fitViewOptions={{ padding: 0.4, maxZoom: 0.8 }}
+            fitViewOptions={{ padding: 0.4, maxZoom: 1.0 }}
             minZoom={0.15}
+            maxZoom={2}
             className="bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900"
             proOptions={{ hideAttribution: true }}
           >
@@ -1526,7 +1530,7 @@ export default function CanvasWorkspace() {
               size={snapToGrid ? 0.5 : 0.8}
               color={snapToGrid ? '#d1d5db60' : '#d1d5db40'}
             />
-            {!focusMode && <Controls fitViewOptions={{ padding: 0.4, maxZoom: 0.8 }} className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700" />}
+            {!focusMode && <Controls fitViewOptions={{ padding: 0.4, maxZoom: 1.0 }} className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700" />}
             {!focusMode && <MiniMap
               nodeColor={minimapColor}
               maskColor="rgba(0,0,0,0.06)"
@@ -1607,7 +1611,7 @@ export default function CanvasWorkspace() {
               }}
               onAddMemo={handleContextAddMemo}
               onAddComputedNode={handleQuickAddComputed}
-              onFitView={() => rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 0.8 })}
+              onFitView={() => rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 1.0 })}
               onShowShortcuts={() => setShowShortcuts(true)}
               onSelectAll={handleSelectAll}
               onToggleSnapGrid={() => setSnapToGrid(s => !s)}
@@ -1878,7 +1882,7 @@ export default function CanvasWorkspace() {
         <CommandPalette
           onClose={() => setShowCommandPalette(false)}
           onFocusNode={handleFocusNode}
-          onFitView={() => rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 0.8 })}
+          onFitView={() => rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 1.0 })}
           onToggleGrid={() => setSnapToGrid(s => !s)}
           onToggleNavigator={() => { manualNavToggleRef.current = true; setShowNavigator(s => !s); }}
           onShowShortcuts={() => { setShowCommandPalette(false); setShowShortcuts(true); }}

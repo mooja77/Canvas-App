@@ -167,7 +167,9 @@ export default function NodeContextMenu({
 
   const handleAddSubCode = async () => {
     try {
-      const newQ = await addQuestion('New sub-code');
+      const name = window.prompt('Sub-code name:', '');
+      if (name === null) { onClose(); return; }
+      const newQ = await addQuestion(name.trim() || 'New sub-code');
       await updateQuestion(newQ.id, { parentQuestionId: entityId });
       toast.success('Sub-code created');
     } catch {
