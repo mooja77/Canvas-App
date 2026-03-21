@@ -2,6 +2,16 @@ import type { Request } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 
+/** Safely parse a JSON string from the database, returning a fallback on failure. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function safeJsonParse(raw: string, fallback: any = {}): any {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
 /** Extract the authenticated dashboard access ID from the request, or throw 401. */
 export function getAuthId(req: Request): string {
   const id = req.dashboardAccessId;

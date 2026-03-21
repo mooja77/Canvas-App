@@ -139,8 +139,10 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
 
     return (
       <div key={item.question.id}>
-        <button
-          className={`flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left transition-all duration-75 group relative ${
+        <div
+          role="button"
+          tabIndex={0}
+          className={`flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left transition-all duration-75 group relative cursor-pointer ${
             isSelected
               ? 'bg-brand-50 dark:bg-brand-900/20 shadow-sm'
               : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
@@ -149,6 +151,13 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
           onClick={() => {
             setSelectedQuestionId(isSelected ? null : item.question.id);
             onFocusNode(`question-${item.question.id}`);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setSelectedQuestionId(isSelected ? null : item.question.id);
+              onFocusNode(`question-${item.question.id}`);
+            }
           }}
         >
           {hasChildren && (
@@ -198,7 +207,7 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
               {item.codingCount}
             </span>
           </div>
-        </button>
+        </div>
         {hasChildren && isExpanded && (
           <div className="animate-slide-down">
             {item.children.map(child => renderTreeItem(child, depth + 1))}

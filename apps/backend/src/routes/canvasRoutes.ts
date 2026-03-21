@@ -29,7 +29,7 @@ import {
 import { nanoid } from 'nanoid';
 import { logAudit } from '../middleware/auditLog.js';
 import { sha256 } from '../utils/hashing.js';
-import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
+import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import {
   checkCanvasLimit,
   checkTranscriptLimit,
@@ -133,11 +133,11 @@ canvasRoutes.get('/canvas/:canvasId', async (req, res, next) => {
 
     const data = {
       ...canvas,
-      cases: canvas.cases.map(c => ({ ...c, attributes: JSON.parse(c.attributes) })),
+      cases: canvas.cases.map(c => ({ ...c, attributes: safeJsonParse(c.attributes) })),
       computedNodes: canvas.computedNodes.map(n => ({
         ...n,
-        config: JSON.parse(n.config),
-        result: JSON.parse(n.result),
+        config: safeJsonParse(n.config),
+        result: safeJsonParse(n.result),
       })),
     };
 
@@ -438,7 +438,7 @@ canvasRoutes.post('/canvas/:id/cases', validate(createCaseSchema), checkCaseAcce
     });
     res.status(201).json({
       success: true,
-      data: { ...caseRecord, attributes: JSON.parse(caseRecord.attributes) },
+      data: { ...caseRecord, attributes: safeJsonParse(caseRecord.attributes) },
     });
   } catch (err: any) {
     if (err.code === 'P2002') return next(new AppError('A case with this name already exists in this canvas', 409));
@@ -459,7 +459,7 @@ canvasRoutes.put('/canvas/:id/cases/:caseId', validate(updateCaseSchema), async 
     });
     res.json({
       success: true,
-      data: { ...caseRecord, attributes: JSON.parse(caseRecord.attributes) },
+      data: { ...caseRecord, attributes: safeJsonParse(caseRecord.attributes) },
     });
   } catch (err: any) {
     if (err.code === 'P2002') return next(new AppError('A case with this name already exists in this canvas', 409));
@@ -566,7 +566,7 @@ canvasRoutes.post('/canvas/:id/computed', validate(createComputedNodeSchema), ch
     });
     res.status(201).json({
       success: true,
-      data: { ...node, config: JSON.parse(node.config), result: JSON.parse(node.result) },
+      data: { ...node, config: safeJsonParse(node.config), result: safeJsonParse(node.result) },
     });
   } catch (err) { next(err); }
 });
@@ -584,7 +584,7 @@ canvasRoutes.put('/canvas/:id/computed/:nodeId', validate(updateComputedNodeSche
     });
     res.json({
       success: true,
-      data: { ...node, config: JSON.parse(node.config), result: JSON.parse(node.result) },
+      data: { ...node, config: safeJsonParse(node.config), result: safeJsonParse(node.result) },
     });
   } catch (err) { next(err); }
 });
@@ -609,7 +609,7 @@ canvasRoutes.post('/canvas/:id/computed/:nodeId/run', checkAnalysisTypeOnRun(), 
       return next(new AppError('Computed node not found', 404));
     }
 
-    const config = JSON.parse(node.config);
+    const config = safeJsonParse(node.config);
 
     const [transcripts, questions, codings, rawCases] = await Promise.all([
       prisma.canvasTranscript.findMany({
@@ -629,7 +629,7 @@ canvasRoutes.post('/canvas/:id/computed/:nodeId/run', checkAnalysisTypeOnRun(), 
         select: { id: true, name: true, attributes: true },
       }),
     ]);
-    const cases = rawCases.map(c => ({ ...c, attributes: JSON.parse(c.attributes) }));
+    const cases = rawCases.map(c => ({ ...c, attributes: safeJsonParse(c.attributes) }));
 
     let result: any = {};
 
@@ -645,7 +645,7 @@ canvasRoutes.post('/canvas/:id/computed/:nodeId/run', checkAnalysisTypeOnRun(), 
           transcripts,
           questions,
           codings,
-          cases.map(c => ({ ...c, attributes: JSON.parse(c.attributes) })),
+          cases.map(c => ({ ...c, attributes: safeJsonParse(c.attributes) })),
           config.questionIds,
           config.caseIds,
         );
@@ -717,7 +717,7 @@ canvasRoutes.post('/canvas/:id/computed/:nodeId/run', checkAnalysisTypeOnRun(), 
 
     res.json({
       success: true,
-      data: { ...updated, config: JSON.parse(updated.config), result },
+      data: { ...updated, config: safeJsonParse(updated.config), result },
     });
   } catch (err) { next(err); }
 });
@@ -940,11 +940,11 @@ canvasPublicRoutes.get('/canvas/shared/:code', async (req, res, next) => {
 
     const data = {
       ...canvas,
-      cases: canvas.cases.map(c => ({ ...c, attributes: JSON.parse(c.attributes) })),
+      cases: canvas.cases.map(c => ({ ...c, attributes: safeJsonParse(c.attributes) })),
       computedNodes: canvas.computedNodes.map(n => ({
         ...n,
-        config: JSON.parse(n.config),
-        result: JSON.parse(n.result),
+        config: safeJsonParse(n.config),
+        result: safeJsonParse(n.result),
       })),
     };
 

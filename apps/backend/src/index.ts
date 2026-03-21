@@ -110,7 +110,7 @@ app.get('/health', async (_req, res) => {
     await prisma.$queryRawUnsafe('SELECT 1');
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   } catch {
-    res.status(503).json({ status: 'error', message: 'Database unavailable' });
+    res.status(503).json({ status: 'error', message: 'Service unavailable' });
   }
 });
 
