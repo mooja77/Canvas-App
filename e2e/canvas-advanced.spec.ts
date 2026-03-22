@@ -1,49 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-// Helper: open canvas (already authenticated via setup)
-async function openCanvas(page: any) {
-  // Ensure onboarding tour is dismissed via localStorage before navigating
-  await page.addInitScript(() => {
-    const existing = localStorage.getItem('canvas-app-ui');
-    const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
-    state.state = { ...state.state, onboardingComplete: true };
-    localStorage.setItem('canvas-app-ui', JSON.stringify(state));
-  });
-
-  await page.goto('/canvas');
-  await page.waitForTimeout(500);
-
-  const heading = page.locator('h3').first();
-  if (await heading.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await heading.click();
-  }
-
-  await page.waitForSelector('.react-flow__pane', { timeout: 10000 });
-  await page.waitForTimeout(1000);
-
-  // Safety net: dismiss onboarding tour if it still appears
-  const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
-    await skipBtn.first().click();
-    await page.waitForTimeout(300);
-  }
-  // Last resort: press Escape to dismiss any overlay
-  const overlay = page.locator('.fixed.inset-0.z-\\[10000\\]');
-  if (await overlay.isVisible({ timeout: 300 }).catch(() => false)) {
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
-  }
-}
-
-function getViewportTransform(page: any) {
-  return page.evaluate(() => {
-    const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
-    if (!vp) return null;
-    const match = vp.style.transform.match(/translate\((.+?)px,\s*(.+?)px\)\s*scale\((.+?)\)/);
-    if (!match) return null;
-    return { x: parseFloat(match[1]), y: parseFloat(match[2]), scale: parseFloat(match[3]) };
-  });
-}
+import { openCanvas, getViewportTransform } from './helpers';
 
 test.describe('Canvas Advanced Features', () => {
   test.beforeEach(async ({ page }) => {
