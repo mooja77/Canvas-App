@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { CanvasTextCoding, CanvasQuestion, CanvasTranscript } from '@canvas-app/shared';
+import { useUIStore } from '../../../stores/uiStore';
 
 export interface DocumentPortraitNodeData {
   label: string;
@@ -28,7 +29,8 @@ export interface DocumentPortraitNodeData {
 
 function DocumentPortraitNode({ data, selected }: NodeProps) {
   const nodeData = data as unknown as DocumentPortraitNodeData;
-  const { label, result, collapsed, zoomTier } = nodeData;
+  const { label, result, collapsed } = nodeData;
+  const zoomTier = useUIStore(s => s.zoomTier);
   const strips = result?.strips || [];
 
   if (zoomTier === 'minimal') {

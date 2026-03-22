@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { useCanvasStore } from '../../../stores/canvasStore';
+import { useUIStore } from '../../../stores/uiStore';
 import ConfirmDialog from '../ConfirmDialog';
 
 export interface MemoNodeData {
@@ -112,7 +113,7 @@ function MemoNode({ data, selected }: NodeProps) {
   const [collapsed, setCollapsed] = useState(nodeData.collapsed ?? false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const zoomTier = nodeData.zoomTier ?? 'full';
+  const zoomTier = useUIStore(s => s.zoomTier);
 
   // Auto-resize textarea
   useEffect(() => {

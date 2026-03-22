@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { useCanvasStore, useCanvasCodings, useCanvasQuestions, useSelectedQuestionId } from '../../../stores/canvasStore';
+import { useUIStore } from '../../../stores/uiStore';
 import ConfirmDialog from '../ConfirmDialog';
 import ColorPicker from '../panels/ColorPicker';
 import type { CanvasTextCoding, CanvasQuestion } from '@canvas-app/shared';
@@ -31,7 +32,7 @@ function QuestionNode({ data, id, selected }: NodeProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [collapsed, setCollapsed] = useState(nodeData.collapsed ?? false);
 
-  const zoomTier = nodeData.zoomTier ?? 'full';
+  const zoomTier = useUIStore(s => s.zoomTier);
   const isReduced = zoomTier === 'reduced';
   const isMinimal = zoomTier === 'minimal';
 

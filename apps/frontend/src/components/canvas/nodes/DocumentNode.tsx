@@ -2,6 +2,7 @@ import { memo, useState, useCallback } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { CanvasDocument, DocumentRegionCoding, CanvasQuestion } from '@canvas-app/shared';
+import { useUIStore } from '../../../stores/uiStore';
 
 export interface DocumentNodeData {
   document: CanvasDocument;
@@ -15,7 +16,8 @@ export interface DocumentNodeData {
 
 function DocumentNode({ data, selected }: NodeProps) {
   const nodeData = data as unknown as DocumentNodeData;
-  const { document: doc, regions = [], questions = [], collapsed, zoomTier, customColor } = nodeData;
+  const { document: doc, regions = [], questions = [], collapsed, customColor } = nodeData;
+  const zoomTier = useUIStore(s => s.zoomTier);
   const [currentPage, setCurrentPage] = useState(1);
 
   const pageRegions = regions.filter(r => r.pageNumber === currentPage);

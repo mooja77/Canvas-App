@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { useCanvasStore, useCanvasCases, useCanvasTranscripts } from '../../../stores/canvasStore';
+import { useUIStore } from '../../../stores/uiStore';
 import ConfirmDialog from '../ConfirmDialog';
 import type { CanvasCase, CanvasTranscript } from '@canvas-app/shared';
 
@@ -23,7 +24,7 @@ function CaseNode({ data, id, selected }: NodeProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [collapsed, setCollapsed] = useState(nodeData.collapsed ?? false);
 
-  const zoomTier = nodeData.zoomTier ?? 'full';
+  const zoomTier = useUIStore(s => s.zoomTier);
 
   const caseRecord = useMemo(
     () => cases.find((c: CanvasCase) => c.id === nodeData.caseId),

@@ -235,7 +235,7 @@ export default function CanvasWorkspace() {
   const [zoomLevel, setZoomLevel] = useState(100);
   const zoomLevelRef = useRef(zoomLevel);
   zoomLevelRef.current = zoomLevel;
-  const [zoomTier, setZoomTier] = useState<'full' | 'reduced' | 'minimal'>('full');
+  const { setZoomTier } = useUIStore();
   const [deleteConfirm, setDeleteConfirm] = useState<{ nodeId: string; label: string; type: string } | null>(null);
   const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
 
@@ -356,7 +356,6 @@ export default function CanvasWorkspace() {
           content: t.content,
           caseId: t.caseId,
           collapsed: posData?.collapsed ?? false,
-          zoomTier,
           customColor: nodeColorMap.get(nodeId),
           onAiSuggest: (tId: string, text: string, start: number, end: number) => {
             requireAiConfig('AI Code Suggestions', () => aiSuggestions.suggestCodes(tId, text, start, end));
@@ -385,7 +384,6 @@ export default function CanvasWorkspace() {
           text: q.text,
           color: q.color,
           collapsed: posData?.collapsed ?? false,
-          zoomTier,
         },
       });
     });
@@ -411,7 +409,6 @@ export default function CanvasWorkspace() {
           content: m.content,
           color: m.color,
           collapsed: posData?.collapsed ?? false,
-          zoomTier,
         },
       });
     });
@@ -434,7 +431,6 @@ export default function CanvasWorkspace() {
         data: {
           caseId: c.id,
           collapsed: posData?.collapsed ?? false,
-          zoomTier,
           customColor: nodeColorMap.get(nodeId),
         },
       });
@@ -460,7 +456,6 @@ export default function CanvasWorkspace() {
         data: {
           computedNodeId: cn.id,
           collapsed: posData?.collapsed ?? false,
-          zoomTier,
         },
       });
     });
@@ -539,7 +534,7 @@ export default function CanvasWorkspace() {
     }
 
     return result;
-  }, [activeCanvas, highlightedNodeIds, posMap, groups, updateGroup, stickyNotes, updateStickyNote, removeStickyNote, nodeColorMap, zoomTier, rerouteNodes, aiSuggestions.suggestCodes, mutedNodeIds]);
+  }, [activeCanvas, highlightedNodeIds, posMap, groups, updateGroup, stickyNotes, updateStickyNote, removeStickyNote, nodeColorMap, rerouteNodes, aiSuggestions.suggestCodes, mutedNodeIds]);
 
   // Build edges from codings and relations
   const buildEdges = useCallback((): Edge[] => {
@@ -1683,7 +1678,7 @@ export default function CanvasWorkspace() {
               const pct = Math.round(viewport.zoom * 100);
               setZoomLevel(pct);
               const newTier = pct >= 35 ? 'full' : pct >= 18 ? 'reduced' : 'minimal';
-              setZoomTier(prev => prev === newTier ? prev : newTier);
+              setZoomTier(newTier);
             }}
             onPaneContextMenu={handlePaneContextMenu}
             onNodeContextMenu={handleNodeContextMenu}
