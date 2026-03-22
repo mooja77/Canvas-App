@@ -20,15 +20,19 @@
     "lint:fix": "eslint --fix apps/backend/src apps/frontend/src shared",
     "format": "prettier --write \"apps/**/*.{ts,tsx}\" \"shared/**/*.ts\"",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx}\" \"shared/**/*.ts\"",
-    "test": "npm run test -w apps/backend",
+    "test": "npm run test -w apps/backend && npm run test -w apps/frontend",
     "typecheck": "tsc -b apps/backend apps/frontend"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
     "concurrently": "^9.1.0",
     "eslint": "^9.39.3",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "jsdom": "^29.0.1",
     "typescript": "^5.7.0"
   }
 }
