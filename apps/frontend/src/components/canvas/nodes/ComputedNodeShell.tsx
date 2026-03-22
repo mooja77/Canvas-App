@@ -1,7 +1,7 @@
 import { memo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useRunningNodeId } from '../../../stores/canvasStore';
 import ConfirmDialog from '../ConfirmDialog';
 
 interface ComputedNodeShellProps {
@@ -30,7 +30,9 @@ function ComputedNodeShell({
   onConfigure,
 }: ComputedNodeShellProps) {
   const { runComputedNode, deleteComputedNode } = useCanvasStore();
+  const runningNodeId = useRunningNodeId();
   const [running, setRunning] = useState(false);
+  const isRunningGlobal = runningNodeId === computedNodeId;
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [collapsed, setCollapsed] = useState(collapsedProp ?? false);
@@ -51,7 +53,7 @@ function ComputedNodeShell({
   };
 
   return (
-    <div className={`min-w-[280px] w-full h-full rounded-xl border-2 shadow-node transition-all duration-200 hover:shadow-node-hover ${selected ? 'ring-2 ring-blue-400' : ''}`} style={{ borderColor: color }}>
+    <div className={`min-w-[280px] w-full h-full rounded-xl border-2 shadow-node transition-all duration-200 hover:shadow-node-hover ${selected ? 'ring-2 ring-blue-400' : ''} ${isRunningGlobal ? 'animate-pulse ring-2 ring-offset-1 ring-green-400/60' : ''}`} style={{ borderColor: isRunningGlobal ? '#22c55e' : color }}>
       <NodeResizer
         minWidth={280}
         minHeight={collapsed ? 44 : 100}
@@ -99,23 +101,25 @@ function ComputedNodeShell({
               </svg>
             </button>
           )}
-          <button
-            onClick={handleRun}
-            disabled={running}
-            className="rounded p-0.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400 disabled:opacity-50"
-            title="Run computation"
-          >
-            {running ? (
-              <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+          {running ? (
+            <span className="flex items-center gap-1 px-1 text-[10px] font-medium text-green-600 dark:text-green-400">
+              <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-            ) : (
+              Running...
+            </span>
+          ) : (
+            <button
+              onClick={handleRun}
+              className="rounded p-0.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
+              title="Run computation"
+            >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
               </svg>
-            )}
-          </button>
+            </button>
+          )}
           <button
             onClick={() => setShowDeleteConfirm(true)}
             className="rounded p-0.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400"

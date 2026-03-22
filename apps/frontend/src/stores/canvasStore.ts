@@ -41,6 +41,7 @@ interface CanvasState {
   // UI toggles
   showCodingStripes: boolean;
   savingLayout: boolean;
+  runningNodeId: string | null;
 
   // Actions
   fetchCanvases: () => Promise<void>;
@@ -118,6 +119,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
   selectedQuestionId: null,
   showCodingStripes: false,
   savingLayout: false,
+  runningNodeId: null,
 
   fetchCanvases: async () => {
     set({ loading: true, error: null });
@@ -489,14 +491,19 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
   runComputedNode: async (nodeId) => {
     const { activeCanvasId } = get();
     if (!activeCanvasId) throw new Error('No canvas open');
-    const res = await canvasApi.runComputedNode(activeCanvasId, nodeId);
-    const updated = res.data.data;
-    set(s => ({
-      activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, computedNodes: s.activeCanvas.computedNodes.map((n: CanvasComputedNode) => n.id === nodeId ? { ...n, ...updated } : n) }
-        : null,
-    }));
-    return updated;
+    set({ runningNodeId: nodeId });
+    try {
+      const res = await canvasApi.runComputedNode(activeCanvasId, nodeId);
+      const updated = res.data.data;
+      set(s => ({
+        activeCanvas: s.activeCanvas
+          ? { ...s.activeCanvas, computedNodes: s.activeCanvas.computedNodes.map((n: CanvasComputedNode) => n.id === nodeId ? { ...n, ...updated } : n) }
+          : null,
+      }));
+      return updated;
+    } finally {
+      set({ runningNodeId: null });
+    }
   },
 
   // ─── Auto-Code ───
@@ -594,3 +601,4 @@ export const usePendingSelection = () => useCanvasStore(s => s.pendingSelection)
 export const useCanvasLoading = () => useCanvasStore(s => s.loading);
 export const useCanvasError = () => useCanvasStore(s => s.error);
 export const useShowCodingStripes = () => useCanvasStore(s => s.showCodingStripes);
+export const useRunningNodeId = () => useCanvasStore(s => s.runningNodeId);

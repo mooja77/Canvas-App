@@ -3,17 +3,21 @@ import { persist } from 'zustand/middleware';
 
 export type EdgeStyleType = 'bezier' | 'straight' | 'step' | 'smoothstep';
 
+export type ScrollMode = 'zoom' | 'pan';
+
 interface UIState {
   darkMode: boolean;
   onboardingComplete: boolean;
   sidebarCollapsed: boolean;
   edgeStyle: EdgeStyleType;
+  scrollMode: ScrollMode;
 
   toggleDarkMode: () => void;
   completeOnboarding: () => void;
   resetOnboarding: () => void;
   setSidebarCollapsed: (v: boolean) => void;
   setEdgeStyle: (style: EdgeStyleType) => void;
+  setScrollMode: (mode: ScrollMode) => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -23,6 +27,7 @@ export const useUIStore = create<UIState>()(
       onboardingComplete: false,
       sidebarCollapsed: false,
       edgeStyle: 'bezier' as EdgeStyleType,
+      scrollMode: 'zoom' as ScrollMode,
 
       toggleDarkMode: () => set((s) => {
         const next = !s.darkMode;
@@ -38,6 +43,7 @@ export const useUIStore = create<UIState>()(
       resetOnboarding: () => set({ onboardingComplete: false }),
       setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
       setEdgeStyle: (style) => set({ edgeStyle: style }),
+      setScrollMode: (mode) => set({ scrollMode: mode }),
     }),
     { name: 'canvas-app-ui' }
   )

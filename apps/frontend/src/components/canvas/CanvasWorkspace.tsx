@@ -80,6 +80,7 @@ import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import { useCollaboration } from '../../hooks/useCollaboration';
 import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 import { useAiConfigStore } from '../../stores/aiConfigStore';
+import { useUIStore } from '../../stores/uiStore';
 import type {
   CanvasTranscript,
   CanvasQuestion,
@@ -154,6 +155,8 @@ export default function CanvasWorkspace() {
   const activeCanvas = useActiveCanvas();
   const pendingSelection = usePendingSelection();
   const selectedQuestionId = useSelectedQuestionId();
+  const scrollMode = useUIStore(s => s.scrollMode);
+  const setScrollMode = useUIStore(s => s.setScrollMode);
 
   // Individual action selectors
   const {
@@ -1642,8 +1645,8 @@ export default function CanvasWorkspace() {
             snapToGrid={snapToGrid}
             snapGrid={SNAP_GRID}
             edgesReconnectable
-            zoomOnScroll
-            panOnScroll={false}
+            zoomOnScroll={scrollMode === 'zoom'}
+            panOnScroll={scrollMode === 'pan'}
             zoomOnDoubleClick
             panActivationKeyCode="Space"
             fitView
@@ -1995,6 +1998,13 @@ export default function CanvasWorkspace() {
             {collaboration.isConnected && collaboration.collaborators.length > 0 && (
               <PresenceAvatars collaborators={collaboration.collaborators} isConnected={collaboration.isConnected} />
             )}
+            <button
+              onClick={() => setScrollMode(scrollMode === 'zoom' ? 'pan' : 'zoom')}
+              className="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
+              title={`Scroll mode: ${scrollMode === 'zoom' ? 'Zoom' : 'Pan'} (click to toggle)`}
+            >
+              {scrollMode === 'zoom' ? 'Scroll: Zoom' : 'Scroll: Pan'}
+            </button>
             <span className="tabular-nums">{zoomLevel}%</span>
           </div>
         </div>}
