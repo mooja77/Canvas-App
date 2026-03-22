@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: typecheck
+    env:
+      JWT_SECRET: test-secret-for-ci-pipeline-only
+      ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
+      DATABASE_URL: file:./test.db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate --schema=apps/backend/prisma/schema.prisma
+      - run: npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma
+      - run: npm test
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    env:
+      JWT_SECRET: test-secret-for-ci-pipeline-only
+      ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
+      DATABASE_URL: file:./test.db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx prisma generate --schema=apps/backend/prisma/schema.prisma
+      - run: npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma
+      - run: npx prisma db seed --schema=apps/backend/prisma/schema.prisma || true
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: test-results/
+          retention-days: 7
