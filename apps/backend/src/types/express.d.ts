@@ -13,5 +13,7 @@ declare namespace Express {
     userRole?: string;
     // Per-request LLM provider (set by resolveAiConfig middleware)
     llmProvider?: import('../lib/llm.js').LlmProvider;
+    // Set by ensureOwnsCanvas middleware
+    canvas?: import('@prisma/client').CodingCanvas;
   }
 }

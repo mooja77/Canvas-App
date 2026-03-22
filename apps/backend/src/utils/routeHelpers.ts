@@ -1,4 +1,4 @@
-import type { Request } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 
@@ -35,4 +35,20 @@ export async function getOwnedCanvas(canvasId: string, dashboardAccessId: string
 
   if (!ownsViaUser && !ownsViaDashboard) throw new AppError('Access denied', 403);
   return canvas;
+}
+
+/** Middleware factory that verifies the authenticated user owns the canvas in req.params.id. */
+export function ensureOwnsCanvas() {
+  return async (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      const canvasId = req.params.id;
+      const dashboardAccessId = getAuthId(req);
+      const userId = getAuthUserId(req);
+      const canvas = await getOwnedCanvas(canvasId, dashboardAccessId, userId);
+      req.canvas = canvas;
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
 }

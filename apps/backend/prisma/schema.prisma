@@ -302,6 +302,8 @@ model AuditLog {
   meta       String?
 
   @@index([action])
+  @@index([timestamp])
+  @@index([actorId])
 }
 
 model WebhookEvent {
