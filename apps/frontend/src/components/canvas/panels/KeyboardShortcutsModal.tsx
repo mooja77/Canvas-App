@@ -38,6 +38,7 @@ const SHORTCUT_GROUPS = [
       { keys: ['Ctrl', 'Shift', 'L'], description: 'Auto-arrange layout' },
       { keys: ['Ctrl', 'Z'], description: 'Undo' },
       { keys: ['Ctrl', 'Shift', 'Z'], description: 'Redo' },
+      { keys: ['Ctrl', 'M'], description: 'Mute/unmute selected nodes' },
       { keys: ['Delete'], description: 'Delete selected' },
       { keys: ['Dbl-click'], description: 'Quick-add menu' },
     ],

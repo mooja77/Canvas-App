@@ -1,8 +1,12 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 
 interface CanvasTab {
   id: string;
   name: string;
+  description?: string;
+  transcriptCount?: number;
+  codeCount?: number;
+  codingCount?: number;
 }
 
 interface CanvasTabBarProps {
@@ -13,8 +17,34 @@ interface CanvasTabBarProps {
   onNewTab: () => void;
 }
 
+function TabPreview({ tab, visible }: { tab: CanvasTab; visible: boolean }) {
+  if (!visible) return null;
+
+  return (
+    <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg bg-white p-2.5 shadow-lg ring-1 ring-black/10 dark:bg-gray-800 dark:ring-white/10">
+      <div className="text-xs font-medium text-gray-900 dark:text-gray-100 mb-1 break-words">
+        {tab.name}
+      </div>
+      {tab.description && (
+        <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-1.5 line-clamp-2">
+          {tab.description}
+        </div>
+      )}
+      <div className="flex items-center gap-2 text-[10px] text-gray-400 dark:text-gray-500">
+        <span>{tab.transcriptCount ?? 0} transcripts</span>
+        <span className="text-gray-300 dark:text-gray-600">|</span>
+        <span>{tab.codeCount ?? 0} codes</span>
+        <span className="text-gray-300 dark:text-gray-600">|</span>
+        <span>{tab.codingCount ?? 0} codings</span>
+      </div>
+    </div>
+  );
+}
+
 export default function CanvasTabBar({ tabs, activeTabId, onSwitchTab, onCloseTab, onNewTab }: CanvasTabBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-scroll to active tab
   useEffect(() => {
@@ -22,6 +52,26 @@ export default function CanvasTabBar({ tabs, activeTabId, onSwitchTab, onCloseTa
     const active = scrollRef.current.querySelector(`[data-tab-id="${activeTabId}"]`);
     if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   }, [activeTabId]);
+
+  const handleMouseEnter = useCallback((tabId: string) => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => {
+      setHoveredTabId(tabId);
+    }, 300);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = null;
+    setHoveredTabId(null);
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    };
+  }, []);
 
   if (tabs.length <= 1) return null;
 
@@ -35,12 +85,14 @@ export default function CanvasTabBar({ tabs, activeTabId, onSwitchTab, onCloseTa
           <div
             key={tab.id}
             data-tab-id={tab.id}
-            className={`group flex items-center gap-1.5 shrink-0 px-3 py-1.5 text-xs cursor-pointer border-b-2 transition-colors ${
+            className={`group relative flex items-center gap-1.5 shrink-0 px-3 py-1.5 text-xs cursor-pointer border-b-2 transition-colors ${
               tab.id === activeTabId
                 ? 'border-brand-500 text-brand-700 bg-white dark:bg-gray-800 dark:text-brand-400'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700/50'
             }`}
             onClick={() => onSwitchTab(tab.id)}
+            onMouseEnter={() => handleMouseEnter(tab.id)}
+            onMouseLeave={handleMouseLeave}
           >
             <span className="truncate max-w-[120px]">{tab.name}</span>
             <button
@@ -52,6 +104,7 @@ export default function CanvasTabBar({ tabs, activeTabId, onSwitchTab, onCloseTa
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
               </svg>
             </button>
+            <TabPreview tab={tab} visible={hoveredTabId === tab.id} />
           </div>
         ))}
       </div>

@@ -123,6 +123,11 @@ function QuestionNode({ data, id, selected }: NodeProps) {
           <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
             Code
           </span>
+          {(nodeData as any).muted && (
+            <span className="shrink-0 rounded bg-gray-400/80 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white">
+              MUTED
+            </span>
+          )}
           {childCount > 0 && (
             <span className="rounded-full bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 text-[9px] font-medium text-gray-600 dark:text-gray-300">
               {childCount} sub

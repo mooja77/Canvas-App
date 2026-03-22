@@ -73,6 +73,11 @@ function CaseNode({ data, id, selected }: NodeProps) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
           </svg>
           <span className="text-sm font-medium text-teal-800 dark:text-teal-200 truncate">{caseRecord.name}</span>
+          {(nodeData as any).muted && (
+            <span className="shrink-0 rounded bg-gray-400/80 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white">
+              MUTED
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-0.5">
           <button

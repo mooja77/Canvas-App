@@ -242,6 +242,9 @@ export default function CanvasWorkspace() {
   // Snap to grid
   const [snapToGrid, setSnapToGrid] = useState(false);
 
+  // Muted/bypassed nodes
+  const [mutedNodeIds, setMutedNodeIds] = useState<Set<string>>(new Set());
+
   // Drag-and-drop file import
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const dragCounterRef = useRef(0);
@@ -527,8 +530,16 @@ export default function CanvasWorkspace() {
       });
     });
 
+    // Apply muted styling to bypassed nodes
+    for (const node of result) {
+      if (mutedNodeIds.has(node.id)) {
+        node.style = { ...node.style, opacity: 0.3, border: '2px dashed #9ca3af' };
+        node.data = { ...node.data, muted: true };
+      }
+    }
+
     return result;
-  }, [activeCanvas, highlightedNodeIds, posMap, groups, updateGroup, stickyNotes, updateStickyNote, removeStickyNote, nodeColorMap, zoomTier, rerouteNodes, aiSuggestions.suggestCodes]);
+  }, [activeCanvas, highlightedNodeIds, posMap, groups, updateGroup, stickyNotes, updateStickyNote, removeStickyNote, nodeColorMap, zoomTier, rerouteNodes, aiSuggestions.suggestCodes, mutedNodeIds]);
 
   // Build edges from codings and relations
   const buildEdges = useCallback((): Edge[] => {
@@ -907,6 +918,19 @@ export default function CanvasWorkspace() {
     await handlePaste();
   }, [handleCopy, handlePaste]);
 
+  // Alt+Drag to duplicate: when user starts dragging with Alt held, duplicate selected nodes
+  const altDragDuplicatedRef = useRef(false);
+  const handleNodeDragStart = useCallback((_event: React.MouseEvent, _node: Node) => {
+    if (_event.altKey && !altDragDuplicatedRef.current) {
+      altDragDuplicatedRef.current = true;
+      handleDuplicate();
+    }
+  }, [handleDuplicate]);
+
+  const handleNodeDragStop = useCallback(() => {
+    altDragDuplicatedRef.current = false;
+  }, []);
+
   // Select all
   const handleSelectAll = useCallback(() => {
     setNodes((nds) => nds.map(n => ({ ...n, selected: true })));
@@ -1267,6 +1291,24 @@ export default function CanvasWorkspace() {
     toast.success('Canvas arranged');
   }, [nodes, edges, applyLayout, triggerSaveLayout, pushHistorySnapshot]);
 
+  // Mute/unmute selected nodes (Ctrl+M)
+  const handleToggleMute = useCallback(() => {
+    const selectedIds = nodes.filter(n => n.selected).map(n => n.id);
+    if (selectedIds.length === 0) return;
+    setMutedNodeIds(prev => {
+      const next = new Set(prev);
+      const allMuted = selectedIds.every(id => next.has(id));
+      selectedIds.forEach(id => allMuted ? next.delete(id) : next.add(id));
+      return next;
+    });
+    const selectedCount = nodes.filter(n => n.selected).length;
+    const allCurrentlyMuted = nodes.filter(n => n.selected).every(n => mutedNodeIds.has(n.id));
+    toast.success(allCurrentlyMuted
+      ? (selectedCount === 1 ? 'Node unmuted' : `${selectedCount} nodes unmuted`)
+      : (selectedCount === 1 ? 'Node muted' : `${selectedCount} nodes muted`)
+    );
+  }, [nodes, mutedNodeIds]);
+
   // Export canvas as PNG
   const handleExportPNG = useCallback(async () => {
     const viewport = document.querySelector('.react-flow__viewport') as HTMLElement;
@@ -1401,6 +1443,7 @@ export default function CanvasWorkspace() {
     onRedo: handleRedo,
     canUndo,
     canRedo,
+    onToggleMute: handleToggleMute,
   });
 
   const handleFocusNode = useCallback((nodeId: string) => {
@@ -1563,10 +1606,17 @@ export default function CanvasWorkspace() {
         {/* Multi-canvas tabs */}
         {openTabs.length > 1 && !focusMode && (
           <CanvasTabBar
-            tabs={openTabs.map(id => ({
-              id,
-              name: canvases.find(c => c.id === id)?.name || activeCanvas?.id === id ? (activeCanvas?.name || 'Canvas') : 'Canvas',
-            }))}
+            tabs={openTabs.map(id => {
+              const canvas = canvases.find(c => c.id === id);
+              return {
+                id,
+                name: canvas?.name || (activeCanvas?.id === id ? (activeCanvas?.name || 'Canvas') : 'Canvas'),
+                description: canvas?.description,
+                transcriptCount: canvas?._count?.transcripts ?? 0,
+                codeCount: canvas?._count?.questions ?? 0,
+                codingCount: canvas?._count?.codings ?? 0,
+              };
+            })}
             activeTabId={activeCanvas?.id || null}
             onSwitchTab={async (canvasId) => {
               // Save current viewport
@@ -1639,6 +1689,8 @@ export default function CanvasWorkspace() {
             onNodeContextMenu={handleNodeContextMenu}
             onEdgeContextMenu={handleEdgeContextMenu}
             onPaneClick={handlePaneClick}
+            onNodeDragStart={handleNodeDragStart}
+            onNodeDragStop={handleNodeDragStop}
             onSelectionChange={handleSelectionChange}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}

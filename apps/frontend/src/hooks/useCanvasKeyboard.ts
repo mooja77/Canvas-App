@@ -62,6 +62,9 @@ export interface CanvasKeyboardOptions {
   // Tab navigation
   onNextTab?: () => void;
   onPrevTab?: () => void;
+
+  // Mute/bypass
+  onToggleMute?: () => void;
 }
 
 export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
@@ -105,6 +108,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     canRedo,
     onNextTab,
     onPrevTab,
+    onToggleMute,
   } = options;
 
   useEffect(() => {
@@ -201,6 +205,12 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
         if (e.key === 'g') {
           e.preventDefault();
           handleCreateGroup();
+          return;
+        }
+        // Ctrl+M: mute/unmute selected nodes
+        if (e.key === 'm') {
+          e.preventDefault();
+          onToggleMute?.();
           return;
         }
         // Ctrl+Shift+1-5: save viewport bookmark
@@ -354,5 +364,6 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     canRedo,
     onNextTab,
     onPrevTab,
+    onToggleMute,
   ]);
 }
