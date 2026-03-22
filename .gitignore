@@ -58,3 +58,5 @@ token_response.json
 logs/
 *.log
 node_modules/
+e2e/.auth/
+test-results/

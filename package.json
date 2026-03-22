@@ -21,9 +21,11 @@
     "format": "prettier --write \"apps/**/*.{ts,tsx}\" \"shared/**/*.ts\"",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx}\" \"shared/**/*.ts\"",
     "test": "npm run test -w apps/backend && npm run test -w apps/frontend",
+    "test:e2e": "npx playwright test",
     "typecheck": "tsc -b apps/backend apps/frontend"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
