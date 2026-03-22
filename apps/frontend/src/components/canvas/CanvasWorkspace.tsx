@@ -546,15 +546,35 @@ export default function CanvasWorkspace() {
     return [...codingEdges, ...relationEdges];
   }, [activeCanvas]);
 
-  // Sync when canvas data changes
+  // Sync nodes/edges when canvas data changes — preserve local positions, only fitView on canvas switch
+  const loadedCanvasIdRef = useRef<string | null>(null);
   useEffect(() => {
-    setNodes(buildNodes());
-    setEdges(buildEdges());
-    // Fit view after nodes render with their actual dimensions
-    if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
-    fitViewTimeoutRef.current = setTimeout(() => {
-      rfInstanceRef.current?.fitView(FIT_VIEW_OPTIONS);
-    }, 200);
+    const canvasId = activeCanvas?.id ?? null;
+    const isNewCanvas = canvasId !== loadedCanvasIdRef.current;
+
+    if (isNewCanvas) {
+      // Full rebuild on canvas switch or initial load
+      setNodes(buildNodes());
+      setEdges(buildEdges());
+      if (canvasId) {
+        loadedCanvasIdRef.current = canvasId;
+        if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
+        fitViewTimeoutRef.current = setTimeout(() => {
+          rfInstanceRef.current?.fitView(FIT_VIEW_OPTIONS);
+        }, 200);
+      }
+    } else {
+      // Same canvas — update node data but preserve local positions
+      const freshNodes = buildNodes();
+      setNodes((currentNodes: Node[]) => {
+        const currentPosMap = new Map(currentNodes.map(n => [n.id, n.position]));
+        return freshNodes.map(n => {
+          const localPos = currentPosMap.get(n.id);
+          return localPos ? { ...n, position: localPos } : n;
+        });
+      });
+      setEdges(buildEdges());
+    }
   }, [activeCanvas, buildNodes, buildEdges, setNodes, setEdges]);
 
   // Re-fit ReactFlow view when canvas container actually resizes (not sub-pixel jitter)
