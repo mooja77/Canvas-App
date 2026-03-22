@@ -950,14 +950,15 @@ export default function CanvasWorkspace() {
     (changes: NodeChange[]) => {
       onNodesChange(changes);
 
-      // Check if any drag ended or resize happened
+      // Check if any drag ended (save position) — ignore dimension changes from zoom/re-measurement
       const hasDrag = changes.some(
         (c: NodeChange) => c.type === 'position' && 'dragging' in c && c.dragging === false,
       );
-      const hasResize = changes.some(
-        (c: NodeChange) => c.type === 'dimensions',
+      // Only save on user-initiated node resize (resizing flag), not zoom-triggered re-measurement
+      const hasUserResize = changes.some(
+        (c: NodeChange) => c.type === 'dimensions' && 'resizing' in c && (c as any).resizing === false,
       );
-      if (hasDrag || hasResize) {
+      if (hasDrag || hasUserResize) {
         triggerSaveLayout();
       }
     },
