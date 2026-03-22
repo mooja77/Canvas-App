@@ -248,7 +248,7 @@ export default function CanvasWorkspace() {
   // Resize detection refs
   const workspaceRef = useRef<HTMLDivElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const userInteractedRef = useRef(false);
+  // (userInteractedRef removed — resize handler now uses size-delta threshold instead)
   const manualNavToggleRef = useRef(false);
   const resizeFitViewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const workspaceSize = useContainerSize(workspaceRef);
@@ -557,12 +557,21 @@ export default function CanvasWorkspace() {
     }, 200);
   }, [activeCanvas, buildNodes, buildEdges, setNodes, setEdges]);
 
-  // Re-fit ReactFlow view when canvas container resizes (debounced)
+  // Re-fit ReactFlow view when canvas container actually resizes (not sub-pixel jitter)
+  const prevContainerSizeRef = useRef({ width: 0, height: 0 });
   useEffect(() => {
     if (!canvasContainerSize.width || !canvasContainerSize.height) return;
 
+    const prev = prevContainerSizeRef.current;
+    const dw = Math.abs(canvasContainerSize.width - prev.width);
+    const dh = Math.abs(canvasContainerSize.height - prev.height);
+
+    // Only re-fit if container changed by more than 20px (real resize, not jitter)
+    if (dw < 20 && dh < 20 && prev.width > 0) return;
+
+    prevContainerSizeRef.current = { width: canvasContainerSize.width, height: canvasContainerSize.height };
+
     if (resizeFitViewTimeoutRef.current) clearTimeout(resizeFitViewTimeoutRef.current);
-    // Use shared fitViewTimeoutRef to prevent conflict with data-change fitView
     if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
     resizeFitViewTimeoutRef.current = setTimeout(() => {
       rfInstanceRef.current?.fitView(FIT_VIEW_OPTIONS);
@@ -1511,9 +1520,6 @@ export default function CanvasWorkspace() {
               setZoomLevel(pct);
               const newTier = pct >= 35 ? 'full' : pct >= 18 ? 'reduced' : 'minimal';
               setZoomTier(prev => prev === newTier ? prev : newTier);
-              // Mark that user manually panned/zoomed — suppress resize fitView for 2s
-              userInteractedRef.current = true;
-              setTimeout(() => { userInteractedRef.current = false; }, 2000);
             }}
             onPaneContextMenu={handlePaneContextMenu}
             onNodeContextMenu={handleNodeContextMenu}
