@@ -291,7 +291,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
 
   return (
     <div
-      className={`min-w-[280px] w-full h-full rounded-xl border bg-white shadow-node transition-all duration-200 hover:shadow-node-hover dark:bg-gray-800 ${nodeData.customColor ? '' : 'border-blue-200/60 dark:border-blue-800/60'} ${selected ? 'ring-2 ring-blue-400' : ''}`}
+      className={`min-w-[280px] w-full h-full flex flex-col rounded-xl border bg-white shadow-node transition-all duration-200 hover:shadow-node-hover dark:bg-gray-800 ${nodeData.customColor ? '' : 'border-blue-200/60 dark:border-blue-800/60'} ${selected ? 'ring-2 ring-blue-400' : ''}`}
       style={nodeData.customColor ? { borderColor: nodeData.customColor, borderLeftWidth: 4 } : undefined}
     >
       <NodeResizer
@@ -344,7 +344,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
 
       {/* Body - collapsible with transition */}
       {!collapsed && zoomTier === 'full' && (
-        <div className="overflow-hidden transition-[max-height] duration-200">
+        <div className="flex-1 min-h-0 overflow-hidden transition-[max-height] duration-200 flex flex-col">
           {/* Scrollable text body with optional coding stripes + density bar */}
           <div className="relative">
             {showCodingStripes && codings.length > 0 && (
@@ -365,7 +365,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
             )}
             <div
               ref={textRef}
-              className="nodrag nowheel max-h-[300px] overflow-y-auto px-3 py-2"
+              className="nodrag nowheel flex-1 min-h-0 overflow-y-auto px-3 py-2"
               style={{ paddingLeft: codings.length > 0 ? (showCodingStripes ? `${([...new Set(codings.map(c => c.questionId))].length * 6) + 20}px` : '20px') : undefined }}
               onMouseUp={handleMouseUp}
               onContextMenu={handleContextMenu}

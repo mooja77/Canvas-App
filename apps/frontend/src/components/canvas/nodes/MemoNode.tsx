@@ -152,7 +152,7 @@ function MemoNode({ data, selected }: NodeProps) {
 
   return (
     <div
-      className={`min-w-[180px] w-full h-full rounded-xl shadow-node transition-all duration-200 hover:shadow-node-hover ${selected ? 'ring-2 ring-blue-400' : ''}`}
+      className={`min-w-[180px] w-full h-full flex flex-col rounded-xl shadow-node transition-all duration-200 hover:shadow-node-hover ${selected ? 'ring-2 ring-blue-400' : ''}`}
       style={{ backgroundColor: nodeData.color }}
     >
       <NodeResizer
@@ -197,7 +197,7 @@ function MemoNode({ data, selected }: NodeProps) {
 
       {/* Memo body - collapsible */}
       {!collapsed && zoomTier === 'full' && (
-        <div className="px-3 pb-2">
+        <div className="px-3 pb-2 flex-1 min-h-0 overflow-y-auto">
           {editing ? (
             <div className="nodrag space-y-1.5">
               <input
