@@ -322,7 +322,7 @@ export default function CanvasWorkspace() {
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
       if (dimmed) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
-      if (posData?.height) style.height = posData.height;
+      // Don't apply stored height — let transcript nodes auto-size to content
       result.push({
         id: nodeId,
         type: 'transcript',
@@ -352,7 +352,7 @@ export default function CanvasWorkspace() {
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
       if (dimmed) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
-      if (posData?.height) style.height = posData.height;
+      // Don't apply stored height — let question nodes auto-size to content
       result.push({
         id: nodeId,
         type: 'question',
@@ -377,7 +377,7 @@ export default function CanvasWorkspace() {
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
       if (dimmed) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
-      if (posData?.height) style.height = posData.height;
+      // Don't apply stored height — let memo nodes auto-size to content
       result.push({
         id: nodeId,
         type: 'memo',
@@ -403,7 +403,7 @@ export default function CanvasWorkspace() {
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
       if (isSearching) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
-      if (posData?.height) style.height = posData.height;
+      // Don't apply stored height — let case nodes auto-size to content
       result.push({
         id: nodeId,
         type: 'case',
