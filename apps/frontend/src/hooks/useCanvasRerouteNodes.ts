@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useActiveCanvasId } from '../stores/canvasStore';
 
 export interface RerouteNodeData {
   id: string;
@@ -43,7 +43,7 @@ function persistReroutes(canvasId: string, reroutes: RerouteNodeData[]): void {
 }
 
 export function useCanvasRerouteNodes() {
-  const canvasId = useCanvasStore(s => s.activeCanvasId);
+  const canvasId = useActiveCanvasId();
   const [rerouteNodes, setRerouteNodes] = useState<RerouteNodeData[]>([]);
 
   useEffect(() => {

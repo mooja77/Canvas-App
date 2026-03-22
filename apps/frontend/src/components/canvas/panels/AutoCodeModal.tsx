@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTranscript } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
 
@@ -13,7 +13,8 @@ interface PreviewMatch {
 }
 
 export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
-  const { activeCanvas, autoCode } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
+  const autoCode = useCanvasStore(s => s.autoCode);
   const [pattern, setPattern] = useState('');
   const [mode, setMode] = useState<'keyword' | 'regex'>('keyword');
   const [questionId, setQuestionId] = useState('');

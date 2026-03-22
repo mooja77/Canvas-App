@@ -2,7 +2,7 @@ import { memo, useCallback, useRef, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasCodings, useCanvasQuestions, useCanvasTranscripts, useCanvasCases, usePendingSelection, useShowCodingStripes } from '../../../stores/canvasStore';
 import QuickCodePopover from '../panels/QuickCodePopover';
 import CodingSegmentPopover from '../panels/CodingSegmentPopover';
 import CodingStripesOverlay from '../panels/CodingStripesOverlay';
@@ -147,7 +147,16 @@ function HighlightedTranscript({
 
 function TranscriptNode({ data, id, selected }: NodeProps) {
   const textRef = useRef<HTMLDivElement>(null);
-  const { activeCanvas, pendingSelection, setPendingSelection, deleteTranscript, showCodingStripes, codeInVivo, spreadToParagraph } = useCanvasStore();
+  const allCodings = useCanvasCodings();
+  const allQuestions = useCanvasQuestions();
+  const allTranscripts = useCanvasTranscripts();
+  const allCases = useCanvasCases();
+  const pendingSelection = usePendingSelection();
+  const showCodingStripes = useShowCodingStripes();
+  const setPendingSelection = useCanvasStore(s => s.setPendingSelection);
+  const deleteTranscript = useCanvasStore(s => s.deleteTranscript);
+  const codeInVivo = useCanvasStore(s => s.codeInVivo);
+  const spreadToParagraph = useCanvasStore(s => s.spreadToParagraph);
   const nodeData = data as unknown as TranscriptNodeData;
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [quickCodePopover, setQuickCodePopover] = useState<{ x: number; y: number } | null>(null);
@@ -160,25 +169,25 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
   const isMinimal = zoomTier === 'minimal';
 
   const codings = useMemo(
-    () => (activeCanvas?.codings ?? []).filter((c: CanvasTextCoding) => c.transcriptId === nodeData.transcriptId),
-    [activeCanvas?.codings, nodeData.transcriptId],
+    () => allCodings.filter((c: CanvasTextCoding) => c.transcriptId === nodeData.transcriptId),
+    [allCodings, nodeData.transcriptId],
   );
 
   const questions = useMemo(
-    () => (activeCanvas?.questions ?? []).map((q: CanvasQuestion) => ({ id: q.id, color: q.color })),
-    [activeCanvas?.questions],
+    () => allQuestions.map((q: CanvasQuestion) => ({ id: q.id, color: q.color })),
+    [allQuestions],
   );
 
   const transcript = useMemo(
-    () => activeCanvas?.transcripts.find(t => t.id === nodeData.transcriptId),
-    [activeCanvas?.transcripts, nodeData.transcriptId],
+    () => allTranscripts.find(t => t.id === nodeData.transcriptId),
+    [allTranscripts, nodeData.transcriptId],
   );
 
   const caseName = useMemo(() => {
     const caseId = transcript?.caseId;
     if (!caseId) return null;
-    return activeCanvas?.cases?.find((c: CanvasCase) => c.id === caseId)?.name;
-  }, [transcript?.caseId, activeCanvas?.cases]);
+    return allCases.find((c: CanvasCase) => c.id === caseId)?.name;
+  }, [transcript?.caseId, allCases]);
 
   // Word count
   const wordCount = useMemo(

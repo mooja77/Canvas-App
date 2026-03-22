@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useActiveCanvasId } from '../stores/canvasStore';
 
 /**
  * Metadata for a visual group on the canvas.
@@ -76,7 +76,7 @@ export interface UseCanvasGroupsReturn {
  * The layout save system also stores position; posMap data takes precedence when available.
  */
 export function useCanvasGroups(): UseCanvasGroupsReturn {
-  const canvasId = useCanvasStore((s) => s.activeCanvasId);
+  const canvasId = useActiveCanvasId();
   const [groups, setGroups] = useState<CanvasGroup[]>([]);
 
   useEffect(() => {

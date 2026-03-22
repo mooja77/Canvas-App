@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasMemo, CanvasCase, CanvasTranscript } from '@canvas-app/shared';
 
 interface PresentationModeProps {
@@ -7,7 +7,7 @@ interface PresentationModeProps {
 }
 
 export default function PresentationMode({ onExit }: PresentationModeProps) {
-  const { activeCanvas } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
 
   const questions = activeCanvas?.questions ?? [];
   const codings = activeCanvas?.codings ?? [];

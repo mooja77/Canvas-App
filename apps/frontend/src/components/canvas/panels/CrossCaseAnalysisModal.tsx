@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasCase, CanvasQuestion, CanvasTextCoding, CanvasTranscript } from '@canvas-app/shared';
 
 interface CrossCaseAnalysisModalProps {
@@ -7,7 +7,7 @@ interface CrossCaseAnalysisModalProps {
 }
 
 export default function CrossCaseAnalysisModal({ onClose }: CrossCaseAnalysisModalProps) {
-  const { activeCanvas } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
   const [groupByAttr, setGroupByAttr] = useState('');
   const [filterAttr, setFilterAttr] = useState('');
   const [filterValue, setFilterValue] = useState('');

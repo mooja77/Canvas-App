@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasQuestions, useCanvasTranscripts, useCanvasCodings, useCanvasCases, useSelectedQuestionId } from '../../../stores/canvasStore';
 import { useCodeBookmarks } from '../../../hooks/useCodeBookmarks';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
@@ -15,18 +15,20 @@ interface TreeItem {
 }
 
 export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
-  const { activeCanvas, setSelectedQuestionId, selectedQuestionId, updateQuestion, deleteQuestion } = useCanvasStore();
+  const questions = useCanvasQuestions();
+  const transcripts = useCanvasTranscripts();
+  const codings = useCanvasCodings();
+  const cases = useCanvasCases();
+  const selectedQuestionId = useSelectedQuestionId();
+  const setSelectedQuestionId = useCanvasStore(s => s.setSelectedQuestionId);
+  const updateQuestion = useCanvasStore(s => s.updateQuestion);
+  const deleteQuestion = useCanvasStore(s => s.deleteQuestion);
   const [activeTab, setActiveTab] = useState<'codes' | 'sources' | 'cases'>('codes');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [sortMode, setSortMode] = useState<'name' | 'count'>('count');
   const [showFavorites, setShowFavorites] = useState(true);
   const { bookmarkedIds, toggleBookmark, isBookmarked } = useCodeBookmarks();
-
-  const questions = activeCanvas?.questions ?? [];
-  const transcripts = activeCanvas?.transcripts ?? [];
-  const codings = activeCanvas?.codings ?? [];
-  const cases = activeCanvas?.cases ?? [];
 
   // Build question tree
   const tree = useMemo(() => {

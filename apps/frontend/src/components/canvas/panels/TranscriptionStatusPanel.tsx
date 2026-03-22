@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { canvasApi } from '../../../services/api';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useActiveCanvasId } from '../../../stores/canvasStore';
 import toast from 'react-hot-toast';
 
 interface TranscriptionJob {
@@ -17,8 +17,8 @@ interface TranscriptionStatusPanelProps {
 }
 
 export default function TranscriptionStatusPanel({ jobId, onClose }: TranscriptionStatusPanelProps) {
-  const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
-  const refreshCanvas = useCanvasStore((s) => s.refreshCanvas);
+  const activeCanvasId = useActiveCanvasId();
+  const refreshCanvas = useCanvasStore(s => s.refreshCanvas);
   const [job, setJob] = useState<TranscriptionJob | null>(null);
   const [accepting, setAccepting] = useState(false);
 

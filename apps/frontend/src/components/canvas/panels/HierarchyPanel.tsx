@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useRef } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasQuestions, useCanvasCodings } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
 
@@ -15,9 +15,9 @@ interface TreeItem {
 }
 
 export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
-  const { activeCanvas, updateQuestion } = useCanvasStore();
-  const questions = activeCanvas?.questions ?? [];
-  const codings = activeCanvas?.codings ?? [];
+  const questions = useCanvasQuestions();
+  const codings = useCanvasCodings();
+  const updateQuestion = useCanvasStore(s => s.updateQuestion);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(questions.map(q => q.id)));

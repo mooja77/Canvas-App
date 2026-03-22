@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasComputedNodes } from '../../../stores/canvasStore';
 import type { CanvasComputedNode, SearchConfig, SearchResult } from '@canvas-app/shared';
 
 export interface SearchResultNodeData {
@@ -11,8 +11,9 @@ export interface SearchResultNodeData {
 
 function SearchResultNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as SearchResultNodeData;
-  const { activeCanvas, updateComputedNode } = useCanvasStore();
-  const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
+  const computedNodes = useCanvasComputedNodes();
+  const updateComputedNode = useCanvasStore(s => s.updateComputedNode);
+  const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [editing, setEditing] = useState(false);
   const [pattern, setPattern] = useState((node?.config as unknown as SearchConfig)?.pattern || '');
   const [mode, setMode] = useState<'keyword' | 'regex'>((node?.config as unknown as SearchConfig)?.mode || 'keyword');

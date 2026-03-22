@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../../../stores/chatStore';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useActiveCanvas } from '../../../stores/canvasStore';
 
 interface ResearchAssistantPanelProps {
   onClose: () => void;
 }
 
 export default function ResearchAssistantPanel({ onClose }: ResearchAssistantPanelProps) {
-  const { activeCanvas } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
   const { messages, loading, indexing, indexed, error, loadHistory, sendMessage, indexCanvas, clearMessages } = useChatStore();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);

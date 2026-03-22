@@ -2,7 +2,7 @@ import { memo, useState, useMemo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Text } from '@visx/text';
 import ComputedNodeShell from './ComputedNodeShell';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasComputedNodes, useCanvasQuestions } from '../../../stores/canvasStore';
 import type { CanvasComputedNode, CanvasQuestion, WordCloudConfig, WordCloudResult } from '@canvas-app/shared';
 
 export interface WordCloudNodeData {
@@ -14,11 +14,13 @@ const CLOUD_COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#E
 
 function WordCloudNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as WordCloudNodeData;
-  const { activeCanvas, updateComputedNode } = useCanvasStore();
-  const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
+  const computedNodes = useCanvasComputedNodes();
+  const questions = useCanvasQuestions();
+  const updateComputedNode = useCanvasStore(s => s.updateComputedNode);
+  const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [editing, setEditing] = useState(false);
   const [selectedQId, setSelectedQId] = useState<string>('');
-  const questions = activeCanvas?.questions ?? [];
+
 
   const config = node?.config as unknown as WordCloudConfig | undefined;
   const result = node?.result as unknown as WordCloudResult | undefined;

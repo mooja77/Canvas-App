@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import { useUIStore } from '../../../stores/uiStore';
 import type { CanvasTranscript, CanvasQuestion, CanvasMemo, CanvasComputedNode, ComputedNodeType } from '@canvas-app/shared';
 
@@ -50,7 +50,10 @@ export default function CommandPalette({
   onShowWeighting,
   onShowCrossCase,
 }: CommandPaletteProps) {
-  const { activeCanvas, addQuestion, addMemo, toggleCodingStripes } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
+  const addQuestion = useCanvasStore(s => s.addQuestion);
+  const addMemo = useCanvasStore(s => s.addMemo);
+  const toggleCodingStripes = useCanvasStore(s => s.toggleCodingStripes);
   const { toggleDarkMode, darkMode, resetOnboarding } = useUIStore();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);

@@ -67,7 +67,7 @@ import PresenceAvatars from './panels/PresenceAvatars';
 import CollabCursors from './CollabCursors';
 import ConfirmDialog from './ConfirmDialog';
 import { ErrorBoundary } from '../ErrorBoundary';
-import { useCanvasStore } from '../../stores/canvasStore';
+import { useCanvasStore, useActiveCanvas, usePendingSelection, useSelectedQuestionId } from '../../stores/canvasStore';
 import { useCanvasKeyboard } from '../../hooks/useCanvasKeyboard';
 import { useCanvasBookmarks } from '../../hooks/useCanvasBookmarks';
 import { useCanvasGroups } from '../../hooks/useCanvasGroups';
@@ -144,17 +144,20 @@ const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
 
 export default function CanvasWorkspace() {
+  // Granular selector hooks for read-only data
+  const activeCanvas = useActiveCanvas();
+  const pendingSelection = usePendingSelection();
+  const selectedQuestionId = useSelectedQuestionId();
+
+  // Individual action selectors
   const {
     canvases,
-    activeCanvas,
     openCanvas,
     closeCanvas,
-    pendingSelection,
     setPendingSelection,
     createCoding,
     saveLayout,
     savingLayout,
-    selectedQuestionId,
     setSelectedQuestionId,
     addRelation,
     mergeQuestions,

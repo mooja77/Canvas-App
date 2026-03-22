@@ -2,7 +2,7 @@ import { memo, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasCases, useCanvasTranscripts } from '../../../stores/canvasStore';
 import ConfirmDialog from '../ConfirmDialog';
 import type { CanvasCase, CanvasTranscript } from '@canvas-app/shared';
 
@@ -17,20 +17,22 @@ export interface CaseNodeData {
 
 function CaseNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as CaseNodeData;
-  const { activeCanvas, deleteCase } = useCanvasStore();
+  const cases = useCanvasCases();
+  const transcripts = useCanvasTranscripts();
+  const deleteCase = useCanvasStore(s => s.deleteCase);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [collapsed, setCollapsed] = useState(nodeData.collapsed ?? false);
 
   const zoomTier = nodeData.zoomTier ?? 'full';
 
   const caseRecord = useMemo(
-    () => activeCanvas?.cases.find((c: CanvasCase) => c.id === nodeData.caseId),
-    [activeCanvas?.cases, nodeData.caseId],
+    () => cases.find((c: CanvasCase) => c.id === nodeData.caseId),
+    [cases, nodeData.caseId],
   );
 
   const linkedTranscripts = useMemo(
-    () => (activeCanvas?.transcripts ?? []).filter((t: CanvasTranscript) => t.caseId === nodeData.caseId).length,
-    [activeCanvas?.transcripts, nodeData.caseId],
+    () => transcripts.filter((t: CanvasTranscript) => t.caseId === nodeData.caseId).length,
+    [transcripts, nodeData.caseId],
   );
 
   if (!caseRecord) return null;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useActiveCanvasId } from '../stores/canvasStore';
 
 const STORAGE_KEY_PREFIX = 'canvas-node-colors-';
 
@@ -28,7 +28,7 @@ function persistColors(canvasId: string, colors: Map<string, string>): void {
 }
 
 export function useNodeColors() {
-  const canvasId = useCanvasStore(s => s.activeCanvasId);
+  const canvasId = useActiveCanvasId();
   const [colorMap, setColorMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {

@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useCanvasStore } from '../../stores/canvasStore';
+import { useCanvasStore, useActiveCanvasId } from '../../stores/canvasStore';
 import CanvasListPanel from './panels/CanvasListPanel';
 import CanvasWorkspace from './CanvasWorkspace';
 
 export default function CodingCanvas() {
-  const { activeCanvasId, openCanvas } = useCanvasStore();
+  const activeCanvasId = useActiveCanvasId();
+  const openCanvas = useCanvasStore(s => s.openCanvas);
   const { canvasId: urlCanvasId } = useParams<{ canvasId?: string }>();
 
   // Deep link: auto-open canvas from URL param

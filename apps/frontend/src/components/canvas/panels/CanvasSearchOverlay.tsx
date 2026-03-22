@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasTranscript, CanvasQuestion, CanvasMemo, CanvasTextCoding } from '@canvas-app/shared';
 
 interface CanvasSearchOverlayProps {
@@ -16,7 +16,7 @@ interface SearchMatch {
 }
 
 export default function CanvasSearchOverlay({ onClose, onResults }: CanvasSearchOverlayProps) {
-  const { activeCanvas } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useActiveCanvas } from '../../../stores/canvasStore';
 import { canvasApi } from '../../../services/api';
 import type { Summary } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
@@ -9,7 +9,7 @@ interface SummaryPanelProps {
 }
 
 export default function SummaryPanel({ onClose }: SummaryPanelProps) {
-  const { activeCanvas } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
   const [summaries, setSummaries] = useState<Summary[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { canvasApi } from '../../../services/api';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useActiveCanvasId } from '../../../stores/canvasStore';
 import ConfirmDialog from '../ConfirmDialog';
 import type { CanvasShare } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function ShareCanvasModal({ onClose }: Props) {
-  const { activeCanvasId } = useCanvasStore();
+  const activeCanvasId = useActiveCanvasId();
   const [shares, setShares] = useState<CanvasShare[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);

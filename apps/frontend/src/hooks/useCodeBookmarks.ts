@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useActiveCanvasId } from '../stores/canvasStore';
 
 const STORAGE_KEY_PREFIX = 'canvas-code-bookmarks-';
 
@@ -28,7 +28,7 @@ function persistBookmarks(canvasId: string, bookmarks: Set<string>): void {
 }
 
 export function useCodeBookmarks() {
-  const canvasId = useCanvasStore(s => s.activeCanvasId);
+  const canvasId = useActiveCanvasId();
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {

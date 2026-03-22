@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
 
@@ -22,7 +22,9 @@ interface EnrichedExcerpt {
 }
 
 export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProps) {
-  const { activeCanvas, deleteCoding, setSelectedQuestionId } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
+  const deleteCoding = useCanvasStore(s => s.deleteCoding);
+  const setSelectedQuestionId = useCanvasStore(s => s.setSelectedQuestionId);
   const [filterCode, setFilterCode] = useState<string>('all');
   const [filterTranscript, setFilterTranscript] = useState<string>('all');
   const [filterCase, setFilterCase] = useState<string>('all');

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useActiveCanvas } from '../../../stores/canvasStore';
 import { canvasClient } from '../../../services/api';
 import toast from 'react-hot-toast';
 
@@ -53,7 +53,7 @@ const defaultSettings: EthicsSettings = {
 };
 
 export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanelProps) {
-  const { activeCanvas } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
   const [tab, setTab] = useState<Tab>('settings');
 
   // ─── Ethics Settings state ───

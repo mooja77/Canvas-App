@@ -1,47 +1,51 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasQuestions, useCanvasCodings, useCanvasTranscripts, useSelectedQuestionId } from '../../../stores/canvasStore';
 import AnnotationPopover from './AnnotationPopover';
 import ConfirmDialog from '../ConfirmDialog';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
 
 export default function CodingDetailPanel() {
-  const { activeCanvas, selectedQuestionId, setSelectedQuestionId, deleteCoding, reassignCoding } = useCanvasStore();
+  const allQuestions = useCanvasQuestions();
+  const allCanvasCodings = useCanvasCodings();
+  const canvasTranscripts = useCanvasTranscripts();
+  const selectedQuestionId = useSelectedQuestionId();
+  const setSelectedQuestionId = useCanvasStore(s => s.setSelectedQuestionId);
+  const deleteCoding = useCanvasStore(s => s.deleteCoding);
+  const reassignCoding = useCanvasStore(s => s.reassignCoding);
   const [annotatingId, setAnnotatingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [reassigningId, setReassigningId] = useState<string | null>(null);
   const [filterTranscript, setFilterTranscript] = useState<string>('all');
 
   const question = useMemo(
-    () => activeCanvas?.questions.find((q: CanvasQuestion) => q.id === selectedQuestionId),
-    [activeCanvas?.questions, selectedQuestionId],
+    () => allQuestions.find((q: CanvasQuestion) => q.id === selectedQuestionId),
+    [allQuestions, selectedQuestionId],
   );
 
-  const allCodings = useMemo(
-    () => (activeCanvas?.codings ?? []).filter((c: CanvasTextCoding) => c.questionId === selectedQuestionId),
-    [activeCanvas?.codings, selectedQuestionId],
+  const filteredCodings = useMemo(
+    () => allCanvasCodings.filter((c: CanvasTextCoding) => c.questionId === selectedQuestionId),
+    [allCanvasCodings, selectedQuestionId],
   );
 
   // Filter by transcript
   const codings = useMemo(() => {
-    if (filterTranscript === 'all') return allCodings;
-    return allCodings.filter(c => c.transcriptId === filterTranscript);
-  }, [allCodings, filterTranscript]);
+    if (filterTranscript === 'all') return filteredCodings;
+    return filteredCodings.filter(c => c.transcriptId === filterTranscript);
+  }, [filteredCodings, filterTranscript]);
 
   const transcriptMap = useMemo(() => {
     const map = new Map<string, string>();
-    activeCanvas?.transcripts.forEach((t: CanvasTranscript) => map.set(t.id, t.title));
+    canvasTranscripts.forEach((t: CanvasTranscript) => map.set(t.id, t.title));
     return map;
-  }, [activeCanvas?.transcripts]);
+  }, [canvasTranscripts]);
 
   // Unique transcripts that have codings for this question
   const codedTranscripts = useMemo(() => {
-    const ids = new Set(allCodings.map(c => c.transcriptId));
+    const ids = new Set(filteredCodings.map(c => c.transcriptId));
     return Array.from(ids).map(id => ({ id, title: transcriptMap.get(id) || 'Unknown' }));
-  }, [allCodings, transcriptMap]);
-
-  const allQuestions = useMemo(() => activeCanvas?.questions ?? [], [activeCanvas?.questions]);
+  }, [filteredCodings, transcriptMap]);
 
   const handleReassign = async (codingId: string, newQuestionId: string) => {
     try {
@@ -84,7 +88,7 @@ export default function CodingDetailPanel() {
             value={filterTranscript}
             onChange={e => setFilterTranscript(e.target.value)}
           >
-            <option value="all">All sources ({allCodings.length})</option>
+            <option value="all">All sources ({filteredCodings.length})</option>
             {codedTranscripts.map(t => (
               <option key={t.id} value={t.id}>{t.title}</option>
             ))}

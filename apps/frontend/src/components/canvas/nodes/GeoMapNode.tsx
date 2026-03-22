@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasComputedNodes } from '../../../stores/canvasStore';
 import type { CanvasComputedNode } from '@canvas-app/shared';
 
 export interface GeoMapNodeData {
@@ -26,8 +26,8 @@ interface GeoMapResult {
 
 function GeoMapNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as GeoMapNodeData;
-  const { activeCanvas } = useCanvasStore();
-  const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
+  const computedNodes = useCanvasComputedNodes();
+  const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
 
   if (!node) return null;
   const result = node.result as unknown as GeoMapResult;

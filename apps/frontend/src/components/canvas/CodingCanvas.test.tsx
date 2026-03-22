@@ -19,6 +19,7 @@ vi.mock('../../stores/canvasStore', () => ({
     if (typeof selector === 'function') return selector(mockCanvasStoreState);
     return mockCanvasStoreState;
   },
+  useActiveCanvasId: () => mockCanvasStoreState.activeCanvasId,
 }));
 
 // Mock child components to avoid rendering their complex trees

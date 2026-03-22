@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useActiveCanvasId } from '../stores/canvasStore';
 
 export interface StickyNote {
   id: string;
@@ -54,7 +54,7 @@ export interface UseCanvasStickyNotesReturn {
 }
 
 export function useCanvasStickyNotes(): UseCanvasStickyNotesReturn {
-  const canvasId = useCanvasStore((s) => s.activeCanvasId);
+  const canvasId = useActiveCanvasId();
   const [stickyNotes, setStickyNotes] = useState<StickyNote[]>([]);
 
   useEffect(() => {

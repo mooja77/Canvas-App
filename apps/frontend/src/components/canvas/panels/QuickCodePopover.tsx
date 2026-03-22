@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useCanvasStore } from '../../../stores/canvasStore';
-import type { CanvasQuestion } from '@canvas-app/shared';
+import { useCanvasStore, useCanvasQuestions, useCanvasCodings } from '../../../stores/canvasStore';
+import type { CanvasQuestion, CanvasTextCoding } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
 
 interface QuickCodePopoverProps {
@@ -25,17 +25,20 @@ export default function QuickCodePopover({
 }: QuickCodePopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const { activeCanvas, createCoding, codeInVivo, spreadToParagraph, addQuestion } = useCanvasStore();
-  const questions = useMemo(() => activeCanvas?.questions ?? [], [activeCanvas?.questions]);
+  const questions = useCanvasQuestions();
+  const codings = useCanvasCodings();
+  const createCoding = useCanvasStore(s => s.createCoding);
+  const codeInVivo = useCanvasStore(s => s.codeInVivo);
+  const spreadToParagraph = useCanvasStore(s => s.spreadToParagraph);
+  const addQuestion = useCanvasStore(s => s.addQuestion);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
 
   // Recently coded questions (based on existing codings in this transcript)
   const recentQuestionIds = useMemo(() => {
-    if (!activeCanvas) return new Set<string>();
-    const tCodings = activeCanvas.codings
-      .filter(c => c.transcriptId === transcriptId)
-      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    const tCodings = codings
+      .filter((c: CanvasTextCoding) => c.transcriptId === transcriptId)
+      .sort((a: CanvasTextCoding, b: CanvasTextCoding) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     const seen = new Set<string>();
     const ids: string[] = [];
     for (const c of tCodings) {
@@ -46,7 +49,7 @@ export default function QuickCodePopover({
       if (ids.length >= 3) break;
     }
     return new Set(ids);
-  }, [activeCanvas, transcriptId]);
+  }, [codings, transcriptId]);
 
   // Filtered and sorted questions
   const filteredQuestions = useMemo(() => {

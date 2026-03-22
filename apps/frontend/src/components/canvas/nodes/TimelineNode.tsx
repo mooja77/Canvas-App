@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasComputedNodes } from '../../../stores/canvasStore';
 import type { CanvasComputedNode } from '@canvas-app/shared';
 
 export interface TimelineNodeData {
@@ -31,8 +31,8 @@ interface TimelineResult {
 
 function TimelineNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as TimelineNodeData;
-  const { activeCanvas } = useCanvasStore();
-  const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
+  const computedNodes = useCanvasComputedNodes();
+  const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   if (!node) return null;

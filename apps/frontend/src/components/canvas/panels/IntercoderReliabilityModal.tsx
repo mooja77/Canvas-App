@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript } from '@canvas-app/shared';
 
 interface IntercoderReliabilityModalProps {
@@ -58,7 +58,7 @@ function interpretKappa(k: number): { label: string; color: string } {
 }
 
 export default function IntercoderReliabilityModal({ onClose }: IntercoderReliabilityModalProps) {
-  const { activeCanvas } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
   const [codeA, setCodeA] = useState('');
   const [codeB, setCodeB] = useState('');
   const [unitSize, setUnitSize] = useState<'paragraph' | 'sentence'>('paragraph');

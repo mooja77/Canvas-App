@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasComputedNodes, useCanvasQuestions } from '../../../stores/canvasStore';
 import type { CanvasComputedNode, CanvasQuestion, MatrixResult } from '@canvas-app/shared';
 
 export interface MatrixNodeData {
@@ -11,12 +11,12 @@ export interface MatrixNodeData {
 
 function MatrixNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as MatrixNodeData;
-  const { activeCanvas } = useCanvasStore();
-  const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
+  const computedNodes = useCanvasComputedNodes();
+  const questions = useCanvasQuestions();
+  const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
 
   if (!node) return null;
   const result = node.result as unknown as MatrixResult;
-  const questions = activeCanvas?.questions ?? [];
   const questionMap = new Map(questions.map((q: CanvasQuestion) => [q.id, q]));
 
   const icon = (

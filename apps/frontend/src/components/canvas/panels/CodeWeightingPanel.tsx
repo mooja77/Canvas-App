@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useActiveCanvas, useActiveCanvasId, useCanvasQuestions, useCanvasCodings, useCanvasTranscripts } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript } from '@canvas-app/shared';
 
 interface CodeWeightingPanelProps {
@@ -49,14 +49,14 @@ function StarRating({ value, onChange, size = 'sm' }: { value: number; onChange:
 }
 
 export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps) {
-  const { activeCanvas, activeCanvasId } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
+  const activeCanvasId = useActiveCanvasId();
+  const questions = useCanvasQuestions();
+  const codings = useCanvasCodings();
+  const transcripts = useCanvasTranscripts();
   const [weights, setWeightsState] = useState<Record<string, number>>({});
   const [filterCode, setFilterCode] = useState('');
   const [sortBy, setSortBy] = useState<'source' | 'code' | 'weight'>('source');
-
-  const questions = activeCanvas?.questions ?? [];
-  const codings = activeCanvas?.codings ?? [];
-  const transcripts = activeCanvas?.transcripts ?? [];
 
   // Load weights from localStorage
   useEffect(() => {

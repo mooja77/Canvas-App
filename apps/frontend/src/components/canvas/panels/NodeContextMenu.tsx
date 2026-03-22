@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasTextCoding, CanvasQuestion } from '@canvas-app/shared';
 
 // ─── Preset colors (same as ColorPicker) ───
@@ -63,14 +63,12 @@ export default function NodeContextMenu({
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showCoverage, setShowCoverage] = useState(false);
 
-  const {
-    activeCanvas,
-    setSelectedQuestionId,
-    updateQuestion,
-    updateMemo,
-    addQuestion,
-    refreshCanvas,
-  } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
+  const setSelectedQuestionId = useCanvasStore(s => s.setSelectedQuestionId);
+  const updateQuestion = useCanvasStore(s => s.updateQuestion);
+  const updateMemo = useCanvasStore(s => s.updateMemo);
+  const addQuestion = useCanvasStore(s => s.addQuestion);
+  const refreshCanvas = useCanvasStore(s => s.refreshCanvas);
 
   const entityId = extractEntityId(nodeId);
 

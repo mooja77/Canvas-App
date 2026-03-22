@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasTranscript, CanvasQuestion, CanvasTextCoding } from '@canvas-app/shared';
 
 interface Props {
@@ -7,7 +7,7 @@ interface Props {
 }
 
 export default function ProjectDashboard({ onClose }: Props) {
-  const { activeCanvas } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
 
   const stats = useMemo(() => {
     if (!activeCanvas) return null;

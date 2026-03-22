@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { canvasApi } from '../../../services/api';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useActiveCanvasId } from '../../../stores/canvasStore';
 import type { CanvasTranscript } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
 
@@ -16,7 +16,8 @@ interface Props {
 }
 
 export default function CrossCanvasImportModal({ onClose }: Props) {
-  const { activeCanvasId, importFromCanvas } = useCanvasStore();
+  const activeCanvasId = useActiveCanvasId();
+  const importFromCanvas = useCanvasStore(s => s.importFromCanvas);
   const [canvases, setCanvases] = useState<CanvasSummary[]>([]);
   const [selectedCanvasId, setSelectedCanvasId] = useState<string | null>(null);
   const [transcripts, setTranscripts] = useState<CanvasTranscript[]>([]);

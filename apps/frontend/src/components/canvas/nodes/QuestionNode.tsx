@@ -2,7 +2,7 @@ import { memo, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasCodings, useCanvasQuestions, useSelectedQuestionId } from '../../../stores/canvasStore';
 import ConfirmDialog from '../ConfirmDialog';
 import ColorPicker from '../panels/ColorPicker';
 import type { CanvasTextCoding, CanvasQuestion } from '@canvas-app/shared';
@@ -19,7 +19,12 @@ export interface QuestionNodeData {
 
 function QuestionNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as QuestionNodeData;
-  const { activeCanvas, deleteQuestion, updateQuestion, setSelectedQuestionId, selectedQuestionId } = useCanvasStore();
+  const codings = useCanvasCodings();
+  const questions = useCanvasQuestions();
+  const selectedQuestionId = useSelectedQuestionId();
+  const deleteQuestion = useCanvasStore(s => s.deleteQuestion);
+  const updateQuestion = useCanvasStore(s => s.updateQuestion);
+  const setSelectedQuestionId = useCanvasStore(s => s.setSelectedQuestionId);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(nodeData.text);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -31,23 +36,23 @@ function QuestionNode({ data, id, selected }: NodeProps) {
   const isMinimal = zoomTier === 'minimal';
 
   const codingCount = useMemo(
-    () => (activeCanvas?.codings ?? []).filter((c: CanvasTextCoding) => c.questionId === nodeData.questionId).length,
-    [activeCanvas?.codings, nodeData.questionId],
+    () => codings.filter((c: CanvasTextCoding) => c.questionId === nodeData.questionId).length,
+    [codings, nodeData.questionId],
   );
 
   const question = useMemo(
-    () => activeCanvas?.questions.find((q: CanvasQuestion) => q.id === nodeData.questionId),
-    [activeCanvas?.questions, nodeData.questionId],
+    () => questions.find((q: CanvasQuestion) => q.id === nodeData.questionId),
+    [questions, nodeData.questionId],
   );
 
   const parentQuestion = useMemo(() => {
     if (!question?.parentQuestionId) return null;
-    return activeCanvas?.questions.find((q: CanvasQuestion) => q.id === question.parentQuestionId);
-  }, [question?.parentQuestionId, activeCanvas?.questions]);
+    return questions.find((q: CanvasQuestion) => q.id === question.parentQuestionId);
+  }, [question?.parentQuestionId, questions]);
 
   const childCount = useMemo(
-    () => (activeCanvas?.questions ?? []).filter((q: CanvasQuestion) => q.parentQuestionId === nodeData.questionId).length,
-    [activeCanvas?.questions, nodeData.questionId],
+    () => questions.filter((q: CanvasQuestion) => q.parentQuestionId === nodeData.questionId).length,
+    [questions, nodeData.questionId],
   );
 
   const isSelected = selectedQuestionId === nodeData.questionId;

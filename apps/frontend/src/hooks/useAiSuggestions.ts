@@ -1,13 +1,13 @@
 import { useState, useCallback } from 'react';
 import { canvasApi } from '../services/api';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useCanvasStore, useActiveCanvasId } from '../stores/canvasStore';
 import type { AiSuggestion } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
 
 export function useAiSuggestions() {
   const [suggestions, setSuggestions] = useState<AiSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
-  const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
+  const activeCanvasId = useActiveCanvasId();
 
   const suggestCodes = useCallback(
     async (transcriptId: string, codedText: string, startOffset: number, endOffset: number) => {

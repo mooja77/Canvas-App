@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type { AiSuggestion } from '@canvas-app/shared';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasQuestions } from '../../../stores/canvasStore';
 
 interface AiSuggestPanelProps {
   suggestions: AiSuggestion[];
@@ -21,7 +21,7 @@ export default function AiSuggestPanel({
   onBulkReject,
   onClose,
 }: AiSuggestPanelProps) {
-  const questions = useCanvasStore((s) => s.activeCanvas?.questions ?? []);
+  const questions = useCanvasQuestions();
 
   // Close panel when no suggestions remain
   useEffect(() => {

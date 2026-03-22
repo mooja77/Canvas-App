@@ -2,7 +2,7 @@ import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import ComputedNodeShell from './ComputedNodeShell';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasComputedNodes, useCanvasQuestions, useCanvasTranscripts } from '../../../stores/canvasStore';
 import type { CanvasComputedNode, CanvasQuestion, ComparisonConfig, ComparisonResult } from '@canvas-app/shared';
 
 export interface ComparisonNodeData {
@@ -14,16 +14,17 @@ const COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444'
 
 function ComparisonNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as ComparisonNodeData;
-  const { activeCanvas, updateComputedNode } = useCanvasStore();
-  const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
+  const computedNodes = useCanvasComputedNodes();
+  const questions = useCanvasQuestions();
+  const transcripts = useCanvasTranscripts();
+  const updateComputedNode = useCanvasStore(s => s.updateComputedNode);
+  const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [editing, setEditing] = useState(false);
   const [selectedTIds, setSelectedTIds] = useState<string[]>([]);
 
   if (!node) return null;
   const config = node.config as unknown as ComparisonConfig;
   const result = node.result as unknown as ComparisonResult;
-  const questions = activeCanvas?.questions ?? [];
-  const transcripts = activeCanvas?.transcripts ?? [];
 
   const handleSaveConfig = () => {
     updateComputedNode(node.id, { config: { ...config, transcriptIds: selectedTIds } });

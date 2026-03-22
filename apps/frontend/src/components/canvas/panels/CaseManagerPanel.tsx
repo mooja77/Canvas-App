@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import ConfirmDialog from '../ConfirmDialog';
 import type { CanvasCase, CanvasTranscript } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
@@ -9,7 +9,11 @@ interface CaseManagerPanelProps {
 }
 
 export default function CaseManagerPanel({ onClose }: CaseManagerPanelProps) {
-  const { activeCanvas, addCase, updateCase, deleteCase, updateTranscript } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
+  const addCase = useCanvasStore(s => s.addCase);
+  const updateCase = useCanvasStore(s => s.updateCase);
+  const deleteCase = useCanvasStore(s => s.deleteCase);
+  const updateTranscript = useCanvasStore(s => s.updateTranscript);
   const [newName, setNewName] = useState('');
   const [newAttrs, setNewAttrs] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);

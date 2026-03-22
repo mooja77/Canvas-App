@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { canvasApi } from '../services/api';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useActiveCanvasId } from '../stores/canvasStore';
 import toast from 'react-hot-toast';
 
 interface UploadState {
@@ -15,7 +15,7 @@ export function useFileUpload() {
     progress: 0,
     fileUploadId: null,
   });
-  const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
+  const activeCanvasId = useActiveCanvasId();
 
   const uploadFile = useCallback(
     async (file: File) => {

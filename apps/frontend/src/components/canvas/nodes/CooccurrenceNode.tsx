@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasComputedNodes, useCanvasQuestions } from '../../../stores/canvasStore';
 import type { CanvasComputedNode, CanvasQuestion, CooccurrenceConfig, CooccurrenceResult } from '@canvas-app/shared';
 
 export interface CooccurrenceNodeData {
@@ -11,15 +11,16 @@ export interface CooccurrenceNodeData {
 
 function CooccurrenceNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as CooccurrenceNodeData;
-  const { activeCanvas, updateComputedNode } = useCanvasStore();
-  const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
+  const computedNodes = useCanvasComputedNodes();
+  const questions = useCanvasQuestions();
+  const updateComputedNode = useCanvasStore(s => s.updateComputedNode);
+  const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [editing, setEditing] = useState(false);
   const [selectedQIds, setSelectedQIds] = useState<string[]>([]);
 
   if (!node) return null;
   const config = node.config as unknown as CooccurrenceConfig;
   const result = node.result as unknown as CooccurrenceResult;
-  const questions = activeCanvas?.questions ?? [];
 
   const questionMap = new Map(questions.map((q: CanvasQuestion) => [q.id, q]));
 

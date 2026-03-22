@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasLoading } from '../../../stores/canvasStore';
 import { canvasApi } from '../../../services/api';
 import ConfirmDialog from '../ConfirmDialog';
 import toast from 'react-hot-toast';
@@ -146,7 +146,13 @@ function TemplateIcon({ template }: { template: typeof CANVAS_TEMPLATES[0] }) {
 }
 
 export default function CanvasListPanel() {
-  const { canvases, loading, fetchCanvases, createCanvas, deleteCanvas, openCanvas, addQuestion } = useCanvasStore();
+  const loading = useCanvasLoading();
+  const canvases = useCanvasStore(s => s.canvases);
+  const fetchCanvases = useCanvasStore(s => s.fetchCanvases);
+  const createCanvas = useCanvasStore(s => s.createCanvas);
+  const deleteCanvas = useCanvasStore(s => s.deleteCanvas);
+  const openCanvas = useCanvasStore(s => s.openCanvas);
+  const addQuestion = useCanvasStore(s => s.addQuestion);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [showForm, setShowForm] = useState(false);

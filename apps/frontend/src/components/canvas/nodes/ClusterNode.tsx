@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasComputedNodes } from '../../../stores/canvasStore';
 import type { CanvasComputedNode, ClusterConfig, ClusterResult } from '@canvas-app/shared';
 
 export interface ClusterNodeData {
@@ -13,8 +13,9 @@ const CLUSTER_COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '
 
 function ClusterNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as ClusterNodeData;
-  const { activeCanvas, updateComputedNode } = useCanvasStore();
-  const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
+  const computedNodes = useCanvasComputedNodes();
+  const updateComputedNode = useCanvasStore(s => s.updateComputedNode);
+  const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [editing, setEditing] = useState(false);
   const [k, setK] = useState(3);
 

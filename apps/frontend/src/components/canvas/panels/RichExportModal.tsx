@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase, CanvasMemo } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
 
@@ -11,7 +11,7 @@ type ExportFormat = 'html' | 'markdown';
 type GroupBy = 'code' | 'source' | 'case';
 
 export default function RichExportModal({ onClose }: RichExportModalProps) {
-  const { activeCanvas } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
   const [format, setFormat] = useState<ExportFormat>('html');
   const [groupBy, setGroupBy] = useState<GroupBy>('code');
   const [includeCodebook, setIncludeCodebook] = useState(true);

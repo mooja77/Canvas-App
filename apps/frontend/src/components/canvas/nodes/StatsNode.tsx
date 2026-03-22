@@ -2,7 +2,7 @@ import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import ComputedNodeShell from './ComputedNodeShell';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasComputedNodes } from '../../../stores/canvasStore';
 import type { CanvasComputedNode, StatsConfig, StatsResult } from '@canvas-app/shared';
 
 export interface StatsNodeData {
@@ -14,8 +14,9 @@ const COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444'
 
 function StatsNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as StatsNodeData;
-  const { activeCanvas, updateComputedNode } = useCanvasStore();
-  const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
+  const computedNodes = useCanvasComputedNodes();
+  const updateComputedNode = useCanvasStore(s => s.updateComputedNode);
+  const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
   const [editing, setEditing] = useState(false);
   const [groupBy, setGroupBy] = useState<'question' | 'transcript'>('question');

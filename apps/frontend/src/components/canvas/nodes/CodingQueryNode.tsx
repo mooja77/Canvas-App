@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useCanvasComputedNodes, useCanvasQuestions } from '../../../stores/canvasStore';
 import type { CanvasComputedNode, CanvasQuestion, CodingQueryConfig, CodingQueryResult } from '@canvas-app/shared';
 
 export interface CodingQueryNodeData {
@@ -11,15 +11,16 @@ export interface CodingQueryNodeData {
 
 function CodingQueryNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as CodingQueryNodeData;
-  const { activeCanvas, updateComputedNode } = useCanvasStore();
-  const node = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
+  const computedNodes = useCanvasComputedNodes();
+  const questions = useCanvasQuestions();
+  const updateComputedNode = useCanvasStore(s => s.updateComputedNode);
+  const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [editing, setEditing] = useState(false);
   const [conditions, setConditions] = useState<{ questionId: string; operator: 'AND' | 'OR' | 'NOT' }[]>([]);
 
   if (!node) return null;
   const config = node.config as unknown as CodingQueryConfig;
   const result = node.result as unknown as CodingQueryResult;
-  const questions = activeCanvas?.questions ?? [];
 
   const handleSaveConfig = () => {
     updateComputedNode(node.id, { config: { conditions } as any });

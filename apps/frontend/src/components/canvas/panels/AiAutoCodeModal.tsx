@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasTranscripts } from '../../../stores/canvasStore';
 
 interface AiAutoCodeModalProps {
   onSubmit: (transcriptId: string, instructions?: string) => void;
@@ -9,7 +9,7 @@ interface AiAutoCodeModalProps {
 }
 
 export default function AiAutoCodeModal({ onSubmit, loading, onClose }: AiAutoCodeModalProps) {
-  const transcripts = useCanvasStore((s) => s.activeCanvas?.transcripts ?? []);
+  const transcripts = useCanvasTranscripts();
   const [selectedTranscriptId, setSelectedTranscriptId] = useState(
     transcripts.length > 0 ? transcripts[0].id : '',
   );

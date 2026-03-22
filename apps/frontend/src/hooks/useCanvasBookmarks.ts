@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useCanvasStore } from '../stores/canvasStore';
+import { useActiveCanvasId } from '../stores/canvasStore';
 
 /**
  * A saved viewport position on the canvas.
@@ -76,7 +76,7 @@ export interface UseCanvasBookmarksReturn {
  * - Shift+1..5 (or however the consumer wires it) to recall
  */
 export function useCanvasBookmarks(): UseCanvasBookmarksReturn {
-  const canvasId = useCanvasStore((s) => s.activeCanvasId);
+  const canvasId = useActiveCanvasId();
   const [bookmarks, setBookmarks] = useState<(Bookmark | null)[]>(emptySlots);
 
   // Load bookmarks from localStorage whenever canvasId changes

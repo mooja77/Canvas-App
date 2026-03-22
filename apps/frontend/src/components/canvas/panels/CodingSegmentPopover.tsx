@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
 
@@ -12,7 +12,10 @@ interface CodingSegmentPopoverProps {
 
 export default function CodingSegmentPopover({ codings, anchorRect, onClose }: CodingSegmentPopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const { activeCanvas, deleteCoding, updateCodingAnnotation, reassignCoding } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
+  const deleteCoding = useCanvasStore(s => s.deleteCoding);
+  const updateCodingAnnotation = useCanvasStore(s => s.updateCodingAnnotation);
+  const reassignCoding = useCanvasStore(s => s.reassignCoding);
   const [editingAnnotation, setEditingAnnotation] = useState<string | null>(null);
   const [annotationText, setAnnotationText] = useState('');
   const [reassigningId, setReassigningId] = useState<string | null>(null);

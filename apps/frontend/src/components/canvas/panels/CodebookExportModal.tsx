@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@canvas-app/shared';
 import toast from 'react-hot-toast';
 
@@ -32,7 +32,7 @@ interface DataRow {
 type Tab = 'codebook' | 'data';
 
 export default function CodebookExportModal({ onClose }: CodebookExportModalProps) {
-  const { activeCanvas } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
   const [tab, setTab] = useState<Tab>('codebook');
 
   const entries = useMemo((): CodebookEntry[] => {

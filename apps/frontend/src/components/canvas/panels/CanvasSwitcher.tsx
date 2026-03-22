@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useActiveCanvasId } from '../../../stores/canvasStore';
 
 interface Props {
   canvasName: string;
 }
 
 export default function CanvasSwitcher({ canvasName }: Props) {
-  const { canvases, fetchCanvases, openCanvas, activeCanvasId } = useCanvasStore();
+  const activeCanvasId = useActiveCanvasId();
+  const canvases = useCanvasStore(s => s.canvases);
+  const fetchCanvases = useCanvasStore(s => s.fetchCanvases);
+  const openCanvas = useCanvasStore(s => s.openCanvas);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasStore, useActiveCanvas, useShowCodingStripes } from '../../../stores/canvasStore';
 import { useUIStore, type EdgeStyleType } from '../../../stores/uiStore';
 import TranscriptSourceMenu from './TranscriptSourceMenu';
 import AutoCodeModal from './AutoCodeModal';
@@ -37,7 +37,14 @@ interface CanvasToolbarProps {
 }
 
 export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpenCommandPalette, onAutoLayout, onExportPNG, onToggleFocusMode, onTogglePresentationMode, onAiAutoCode, requireAiConfig }: CanvasToolbarProps) {
-  const { activeCanvas, closeCanvas, addQuestion, addMemo, addTranscript, refreshCanvas, showCodingStripes, toggleCodingStripes } = useCanvasStore();
+  const activeCanvas = useActiveCanvas();
+  const showCodingStripes = useShowCodingStripes();
+  const closeCanvas = useCanvasStore(s => s.closeCanvas);
+  const addQuestion = useCanvasStore(s => s.addQuestion);
+  const addMemo = useCanvasStore(s => s.addMemo);
+  const addTranscript = useCanvasStore(s => s.addTranscript);
+  const refreshCanvas = useCanvasStore(s => s.refreshCanvas);
+  const toggleCodingStripes = useCanvasStore(s => s.toggleCodingStripes);
   const edgeStyle = useUIStore(s => s.edgeStyle);
   const setEdgeStyle = useUIStore(s => s.setEdgeStyle);
   const resetOnboarding = useUIStore(s => s.resetOnboarding);
