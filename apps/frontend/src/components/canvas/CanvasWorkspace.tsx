@@ -606,30 +606,10 @@ export default function CanvasWorkspace() {
     }
   }, [activeCanvas, buildNodes, buildEdges, setNodes, setEdges, clearHistory, pushHistory]);
 
-  // Re-fit ReactFlow view when canvas container actually resizes (not sub-pixel jitter)
-  const prevContainerSizeRef = useRef({ width: 0, height: 0 });
-  useEffect(() => {
-    if (!canvasContainerSize.width || !canvasContainerSize.height) return;
-
-    const prev = prevContainerSizeRef.current;
-    const dw = Math.abs(canvasContainerSize.width - prev.width);
-    const dh = Math.abs(canvasContainerSize.height - prev.height);
-
-    // Only re-fit if container changed by more than 20px (real resize, not jitter)
-    if (dw < 20 && dh < 20 && prev.width > 0) return;
-
-    prevContainerSizeRef.current = { width: canvasContainerSize.width, height: canvasContainerSize.height };
-
-    if (resizeFitViewTimeoutRef.current) clearTimeout(resizeFitViewTimeoutRef.current);
-    if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
-    resizeFitViewTimeoutRef.current = setTimeout(() => {
-      rfInstanceRef.current?.fitView(FIT_VIEW_OPTIONS);
-    }, 300);
-
-    return () => {
-      if (resizeFitViewTimeoutRef.current) clearTimeout(resizeFitViewTimeoutRef.current);
-    };
-  }, [canvasContainerSize.width, canvasContainerSize.height]);
+  // Note: No automatic fitView on container resize — sidebar open/close, navigator toggle,
+  // and other layout changes should not reset the user's viewport. Users can press F or
+  // click Fit View to re-center manually. ReactFlow handles its own internal viewport
+  // adjustments when the container size changes.
 
   // Auto-collapse navigator sidebar when workspace gets narrow
   useEffect(() => {
