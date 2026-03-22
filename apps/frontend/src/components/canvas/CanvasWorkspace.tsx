@@ -1635,6 +1635,7 @@ export default function CanvasWorkspace() {
             requireAiConfig={requireAiConfig}
           />
         )}
+        <div className="flex flex-1 min-h-0">
         <div
           ref={canvasContainerRef}
           data-tour="canvas-flow-area"
@@ -2036,9 +2037,9 @@ export default function CanvasWorkspace() {
           </div>
         </div>}
       </div>
-
-      {/* Detail panel */}
+      {/* Detail panel — inside flex row with canvas, below toolbar */}
       {selectedQuestionId && <ErrorBoundary><CodingDetailPanel /></ErrorBoundary>}
+      </div>
 
       {/* Keyboard shortcuts modal */}
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
