@@ -29,6 +29,15 @@ setup('authenticate', async ({ page }) => {
   await page.waitForURL('**/canvas**', { timeout: 10000 });
   await expect(page.getByText('Coding Canvases')).toBeVisible({ timeout: 5000 });
 
+  // Mark onboarding tour as complete so it doesn't block E2E tests.
+  // The uiStore uses Zustand persist with key 'canvas-app-ui'.
+  await page.evaluate(() => {
+    const existing = localStorage.getItem('canvas-app-ui');
+    const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
+    state.state = { ...state.state, onboardingComplete: true };
+    localStorage.setItem('canvas-app-ui', JSON.stringify(state));
+  });
+
   // Save auth state (localStorage + cookies)
   await page.context().storageState({ path: AUTH_FILE });
 });

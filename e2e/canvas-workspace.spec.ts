@@ -2,6 +2,14 @@ import { test, expect } from '@playwright/test';
 
 // Helper: open canvas (already authenticated via setup)
 async function openCanvas(page: any) {
+  // Ensure onboarding tour is dismissed via localStorage before navigating
+  await page.addInitScript(() => {
+    const existing = localStorage.getItem('canvas-app-ui');
+    const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
+    state.state = { ...state.state, onboardingComplete: true };
+    localStorage.setItem('canvas-app-ui', JSON.stringify(state));
+  });
+
   await page.goto('/canvas');
   await page.waitForTimeout(500);
 
@@ -15,15 +23,15 @@ async function openCanvas(page: any) {
   await page.waitForSelector('.react-flow__pane', { timeout: 10000 });
   await page.waitForTimeout(1000);
 
-  // Dismiss onboarding tour if visible
-  const skipBtn = page.getByRole('button', { name: /skip|close|dismiss|got it/i });
-  if (await skipBtn.first().isVisible({ timeout: 1000 }).catch(() => false)) {
+  // Safety net: dismiss onboarding tour if it still appears
+  const skipBtn = page.getByRole('button', { name: /skip tour/i });
+  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
     await skipBtn.first().click();
     await page.waitForTimeout(300);
   }
-  // Also try clicking overlay backdrop to dismiss
+  // Last resort: press Escape to dismiss any overlay
   const overlay = page.locator('.fixed.inset-0.z-\\[10000\\]');
-  if (await overlay.isVisible({ timeout: 500 }).catch(() => false)) {
+  if (await overlay.isVisible({ timeout: 300 }).catch(() => false)) {
     await page.keyboard.press('Escape');
     await page.waitForTimeout(300);
   }
