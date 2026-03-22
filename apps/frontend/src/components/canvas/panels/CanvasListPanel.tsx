@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useCanvasStore, useCanvasLoading } from '../../../stores/canvasStore';
+import { useTranslation } from 'react-i18next';
+import { useCanvasStore, useCanvasLoading, useTrashedCanvases, useTrashLoading } from '../../../stores/canvasStore';
 import { canvasApi } from '../../../services/api';
 import ConfirmDialog from '../ConfirmDialog';
 import toast from 'react-hot-toast';
@@ -146,6 +147,7 @@ function TemplateIcon({ template }: { template: typeof CANVAS_TEMPLATES[0] }) {
 }
 
 export default function CanvasListPanel() {
+  const { t } = useTranslation();
   const loading = useCanvasLoading();
   const canvases = useCanvasStore(s => s.canvases);
   const fetchCanvases = useCanvasStore(s => s.fetchCanvases);
@@ -153,6 +155,11 @@ export default function CanvasListPanel() {
   const deleteCanvas = useCanvasStore(s => s.deleteCanvas);
   const openCanvas = useCanvasStore(s => s.openCanvas);
   const addQuestion = useCanvasStore(s => s.addQuestion);
+  const trashedCanvases = useTrashedCanvases();
+  const trashLoading = useTrashLoading();
+  const fetchTrash = useCanvasStore(s => s.fetchTrash);
+  const restoreCanvas = useCanvasStore(s => s.restoreCanvas);
+  const permanentDeleteCanvas = useCanvasStore(s => s.permanentDeleteCanvas);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -160,6 +167,8 @@ export default function CanvasListPanel() {
   const [shareCode, setShareCode] = useState('');
   const [cloning, setCloning] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+  const [confirmPermanentDelete, setConfirmPermanentDelete] = useState<{ id: string; name: string } | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
   const [search, setSearch] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('newest');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
@@ -231,12 +240,38 @@ export default function CanvasListPanel() {
   const handleDelete = async (id: string) => {
     try {
       await deleteCanvas(id);
-      toast.success('Canvas deleted');
+      toast.success('Canvas moved to trash');
     } catch {
       toast.error('Failed to delete canvas');
     } finally {
       setConfirmDelete(null);
     }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await restoreCanvas(id);
+      toast.success('Canvas restored');
+    } catch {
+      toast.error('Failed to restore canvas');
+    }
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    try {
+      await permanentDeleteCanvas(id);
+      toast.success('Canvas permanently deleted');
+    } catch {
+      toast.error('Failed to permanently delete canvas');
+    } finally {
+      setConfirmPermanentDelete(null);
+    }
+  };
+
+  const handleToggleTrash = () => {
+    const next = !showTrash;
+    setShowTrash(next);
+    if (next) fetchTrash();
   };
 
   const handleClone = async () => {
@@ -260,9 +295,9 @@ export default function CanvasListPanel() {
     <div data-tour="canvas-list" className="mx-auto max-w-4xl px-6 py-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Coding Canvases</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{t('canvas.codingCanvases')}</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Visual workspaces for qualitative interview coding
+            {t('canvas.workspaceSubtitle')}
           </p>
         </div>
         <button
@@ -270,12 +305,12 @@ export default function CanvasListPanel() {
           onClick={() => { setShowForm(!showForm); setShowTemplates(true); }}
           className={showForm ? 'btn-secondary text-sm' : 'btn-primary text-sm flex items-center gap-1.5'}
         >
-          {showForm ? 'Cancel' : (
+          {showForm ? t('common.cancel') : (
             <>
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
-              New Canvas
+              {t('canvas.newCanvas')}
             </>
           )}
         </button>
@@ -594,12 +629,90 @@ export default function CanvasListPanel() {
         ))}
       </div>
 
+      {/* Trash section */}
+      <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+        <button
+          onClick={handleToggleTrash}
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        >
+          <svg className={`h-4 w-4 transition-transform ${showTrash ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+          </svg>
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+          </svg>
+          Trash
+          {trashedCanvases.length > 0 && (
+            <span className="rounded-full bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:text-gray-400">
+              {trashedCanvases.length}
+            </span>
+          )}
+        </button>
+
+        {showTrash && (
+          <div className="mt-3 space-y-2">
+            {trashLoading && (
+              <div className="py-4 text-center text-sm text-gray-400">Loading trash...</div>
+            )}
+            {!trashLoading && trashedCanvases.length === 0 && (
+              <div className="py-4 text-center text-sm text-gray-400 dark:text-gray-500">
+                Trash is empty
+              </div>
+            )}
+            {trashedCanvases.map(canvas => (
+              <div
+                key={canvas.id}
+                className="card flex items-center justify-between p-3 opacity-75"
+              >
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 truncate">{canvas.name}</h4>
+                  {canvas.deletedAt && (
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+                      Deleted {relativeDate(canvas.deletedAt)}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 ml-2">
+                  <button
+                    onClick={() => handleRestore(canvas.id)}
+                    className="rounded p-1.5 text-gray-400 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400 transition-colors"
+                    title="Restore canvas"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setConfirmPermanentDelete({ id: canvas.id, name: canvas.name })}
+                    className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                    title="Delete permanently"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {confirmDelete && (
         <ConfirmDialog
-          title="Delete Canvas"
-          message={`Delete canvas "${confirmDelete.name}" and all its data? This cannot be undone.`}
+          title="Move to Trash"
+          message={`Move canvas "${confirmDelete.name}" to trash? You can restore it later.`}
           onConfirm={() => handleDelete(confirmDelete.id)}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {confirmPermanentDelete && (
+        <ConfirmDialog
+          title="Permanently Delete"
+          message={`Permanently delete canvas "${confirmPermanentDelete.name}" and all its data? This cannot be undone.`}
+          onConfirm={() => handlePermanentDelete(confirmPermanentDelete.id)}
+          onCancel={() => setConfirmPermanentDelete(null)}
         />
       )}
     </div>

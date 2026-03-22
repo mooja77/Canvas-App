@@ -112,6 +112,16 @@ export const canvasApi = {
   deleteCanvas: (canvasId: string) =>
     canvasClient.delete(`/canvas/${canvasId}`),
 
+  // ─── Trash (soft delete) ───
+  getTrash: () =>
+    canvasClient.get('/canvas/trash'),
+
+  restoreCanvas: (canvasId: string) =>
+    canvasClient.post(`/canvas/${canvasId}/restore`),
+
+  permanentDeleteCanvas: (canvasId: string) =>
+    canvasClient.delete(`/canvas/${canvasId}/permanent`),
+
   // ─── Transcripts ───
   addTranscript: (canvasId: string, data: CreateTranscriptInput) =>
     canvasClient.post(`/canvas/${canvasId}/transcripts`, data),

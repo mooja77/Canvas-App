@@ -2,6 +2,7 @@ import { useEffect, type RefObject } from 'react';
 import type { Node, ReactFlowInstance } from '@xyflow/react';
 import toast from 'react-hot-toast';
 import type { Bookmark } from './useCanvasBookmarks';
+import { useShortcutStore, matchesShortcut } from '../stores/shortcutStore';
 
 export interface CanvasKeyboardOptions {
   // UI state for Escape dismissal
@@ -111,126 +112,52 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     onToggleMute,
   } = options;
 
+  const shortcuts = useShortcutStore((s) => s.shortcuts);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if ((e.target as HTMLElement)?.isContentEditable) return;
 
-      // Ctrl shortcuts
-      if (e.ctrlKey || e.metaKey) {
-        if (e.key === 'c') {
-          e.preventDefault();
-          handleCopy();
-          return;
-        }
-        if (e.key === 'v') {
-          e.preventDefault();
-          handlePaste();
-          return;
-        }
-        if (e.key === 'd') {
-          e.preventDefault();
-          handleDuplicate();
-          return;
-        }
-        if (e.key === 'a') {
-          e.preventDefault();
-          handleSelectAll();
-          return;
-        }
-        if (e.key === 'k') {
-          e.preventDefault();
-          setShowCommandPalette(s => !s);
-          return;
-        }
-        // Ctrl+Shift+Z or Ctrl+Y: Redo
-        if ((e.shiftKey && (e.key === 'z' || e.key === 'Z')) || e.key === 'y') {
-          e.preventDefault();
-          if (canRedo) {
-            onRedo();
-            toast('Redone', { duration: 1500 });
-          }
-          return;
-        }
-        // Ctrl+Z: Undo
-        if (e.key === 'z') {
-          e.preventDefault();
-          if (canUndo) {
-            onUndo();
-            toast('Undone', { duration: 1500 });
-          }
-          return;
-        }
-        if (e.key === 'f') {
-          e.preventDefault();
-          setShowSearch(true);
-          return;
-        }
-        // Ctrl+.: toggle focus mode
-        if (e.key === '.') {
-          e.preventDefault();
-          setFocusMode((prev: boolean) => !prev);
-          return;
-        }
-        // Ctrl+Shift+L: auto-layout
-        if (e.key === 'l' || e.key === 'L') {
-          e.preventDefault();
-          handleAutoLayout();
-          return;
-        }
-        // Ctrl+Tab / Ctrl+Shift+Tab: switch tabs
-        if (e.key === 'Tab') {
-          e.preventDefault();
-          if (e.shiftKey) onPrevTab?.();
-          else onNextTab?.();
-          return;
-        }
-        // Ctrl+Shift+C: collapse/expand ALL nodes
-        if (e.shiftKey && (e.key === 'c' || e.key === 'C')) {
-          e.preventDefault();
-          // If any node is expanded, collapse all; otherwise expand all
-          setNodes(nds => {
-            const anyExpanded = nds.some(n => !(n.data as any).collapsed && ['transcript', 'question', 'memo', 'case'].includes(n.type || ''));
-            return nds.map(n => {
-              if (['transcript', 'question', 'memo', 'case'].includes(n.type || '')) {
-                return { ...n, data: { ...n.data, collapsed: anyExpanded } };
-              }
-              return n;
-            });
-          });
-          return;
-        }
-        // Ctrl+G: create group from selection
-        if (e.key === 'g') {
-          e.preventDefault();
-          handleCreateGroup();
-          return;
-        }
-        // Ctrl+M: mute/unmute selected nodes
-        if (e.key === 'm') {
-          e.preventDefault();
-          onToggleMute?.();
-          return;
-        }
-        // Ctrl+Shift+1-5: save viewport bookmark
-        if (e.shiftKey) {
-          const digitMatch = e.code.match(/^Digit([1-5])$/);
-          if (digitMatch) {
-            e.preventDefault();
-            const slot = parseInt(digitMatch[1]) - 1;
-            const viewport = rfInstanceRef.current?.getViewport();
-            if (viewport) {
-              saveBookmark(slot, viewport);
-              toast.success(`Bookmark ${digitMatch[1]} saved`);
-            }
-            return;
-          }
-        }
+      // Escape is always hardcoded (not remappable)
+      if (e.key === 'Escape') {
+        if (showCommandPalette) { setShowCommandPalette(false); return; }
+        if (quickAddMenu) { setQuickAddMenu(null); return; }
+        if (showSearch) { setShowSearch(false); setHighlightedNodeIds(new Set()); return; }
+        if (showShortcuts) { setShowShortcuts(false); return; }
+        if (contextMenu) { setContextMenu(null); return; }
+        if (nodeContextMenu) { setNodeContextMenu(null); return; }
+        if (edgeContextMenu) { setEdgeContextMenu(null); return; }
+        if (selectedQuestionId) { setSelectedQuestionId(null); return; }
+        setFocusMode(false);
         return;
       }
 
-      // Alt+1-5: recall viewport bookmark
+      // Ctrl+Tab / Ctrl+Shift+Tab: switch tabs (not remappable)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Tab') {
+        e.preventDefault();
+        if (e.shiftKey) onPrevTab?.();
+        else onNextTab?.();
+        return;
+      }
+
+      // Ctrl+Shift+1-5: save viewport bookmark (not remappable)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+        const digitMatch = e.code.match(/^Digit([1-5])$/);
+        if (digitMatch) {
+          e.preventDefault();
+          const slot = parseInt(digitMatch[1]) - 1;
+          const viewport = rfInstanceRef.current?.getViewport();
+          if (viewport) {
+            saveBookmark(slot, viewport);
+            toast.success(`Bookmark ${digitMatch[1]} saved`);
+          }
+          return;
+        }
+      }
+
+      // Alt+1-5: recall viewport bookmark (not remappable)
       if (e.altKey) {
         const digitMatch = e.code.match(/^Digit([1-5])$/);
         if (digitMatch) {
@@ -240,32 +167,122 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
           if (bm) {
             rfInstanceRef.current?.setViewport(bm, { duration: 300 });
           } else {
-            toast(`Bookmark ${digitMatch[1]} is empty — save with Ctrl+Shift+${digitMatch[1]}`, { icon: '\u2139\uFE0F' });
+            toast(`Bookmark ${digitMatch[1]} is empty \u2014 save with Ctrl+Shift+${digitMatch[1]}`, { icon: '\u2139\uFE0F' });
           }
           return;
         }
       }
 
-      if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+      // --- Remappable shortcuts via the store ---
+
+      // Redo must be checked before Undo (since ctrl+shift+z contains ctrl+z)
+      if (matchesShortcut(e, shortcuts.redo)) {
+        e.preventDefault();
+        if (canRedo) {
+          onRedo();
+          toast('Redone', { duration: 1500 });
+        }
+        return;
+      }
+
+      // Also support Ctrl+Y for redo regardless of mapping
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        if (canRedo) {
+          onRedo();
+          toast('Redone', { duration: 1500 });
+        }
+        return;
+      }
+
+      if (matchesShortcut(e, shortcuts.collapseAll)) {
+        e.preventDefault();
+        setNodes(nds => {
+          const anyExpanded = nds.some(n => !(n.data as any).collapsed && ['transcript', 'question', 'memo', 'case'].includes(n.type || ''));
+          return nds.map(n => {
+            if (['transcript', 'question', 'memo', 'case'].includes(n.type || '')) {
+              return { ...n, data: { ...n.data, collapsed: anyExpanded } };
+            }
+            return n;
+          });
+        });
+        return;
+      }
+
+      if (matchesShortcut(e, shortcuts.copy)) {
+        e.preventDefault();
+        handleCopy();
+        return;
+      }
+      if (matchesShortcut(e, shortcuts.paste)) {
+        e.preventDefault();
+        handlePaste();
+        return;
+      }
+      if (matchesShortcut(e, shortcuts.duplicate)) {
+        e.preventDefault();
+        handleDuplicate();
+        return;
+      }
+      if (matchesShortcut(e, shortcuts.selectAll)) {
+        e.preventDefault();
+        handleSelectAll();
+        return;
+      }
+      if (matchesShortcut(e, shortcuts.commandPalette)) {
+        e.preventDefault();
+        setShowCommandPalette(s => !s);
+        return;
+      }
+      if (matchesShortcut(e, shortcuts.undo)) {
+        e.preventDefault();
+        if (canUndo) {
+          onUndo();
+          toast('Undone', { duration: 1500 });
+        }
+        return;
+      }
+      if (matchesShortcut(e, shortcuts.search)) {
+        e.preventDefault();
+        setShowSearch(true);
+        return;
+      }
+      if (matchesShortcut(e, shortcuts.focusMode)) {
+        e.preventDefault();
+        setFocusMode((prev: boolean) => !prev);
+        return;
+      }
+      if (matchesShortcut(e, shortcuts.autoLayout)) {
+        e.preventDefault();
+        handleAutoLayout();
+        return;
+      }
+      if (matchesShortcut(e, shortcuts.group)) {
+        e.preventDefault();
+        handleCreateGroup();
+        return;
+      }
+      if (matchesShortcut(e, shortcuts.mute)) {
+        e.preventDefault();
+        onToggleMute?.();
+        return;
+      }
+      if (matchesShortcut(e, shortcuts.showShortcuts)) {
         e.preventDefault();
         setShowShortcuts(s => !s);
         return;
       }
-
-      if (e.key === 'f') {
+      if (matchesShortcut(e, shortcuts.fitView)) {
         e.preventDefault();
         rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 1.0 });
         return;
       }
-
-      if (e.key === 'g') {
+      if (matchesShortcut(e, shortcuts.toggleGrid)) {
         e.preventDefault();
         setSnapToGrid(s => !s);
         return;
       }
-
-      if (e.key === 'c' && !e.ctrlKey) {
-        // Toggle collapse on selected node
+      if (matchesShortcut(e, shortcuts.toggleCollapse)) {
         const selected = nodes.filter(n => n.selected);
         if (selected.length === 1) {
           e.preventDefault();
@@ -278,45 +295,26 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
         }
         return;
       }
-
-      if (e.key === '1') {
+      if (matchesShortcut(e, shortcuts.zoomTo100)) {
         e.preventDefault();
         rfInstanceRef.current?.zoomTo(1, { duration: 300 });
         return;
       }
-
-      if (e.key === '0') {
+      if (matchesShortcut(e, shortcuts.zoomToFit)) {
         e.preventDefault();
         rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 1.0 });
         return;
       }
-
-      if (e.key === 'Escape') {
-        if (showCommandPalette) { setShowCommandPalette(false); return; }
-        if (quickAddMenu) { setQuickAddMenu(null); return; }
-        if (showSearch) { setShowSearch(false); setHighlightedNodeIds(new Set()); return; }
-        if (showShortcuts) { setShowShortcuts(false); return; }
-        if (contextMenu) { setContextMenu(null); return; }
-        if (nodeContextMenu) { setNodeContextMenu(null); return; }
-        if (edgeContextMenu) { setEdgeContextMenu(null); return; }
-        if (selectedQuestionId) { setSelectedQuestionId(null); return; }
-        // Exit focus mode with Escape
-        setFocusMode(false);
-        return;
-      }
-
-      if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (matchesShortcut(e, shortcuts.delete)) {
         handleDeleteSelected();
         return;
       }
-
-      // Shift+A = Align left, Shift+D = Distribute horizontally
-      if (e.shiftKey && e.key === 'A') {
+      if (matchesShortcut(e, shortcuts.alignLeft)) {
         e.preventDefault();
         handleAlignLeft();
         return;
       }
-      if (e.shiftKey && e.key === 'D') {
+      if (matchesShortcut(e, shortcuts.distributeH)) {
         e.preventDefault();
         handleDistributeH();
         return;
@@ -325,6 +323,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [
+    shortcuts,
     showSearch,
     showShortcuts,
     showCommandPalette,

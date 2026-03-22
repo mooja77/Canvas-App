@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { Toaster } from 'react-hot-toast';
 import { useUIStore } from './stores/uiStore';
+import './i18n';
 import './index.css';
 
 // Initialize dark mode from persisted state

@@ -1,0 +1,28 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "create": "Crear",
+    "close": "Cerrar",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "confirm": "Confirmar",
+    "reset": "Restablecer"
+  },
+  "canvas": {
+    "codingCanvases": "Lienzos de Codificación",
+    "newCanvas": "Nuevo Lienzo",
+    "transcript": "Transcripción",
+    "code": "Código",
+    "memo": "Memorándum",
+    "workspaceSubtitle": "Espacios de trabajo visuales para la codificación cualitativa de entrevistas"
+  },
+  "auth": {
+    "signIn": "Iniciar Sesión",
+    "signUp": "Registrarse",
+    "signOut": "Cerrar Sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña"
+  }
+}

@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { Router } from 'express';
 import { auth } from './middleware/auth.js';
 import { auditLog } from './middleware/auditLog.js';
 import { csrfProtection } from './middleware/csrf.js';
@@ -124,52 +125,59 @@ app.use((_req, res, next) => {
   next();
 });
 
-// ─── Auth routes (no auth middleware needed for login/signup) ───
-app.use('/api', authRoutes);
-app.use('/api', userAuthRoutes);
+// ─── Build versioned API router ───
+const v1Router = Router();
 
-// ─── Public canvas routes (shared canvas viewing) ───
-app.use('/api', canvasPublicRoutes);
+// Auth routes (no auth middleware needed for login/signup)
+v1Router.use(authRoutes);
+v1Router.use(userAuthRoutes);
 
-// ─── Protected billing routes ───
-app.use('/api', billingRoutes);
+// Public canvas routes (shared canvas viewing)
+v1Router.use(canvasPublicRoutes);
 
-// ─── Protected canvas routes ───
-app.use('/api', auth, auditLog, canvasRoutes);
+// Protected billing routes
+v1Router.use(billingRoutes);
 
-// ─── Protected ethics & compliance routes ───
-app.use('/api', auth, auditLog, ethicsRoutes);
+// Protected canvas routes
+v1Router.use(auth, auditLog, canvasRoutes);
 
-// ─── Protected AI routes ───
-app.use('/api', auth, auditLog, aiRoutes);
+// Protected ethics & compliance routes
+v1Router.use(auth, auditLog, ethicsRoutes);
 
-// ─── Protected research assistant & summary routes ───
-app.use('/api', auth, auditLog, chatRoutes);
-app.use('/api', auth, auditLog, summaryRoutes);
+// Protected AI routes
+v1Router.use(auth, auditLog, aiRoutes);
 
-// ─── Protected upload & transcription routes ───
-app.use('/api', auth, auditLog, uploadRoutes);
+// Protected research assistant & summary routes
+v1Router.use(auth, auditLog, chatRoutes);
+v1Router.use(auth, auditLog, summaryRoutes);
 
-// ─── Protected collaboration routes ───
-app.use('/api', auth, auditLog, collaborationRoutes);
+// Protected upload & transcription routes
+v1Router.use(auth, auditLog, uploadRoutes);
 
-// ─── Protected document & region coding routes ───
-app.use('/api', auth, auditLog, documentRoutes);
+// Protected collaboration routes
+v1Router.use(auth, auditLog, collaborationRoutes);
 
-// ─── Protected training center routes ───
-app.use('/api', auth, auditLog, trainingRoutes);
+// Protected document & region coding routes
+v1Router.use(auth, auditLog, documentRoutes);
 
-// ─── Protected QDPX export/import routes ───
-app.use('/api', auth, auditLog, qdpxRoutes);
+// Protected training center routes
+v1Router.use(auth, auditLog, trainingRoutes);
 
-// ─── Protected repository routes ───
-app.use('/api', auth, auditLog, repositoryRoutes);
+// Protected QDPX export/import routes
+v1Router.use(auth, auditLog, qdpxRoutes);
 
-// ─── Protected integration routes ───
-app.use('/api', auth, auditLog, integrationRoutes);
+// Protected repository routes
+v1Router.use(auth, auditLog, repositoryRoutes);
 
-// ─── Protected AI settings routes ───
-app.use('/api', auth, aiSettingsRoutes);
+// Protected integration routes
+v1Router.use(auth, auditLog, integrationRoutes);
+
+// Protected AI settings routes
+v1Router.use(auth, aiSettingsRoutes);
+
+// Mount under /api/v1 (versioned) and /api (backwards compat)
+app.use('/api/v1', v1Router);
+app.use('/api', v1Router);
 
 // ─── Production: serve frontend static build ───
 if (process.env.NODE_ENV === 'production') {

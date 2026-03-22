@@ -1,0 +1,28 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "create": "Create",
+    "close": "Close",
+    "search": "Search",
+    "loading": "Loading...",
+    "confirm": "Confirm",
+    "reset": "Reset"
+  },
+  "canvas": {
+    "codingCanvases": "Coding Canvases",
+    "newCanvas": "New Canvas",
+    "transcript": "Transcript",
+    "code": "Code",
+    "memo": "Memo",
+    "workspaceSubtitle": "Visual workspaces for qualitative interview coding"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "signOut": "Sign Out",
+    "email": "Email",
+    "password": "Password"
+  }
+}

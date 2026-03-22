@@ -28,6 +28,10 @@ interface CanvasState {
   loading: boolean;
   error: string | null;
 
+  // Trash
+  trashedCanvases: (CodingCanvas & { _count?: { transcripts: number; questions: number; codings: number } })[];
+  trashLoading: boolean;
+
   // Active canvas
   activeCanvasId: string | null;
   activeCanvas: CanvasDetail | null;
@@ -50,6 +54,11 @@ interface CanvasState {
   openCanvas: (id: string) => Promise<void>;
   closeCanvas: () => void;
   refreshCanvas: () => Promise<void>;
+
+  // Trash actions
+  fetchTrash: () => Promise<void>;
+  restoreCanvas: (id: string) => Promise<void>;
+  permanentDeleteCanvas: (id: string) => Promise<void>;
 
   // Canvas item actions
   addTranscript: (title: string, content: string) => Promise<CanvasTranscript>;
@@ -113,6 +122,8 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
   canvases: [],
   loading: false,
   error: null,
+  trashedCanvases: [],
+  trashLoading: false,
   activeCanvasId: null,
   activeCanvas: null,
   pendingSelection: null,
@@ -168,6 +179,32 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
       const res = await canvasApi.getCanvas(activeCanvasId);
       set({ activeCanvas: res.data.data });
     } catch { /* silent */ }
+  },
+
+  fetchTrash: async () => {
+    set({ trashLoading: true });
+    try {
+      const res = await canvasApi.getTrash();
+      set({ trashedCanvases: res.data.data, trashLoading: false });
+    } catch {
+      set({ trashLoading: false });
+    }
+  },
+
+  restoreCanvas: async (id) => {
+    await canvasApi.restoreCanvas(id);
+    set(s => ({
+      trashedCanvases: s.trashedCanvases.filter(c => c.id !== id),
+    }));
+    // Refresh the main list so it shows up
+    get().fetchCanvases();
+  },
+
+  permanentDeleteCanvas: async (id) => {
+    await canvasApi.permanentDeleteCanvas(id);
+    set(s => ({
+      trashedCanvases: s.trashedCanvases.filter(c => c.id !== id),
+    }));
   },
 
   addTranscript: async (title, content) => {
@@ -602,3 +639,5 @@ export const useCanvasLoading = () => useCanvasStore(s => s.loading);
 export const useCanvasError = () => useCanvasStore(s => s.error);
 export const useShowCodingStripes = () => useCanvasStore(s => s.showCodingStripes);
 export const useRunningNodeId = () => useCanvasStore(s => s.runningNodeId);
+export const useTrashedCanvases = () => useCanvasStore(s => s.trashedCanvases);
+export const useTrashLoading = () => useCanvasStore(s => s.trashLoading);

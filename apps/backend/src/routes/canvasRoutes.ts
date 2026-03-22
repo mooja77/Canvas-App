@@ -32,7 +32,7 @@ canvasRoutes.use(shareRoutes);
 
 // ─── Canvas CRUD ───
 
-// GET /canvas — list canvases
+// GET /canvas — list canvases (excludes soft-deleted)
 canvasRoutes.get('/canvas', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
@@ -40,10 +40,11 @@ canvasRoutes.get('/canvas', async (req, res, next) => {
     const take = Math.min(parseInt(req.query.limit as string) || 50, 200);
     const skip = parseInt(req.query.offset as string) || 0;
 
-    // Show canvases owned via dashboardAccess OR userId
-    const where = userId
+    // Show canvases owned via dashboardAccess OR userId, excluding soft-deleted
+    const ownerFilter = userId
       ? { OR: [{ dashboardAccessId }, { userId }] }
       : { dashboardAccessId };
+    const where = { ...ownerFilter, deletedAt: null };
 
     const [canvases, total] = await Promise.all([
       prisma.codingCanvas.findMany({
@@ -58,6 +59,28 @@ canvasRoutes.get('/canvas', async (req, res, next) => {
       prisma.codingCanvas.count({ where }),
     ]);
     res.json({ success: true, data: canvases, total, limit: take, offset: skip });
+  } catch (err) { next(err); }
+});
+
+// GET /canvas/trash — list soft-deleted canvases
+canvasRoutes.get('/canvas/trash', async (req, res, next) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    const userId = getAuthUserId(req);
+
+    const ownerFilter = userId
+      ? { OR: [{ dashboardAccessId }, { userId }] }
+      : { dashboardAccessId };
+    const where = { ...ownerFilter, deletedAt: { not: null } };
+
+    const canvases = await prisma.codingCanvas.findMany({
+      where,
+      orderBy: { deletedAt: 'desc' },
+      include: {
+        _count: { select: { transcripts: true, questions: true, codings: true } },
+      },
+    });
+    res.json({ success: true, data: canvases });
   } catch (err) { next(err); }
 });
 
@@ -132,11 +155,39 @@ canvasRoutes.put('/canvas/:canvasId', validateParams(canvasCanvasIdParam), valid
   }
 });
 
-// DELETE /canvas/:canvasId
+// DELETE /canvas/:canvasId — soft delete (move to trash)
 canvasRoutes.delete('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
+    await prisma.codingCanvas.update({
+      where: { id: req.params.canvasId },
+      data: { deletedAt: new Date() },
+    });
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// POST /canvas/:canvasId/restore — restore a soft-deleted canvas
+canvasRoutes.post('/canvas/:canvasId/restore', validateParams(canvasCanvasIdParam), async (req, res, next) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    const canvas = await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
+    if (!canvas.deletedAt) return next(new AppError('Canvas is not in trash', 400));
+    const restored = await prisma.codingCanvas.update({
+      where: { id: req.params.canvasId },
+      data: { deletedAt: null },
+    });
+    res.json({ success: true, data: restored });
+  } catch (err) { next(err); }
+});
+
+// DELETE /canvas/:canvasId/permanent — permanently delete a trashed canvas
+canvasRoutes.delete('/canvas/:canvasId/permanent', validateParams(canvasCanvasIdParam), async (req, res, next) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    const canvas = await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
+    if (!canvas.deletedAt) return next(new AppError('Canvas must be in trash before permanent deletion', 400));
     await prisma.codingCanvas.delete({ where: { id: req.params.canvasId } });
     res.json({ success: true });
   } catch (err) { next(err); }
