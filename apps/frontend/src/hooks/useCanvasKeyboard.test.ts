@@ -49,6 +49,11 @@ function createMockOptions(overrides: Partial<CanvasKeyboardOptions> = {}): Canv
     handleAutoLayout: vi.fn(),
     setFocusMode: vi.fn(),
 
+    onUndo: vi.fn(),
+    onRedo: vi.fn(),
+    canUndo: false,
+    canRedo: false,
+
     onNextTab: vi.fn(),
     onPrevTab: vi.fn(),
     ...overrides,

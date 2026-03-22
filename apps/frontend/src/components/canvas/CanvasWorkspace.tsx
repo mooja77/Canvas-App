@@ -69,6 +69,7 @@ import ConfirmDialog from './ConfirmDialog';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { useCanvasStore, useActiveCanvas, usePendingSelection, useSelectedQuestionId } from '../../stores/canvasStore';
 import { useCanvasKeyboard } from '../../hooks/useCanvasKeyboard';
+import { useCanvasHistory } from '../../hooks/useCanvasHistory';
 import { useCanvasBookmarks } from '../../hooks/useCanvasBookmarks';
 import { useCanvasGroups } from '../../hooks/useCanvasGroups';
 import { useCanvasStickyNotes } from '../../hooks/useCanvasStickyNotes';
@@ -265,6 +266,20 @@ export default function CanvasWorkspace() {
 
   // Auto-layout
   const { applyLayout } = useAutoLayout(setNodes);
+
+  // Undo/redo history (layout changes only)
+  const { pushState: pushHistory, undo: historyUndo, redo: historyRedo, canUndo, canRedo, clearHistory } = useCanvasHistory();
+
+  // Snapshot current nodes/edges into undo history (reads state via updater without mutating)
+  const pushHistorySnapshot = useCallback(() => {
+    setNodes((currentNodes: Node[]) => {
+      setEdges((currentEdges: Edge[]) => {
+        pushHistory(currentNodes, currentEdges);
+        return currentEdges;
+      });
+      return currentNodes;
+    });
+  }, [setNodes, setEdges, pushHistory]);
 
   // Custom node colors (persisted in localStorage)
   const { colorMap: nodeColorMap, setNodeColor, getNodeColor } = useNodeColors();
@@ -554,8 +569,13 @@ export default function CanvasWorkspace() {
 
     if (isNewCanvas) {
       // Full rebuild on canvas switch or initial load
-      setNodes(buildNodes());
-      setEdges(buildEdges());
+      clearHistory();
+      const newNodes = buildNodes();
+      const newEdges = buildEdges();
+      setNodes(newNodes);
+      setEdges(newEdges);
+      // Capture initial state so first undo has a baseline
+      pushHistory(newNodes, newEdges);
       if (canvasId) {
         loadedCanvasIdRef.current = canvasId;
         if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
@@ -575,7 +595,7 @@ export default function CanvasWorkspace() {
       });
       setEdges(buildEdges());
     }
-  }, [activeCanvas, buildNodes, buildEdges, setNodes, setEdges]);
+  }, [activeCanvas, buildNodes, buildEdges, setNodes, setEdges, clearHistory, pushHistory]);
 
   // Re-fit ReactFlow view when canvas container actually resizes (not sub-pixel jitter)
   const prevContainerSizeRef = useRef({ width: 0, height: 0 });
@@ -815,6 +835,7 @@ export default function CanvasWorkspace() {
         setNodes(nds => nds.filter(n => n.id !== nodeId));
       }
       toast.success('Node deleted');
+      setTimeout(() => pushHistorySnapshot(), 300);
     } catch {
       toast.error('Failed to delete node');
     }
@@ -834,7 +855,8 @@ export default function CanvasWorkspace() {
       } catch { /* continue */ }
     }
     toast.success(`Deleted ${selectedNodes.length} nodes`);
-  }, [selectedNodes, deleteTranscript, deleteQuestion, deleteMemo, deleteCase, deleteComputedNode, removeGroup]);
+    setTimeout(() => pushHistorySnapshot(), 300);
+  }, [selectedNodes, deleteTranscript, deleteQuestion, deleteMemo, deleteCase, deleteComputedNode, removeGroup, pushHistorySnapshot]);
 
   // Copy selected nodes
   const handleCopy = useCallback(() => {
@@ -870,8 +892,11 @@ export default function CanvasWorkspace() {
         }
       } catch { /* skip */ }
     }
-    if (pasted > 0) toast.success(`Pasted ${pasted} node(s)`);
-  }, [activeCanvas, addTranscript, addQuestion, addMemo, addComputedNode]);
+    if (pasted > 0) {
+      toast.success(`Pasted ${pasted} node(s)`);
+      setTimeout(() => pushHistorySnapshot(), 300);
+    }
+  }, [activeCanvas, addTranscript, addQuestion, addMemo, addComputedNode, pushHistorySnapshot]);
 
   // Duplicate (copy + paste)
   const handleDuplicate = useCallback(async () => {
@@ -980,9 +1005,11 @@ export default function CanvasWorkspace() {
       );
       if (hasDrag || hasUserResize) {
         triggerSaveLayout();
+        // Capture layout state for undo after ReactFlow applies the changes
+        requestAnimationFrame(() => pushHistorySnapshot());
       }
     },
-    [onNodesChange, triggerSaveLayout],
+    [onNodesChange, triggerSaveLayout, pushHistorySnapshot],
   );
 
   // Minimap color
@@ -1091,6 +1118,7 @@ export default function CanvasWorkspace() {
     try {
       await addMemo('New memo — click to edit');
       toast.success('Memo added');
+      setTimeout(() => pushHistorySnapshot(), 300);
     } catch {
       toast.error('Failed to add memo');
     }
@@ -1174,22 +1202,25 @@ export default function CanvasWorkspace() {
     try {
       await addQuestion('New question — double-click to edit');
       toast.success('Question added');
+      setTimeout(() => pushHistorySnapshot(), 300);
     } catch { toast.error('Failed to add question'); }
-  }, [addQuestion]);
+  }, [addQuestion, pushHistorySnapshot]);
 
   const handleQuickAddMemo = useCallback(async () => {
     try {
       await addMemo('New memo — click to edit');
       toast.success('Memo added');
+      setTimeout(() => pushHistorySnapshot(), 300);
     } catch { toast.error('Failed to add memo'); }
-  }, [addMemo]);
+  }, [addMemo, pushHistorySnapshot]);
 
   const handleQuickAddComputed = useCallback(async (type: ComputedNodeType, label: string) => {
     try {
       await addComputedNode(type, label);
       toast.success(`${label} node added`);
+      setTimeout(() => pushHistorySnapshot(), 300);
     } catch { toast.error('Failed to add node'); }
-  }, [addComputedNode]);
+  }, [addComputedNode, pushHistorySnapshot]);
 
   // Create visual group from selected nodes (Ctrl+G)
   const handleCreateGroup = useCallback(() => {
@@ -1227,10 +1258,11 @@ export default function CanvasWorkspace() {
     // Save layout after animation and fit view
     setTimeout(() => {
       triggerSaveLayout();
+      pushHistorySnapshot();
       rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 1.0, duration: 300 });
     }, 700);
     toast.success('Canvas arranged');
-  }, [nodes, edges, applyLayout, triggerSaveLayout]);
+  }, [nodes, edges, applyLayout, triggerSaveLayout, pushHistorySnapshot]);
 
   // Export canvas as PNG
   const handleExportPNG = useCallback(async () => {
@@ -1273,6 +1305,60 @@ export default function CanvasWorkspace() {
     toast.success('Sticky note added');
   }, [addStickyNote]);
 
+  // Undo handler: restore previous layout state
+  const handleUndo = useCallback(() => {
+    const state = historyUndo();
+    if (!state) return;
+    // Merge restored positions/styles onto current nodes (preserving data)
+    const posMap = new Map(state.nodes.map(n => [n.id, n]));
+    setNodes(currentNodes => {
+      // Keep nodes that exist in the restored state, with their current data
+      const restoredIds = new Set(state.nodes.map(n => n.id));
+      const result = currentNodes
+        .filter(n => restoredIds.has(n.id))
+        .map(n => {
+          const restored = posMap.get(n.id);
+          if (!restored) return n;
+          return { ...n, position: restored.position, style: restored.style };
+        });
+      // Add nodes from restored state that aren't in current (were deleted)
+      for (const rn of state.nodes) {
+        if (!currentNodes.find(n => n.id === rn.id)) {
+          result.push(rn);
+        }
+      }
+      return result;
+    });
+    setEdges(() => {
+      // For edges, use the restored edge set entirely (edges carry less heavy data)
+      return state.edges;
+    });
+  }, [historyUndo, setNodes, setEdges]);
+
+  // Redo handler: restore next layout state
+  const handleRedo = useCallback(() => {
+    const state = historyRedo();
+    if (!state) return;
+    const posMap = new Map(state.nodes.map(n => [n.id, n]));
+    setNodes(currentNodes => {
+      const restoredIds = new Set(state.nodes.map(n => n.id));
+      const result = currentNodes
+        .filter(n => restoredIds.has(n.id))
+        .map(n => {
+          const restored = posMap.get(n.id);
+          if (!restored) return n;
+          return { ...n, position: restored.position, style: restored.style };
+        });
+      for (const rn of state.nodes) {
+        if (!currentNodes.find(n => n.id === rn.id)) {
+          result.push(rn);
+        }
+      }
+      return result;
+    });
+    setEdges(() => state.edges);
+  }, [historyRedo, setNodes, setEdges]);
+
   // Global keyboard shortcuts (extracted to custom hook)
   useCanvasKeyboard({
     showSearch,
@@ -1308,6 +1394,10 @@ export default function CanvasWorkspace() {
     recallBookmark,
     handleAutoLayout,
     setFocusMode,
+    onUndo: handleUndo,
+    onRedo: handleRedo,
+    canUndo,
+    canRedo,
   });
 
   const handleFocusNode = useCallback((nodeId: string) => {

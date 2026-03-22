@@ -53,6 +53,12 @@ export interface CanvasKeyboardOptions {
   handleAutoLayout: () => void;
   setFocusMode: (v: boolean | ((prev: boolean) => boolean)) => void;
 
+  // Undo / Redo
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+
   // Tab navigation
   onNextTab?: () => void;
   onPrevTab?: () => void;
@@ -93,6 +99,10 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     recallBookmark,
     handleAutoLayout,
     setFocusMode,
+    onUndo,
+    onRedo,
+    canUndo,
+    canRedo,
     onNextTab,
     onPrevTab,
   } = options;
@@ -128,6 +138,24 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
         if (e.key === 'k') {
           e.preventDefault();
           setShowCommandPalette(s => !s);
+          return;
+        }
+        // Ctrl+Shift+Z or Ctrl+Y: Redo
+        if ((e.shiftKey && (e.key === 'z' || e.key === 'Z')) || e.key === 'y') {
+          e.preventDefault();
+          if (canRedo) {
+            onRedo();
+            toast('Redone', { duration: 1500 });
+          }
+          return;
+        }
+        // Ctrl+Z: Undo
+        if (e.key === 'z') {
+          e.preventDefault();
+          if (canUndo) {
+            onUndo();
+            toast('Undone', { duration: 1500 });
+          }
           return;
         }
         if (e.key === 'f') {
@@ -320,6 +348,10 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     recallBookmark,
     handleAutoLayout,
     setFocusMode,
+    onUndo,
+    onRedo,
+    canUndo,
+    canRedo,
     onNextTab,
     onPrevTab,
   ]);
