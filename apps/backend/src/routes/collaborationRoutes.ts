@@ -3,11 +3,12 @@ import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
 import { getPlanLimits } from '../config/plans.js';
+import { validateParams, canvasIdParam, canvasIdUserIdParams } from '../middleware/validation.js';
 
 export const collaborationRoutes = Router();
 
 // ─── POST /api/canvas/:id/collaborators — Invite a collaborator ───
-collaborationRoutes.post('/canvas/:id/collaborators', async (req, res, next) => {
+collaborationRoutes.post('/canvas/:id/collaborators', validateParams(canvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     const userId = getAuthUserId(req);
@@ -69,7 +70,7 @@ collaborationRoutes.post('/canvas/:id/collaborators', async (req, res, next) => 
 });
 
 // ─── GET /api/canvas/:id/collaborators — List collaborators ───
-collaborationRoutes.get('/canvas/:id/collaborators', async (req, res, next) => {
+collaborationRoutes.get('/canvas/:id/collaborators', validateParams(canvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     const userId = getAuthUserId(req);
@@ -99,7 +100,7 @@ collaborationRoutes.get('/canvas/:id/collaborators', async (req, res, next) => {
 });
 
 // ─── DELETE /api/canvas/:id/collaborators/:userId — Remove collaborator ───
-collaborationRoutes.delete('/canvas/:id/collaborators/:userId', async (req, res, next) => {
+collaborationRoutes.delete('/canvas/:id/collaborators/:userId', validateParams(canvasIdUserIdParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     const userId = getAuthUserId(req);

@@ -6,6 +6,7 @@ import path from 'path';
 import { prisma } from '../lib/prisma.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
 import { checkFileUploadAccess } from '../middleware/planLimits.js';
+import { validateParams, canvasIdParam, canvasIdJobIdParams } from '../middleware/validation.js';
 import { storage } from '../lib/storage.js';
 import '../lib/storage-local.js'; // register local fallback
 import { createJob, getJob } from '../lib/jobs.js';
@@ -35,6 +36,7 @@ const upload = multer({
 // Get a pre-signed URL for direct client upload to S3
 uploadRoutes.post(
   '/canvas/:id/upload/presigned',
+  validateParams(canvasIdParam),
   checkFileUploadAccess(),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -63,6 +65,7 @@ uploadRoutes.post(
 // Confirm upload and create FileUpload record
 uploadRoutes.post(
   '/canvas/:id/upload/confirm',
+  validateParams(canvasIdParam),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dashboardAccessId = getAuthId(req);
@@ -97,6 +100,7 @@ uploadRoutes.post(
 // Direct file upload (for local storage / dev mode)
 uploadRoutes.post(
   '/canvas/:id/upload/direct',
+  validateParams(canvasIdParam),
   checkFileUploadAccess(),
   upload.single('file'),
   async (req: Request, res: Response, next: NextFunction) => {
@@ -141,6 +145,7 @@ uploadRoutes.post(
 // Start transcription job
 uploadRoutes.post(
   '/canvas/:id/transcribe',
+  validateParams(canvasIdParam),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dashboardAccessId = getAuthId(req);
@@ -193,6 +198,7 @@ uploadRoutes.post(
 // Poll transcription job status
 uploadRoutes.get(
   '/canvas/:id/transcribe/:jobId',
+  validateParams(canvasIdJobIdParams),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dashboardAccessId = getAuthId(req);
@@ -217,6 +223,7 @@ uploadRoutes.get(
 // Accept transcription result → create transcript node
 uploadRoutes.post(
   '/canvas/:id/transcribe/:jobId/accept',
+  validateParams(canvasIdJobIdParams),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dashboardAccessId = getAuthId(req);

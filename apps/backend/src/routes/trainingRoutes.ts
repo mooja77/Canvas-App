@@ -1,15 +1,16 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
+import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import { computeKappa } from '../utils/intercoder.js';
+import { validateParams, canvasIdParam, canvasIdDocIdParams } from '../middleware/validation.js';
 
 export const trainingRoutes = Router();
 
 // ─── Training Documents ───
 
 // POST /canvas/:id/training — create training document
-trainingRoutes.post('/canvas/:id/training', async (req, res, next) => {
+trainingRoutes.post('/canvas/:id/training', validateParams(canvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -43,13 +44,13 @@ trainingRoutes.post('/canvas/:id/training', async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      data: { ...doc, goldCodings: JSON.parse(doc.goldCodings) },
+      data: { ...doc, goldCodings: safeJsonParse(doc.goldCodings, []) },
     });
   } catch (err) { next(err); }
 });
 
 // GET /canvas/:id/training — list training documents
-trainingRoutes.get('/canvas/:id/training', async (req, res, next) => {
+trainingRoutes.get('/canvas/:id/training', validateParams(canvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -64,14 +65,14 @@ trainingRoutes.get('/canvas/:id/training', async (req, res, next) => {
       success: true,
       data: docs.map(d => ({
         ...d,
-        goldCodings: JSON.parse(d.goldCodings),
+        goldCodings: safeJsonParse(d.goldCodings, []),
       })),
     });
   } catch (err) { next(err); }
 });
 
 // GET /canvas/:id/training/:docId — get training document detail
-trainingRoutes.get('/canvas/:id/training/:docId', async (req, res, next) => {
+trainingRoutes.get('/canvas/:id/training/:docId', validateParams(canvasIdDocIdParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -90,10 +91,10 @@ trainingRoutes.get('/canvas/:id/training/:docId', async (req, res, next) => {
       success: true,
       data: {
         ...doc,
-        goldCodings: JSON.parse(doc.goldCodings),
+        goldCodings: safeJsonParse(doc.goldCodings, []),
         attempts: doc.attempts.map(a => ({
           ...a,
-          codings: JSON.parse(a.codings),
+          codings: safeJsonParse(a.codings, []),
         })),
       },
     });
@@ -101,7 +102,7 @@ trainingRoutes.get('/canvas/:id/training/:docId', async (req, res, next) => {
 });
 
 // DELETE /canvas/:id/training/:docId — delete training document
-trainingRoutes.delete('/canvas/:id/training/:docId', async (req, res, next) => {
+trainingRoutes.delete('/canvas/:id/training/:docId', validateParams(canvasIdDocIdParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -119,7 +120,7 @@ trainingRoutes.delete('/canvas/:id/training/:docId', async (req, res, next) => {
 // ─── Training Attempts ───
 
 // POST /canvas/:id/training/:docId/attempt — submit a training attempt
-trainingRoutes.post('/canvas/:id/training/:docId/attempt', async (req, res, next) => {
+trainingRoutes.post('/canvas/:id/training/:docId/attempt', validateParams(canvasIdDocIdParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -144,7 +145,7 @@ trainingRoutes.post('/canvas/:id/training/:docId/attempt', async (req, res, next
       return next(new AppError('Associated transcript not found', 404));
     }
 
-    const goldCodings = JSON.parse(doc.goldCodings);
+    const goldCodings = safeJsonParse(doc.goldCodings, []);
     const transcriptLength = transcript.content.length;
 
     // Compute Cohen's Kappa
@@ -165,14 +166,14 @@ trainingRoutes.post('/canvas/:id/training/:docId/attempt', async (req, res, next
       success: true,
       data: {
         ...attempt,
-        codings: JSON.parse(attempt.codings),
+        codings: safeJsonParse(attempt.codings, []),
       },
     });
   } catch (err) { next(err); }
 });
 
 // GET /canvas/:id/training/:docId/attempts — list attempts for a training document
-trainingRoutes.get('/canvas/:id/training/:docId/attempts', async (req, res, next) => {
+trainingRoutes.get('/canvas/:id/training/:docId/attempts', validateParams(canvasIdDocIdParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -191,7 +192,7 @@ trainingRoutes.get('/canvas/:id/training/:docId/attempts', async (req, res, next
       success: true,
       data: attempts.map(a => ({
         ...a,
-        codings: JSON.parse(a.codings),
+        codings: safeJsonParse(a.codings, []),
       })),
     });
   } catch (err) { next(err); }

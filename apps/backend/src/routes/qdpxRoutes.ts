@@ -4,6 +4,7 @@ import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.
 import { exportQdpx } from '../utils/qdpxExport.js';
 import { importQdpx } from '../utils/qdpxImport.js';
 import { checkExportFormat } from '../middleware/planLimits.js';
+import { validateParams, canvasIdParam } from '../middleware/validation.js';
 
 export const qdpxRoutes = Router();
 
@@ -23,7 +24,7 @@ const upload = multer({
 });
 
 // GET /api/canvas/:id/export/qdpx — Export canvas as QDPX
-qdpxRoutes.get('/canvas/:id/export/qdpx', checkExportFormat(), async (req, res, next) => {
+qdpxRoutes.get('/canvas/:id/export/qdpx', validateParams(canvasIdParam), checkExportFormat(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     const userId = getAuthUserId(req);
@@ -40,7 +41,7 @@ qdpxRoutes.get('/canvas/:id/export/qdpx', checkExportFormat(), async (req, res, 
 });
 
 // POST /api/canvas/:id/import/qdpx — Import QDPX file
-qdpxRoutes.post('/canvas/:id/import/qdpx', upload.single('file'), async (req, res, next) => {
+qdpxRoutes.post('/canvas/:id/import/qdpx', validateParams(canvasIdParam), upload.single('file'), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     const userId = getAuthUserId(req);

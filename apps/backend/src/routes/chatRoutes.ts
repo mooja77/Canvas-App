@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
+import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import { checkAiAccess } from '../middleware/planLimits.js';
 import { validate, chatQuerySchema } from '../middleware/validation.js';
 import { chunkText } from '../utils/embeddings.js';
@@ -231,7 +231,7 @@ chatRoutes.get(
         userId: m.userId,
         role: m.role,
         content: m.content,
-        citations: JSON.parse(m.citations || '[]'),
+        citations: safeJsonParse(m.citations || '[]'),
         createdAt: m.createdAt.toISOString(),
       }));
 

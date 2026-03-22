@@ -143,6 +143,11 @@ const edgeTypes = {
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
 
+// Stable references for ReactFlow props (avoids re-renders from inline objects)
+const SNAP_GRID: [number, number] = [20, 20];
+const FIT_VIEW_OPTIONS = { padding: 0.4, maxZoom: 1.0 };
+const PRO_OPTIONS = { hideAttribution: true };
+
 export default function CanvasWorkspace() {
   // Granular selector hooks for read-only data
   const activeCanvas = useActiveCanvas();
@@ -548,20 +553,19 @@ export default function CanvasWorkspace() {
     // Fit view after nodes render with their actual dimensions
     if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
     fitViewTimeoutRef.current = setTimeout(() => {
-      rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 0.8 });
+      rfInstanceRef.current?.fitView(FIT_VIEW_OPTIONS);
     }, 200);
   }, [activeCanvas, buildNodes, buildEdges, setNodes, setEdges]);
 
-  // Re-fit ReactFlow view when canvas container resizes (debounced, skipped if user recently panned/zoomed)
+  // Re-fit ReactFlow view when canvas container resizes (debounced)
   useEffect(() => {
     if (!canvasContainerSize.width || !canvasContainerSize.height) return;
-    if (userInteractedRef.current) return;
 
     if (resizeFitViewTimeoutRef.current) clearTimeout(resizeFitViewTimeoutRef.current);
     // Use shared fitViewTimeoutRef to prevent conflict with data-change fitView
     if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
     resizeFitViewTimeoutRef.current = setTimeout(() => {
-      rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 0.8 });
+      rfInstanceRef.current?.fitView(FIT_VIEW_OPTIONS);
     }, 300);
 
     return () => {
@@ -1519,15 +1523,18 @@ export default function CanvasWorkspace() {
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             snapToGrid={snapToGrid}
-            snapGrid={[20, 20]}
+            snapGrid={SNAP_GRID}
             edgesReconnectable
+            zoomOnScroll
+            panOnScroll={false}
+            zoomOnDoubleClick
             panActivationKeyCode="Space"
             fitView
-            fitViewOptions={{ padding: 0.4, maxZoom: 1.0 }}
+            fitViewOptions={FIT_VIEW_OPTIONS}
             minZoom={0.15}
             maxZoom={2}
             className="bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900"
-            proOptions={{ hideAttribution: true }}
+            proOptions={PRO_OPTIONS}
           >
             <Background
               variant={snapToGrid ? BackgroundVariant.Lines : BackgroundVariant.Dots}
@@ -1535,7 +1542,7 @@ export default function CanvasWorkspace() {
               size={snapToGrid ? 0.5 : 0.8}
               color={snapToGrid ? '#d1d5db60' : '#d1d5db40'}
             />
-            {!focusMode && <Controls fitViewOptions={{ padding: 0.4, maxZoom: 1.0 }} className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700" />}
+            {!focusMode && <Controls fitViewOptions={FIT_VIEW_OPTIONS} className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700" />}
             {!focusMode && <MiniMap
               nodeColor={minimapColor}
               maskColor="rgba(0,0,0,0.06)"
@@ -1616,7 +1623,7 @@ export default function CanvasWorkspace() {
               }}
               onAddMemo={handleContextAddMemo}
               onAddComputedNode={handleQuickAddComputed}
-              onFitView={() => rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 1.0 })}
+              onFitView={() => rfInstanceRef.current?.fitView(FIT_VIEW_OPTIONS)}
               onShowShortcuts={() => setShowShortcuts(true)}
               onSelectAll={handleSelectAll}
               onToggleSnapGrid={() => setSnapToGrid(s => !s)}
@@ -1887,7 +1894,7 @@ export default function CanvasWorkspace() {
         <CommandPalette
           onClose={() => setShowCommandPalette(false)}
           onFocusNode={handleFocusNode}
-          onFitView={() => rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 1.0 })}
+          onFitView={() => rfInstanceRef.current?.fitView(FIT_VIEW_OPTIONS)}
           onToggleGrid={() => setSnapToGrid(s => !s)}
           onToggleNavigator={() => { manualNavToggleRef.current = true; setShowNavigator(s => !s); }}
           onShowShortcuts={() => { setShowCommandPalette(false); setShowShortcuts(true); }}
@@ -2034,8 +2041,8 @@ function RelationLabelPrompt({
                     color: group.color,
                     backgroundColor: group.color + '08',
                   }}
-                  onMouseEnter={e => { (e.target as HTMLElement).style.backgroundColor = group.color + '18'; }}
-                  onMouseLeave={e => { (e.target as HTMLElement).style.backgroundColor = group.color + '08'; }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = group.color + '18'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = group.color + '08'; }}
                 >
                   {r}
                 </button>

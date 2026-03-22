@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { checkRepositoryAccess } from '../middleware/planLimits.js';
+import { validateParams, repoIdParam, repoIdInsightIdParams } from '../middleware/validation.js';
 
 export const repositoryRoutes = Router();
 
@@ -48,7 +49,7 @@ repositoryRoutes.post('/repositories', async (req, res, next) => {
 });
 
 // DELETE /api/repositories/:id — Delete repository
-repositoryRoutes.delete('/repositories/:id', async (req, res, next) => {
+repositoryRoutes.delete('/repositories/:id', validateParams(repoIdParam), async (req, res, next) => {
   try {
     const userId = req.userId;
     if (!userId) throw new AppError('Email authentication required', 401);
@@ -66,7 +67,7 @@ repositoryRoutes.delete('/repositories/:id', async (req, res, next) => {
 });
 
 // GET /api/repositories/:id/insights — List insights
-repositoryRoutes.get('/repositories/:id/insights', async (req, res, next) => {
+repositoryRoutes.get('/repositories/:id/insights', validateParams(repoIdParam), async (req, res, next) => {
   try {
     const userId = req.userId;
     if (!userId) throw new AppError('Email authentication required', 401);
@@ -87,7 +88,7 @@ repositoryRoutes.get('/repositories/:id/insights', async (req, res, next) => {
 });
 
 // POST /api/repositories/:id/insights — Create insight
-repositoryRoutes.post('/repositories/:id/insights', async (req, res, next) => {
+repositoryRoutes.post('/repositories/:id/insights', validateParams(repoIdParam), async (req, res, next) => {
   try {
     const userId = req.userId;
     if (!userId) throw new AppError('Email authentication required', 401);
@@ -118,7 +119,7 @@ repositoryRoutes.post('/repositories/:id/insights', async (req, res, next) => {
 });
 
 // DELETE /api/repositories/:repoId/insights/:insightId — Delete insight
-repositoryRoutes.delete('/repositories/:repoId/insights/:insightId', async (req, res, next) => {
+repositoryRoutes.delete('/repositories/:repoId/insights/:insightId', validateParams(repoIdInsightIdParams), async (req, res, next) => {
   try {
     const userId = req.userId;
     if (!userId) throw new AppError('Email authentication required', 401);

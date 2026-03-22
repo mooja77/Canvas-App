@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { checkIntegrationsAccess } from '../middleware/planLimits.js';
+import { validateParams, integrationIdParam } from '../middleware/validation.js';
 
 export const integrationRoutes = Router();
 
@@ -85,7 +86,7 @@ integrationRoutes.post('/integrations/connect', async (req, res, next) => {
 });
 
 // DELETE /api/integrations/:id — Disconnect integration
-integrationRoutes.delete('/integrations/:id', async (req, res, next) => {
+integrationRoutes.delete('/integrations/:id', validateParams(integrationIdParam), async (req, res, next) => {
   try {
     const userId = req.userId;
     if (!userId) throw new AppError('Email authentication required', 401);

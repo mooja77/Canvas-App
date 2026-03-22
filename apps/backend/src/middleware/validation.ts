@@ -44,6 +44,13 @@ export const canvasRelationParams = z.object({ id: cuid, relId: cuid });
 export const canvasComputedParams = z.object({ id: cuid, nodeId: cuid });
 export const canvasShareIdParams = z.object({ id: cuid, shareId: cuid });
 export const shareCodeParam = z.object({ code: z.string().min(1).max(64) });
+export const canvasIdUserIdParams = z.object({ id: cuid, userId: cuid });
+export const canvasIdDocIdParams = z.object({ id: cuid, docId: cuid });
+export const canvasIdDocIdRegionIdParams = z.object({ id: cuid, docId: cuid, regionId: cuid });
+export const canvasIdJobIdParams = z.object({ id: cuid, jobId: cuid });
+export const integrationIdParam = z.object({ id: cuid });
+export const repoIdParam = z.object({ id: cuid });
+export const repoIdInsightIdParams = z.object({ repoId: cuid, insightId: cuid });
 
 // ─── Coding Canvas Schemas ───
 

@@ -1,14 +1,15 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
+import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
+import { validateParams, canvasIdParam, canvasIdDocIdParams, canvasIdDocIdRegionIdParams } from '../middleware/validation.js';
 
 export const documentRoutes = Router();
 
 // ─── Documents ───
 
 // POST /canvas/:id/documents — create document (link to existing FileUpload)
-documentRoutes.post('/canvas/:id/documents', async (req, res, next) => {
+documentRoutes.post('/canvas/:id/documents', validateParams(canvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -41,13 +42,13 @@ documentRoutes.post('/canvas/:id/documents', async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      data: { ...document, metadata: JSON.parse(document.metadata) },
+      data: { ...document, metadata: safeJsonParse(document.metadata) },
     });
   } catch (err) { next(err); }
 });
 
 // GET /canvas/:id/documents — list documents
-documentRoutes.get('/canvas/:id/documents', async (req, res, next) => {
+documentRoutes.get('/canvas/:id/documents', validateParams(canvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -59,13 +60,13 @@ documentRoutes.get('/canvas/:id/documents', async (req, res, next) => {
 
     res.json({
       success: true,
-      data: documents.map(d => ({ ...d, metadata: JSON.parse(d.metadata) })),
+      data: documents.map(d => ({ ...d, metadata: safeJsonParse(d.metadata) })),
     });
   } catch (err) { next(err); }
 });
 
 // DELETE /canvas/:id/documents/:docId — delete document
-documentRoutes.delete('/canvas/:id/documents/:docId', async (req, res, next) => {
+documentRoutes.delete('/canvas/:id/documents/:docId', validateParams(canvasIdDocIdParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -83,7 +84,7 @@ documentRoutes.delete('/canvas/:id/documents/:docId', async (req, res, next) => 
 // ─── Region Codings ───
 
 // POST /canvas/:id/documents/:docId/regions — create region coding
-documentRoutes.post('/canvas/:id/documents/:docId/regions', async (req, res, next) => {
+documentRoutes.post('/canvas/:id/documents/:docId/regions', validateParams(canvasIdDocIdParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -123,7 +124,7 @@ documentRoutes.post('/canvas/:id/documents/:docId/regions', async (req, res, nex
 });
 
 // GET /canvas/:id/documents/:docId/regions — list region codings
-documentRoutes.get('/canvas/:id/documents/:docId/regions', async (req, res, next) => {
+documentRoutes.get('/canvas/:id/documents/:docId/regions', validateParams(canvasIdDocIdParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -143,7 +144,7 @@ documentRoutes.get('/canvas/:id/documents/:docId/regions', async (req, res, next
 });
 
 // DELETE /canvas/:id/documents/:docId/regions/:regionId — delete region coding
-documentRoutes.delete('/canvas/:id/documents/:docId/regions/:regionId', async (req, res, next) => {
+documentRoutes.delete('/canvas/:id/documents/:docId/regions/:regionId', validateParams(canvasIdDocIdRegionIdParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
