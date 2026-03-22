@@ -4,6 +4,7 @@ services:
     environment:
       POSTGRES_DB: canvas_app
       POSTGRES_USER: canvas
+      # WARNING: Change this default password in production! Use a strong, unique password.
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-canvas_dev_password}
     volumes:
       - pgdata:/var/lib/postgresql/data

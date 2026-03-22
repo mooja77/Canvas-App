@@ -2,6 +2,12 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { nanoid } from 'nanoid';
+import {
+  validateParams,
+  canvasIdParam,
+  canvasShareIdParams,
+  shareCodeParam,
+} from '../middleware/validation.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import {
   checkCanvasLimit,
@@ -14,7 +20,7 @@ export const canvasPublicRoutes = Router();
 
 // ─── Canvas Sharing ───
 
-shareRoutes.post('/canvas/:id/share', checkShareLimit(), async (req, res, next) => {
+shareRoutes.post('/canvas/:id/share', validateParams(canvasIdParam), checkShareLimit(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -33,7 +39,7 @@ shareRoutes.post('/canvas/:id/share', checkShareLimit(), async (req, res, next) 
   } catch (err) { next(err); }
 });
 
-shareRoutes.get('/canvas/:id/shares', async (req, res, next) => {
+shareRoutes.get('/canvas/:id/shares', validateParams(canvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -47,7 +53,7 @@ shareRoutes.get('/canvas/:id/shares', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-shareRoutes.delete('/canvas/:id/share/:shareId', async (req, res, next) => {
+shareRoutes.delete('/canvas/:id/share/:shareId', validateParams(canvasShareIdParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -62,7 +68,7 @@ shareRoutes.delete('/canvas/:id/share/:shareId', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-shareRoutes.post('/canvas/clone/:code', checkCanvasLimit(), async (req, res, next) => {
+shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCanvasLimit(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
 
@@ -228,7 +234,7 @@ shareRoutes.post('/canvas/clone/:code', checkCanvasLimit(), async (req, res, nex
 
 // ─── Public (no-auth) route for shared canvas ───
 
-canvasPublicRoutes.get('/canvas/shared/:code', async (req, res, next) => {
+canvasPublicRoutes.get('/canvas/shared/:code', validateParams(shareCodeParam), async (req, res, next) => {
   try {
     const share = await prisma.canvasShare.findUnique({ where: { shareCode: req.params.code } });
     if (!share) return next(new AppError('Share code not found', 404));

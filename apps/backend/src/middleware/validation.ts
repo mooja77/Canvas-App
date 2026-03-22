@@ -33,13 +33,16 @@ export function validateParams(schema: z.ZodSchema) {
 // Reusable param schemas
 const cuid = z.string().min(1).max(64);
 export const canvasIdParam = z.object({ id: cuid });
+export const canvasCanvasIdParam = z.object({ canvasId: cuid });
 export const canvasTranscriptParams = z.object({ id: cuid, tid: cuid });
 export const canvasQuestionParams = z.object({ id: cuid, qid: cuid });
 export const canvasMemoParams = z.object({ id: cuid, mid: cuid });
 export const canvasCodingParams = z.object({ id: cuid, codingId: cuid });
+export const canvasCodingCidParams = z.object({ id: cuid, cid: cuid });
 export const canvasCaseParams = z.object({ id: cuid, caseId: cuid });
 export const canvasRelationParams = z.object({ id: cuid, relId: cuid });
 export const canvasComputedParams = z.object({ id: cuid, nodeId: cuid });
+export const canvasShareIdParams = z.object({ id: cuid, shareId: cuid });
 export const shareCodeParam = z.object({ code: z.string().min(1).max(64) });
 
 // ─── Coding Canvas Schemas ───

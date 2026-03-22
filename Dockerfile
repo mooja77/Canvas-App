@@ -59,5 +59,11 @@ RUN cd apps/backend && npx prisma generate
 
 EXPOSE ${PORT:-3007}
 
+# Run as non-root user for security
+USER node
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3007}/health || exit 1
+
 WORKDIR /app/apps/backend
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]

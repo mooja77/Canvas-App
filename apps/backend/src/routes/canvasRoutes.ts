@@ -3,9 +3,12 @@ import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import {
   validate,
+  validateParams,
   createCanvasSchema,
   updateCanvasSchema,
   saveLayoutSchema,
+  canvasCanvasIdParam,
+  canvasIdParam,
 } from '../middleware/validation.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import { checkCanvasLimit } from '../middleware/planLimits.js';
@@ -80,7 +83,7 @@ canvasRoutes.post('/canvas', validate(createCanvasSchema), checkCanvasLimit(), a
 });
 
 // GET /canvas/:canvasId — full detail
-canvasRoutes.get('/canvas/:canvasId', async (req, res, next) => {
+canvasRoutes.get('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     const canvas = await prisma.codingCanvas.findUnique({
@@ -114,7 +117,7 @@ canvasRoutes.get('/canvas/:canvasId', async (req, res, next) => {
 });
 
 // PUT /canvas/:canvasId — update name/description
-canvasRoutes.put('/canvas/:canvasId', validate(updateCanvasSchema), async (req, res, next) => {
+canvasRoutes.put('/canvas/:canvasId', validateParams(canvasCanvasIdParam), validate(updateCanvasSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
@@ -130,7 +133,7 @@ canvasRoutes.put('/canvas/:canvasId', validate(updateCanvasSchema), async (req, 
 });
 
 // DELETE /canvas/:canvasId
-canvasRoutes.delete('/canvas/:canvasId', async (req, res, next) => {
+canvasRoutes.delete('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
@@ -141,7 +144,7 @@ canvasRoutes.delete('/canvas/:canvasId', async (req, res, next) => {
 
 // ─── Layout (Node Positions) ───
 
-canvasRoutes.put('/canvas/:id/layout', validate(saveLayoutSchema), async (req, res, next) => {
+canvasRoutes.put('/canvas/:id/layout', validateParams(canvasIdParam), validate(saveLayoutSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));

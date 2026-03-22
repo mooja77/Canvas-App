@@ -3,8 +3,11 @@ import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import {
   validate,
+  validateParams,
   createComputedNodeSchema,
   updateComputedNodeSchema,
+  canvasIdParam,
+  canvasComputedParams,
 } from '../middleware/validation.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import {
@@ -29,7 +32,7 @@ export const computedRoutes = Router();
 
 // ─── Computed Nodes ───
 
-computedRoutes.post('/canvas/:id/computed', validate(createComputedNodeSchema), checkAnalysisType(), async (req, res, next) => {
+computedRoutes.post('/canvas/:id/computed', validateParams(canvasIdParam), validate(createComputedNodeSchema), checkAnalysisType(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -49,7 +52,7 @@ computedRoutes.post('/canvas/:id/computed', validate(createComputedNodeSchema), 
   } catch (err) { next(err); }
 });
 
-computedRoutes.put('/canvas/:id/computed/:nodeId', validate(updateComputedNodeSchema), async (req, res, next) => {
+computedRoutes.put('/canvas/:id/computed/:nodeId', validateParams(canvasComputedParams), validate(updateComputedNodeSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -67,7 +70,7 @@ computedRoutes.put('/canvas/:id/computed/:nodeId', validate(updateComputedNodeSc
   } catch (err) { next(err); }
 });
 
-computedRoutes.delete('/canvas/:id/computed/:nodeId', async (req, res, next) => {
+computedRoutes.delete('/canvas/:id/computed/:nodeId', validateParams(canvasComputedParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -77,7 +80,7 @@ computedRoutes.delete('/canvas/:id/computed/:nodeId', async (req, res, next) => 
 });
 
 // POST /canvas/:id/computed/:nodeId/run — execute computation
-computedRoutes.post('/canvas/:id/computed/:nodeId/run', checkAnalysisTypeOnRun(), async (req, res, next) => {
+computedRoutes.post('/canvas/:id/computed/:nodeId/run', validateParams(canvasComputedParams), checkAnalysisTypeOnRun(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));

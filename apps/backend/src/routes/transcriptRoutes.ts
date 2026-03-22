@@ -3,10 +3,13 @@ import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import {
   validate,
+  validateParams,
   createTranscriptSchema,
   updateTranscriptSchema,
   importNarrativesSchema,
   importFromCanvasSchema,
+  canvasIdParam,
+  canvasTranscriptParams,
 } from '../middleware/validation.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
 import {
@@ -19,7 +22,7 @@ export const transcriptRoutes = Router();
 
 // ─── Transcripts ───
 
-transcriptRoutes.post('/canvas/:id/transcripts', validate(createTranscriptSchema), checkTranscriptLimit(), checkWordLimit(), async (req, res, next) => {
+transcriptRoutes.post('/canvas/:id/transcripts', validateParams(canvasIdParam), validate(createTranscriptSchema), checkTranscriptLimit(), checkWordLimit(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -31,7 +34,7 @@ transcriptRoutes.post('/canvas/:id/transcripts', validate(createTranscriptSchema
   } catch (err) { next(err); }
 });
 
-transcriptRoutes.put('/canvas/:id/transcripts/:tid', validate(updateTranscriptSchema), checkWordLimit(), async (req, res, next) => {
+transcriptRoutes.put('/canvas/:id/transcripts/:tid', validateParams(canvasTranscriptParams), validate(updateTranscriptSchema), checkWordLimit(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -43,7 +46,7 @@ transcriptRoutes.put('/canvas/:id/transcripts/:tid', validate(updateTranscriptSc
   } catch (err) { next(err); }
 });
 
-transcriptRoutes.delete('/canvas/:id/transcripts/:tid', async (req, res, next) => {
+transcriptRoutes.delete('/canvas/:id/transcripts/:tid', validateParams(canvasTranscriptParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -54,7 +57,7 @@ transcriptRoutes.delete('/canvas/:id/transcripts/:tid', async (req, res, next) =
 
 // ─── Import Narratives (accepts pre-formatted narratives from bridge) ───
 
-transcriptRoutes.post('/canvas/:id/import-narratives', validate(importNarrativesSchema), async (req, res, next) => {
+transcriptRoutes.post('/canvas/:id/import-narratives', validateParams(canvasIdParam), validate(importNarrativesSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -98,7 +101,7 @@ transcriptRoutes.post('/canvas/:id/import-narratives', validate(importNarratives
 
 // ─── Import from Canvas ───
 
-transcriptRoutes.post('/canvas/:id/import-from-canvas', validate(importFromCanvasSchema), async (req, res, next) => {
+transcriptRoutes.post('/canvas/:id/import-from-canvas', validateParams(canvasIdParam), validate(importFromCanvasSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));

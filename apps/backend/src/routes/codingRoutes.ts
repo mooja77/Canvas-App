@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import {
   validate,
+  validateParams,
   createCanvasQuestionSchema,
   updateCanvasQuestionSchema,
   createCanvasMemoSchema,
@@ -16,6 +17,12 @@ import {
   autoCodeSchema,
   mergeQuestionsSchema,
   reassignCodingSchema,
+  canvasIdParam,
+  canvasQuestionParams,
+  canvasMemoParams,
+  canvasCodingCidParams,
+  canvasCaseParams,
+  canvasRelationParams,
 } from '../middleware/validation.js';
 import { logAudit } from '../middleware/auditLog.js';
 import { sha256 } from '../utils/hashing.js';
@@ -31,7 +38,7 @@ export const codingRoutes = Router();
 
 // ─── Questions ───
 
-codingRoutes.post('/canvas/:id/questions', validate(createCanvasQuestionSchema), checkCodeLimit(), async (req, res, next) => {
+codingRoutes.post('/canvas/:id/questions', validateParams(canvasIdParam), validate(createCanvasQuestionSchema), checkCodeLimit(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -43,7 +50,7 @@ codingRoutes.post('/canvas/:id/questions', validate(createCanvasQuestionSchema),
   } catch (err) { next(err); }
 });
 
-codingRoutes.put('/canvas/:id/questions/:qid', validate(updateCanvasQuestionSchema), async (req, res, next) => {
+codingRoutes.put('/canvas/:id/questions/:qid', validateParams(canvasQuestionParams), validate(updateCanvasQuestionSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -55,7 +62,7 @@ codingRoutes.put('/canvas/:id/questions/:qid', validate(updateCanvasQuestionSche
   } catch (err) { next(err); }
 });
 
-codingRoutes.delete('/canvas/:id/questions/:qid', async (req, res, next) => {
+codingRoutes.delete('/canvas/:id/questions/:qid', validateParams(canvasQuestionParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -66,7 +73,7 @@ codingRoutes.delete('/canvas/:id/questions/:qid', async (req, res, next) => {
 
 // ─── Merge Questions ───
 
-codingRoutes.post('/canvas/:id/questions/merge', validate(mergeQuestionsSchema), async (req, res, next) => {
+codingRoutes.post('/canvas/:id/questions/merge', validateParams(canvasIdParam), validate(mergeQuestionsSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -105,7 +112,7 @@ codingRoutes.post('/canvas/:id/questions/merge', validate(mergeQuestionsSchema),
 
 // ─── Memos ───
 
-codingRoutes.post('/canvas/:id/memos', validate(createCanvasMemoSchema), async (req, res, next) => {
+codingRoutes.post('/canvas/:id/memos', validateParams(canvasIdParam), validate(createCanvasMemoSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -116,7 +123,7 @@ codingRoutes.post('/canvas/:id/memos', validate(createCanvasMemoSchema), async (
   } catch (err) { next(err); }
 });
 
-codingRoutes.put('/canvas/:id/memos/:mid', validate(updateCanvasMemoSchema), async (req, res, next) => {
+codingRoutes.put('/canvas/:id/memos/:mid', validateParams(canvasMemoParams), validate(updateCanvasMemoSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -128,7 +135,7 @@ codingRoutes.put('/canvas/:id/memos/:mid', validate(updateCanvasMemoSchema), asy
   } catch (err) { next(err); }
 });
 
-codingRoutes.delete('/canvas/:id/memos/:mid', async (req, res, next) => {
+codingRoutes.delete('/canvas/:id/memos/:mid', validateParams(canvasMemoParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -139,7 +146,7 @@ codingRoutes.delete('/canvas/:id/memos/:mid', async (req, res, next) => {
 
 // ─── Codings ───
 
-codingRoutes.post('/canvas/:id/codings', validate(createCodingSchema), async (req, res, next) => {
+codingRoutes.post('/canvas/:id/codings', validateParams(canvasIdParam), validate(createCodingSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -177,7 +184,7 @@ codingRoutes.post('/canvas/:id/codings', validate(createCodingSchema), async (re
   } catch (err) { next(err); }
 });
 
-codingRoutes.put('/canvas/:id/codings/:cid', validate(updateCodingSchema), async (req, res, next) => {
+codingRoutes.put('/canvas/:id/codings/:cid', validateParams(canvasCodingCidParams), validate(updateCodingSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -204,7 +211,7 @@ codingRoutes.put('/canvas/:id/codings/:cid', validate(updateCodingSchema), async
   } catch (err) { next(err); }
 });
 
-codingRoutes.delete('/canvas/:id/codings/:cid', async (req, res, next) => {
+codingRoutes.delete('/canvas/:id/codings/:cid', validateParams(canvasCodingCidParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -228,7 +235,7 @@ codingRoutes.delete('/canvas/:id/codings/:cid', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-codingRoutes.put('/canvas/:id/codings/:cid/reassign', validate(reassignCodingSchema), async (req, res, next) => {
+codingRoutes.put('/canvas/:id/codings/:cid/reassign', validateParams(canvasCodingCidParams), validate(reassignCodingSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -264,7 +271,7 @@ codingRoutes.put('/canvas/:id/codings/:cid/reassign', validate(reassignCodingSch
 
 // ─── Auto-Code ───
 
-codingRoutes.post('/canvas/:id/auto-code', validate(autoCodeSchema), checkAutoCode(), async (req, res, next) => {
+codingRoutes.post('/canvas/:id/auto-code', validateParams(canvasIdParam), validate(autoCodeSchema), checkAutoCode(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -318,7 +325,7 @@ codingRoutes.post('/canvas/:id/auto-code', validate(autoCodeSchema), checkAutoCo
 
 // ─── Cases ───
 
-codingRoutes.post('/canvas/:id/cases', validate(createCaseSchema), checkCaseAccess(), async (req, res, next) => {
+codingRoutes.post('/canvas/:id/cases', validateParams(canvasIdParam), validate(createCaseSchema), checkCaseAccess(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -340,7 +347,7 @@ codingRoutes.post('/canvas/:id/cases', validate(createCaseSchema), checkCaseAcce
   }
 });
 
-codingRoutes.put('/canvas/:id/cases/:caseId', validate(updateCaseSchema), async (req, res, next) => {
+codingRoutes.put('/canvas/:id/cases/:caseId', validateParams(canvasCaseParams), validate(updateCaseSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -361,7 +368,7 @@ codingRoutes.put('/canvas/:id/cases/:caseId', validate(updateCaseSchema), async 
   }
 });
 
-codingRoutes.delete('/canvas/:id/cases/:caseId', async (req, res, next) => {
+codingRoutes.delete('/canvas/:id/cases/:caseId', validateParams(canvasCaseParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -372,7 +379,7 @@ codingRoutes.delete('/canvas/:id/cases/:caseId', async (req, res, next) => {
 
 // ─── Relations ───
 
-codingRoutes.post('/canvas/:id/relations', validate(createRelationSchema), async (req, res, next) => {
+codingRoutes.post('/canvas/:id/relations', validateParams(canvasIdParam), validate(createRelationSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -383,7 +390,7 @@ codingRoutes.post('/canvas/:id/relations', validate(createRelationSchema), async
   } catch (err) { next(err); }
 });
 
-codingRoutes.put('/canvas/:id/relations/:relId', validate(updateRelationSchema), async (req, res, next) => {
+codingRoutes.put('/canvas/:id/relations/:relId', validateParams(canvasRelationParams), validate(updateRelationSchema), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
@@ -395,7 +402,7 @@ codingRoutes.put('/canvas/:id/relations/:relId', validate(updateRelationSchema),
   } catch (err) { next(err); }
 });
 
-codingRoutes.delete('/canvas/:id/relations/:relId', async (req, res, next) => {
+codingRoutes.delete('/canvas/:id/relations/:relId', validateParams(canvasRelationParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
