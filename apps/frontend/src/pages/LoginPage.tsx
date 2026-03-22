@@ -195,6 +195,12 @@ export default function LoginPage() {
           <p className="text-gray-500 dark:text-gray-400 mt-1">Visual workspace for qualitative research</p>
         </div>
 
+        {searchParams.get('expired') === 'true' && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+            Your session has expired. Please sign in again.
+          </div>
+        )}
+
         <div className="modal-enter bg-white/95 dark:bg-gray-800/95 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none backdrop-blur-sm p-8 ring-1 ring-gray-200/50 dark:ring-gray-700/50">
           <div className="flex mb-6 bg-gray-100 dark:bg-gray-700 rounded-lg p-1" role="tablist" aria-label="Authentication mode">
             <button

@@ -19,7 +19,7 @@ interface UIState {
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
-      darkMode: false,
+      darkMode: typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches,
       onboardingComplete: false,
       sidebarCollapsed: false,
       edgeStyle: 'bezier' as EdgeStyleType,

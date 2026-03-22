@@ -45,7 +45,7 @@ export default function App() {
           }
         />
         <Route
-          path="/canvas"
+          path="/canvas/:canvasId?"
           element={
             <ProtectedRoute>
               <Suspense fallback={<PageSkeleton />}>
