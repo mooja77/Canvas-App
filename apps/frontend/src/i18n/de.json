@@ -1,0 +1,28 @@
+{
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "create": "Erstellen",
+    "close": "Schließen",
+    "search": "Suchen",
+    "loading": "Wird geladen...",
+    "confirm": "Bestätigen",
+    "reset": "Zurücksetzen"
+  },
+  "canvas": {
+    "codingCanvases": "Kodierungs-Arbeitsflächen",
+    "newCanvas": "Neue Arbeitsfläche",
+    "transcript": "Transkript",
+    "code": "Code",
+    "memo": "Memo",
+    "workspaceSubtitle": "Visuelle Arbeitsbereiche für qualitative Interviewkodierung"
+  },
+  "auth": {
+    "signIn": "Anmelden",
+    "signUp": "Registrieren",
+    "signOut": "Abmelden",
+    "email": "E-Mail",
+    "password": "Passwort"
+  }
+}

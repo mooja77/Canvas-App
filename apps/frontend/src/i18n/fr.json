@@ -1,0 +1,28 @@
+{
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "create": "Créer",
+    "close": "Fermer",
+    "search": "Rechercher",
+    "loading": "Chargement...",
+    "confirm": "Confirmer",
+    "reset": "Réinitialiser"
+  },
+  "canvas": {
+    "codingCanvases": "Canevas de codage",
+    "newCanvas": "Nouveau canevas",
+    "transcript": "Transcription",
+    "code": "Code",
+    "memo": "Mémo",
+    "workspaceSubtitle": "Espaces de travail visuels pour le codage qualitatif d'entretiens"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signUp": "S'inscrire",
+    "signOut": "Se déconnecter",
+    "email": "E-mail",
+    "password": "Mot de passe"
+  }
+}

@@ -106,7 +106,8 @@ describe('Auth routes', () => {
         plan: 'free',
         passwordHash: '$2a$12$hashedpassword',
       };
-      mockPrisma.$transaction.mockImplementation(async (fn: Function) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockPrisma.$transaction.mockImplementation(async (fn: any) => {
         return fn({
           user: { create: vi.fn().mockResolvedValue(createdUser) },
           dashboardAccess: { create: vi.fn().mockResolvedValue({}) },

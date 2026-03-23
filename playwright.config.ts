@@ -34,5 +34,8 @@ export default defineConfig({
     url: 'http://localhost:5174',
     reuseExistingServer: true,
     timeout: 30000,
+    env: {
+      E2E_TEST: 'true',
+    },
   },
 });

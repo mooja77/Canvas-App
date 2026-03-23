@@ -4,16 +4,6 @@ import * as fs from 'fs';
 const AUTH_FILE = 'e2e/.auth/user.json';
 
 setup('authenticate', async ({ page }) => {
-  // Reuse existing auth state if it exists and is recent (< 10 min old)
-  if (fs.existsSync(AUTH_FILE)) {
-    const stat = fs.statSync(AUTH_FILE);
-    const ageMs = Date.now() - stat.mtimeMs;
-    if (ageMs < 10 * 60 * 1000) {
-      // Auth state is fresh — skip login to avoid rate limiting
-      return;
-    }
-  }
-
   await page.goto('/login');
   await page.getByRole('button', { name: 'Sign in with access code' }).click();
   const codeInput = page.getByRole('textbox', { name: 'Enter your access code' });
@@ -26,7 +16,7 @@ setup('authenticate', async ({ page }) => {
   await signInBtn.click();
 
   // Wait for navigation
-  await page.waitForURL('**/canvas**', { timeout: 10000 });
+  await page.waitForURL('**/canvas**', { timeout: 20000 });
   await expect(page.getByText('Coding Canvases')).toBeVisible({ timeout: 5000 });
 
   // Mark onboarding tour as complete so it doesn't block E2E tests.

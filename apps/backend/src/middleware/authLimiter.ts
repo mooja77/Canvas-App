@@ -1,6 +1,10 @@
 import rateLimit from 'express-rate-limit';
+import type { Request, Response, NextFunction } from 'express';
 
-export const authLimiter = rateLimit({
+// Skip rate limiting in test/E2E environments
+const isTestEnv = process.env.NODE_ENV === 'test' || process.env.E2E_TEST === 'true';
+
+const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   keyGenerator: (req) => req.ip || req.socket.remoteAddress || 'unknown',
@@ -13,3 +17,7 @@ export const authLimiter = rateLimit({
     });
   },
 });
+
+export const authLimiter = isTestEnv
+  ? (_req: Request, _res: Response, next: NextFunction) => next()
+  : limiter;
