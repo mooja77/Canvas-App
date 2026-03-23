@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { canvasApi } from '../../../services/api';
 import { useActiveCanvasId } from '../../../stores/canvasStore';
 import ConfirmDialog from '../ConfirmDialog';
-import type { CanvasShare } from '@canvas-app/shared';
+import type { CanvasShare } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 interface Props {

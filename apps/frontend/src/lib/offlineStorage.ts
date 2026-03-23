@@ -1,4 +1,4 @@
-const DB_NAME = 'canvas-app-offline';
+const DB_NAME = 'qualcanvas-offline';
 const STORE_NAME = 'canvases';
 
 function openDB(): Promise<IDBDatabase> {

@@ -12,10 +12,10 @@ export default function TermsPage() {
           <p><strong>Last updated:</strong> March 2026</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-6">1. Acceptance of Terms</h2>
-          <p>By accessing or using Canvas App ("the Service"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.</p>
+          <p>By accessing or using QualCanvas ("the Service"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-6">2. Description of Service</h2>
-          <p>Canvas App is a qualitative research coding platform that allows you to upload transcripts, apply codes, and perform analysis. The Service is provided on a subscription basis with Free, Pro, and Team tiers.</p>
+          <p>QualCanvas is a qualitative research coding platform that allows you to upload transcripts, apply codes, and perform analysis. The Service is provided on a subscription basis with Free, Pro, and Team tiers.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-6">3. Your Data</h2>
           <p>You retain all rights to the data you upload. We do not claim ownership of your research data, transcripts, or analysis. You are responsible for ensuring you have the necessary consent and ethical approval to process any personal data you upload.</p>

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { CanvasTextCoding } from '@canvas-app/shared';
+import type { CanvasTextCoding } from '@qualcanvas/shared';
 
 interface CodingStripesOverlayProps {
   contentLength: number;

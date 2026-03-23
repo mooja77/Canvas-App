@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { canvasApi } from '../../../services/api';
 import { useCanvasStore, useActiveCanvasId } from '../../../stores/canvasStore';
-import type { CanvasTranscript } from '@canvas-app/shared';
+import type { CanvasTranscript } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 interface CanvasSummary {

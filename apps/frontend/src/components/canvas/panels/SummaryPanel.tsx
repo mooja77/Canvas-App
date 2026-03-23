@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
 import { canvasApi } from '../../../services/api';
-import type { Summary } from '@canvas-app/shared';
+import type { Summary } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 interface SummaryPanelProps {

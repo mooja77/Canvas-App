@@ -3,7 +3,7 @@ import type { NodeProps } from '@xyflow/react';
 import { Text } from '@visx/text';
 import ComputedNodeShell from './ComputedNodeShell';
 import { useCanvasStore, useCanvasComputedNodes, useCanvasQuestions } from '../../../stores/canvasStore';
-import type { CanvasComputedNode, CanvasQuestion, WordCloudConfig, WordCloudResult } from '@canvas-app/shared';
+import type { CanvasComputedNode, CanvasQuestion, WordCloudConfig, WordCloudResult } from '@qualcanvas/shared';
 
 export interface WordCloudNodeData {
   computedNodeId: string;

@@ -219,7 +219,7 @@ describe('persist behavior', () => {
   it('persists shortcuts to localStorage under the correct key', () => {
     useShortcutStore.getState().setShortcut('fitView', 'ctrl+f');
     // Zustand persist writes to localStorage synchronously
-    const stored = localStorage.getItem('canvas-app-shortcuts');
+    const stored = localStorage.getItem('qualcanvas-shortcuts');
     expect(stored).not.toBeNull();
     const parsed = JSON.parse(stored!);
     expect(parsed.state.shortcuts.fitView).toBe('ctrl+f');
@@ -227,7 +227,7 @@ describe('persist behavior', () => {
 
   it('only persists the shortcuts slice (partialize)', () => {
     useShortcutStore.getState().setShortcut('undo', 'ctrl+y');
-    const stored = localStorage.getItem('canvas-app-shortcuts');
+    const stored = localStorage.getItem('qualcanvas-shortcuts');
     expect(stored).not.toBeNull();
     const parsed = JSON.parse(stored!);
     // Should have shortcuts but NOT function keys like getShortcut, setShortcut, etc.

@@ -74,7 +74,7 @@ The build produces:
 
 ```bash
 # Build the image
-docker build -t canvas-app .
+docker build -t qualcanvas .
 
 # Run with docker-compose
 docker-compose up -d
@@ -111,7 +111,7 @@ Pass additional env vars to the `app` service in `docker-compose.yml` or via a `
    ```bash
    cd apps/backend && npx tsx prisma/seed.ts
    ```
-10. Note your Railway public URL (e.g., `https://canvas-app-production.up.railway.app`)
+10. Note your Railway public URL (e.g., `https://qualcanvas-production.up.railway.app`)
 
 Railway auto-deploys on every push to your connected branch.
 
@@ -209,7 +209,7 @@ Configure email sending for password resets and notifications:
 | `SMTP_PORT` | `465` (SSL) or `587` (TLS) |
 | `SMTP_USER` | Your SMTP username |
 | `SMTP_PASS` | Your SMTP password or app-specific password |
-| `SMTP_FROM` | `Canvas App <noreply@your-domain.com>` |
+| `SMTP_FROM` | `QualCanvas <noreply@qualcanvas.com>` |
 
 If SMTP is not configured, password reset links are logged to the server console (useful for development).
 

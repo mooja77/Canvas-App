@@ -3,7 +3,7 @@ import type { NodeProps } from '@xyflow/react';
 import { Treemap, ResponsiveContainer, Tooltip } from 'recharts';
 import ComputedNodeShell from './ComputedNodeShell';
 import { useCanvasStore, useCanvasComputedNodes } from '../../../stores/canvasStore';
-import type { CanvasComputedNode, TreemapConfig, TreemapResult } from '@canvas-app/shared';
+import type { CanvasComputedNode, TreemapConfig, TreemapResult } from '@qualcanvas/shared';
 
 export interface TreemapNodeData {
   computedNodeId: string;

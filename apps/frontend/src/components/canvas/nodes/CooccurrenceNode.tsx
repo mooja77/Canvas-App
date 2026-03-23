@@ -2,7 +2,7 @@ import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
 import { useCanvasStore, useCanvasComputedNodes, useCanvasQuestions } from '../../../stores/canvasStore';
-import type { CanvasComputedNode, CanvasQuestion, CooccurrenceConfig, CooccurrenceResult } from '@canvas-app/shared';
+import type { CanvasComputedNode, CanvasQuestion, CooccurrenceConfig, CooccurrenceResult } from '@qualcanvas/shared';
 
 export interface CooccurrenceNodeData {
   computedNodeId: string;

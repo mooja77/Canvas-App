@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
-import type { CanvasTextCoding, CanvasQuestion } from '@canvas-app/shared';
+import type { CanvasTextCoding, CanvasQuestion } from '@qualcanvas/shared';
 
 // ─── Preset colors (same as ColorPicker) ───
 

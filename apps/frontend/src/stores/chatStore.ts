@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ChatMessage } from '@canvas-app/shared';
+import type { ChatMessage } from '@qualcanvas/shared';
 import { canvasApi } from '../services/api';
 
 interface ChatState {

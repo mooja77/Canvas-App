@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
-import type { CanvasTranscript, CanvasQuestion, CanvasMemo, CanvasTextCoding } from '@canvas-app/shared';
+import type { CanvasTranscript, CanvasQuestion, CanvasMemo, CanvasTextCoding } from '@qualcanvas/shared';
 
 interface CanvasSearchOverlayProps {
   onClose: () => void;

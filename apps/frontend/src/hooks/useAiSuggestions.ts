@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { canvasApi } from '../services/api';
 import { useCanvasStore, useActiveCanvasId } from '../stores/canvasStore';
-import type { AiSuggestion } from '@canvas-app/shared';
+import type { AiSuggestion } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 export function useAiSuggestions() {

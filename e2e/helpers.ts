@@ -7,10 +7,10 @@ import type { Page } from '@playwright/test';
 export async function openCanvas(page: Page) {
   // Ensure onboarding tour is dismissed
   await page.addInitScript(() => {
-    const existing = localStorage.getItem('canvas-app-ui');
+    const existing = localStorage.getItem('qualcanvas-ui');
     const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
     state.state = { ...state.state, onboardingComplete: true };
-    localStorage.setItem('canvas-app-ui', JSON.stringify(state));
+    localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
   });
 
   await page.goto('/canvas');

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import CodeNavigator from './CodeNavigator';
-import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@canvas-app/shared';
+import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@qualcanvas/shared';
 
 // ── Mock data factories ──
 

@@ -6,7 +6,7 @@ import { useCanvasStore, useCanvasCodings, useCanvasQuestions, useSelectedQuesti
 import { useUIStore } from '../../../stores/uiStore';
 import ConfirmDialog from '../ConfirmDialog';
 import ColorPicker from '../panels/ColorPicker';
-import type { CanvasTextCoding, CanvasQuestion } from '@canvas-app/shared';
+import type { CanvasTextCoding, CanvasQuestion } from '@qualcanvas/shared';
 
 export interface QuestionNodeData {
   questionId: string;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import { useUIStore } from '../../../stores/uiStore';
-import type { CanvasTranscript, CanvasQuestion, CanvasMemo, CanvasComputedNode, ComputedNodeType } from '@canvas-app/shared';
+import type { CanvasTranscript, CanvasQuestion, CanvasMemo, CanvasComputedNode, ComputedNodeType } from '@qualcanvas/shared';
 
 interface CommandPaletteProps {
   onClose: () => void;

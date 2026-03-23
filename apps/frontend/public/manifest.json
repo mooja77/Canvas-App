@@ -1,6 +1,6 @@
 {
-  "name": "Canvas App - Qualitative Coding",
-  "short_name": "Canvas App",
+  "name": "QualCanvas - Qualitative Coding",
+  "short_name": "QualCanvas",
   "description": "A qualitative coding canvas for researchers. Organize, code, and analyze textual data visually.",
   "start_url": "/",
   "display": "standalone",

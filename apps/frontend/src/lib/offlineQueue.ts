@@ -6,7 +6,7 @@ interface QueuedOperation {
   timestamp: number;
 }
 
-const QUEUE_KEY = 'canvas-app-offline-queue';
+const QUEUE_KEY = 'qualcanvas-offline-queue';
 
 export function queueOperation(op: Omit<QueuedOperation, 'id' | 'timestamp'>) {
   const queue = getQueue();

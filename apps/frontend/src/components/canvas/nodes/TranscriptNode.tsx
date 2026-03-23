@@ -10,7 +10,7 @@ import CodingStripesOverlay from '../panels/CodingStripesOverlay';
 import CodingDensityBar from '../CodingDensityBar';
 import TranscriptContextMenu from '../TranscriptContextMenu';
 import ConfirmDialog from '../ConfirmDialog';
-import type { CanvasTextCoding, CanvasQuestion, CanvasCase } from '@canvas-app/shared';
+import type { CanvasTextCoding, CanvasQuestion, CanvasCase } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 export interface TranscriptNodeData {

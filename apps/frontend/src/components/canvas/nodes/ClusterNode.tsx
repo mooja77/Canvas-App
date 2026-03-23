@@ -2,7 +2,7 @@ import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
 import { useCanvasStore, useCanvasComputedNodes } from '../../../stores/canvasStore';
-import type { CanvasComputedNode, ClusterConfig, ClusterResult } from '@canvas-app/shared';
+import type { CanvasComputedNode, ClusterConfig, ClusterResult } from '@qualcanvas/shared';
 
 export interface ClusterNodeData {
   computedNodeId: string;

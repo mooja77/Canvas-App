@@ -3,7 +3,7 @@ import type { NodeProps } from '@xyflow/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import ComputedNodeShell from './ComputedNodeShell';
 import { useCanvasStore, useCanvasComputedNodes } from '../../../stores/canvasStore';
-import type { CanvasComputedNode, StatsConfig, StatsResult } from '@canvas-app/shared';
+import type { CanvasComputedNode, StatsConfig, StatsResult } from '@qualcanvas/shared';
 
 export interface StatsNodeData {
   computedNodeId: string;

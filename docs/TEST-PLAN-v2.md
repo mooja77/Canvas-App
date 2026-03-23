@@ -1,9 +1,9 @@
-# Canvas App — Master Test Plan v2
+# QualCanvas — Master Test Plan v2
 
 **Version:** 2.0
 **Date:** 2026-03-23
 **Classification:** Pre-Release QA
-**App:** Canvas App — Qualitative Coding Platform for Researchers
+**App:** QualCanvas — Qualitative Coding Platform for Researchers
 **Stack:** React 18 + Vite / Express + Prisma + PostgreSQL / Stripe / LLM APIs (OpenAI, Anthropic, Google) / Socket.IO / i18n (4 languages) / Docker
 **Prepared by:** QA Engineering
 

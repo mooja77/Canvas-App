@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import type { CanvasQuestion, DocumentRegionCoding } from '@canvas-app/shared';
+import type { CanvasQuestion, DocumentRegionCoding } from '@qualcanvas/shared';
 
 interface RegionCodingOverlayProps {
   documentId: string;

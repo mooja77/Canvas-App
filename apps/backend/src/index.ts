@@ -247,7 +247,7 @@ const httpServer = createServer(app);
 initSocketServer(httpServer);
 
 const server = httpServer.listen(PORT, () => {
-  console.log(`Canvas App backend running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  console.log(`QualCanvas backend running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
 });
 
 // Graceful shutdown

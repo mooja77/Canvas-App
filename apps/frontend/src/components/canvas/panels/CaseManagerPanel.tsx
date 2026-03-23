@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import ConfirmDialog from '../ConfirmDialog';
-import type { CanvasCase, CanvasTranscript } from '@canvas-app/shared';
+import type { CanvasCase, CanvasTranscript } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 interface CaseManagerPanelProps {

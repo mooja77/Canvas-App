@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useCanvasStore } from '../../../stores/canvasStore';
-import type { ComputedNodeType } from '@canvas-app/shared';
+import type { ComputedNodeType } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 interface NodeOption {

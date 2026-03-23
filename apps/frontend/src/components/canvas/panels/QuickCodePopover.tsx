@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useCanvasStore, useCanvasQuestions, useCanvasCodings } from '../../../stores/canvasStore';
-import type { CanvasQuestion, CanvasTextCoding } from '@canvas-app/shared';
+import type { CanvasQuestion, CanvasTextCoding } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 interface QuickCodePopoverProps {

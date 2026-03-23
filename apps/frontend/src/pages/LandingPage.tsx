@@ -19,7 +19,7 @@ export default function LandingPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
             </svg>
           </div>
-          <span className="font-bold text-gray-900 dark:text-white">Canvas App</span>
+          <span className="font-bold text-gray-900 dark:text-white">QualCanvas</span>
         </div>
         {/* Desktop nav */}
         <div className="hidden sm:flex items-center gap-4">
@@ -204,8 +204,8 @@ export default function LandingPage() {
         <div className="space-y-4">
           {[
             { q: 'What is qualitative coding?', a: 'Qualitative coding is a research method where you assign labels (codes) to segments of text data like interviews or field notes, then analyze patterns across those codes to develop theories and insights.' },
-            { q: 'Who is Canvas App for?', a: 'Canvas App is built for qualitative researchers, graduate students, UX researchers, and anyone who works with text data and needs to find patterns and themes.' },
-            { q: 'How is this different from NVivo or ATLAS.ti?', a: 'Canvas App puts everything on a visual, interactive canvas instead of hiding data behind menus. You see transcripts, codes, memos, and analysis results all at once — making it easier to discover connections.' },
+            { q: 'Who is QualCanvas for?', a: 'QualCanvas is built for qualitative researchers, graduate students, UX researchers, and anyone who works with text data and needs to find patterns and themes.' },
+            { q: 'How is this different from NVivo or ATLAS.ti?', a: 'QualCanvas puts everything on a visual, interactive canvas instead of hiding data behind menus. You see transcripts, codes, memos, and analysis results all at once — making it easier to discover connections.' },
             { q: 'Is my research data secure?', a: 'Yes. Your data is encrypted in transit and at rest. We offer ethics compliance tools including consent tracking, data anonymization, and full audit trails for IRB requirements.' },
           ].map(({ q, a }) => (
             <details key={q} className="group bg-gray-50 dark:bg-gray-800 rounded-xl">
@@ -248,7 +248,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="max-w-6xl mx-auto px-4 py-8 border-t border-gray-200 dark:border-gray-800">
         <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-          <span>Canvas App</span>
+          <span>QualCanvas</span>
           <div className="flex gap-4">
             <Link to="/pricing" className="hover:text-gray-700 dark:hover:text-gray-300">{t('pricing.title')}</Link>
             <Link to="/login" className="hover:text-gray-700 dark:hover:text-gray-300">{t('auth.signIn')}</Link>

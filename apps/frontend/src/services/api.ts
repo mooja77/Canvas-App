@@ -19,9 +19,9 @@ import type {
   AutoCodeInput,
   SuggestCodesInput,
   AutoCodeTranscriptInput,
-} from '@canvas-app/shared';
+} from '@qualcanvas/shared';
 
-// ─── Canvas API client (points to Canvas App backend) ───
+// ─── Canvas API client (points to QualCanvas backend) ───
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -33,7 +33,7 @@ export const canvasClient = axios.create({
 // Inject auth token from authStore
 canvasClient.interceptors.request.use(config => {
   try {
-    const stored = localStorage.getItem('canvas-app-auth');
+    const stored = localStorage.getItem('qualcanvas-auth');
     if (stored) {
       const parsed = JSON.parse(stored);
       const jwt = parsed?.state?.jwt;

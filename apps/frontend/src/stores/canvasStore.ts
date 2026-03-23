@@ -11,7 +11,7 @@ import type {
   CanvasRelation,
   CanvasComputedNode,
   ComputedNodeType,
-} from '@canvas-app/shared';
+} from '@qualcanvas/shared';
 import { canvasApi } from '../services/api';
 import { emitSocketEvent } from '../lib/socket';
 import { cacheCanvas, getCachedCanvas } from '../lib/offlineStorage';

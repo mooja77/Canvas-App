@@ -7,11 +7,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://canvas-app-production.up.railway.app/api/:path*"
+      "destination": "https://qualcanvas-production.up.railway.app/api/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://canvas-app-production.up.railway.app/health"
+      "destination": "https://qualcanvas-production.up.railway.app/health"
     },
     {
       "source": "/(.*)",

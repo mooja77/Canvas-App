@@ -2,7 +2,7 @@ import { memo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
 import { useCanvasComputedNodes, useCanvasQuestions } from '../../../stores/canvasStore';
-import type { CanvasComputedNode, CanvasQuestion, MatrixResult } from '@canvas-app/shared';
+import type { CanvasComputedNode, CanvasQuestion, MatrixResult } from '@qualcanvas/shared';
 
 export interface MatrixNodeData {
   computedNodeId: string;

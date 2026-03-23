@@ -92,7 +92,7 @@ export const useAuthStore = create<AuthState>()(
       }),
     }),
     {
-      name: 'canvas-app-auth',
+      name: 'qualcanvas-auth',
       onRehydrateStorage: () => {
         return (state) => {
           // If authenticated but missing JWT, reset to logged-out state

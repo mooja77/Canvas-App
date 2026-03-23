@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useCanvasStore, useCanvasQuestions, useCanvasTranscripts, useCanvasCodings, useCanvasCases, useSelectedQuestionId } from '../../../stores/canvasStore';
 import { useCodeBookmarks } from '../../../hooks/useCodeBookmarks';
-import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@canvas-app/shared';
+import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@qualcanvas/shared';
 
 interface CodeNavigatorProps {
   onFocusNode: (nodeId: string) => void;

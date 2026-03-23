@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
-import type { CanvasCase, CanvasQuestion, CanvasTextCoding } from '@canvas-app/shared';
+import type { CanvasCase, CanvasQuestion, CanvasTextCoding } from '@qualcanvas/shared';
 
 interface CrossCaseAnalysisModalProps {
   onClose: () => void;

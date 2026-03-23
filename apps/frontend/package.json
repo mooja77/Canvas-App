@@ -1,5 +1,5 @@
 {
-  "name": "@canvas-app/frontend",
+  "name": "@qualcanvas/frontend",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@canvas-app/shared": "*",
+    "@qualcanvas/shared": "*",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
     "@visx/text": "^3.12.0",

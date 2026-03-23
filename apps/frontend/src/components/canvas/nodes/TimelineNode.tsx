@@ -2,7 +2,7 @@ import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
 import { useCanvasComputedNodes } from '../../../stores/canvasStore';
-import type { CanvasComputedNode } from '@canvas-app/shared';
+import type { CanvasComputedNode } from '@qualcanvas/shared';
 
 export interface TimelineNodeData {
   computedNodeId: string;

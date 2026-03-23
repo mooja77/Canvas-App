@@ -1,4 +1,4 @@
-# Canvas App — API Reference
+# QualCanvas — API Reference
 
 Base URL: `/api`
 

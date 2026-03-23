@@ -1,7 +1,7 @@
-# Canvas App — Developer Handoff
+# QualCanvas — Developer Handoff
 
 > **Origin**: Extracted from the WISEShift monorepo (Feb 2026).
-> This document gives a new developer everything they need to run, understand, and extend the Canvas App.
+> This document gives a new developer everything they need to run, understand, and extend the QualCanvas.
 
 ---
 
@@ -24,7 +24,7 @@ A standalone qualitative coding canvas for researchers. Think of it as a visual 
 ## 2. Quick Start
 
 ```bash
-cd "C:\JM Programs\Canvas App"
+cd "C:\JM Programs\QualCanvas"
 npm install
 npm run db:migrate      # creates SQLite DB + tables
 npm run db:seed         # creates demo account CANVAS-DEMO2025
@@ -38,11 +38,11 @@ Open `http://localhost:5174`. Sign in with `CANVAS-DEMO2025` or register a new a
 ## 3. Project Structure
 
 ```
-Canvas App/
+QualCanvas/
 ├── package.json              # workspace root (scripts: dev, build, db:migrate, db:seed)
 ├── tsconfig.base.json        # shared compiler options
 │
-├── shared/                   # @canvas-app/shared
+├── shared/                   # @qualcanvas/shared
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── index.ts              # re-exports everything from types/
@@ -57,7 +57,7 @@ Canvas App/
 │   │   ├── schema.prisma     # 13 models (see §6)
 │   │   ├── seed.ts           # demo account
 │   │   ├── migrations/       # Prisma migrations
-│   │   └── canvas-app.db     # SQLite file (gitignored)
+│   │   └── qualcanvas.db     # SQLite file (gitignored)
 │   └── src/
 │       ├── index.ts          # entry — Express on port 3007
 │       ├── lib/prisma.ts     # singleton Prisma client
@@ -90,8 +90,8 @@ Canvas App/
         │   ├── LoginPage.tsx     # sign-in / register UI
         │   └── CanvasPage.tsx    # minimal header + CodingCanvas
         ├── stores/
-        │   ├── authStore.ts      # Zustand persisted (localStorage key: canvas-app-auth)
-        │   ├── uiStore.ts        # dark mode toggle (key: canvas-app-ui)
+        │   ├── authStore.ts      # Zustand persisted (localStorage key: qualcanvas-auth)
+        │   ├── uiStore.ts        # dark mode toggle (key: qualcanvas-ui)
         │   └── canvasStore.ts    # main state + all actions (~580 lines)
         ├── services/
         │   └── api.ts            # canvasApi, authApi, createWiseShiftBridge()
@@ -179,7 +179,7 @@ POST /api/auth/register  { name: "Alice" }
 → { success: true, data: { accessCode: "CANVAS-XXXXXXXX", jwt, ... } }
 ```
 
-The frontend stores auth state in Zustand (`authStore.ts`) persisted to `localStorage` under key `canvas-app-auth`. The axios interceptor in `api.ts` injects the JWT on every request.
+The frontend stores auth state in Zustand (`authStore.ts`) persisted to `localStorage` under key `qualcanvas-auth`. The axios interceptor in `api.ts` injects the JWT on every request.
 
 **JWT config:** 24h expiry, secret from `JWT_SECRET` env var.
 
@@ -300,7 +300,7 @@ To add a new computed node type:
 
 ## 9. WISEShift Bridge (Optional Integration)
 
-The Canvas App can optionally fetch narrative responses from a running WISEShift instance.
+The QualCanvas can optionally fetch narrative responses from a running WISEShift instance.
 
 **How it works:**
 
@@ -328,8 +328,8 @@ The bridge is entirely optional — users can also paste text manually or upload
 
 ### Backend (`apps/backend/.env`)
 ```env
-DATABASE_URL="file:./canvas-app.db"
-JWT_SECRET="canvas-app-dev-secret-change-in-production"
+DATABASE_URL="file:./qualcanvas.db"
+JWT_SECRET="qualcanvas-dev-secret-change-in-production"
 PORT=3007
 NODE_ENV=development
 ```

@@ -9,10 +9,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_DIR="$(dirname "$SCRIPT_DIR")"
-DB_PATH="${BACKEND_DIR}/prisma/canvas-app.db"
+DB_PATH="${BACKEND_DIR}/prisma/qualcanvas.db"
 BACKUP_DIR="${1:-${BACKEND_DIR}/backups}"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-BACKUP_FILE="${BACKUP_DIR}/canvas-app_${TIMESTAMP}.db"
+BACKUP_FILE="${BACKUP_DIR}/qualcanvas_${TIMESTAMP}.db"
 MAX_BACKUPS=10
 
 if [ ! -f "$DB_PATH" ]; then
@@ -34,9 +34,9 @@ else
 fi
 
 # Prune old backups, keeping only the most recent MAX_BACKUPS
-BACKUP_COUNT=$(ls -1 "${BACKUP_DIR}"/canvas-app_*.db 2>/dev/null | wc -l)
+BACKUP_COUNT=$(ls -1 "${BACKUP_DIR}"/qualcanvas_*.db 2>/dev/null | wc -l)
 if [ "$BACKUP_COUNT" -gt "$MAX_BACKUPS" ]; then
   PRUNE_COUNT=$((BACKUP_COUNT - MAX_BACKUPS))
-  ls -1t "${BACKUP_DIR}"/canvas-app_*.db | tail -n "$PRUNE_COUNT" | xargs rm -f
+  ls -1t "${BACKUP_DIR}"/qualcanvas_*.db | tail -n "$PRUNE_COUNT" | xargs rm -f
   echo "Pruned ${PRUNE_COUNT} old backup(s), keeping ${MAX_BACKUPS} most recent"
 fi

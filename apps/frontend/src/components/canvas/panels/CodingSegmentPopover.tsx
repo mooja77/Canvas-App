@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
-import type { CanvasQuestion, CanvasTextCoding } from '@canvas-app/shared';
+import type { CanvasQuestion, CanvasTextCoding } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 interface CodingSegmentPopoverProps {

@@ -88,7 +88,7 @@ export const useShortcutStore = create<ShortcutState>()(
       resetAll: () => set({ shortcuts: { ...DEFAULT_SHORTCUTS } }),
     }),
     {
-      name: 'canvas-app-shortcuts',
+      name: 'qualcanvas-shortcuts',
       partialize: (state) => ({ shortcuts: state.shortcuts }),
     }
   )

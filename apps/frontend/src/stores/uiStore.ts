@@ -51,7 +51,7 @@ export const useUIStore = create<UIState>()(
       setZoomTier: (tier) => set({ zoomTier: tier }),
     }),
     {
-      name: 'canvas-app-ui',
+      name: 'qualcanvas-ui',
       partialize: (state) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { zoomTier, ...persisted } = state;

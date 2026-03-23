@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { CanvasQuestion } from '@canvas-app/shared';
+import type { CanvasQuestion } from '@qualcanvas/shared';
 
 interface BooleanCondition {
   questionId: string;

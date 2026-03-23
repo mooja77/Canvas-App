@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
-import type { CanvasTranscript, CanvasQuestion, CanvasTextCoding } from '@canvas-app/shared';
+import type { CanvasTranscript, CanvasQuestion, CanvasTextCoding } from '@qualcanvas/shared';
 
 interface Props {
   onClose: () => void;

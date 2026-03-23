@@ -65,7 +65,7 @@ export default function VerifyEmailPage() {
               </div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Email Verified!</h2>
               <p className="text-sm text-gray-600 dark:text-gray-300">
-                Your email has been verified successfully. You can now enjoy the full Canvas App experience.
+                Your email has been verified successfully. You can now enjoy the full QualCanvas experience.
               </p>
               <Link
                 to="/canvas"

@@ -198,7 +198,7 @@ export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
                   </li>
                   <li className="flex gap-2">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-bold text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">2</span>
-                    <span>Create a new API key (name it &ldquo;Canvas App&rdquo;)</span>
+                    <span>Create a new API key (name it &ldquo;QualCanvas&rdquo;)</span>
                   </li>
                   <li className="flex gap-2">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-bold text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">3</span>

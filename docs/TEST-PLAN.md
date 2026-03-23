@@ -1,16 +1,16 @@
-# Canvas App — Master Test Plan
+# QualCanvas — Master Test Plan
 
 **Version:** 1.0
 **Date:** 2026-03-22
 **Classification:** Pre-Release QA
-**App:** Canvas App — Qualitative Coding Platform
+**App:** QualCanvas — Qualitative Coding Platform
 **Stack:** React 18 + Vite / Express + Prisma + PostgreSQL / Stripe / LLM APIs
 
 ---
 
 ## 1. Overview
 
-This document defines the complete test strategy for the Canvas App before shipping. It covers every user-facing feature, API endpoint, data model, and integration point. Tests are organized by type (unit, integration, E2E, performance, security) and prioritized by risk.
+This document defines the complete test strategy for the QualCanvas before shipping. It covers every user-facing feature, API endpoint, data model, and integration point. Tests are organized by type (unit, integration, E2E, performance, security) and prioritized by risk.
 
 **Current coverage:** 208 tests (117 backend unit, 63 frontend unit, 28 E2E)
 **Target coverage:** 500+ tests across all categories

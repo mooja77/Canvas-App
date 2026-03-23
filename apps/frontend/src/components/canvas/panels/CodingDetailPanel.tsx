@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useCanvasStore, useCanvasQuestions, useCanvasCodings, useCanvasTranscripts, useSelectedQuestionId } from '../../../stores/canvasStore';
 import AnnotationPopover from './AnnotationPopover';
 import ConfirmDialog from '../ConfirmDialog';
-import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript } from '@canvas-app/shared';
+import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 export default function CodingDetailPanel() {

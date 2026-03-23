@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
-import type { CanvasQuestion, CanvasTranscript } from '@canvas-app/shared';
+import type { CanvasQuestion, CanvasTranscript } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 interface AutoCodeModalProps {

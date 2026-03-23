@@ -1,5 +1,5 @@
 {
-  "name": "@canvas-app/backend",
+  "name": "@qualcanvas/backend",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -18,7 +18,7 @@
     "@anthropic-ai/sdk": "^0.80.0",
     "@aws-sdk/client-s3": "^3.1012.0",
     "@aws-sdk/s3-request-presigner": "^3.1012.0",
-    "@canvas-app/shared": "*",
+    "@qualcanvas/shared": "*",
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.3.0",
     "archiver": "^7.0.1",

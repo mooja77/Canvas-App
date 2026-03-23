@@ -1,7 +1,7 @@
 import { memo, useState, useCallback } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import type { CanvasDocument, DocumentRegionCoding, CanvasQuestion } from '@canvas-app/shared';
+import type { CanvasDocument, DocumentRegionCoding, CanvasQuestion } from '@qualcanvas/shared';
 import { useUIStore } from '../../../stores/uiStore';
 
 export interface DocumentNodeData {

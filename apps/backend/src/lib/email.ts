@@ -4,7 +4,7 @@ const smtpHost = process.env.SMTP_HOST;
 const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 465;
 const smtpUser = process.env.SMTP_USER;
 const smtpPass = process.env.SMTP_PASS;
-const smtpFrom = process.env.SMTP_FROM || 'Canvas App <noreply@example.com>';
+const smtpFrom = process.env.SMTP_FROM || 'QualCanvas <noreply@example.com>';
 
 const isSmtpConfigured = !!(smtpHost && smtpUser && smtpPass);
 
@@ -75,7 +75,7 @@ export async function sendVerificationEmail(
   to: string,
   verifyLink: string,
 ): Promise<boolean> {
-  const subject = 'Verify your Canvas App email';
+  const subject = 'Verify your QualCanvas email';
 
   const html = `
 <!DOCTYPE html>
@@ -92,7 +92,7 @@ export async function sendVerificationEmail(
           <!-- Header -->
           <tr>
             <td style="background-color: #4f46e5; padding: 32px 40px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">Canvas App</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">QualCanvas</h1>
             </td>
           </tr>
           <!-- Body -->
@@ -123,7 +123,7 @@ export async function sendVerificationEmail(
           <tr>
             <td style="background-color: #fafafc; padding: 24px 40px; text-align: center;">
               <p style="margin: 0; color: #8e8ea0; font-size: 12px;">
-                &copy; ${new Date().getFullYear()} Canvas App. All rights reserved.
+                &copy; ${new Date().getFullYear()} QualCanvas. All rights reserved.
               </p>
             </td>
           </tr>
@@ -145,7 +145,7 @@ export async function sendPasswordResetEmail(
   to: string,
   resetLink: string,
 ): Promise<boolean> {
-  const subject = 'Reset your Canvas App password';
+  const subject = 'Reset your QualCanvas password';
 
   const html = `
 <!DOCTYPE html>
@@ -162,7 +162,7 @@ export async function sendPasswordResetEmail(
           <!-- Header -->
           <tr>
             <td style="background-color: #4f46e5; padding: 32px 40px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">Canvas App</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">QualCanvas</h1>
             </td>
           </tr>
           <!-- Body -->
@@ -193,7 +193,7 @@ export async function sendPasswordResetEmail(
           <tr>
             <td style="background-color: #fafafc; padding: 24px 40px; text-align: center;">
               <p style="margin: 0; color: #8e8ea0; font-size: 12px;">
-                &copy; ${new Date().getFullYear()} Canvas App. All rights reserved.
+                &copy; ${new Date().getFullYear()} QualCanvas. All rights reserved.
               </p>
             </td>
           </tr>
@@ -216,7 +216,7 @@ export async function sendTeamInviteEmail(
   teamName: string,
   loginLink: string,
 ): Promise<boolean> {
-  const subject = `You've been invited to join "${teamName}" on Canvas App`;
+  const subject = `You've been invited to join "${teamName}" on QualCanvas`;
 
   const html = `
 <!DOCTYPE html>
@@ -233,7 +233,7 @@ export async function sendTeamInviteEmail(
           <!-- Header -->
           <tr>
             <td style="background-color: #4f46e5; padding: 32px 40px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">Canvas App</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">QualCanvas</h1>
             </td>
           </tr>
           <!-- Body -->
@@ -241,7 +241,7 @@ export async function sendTeamInviteEmail(
             <td style="padding: 40px;">
               <h2 style="margin: 0 0 16px; color: #1a1a2e; font-size: 20px; font-weight: 600;">Team Invitation</h2>
               <p style="margin: 0 0 16px; color: #4a4a68; font-size: 15px; line-height: 1.6;">
-                You have been invited to join the team <strong>${teamName}</strong> on Canvas App. Sign in to access your team's shared resources.
+                You have been invited to join the team <strong>${teamName}</strong> on QualCanvas. Sign in to access your team's shared resources.
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 28px 0;">
                 <tr>
@@ -264,7 +264,7 @@ export async function sendTeamInviteEmail(
           <tr>
             <td style="background-color: #fafafc; padding: 24px 40px; text-align: center;">
               <p style="margin: 0; color: #8e8ea0; font-size: 12px;">
-                &copy; ${new Date().getFullYear()} Canvas App. All rights reserved.
+                &copy; ${new Date().getFullYear()} QualCanvas. All rights reserved.
               </p>
             </td>
           </tr>

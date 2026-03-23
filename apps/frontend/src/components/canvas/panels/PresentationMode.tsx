@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
-import type { CanvasQuestion, CanvasTextCoding, CanvasMemo, CanvasCase, CanvasTranscript } from '@canvas-app/shared';
+import type { CanvasQuestion, CanvasTextCoding, CanvasMemo, CanvasCase, CanvasTranscript } from '@qualcanvas/shared';
 
 interface PresentationModeProps {
   onExit: () => void;

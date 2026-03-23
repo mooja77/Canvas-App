@@ -3,7 +3,7 @@
  * Uses the PNG tEXt chunk format to store canvas JSON data.
  */
 
-const CANVAS_KEY = 'canvas-app-data';
+const CANVAS_KEY = 'qualcanvas-data';
 
 // PNG signature: 8 bytes
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
@@ -56,7 +56,7 @@ function createTExtChunk(key: string, value: string): Uint8Array {
 
 /**
  * Embed canvas JSON data into a PNG data URL.
- * Inserts a tEXt chunk with key "canvas-app-data" before the IEND chunk.
+ * Inserts a tEXt chunk with key "qualcanvas-data" before the IEND chunk.
  */
 export async function embedCanvasInPNG(dataUrl: string, canvasJson: unknown): Promise<string> {
   // Convert data URL to ArrayBuffer
@@ -112,7 +112,7 @@ export async function embedCanvasInPNG(dataUrl: string, canvasJson: unknown): Pr
 
 /**
  * Extract canvas JSON data from a PNG file.
- * Scans for a tEXt chunk with key "canvas-app-data".
+ * Scans for a tEXt chunk with key "qualcanvas-data".
  * Returns null if not found.
  */
 export async function extractCanvasFromPNG(file: File): Promise<unknown | null> {

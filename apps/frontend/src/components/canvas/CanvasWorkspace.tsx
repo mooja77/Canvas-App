@@ -93,7 +93,7 @@ import type {
   CanvasRelation,
   CanvasComputedNode,
   ComputedNodeType,
-} from '@canvas-app/shared';
+} from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 // Wrap a node component with error boundary so computed node errors

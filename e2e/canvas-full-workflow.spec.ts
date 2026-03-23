@@ -5,10 +5,10 @@ test.describe('Canvas Full Workflow', () => {
   test('create a new canvas', async ({ page }) => {
     // Dismiss onboarding
     await page.addInitScript(() => {
-      const existing = localStorage.getItem('canvas-app-ui');
+      const existing = localStorage.getItem('qualcanvas-ui');
       const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
       state.state = { ...state.state, onboardingComplete: true };
-      localStorage.setItem('canvas-app-ui', JSON.stringify(state));
+      localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
     });
 
     await page.goto('/canvas');
@@ -72,10 +72,10 @@ test.describe('Canvas Full Workflow', () => {
 
   test('canvas list shows canvases', async ({ page }) => {
     await page.addInitScript(() => {
-      const existing = localStorage.getItem('canvas-app-ui');
+      const existing = localStorage.getItem('qualcanvas-ui');
       const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
       state.state = { ...state.state, onboardingComplete: true };
-      localStorage.setItem('canvas-app-ui', JSON.stringify(state));
+      localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
     });
 
     await page.goto('/canvas');
@@ -201,10 +201,10 @@ test.describe('Canvas Full Workflow', () => {
   test('delete canvas removes it from list', async ({ page }) => {
     // First create a canvas to delete
     await page.addInitScript(() => {
-      const existing = localStorage.getItem('canvas-app-ui');
+      const existing = localStorage.getItem('qualcanvas-ui');
       const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
       state.state = { ...state.state, onboardingComplete: true };
-      localStorage.setItem('canvas-app-ui', JSON.stringify(state));
+      localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
     });
 
     await page.goto('/canvas');

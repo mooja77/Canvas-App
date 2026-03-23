@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
-import type { CanvasQuestion, CanvasTextCoding } from '@canvas-app/shared';
+import type { CanvasQuestion, CanvasTextCoding } from '@qualcanvas/shared';
 
 interface IntercoderReliabilityModalProps {
   onClose: () => void;

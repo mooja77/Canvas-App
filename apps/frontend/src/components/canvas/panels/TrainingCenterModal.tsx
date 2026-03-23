@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import type { CanvasTranscript, CanvasQuestion, TrainingDocument } from '@canvas-app/shared';
+import type { CanvasTranscript, CanvasQuestion, TrainingDocument } from '@qualcanvas/shared';
 import { canvasApi } from '../../../services/api';
 import toast from 'react-hot-toast';
 

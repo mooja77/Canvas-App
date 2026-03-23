@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { AiSuggestion } from '@canvas-app/shared';
+import type { AiSuggestion } from '@qualcanvas/shared';
 import { useCanvasQuestions } from '../../../stores/canvasStore';
 
 interface AiSuggestPanelProps {

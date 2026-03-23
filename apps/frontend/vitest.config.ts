@@ -7,7 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@canvas-app/shared': path.resolve(__dirname, '../../shared'),
+      '@qualcanvas/shared': path.resolve(__dirname, '../../shared'),
     },
   },
   test: {

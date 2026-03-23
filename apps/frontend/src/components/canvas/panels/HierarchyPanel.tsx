@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useCanvasStore, useCanvasQuestions, useCanvasCodings } from '../../../stores/canvasStore';
-import type { CanvasQuestion, CanvasTextCoding } from '@canvas-app/shared';
+import type { CanvasQuestion, CanvasTextCoding } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 interface HierarchyPanelProps {

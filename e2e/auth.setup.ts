@@ -20,19 +20,19 @@ setup('authenticate', async ({ page }) => {
   await expect(page.getByText('Coding Canvases')).toBeVisible({ timeout: 5000 });
 
   // Mark onboarding tour as complete so it doesn't block E2E tests.
-  // The uiStore uses Zustand persist with key 'canvas-app-ui'.
+  // The uiStore uses Zustand persist with key 'qualcanvas-ui'.
   await page.evaluate(() => {
-    const existing = localStorage.getItem('canvas-app-ui');
+    const existing = localStorage.getItem('qualcanvas-ui');
     const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
     state.state = { ...state.state, onboardingComplete: true };
-    localStorage.setItem('canvas-app-ui', JSON.stringify(state));
+    localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
   });
 
   // ─── Seed test data so E2E tests that require nodes don't skip ───
 
   // Extract the JWT from the persisted Zustand auth store in localStorage
   const jwt = await page.evaluate(() => {
-    const raw = localStorage.getItem('canvas-app-auth');
+    const raw = localStorage.getItem('qualcanvas-auth');
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return parsed?.state?.jwt || null;

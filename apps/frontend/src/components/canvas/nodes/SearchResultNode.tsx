@@ -2,7 +2,7 @@ import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
 import { useCanvasStore, useCanvasComputedNodes } from '../../../stores/canvasStore';
-import type { CanvasComputedNode, SearchConfig, SearchResult } from '@canvas-app/shared';
+import type { CanvasComputedNode, SearchConfig, SearchResult } from '@qualcanvas/shared';
 
 export interface SearchResultNodeData {
   computedNodeId: string;

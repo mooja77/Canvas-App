@@ -5,7 +5,7 @@ import type { NodeProps } from '@xyflow/react';
 import { useCanvasStore, useCanvasCases, useCanvasTranscripts } from '../../../stores/canvasStore';
 import { useUIStore } from '../../../stores/uiStore';
 import ConfirmDialog from '../ConfirmDialog';
-import type { CanvasCase, CanvasTranscript } from '@canvas-app/shared';
+import type { CanvasCase, CanvasTranscript } from '@qualcanvas/shared';
 
 export interface CaseNodeData {
   caseId: string;

@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
-import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@canvas-app/shared';
+import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
 interface ExcerptBrowserModalProps {

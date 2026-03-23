@@ -1,4 +1,4 @@
--- Canvas App D1 Schema
+-- QualCanvas D1 Schema
 
 CREATE TABLE IF NOT EXISTS DashboardAccess (
   id TEXT PRIMARY KEY,
