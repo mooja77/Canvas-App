@@ -5,8 +5,10 @@ const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 4
 const smtpUser = process.env.SMTP_USER;
 const smtpPass = process.env.SMTP_PASS;
 const smtpFrom = process.env.SMTP_FROM || 'QualCanvas <noreply@example.com>';
+const resendApiKey = process.env.RESEND_API_KEY;
 
 const isSmtpConfigured = !!(smtpHost && smtpUser && smtpPass);
+const isResendConfigured = !!resendApiKey;
 
 function getTransporter() {
   if (!isSmtpConfigured) return null;
@@ -23,18 +25,42 @@ function getTransporter() {
 }
 
 /**
- * Send an email. Falls back to console.log when SMTP is not configured.
- * Returns true if the email was sent (or logged in dev), false on error.
+ * Send an email via Resend HTTP API (preferred) or SMTP.
+ * Falls back to console.log when neither is configured.
  */
 export async function sendEmail(
   to: string,
   subject: string,
   html: string,
 ): Promise<boolean> {
+  // Prefer Resend HTTP API (avoids SMTP port blocking on some hosts)
+  if (isResendConfigured) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ from: smtpFrom, to, subject, html }),
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        console.error('[Email] Resend API error:', res.status, body);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('[Email] Resend API request failed:', err);
+      return false;
+    }
+  }
+
+  // Fall back to SMTP
   const transporter = getTransporter();
 
   if (!transporter) {
-    console.log(`[Email] SMTP not configured — logging email instead:`);
+    console.log(`[Email] Not configured — logging email instead:`);
     console.log(`  To: ${to}`);
     console.log(`  Subject: ${subject}`);
     console.log(`  Body (HTML): ${html}`);
@@ -42,28 +68,11 @@ export async function sendEmail(
   }
 
   try {
-    await transporter.sendMail({
-      from: smtpFrom,
-      to,
-      subject,
-      html,
-    });
+    await transporter.sendMail({ from: smtpFrom, to, subject, html });
     return true;
   } catch (err) {
-    console.error('[Email] First attempt failed, retrying...', err);
-    // Retry once on failure
-    try {
-      await transporter.sendMail({
-        from: smtpFrom,
-        to,
-        subject,
-        html,
-      });
-      return true;
-    } catch (retryErr) {
-      console.error('[Email] Retry also failed:', retryErr);
-      return false;
-    }
+    console.error('[Email] SMTP failed:', err);
+    return false;
   }
 }
 
