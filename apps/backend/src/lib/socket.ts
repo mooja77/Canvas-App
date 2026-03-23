@@ -130,17 +130,78 @@ export function initSocketServer(httpServer: HttpServer): Server {
       });
     });
 
-    // ─── canvas:change ───
+    // ─── canvas:change (legacy generic event) ───
     socket.on('canvas:change', (data: { canvasId: string; changeType: string; payload?: unknown }) => {
       const { canvasId, changeType, payload } = data;
       if (!canvasId || !changeType) return;
 
-      // Broadcast to other users in the room
       socket.to(`canvas:${canvasId}`).emit('canvas:changed', {
         userId,
         userName,
         changeType,
         payload,
+      });
+    });
+
+    // ─── Document sync events ───
+
+    socket.on('canvas:node-added', (data: { canvasId: string; data: unknown }) => {
+      const { canvasId } = data;
+      if (!canvasId) return;
+      socket.to(`canvas:${canvasId}`).emit('canvas:node-added', {
+        userId,
+        userName,
+        data: data.data,
+      });
+    });
+
+    socket.on('canvas:node-deleted', (data: { canvasId: string; data: { nodeId: string; nodeType: string } }) => {
+      const { canvasId } = data;
+      if (!canvasId) return;
+      socket.to(`canvas:${canvasId}`).emit('canvas:node-deleted', {
+        userId,
+        userName,
+        data: data.data,
+      });
+    });
+
+    socket.on('canvas:node-moved', (data: { canvasId: string; data: { nodeId: string; position: { x: number; y: number } } }) => {
+      const { canvasId } = data;
+      if (!canvasId) return;
+      socket.to(`canvas:${canvasId}`).emit('canvas:node-moved', {
+        userId,
+        userName,
+        data: data.data,
+      });
+    });
+
+    socket.on('canvas:coding-added', (data: { canvasId: string; data: unknown }) => {
+      const { canvasId } = data;
+      if (!canvasId) return;
+      socket.to(`canvas:${canvasId}`).emit('canvas:coding-added', {
+        userId,
+        userName,
+        data: data.data,
+      });
+    });
+
+    socket.on('canvas:coding-deleted', (data: { canvasId: string; data: { codingId: string } }) => {
+      const { canvasId } = data;
+      if (!canvasId) return;
+      socket.to(`canvas:${canvasId}`).emit('canvas:coding-deleted', {
+        userId,
+        userName,
+        data: data.data,
+      });
+    });
+
+    socket.on('canvas:transcript-updated', (data: { canvasId: string; data: { transcriptId: string } }) => {
+      const { canvasId } = data;
+      if (!canvasId) return;
+      socket.to(`canvas:${canvasId}`).emit('canvas:transcript-updated', {
+        userId,
+        userName,
+        data: data.data,
       });
     });
 

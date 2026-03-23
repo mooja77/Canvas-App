@@ -13,6 +13,7 @@ import type {
   ComputedNodeType,
 } from '@canvas-app/shared';
 import { canvasApi } from '../services/api';
+import { emitSocketEvent } from '../lib/socket';
 import toast from 'react-hot-toast';
 
 interface PendingSelection {
@@ -217,6 +218,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
         ? { ...s.activeCanvas, transcripts: [...s.activeCanvas.transcripts, transcript] }
         : null,
     }));
+    emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'transcript', id: transcript.id } });
     return transcript;
   },
 
@@ -230,6 +232,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
         ? { ...s.activeCanvas, transcripts: s.activeCanvas.transcripts.map((t: CanvasTranscript) => t.id === tid ? { ...t, ...updated } : t) }
         : null,
     }));
+    emitSocketEvent('canvas:transcript-updated', { canvasId: activeCanvasId, data: { transcriptId: tid } });
   },
 
   deleteTranscript: async (tid) => {
@@ -245,6 +248,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
           }
         : null,
     }));
+    emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId: tid, nodeType: 'transcript' } });
   },
 
   addQuestion: async (text, color) => {
@@ -257,6 +261,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
         ? { ...s.activeCanvas, questions: [...s.activeCanvas.questions, question] }
         : null,
     }));
+    emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'question', id: question.id } });
     return question;
   },
 
@@ -287,6 +292,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
           }
         : null,
     }));
+    emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId: qid, nodeType: 'question' } });
   },
 
   addMemo: async (content, title, color) => {
@@ -299,6 +305,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
         ? { ...s.activeCanvas, memos: [...s.activeCanvas.memos, memo] }
         : null,
     }));
+    emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'memo', id: memo.id } });
     return memo;
   },
 
@@ -323,6 +330,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
         ? { ...s.activeCanvas, memos: s.activeCanvas.memos.filter((m: CanvasMemo) => m.id !== mid) }
         : null,
     }));
+    emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId: mid, nodeType: 'memo' } });
   },
 
   setPendingSelection: (selection) => set({ pendingSelection: selection }),
@@ -340,6 +348,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
         : null,
       pendingSelection: null,
     }));
+    emitSocketEvent('canvas:coding-added', { canvasId: activeCanvasId, data: { id: coding.id, transcriptId, questionId } });
     return coding;
   },
 
@@ -352,6 +361,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
         ? { ...s.activeCanvas, codings: s.activeCanvas.codings.filter((c: CanvasTextCoding) => c.id !== codingId) }
         : null,
     }));
+    emitSocketEvent('canvas:coding-deleted', { canvasId: activeCanvasId, data: { codingId } });
   },
 
   updateCodingAnnotation: async (codingId, annotation) => {
@@ -414,6 +424,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
         ? { ...s.activeCanvas, cases: [...s.activeCanvas.cases, caseRecord] }
         : null,
     }));
+    emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'case', id: caseRecord.id } });
     return caseRecord;
   },
 
@@ -448,6 +459,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
           }
         : null,
     }));
+    emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId: caseId, nodeType: 'case' } });
   },
 
   // ─── Relations ───
@@ -499,6 +511,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
         ? { ...s.activeCanvas, computedNodes: [...s.activeCanvas.computedNodes, node] }
         : null,
     }));
+    emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'computed', id: node.id } });
     return node;
   },
 
@@ -523,6 +536,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
         ? { ...s.activeCanvas, computedNodes: s.activeCanvas.computedNodes.filter((n: CanvasComputedNode) => n.id !== nodeId) }
         : null,
     }));
+    emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId, nodeType: 'computed' } });
   },
 
   runComputedNode: async (nodeId) => {
@@ -556,6 +570,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
           ? { ...s.activeCanvas, codings: [...s.activeCanvas.codings, ...codings] }
           : null,
       }));
+      emitSocketEvent('canvas:coding-added', { canvasId: activeCanvasId, data: { id: 'bulk', transcriptId: 'bulk', questionId } });
     }
     return { created };
   },

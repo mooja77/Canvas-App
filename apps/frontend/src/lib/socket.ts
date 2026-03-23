@@ -52,3 +52,10 @@ export function disconnectSocket(): void {
 export function isSocketConnected(): boolean {
   return socket?.connected ?? false;
 }
+
+/** Emit an event on the singleton socket (no-op if not connected). */
+export function emitSocketEvent(event: string, data: unknown): void {
+  if (socket?.connected) {
+    socket.emit(event, data);
+  }
+}
