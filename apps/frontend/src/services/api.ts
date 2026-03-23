@@ -406,6 +406,12 @@ export const authApi = {
   resetPassword: (email: string, token: string, newPassword: string) =>
     canvasClient.post('/auth/reset-password', { email, token, newPassword }),
 
+  verifyEmail: (email: string, token: string) =>
+    canvasClient.post('/auth/verify-email', { email, token }),
+
+  resendVerification: () =>
+    canvasClient.post('/auth/resend-verification'),
+
   getMe: () =>
     canvasClient.get('/auth/me'),
 

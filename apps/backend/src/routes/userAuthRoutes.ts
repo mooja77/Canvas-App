@@ -10,7 +10,7 @@ import { auth } from '../middleware/auth.js';
 import { sha256 } from '../utils/hashing.js';
 import { nanoid } from 'nanoid';
 import { AppError } from '../middleware/errorHandler.js';
-import { sendPasswordResetEmail } from '../lib/email.js';
+import { sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
 
 const BCRYPT_ROUNDS = 12;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -72,6 +72,21 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
       return user;
     });
 
+    // Generate email verification token
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    const verifyTokenHash = sha256(verifyToken);
+    const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await prisma.user.update({
+      where: { id: result.id },
+      data: { resetTokenHash: verifyTokenHash, resetTokenExpiry: verifyExpiry },
+    });
+
+    // Send verification email
+    const appUrl = process.env.APP_URL || 'http://localhost:5174';
+    const verifyUrl = `${appUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(normalizedEmail)}`;
+    await sendVerificationEmail(normalizedEmail, verifyUrl);
+
     const jwt = signUserToken(result.id, result.role, result.plan);
 
     const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
@@ -95,6 +110,7 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
           name: result.name,
           role: result.role,
           plan: result.plan,
+          emailVerified: result.emailVerified,
         },
       },
     });
@@ -177,6 +193,7 @@ userAuthRoutes.post('/auth/email-login', authLimiter, async (req, res, next) => 
           name: user.name,
           role: user.role,
           plan: currentPlan,
+          emailVerified: user.emailVerified,
         },
       },
     });
@@ -372,6 +389,82 @@ userAuthRoutes.post('/auth/reset-password', authLimiter, async (req, res, next) 
     });
 
     res.json({ success: true, message: 'Password has been reset successfully' });
+  } catch (err) { next(err); }
+});
+
+// POST /api/auth/verify-email — verify email address
+userAuthRoutes.post('/auth/verify-email', authLimiter, async (req, res, next) => {
+  try {
+    const { email, token } = req.body;
+
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ success: false, error: 'Email is required' });
+    }
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({ success: false, error: 'Token is required' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (!user) {
+      return res.status(400).json({ success: false, error: 'Invalid verification request' });
+    }
+
+    if (user.emailVerified) {
+      return res.json({ success: true, message: 'Email is already verified' });
+    }
+
+    const tokenHash = sha256(token);
+    if (!user.resetTokenHash || user.resetTokenHash !== tokenHash || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+      return res.status(400).json({ success: false, error: 'Invalid or expired verification token' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerified: true, resetTokenHash: null, resetTokenExpiry: null },
+    });
+
+    logAudit({
+      action: 'auth.email_verified',
+      resource: 'user',
+      actorType: 'user',
+      actorId: user.id,
+      method: 'POST',
+      path: '/api/auth/verify-email',
+    });
+
+    res.json({ success: true, message: 'Email verified successfully' });
+  } catch (err) { next(err); }
+});
+
+// POST /api/auth/resend-verification — resend verification email
+userAuthRoutes.post('/auth/resend-verification', auth, async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    if (!userId) throw new AppError('Email account required', 403);
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError('User not found', 404);
+
+    if (user.emailVerified) {
+      return res.json({ success: true, message: 'Email is already verified' });
+    }
+
+    // Generate new verification token
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    const verifyTokenHash = sha256(verifyToken);
+    const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { resetTokenHash: verifyTokenHash, resetTokenExpiry: verifyExpiry },
+    });
+
+    const appUrl = process.env.APP_URL || 'http://localhost:5174';
+    const verifyUrl = `${appUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(user.email)}`;
+    await sendVerificationEmail(user.email, verifyUrl);
+
+    res.json({ success: true, message: 'Verification email sent' });
   } catch (err) { next(err); }
 });
 

@@ -77,6 +77,7 @@ import { useAutoLayout } from '../../hooks/useAutoLayout';
 import { useNodeColors } from '../../hooks/useNodeColors';
 import { useCanvasRerouteNodes } from '../../hooks/useCanvasRerouteNodes';
 import { useSessionTimeout } from '../../hooks/useSessionTimeout';
+import { useMobile } from '../../hooks/useMobile';
 import { useCollaboration } from '../../hooks/useCollaboration';
 import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 import { useAiConfigStore } from '../../stores/aiConfigStore';
@@ -184,6 +185,8 @@ export default function CanvasWorkspace() {
     reassignCoding,
     refreshCanvas,
   } = useCanvasStore();
+
+  const isMobile = useMobile();
 
   const { showWarning: showSessionWarning, dismissWarning: dismissSessionWarning } = useSessionTimeout();
 

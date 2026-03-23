@@ -1,14 +1,33 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useUIStore } from '../stores/uiStore';
+import { authApi } from '../services/api';
 import CodingCanvas from '../components/canvas/CodingCanvas';
 import { SunIcon, MoonIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
 
 export default function CanvasPage() {
-  const { authenticated, name, logout } = useAuthStore();
+  const { authenticated, name, logout, authType, emailVerified } = useAuthStore();
   const { darkMode, toggleDarkMode } = useUIStore();
   const navigate = useNavigate();
+  const [resending, setResending] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  const showVerificationBanner = authType === 'email' && !emailVerified && !bannerDismissed;
+
+  const handleResendVerification = async () => {
+    if (resending) return;
+    setResending(true);
+    try {
+      await authApi.resendVerification();
+      toast.success('Verification email sent! Check your inbox.');
+    } catch {
+      toast.error('Failed to resend verification email');
+    } finally {
+      setResending(false);
+    }
+  };
 
   useEffect(() => {
     if (!authenticated) {
@@ -67,6 +86,37 @@ export default function CanvasPage() {
           </button>
         </div>
       </header>
+
+      {/* Email verification banner */}
+      {showVerificationBanner && (
+        <div className="flex-shrink-0 bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800 px-4 py-2 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+            </svg>
+            <span>
+              Please verify your email. Check your inbox or{' '}
+              <button
+                onClick={handleResendVerification}
+                disabled={resending}
+                className="font-medium underline hover:no-underline disabled:opacity-50"
+              >
+                {resending ? 'sending...' : 'resend verification email'}
+              </button>.
+            </span>
+          </div>
+          <button
+            onClick={() => setBannerDismissed(true)}
+            className="p-0.5 rounded text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-800/50 transition-colors"
+            title="Dismiss"
+            aria-label="Dismiss verification banner"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Full-screen canvas workspace */}
       <main id="canvas-main" className="flex-1 overflow-hidden" aria-label="Canvas workspace">

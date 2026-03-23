@@ -19,10 +19,12 @@ interface AuthState {
   email: string | null;
   userId: string | null;
   plan: string | null;
+  emailVerified: boolean;
 
   // Actions
   setAuth: (data: { dashboardCode: string; jwt: string; name: string; role: string; dashboardAccessId: string }) => void;
-  setEmailAuth: (data: { jwt: string; email: string; userId: string; name: string; role: string; plan: string }) => void;
+  setEmailAuth: (data: { jwt: string; email: string; userId: string; name: string; role: string; plan: string; emailVerified?: boolean }) => void;
+  setEmailVerified: (verified: boolean) => void;
   updatePlan: (plan: string) => void;
   logout: () => void;
 }
@@ -42,6 +44,7 @@ export const useAuthStore = create<AuthState>()(
       email: null,
       userId: null,
       plan: null,
+      emailVerified: false,
 
       // Legacy access-code login
       setAuth: (data) => set({
@@ -63,11 +66,14 @@ export const useAuthStore = create<AuthState>()(
         name: data.name,
         role: data.role,
         plan: data.plan,
+        emailVerified: data.emailVerified ?? false,
         authenticated: true,
         authType: 'email',
         dashboardCode: null,
         dashboardAccessId: null,
       }),
+
+      setEmailVerified: (verified) => set({ emailVerified: verified }),
 
       updatePlan: (plan) => set({ plan }),
 
@@ -82,6 +88,7 @@ export const useAuthStore = create<AuthState>()(
         email: null,
         userId: null,
         plan: null,
+        emailVerified: false,
       }),
     }),
     {

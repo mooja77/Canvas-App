@@ -68,7 +68,7 @@ export default function LoginPage() {
     try {
       const res = await authApi.googleLogin(response.credential);
       const { jwt, user } = res.data.data;
-      setEmailAuth({ jwt, email: user.email, userId: user.id, name: user.name, role: user.role, plan: user.plan });
+      setEmailAuth({ jwt, email: user.email, userId: user.id, name: user.name, role: user.role, plan: user.plan, emailVerified: user.emailVerified });
       toast.success(`Welcome, ${user.name}!`);
       navigate('/canvas');
     } catch (err: any) {
@@ -131,7 +131,7 @@ export default function LoginPage() {
     try {
       const res = await authApi.emailLogin(email.trim(), password);
       const { jwt, user } = res.data.data;
-      setEmailAuth({ jwt, email: user.email, userId: user.id, name: user.name, role: user.role, plan: user.plan });
+      setEmailAuth({ jwt, email: user.email, userId: user.id, name: user.name, role: user.role, plan: user.plan, emailVerified: user.emailVerified });
       toast.success(`Welcome back, ${user.name}!`);
       navigate('/canvas');
     } catch (err: any) {
@@ -152,7 +152,7 @@ export default function LoginPage() {
     try {
       const res = await authApi.emailSignup(email.trim(), password, name.trim());
       const { jwt, user } = res.data.data;
-      setEmailAuth({ jwt, email: user.email, userId: user.id, name: user.name, role: user.role, plan: user.plan });
+      setEmailAuth({ jwt, email: user.email, userId: user.id, name: user.name, role: user.role, plan: user.plan, emailVerified: user.emailVerified });
       toast.success(`Welcome, ${user.name}!`);
       navigate('/canvas');
     } catch (err: any) {
