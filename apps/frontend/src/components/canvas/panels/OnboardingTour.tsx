@@ -325,7 +325,7 @@ export default function OnboardingTour() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onboardingComplete, completeOnboarding, handleNext, handleBack]);
 
-  // Position the tooltip
+  // Position the tooltip — clamp so the card never overflows the viewport
   const tooltipStyle = useMemo((): React.CSSProperties => {
     if (isCenter || !targetRect) {
       return {
@@ -337,36 +337,42 @@ export default function OnboardingTour() {
     }
 
     const gap = 16;
-    const padding = 24;
+    const padding = 16;
+    const cardWidth = Math.min(360, window.innerWidth - padding * 2);
+    const halfCard = cardWidth / 2;
+
+    // Clamp left so the card stays within [padding .. innerWidth - padding - cardWidth]
+    const clampLeft = (idealCenter: number) =>
+      Math.max(padding + halfCard, Math.min(idealCenter, window.innerWidth - padding - halfCard));
 
     switch (currentStep.position) {
       case 'bottom':
         return {
           position: 'fixed',
           top: Math.min(targetRect.bottom + gap, window.innerHeight - 300),
-          left: Math.max(padding, Math.min(targetRect.left + targetRect.width / 2, window.innerWidth - padding - 180)),
+          left: clampLeft(targetRect.left + targetRect.width / 2),
           transform: 'translateX(-50%)',
         };
       case 'top':
         return {
           position: 'fixed',
           top: Math.max(padding, targetRect.top - gap),
-          left: Math.max(padding, Math.min(targetRect.left + targetRect.width / 2, window.innerWidth - padding - 180)),
+          left: clampLeft(targetRect.left + targetRect.width / 2),
           transform: 'translate(-50%, -100%)',
         };
       case 'right':
         return {
           position: 'fixed',
           top: Math.max(padding, Math.min(targetRect.top + targetRect.height / 2, window.innerHeight - padding - 150)),
-          left: Math.min(targetRect.right + gap, window.innerWidth - padding - 360),
+          left: Math.min(targetRect.right + gap, window.innerWidth - padding - cardWidth),
           transform: 'translateY(-50%)',
         };
       case 'left':
         return {
           position: 'fixed',
           top: Math.max(padding, Math.min(targetRect.top + targetRect.height / 2, window.innerHeight - padding - 150)),
-          left: Math.max(padding, targetRect.left - gap),
-          transform: 'translate(-100%, -50%)',
+          left: Math.max(padding, targetRect.left - gap - cardWidth),
+          transform: 'translateY(-50%)',
         };
       default:
         return {
