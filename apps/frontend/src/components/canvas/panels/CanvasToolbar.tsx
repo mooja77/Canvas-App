@@ -107,7 +107,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
 
   return (
     <>
-      <div data-tour="canvas-toolbar" className="relative z-10 flex flex-wrap items-center justify-between gap-y-1 border-b border-gray-200/80 bg-white/90 px-3 py-2 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90">
+      <div data-tour="canvas-toolbar" className="relative z-10 flex items-center justify-between border-b border-gray-200/80 bg-white/90 px-3 py-2 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 overflow-x-auto overflow-y-hidden scrollbar-thin">
         <div className="flex items-center gap-2">
           {/* Navigator toggle */}
           {onToggleNavigator && (
@@ -143,7 +143,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
           <CanvasSwitcher canvasName={activeCanvas.name} />
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           {showQuestionInput ? (
             <div className="flex items-center gap-2 animate-fade-in">
               <input
