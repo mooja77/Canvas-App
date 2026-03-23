@@ -198,7 +198,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
       if (matchesShortcut(e, shortcuts.collapseAll)) {
         e.preventDefault();
         setNodes(nds => {
-          const anyExpanded = nds.some(n => !(n.data as any).collapsed && ['transcript', 'question', 'memo', 'case'].includes(n.type || ''));
+          const anyExpanded = nds.some(n => !(n.data as Record<string, unknown>).collapsed && ['transcript', 'question', 'memo', 'case'].includes(n.type || ''));
           return nds.map(n => {
             if (['transcript', 'question', 'memo', 'case'].includes(n.type || '')) {
               return { ...n, data: { ...n.data, collapsed: anyExpanded } };
@@ -288,7 +288,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
           e.preventDefault();
           setNodes(nds => nds.map(n => {
             if (n.selected) {
-              return { ...n, data: { ...n.data, collapsed: !(n.data as any).collapsed } };
+              return { ...n, data: { ...n.data, collapsed: !(n.data as Record<string, unknown>).collapsed } };
             }
             return n;
           }));

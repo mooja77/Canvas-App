@@ -9,11 +9,14 @@ interface PresentationModeProps {
 export default function PresentationMode({ onExit }: PresentationModeProps) {
   const activeCanvas = useActiveCanvas();
 
-  const questions = activeCanvas?.questions ?? [];
-  const codings = activeCanvas?.codings ?? [];
+  const rawQuestions = activeCanvas?.questions;
+  const rawCodings = activeCanvas?.codings;
+  const rawTranscripts = activeCanvas?.transcripts;
+  const questions = useMemo(() => rawQuestions ?? [], [rawQuestions]);
+  const codings = useMemo(() => rawCodings ?? [], [rawCodings]);
   const memos = activeCanvas?.memos ?? [];
   const cases = activeCanvas?.cases ?? [];
-  const transcripts = activeCanvas?.transcripts ?? [];
+  const transcripts = useMemo(() => rawTranscripts ?? [], [rawTranscripts]);
 
   // Theme summary cards
   const themeSummaries = useMemo(() => {

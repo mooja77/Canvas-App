@@ -40,7 +40,8 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
 
   const canvasId = activeCanvas?.id;
   const transcripts = activeCanvas?.transcripts ?? [];
-  const questions = activeCanvas?.questions ?? [];
+  const rawQuestions = activeCanvas?.questions;
+  const questions = useMemo(() => rawQuestions ?? [], [rawQuestions]);
 
   // Collaborators would come from the canvas shares / collaborators
   // For now we'll load them from the collaborators endpoint
@@ -76,8 +77,9 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
         transcriptId: selectedTranscriptId,
       });
       setResult(res.data.data);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to compute intercoder reliability');
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      toast.error((err as any)?.response?.data?.error || 'Failed to compute intercoder reliability');
     } finally {
       setComputing(false);
     }

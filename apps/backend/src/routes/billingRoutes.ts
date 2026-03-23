@@ -114,8 +114,9 @@ export async function handleStripeWebhook(req: Request, res: Response) {
   let event;
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-  } catch (err: any) {
-    console.error('Webhook signature verification failed:', err.message);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Webhook signature verification failed:', message);
     return res.status(400).json({ error: 'Invalid signature' });
   }
 
@@ -129,6 +130,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const session = event.data.object as any;
         const userId = session.metadata?.userId;
         const plan = session.metadata?.plan || 'pro';
@@ -168,6 +170,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       }
 
       case 'customer.subscription.updated': {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sub = event.data.object as any;
         const existing = await prisma.subscription.findUnique({
           where: { stripeSubscriptionId: sub.id },
@@ -188,6 +191,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       }
 
       case 'customer.subscription.deleted': {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sub = event.data.object as any;
         const existing = await prisma.subscription.findUnique({
           where: { stripeSubscriptionId: sub.id },
@@ -209,6 +213,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       }
 
       case 'invoice.payment_failed': {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const invoice = event.data.object as any;
         const subscriptionId = invoice.subscription as string;
         if (subscriptionId) {

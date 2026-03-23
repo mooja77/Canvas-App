@@ -81,6 +81,7 @@ transcriptRoutes.post('/canvas/:id/import-narratives', validateParams(canvasIdPa
     }
 
     const transcripts = await prisma.$transaction(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       narratives.map((n: any, i: number) =>
         prisma.canvasTranscript.create({
           data: {
@@ -138,6 +139,7 @@ transcriptRoutes.post('/canvas/:id/import-from-canvas', validateParams(canvasIdP
       }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const results: any[] = [];
     for (let i = 0; i < sourceTranscripts.length; i++) {
       const src = sourceTranscripts[i];

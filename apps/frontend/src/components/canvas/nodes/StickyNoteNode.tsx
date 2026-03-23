@@ -33,6 +33,7 @@ function StickyNoteNode({ data, selected }: NodeProps) {
       textareaRef.current.focus();
       textareaRef.current.setSelectionRange(text.length, text.length);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- we only want to focus when editing toggles on, not when text.length changes
   }, [editing]);
 
   const handleBlur = useCallback(() => {

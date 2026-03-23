@@ -58,19 +58,21 @@ export async function transcribeAudio(
     ...(language ? { language } : {}),
   });
 
-  const segments: TranscriptionSegment[] = (response as any).segments?.map((seg: any) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const verboseResponse = response as any;
+  const segments: TranscriptionSegment[] = verboseResponse.segments?.map((seg: { start: number; end: number; text: string }) => ({
     start: seg.start,
     end: seg.end,
     text: seg.text.trim(),
   })) || [];
 
-  const duration = (response as any).duration || segments[segments.length - 1]?.end || 0;
+  const duration = verboseResponse.duration || segments[segments.length - 1]?.end || 0;
 
   return {
     text: response.text,
     segments,
     duration,
-    language: (response as any).language,
+    language: verboseResponse.language,
   };
 }
 

@@ -77,13 +77,13 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
     const handleCursorMoved = (data: { userId: string; userName: string; x: number; y: number }) => {
       setCursors(prev => {
         const next = new Map(prev);
-        // Find the collaborator to get their color
-        const collab = collaborators.find(c => c.userId === data.userId);
+        // Color from collaborator list is not available in this closure to avoid
+        // re-subscribing on every collaborator change; use a default color instead
         next.set(data.userId, {
           x: data.x,
           y: data.y,
           name: data.userName,
-          color: collab?.color || '#3B82F6',
+          color: '#3B82F6',
         });
         return next;
       });

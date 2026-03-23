@@ -67,10 +67,11 @@ aiSettingsRoutes.put(
           messages: [{ role: 'user', content: 'test' }],
           maxTokens: 5,
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Could not connect to provider';
         return res.status(400).json({
           success: false,
-          error: `API key validation failed: ${err.message || 'Could not connect to provider'}`,
+          error: `API key validation failed: ${message}`,
         });
       }
 

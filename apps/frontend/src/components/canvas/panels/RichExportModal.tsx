@@ -20,11 +20,15 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
   const [includeSummary, setIncludeSummary] = useState(true);
   const [includeCoverage, setIncludeCoverage] = useState(true);
 
-  const questions = activeCanvas?.questions ?? [];
-  const transcripts = activeCanvas?.transcripts ?? [];
-  const codings = activeCanvas?.codings ?? [];
+  const rawQuestions = activeCanvas?.questions;
+  const rawTranscripts = activeCanvas?.transcripts;
+  const rawCodings = activeCanvas?.codings;
+  const rawCases = activeCanvas?.cases;
+  const questions = useMemo(() => rawQuestions ?? [], [rawQuestions]);
+  const transcripts = useMemo(() => rawTranscripts ?? [], [rawTranscripts]);
+  const codings = useMemo(() => rawCodings ?? [], [rawCodings]);
   const memos = activeCanvas?.memos ?? [];
-  const cases = activeCanvas?.cases ?? [];
+  const cases = useMemo(() => rawCases ?? [], [rawCases]);
 
   const questionMap = useMemo(() => {
     const m = new Map<string, CanvasQuestion>();

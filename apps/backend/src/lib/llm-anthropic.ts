@@ -84,8 +84,10 @@ function createAnthropicProvider(client: Anthropic, defaultModel: string): LlmPr
       let fullContent = '';
 
       for await (const event of stream) {
-        if (event.type === 'content_block_delta' && (event.delta as any).type === 'text_delta') {
-          const text = (event.delta as any).text || '';
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (event.type === 'content_block_delta' && (event as any).delta?.type === 'text_delta') {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const text = (event as any).delta.text || '';
           if (text) {
             fullContent += text;
             onChunk({ content: text, done: false });

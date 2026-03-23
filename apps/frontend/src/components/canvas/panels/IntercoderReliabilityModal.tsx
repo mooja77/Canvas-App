@@ -64,9 +64,12 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
   const [unitSize, setUnitSize] = useState<'paragraph' | 'sentence'>('paragraph');
   const [computed, setComputed] = useState(false);
 
-  const questions = activeCanvas?.questions ?? [];
-  const codings = activeCanvas?.codings ?? [];
-  const transcripts = activeCanvas?.transcripts ?? [];
+  const rawQuestions = activeCanvas?.questions;
+  const rawCodings = activeCanvas?.codings;
+  const rawTranscripts = activeCanvas?.transcripts;
+  const questions = useMemo(() => rawQuestions ?? [], [rawQuestions]);
+  const codings = useMemo(() => rawCodings ?? [], [rawCodings]);
+  const transcripts = useMemo(() => rawTranscripts ?? [], [rawTranscripts]);
 
   // Filter to codes that have at least 1 coding
   const codesWithCodings = useMemo(() => {

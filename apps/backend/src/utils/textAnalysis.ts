@@ -155,6 +155,7 @@ export function computeCooccurrence(
   }
 
   // For each pair of question IDs, find overlapping ranges
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pairMap = new Map<string, { questionIds: string[]; segments: any[]; }>();
 
   for (let i = 0; i < questionIds.length; i++) {
@@ -162,6 +163,7 @@ export function computeCooccurrence(
       const qA = questionIds[i];
       const qB = questionIds[j];
       const key = `${qA}|${qB}`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const segments: any[] = [];
 
       for (const [tid, tCodings] of byTranscript) {
@@ -504,6 +506,7 @@ export function computeClusters(
   const labels = kMeans(vectors, k);
 
   // Build cluster results
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const clusterMap = new Map<number, { segments: any[]; vectors: number[][] }>();
   for (let i = 0; i < filtered.length; i++) {
     const label = labels[i];
@@ -742,6 +745,7 @@ export function computeSentiment(
   const groupByKey = scope === 'transcript' ? 'transcriptId' : 'questionId';
   const groupMap = new Map<string, CodingData[]>();
   for (const c of filteredCodings) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const key = (c as any)[groupByKey];
     const arr = groupMap.get(key) || [];
     arr.push(c);

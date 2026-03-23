@@ -98,7 +98,9 @@ import toast from 'react-hot-toast';
 
 // Wrap a node component with error boundary so computed node errors
 // don't crash the entire canvas
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic node wrapper needs any for props forwarding
 function withErrorBoundary(NodeComponent: React.ComponentType<any>) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic node wrapper needs any for props forwarding
   const WrappedNode = function WrappedNode(props: any) {
     return (
       <ErrorBoundary>
@@ -326,12 +328,13 @@ export default function CanvasWorkspace() {
   }, [activeCanvas?.id]);
 
   // Build position map with dimensions and collapsed state
+  const nodePositions = activeCanvas?.nodePositions;
   const posMap = useMemo(() => {
-    if (!activeCanvas) return new Map<string, CanvasNodePosition>();
+    if (!nodePositions) return new Map<string, CanvasNodePosition>();
     const map = new Map<string, CanvasNodePosition>();
-    activeCanvas.nodePositions.forEach((p: CanvasNodePosition) => map.set(p.nodeId, p));
+    nodePositions.forEach((p: CanvasNodePosition) => map.set(p.nodeId, p));
     return map;
-  }, [activeCanvas?.nodePositions]);
+  }, [nodePositions]);
 
   // Build nodes from canvas data
   const buildNodes = useCallback((): Node[] => {
@@ -539,7 +542,7 @@ export default function CanvasWorkspace() {
     }
 
     return result;
-  }, [activeCanvas, highlightedNodeIds, posMap, groups, updateGroup, stickyNotes, updateStickyNote, removeStickyNote, nodeColorMap, rerouteNodes, aiSuggestions.suggestCodes, mutedNodeIds]);
+  }, [activeCanvas, highlightedNodeIds, posMap, groups, updateGroup, stickyNotes, updateStickyNote, removeStickyNote, nodeColorMap, rerouteNodes, aiSuggestions, requireAiConfig, mutedNodeIds]);
 
   // Build edges from codings and relations
   const buildEdges = useCallback((): Edge[] => {
@@ -628,6 +631,7 @@ export default function CanvasWorkspace() {
         setShowNavigator(true);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- showNavigator is read but intentionally omitted to prevent toggle loops
   }, [workspaceSize.width, focusMode]);
 
   // Handle connection: create coding or relation
@@ -698,12 +702,12 @@ export default function CanvasWorkspace() {
 
       toast.error('Invalid connection. Drag from transcript to question, or between cases/questions.');
     },
-    [pendingSelection, createCoding, setPendingSelection, activeCanvas?.questions, mergeQuestions],
+    [pendingSelection, createCoding, setPendingSelection, activeCanvas?.questions],
   );
 
   // Edge reconnection handler
   const onReconnect = useCallback(
-    (oldEdge: Edge, newConnection: any) => {
+    (oldEdge: Edge, newConnection: Parameters<typeof reconnectEdge>[1]) => {
       // Update edges visually
       setEdges((els) => reconnectEdge(oldEdge, newConnection, els));
 
@@ -730,7 +734,9 @@ export default function CanvasWorkspace() {
       if (!targetIsPane) return;
 
       // Find the source node type from the connection start
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing internal ReactFlow API
       const _connectingNodeId = (rfInstanceRef.current as any)?.toObject?.()?.nodes
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- internal ReactFlow node shape
         ?.find((n: any) => n.selected)?.id;
 
       // Fall back to checking which node started the connection via the store
@@ -763,7 +769,7 @@ export default function CanvasWorkspace() {
   const smartLinkAllowedRef = useRef<string[] | null>(null);
 
   const onConnectStart = useCallback(
-    (_: any, params: { nodeId: string | null; handleType: string | null }) => {
+    (_event: MouseEvent | TouchEvent, params: { nodeId: string | null; handleType: string | null }) => {
       if (!params.nodeId) return;
       const nodeType = params.nodeId.split('-')[0]; // 'transcript', 'question', 'case', etc.
       connectStartRef.current = { nodeId: params.nodeId, nodeType };
@@ -804,12 +810,13 @@ export default function CanvasWorkspace() {
     const node = selected[0];
 
     let label = 'node';
-    let type = node.type || '';
-    if (type === 'transcript') label = (node.data as any)?.title || 'transcript';
-    else if (type === 'question') label = (node.data as any)?.text || 'question';
-    else if (type === 'memo') label = (node.data as any)?.title || 'memo';
+    const type = node.type || '';
+    const d = node.data as Record<string, unknown>;
+    if (type === 'transcript') label = (d?.title as string) || 'transcript';
+    else if (type === 'question') label = (d?.text as string) || 'question';
+    else if (type === 'memo') label = (d?.title as string) || 'memo';
     else if (type === 'case') label = 'case';
-    else if (type === 'group') label = (node.data as any)?.title || 'group';
+    else if (type === 'group') label = (d?.title as string) || 'group';
     else label = type + ' node';
 
     setDeleteConfirm({ nodeId: node.id, label, type });
@@ -867,15 +874,15 @@ export default function CanvasWorkspace() {
     let pasted = 0;
     for (const node of toPaste) {
       try {
-        const d = node.data as any;
+        const d = node.data as Record<string, unknown>;
         if (node.type === 'transcript') {
-          await addTranscript(d.title + ' (copy)', d.content);
+          await addTranscript(d.title + ' (copy)', d.content as string);
           pasted++;
         } else if (node.type === 'question') {
-          await addQuestion(d.text + ' (copy)', d.color);
+          await addQuestion(d.text + ' (copy)', d.color as string);
           pasted++;
         } else if (node.type === 'memo') {
-          await addMemo(d.content, d.title ? d.title + ' (copy)' : undefined, d.color);
+          await addMemo(d.content as string, d.title ? (d.title as string) + ' (copy)' : undefined, d.color as string);
           pasted++;
         } else if (d.computedNodeId) {
           const cn = activeCanvas?.computedNodes.find((n: CanvasComputedNode) => n.id === d.computedNodeId);
@@ -945,6 +952,7 @@ export default function CanvasWorkspace() {
     const minX = Math.min(...selectedNodes.map(n => n.position.x));
     setNodes(nds => nds.map(n => selectedNodes.some(s => s.id === n.id) ? { ...n, position: { ...n.position, x: minX } } : n));
     triggerSaveLayout();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- triggerSaveLayout is defined below but stable; adding it causes TDZ error
   }, [selectedNodes, setNodes]);
 
   const handleAlignTop = useCallback(() => {
@@ -952,6 +960,7 @@ export default function CanvasWorkspace() {
     const minY = Math.min(...selectedNodes.map(n => n.position.y));
     setNodes(nds => nds.map(n => selectedNodes.some(s => s.id === n.id) ? { ...n, position: { ...n.position, y: minY } } : n));
     triggerSaveLayout();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- triggerSaveLayout is defined below but stable; adding it causes TDZ error
   }, [selectedNodes, setNodes]);
 
   const handleDistributeH = useCallback(() => {
@@ -963,6 +972,7 @@ export default function CanvasWorkspace() {
     const idToX = new Map(sorted.map((n, i) => [n.id, minX + i * gap]));
     setNodes(nds => nds.map(n => idToX.has(n.id) ? { ...n, position: { ...n.position, x: idToX.get(n.id)! } } : n));
     triggerSaveLayout();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- triggerSaveLayout is defined below but stable; adding it causes TDZ error
   }, [selectedNodes, setNodes]);
 
   const handleDistributeV = useCallback(() => {
@@ -974,6 +984,7 @@ export default function CanvasWorkspace() {
     const idToY = new Map(sorted.map((n, i) => [n.id, minY + i * gap]));
     setNodes(nds => nds.map(n => idToY.has(n.id) ? { ...n, position: { ...n.position, y: idToY.get(n.id)! } } : n));
     triggerSaveLayout();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- triggerSaveLayout is defined below but stable; adding it causes TDZ error
   }, [selectedNodes, setNodes]);
 
   // Trigger layout save helper
@@ -1008,7 +1019,7 @@ export default function CanvasWorkspace() {
       );
       // Only save on user-initiated node resize (resizing flag), not zoom-triggered re-measurement
       const hasUserResize = changes.some(
-        (c: NodeChange) => c.type === 'dimensions' && 'resizing' in c && (c as any).resizing === false,
+        (c: NodeChange) => c.type === 'dimensions' && 'resizing' in c && (c as unknown as { resizing: boolean }).resizing === false,
       );
       if (hasDrag || hasUserResize) {
         triggerSaveLayout();
@@ -1056,19 +1067,20 @@ export default function CanvasWorkspace() {
       y: event.clientY,
       nodeId: node.id,
       nodeType: node.type || '',
-      collapsed: (node.data as any)?.collapsed ?? false,
+      collapsed: Boolean((node.data as Record<string, unknown>)?.collapsed),
     });
   }, []);
 
   const handleEdgeContextMenu = useCallback((event: React.MouseEvent, edge: Edge) => {
     event.preventDefault();
+    const edgeData = edge.data as Record<string, unknown> | undefined;
     setEdgeContextMenu({
       show: true,
       x: event.clientX,
       y: event.clientY,
       edgeId: edge.id,
       edgeType: edge.type || 'coding',
-      label: edge.type === 'coding' ? (edge.data as any)?.codedText : (edge.data as any)?.label,
+      label: edge.type === 'coding' ? (edgeData?.codedText as string | undefined) : (edgeData?.label as string | undefined),
     });
   }, []);
 
@@ -1136,11 +1148,11 @@ export default function CanvasWorkspace() {
     if (!nodeContextMenu) return;
     const node = nodes.find(n => n.id === nodeContextMenu.nodeId);
     if (!node) return;
-    const d = node.data as any;
+    const d = node.data as Record<string, unknown>;
     try {
-      if (node.type === 'transcript') await addTranscript(d.title + ' (copy)', d.content);
-      else if (node.type === 'question') await addQuestion(d.text + ' (copy)', d.color);
-      else if (node.type === 'memo') await addMemo(d.content, d.title ? d.title + ' (copy)' : undefined, d.color);
+      if (node.type === 'transcript') await addTranscript(d.title + ' (copy)', d.content as string);
+      else if (node.type === 'question') await addQuestion(d.text + ' (copy)', d.color as string);
+      else if (node.type === 'memo') await addMemo(d.content as string, d.title ? d.title + ' (copy)' : undefined, d.color as string);
       toast.success('Node duplicated');
     } catch { toast.error('Failed to duplicate'); }
   }, [nodeContextMenu, nodes, addTranscript, addQuestion, addMemo]);
@@ -1151,9 +1163,10 @@ export default function CanvasWorkspace() {
     if (!node) return;
     let label = 'node';
     const type = node.type || '';
-    if (type === 'transcript') label = (node.data as any)?.title || 'transcript';
-    else if (type === 'question') label = (node.data as any)?.text || 'question';
-    else if (type === 'memo') label = (node.data as any)?.title || 'memo';
+    const d = node.data as Record<string, unknown>;
+    if (type === 'transcript') label = (d?.title as string) || 'transcript';
+    else if (type === 'question') label = (d?.text as string) || 'question';
+    else if (type === 'memo') label = (d?.title as string) || 'memo';
     else if (type === 'case') label = 'case';
     else label = type + ' node';
     setDeleteConfirm({ nodeId: node.id, label, type });
@@ -1253,7 +1266,7 @@ export default function CanvasWorkspace() {
     if (!groupId) return;
     triggerSaveLayout();
     toast.success('Group created — double-click title to rename');
-  }, [selectedNodes, addGroup, setNodes, triggerSaveLayout]);
+  }, [selectedNodes, addGroup, triggerSaveLayout]);
 
   // Auto-layout handler
   const handleAutoLayout = useCallback(() => {

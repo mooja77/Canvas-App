@@ -226,8 +226,9 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
     });
 
     res.status(201).json({ success: true, data: result });
-  } catch (err: any) {
-    if (err.code === 'P2002') return next(new AppError('A canvas with this name already exists', 409));
+  } catch (err: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((err as any)?.code === 'P2002') return next(new AppError('A canvas with this name already exists', 409));
     next(err);
   }
 });

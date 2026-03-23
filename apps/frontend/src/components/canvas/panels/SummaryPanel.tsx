@@ -25,6 +25,7 @@ export default function SummaryPanel({ onClose }: SummaryPanelProps) {
 
   useEffect(() => {
     if (canvasId) loadSummaries();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadSummaries is not memoized, canvasId is the true trigger
   }, [canvasId]);
 
   const loadSummaries = async () => {

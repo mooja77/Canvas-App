@@ -620,6 +620,7 @@ userAuthRoutes.put('/auth/profile', auth, async (req, res, next) => {
     if (!userId) throw new AppError('Email account required', 403);
 
     const { name, email } = req.body;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {};
 
     if (name !== undefined) {

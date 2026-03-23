@@ -70,8 +70,9 @@ export default function TeamPage() {
       setActiveTeam(newTeam);
       setTeams([newTeam]);
       setTeamName('');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to create team');
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      toast.error((err as any)?.response?.data?.error || 'Failed to create team');
     } finally {
       setCreating(false);
     }
@@ -88,8 +89,9 @@ export default function TeamPage() {
       // Reload team details
       const res = await teamApi.get(activeTeam.id);
       setActiveTeam(res.data.data);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to invite member');
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      toast.error((err as any)?.response?.data?.error || 'Failed to invite member');
     } finally {
       setInviting(false);
     }
@@ -103,8 +105,9 @@ export default function TeamPage() {
       toast.success(`${userName} removed from team`);
       const res = await teamApi.get(activeTeam.id);
       setActiveTeam(res.data.data);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to remove member');
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      toast.error((err as any)?.response?.data?.error || 'Failed to remove member');
     }
   };
 
@@ -117,8 +120,9 @@ export default function TeamPage() {
       setActiveTeam(null);
       setTeams([]);
       setShowDeleteConfirm(false);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to delete team');
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      toast.error((err as any)?.response?.data?.error || 'Failed to delete team');
     } finally {
       setDeleting(false);
     }

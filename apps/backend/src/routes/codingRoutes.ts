@@ -282,6 +282,7 @@ codingRoutes.post('/canvas/:id/auto-code', validateParams(canvasIdParam), valida
       return next(new AppError('Question not found in this canvas', 400));
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = { canvasId: req.params.id };
     if (transcriptIds?.length) where.id = { in: transcriptIds };
     const transcripts = await prisma.canvasTranscript.findMany({ where, take: 100 });
@@ -341,8 +342,9 @@ codingRoutes.post('/canvas/:id/cases', validateParams(canvasIdParam), validate(c
       success: true,
       data: { ...caseRecord, attributes: safeJsonParse(caseRecord.attributes) },
     });
-  } catch (err: any) {
-    if (err.code === 'P2002') return next(new AppError('A case with this name already exists in this canvas', 409));
+  } catch (err: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((err as any)?.code === 'P2002') return next(new AppError('A case with this name already exists in this canvas', 409));
     next(err);
   }
 });
@@ -351,6 +353,7 @@ codingRoutes.put('/canvas/:id/cases/:caseId', validateParams(canvasCaseParams), 
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {};
     if (req.body.name !== undefined) updateData.name = req.body.name;
     if (req.body.attributes !== undefined) updateData.attributes = JSON.stringify(req.body.attributes);
@@ -362,8 +365,9 @@ codingRoutes.put('/canvas/:id/cases/:caseId', validateParams(canvasCaseParams), 
       success: true,
       data: { ...caseRecord, attributes: safeJsonParse(caseRecord.attributes) },
     });
-  } catch (err: any) {
-    if (err.code === 'P2002') return next(new AppError('A case with this name already exists in this canvas', 409));
+  } catch (err: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((err as any)?.code === 'P2002') return next(new AppError('A case with this name already exists in this canvas', 409));
     next(err);
   }
 });

@@ -115,8 +115,9 @@ ethicsRoutes.post('/canvas/:canvasId/consent', validate(createConsentSchema), ch
     });
 
     res.status(201).json({ success: true, data: record });
-  } catch (err: any) {
-    if (err.code === 'P2002') {
+  } catch (err: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((err as any)?.code === 'P2002') {
       return next(new AppError('Consent record already exists for this participant in this canvas', 409));
     }
     next(err);
@@ -284,6 +285,7 @@ ethicsRoutes.post('/canvas/:canvasId/transcripts/:transcriptId/anonymize', valid
           isAnonymized: true,
         },
       }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...codingUpdates as any[],
     ]);
 

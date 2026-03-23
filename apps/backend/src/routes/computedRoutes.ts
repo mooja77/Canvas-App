@@ -56,6 +56,7 @@ computedRoutes.put('/canvas/:id/computed/:nodeId', validateParams(canvasComputed
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {};
     if (req.body.label !== undefined) updateData.label = req.body.label;
     if (req.body.config !== undefined) updateData.config = JSON.stringify(req.body.config);
@@ -112,6 +113,7 @@ computedRoutes.post('/canvas/:id/computed/:nodeId/run', validateParams(canvasCom
     ]);
     const cases = rawCases.map(c => ({ ...c, attributes: safeJsonParse(c.attributes) }));
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let result: any = {};
 
     switch (node.nodeType) {

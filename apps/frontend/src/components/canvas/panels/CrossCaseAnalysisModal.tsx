@@ -14,10 +14,14 @@ export default function CrossCaseAnalysisModal({ onClose }: CrossCaseAnalysisMod
   const [selectedCode, setSelectedCode] = useState('');
   const [viewMode, setViewMode] = useState<'matrix' | 'excerpts'>('matrix');
 
-  const cases = activeCanvas?.cases ?? [];
-  const questions = activeCanvas?.questions ?? [];
-  const codings = activeCanvas?.codings ?? [];
-  const transcripts = activeCanvas?.transcripts ?? [];
+  const rawCases = activeCanvas?.cases;
+  const rawQuestions = activeCanvas?.questions;
+  const rawCodings = activeCanvas?.codings;
+  const rawTranscripts = activeCanvas?.transcripts;
+  const cases = useMemo(() => rawCases ?? [], [rawCases]);
+  const questions = useMemo(() => rawQuestions ?? [], [rawQuestions]);
+  const codings = useMemo(() => rawCodings ?? [], [rawCodings]);
+  const transcripts = useMemo(() => rawTranscripts ?? [], [rawTranscripts]);
 
   // Discover all attribute keys across all cases
   const attrKeys = useMemo(() => {

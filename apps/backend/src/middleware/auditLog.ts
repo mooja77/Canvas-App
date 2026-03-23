@@ -70,6 +70,7 @@ export function auditLog(req: Request, res: Response, next: NextFunction): void 
   const originalEnd = res.end;
   const startPath = req.originalUrl || req.path;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   res.end = function (...args: any[]) {
     const action = determineAction(req.method, startPath);
     const { actorType, actorId } = determineActorType(req);
@@ -89,6 +90,7 @@ export function auditLog(req: Request, res: Response, next: NextFunction): void 
     });
 
     return (originalEnd as (...a: unknown[]) => unknown).apply(res, args);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 
   next();

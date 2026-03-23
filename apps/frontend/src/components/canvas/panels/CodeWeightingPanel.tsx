@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useActiveCanvas, useActiveCanvasId, useCanvasQuestions, useCanvasCodings, useCanvasTranscripts } from '../../../stores/canvasStore';
-import type { CanvasQuestion, CanvasTextCoding } from '@canvas-app/shared';
+import type { CanvasQuestion } from '@canvas-app/shared';
 
 interface CodeWeightingPanelProps {
   onClose: () => void;

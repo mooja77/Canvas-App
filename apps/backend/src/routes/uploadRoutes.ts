@@ -180,6 +180,7 @@ uploadRoutes.post(
       });
 
       // Store metadata for the job handler
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (job as any)._meta = {
         jobDbId: transcriptionJob.id,
         storageKey: fileUpload.storageKey,
@@ -264,6 +265,7 @@ uploadRoutes.post(
 
 // Register transcription job handler
 registerJobHandler('transcribe', async (job, updateProgress) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const meta = (job as any)._meta;
   if (!meta) throw new Error('Missing job metadata');
 

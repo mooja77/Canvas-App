@@ -24,7 +24,8 @@ export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
   const [showPreview, setShowPreview] = useState(false);
 
   const questions = activeCanvas?.questions ?? [];
-  const transcripts = activeCanvas?.transcripts ?? [];
+  const rawTranscripts = activeCanvas?.transcripts;
+  const transcripts = useMemo(() => rawTranscripts ?? [], [rawTranscripts]);
 
   const handlePatternChange = (value: string) => {
     setPattern(value);

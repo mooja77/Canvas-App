@@ -31,7 +31,8 @@ function createClient(): S3Client {
     config.forcePathStyle = true;
   }
 
-  return new S3Client(config as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return new S3Client(config as Record<string, any>);
 }
 
 let client: S3Client | null = null;
@@ -48,6 +49,7 @@ const s3Provider: StorageProvider = {
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: options.key,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       Body: options.body as any,
       ContentType: options.contentType,
       Metadata: options.metadata,

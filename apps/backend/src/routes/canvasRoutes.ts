@@ -99,8 +99,9 @@ canvasRoutes.post('/canvas', validate(createCanvasSchema), checkCanvasLimit(), a
       },
     });
     res.status(201).json({ success: true, data: canvas });
-  } catch (err: any) {
-    if (err.code === 'P2002') return next(new AppError('A canvas with this name already exists', 409));
+  } catch (err: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((err as any)?.code === 'P2002') return next(new AppError('A canvas with this name already exists', 409));
     next(err);
   }
 });
@@ -149,8 +150,9 @@ canvasRoutes.put('/canvas/:canvasId', validateParams(canvasCanvasIdParam), valid
       data: req.body,
     });
     res.json({ success: true, data: canvas });
-  } catch (err: any) {
-    if (err.code === 'P2002') return next(new AppError('A canvas with this name already exists', 409));
+  } catch (err: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((err as any)?.code === 'P2002') return next(new AppError('A canvas with this name already exists', 409));
     next(err);
   }
 });
@@ -202,6 +204,7 @@ canvasRoutes.put('/canvas/:id/layout', validateParams(canvasIdParam), validate(s
     const { positions } = req.body;
 
     await prisma.$transaction(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       positions.map((pos: any) =>
         prisma.canvasNodePosition.upsert({
           where: { canvasId_nodeId: { canvasId: req.params.id, nodeId: pos.nodeId } },
