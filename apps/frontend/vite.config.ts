@@ -33,7 +33,8 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'viz-vendor': ['@xyflow/react', 'dagre', 'recharts', '@visx/wordcloud', '@visx/text'],
+          'viz-vendor': ['@xyflow/react', 'dagre', 'recharts'],
+          'visx-vendor': ['@visx/wordcloud', '@visx/text'],
         },
       },
     },

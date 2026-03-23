@@ -11,7 +11,7 @@ Qualitative coding canvas for researchers. React 18 + Vite frontend, Express + P
 ## Commands
 
 - `npm install` then `npm run db:migrate` then `npm run db:seed` then `npm run dev`
-- `npm test` — run all 282 tests (238 unit + 44 E2E)
+- `npm test` — run all 409 tests (234 backend + 131 frontend + 44 E2E)
 - `npm run test:e2e` — run 44 Playwright E2E tests (set `E2E_TEST=true` env var for test mode)
 - `npm run typecheck` — type-check backend + frontend
 - `npm run lint` — ESLint across all packages
@@ -30,5 +30,5 @@ Qualitative coding canvas for researchers. React 18 + Vite frontend, Express + P
 - Canvas workspace: `apps/frontend/src/components/canvas/CanvasWorkspace.tsx`
 - Canvas store: `apps/frontend/src/stores/canvasStore.ts`
 - Route modules: `apps/backend/src/routes/` (20 files)
-- Prisma schema: `apps/backend/prisma/schema.prisma` (32 models)
+- Prisma schema: `apps/backend/prisma/schema.prisma` (34 models)
 - Shared types: `shared/types/canvas.types.ts`

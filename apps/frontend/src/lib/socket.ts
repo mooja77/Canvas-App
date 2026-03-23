@@ -2,9 +2,10 @@ import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
 
-const SOCKET_URL = import.meta.env.VITE_API_URL
-  ? new URL(import.meta.env.VITE_API_URL).origin
-  : window.location.origin;
+const SOCKET_URL = import.meta.env.VITE_WS_URL
+  || (import.meta.env.VITE_API_URL
+    ? new URL(import.meta.env.VITE_API_URL).origin
+    : window.location.origin);
 
 /** Get or create the singleton Socket.io client. */
 export function getSocket(token: string): Socket {

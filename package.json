@@ -36,6 +36,6 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "jsdom": "^29.0.1",
     "typescript": "^5.7.0",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^0.21.1"
   }
 }
