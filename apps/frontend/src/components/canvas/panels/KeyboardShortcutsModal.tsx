@@ -118,8 +118,25 @@ export default function KeyboardShortcutsModal({ onClose }: KeyboardShortcutsMod
   }, [recordingAction, handleRecordKey]);
 
   return (
-    <div className="modal-backdrop fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="command-palette-enter w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/10 dark:bg-gray-800 dark:ring-white/10" onClick={e => e.stopPropagation()}>
+    <div className="modal-backdrop fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose} role="dialog" aria-modal="true" aria-label="Keyboard Shortcuts">
+      <div
+        className="command-palette-enter w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/10 dark:bg-gray-800 dark:ring-white/10"
+        onClick={e => e.stopPropagation()}
+        onKeyDown={e => {
+          if (e.key === 'Tab') {
+            const modal = e.currentTarget;
+            const focusable = modal.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (focusable.length === 0) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey) {
+              if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+            } else {
+              if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+          }
+        }}
+      >
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Keyboard Shortcuts</h3>

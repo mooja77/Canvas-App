@@ -51,6 +51,19 @@ export const canvasIdJobIdParams = z.object({ id: cuid, jobId: cuid });
 export const integrationIdParam = z.object({ id: cuid });
 export const repoIdParam = z.object({ id: cuid });
 export const repoIdInsightIdParams = z.object({ repoId: cuid, insightId: cuid });
+export const teamIdParam = z.object({ teamId: cuid });
+export const teamIdUserIdParams = z.object({ teamId: cuid, userId: cuid });
+
+// ─── Team Schemas ───
+
+export const createTeamSchema = z.object({
+  name: z.string().min(1, 'Team name is required').max(200),
+});
+
+export const inviteMemberSchema = z.object({
+  email: z.string().email('Valid email is required'),
+  role: z.enum(['admin', 'member']).optional().default('member'),
+});
 
 // ─── Coding Canvas Schemas ───
 

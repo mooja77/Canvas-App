@@ -856,3 +856,144 @@ export function computeTreemap(
 
   return { nodes, total };
 }
+
+// ─── 11. Intercoder Reliability (Cohen's Kappa) ───
+
+interface KappaCoding {
+  id: string;
+  transcriptId: string;
+  questionId: string;
+  startOffset: number;
+  endOffset: number;
+  codedText: string;
+}
+
+interface KappaSegment {
+  transcriptId: string;
+  startOffset: number;
+  endOffset: number;
+}
+
+interface SegmentComparison {
+  transcriptId: string;
+  startOffset: number;
+  endOffset: number;
+  coderA: string[];  // question IDs assigned by coder A
+  coderB: string[];  // question IDs assigned by coder B
+  agree: boolean;
+}
+
+/**
+ * Compute Cohen's Kappa for intercoder reliability.
+ *
+ * Takes two coders' codings for the same set of transcripts and computes
+ * agreement at the segment level (each unique coded region).
+ *
+ * For each segment, we check if both coders assigned the same set of codes
+ * (question IDs). Agreement is binary per segment.
+ *
+ * Kappa = (Po - Pe) / (1 - Pe)
+ *   Po = observed agreement proportion
+ *   Pe = expected agreement by chance
+ */
+export function computeCohenKappa(
+  codingsA: KappaCoding[],
+  codingsB: KappaCoding[],
+  segments: KappaSegment[],
+): { kappa: number; agreement: number; segments: SegmentComparison[] } {
+  if (segments.length === 0) {
+    return { kappa: 0, agreement: 0, segments: [] };
+  }
+
+  // Gather all unique question IDs across both coders
+  const allQuestionIds = new Set<string>();
+  for (const c of codingsA) allQuestionIds.add(c.questionId);
+  for (const c of codingsB) allQuestionIds.add(c.questionId);
+
+  const segmentComparisons: SegmentComparison[] = [];
+  let agreeCount = 0;
+
+  // For chance calculation: count how often each coder uses each code across all segments
+  // We use a category-level approach: for each segment x category, coderX = 1 if they applied that code
+  const totalDecisions = segments.length * allQuestionIds.size;
+  let coderAPositive = 0;
+  let coderBPositive = 0;
+  let bothPositive = 0;
+  let bothNegative = 0;
+
+  for (const seg of segments) {
+    // Find codings from each coder that overlap this segment
+    const aCodesForSeg = codingsA
+      .filter(c =>
+        c.transcriptId === seg.transcriptId &&
+        c.startOffset < seg.endOffset &&
+        c.endOffset > seg.startOffset
+      )
+      .map(c => c.questionId);
+
+    const bCodesForSeg = codingsB
+      .filter(c =>
+        c.transcriptId === seg.transcriptId &&
+        c.startOffset < seg.endOffset &&
+        c.endOffset > seg.startOffset
+      )
+      .map(c => c.questionId);
+
+    const aSet = new Set(aCodesForSeg);
+    const bSet = new Set(bCodesForSeg);
+
+    // Per-segment agreement: same set of codes applied
+    const setsEqual = aSet.size === bSet.size && [...aSet].every(q => bSet.has(q));
+    if (setsEqual) agreeCount++;
+
+    segmentComparisons.push({
+      transcriptId: seg.transcriptId,
+      startOffset: seg.startOffset,
+      endOffset: seg.endOffset,
+      coderA: [...aSet],
+      coderB: [...bSet],
+      agree: setsEqual,
+    });
+
+    // Per category tracking for chance calculation
+    for (const qId of allQuestionIds) {
+      const aHas = aSet.has(qId);
+      const bHas = bSet.has(qId);
+      if (aHas) coderAPositive++;
+      if (bHas) coderBPositive++;
+      if (aHas && bHas) bothPositive++;
+      if (!aHas && !bHas) bothNegative++;
+    }
+  }
+
+  const agreement = agreeCount / segments.length;
+
+  // Calculate kappa using category-level agreement across all segment-category decisions
+  if (totalDecisions === 0) {
+    return { kappa: 0, agreement, segments: segmentComparisons };
+  }
+
+  const Po = (bothPositive + bothNegative) / totalDecisions;
+  const pAyes = coderAPositive / totalDecisions;
+  const pByes = coderBPositive / totalDecisions;
+  const pAno = 1 - pAyes;
+  const pBno = 1 - pByes;
+  const Pe = (pAyes * pByes) + (pAno * pBno);
+
+  let kappa: number;
+  if (Pe >= 1) {
+    // Perfect expected agreement — kappa undefined, treat as perfect
+    kappa = 1;
+  } else {
+    kappa = (Po - Pe) / (1 - Pe);
+  }
+
+  // Clamp to [-1, 1] for floating point edge cases
+  kappa = Math.max(-1, Math.min(1, kappa));
+
+  return {
+    kappa: Math.round(kappa * 1000) / 1000,
+    agreement: Math.round(agreement * 1000) / 1000,
+    segments: segmentComparisons,
+  };
+}

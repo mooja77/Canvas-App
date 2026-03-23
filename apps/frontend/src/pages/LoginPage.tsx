@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
 import { authApi } from '../services/api';
 import toast from 'react-hot-toast';
@@ -56,6 +57,7 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
 
+  const { t } = useTranslation();
   const setAuth = useAuthStore(s => s.setAuth);
   const setEmailAuth = useAuthStore(s => s.setEmailAuth);
   const navigate = useNavigate();
@@ -211,7 +213,7 @@ export default function LoginPage() {
                 mode === 'login' ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300' : 'text-gray-500'
               }`}
             >
-              Sign In
+              {t('auth.signIn')}
             </button>
             <button
               role="tab"
@@ -221,7 +223,7 @@ export default function LoginPage() {
                 mode === 'register' ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300' : 'text-gray-500'
               }`}
             >
-              Sign Up
+              {t('auth.signUp')}
             </button>
           </div>
 
@@ -246,7 +248,7 @@ export default function LoginPage() {
             <form onSubmit={handleEmailLogin} className="space-y-4" role="tabpanel">
               <div>
                 <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email
+                  {t('auth.email')}
                 </label>
                 <input
                   id="login-email"
@@ -261,7 +263,7 @@ export default function LoginPage() {
               </div>
               <div>
                 <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Password
+                  {t('auth.password')}
                 </label>
                 <div className="relative">
                   <input
@@ -299,13 +301,13 @@ export default function LoginPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Signing in...
+                    {t('auth.signingIn')}
                   </span>
-                ) : 'Sign In'}
+                ) : t('auth.signIn')}
               </button>
               <div className="text-center">
                 <Link to="/forgot-password" className="text-sm text-brand-600 dark:text-brand-400 hover:underline">
-                  Forgot password?
+                  {t('auth.forgotPassword')}
                 </Link>
               </div>
             </form>
@@ -313,7 +315,7 @@ export default function LoginPage() {
             <form onSubmit={handleEmailSignup} className="space-y-4" role="tabpanel">
               <div>
                 <label htmlFor="register-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Your Name
+                  {t('auth.yourName')}
                 </label>
                 <input
                   id="register-name"
@@ -328,7 +330,7 @@ export default function LoginPage() {
               </div>
               <div>
                 <label htmlFor="register-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email
+                  {t('auth.email')}
                 </label>
                 <input
                   id="register-email"
@@ -342,7 +344,7 @@ export default function LoginPage() {
               </div>
               <div>
                 <label htmlFor="register-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Password
+                  {t('auth.password')}
                 </label>
                 <div className="relative">
                   <input
@@ -393,9 +395,9 @@ export default function LoginPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Creating account...
+                    {t('auth.creatingAccount')}
                   </span>
-                ) : 'Create Free Account'}
+                ) : t('auth.createFreeAccount')}
               </button>
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
                 Start free, upgrade anytime. .edu emails get 40% off Pro.
@@ -413,7 +415,7 @@ export default function LoginPage() {
               <svg className={`h-4 w-4 transition-transform ${showAccessCode ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
               </svg>
-              Sign in with access code
+              {t('auth.signInWithCode')}
             </button>
             {showAccessCode && (
               <form onSubmit={handleAccessCodeLogin} className="mt-4 space-y-3">
@@ -429,7 +431,7 @@ export default function LoginPage() {
                   disabled={loading || !code.trim()}
                   className="w-full py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 text-sm"
                 >
-                  {loading ? 'Signing in...' : 'Sign In with Code'}
+                  {loading ? t('auth.signingIn') : t('auth.signInWithCode')}
                 </button>
               </form>
             )}

@@ -27,6 +27,8 @@ model User {
   repositories     ResearchRepository[]
   integrations     Integration[]
   aiConfig         UserAiConfig?
+  ownedTeams       Team[]         @relation("TeamOwner")
+  teamMemberships  TeamMember[]
 
   @@index([email])
   @@index([stripeCustomerId])
@@ -545,4 +547,32 @@ model Integration {
   createdAt    DateTime  @default(now())
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([userId, provider])
+}
+
+// ─── Teams ───
+
+model Team {
+  id        String       @id @default(cuid())
+  name      String
+  ownerId   String
+  owner     User         @relation("TeamOwner", fields: [ownerId], references: [id])
+  members   TeamMember[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([ownerId])
+}
+
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String
+  role     String   @default("member") // owner, admin, member
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
 }

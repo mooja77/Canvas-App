@@ -392,7 +392,7 @@ export default function CommandPalette({
   }, [filteredItems]);
 
   return (
-    <div className="modal-backdrop fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh] bg-black/40 backdrop-blur-sm" onClick={onClose}>
+    <div className="modal-backdrop fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh] bg-black/40 backdrop-blur-sm" onClick={onClose} role="dialog" aria-modal="true" aria-label="Command Palette">
       <div
         className="command-palette-enter w-full max-w-lg rounded-2xl bg-white shadow-2xl ring-1 ring-black/10 dark:bg-gray-800 dark:ring-white/10 overflow-hidden"
         onClick={e => e.stopPropagation()}

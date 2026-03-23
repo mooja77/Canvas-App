@@ -23,6 +23,24 @@
     "signUp": "Sign Up",
     "signOut": "Sign Out",
     "email": "Email",
-    "password": "Password"
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "accessCode": "Access code",
+    "signInWithCode": "Sign In with Code",
+    "signingIn": "Signing in...",
+    "creatingAccount": "Creating account...",
+    "createFreeAccount": "Create Free Account",
+    "yourName": "Your Name"
+  },
+  "toolbar": {
+    "transcript": "Transcript",
+    "code": "Code",
+    "memo": "Memo",
+    "survey": "Survey",
+    "autoCode": "Auto-Code",
+    "arrange": "Arrange",
+    "share": "Share",
+    "dashboard": "Dashboard",
+    "ethics": "Ethics"
   }
 }

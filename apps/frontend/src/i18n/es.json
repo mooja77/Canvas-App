@@ -23,6 +23,24 @@
     "signUp": "Registrarse",
     "signOut": "Cerrar Sesión",
     "email": "Correo electrónico",
-    "password": "Contraseña"
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "accessCode": "Código de acceso",
+    "signInWithCode": "Iniciar sesión con código",
+    "signingIn": "Iniciando sesión...",
+    "creatingAccount": "Creando cuenta...",
+    "createFreeAccount": "Crear cuenta gratuita",
+    "yourName": "Tu nombre"
+  },
+  "toolbar": {
+    "transcript": "Transcripción",
+    "code": "Código",
+    "memo": "Memorándum",
+    "survey": "Encuesta",
+    "autoCode": "Auto-Codificar",
+    "arrange": "Organizar",
+    "share": "Compartir",
+    "dashboard": "Panel",
+    "ethics": "Ética"
   }
 }

@@ -23,6 +23,24 @@
     "signUp": "S'inscrire",
     "signOut": "Se déconnecter",
     "email": "E-mail",
-    "password": "Mot de passe"
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "accessCode": "Code d'accès",
+    "signInWithCode": "Se connecter avec un code",
+    "signingIn": "Connexion en cours...",
+    "creatingAccount": "Création du compte...",
+    "createFreeAccount": "Créer un compte gratuit",
+    "yourName": "Votre nom"
+  },
+  "toolbar": {
+    "transcript": "Transcription",
+    "code": "Code",
+    "memo": "Mémo",
+    "survey": "Enquête",
+    "autoCode": "Auto-Coder",
+    "arrange": "Organiser",
+    "share": "Partager",
+    "dashboard": "Tableau de bord",
+    "ethics": "Éthique"
   }
 }
