@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { getSocket, disconnectSocket, isSocketConnected } from '../lib/socket';
+import { getSocket } from '../lib/socket';
 import { useAuthStore } from '../stores/authStore';
 import { useCanvasStore } from '../stores/canvasStore';
 import type { Socket } from 'socket.io-client';

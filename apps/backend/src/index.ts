@@ -79,6 +79,10 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), hand
 // Body parsing — default limit for most routes
 app.use(express.json({ limit: '1mb' }));
 
+// ─── Request counter for /metrics ───
+let requestCount = 0;
+app.use((_req, _res, next) => { requestCount++; next(); });
+
 // CSRF protection
 app.use(csrfProtection);
 
@@ -114,6 +118,30 @@ app.get('/health', async (_req, res) => {
   } catch {
     res.status(503).json({ status: 'error', message: 'Service unavailable' });
   }
+});
+
+// ─── Readiness check ───
+app.get('/ready', async (_req, res) => {
+  try {
+    await prisma.$queryRawUnsafe('SELECT 1');
+    res.json({
+      status: 'ready',
+      version: process.env.npm_package_version || '1.0.0',
+      uptime: process.uptime(),
+    });
+  } catch {
+    res.status(503).json({ status: 'not ready' });
+  }
+});
+
+// ─── Basic metrics ───
+app.get('/metrics', (_req, res) => {
+  res.json({
+    uptime: process.uptime(),
+    requestCount,
+    memoryUsage: process.memoryUsage().heapUsed,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Request timeout (30 seconds)

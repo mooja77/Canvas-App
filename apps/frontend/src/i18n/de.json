@@ -42,5 +42,23 @@
     "share": "Teilen",
     "dashboard": "Dashboard",
     "ethics": "Ethik"
+  },
+  "pricing": {
+    "title": "Wählen Sie Ihren Plan",
+    "monthly": "Monatlich",
+    "annual": "Jährlich",
+    "free": "Kostenlos",
+    "pro": "Pro",
+    "team": "Team",
+    "getStarted": "Loslegen",
+    "currentPlan": "Aktueller Plan",
+    "upgrade": "Upgraden"
+  },
+  "account": {
+    "profile": "Profil",
+    "plan": "Plan & Nutzung",
+    "billing": "Abrechnung",
+    "manageBilling": "Abrechnung verwalten",
+    "deleteAccount": "Konto löschen"
   }
 }

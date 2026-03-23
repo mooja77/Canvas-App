@@ -9,7 +9,7 @@ import { checkFileUploadAccess } from '../middleware/planLimits.js';
 import { validateParams, canvasIdParam, canvasIdJobIdParams } from '../middleware/validation.js';
 import { storage } from '../lib/storage.js';
 import '../lib/storage-local.js'; // register local fallback
-import { createJob, getJob } from '../lib/jobs.js';
+import { createJob } from '../lib/jobs.js';
 import { registerJobHandler } from '../lib/jobs.js';
 import { transcribeAudio, getLocalUploadPath } from '../utils/transcription.js';
 

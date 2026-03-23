@@ -227,7 +227,7 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
       return res.status(401).json({ success: false, error: 'Unable to extract email from Google token' });
     }
 
-    const { email, name: googleName, sub: googleId, email_verified } = payload;
+    const { email, name: googleName, sub: googleId, email_verified: _email_verified } = payload;
     const normalizedEmail = email.toLowerCase().trim();
     const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
     const hashedIp = sha256(rawIp);

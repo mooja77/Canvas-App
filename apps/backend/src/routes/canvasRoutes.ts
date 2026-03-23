@@ -17,7 +17,7 @@ import { checkCanvasLimit } from '../middleware/planLimits.js';
 import { transcriptRoutes } from './transcriptRoutes.js';
 import { codingRoutes } from './codingRoutes.js';
 import { computedRoutes } from './computedRoutes.js';
-import { shareRoutes, canvasPublicRoutes } from './shareRoutes.js';
+import { shareRoutes } from './shareRoutes.js';
 
 export const canvasRoutes = Router();
 

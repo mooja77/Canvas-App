@@ -687,7 +687,7 @@ function scoreSentiment(text: string): { score: number; magnitude: number } {
   const words = text.toLowerCase().replace(/[^a-z0-9\s'-]/g, ' ').split(/\s+/);
   let totalScore = 0;
   let magnitude = 0;
-  let matched = 0;
+  let _matched = 0;
 
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
@@ -697,7 +697,7 @@ function scoreSentiment(text: string): { score: number; magnitude: number } {
       const adjustedScore = negated ? s * -1 : s;
       totalScore += adjustedScore;
       magnitude += Math.abs(adjustedScore);
-      matched++;
+      _matched++;
     }
   }
 

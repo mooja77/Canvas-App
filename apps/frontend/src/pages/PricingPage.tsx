@@ -81,7 +81,7 @@ export default function PricingPage() {
   const [period, setPeriod] = useState<'monthly' | 'annual'>('monthly');
   const [loading, setLoading] = useState(false);
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false);
-  const [pendingTier, setPendingTier] = useState<'pro' | 'team' | null>(null);
+  const [_pendingTier, setPendingTier] = useState<'pro' | 'team' | null>(null);
   const navigate = useNavigate();
   const { authenticated, plan, authType } = useAuthStore();
 

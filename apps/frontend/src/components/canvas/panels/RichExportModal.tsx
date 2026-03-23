@@ -38,7 +38,7 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
     return m;
   }, [transcripts]);
 
-  const caseMap = useMemo(() => {
+  const _caseMap = useMemo(() => {
     const m = new Map<string, CanvasCase>();
     cases.forEach(c => m.set(c.id, c));
     return m;

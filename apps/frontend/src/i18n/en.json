@@ -42,5 +42,23 @@
     "share": "Share",
     "dashboard": "Dashboard",
     "ethics": "Ethics"
+  },
+  "pricing": {
+    "title": "Choose your plan",
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "free": "Free",
+    "pro": "Pro",
+    "team": "Team",
+    "getStarted": "Get Started",
+    "currentPlan": "Current Plan",
+    "upgrade": "Upgrade"
+  },
+  "account": {
+    "profile": "Profile",
+    "plan": "Plan & Usage",
+    "billing": "Billing",
+    "manageBilling": "Manage Billing",
+    "deleteAccount": "Delete Account"
   }
 }

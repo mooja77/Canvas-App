@@ -209,3 +209,32 @@ describe('eventToCombo', () => {
     expect(eventToCombo(e)).toBe('ctrl+k');
   });
 });
+
+describe('persist behavior', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    resetStore();
+  });
+
+  it('persists shortcuts to localStorage under the correct key', () => {
+    useShortcutStore.getState().setShortcut('fitView', 'ctrl+f');
+    // Zustand persist writes to localStorage synchronously
+    const stored = localStorage.getItem('canvas-app-shortcuts');
+    expect(stored).not.toBeNull();
+    const parsed = JSON.parse(stored!);
+    expect(parsed.state.shortcuts.fitView).toBe('ctrl+f');
+  });
+
+  it('only persists the shortcuts slice (partialize)', () => {
+    useShortcutStore.getState().setShortcut('undo', 'ctrl+y');
+    const stored = localStorage.getItem('canvas-app-shortcuts');
+    expect(stored).not.toBeNull();
+    const parsed = JSON.parse(stored!);
+    // Should have shortcuts but NOT function keys like getShortcut, setShortcut, etc.
+    expect(parsed.state).toHaveProperty('shortcuts');
+    expect(parsed.state).not.toHaveProperty('getShortcut');
+    expect(parsed.state).not.toHaveProperty('setShortcut');
+    expect(parsed.state).not.toHaveProperty('resetShortcut');
+    expect(parsed.state).not.toHaveProperty('resetAll');
+  });
+});

@@ -186,7 +186,7 @@ export default function CanvasWorkspace() {
     refreshCanvas,
   } = useCanvasStore();
 
-  const isMobile = useMobile();
+  const _isMobile = useMobile();
 
   const { showWarning: showSessionWarning, dismissWarning: dismissSessionWarning } = useSessionTimeout();
 
@@ -234,7 +234,7 @@ export default function CanvasWorkspace() {
   const [nodeContextMenu, setNodeContextMenu] = useState<{ show: boolean; x: number; y: number; nodeId: string; nodeType: string; collapsed: boolean } | null>(null);
   const [edgeContextMenu, setEdgeContextMenu] = useState<{ show: boolean; x: number; y: number; edgeId: string; edgeType: string; label?: string } | null>(null);
   const [quickAddMenu, setQuickAddMenu] = useState<{ x: number; y: number } | null>(null);
-  const [smartLinkSource, setSmartLinkSource] = useState<{ nodeId: string; nodeType: string } | null>(null);
+  const [_smartLinkSource, setSmartLinkSource] = useState<{ nodeId: string; nodeType: string } | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
   const zoomLevelRef = useRef(zoomLevel);
   zoomLevelRef.current = zoomLevel;
@@ -260,12 +260,12 @@ export default function CanvasWorkspace() {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   // (userInteractedRef removed — resize handler now uses size-delta threshold instead)
   const manualNavToggleRef = useRef(false);
-  const resizeFitViewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const _resizeFitViewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const workspaceSize = useContainerSize(workspaceRef);
-  const canvasContainerSize = useContainerSize(canvasContainerRef);
+  const _canvasContainerSize = useContainerSize(canvasContainerRef);
 
   // Viewport bookmarks (5 slots, persisted per canvas)
-  const { bookmarks, saveBookmark, recallBookmark, hasBookmark } = useCanvasBookmarks();
+  const { bookmarks, saveBookmark, recallBookmark, hasBookmark: _hasBookmark } = useCanvasBookmarks();
 
   // Visual groups (persisted in localStorage)
   const { groups, addGroup, removeGroup, updateGroup } = useCanvasGroups();
@@ -291,10 +291,10 @@ export default function CanvasWorkspace() {
   }, [setNodes, setEdges, pushHistory]);
 
   // Custom node colors (persisted in localStorage)
-  const { colorMap: nodeColorMap, setNodeColor, getNodeColor } = useNodeColors();
+  const { colorMap: nodeColorMap, setNodeColor, getNodeColor: _getNodeColor } = useNodeColors();
 
   // Reroute waypoint nodes (persisted in localStorage)
-  const { rerouteNodes, addReroute, removeReroute, updateReroutePosition } = useCanvasRerouteNodes();
+  const { rerouteNodes, addReroute, removeReroute: _removeReroute, updateReroutePosition: _updateReroutePosition } = useCanvasRerouteNodes();
 
   // Focus mode (hides toolbar, sidebar, status bar)
   const [focusMode, setFocusMode] = useState(false);
@@ -728,7 +728,7 @@ export default function CanvasWorkspace() {
       if (!targetIsPane) return;
 
       // Find the source node type from the connection start
-      const connectingNodeId = (rfInstanceRef.current as any)?.toObject?.()?.nodes
+      const _connectingNodeId = (rfInstanceRef.current as any)?.toObject?.()?.nodes
         ?.find((n: any) => n.selected)?.id;
 
       // Fall back to checking which node started the connection via the store
@@ -1685,6 +1685,7 @@ export default function CanvasWorkspace() {
             minZoom={0.15}
             maxZoom={2}
             className="bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900"
+            onlyRenderVisibleElements
             proOptions={PRO_OPTIONS}
           >
             <Background

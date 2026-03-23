@@ -10,6 +10,7 @@ import {
   computeCodingQuery,
   computeSentiment,
   computeTreemap,
+  computeCohenKappa,
 } from './textAnalysis.js';
 
 // ─── Test Data Fixtures ───
@@ -492,5 +493,80 @@ describe('computeTreemap', () => {
     const result = computeTreemap([], questionsWithParent, 'count');
     expect(result.nodes).toHaveLength(0);
     expect(result.total).toBe(0);
+  });
+});
+
+// ─── 11. Cohen's Kappa ───
+
+describe('computeCohenKappa', () => {
+  const segments = [
+    { transcriptId: 't1', startOffset: 0, endOffset: 45 },
+    { transcriptId: 't2', startOffset: 0, endOffset: 40 },
+    { transcriptId: 't3', startOffset: 0, endOffset: 40 },
+  ];
+
+  it('returns kappa = 1.0 for perfect agreement', () => {
+    const codingsA = [
+      { id: 'a1', transcriptId: 't1', questionId: 'q1', startOffset: 0, endOffset: 45, codedText: 'text' },
+      { id: 'a2', transcriptId: 't2', questionId: 'q2', startOffset: 0, endOffset: 40, codedText: 'text' },
+      { id: 'a3', transcriptId: 't3', questionId: 'q1', startOffset: 0, endOffset: 40, codedText: 'text' },
+    ];
+    const codingsB = [
+      { id: 'b1', transcriptId: 't1', questionId: 'q1', startOffset: 0, endOffset: 45, codedText: 'text' },
+      { id: 'b2', transcriptId: 't2', questionId: 'q2', startOffset: 0, endOffset: 40, codedText: 'text' },
+      { id: 'b3', transcriptId: 't3', questionId: 'q1', startOffset: 0, endOffset: 40, codedText: 'text' },
+    ];
+    const result = computeCohenKappa(codingsA, codingsB, segments);
+    expect(result.kappa).toBeCloseTo(1.0, 5);
+    expect(result.agreement).toBe(1);
+    expect(result.segments.every(s => s.agree)).toBe(true);
+  });
+
+  it('returns kappa <= 0 for no agreement', () => {
+    // Coder A applies q1 everywhere, Coder B applies q2 everywhere — no overlap in codes
+    const codingsA = [
+      { id: 'a1', transcriptId: 't1', questionId: 'q1', startOffset: 0, endOffset: 45, codedText: 'text' },
+      { id: 'a2', transcriptId: 't2', questionId: 'q1', startOffset: 0, endOffset: 40, codedText: 'text' },
+      { id: 'a3', transcriptId: 't3', questionId: 'q1', startOffset: 0, endOffset: 40, codedText: 'text' },
+    ];
+    const codingsB = [
+      { id: 'b1', transcriptId: 't1', questionId: 'q2', startOffset: 0, endOffset: 45, codedText: 'text' },
+      { id: 'b2', transcriptId: 't2', questionId: 'q2', startOffset: 0, endOffset: 40, codedText: 'text' },
+      { id: 'b3', transcriptId: 't3', questionId: 'q2', startOffset: 0, endOffset: 40, codedText: 'text' },
+    ];
+    const result = computeCohenKappa(codingsA, codingsB, segments);
+    expect(result.kappa).toBeLessThanOrEqual(0);
+    expect(result.agreement).toBe(0);
+  });
+
+  it('returns kappa between 0 and 1 for partial agreement', () => {
+    const codingsA = [
+      { id: 'a1', transcriptId: 't1', questionId: 'q1', startOffset: 0, endOffset: 45, codedText: 'text' },
+      { id: 'a2', transcriptId: 't2', questionId: 'q2', startOffset: 0, endOffset: 40, codedText: 'text' },
+      { id: 'a3', transcriptId: 't3', questionId: 'q1', startOffset: 0, endOffset: 40, codedText: 'text' },
+    ];
+    const codingsB = [
+      { id: 'b1', transcriptId: 't1', questionId: 'q1', startOffset: 0, endOffset: 45, codedText: 'text' },
+      { id: 'b2', transcriptId: 't2', questionId: 'q2', startOffset: 0, endOffset: 40, codedText: 'text' },
+      { id: 'b3', transcriptId: 't3', questionId: 'q2', startOffset: 0, endOffset: 40, codedText: 'text' },
+    ];
+    const result = computeCohenKappa(codingsA, codingsB, segments);
+    expect(result.kappa).toBeGreaterThan(0);
+    expect(result.kappa).toBeLessThan(1);
+    expect(result.agreement).toBeGreaterThan(0);
+    expect(result.agreement).toBeLessThan(1);
+  });
+
+  it('handles empty segments array gracefully', () => {
+    const codingsA = [
+      { id: 'a1', transcriptId: 't1', questionId: 'q1', startOffset: 0, endOffset: 45, codedText: 'text' },
+    ];
+    const codingsB = [
+      { id: 'b1', transcriptId: 't1', questionId: 'q1', startOffset: 0, endOffset: 45, codedText: 'text' },
+    ];
+    const result = computeCohenKappa(codingsA, codingsB, []);
+    expect(result.kappa).toBe(0);
+    expect(result.agreement).toBe(0);
+    expect(result.segments).toHaveLength(0);
   });
 });

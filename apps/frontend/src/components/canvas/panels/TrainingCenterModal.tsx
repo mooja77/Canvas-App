@@ -16,7 +16,7 @@ export default function TrainingCenterModal({
   onClose,
   canvasId,
   transcripts,
-  questions,
+  questions: _questions,
 }: TrainingCenterModalProps) {
   const [trainingDocs, setTrainingDocs] = useState<TrainingDocument[]>([]);
   const [loading, setLoading] = useState(false);

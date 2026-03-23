@@ -32,7 +32,7 @@ export default function AccountPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { authenticated, logout, authType } = useAuthStore();
+  const { authenticated, logout, authType: _authType } = useAuthStore();
 
   // Edit profile state
   const [editName, setEditName] = useState('');
@@ -56,7 +56,7 @@ export default function AccountPage() {
   const [aiModel, setAiModel] = useState('');
   const [aiHasKey, setAiHasKey] = useState(false);
   const [aiSaving, setAiSaving] = useState(false);
-  const [aiTesting, setAiTesting] = useState(false);
+  const [_aiTesting, _setAiTesting] = useState(false);
   const [showAiKey, setShowAiKey] = useState(false);
 
   // Post-upgrade welcome state

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useCanvasStore, useActiveCanvas, useShowCodingStripes } from '../../../stores/canvasStore';
 import { useUIStore, type EdgeStyleType } from '../../../stores/uiStore';
 import TranscriptSourceMenu from './TranscriptSourceMenu';
@@ -37,6 +38,7 @@ interface CanvasToolbarProps {
 }
 
 export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpenCommandPalette, onAutoLayout, onExportPNG, onToggleFocusMode, onTogglePresentationMode, onAiAutoCode, requireAiConfig }: CanvasToolbarProps) {
+  const { t } = useTranslation();
   const activeCanvas = useActiveCanvas();
   const showCodingStripes = useShowCodingStripes();
   const closeCanvas = useCanvasStore(s => s.closeCanvas);
@@ -173,7 +175,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                   </svg>
-                  Survey
+                  {t('toolbar.survey')}
                 </button>
                 <button
                   data-tour="canvas-btn-question"
@@ -184,7 +186,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
                   </svg>
-                  Code
+                  {t('toolbar.code')}
                 </button>
                 <button
                   data-tour="canvas-btn-memo"
@@ -203,7 +205,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                       <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                     </svg>
                   )}
-                  Memo
+                  {t('toolbar.memo')}
                 </button>
               </div>
 
@@ -221,7 +223,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
                   </svg>
-                  Auto-Code
+                  {t('toolbar.autoCode')}
                 </button>
                 {onAiAutoCode && (
                   <button
@@ -338,7 +340,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                     <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
                   </svg>
-                  Dashboard
+                  {t('toolbar.dashboard')}
                 </button>
                 <button
                   onClick={() => setShowEthics(true)}
@@ -348,7 +350,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
                   </svg>
-                  Ethics
+                  {t('toolbar.ethics')}
                 </button>
                 <button
                   onClick={() => setShowExcerpts(true)}
@@ -379,7 +381,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
                     </svg>
-                    Arrange
+                    {t('toolbar.arrange')}
                   </button>
                 )}
                 {onExportPNG && (
@@ -453,7 +455,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
                   </svg>
-                  Share
+                  {t('toolbar.share')}
                 </button>
                 {onOpenCommandPalette && (
                   <button

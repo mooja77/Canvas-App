@@ -12,7 +12,7 @@ function makeNodes(count: number, prefix = 'node'): Node[] {
   }));
 }
 
-function makeEdges(count: number): Edge[] {
+function _makeEdges(count: number): Edge[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `edge-${i}`,
     source: `node-${i}`,

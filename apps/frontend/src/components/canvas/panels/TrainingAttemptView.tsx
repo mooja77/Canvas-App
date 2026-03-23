@@ -25,7 +25,7 @@ export default function TrainingAttemptView({
   canvasId,
   trainingDocument,
   questions,
-  transcriptContent,
+  transcriptContent: _transcriptContent,
 }: TrainingAttemptViewProps) {
   const [attempts, setAttempts] = useState<TrainingAttempt[]>([]);
   const [selectedAttempt, setSelectedAttempt] = useState<TrainingAttempt | null>(null);

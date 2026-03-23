@@ -14,6 +14,7 @@ import type {
 } from '@canvas-app/shared';
 import { canvasApi } from '../services/api';
 import { emitSocketEvent } from '../lib/socket';
+import { cacheCanvas, getCachedCanvas } from '../lib/offlineStorage';
 import toast from 'react-hot-toast';
 
 interface PendingSelection {
@@ -164,8 +165,18 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     try {
       const res = await canvasApi.getCanvas(id);
       set({ activeCanvasId: id, activeCanvas: res.data.data, loading: false });
+      // Cache for offline use
+      cacheCanvas(res.data.data).catch(() => {});
     } catch {
-      set({ error: 'Failed to open canvas', loading: false });
+      // Try offline fallback
+      const cached = await getCachedCanvas(id).catch(() => null);
+      if (cached) {
+        set({ activeCanvasId: id, activeCanvas: cached, loading: false });
+        toast('Loaded from offline cache', { icon: '\u{1F4F1}' });
+      } else {
+        set({ error: 'Failed to open canvas', loading: false });
+        toast.error('Failed to load canvas');
+      }
     }
   },
 
