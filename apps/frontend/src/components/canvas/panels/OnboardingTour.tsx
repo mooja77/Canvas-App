@@ -353,13 +353,18 @@ export default function OnboardingTour() {
           left: clampLeft(targetRect.left + targetRect.width / 2),
           transform: 'translateX(-50%)',
         };
-      case 'top':
+      case 'top': {
+        // Card renders above the target. Estimate card height (~300px) and
+        // clamp so the card doesn't go above the viewport.
+        const cardHeight = 300;
+        const idealTop = targetRect.top - gap - cardHeight;
         return {
           position: 'fixed',
-          top: Math.max(padding, targetRect.top - gap),
+          top: Math.max(padding, idealTop),
           left: clampLeft(targetRect.left + targetRect.width / 2),
-          transform: 'translate(-50%, -100%)',
+          transform: 'translateX(-50%)',
         };
+      }
       case 'right':
         return {
           position: 'fixed',
