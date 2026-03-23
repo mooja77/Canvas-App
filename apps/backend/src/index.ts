@@ -1,4 +1,24 @@
 import 'dotenv/config';
+
+// Validate required environment variables (skip in test — tests mock env vars)
+if (process.env.NODE_ENV !== 'test') {
+  const REQUIRED_VARS = ['JWT_SECRET', 'DATABASE_URL'];
+  const OPTIONAL_VARS = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'SMTP_HOST', 'ENCRYPTION_KEY'];
+
+  for (const v of REQUIRED_VARS) {
+    if (!process.env[v]) {
+      console.error(`FATAL: Missing required environment variable: ${v}`);
+      process.exit(1);
+    }
+  }
+
+  for (const v of OPTIONAL_VARS) {
+    if (!process.env[v]) {
+      console.warn(`Warning: Optional environment variable not set: ${v}`);
+    }
+  }
+}
+
 import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
