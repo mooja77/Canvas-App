@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /canvas
+Disallow: /account
+
+Sitemap: https://qualcanvas.com/sitemap.xml

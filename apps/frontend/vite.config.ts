@@ -8,6 +8,15 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      manifest: {
+        name: 'QualCanvas - Qualitative Coding',
+        short_name: 'QualCanvas',
+        theme_color: '#3B82F6',
+        background_color: '#ffffff',
+        display: 'standalone',
+        start_url: '/',
+        icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+      },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         runtimeCaching: [

@@ -729,3 +729,28 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
     res.json({ success: true, message: 'Account deleted' });
   } catch (err) { next(err); }
 });
+
+// POST /api/auth/admin/seed-demo — seed demo access code (protected by admin secret)
+userAuthRoutes.post('/auth/admin/seed-demo', async (req, res, next) => {
+  try {
+    const { secret } = req.body;
+    if (!process.env.ADMIN_SEED_SECRET || secret !== process.env.ADMIN_SEED_SECRET) {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    const demoCode = 'CANVAS-DEMO2025';
+    const sha256Index = sha256(demoCode);
+    const bcryptHash = await bcrypt.hash(demoCode, BCRYPT_ROUNDS);
+    await prisma.dashboardAccess.upsert({
+      where: { accessCode: sha256Index },
+      update: {},
+      create: {
+        accessCode: sha256Index,
+        accessCodeHash: bcryptHash,
+        name: 'Demo Researcher',
+        role: 'researcher',
+        expiresAt: new Date('2027-12-31'),
+      },
+    });
+    res.json({ success: true, message: 'Demo access code seeded' });
+  } catch (err) { next(err); }
+});

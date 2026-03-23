@@ -53,17 +53,19 @@ import NodeContextMenu from './panels/NodeContextMenu';
 import EdgeContextMenu from './panels/EdgeContextMenu';
 import SelectionToolbar from './panels/SelectionToolbar';
 import QuickAddMenu from './panels/QuickAddMenu';
-import ExcerptBrowserModal from './panels/ExcerptBrowserModal';
-import RichExportModal from './panels/RichExportModal';
-import IntercoderReliabilityModal from './panels/IntercoderReliabilityModal';
-import IntercoderPanel from './panels/IntercoderPanel';
-import CodeWeightingPanel from './panels/CodeWeightingPanel';
-import CrossCaseAnalysisModal from './panels/CrossCaseAnalysisModal';
-import PresentationMode from './panels/PresentationMode';
 import CanvasTabBar from './panels/CanvasTabBar';
 import AiSuggestPanel from './panels/AiSuggestPanel';
-import AiAutoCodeModal from './panels/AiAutoCodeModal';
 import AiSetupGuide from './panels/AiSetupGuide';
+
+// Lazy-load heavy modals/panels (only loaded when opened)
+const ExcerptBrowserModal = React.lazy(() => import('./panels/ExcerptBrowserModal'));
+const RichExportModal = React.lazy(() => import('./panels/RichExportModal'));
+const IntercoderReliabilityModal = React.lazy(() => import('./panels/IntercoderReliabilityModal'));
+const IntercoderPanel = React.lazy(() => import('./panels/IntercoderPanel'));
+const CodeWeightingPanel = React.lazy(() => import('./panels/CodeWeightingPanel'));
+const CrossCaseAnalysisModal = React.lazy(() => import('./panels/CrossCaseAnalysisModal'));
+const PresentationMode = React.lazy(() => import('./panels/PresentationMode'));
+const AiAutoCodeModal = React.lazy(() => import('./panels/AiAutoCodeModal'));
 import PresenceAvatars from './panels/PresenceAvatars';
 import CollabCursors from './CollabCursors';
 import ConfirmDialog from './ConfirmDialog';
