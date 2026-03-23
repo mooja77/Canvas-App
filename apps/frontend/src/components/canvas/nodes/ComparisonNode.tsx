@@ -39,7 +39,8 @@ function ComparisonNode({ data, id, selected }: NodeProps) {
 
   // Transform result into chart data
   const chartData = result?.transcripts?.length
-    ? questions.map((q: CanvasQuestion, qi: number) => {
+    ? questions.map((q: CanvasQuestion, _qi: number) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const entry: any = { name: q.text.slice(0, 12) };
         result.transcripts.forEach(t => {
           const profile = t.profile.find(p => p.questionId === q.id);
@@ -58,8 +59,8 @@ function ComparisonNode({ data, id, selected }: NodeProps) {
       color="#EC4899"
       onConfigure={() => { setSelectedTIds(config?.transcriptIds || []); setEditing(true); }}
       selected={selected}
-      collapsed={(data as any).collapsed}
-      zoomLevel={(data as any).zoomLevel}
+      collapsed={(data as unknown as Record<string, unknown>).collapsed as boolean}
+      zoomLevel={(data as unknown as Record<string, unknown>).zoomLevel as number}
     >
       {editing && (
         <div className="border-b border-gray-100 dark:border-gray-700 px-3 py-2 space-y-2">

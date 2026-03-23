@@ -45,13 +45,14 @@ function StatsNode({ data, id, selected }: NodeProps) {
       color="#3B82F6"
       onConfigure={() => { setGroupBy((config?.groupBy as 'question' | 'transcript') || 'question'); setEditing(true); }}
       selected={selected}
-      collapsed={(data as any).collapsed}
-      zoomLevel={(data as any).zoomLevel}
+      collapsed={(data as unknown as Record<string, unknown>).collapsed as boolean}
+      zoomLevel={(data as unknown as Record<string, unknown>).zoomLevel as number}
     >
       {editing && (
         <div className="border-b border-gray-100 dark:border-gray-700 px-3 py-2 space-y-2">
           <div className="flex items-center gap-2">
             <label className="text-[10px] text-gray-500">Group by:</label>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <select className="input h-7 text-xs flex-1" value={groupBy} onChange={e => setGroupBy(e.target.value as any)}>
               <option value="question">Question</option>
               <option value="transcript">Transcript</option>

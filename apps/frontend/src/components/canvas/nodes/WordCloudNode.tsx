@@ -82,8 +82,8 @@ function WordCloudNode({ data, id, selected }: NodeProps) {
       color="#6366F1"
       onConfigure={() => { setSelectedQId(config?.questionId || ''); setEditing(true); }}
       selected={selected}
-      collapsed={(data as any).collapsed}
-      zoomLevel={(data as any).zoomLevel}
+      collapsed={(data as unknown as Record<string, unknown>).collapsed as boolean}
+      zoomLevel={(data as unknown as Record<string, unknown>).zoomLevel as number}
     >
       {editing && (
         <div className="border-b border-gray-100 dark:border-gray-700 px-3 py-2 space-y-2">

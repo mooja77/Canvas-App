@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
 import { billingApi } from '../services/api';
 import toast from 'react-hot-toast';
@@ -83,6 +84,7 @@ export default function PricingPage() {
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false);
   const [_pendingTier, setPendingTier] = useState<'pro' | 'team' | null>(null);
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { authenticated, plan, authType } = useAuthStore();
 
   const handleUpgrade = async (tier: 'pro' | 'team') => {
@@ -108,6 +110,7 @@ export default function PricingPage() {
       if (url) {
         window.location.href = url;
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to start checkout');
     } finally {
@@ -120,10 +123,10 @@ export default function PricingPage() {
       <div className="max-w-5xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">
-            Simple, transparent pricing
+            {t('pricing.pageTitle')}
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
-            Start free. Upgrade when your research grows.
+            {t('pricing.pageSubtitle')}
           </p>
           <div className="inline-flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 mt-6">
             <button
@@ -132,7 +135,7 @@ export default function PricingPage() {
                 period === 'monthly' ? 'bg-white dark:bg-gray-600 shadow text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'
               }`}
             >
-              Monthly
+              {t('pricing.monthly')}
             </button>
             <button
               onClick={() => setPeriod('annual')}
@@ -140,7 +143,7 @@ export default function PricingPage() {
                 period === 'annual' ? 'bg-white dark:bg-gray-600 shadow text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'
               }`}
             >
-              Annual
+              {t('pricing.annual')}
               <span className="ml-1 text-xs text-green-600 dark:text-green-400">Save 25%</span>
             </button>
           </div>
@@ -148,8 +151,8 @@ export default function PricingPage() {
 
         <div className="grid md:grid-cols-3 gap-6">
           <TierCard
-            name="Free"
-            price="Free"
+            name={t('pricing.free')}
+            price={t('pricing.free')}
             period={period}
             current={plan === 'free'}
             features={[
@@ -160,7 +163,7 @@ export default function PricingPage() {
               'Stats & Word Cloud analysis',
               'CSV export',
             ]}
-            cta="Get Started"
+            cta={t('pricing.getStarted')}
             onSelect={() => {
               if (plan === 'pro' || plan === 'team') {
                 setPendingTier(null);
@@ -171,24 +174,24 @@ export default function PricingPage() {
             }}
           />
           <TierCard
-            name="Pro"
+            name={t('pricing.pro')}
             price="$12"
             annualPrice="$9"
             period={period}
             highlight
             current={plan === 'pro'}
             features={[
-              'Unlimited canvases & transcripts',
+              t('pricing.unlimitedCanvases'),
               '50,000 words per transcript',
               'Unlimited codes',
               'Auto-code',
-              'All 10 analysis tools',
+              t('pricing.allAnalysisTools'),
               'CSV, PNG, HTML, Markdown export',
               '5 share codes',
               'Ethics panel & cases',
-              '40% off for .edu emails',
+              t('pricing.eduDiscount'),
             ]}
-            cta={loading ? 'Loading...' : 'Upgrade to Pro'}
+            cta={loading ? t('common.loading') : t('pricing.upgradeToPro')}
             onSelect={() => {
               if (plan === 'team') {
                 setPendingTier('pro');
@@ -199,21 +202,21 @@ export default function PricingPage() {
             }}
           />
           <TierCard
-            name="Team"
+            name={t('pricing.team')}
             price="$29"
             annualPrice="$22"
             period={period}
             current={plan === 'team'}
             features={[
               'Everything in Pro',
-              'Per-seat pricing',
-              'Unlimited share codes',
-              'Intercoder reliability (Kappa)',
-              'Team management',
-              'Priority support',
-              '40% off for .edu emails',
+              t('pricing.perSeatPricing'),
+              t('pricing.unlimitedShares'),
+              t('pricing.intercoderReliability'),
+              t('pricing.teamManagement'),
+              t('pricing.prioritySupport'),
+              t('pricing.eduDiscount'),
             ]}
-            cta={loading ? 'Loading...' : 'Upgrade to Team'}
+            cta={loading ? t('common.loading') : t('pricing.upgradeToTeam')}
             onSelect={() => handleUpgrade('team')}
           />
         </div>
@@ -221,7 +224,7 @@ export default function PricingPage() {
         {/* Feature Comparison Table */}
         <div className="mt-16">
           <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-8">
-            Full Feature Comparison
+            {t('pricing.featureComparison')}
           </h2>
 
           {/* Desktop table — hidden on mobile */}
@@ -311,7 +314,7 @@ export default function PricingPage() {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
             </svg>
-            30-day money-back guarantee
+            {t('pricing.moneyBack')}
           </div>
           {period === 'annual' && (
             <p className="text-sm text-green-600 dark:text-green-400 mt-2 font-medium">
@@ -323,7 +326,7 @@ export default function PricingPage() {
         {/* FAQ */}
         <div className="mt-16 max-w-3xl mx-auto">
           <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-8">
-            Frequently Asked Questions
+            {t('pricing.faq')}
           </h2>
           <div className="space-y-4">
             {[

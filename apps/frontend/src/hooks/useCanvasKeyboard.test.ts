@@ -32,6 +32,7 @@ function createMockOptions(overrides: Partial<CanvasKeyboardOptions> = {}): Canv
     nodes: [],
     setNodes: vi.fn(),
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rfInstanceRef: { current: { fitView: vi.fn(), zoomTo: vi.fn(), getViewport: vi.fn(), setViewport: vi.fn() } } as any,
 
     handleCopy: vi.fn(),

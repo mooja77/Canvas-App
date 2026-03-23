@@ -2,7 +2,6 @@ import { useMemo, useState, useCallback } from 'react';
 import { useCanvasStore, useCanvasQuestions, useCanvasTranscripts, useCanvasCodings, useCanvasCases, useSelectedQuestionId } from '../../../stores/canvasStore';
 import { useCodeBookmarks } from '../../../hooks/useCodeBookmarks';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@canvas-app/shared';
-import toast from 'react-hot-toast';
 
 interface CodeNavigatorProps {
   onFocusNode: (nodeId: string) => void;
@@ -21,8 +20,8 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
   const cases = useCanvasCases();
   const selectedQuestionId = useSelectedQuestionId();
   const setSelectedQuestionId = useCanvasStore(s => s.setSelectedQuestionId);
-  const updateQuestion = useCanvasStore(s => s.updateQuestion);
-  const deleteQuestion = useCanvasStore(s => s.deleteQuestion);
+  const _updateQuestion = useCanvasStore(s => s.updateQuestion);
+  const _deleteQuestion = useCanvasStore(s => s.deleteQuestion);
   const [activeTab, setActiveTab] = useState<'codes' | 'sources' | 'cases'>('codes');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');

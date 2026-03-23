@@ -48,7 +48,7 @@ const NODE_CATEGORIES: NodeCategory[] = [
 ];
 
 // Flat list for backward compat
-const NODE_OPTIONS = NODE_CATEGORIES.flatMap(c => c.nodes);
+const _NODE_OPTIONS = NODE_CATEGORIES.flatMap(c => c.nodes);
 
 export default function AddComputedNodeMenu() {
   const { addComputedNode } = useCanvasStore();

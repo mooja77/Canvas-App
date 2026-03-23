@@ -23,6 +23,7 @@ export default function QdpxExportButton({ canvasId }: QdpxExportButtonProps) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success('QDPX exported successfully');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to export QDPX');
     } finally {

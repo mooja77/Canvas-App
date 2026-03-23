@@ -1,7 +1,6 @@
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import type { CanvasTextCoding, CanvasQuestion, CanvasTranscript } from '@canvas-app/shared';
 import { useUIStore } from '../../../stores/uiStore';
 
 export interface DocumentPortraitNodeData {

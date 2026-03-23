@@ -12,12 +12,14 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function cacheCanvas(canvas: any): Promise<void> {
   const db = await openDB();
   const tx = db.transaction(STORE_NAME, 'readwrite');
   tx.objectStore(STORE_NAME).put(canvas);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getCachedCanvas(id: string): Promise<any | null> {
   const db = await openDB();
   return new Promise((resolve) => {

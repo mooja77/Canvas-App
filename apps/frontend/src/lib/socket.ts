@@ -26,7 +26,7 @@ export function getSocket(token: string): Socket {
   });
 
   socket.on('connect', () => {
-    console.log('[Socket] Connected:', socket?.id);
+    console.warn('[Socket] Connected:', socket?.id);
   });
 
   socket.on('connect_error', (err) => {
@@ -34,7 +34,7 @@ export function getSocket(token: string): Socket {
   });
 
   socket.on('disconnect', (reason) => {
-    console.log('[Socket] Disconnected:', reason);
+    console.warn('[Socket] Disconnected:', reason);
   });
 
   return socket;

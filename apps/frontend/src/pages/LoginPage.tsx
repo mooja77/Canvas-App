@@ -73,6 +73,7 @@ export default function LoginPage() {
       setEmailAuth({ jwt, email: user.email, userId: user.id, name: user.name, role: user.role, plan: user.plan, emailVerified: user.emailVerified });
       toast.success(`Welcome, ${user.name}!`);
       navigate('/canvas');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Google sign-in failed');
     } finally {
@@ -136,6 +137,7 @@ export default function LoginPage() {
       setEmailAuth({ jwt, email: user.email, userId: user.id, name: user.name, role: user.role, plan: user.plan, emailVerified: user.emailVerified });
       toast.success(`Welcome back, ${user.name}!`);
       navigate('/canvas');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Invalid email or password');
     } finally {
@@ -157,6 +159,7 @@ export default function LoginPage() {
       setEmailAuth({ jwt, email: user.email, userId: user.id, name: user.name, role: user.role, plan: user.plan, emailVerified: user.emailVerified });
       toast.success(`Welcome, ${user.name}!`);
       navigate('/canvas');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Registration failed');
     } finally {
@@ -174,6 +177,7 @@ export default function LoginPage() {
       setAuth({ dashboardCode: code.trim(), jwt, name: userName, role, dashboardAccessId });
       toast.success(`Welcome back, ${userName}!`);
       navigate('/canvas');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Invalid access code');
     } finally {

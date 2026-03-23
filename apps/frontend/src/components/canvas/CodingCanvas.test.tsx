@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { type Mock } from 'vitest';
 
 // Mock react-router-dom
 const mockUseParams = vi.fn<() => Record<string, string | undefined>>(() => ({}));
@@ -10,11 +9,13 @@ vi.mock('react-router-dom', () => ({
 
 // Mock canvasStore
 const mockOpenCanvas = vi.fn(() => Promise.resolve());
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockCanvasStoreState: Record<string, any> = {
   activeCanvasId: null,
   openCanvas: mockOpenCanvas,
 };
 vi.mock('../../stores/canvasStore', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   useCanvasStore: (selector?: (state: any) => any) => {
     if (typeof selector === 'function') return selector(mockCanvasStoreState);
     return mockCanvasStoreState;

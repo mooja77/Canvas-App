@@ -29,6 +29,7 @@ export default function ResetPasswordPage() {
       await authApi.resetPassword(email, token, password);
       setDone(true);
       toast.success('Password reset successfully!');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Reset failed. The link may have expired.');
     } finally {

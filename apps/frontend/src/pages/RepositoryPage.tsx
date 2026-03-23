@@ -40,6 +40,7 @@ export default function RepositoryPage() {
     try {
       const res = await canvasApi.getRepositories();
       setRepositories(res.data.repositories);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       if (err.response?.status !== 403) {
         toast.error('Failed to load repositories');
@@ -77,6 +78,7 @@ export default function RepositoryPage() {
       setNewRepoDesc('');
       setShowNewRepo(false);
       loadRepositories();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to create repository');
     }
@@ -109,6 +111,7 @@ export default function RepositoryPage() {
       setNewInsightContent('');
       setShowNewInsight(false);
       loadInsights(selectedRepoId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to create insight');
     }

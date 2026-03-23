@@ -2,7 +2,7 @@ interface QueuedOperation {
   id: string;
   method: string;
   url: string;
-  body?: any;
+  body?: unknown;
   timestamp: number;
 }
 

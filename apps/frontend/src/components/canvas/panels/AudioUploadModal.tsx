@@ -10,7 +10,7 @@ interface AudioUploadModalProps {
 const ACCEPTED_TYPES = '.mp3,.wav,.mp4,.m4a,.ogg,.webm,.flac';
 
 export default function AudioUploadModal({ onTranscribe, onClose }: AudioUploadModalProps) {
-  const { uploading, progress, fileUploadId, uploadFile } = useFileUpload();
+  const { uploading, progress, fileUploadId: _fileUploadId, uploadFile } = useFileUpload();
   const [language, setLanguage] = useState('');
   const [dragOver, setDragOver] = useState(false);
 

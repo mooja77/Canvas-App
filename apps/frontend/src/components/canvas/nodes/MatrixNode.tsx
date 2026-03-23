@@ -26,7 +26,7 @@ function MatrixNode({ data, id, selected }: NodeProps) {
   );
 
   return (
-    <ComputedNodeShell nodeId={id} computedNodeId={node.id} label={node.label} icon={icon} color="#D97706" selected={selected} collapsed={(data as any).collapsed} zoomLevel={(data as any).zoomLevel}>
+    <ComputedNodeShell nodeId={id} computedNodeId={node.id} label={node.label} icon={icon} color="#D97706" selected={selected} collapsed={(data as unknown as Record<string, unknown>).collapsed as boolean} zoomLevel={(data as unknown as Record<string, unknown>).zoomLevel as number}>
       <div className="max-h-[300px] overflow-auto px-2 py-2">
         {!result?.rows?.length ? (
           <p className="text-xs text-gray-400 text-center py-4">

@@ -11,6 +11,7 @@ export interface TreemapNodeData {
 }
 
 // Custom content renderer for treemap cells
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function TreemapCell(props: any) {
   const { x, y, width, height, name, color } = props;
   if (width < 4 || height < 4) return null;
@@ -58,6 +59,7 @@ function TreemapNode({ data, id, selected }: NodeProps) {
   const result = node.result as unknown as TreemapResult;
 
   const handleSaveConfig = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     updateComputedNode(node.id, { config: { metric } as any });
     setEditing(false);
   };
@@ -104,13 +106,14 @@ function TreemapNode({ data, id, selected }: NodeProps) {
         setEditing(true);
       }}
       selected={selected}
-      collapsed={(data as any).collapsed}
-      zoomLevel={(data as any).zoomLevel}
+      collapsed={(data as unknown as Record<string, unknown>).collapsed as boolean}
+      zoomLevel={(data as unknown as Record<string, unknown>).zoomLevel as number}
     >
       {editing && (
         <div className="border-b border-gray-100 dark:border-gray-700 px-3 py-2 space-y-2">
           <div className="flex items-center gap-2">
             <label className="text-[10px] text-gray-500">Metric:</label>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <select className="input h-7 text-xs flex-1" value={metric} onChange={e => setMetric(e.target.value as any)}>
               <option value="count">Coding Count</option>
               <option value="characters">Characters Coded</option>

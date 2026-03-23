@@ -173,6 +173,7 @@ function MemoNode({ data, selected }: NodeProps) {
           <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-600/70 truncate">
             {nodeData.title || 'Memo'}
           </span>
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {(nodeData as any).muted && (
             <span className="shrink-0 rounded bg-gray-400/80 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white">
               MUTED

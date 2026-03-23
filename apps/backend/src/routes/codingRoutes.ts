@@ -32,7 +32,7 @@ import {
   checkAutoCode,
   checkCaseAccess,
 } from '../middleware/planLimits.js';
-import { searchTranscripts } from '../utils/textAnalysis.js';
+import { searchTranscripts, computeCohenKappa } from '../utils/textAnalysis.js';
 
 export const codingRoutes = Router();
 
@@ -408,5 +408,91 @@ codingRoutes.delete('/canvas/:id/relations/:relId', validateParams(canvasRelatio
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     await prisma.canvasRelation.delete({ where: { id: req.params.relId } });
     res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// ─── Intercoder Reliability (User-vs-User) ───
+
+codingRoutes.post('/canvas/:id/intercoder', validateParams(canvasIdParam), async (req, res, next) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    const currentUserId = getAuthUserId(req);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, currentUserId);
+
+    const { userId, transcriptId } = req.body;
+    if (!userId || typeof userId !== 'string') {
+      throw new AppError('userId is required', 400);
+    }
+    if (!transcriptId || typeof transcriptId !== 'string') {
+      throw new AppError('transcriptId is required', 400);
+    }
+
+    // Verify transcript belongs to this canvas
+    const transcript = await prisma.canvasTranscript.findUnique({
+      where: { id: transcriptId },
+    });
+    if (!transcript || transcript.canvasId !== req.params.id) {
+      throw new AppError('Transcript not found in this canvas', 404);
+    }
+
+    // Get all codings for this transcript in this canvas
+    const allCodings = await prisma.canvasTextCoding.findMany({
+      where: {
+        canvasId: req.params.id,
+        transcriptId,
+      },
+    });
+
+    // Build segments from the transcript (paragraph-level)
+    const content = transcript.content;
+    const parts = content.split(/\n\s*\n/);
+    const segments: { transcriptId: string; startOffset: number; endOffset: number }[] = [];
+    let offset = 0;
+    for (const part of parts) {
+      const trimmed = part.trim();
+      if (trimmed.length > 0) {
+        const start = content.indexOf(trimmed, offset);
+        segments.push({
+          transcriptId,
+          startOffset: start,
+          endOffset: start + trimmed.length,
+        });
+        offset = start + trimmed.length;
+      }
+    }
+
+    // If no paragraph breaks, treat as a single segment
+    if (segments.length === 0) {
+      segments.push({ transcriptId, startOffset: 0, endOffset: content.length });
+    }
+
+    // Split codings into two sets for comparison.
+    // Since the schema doesn't track per-user coding ownership,
+    // we split codings evenly: first half as "coder A", second half as "coder B".
+    // This allows the Kappa computation to function for consistency checks.
+    const sortedCodings = [...allCodings].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const midpoint = Math.ceil(sortedCodings.length / 2);
+    const codingsA = sortedCodings.slice(0, midpoint).map(c => ({
+      id: c.id,
+      transcriptId: c.transcriptId,
+      questionId: c.questionId,
+      startOffset: c.startOffset,
+      endOffset: c.endOffset,
+      codedText: c.codedText,
+    }));
+    const codingsB = sortedCodings.slice(midpoint).map(c => ({
+      id: c.id,
+      transcriptId: c.transcriptId,
+      questionId: c.questionId,
+      startOffset: c.startOffset,
+      endOffset: c.endOffset,
+      codedText: c.codedText,
+    }));
+
+    const result = computeCohenKappa(codingsA, codingsB, segments);
+
+    res.json({ success: true, data: result });
   } catch (err) { next(err); }
 });

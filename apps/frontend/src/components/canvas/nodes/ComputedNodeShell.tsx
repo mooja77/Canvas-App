@@ -44,6 +44,7 @@ function ComputedNodeShell({
     setError(null);
     try {
       await runComputedNode(computedNodeId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Computation failed';
       setError(msg);

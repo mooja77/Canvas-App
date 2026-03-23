@@ -230,6 +230,7 @@ export default function CanvasListPanel() {
       setDescription('');
       setShowForm(false);
       setSelectedTemplate('blank');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to create canvas');
     } finally {
@@ -284,6 +285,7 @@ export default function CanvasListPanel() {
       await fetchCanvases();
       openCanvas(clonedCanvas.id);
       toast.success('Canvas cloned successfully');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to clone canvas');
     } finally {

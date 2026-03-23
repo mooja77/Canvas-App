@@ -33,7 +33,8 @@ export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
       try {
         new RegExp(value.trim());
         setRegexError(null);
-      } catch (err: any) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
         setRegexError(err?.message || 'Invalid regex');
       }
     } else {
@@ -83,6 +84,7 @@ export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
       const result = await autoCode(questionId, pattern.trim(), mode, transcriptIds.length ? transcriptIds : undefined);
       toast.success(`Auto-coded ${result.created} match${result.created !== 1 ? 'es' : ''}`);
       onClose();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Auto-coding failed';
       toast.error(msg);

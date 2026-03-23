@@ -40,6 +40,7 @@ export default function IntegrationSettingsPanel() {
     try {
       const res = await canvasApi.getIntegrations();
       setIntegrations(res.data.integrations);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       if (err.response?.status !== 403) {
         toast.error('Failed to load integrations');

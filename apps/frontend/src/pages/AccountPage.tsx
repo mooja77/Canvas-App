@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
 import { authApi, billingApi, aiSettingsApi } from '../services/api';
 import toast from 'react-hot-toast';
@@ -32,6 +33,7 @@ export default function AccountPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { authenticated, logout, authType: _authType } = useAuthStore();
 
   // Edit profile state
@@ -117,7 +119,7 @@ export default function AccountPage() {
     if (!editName.trim()) return;
     setSavingProfile(true);
     try {
-      const data: any = {};
+      const data: Record<string, string> = {};
       if (editName.trim() !== profile?.user.name) data.name = editName.trim();
       if (editEmail.trim() !== profile?.user.email) data.email = editEmail.trim();
       if (Object.keys(data).length === 0) {
@@ -127,6 +129,7 @@ export default function AccountPage() {
       const res = await authApi.updateProfile(data);
       setProfile(prev => prev ? { ...prev, user: { ...prev.user, ...res.data.data } } : prev);
       toast.success('Profile updated');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to update profile');
     } finally {
@@ -151,6 +154,7 @@ export default function AccountPage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to change password');
     } finally {
@@ -166,6 +170,7 @@ export default function AccountPage() {
       toast.success('Account deleted');
       logout();
       navigate('/');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to delete account');
     } finally {
@@ -195,7 +200,7 @@ export default function AccountPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Account</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('account.title')}</h1>
           <Link to="/canvas" className="text-sm text-brand-600 dark:text-brand-400 hover:underline">
             Back to canvas
           </Link>
@@ -221,11 +226,11 @@ export default function AccountPage() {
 
         {/* Edit Profile */}
         <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
-          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Profile</h2>
+          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{t('account.profile')}</h2>
           {isEmailAuth ? (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('account.name')}</label>
                 <input
                   type="text"
                   value={editName}
@@ -272,7 +277,7 @@ export default function AccountPage() {
                 disabled={savingProfile}
                 className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
               >
-                {savingProfile ? 'Saving...' : 'Save Changes'}
+                {savingProfile ? t('common.loading') : t('account.saveChanges')}
               </button>
             </div>
           ) : (
@@ -296,7 +301,7 @@ export default function AccountPage() {
 
         {/* Plan & Subscription */}
         <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
-          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Plan</h2>
+          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{t('account.planSection')}</h2>
           <div className="flex items-center justify-between mb-4">
             <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${
               profile.user.plan === 'free'
@@ -345,7 +350,7 @@ export default function AccountPage() {
         {/* Usage */}
         {profile.usage && (
           <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
-            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Usage</h2>
+            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{t('account.usageSection')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {(() => {
                 const limits = profile.user.plan === 'free'
@@ -476,7 +481,8 @@ export default function AccountPage() {
                       setAiHasKey(true);
                       setAiApiKey('');
                       toast.success('AI settings saved and key verified');
-                    } catch (err: any) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
                       toast.error(err.response?.data?.error || 'Failed to save AI settings');
                     } finally {
                       setAiSaving(false);
@@ -513,7 +519,7 @@ export default function AccountPage() {
         {/* Change Password */}
         {isEmailAuth && (
           <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
-            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Change Password</h2>
+            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{t('account.changePassword')}</h2>
             <form onSubmit={handleChangePassword} className="space-y-3">
               <input
                 type="password"
@@ -560,7 +566,7 @@ export default function AccountPage() {
         {/* Danger Zone */}
         {isEmailAuth && (
           <div className="bg-white dark:bg-gray-800 rounded-xl ring-2 ring-red-200 dark:ring-red-900/50 p-6">
-            <h2 className="text-sm font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">Danger Zone</h2>
+            <h2 className="text-sm font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">{t('account.dangerZone')}</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Permanently delete your account and all associated data. This action cannot be undone.
             </p>

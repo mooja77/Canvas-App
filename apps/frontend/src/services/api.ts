@@ -293,6 +293,10 @@ export const canvasApi = {
   acceptTranscription: (canvasId: string, jobId: string, title?: string) =>
     canvasClient.post(`/canvas/${canvasId}/transcribe/${jobId}/accept`, { title }),
 
+  // ─── Intercoder Reliability ───
+  computeIntercoder: (canvasId: string, data: { userId: string; transcriptId: string }) =>
+    canvasClient.post(`/canvas/${canvasId}/intercoder`, data),
+
   // ─── Collaboration ───
   getCollaborators: (canvasId: string) =>
     canvasClient.get(`/canvas/${canvasId}/collaborators`),
@@ -439,6 +443,28 @@ export const aiSettingsApi = {
 
   deleteSettings: () =>
     canvasClient.delete('/ai-settings'),
+};
+
+// ─── Team API ───
+
+export const teamApi = {
+  list: () =>
+    canvasClient.get('/teams'),
+
+  create: (name: string) =>
+    canvasClient.post('/teams', { name }),
+
+  get: (teamId: string) =>
+    canvasClient.get(`/teams/${teamId}`),
+
+  invite: (teamId: string, email: string) =>
+    canvasClient.post(`/teams/${teamId}/members`, { email }),
+
+  removeMember: (teamId: string, userId: string) =>
+    canvasClient.delete(`/teams/${teamId}/members/${userId}`),
+
+  deleteTeam: (teamId: string) =>
+    canvasClient.delete(`/teams/${teamId}`),
 };
 
 // ─── Billing API ───

@@ -56,6 +56,7 @@ import QuickAddMenu from './panels/QuickAddMenu';
 import ExcerptBrowserModal from './panels/ExcerptBrowserModal';
 import RichExportModal from './panels/RichExportModal';
 import IntercoderReliabilityModal from './panels/IntercoderReliabilityModal';
+import IntercoderPanel from './panels/IntercoderPanel';
 import CodeWeightingPanel from './panels/CodeWeightingPanel';
 import CrossCaseAnalysisModal from './panels/CrossCaseAnalysisModal';
 import PresentationMode from './panels/PresentationMode';
@@ -227,6 +228,7 @@ export default function CanvasWorkspace() {
   const [showExcerpts, setShowExcerpts] = useState(false);
   const [showRichExport, setShowRichExport] = useState(false);
   const [showIntercoder, setShowIntercoder] = useState(false);
+  const [showIntercoderPanel, setShowIntercoderPanel] = useState(false);
   const [showWeighting, setShowWeighting] = useState(false);
   const [showCrossCase, setShowCrossCase] = useState(false);
   const [highlightedNodeIds, setHighlightedNodeIds] = useState<Set<string>>(new Set());
@@ -1166,7 +1168,7 @@ export default function CanvasWorkspace() {
     if (!nodeContextMenu) return;
     setNodes(nds => nds.map(n => {
       if (n.id === nodeContextMenu.nodeId) {
-        const { width, height, ...restStyle } = (n.style || {}) as Record<string, unknown>;
+        const { width: _width, height: _height, ...restStyle } = (n.style || {}) as Record<string, unknown>;
         return { ...n, style: restStyle };
       }
       return n;
@@ -2076,8 +2078,11 @@ export default function CanvasWorkspace() {
       {/* Rich Export */}
       {showRichExport && <RichExportModal onClose={() => setShowRichExport(false)} />}
 
-      {/* Intercoder Reliability */}
+      {/* Intercoder Reliability (code-vs-code) */}
       {showIntercoder && <IntercoderReliabilityModal onClose={() => setShowIntercoder(false)} />}
+
+      {/* Intercoder Reliability (user-vs-user) */}
+      {showIntercoderPanel && <IntercoderPanel onClose={() => setShowIntercoderPanel(false)} />}
 
       {/* Code Weighting */}
       {showWeighting && <CodeWeightingPanel onClose={() => setShowWeighting(false)} />}

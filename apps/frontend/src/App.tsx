@@ -18,6 +18,7 @@ import { useAuthStore } from './stores/authStore';
 const CanvasPage = lazy(() => import('./pages/CanvasPage'));
 const AccountPage = lazy(() => import('./pages/AccountPage'));
 const RepositoryPage = lazy(() => import('./pages/RepositoryPage'));
+const TeamPage = lazy(() => import('./pages/TeamPage'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const authenticated = useAuthStore(s => s.authenticated);
@@ -61,6 +62,16 @@ export default function App() {
             <ProtectedRoute>
               <Suspense fallback={<PageSkeleton />}>
                 <RepositoryPage />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/team"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<PageSkeleton />}>
+                <TeamPage />
               </Suspense>
             </ProtectedRoute>
           }

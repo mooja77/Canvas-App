@@ -25,6 +25,7 @@ export default function QdpxImportModal({ canvasId, onClose, onImported }: QdpxI
       toast.success(data.message || 'QDPX imported successfully');
       onImported();
       onClose();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to import QDPX file');
     } finally {

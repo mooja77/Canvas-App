@@ -28,6 +28,7 @@ export default function VerifyEmailPage() {
           setEmailVerified(true);
         }
       })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .catch((err: any) => {
         if (!cancelled) {
           setStatus('error');

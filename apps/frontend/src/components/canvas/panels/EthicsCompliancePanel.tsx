@@ -111,6 +111,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
         });
         // Also load consent records if present
         if (Array.isArray(d.consentRecords)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setConsents(d.consentRecords.map((c: any) => ({
             ...c,
             status: c.consentStatus || c.status || 'active',
@@ -149,6 +150,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
     try {
       const res = await canvasClient.get(`/canvas/${canvasId}/consent`);
       const records = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setConsents(records.map((c: any) => ({ ...c, status: c.consentStatus || c.status || 'active' })));
     } catch {
       // No consents yet
