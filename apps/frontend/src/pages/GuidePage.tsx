@@ -68,7 +68,7 @@ const SECTIONS: GuideSection[] = [
           'Sign in with Google for the fastest setup, or create an email account.',
           'You\'ll land on the Canvas List page where you can create your first workspace.',
         ]} />
-        <Screenshot src="/guide/02-canvas-list.png" alt="Canvas template picker" caption="Choose a methodology template or start with a blank canvas" />
+        <Screenshot src="/guide/03-new-canvas-templates.png" alt="Canvas template picker" caption="Choose a methodology template or start with a blank canvas" />
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           Choose from six methodology templates (Thematic Analysis, Grounded Theory, IPA, Framework Analysis, Content Analysis) or start with a blank canvas. Each template comes with pre-configured starter codes.
         </p>
@@ -114,7 +114,7 @@ const SECTIONS: GuideSection[] = [
           'Give your transcript a title (e.g., the participant\'s pseudonym).',
           'The transcript appears as a node on the canvas that you can drag and resize.',
         ]} />
-        <Screenshot src="/guide/04-empty-canvas.png" alt="Transcript node on canvas" caption="A transcript node showing interview text with scrollable content" />
+        <Screenshot src="/guide/04-empty-canvas.png" alt="Canvas workspace with data" caption="The canvas workspace showing transcripts, codes, and coding connections" />
         <ProTip>Import multiple interviews from a single CSV file — use columns for title and content.</ProTip>
       </>
     ),
@@ -134,7 +134,7 @@ const SECTIONS: GuideSection[] = [
           'Press Enter — a new code node appears on the canvas with a unique color.',
           'Create as many codes as you need. Pro plan users get unlimited codes.',
         ]} />
-        <Screenshot src="/guide/04-empty-canvas.png" alt="Multiple code nodes on canvas" caption="Color-coded nodes for different research themes" />
+        <Screenshot src="/guide/04-empty-canvas.png" alt="Canvas with codes in navigator" caption="Color-coded codes visible in the navigator sidebar with frequency bars" />
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           Each code gets a distinct color so you can instantly see which themes appear where. You can organize codes into hierarchies using the Hierarchy tool in the Tools menu.
         </p>
@@ -158,7 +158,7 @@ const SECTIONS: GuideSection[] = [
           'A colored edge connects the transcript to the code, showing the relationship.',
           'Repeat across all your transcripts to build a rich coding network.',
         ]} />
-        <Screenshot src="/guide/04-empty-canvas.png" alt="Canvas with coding connections" caption="Lines connect transcripts to codes — each line is a coded passage" />
+        <Screenshot src="/guide/04-empty-canvas.png" alt="Canvas workspace overview" caption="The workspace showing nodes on the canvas with the code navigator on the left" />
         <ProTip>The more you code, the richer your visual network becomes. Codes with many connections indicate strong themes in your data.</ProTip>
       </>
     ),
@@ -172,7 +172,7 @@ const SECTIONS: GuideSection[] = [
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           The Code Navigator in the left sidebar gives you a real-time overview of your codebook. It shows every code with a frequency bar indicating how often each code was used.
         </p>
-        <Screenshot src="/guide/04-empty-canvas.png" alt="Code navigator sidebar" caption="The navigator shows codes with frequency bars and coded passage counts" />
+        <Screenshot src="/guide/12-navigator.png" alt="Code navigator sidebar" caption="The navigator shows transcripts with word counts, code counts, and coding coverage" />
         <Steps steps={[
           'Click "Codes" tab to see all codes sorted by frequency or alphabetically.',
           'Click any code to highlight its connections on the canvas and see all coded passages.',
@@ -287,7 +287,7 @@ const SECTIONS: GuideSection[] = [
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           Export your work in multiple formats for publication, sharing, or interoperability with other qualitative analysis tools.
         </p>
-        <Screenshot src="/guide/14-tools-dropdown.png" alt="Export options" caption="Export dropdown with PNG, report, and QDPX options" />
+        <Screenshot src="/guide/18-export-dropdown.png" alt="Export options" caption="Export PNG, HTML/MD reports, QDPX export and import" />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-2">Export Formats</h3>
         <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
           <li><strong>PNG Image:</strong> Save your canvas as a high-resolution image.</li>
@@ -309,7 +309,7 @@ const SECTIONS: GuideSection[] = [
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           Team plan users can collaborate in real time on the same canvas. See who's online, where they're working, and what they're coding — all live.
         </p>
-        <Screenshot src="/guide/04-empty-canvas.png" alt="Real-time collaboration" caption="Presence avatars and connection status in the status bar" />
+        <Screenshot src="/guide/04-empty-canvas.png" alt="Canvas with collaboration indicators" caption="The green dot and JM avatar in the status bar show real-time connection status" />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-2">Collaboration Features</h3>
         <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
           <li><strong>Presence Avatars:</strong> See who's currently viewing the canvas.</li>
@@ -331,7 +331,7 @@ const SECTIONS: GuideSection[] = [
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           Power users love keyboard shortcuts. QualCanvas has 20+ shortcuts that are fully customizable.
         </p>
-        <Screenshot src="/guide/05-toolbar.png" alt="Command palette" caption="Press Ctrl+K to search for any action" />
+        <Screenshot src="/guide/05-toolbar.png" alt="Toolbar with Ctrl+K shortcut" caption="The Ctrl+K shortcut is visible in the toolbar — press it to open the Command Palette" />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-2">Essential Shortcuts</h3>
         <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300 font-mono">
           <li><kbd className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs">Ctrl+K</kbd> — Command Palette (search any action)</li>
@@ -375,7 +375,7 @@ const SECTIONS: GuideSection[] = [
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           QualCanvas works on any device — desktop, tablet, or phone. The interface adapts to your screen size, and dark mode is supported throughout.
         </p>
-        <Screenshot src="/guide/04-empty-canvas.png" alt="Dark mode canvas" caption="Full dark mode support for comfortable late-night coding sessions" />
+        <Screenshot src="/guide/25-dark-mode.png" alt="Dark mode canvas" caption="Full dark mode support — toggle via the moon/sun icon in the header" />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-2">Accessibility Features</h3>
         <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
           <li><strong>Dark Mode:</strong> Toggle via the moon icon in the header. Follows system preference on first visit.</li>
