@@ -41,40 +41,40 @@ Participant: Telehealth has been a game-changer for me. Being able to do a video
 function getDemoActions(canvasId: string | null): Record<number, () => Promise<void>> {
   const getState = useCanvasStore.getState;
   const canvas = () => getState().activeCanvas;
+  // Helper: check if a transcript with this title already exists
+  const hasTranscript = (title: string) => {
+    const c = canvas();
+    return c?.transcripts.some((t: { title: string }) => t.title === title);
+  };
+  // Helper: check if a code with this text already exists
+  const hasCode = (text: string) => {
+    const c = canvas();
+    return c?.questions.some((q: { text: string }) => q.text === text);
+  };
   return {
     // Step 2: Add first transcript
     2: async () => {
-      if (!canvasId) return;
-      const c = canvas();
-      if (c && c.transcripts.length >= 2) return;
+      if (!canvasId || hasTranscript('Patient Interview - Sarah')) return;
       try { await getState().addTranscript('Patient Interview - Sarah', DEMO_TRANSCRIPT_1); } catch { /* ignore */ }
     },
     // Step 3: Add second transcript
     3: async () => {
-      if (!canvasId) return;
-      const c = canvas();
-      if (c && c.transcripts.length >= 2) return;
+      if (!canvasId || hasTranscript('Patient Interview - Michael')) return;
       try { await getState().addTranscript('Patient Interview - Michael', DEMO_TRANSCRIPT_2); } catch { /* ignore */ }
     },
     // Step 5: Create first code
     5: async () => {
-      if (!canvasId) return;
-      const c = canvas();
-      if (c && c.questions.length >= 1) return;
+      if (!canvasId || hasCode('Trust Issues')) return;
       try { await getState().addQuestion('Trust Issues', '#ef4444'); } catch { /* ignore */ }
     },
     // Step 6: Create second code
     6: async () => {
-      if (!canvasId) return;
-      const c = canvas();
-      if (c && c.questions.length >= 2) return;
+      if (!canvasId || hasCode('Barriers to Care')) return;
       try { await getState().addQuestion('Barriers to Care', '#f59e0b'); } catch { /* ignore */ }
     },
     // Step 7: Create third code
     7: async () => {
-      if (!canvasId) return;
-      const c = canvas();
-      if (c && c.questions.length >= 3) return;
+      if (!canvasId || hasCode('Positive Experience')) return;
       try { await getState().addQuestion('Positive Experience', '#22c55e'); } catch { /* ignore */ }
     },
     // Step 9: Create coding (connect transcript to code)
@@ -82,7 +82,7 @@ function getDemoActions(canvasId: string | null): Record<number, () => Promise<v
       if (!canvasId) return;
       const c = canvas();
       if (!c || c.codings.length >= 1 || c.transcripts.length === 0 || c.questions.length === 0) return;
-      const t = c.transcripts[0];
+      const t = c.transcripts.find((t: { title: string }) => t.title === 'Patient Interview - Sarah') || c.transcripts[0];
       const q = c.questions.find((q: { text: string }) => q.text === 'Trust Issues') || c.questions[0];
       if (!t || !q) return;
       try { await getState().createCoding(t.id, q.id, 256, 345, 'It really affects my trust in the system'); } catch { /* ignore */ }
@@ -92,7 +92,7 @@ function getDemoActions(canvasId: string | null): Record<number, () => Promise<v
       if (!canvasId) return;
       const c = canvas();
       if (!c || c.codings.length >= 2 || c.transcripts.length < 2 || c.questions.length < 2) return;
-      const t = c.transcripts[1];
+      const t = c.transcripts.find((t: { title: string }) => t.title === 'Patient Interview - Michael') || c.transcripts[1];
       const q = c.questions.find((q: { text: string }) => q.text === 'Barriers to Care') || c.questions[1];
       if (!t || !q) return;
       try { await getState().createCoding(t.id, q.id, 95, 195, 'The biggest barrier for me is cost'); } catch { /* ignore */ }
@@ -102,7 +102,7 @@ function getDemoActions(canvasId: string | null): Record<number, () => Promise<v
       if (!canvasId) return;
       const c = canvas();
       if (!c || c.codings.length >= 3) return;
-      const t = c.transcripts[0];
+      const t = c.transcripts.find((t: { title: string }) => t.title === 'Patient Interview - Sarah') || c.transcripts[0];
       const q = c.questions.find((q: { text: string }) => q.text === 'Positive Experience') || c.questions[2];
       if (!t || !q) return;
       try { await getState().createCoding(t.id, q.id, 780, 900, 'one particular nurse took the time to actually listen and follow up'); } catch { /* ignore */ }
