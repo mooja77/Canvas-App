@@ -28,10 +28,10 @@ import toast from 'react-hot-toast';
 
 /* ── Dropdown helpers ─────────────────────────────────────────────── */
 
-function ToolbarDropdown({ label, icon, children, className }: { label?: string; icon: React.ReactNode; children: React.ReactNode; className?: string }) {
+function ToolbarDropdown({ label, icon, children, className, 'data-tour': dataTour }: { label?: string; icon: React.ReactNode; children: React.ReactNode; className?: string; 'data-tour'?: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="relative">
+    <div className="relative" data-tour={dataTour}>
       <button onClick={() => setOpen(!open)} className={className || 'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors'}>
         {icon}
         {label && <span>{label}</span>}
@@ -257,6 +257,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
         <div className="flex items-center gap-1.5 shrink-0">
           {/* AI dropdown (purple) */}
           <ToolbarDropdown
+            data-tour="canvas-btn-ai"
             label="AI"
             icon={
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">

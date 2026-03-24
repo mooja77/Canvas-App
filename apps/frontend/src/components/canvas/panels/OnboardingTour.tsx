@@ -242,22 +242,13 @@ const TOUR_STEPS: TourStep[] = [
 
   // === PHASE 7: AI TOOLS ===
   {
-    target: 'canvas-btn-aicode',
-    title: 'AI-Powered Coding',
-    description: 'Auto-Code scans your transcripts and applies codes using patterns or AI. The AI suggests codes based on your existing codebook, saving hours of manual work.',
+    target: 'canvas-btn-ai',
+    title: 'AI-Powered Tools',
+    description: 'The AI menu gives you four powerful tools: Auto-Code to apply codes by pattern, AI Code for intelligent suggestions, AI Chat to ask questions about your data, and Summarize for concise overviews.',
     position: 'bottom',
     icon: 'ai',
     tip: 'Bring your own API key (OpenAI, Anthropic, or Google) to enable AI features.',
-    duration: 5000,
-  },
-  {
-    target: 'canvas-btn-aichat',
-    title: 'AI Research Assistant',
-    description: 'Ask questions about your data in natural language. The AI searches across all your transcripts, finds relevant passages, and synthesizes answers with citations.',
-    position: 'bottom',
-    icon: 'ai',
-    tip: 'Try: "What are the main barriers participants face?"',
-    duration: 5000,
+    duration: 6000,
   },
 
   // === PHASE 8: ADDITIONAL TOOLS ===
@@ -272,11 +263,11 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     target: 'canvas-toolbar',
-    title: 'Import & Export',
-    description: 'Export your work as QDPX for NVivo or ATLAS.ti, generate HTML/Markdown analysis reports, export your codebook as CSV, or save the canvas as a PNG image.',
+    title: 'Import, Export & Tools',
+    description: 'The toolbar puts everything at your fingertips. The Export button saves your work as QDPX, HTML reports, or PNG images. The Tools menu has cases, ethics, codebook, and more.',
     position: 'bottom',
     icon: 'import',
-    tip: 'QDPX is the open standard for qualitative data exchange.',
+    tip: 'QDPX is the open standard for qualitative data exchange with NVivo and ATLAS.ti.',
     duration: 5000,
   },
 
@@ -295,10 +286,10 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: 'canvas-toolbar',
     title: 'Keyboard Shortcuts & Command Palette',
-    description: 'Press Ctrl+K to open the command palette \u2014 search for any action instantly. Press ? to see all keyboard shortcuts. Every shortcut is customizable.',
+    description: 'Press Ctrl+K to open the command palette \u2014 search for any action instantly. Press ? to see all keyboard shortcuts. Every shortcut is fully customizable.',
     position: 'bottom',
     icon: 'search',
-    tip: 'Power users love Ctrl+K \u2014 it\'s the fastest way to navigate.',
+    tip: 'Power users love Ctrl+K \u2014 it\'s the fastest way to find any tool.',
     duration: 5000,
   },
 
