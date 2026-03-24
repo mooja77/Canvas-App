@@ -1,115 +1,316 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUIStore } from '../../../stores/uiStore';
+import { useCanvasStore } from '../../../stores/canvasStore';
 
 interface TourStep {
   target: string; // data-tour attribute value or 'center'
   title: string;
   description: string;
   position: 'top' | 'bottom' | 'left' | 'right' | 'center';
-  icon: 'wave' | 'transcript' | 'code' | 'highlight' | 'ai' | 'collab' | 'link' | 'chart' | 'sidebar' | 'status' | 'search' | 'rocket' | 'import';
+  icon: 'wave' | 'transcript' | 'code' | 'highlight' | 'ai' | 'collab' | 'link' | 'chart' | 'sidebar' | 'status' | 'search' | 'rocket' | 'import' | 'memo' | 'case';
   tip?: string;
+  duration?: number; // Auto-advance time in ms (default 5000)
+  action?: () => Promise<void>; // Async action to run when entering this step
+}
+
+// Sample interview data for demo
+const DEMO_TRANSCRIPT_1 = `Interviewer: Can you tell me about your experience with the healthcare system?
+
+Participant: Honestly, it's been frustrating. I feel like every time I go in, I'm starting from scratch. The doctors don't seem to have my records, and I have to explain my whole history again. It really affects my trust in the system.
+
+Interviewer: That sounds difficult. Can you give me a specific example?
+
+Participant: Last month, I went to see a specialist about my ongoing back pain. They had no idea about the MRI I'd already had done. I had to wait another three weeks for a new one. It felt like a complete waste of time and made me question whether they really care about patient outcomes.
+
+Interviewer: How has this affected your overall attitude toward seeking care?
+
+Participant: I've become much more hesitant. I now keep my own folder of medical records, which I bring to every appointment. But honestly, there have been times when I've just avoided going to the doctor because I didn't want to deal with the hassle. The positive experiences I've had were always when one particular nurse took the time to actually listen and follow up.`;
+
+const DEMO_TRANSCRIPT_2 = `Interviewer: What barriers have you encountered when accessing healthcare services?
+
+Participant: The biggest barrier for me is cost. Even with insurance, the copays add up quickly. I had to choose between filling a prescription and paying my electricity bill last winter. That shouldn't happen.
+
+Interviewer: Beyond cost, are there other challenges?
+
+Participant: Transportation is a huge issue. The nearest specialist is 45 minutes away, and I don't always have reliable transportation. There's also the wait times \u2014 I once waited three months for a routine appointment. By then, my condition had gotten much worse.
+
+Interviewer: Have you found anything that helps overcome these barriers?
+
+Participant: Telehealth has been a game-changer for me. Being able to do a video call instead of driving an hour saves time and money. I also found a community health worker who helps me navigate the system. Having someone advocate for you makes a real difference.`;
+
+function getDemoActions(canvasId: string | null): Record<number, () => Promise<void>> {
+  const getState = useCanvasStore.getState;
+  const canvas = () => getState().activeCanvas;
+  return {
+    // Step 2: Add first transcript
+    2: async () => {
+      if (!canvasId) return;
+      const c = canvas();
+      if (c && c.transcripts.length >= 2) return;
+      try { await getState().addTranscript('Patient Interview - Sarah', DEMO_TRANSCRIPT_1); } catch { /* ignore */ }
+    },
+    // Step 3: Add second transcript
+    3: async () => {
+      if (!canvasId) return;
+      const c = canvas();
+      if (c && c.transcripts.length >= 2) return;
+      try { await getState().addTranscript('Patient Interview - Michael', DEMO_TRANSCRIPT_2); } catch { /* ignore */ }
+    },
+    // Step 5: Create first code
+    5: async () => {
+      if (!canvasId) return;
+      const c = canvas();
+      if (c && c.questions.length >= 1) return;
+      try { await getState().addQuestion('Trust Issues', '#ef4444'); } catch { /* ignore */ }
+    },
+    // Step 6: Create second code
+    6: async () => {
+      if (!canvasId) return;
+      const c = canvas();
+      if (c && c.questions.length >= 2) return;
+      try { await getState().addQuestion('Barriers to Care', '#f59e0b'); } catch { /* ignore */ }
+    },
+    // Step 7: Create third code
+    7: async () => {
+      if (!canvasId) return;
+      const c = canvas();
+      if (c && c.questions.length >= 3) return;
+      try { await getState().addQuestion('Positive Experience', '#22c55e'); } catch { /* ignore */ }
+    },
+    // Step 9: Create coding (connect transcript to code)
+    9: async () => {
+      if (!canvasId) return;
+      const c = canvas();
+      if (!c || c.codings.length >= 1 || c.transcripts.length === 0 || c.questions.length === 0) return;
+      const t = c.transcripts[0];
+      const q = c.questions.find((q: { text: string }) => q.text === 'Trust Issues') || c.questions[0];
+      if (!t || !q) return;
+      try { await getState().createCoding(t.id, q.id, 256, 345, 'It really affects my trust in the system'); } catch { /* ignore */ }
+    },
+    // Step 10: Create second coding
+    10: async () => {
+      if (!canvasId) return;
+      const c = canvas();
+      if (!c || c.codings.length >= 2 || c.transcripts.length < 2 || c.questions.length < 2) return;
+      const t = c.transcripts[1];
+      const q = c.questions.find((q: { text: string }) => q.text === 'Barriers to Care') || c.questions[1];
+      if (!t || !q) return;
+      try { await getState().createCoding(t.id, q.id, 95, 195, 'The biggest barrier for me is cost'); } catch { /* ignore */ }
+    },
+    // Step 11: Create third coding
+    11: async () => {
+      if (!canvasId) return;
+      const c = canvas();
+      if (!c || c.codings.length >= 3) return;
+      const t = c.transcripts[0];
+      const q = c.questions.find((q: { text: string }) => q.text === 'Positive Experience') || c.questions[2];
+      if (!t || !q) return;
+      try { await getState().createCoding(t.id, q.id, 780, 900, 'one particular nurse took the time to actually listen and follow up'); } catch { /* ignore */ }
+    },
+  };
 }
 
 const TOUR_STEPS: TourStep[] = [
+  // === PHASE 1: WELCOME ===
   {
     target: 'center',
-    title: 'Welcome to Canvas!',
-    description: 'Canvas helps you make sense of interview data. We\'ll walk you through the key areas in under a minute.',
+    title: 'Welcome to QualCanvas!',
+    description: 'This interactive tour shows you how to go from raw interview transcripts to meaningful research insights \u2014 all on a visual canvas.',
     position: 'center',
     icon: 'wave',
+    tip: 'Click Auto-play to watch the full demo, or navigate step by step.',
+    duration: 6000,
   },
+
+  // === PHASE 2: ADDING DATA ===
   {
     target: 'canvas-btn-transcript',
-    title: 'Add Your Interviews',
-    description: 'Click here to bring in your interview transcripts. You can paste text directly or import a CSV file with multiple interviews at once.',
+    title: 'Step 1: Add Your Transcripts',
+    description: 'Everything starts with your data. Click the Transcript button to paste text, import a CSV, or drag and drop .txt files directly onto the canvas.',
     position: 'bottom',
     icon: 'transcript',
-    tip: 'Start here! Everything begins with your data.',
-  },
-  {
-    target: 'canvas-btn-question',
-    title: 'Create Codes',
-    description: 'Codes are labels you create to tag important themes in your interviews. For example: "Trust Issues" or "Positive Experience".',
-    position: 'bottom',
-    icon: 'code',
-    tip: 'Think of codes as colored highlighters for your data.',
+    tip: 'You can import multiple interviews from a single CSV file.',
+    duration: 5000,
   },
   {
     target: 'canvas-flow-area',
-    title: 'Code Your Data',
-    description: 'Select any text in a transcript, and a menu appears to tag it with a code. That\'s it \u2014 just select and tag! Lines will connect transcripts to codes automatically.',
+    title: 'Transcript Added!',
+    description: 'Your first interview transcript now appears as a node on the canvas. You can drag it anywhere, resize it, and scroll through the full text inside.',
+    position: 'center',
+    icon: 'transcript',
+    tip: 'Watch \u2014 we\'ll add a second transcript now.',
+    duration: 5000,
+  },
+  {
+    target: 'canvas-flow-area',
+    title: 'Multiple Transcripts',
+    description: 'Each interview gets its own node on the canvas. You can arrange them however you like \u2014 by participant, by topic, or chronologically.',
+    position: 'center',
+    icon: 'transcript',
+    tip: 'Double-click anywhere on the canvas background for a quick-add menu.',
+    duration: 5000,
+  },
+
+  // === PHASE 3: CREATING CODES ===
+  {
+    target: 'canvas-btn-question',
+    title: 'Step 2: Create Your Codes',
+    description: 'Codes are the labels you use to tag themes in your data. Think of them as colored highlighters \u2014 each code marks a concept you want to track across interviews.',
+    position: 'bottom',
+    icon: 'code',
+    tip: 'We\'re creating "Trust Issues" as our first code.',
+    duration: 5000,
+  },
+  {
+    target: 'canvas-flow-area',
+    title: 'Code: Trust Issues',
+    description: 'A red code node appears on the canvas. Each code gets a distinct color so you can instantly see which themes appear where.',
+    position: 'center',
+    icon: 'code',
+    tip: 'Let\'s add "Barriers to Care" next.',
+    duration: 4000,
+  },
+  {
+    target: 'canvas-flow-area',
+    title: 'Code: Barriers to Care',
+    description: 'Your second code is amber-colored. As your codebook grows, you can organize codes into hierarchies using the Hierarchy tool.',
+    position: 'center',
+    icon: 'code',
+    tip: 'One more \u2014 "Positive Experience".',
+    duration: 4000,
+  },
+  {
+    target: 'canvas-flow-area',
+    title: 'Your Codebook is Taking Shape',
+    description: 'Three codes created! In a real project, you might have 20-50 codes. QualCanvas handles unlimited codes on Pro and Team plans.',
+    position: 'center',
+    icon: 'code',
+    tip: 'Now comes the exciting part \u2014 connecting your data to your codes.',
+    duration: 5000,
+  },
+
+  // === PHASE 4: CODING DATA ===
+  {
+    target: 'canvas-flow-area',
+    title: 'Step 3: Code Your Data',
+    description: 'In the transcript, you select text and assign it to a code. A line automatically connects the transcript to the code, showing the relationship visually.',
     position: 'center',
     icon: 'highlight',
-    tip: 'Double-click anywhere on the canvas for a quick menu.',
+    tip: 'Watch \u2014 we\'re tagging "It really affects my trust in the system" with Trust Issues.',
+    duration: 6000,
   },
+  {
+    target: 'canvas-flow-area',
+    title: 'Connections Form Automatically',
+    description: 'See the line connecting the transcript to the code? That\'s a coding. Each line represents a tagged passage. The more you code, the richer your visual network becomes.',
+    position: 'center',
+    icon: 'link',
+    tip: 'Let\'s add another coding from the second interview.',
+    duration: 5000,
+  },
+  {
+    target: 'canvas-flow-area',
+    title: 'Cross-Interview Patterns',
+    description: 'Now both transcripts are connected to codes. You can instantly see which themes appear across multiple interviews \u2014 that\'s the power of visual coding.',
+    position: 'center',
+    icon: 'link',
+    tip: 'Codes with many connections indicate strong themes in your data.',
+    duration: 5000,
+  },
+
+  // === PHASE 5: NAVIGATOR ===
+  {
+    target: 'canvas-navigator',
+    title: 'The Code Navigator',
+    description: 'This sidebar shows your complete codebook at a glance. Click any code to see all its coded passages. The frequency bar shows how often each code was used.',
+    position: 'right',
+    icon: 'sidebar',
+    tip: 'Toggle between Codes and Sources views to explore your data from different angles.',
+    duration: 5000,
+  },
+
+  // === PHASE 6: ANALYSIS ===
+  {
+    target: 'canvas-btn-query',
+    title: 'Step 4: Analyze Your Findings',
+    description: 'Click Analyze to add analysis nodes \u2014 word clouds, co-occurrence matrices, sentiment analysis, statistics, treemaps, and more. Each analysis runs live on your coded data.',
+    position: 'bottom',
+    icon: 'chart',
+    tip: '12 analysis tools available on Pro and Team plans.',
+    duration: 5000,
+  },
+
+  // === PHASE 7: AI TOOLS ===
   {
     target: 'canvas-btn-aicode',
     title: 'AI-Powered Coding',
-    description: 'Get AI suggestions on selected text, or auto-code entire transcripts with a single click. The AI analyzes your data and applies codes intelligently based on your existing codebook.',
+    description: 'Auto-Code scans your transcripts and applies codes using patterns or AI. The AI suggests codes based on your existing codebook, saving hours of manual work.',
     position: 'bottom',
     icon: 'ai',
-    tip: 'Set up your API key in Account Settings first to enable AI features.',
+    tip: 'Bring your own API key (OpenAI, Anthropic, or Google) to enable AI features.',
+    duration: 5000,
   },
   {
     target: 'canvas-btn-aichat',
     title: 'AI Research Assistant',
-    description: 'Ask questions about your data and get answers with citations. The RAG-based chat searches across all your transcripts to find relevant passages and synthesize insights.',
+    description: 'Ask questions about your data in natural language. The AI searches across all your transcripts, finds relevant passages, and synthesizes answers with citations.',
     position: 'bottom',
     icon: 'ai',
-    tip: 'Try asking "What are the main themes across all interviews?"',
+    tip: 'Try: "What are the main barriers participants face?"',
+    duration: 5000,
   },
+
+  // === PHASE 8: ADDITIONAL TOOLS ===
   {
-    target: 'canvas-navigator',
-    title: 'Your Code Navigator',
-    description: 'This sidebar shows all your codes and sources at a glance. Click any code to see what you\'ve tagged. The bar shows how many times each code was used.',
-    position: 'right',
-    icon: 'sidebar',
-  },
-  {
-    target: 'canvas-btn-query',
-    title: 'Analyze Your Findings',
-    description: 'When you\'re ready to find patterns, click Analyze. Create word clouds, charts, or look for themes that appear together.',
+    target: 'canvas-btn-memo',
+    title: 'Research Memos',
+    description: 'Memos let you record your analytical thoughts, theoretical notes, and methodological decisions right on the canvas alongside your data.',
     position: 'bottom',
-    icon: 'chart',
-    tip: 'This is where the insights come from!',
+    icon: 'memo',
+    tip: 'Good qualitative research is built on reflexive memo-writing.',
+    duration: 4000,
   },
   {
     target: 'canvas-toolbar',
     title: 'Import & Export',
-    description: 'Import and export QDPX files for NVivo and ATLAS.ti interoperability. Import survey CSVs, export analysis reports in HTML/Markdown, or save your canvas as a PNG image.',
+    description: 'Export your work as QDPX for NVivo or ATLAS.ti, generate HTML/Markdown analysis reports, export your codebook as CSV, or save the canvas as a PNG image.',
     position: 'bottom',
     icon: 'import',
     tip: 'QDPX is the open standard for qualitative data exchange.',
+    duration: 5000,
   },
+
+  // === PHASE 9: COLLABORATION & STATUS ===
   {
     target: 'canvas-status-bar',
-    title: 'Collaboration',
-    description: 'Team plan users can collaborate in real-time with presence avatars and live cursors. See who\'s working on the canvas and where they\'re focused.',
+    title: 'Real-Time Collaboration',
+    description: 'Team plan users see live presence avatars and cursors. The green dot shows you\'re connected. Multiple researchers can code the same canvas simultaneously.',
     position: 'top',
     icon: 'collab',
-    tip: 'Upgrade to the Team plan to unlock real-time collaboration.',
+    tip: 'Run Cohen\'s Kappa intercoder reliability with one click on Team plans.',
+    duration: 5000,
   },
+
+  // === PHASE 10: KEYBOARD & SHORTCUTS ===
   {
     target: 'canvas-toolbar',
-    title: 'More Powerful Tools',
-    description: 'AI summarization generates concise overviews. Document coding lets you code at scale. The training center helps new team members learn your codebook quickly.',
+    title: 'Keyboard Shortcuts & Command Palette',
+    description: 'Press Ctrl+K to open the command palette \u2014 search for any action instantly. Press ? to see all keyboard shortcuts. Every shortcut is customizable.',
     position: 'bottom',
     icon: 'search',
+    tip: 'Power users love Ctrl+K \u2014 it\'s the fastest way to navigate.',
+    duration: 5000,
   },
-  {
-    target: 'canvas-status-bar',
-    title: 'Track Your Progress',
-    description: 'The status bar shows how much of your data you\'ve coded, plus quick undo/redo. Watch the coverage bar fill up as you work!',
-    position: 'top',
-    icon: 'status',
-  },
+
+  // === FINALE ===
   {
     target: 'center',
-    title: 'You\'re All Set!',
-    description: 'Start by adding a transcript, create a couple of codes, and begin tagging. You\'ll get the hang of it in no time.',
+    title: 'You\'re Ready to Research!',
+    description: 'You\'ve seen the full QualCanvas workflow: import transcripts, create codes, tag your data, and analyze patterns \u2014 all on one visual canvas. Start free and upgrade when your research grows.',
     position: 'center',
     icon: 'rocket',
-    tip: 'Press Ctrl+K anytime to quickly find any action.',
+    tip: 'Start free at qualcanvas.com \u2014 no credit card required.',
+    duration: 7000,
   },
 ];
 
@@ -187,6 +388,18 @@ function StepIcon({ type, className }: { type: TourStep['icon']; className?: str
           <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
         </svg>
       );
+    case 'memo':
+      return (
+        <svg className={`${c} text-green-500`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+        </svg>
+      );
+    case 'case':
+      return (
+        <svg className={`${c} text-pink-500`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
+        </svg>
+      );
     case 'rocket':
       return <span className="text-2xl" role="img" aria-label="rocket">&#128640;</span>;
     default:
@@ -196,12 +409,20 @@ function StepIcon({ type, className }: { type: TourStep['icon']; className?: str
 
 export default function OnboardingTour() {
   const { onboardingComplete, completeOnboarding } = useUIStore();
+  const canvasId = useCanvasStore(s => s.activeCanvasId);
   const [step, setStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [animating, setAnimating] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   const [demoPaused, setDemoPaused] = useState(false);
-  const demoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [actionRunning, setActionRunning] = useState(false);
+  const demoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const demoActionsRef = useRef(getDemoActions(canvasId));
+
+  // Keep demo actions in sync with canvasId
+  useEffect(() => {
+    demoActionsRef.current = getDemoActions(canvasId);
+  }, [canvasId]);
 
   // Reset to step 0 whenever the tour becomes visible again (e.g. replay)
   useEffect(() => {
@@ -217,23 +438,32 @@ export default function OnboardingTour() {
   const isLastStep = step === TOUR_STEPS.length - 1;
   const isCenter = currentStep.target === 'center' || currentStep.position === 'center';
 
-  // Demo mode auto-advance
+  // Run demo action when step changes
   useEffect(() => {
-    if (!demoMode || demoPaused || onboardingComplete || isLastStep) {
+    const action = demoActionsRef.current[step];
+    if (action && canvasId) {
+      setActionRunning(true);
+      action().finally(() => setActionRunning(false));
+    }
+  }, [step, canvasId]);
+
+  // Demo mode auto-advance with per-step timing
+  useEffect(() => {
+    if (!demoMode || demoPaused || onboardingComplete || isLastStep || actionRunning) {
       if (demoTimerRef.current) {
-        clearInterval(demoTimerRef.current);
+        clearTimeout(demoTimerRef.current);
         demoTimerRef.current = null;
       }
       return;
     }
 
-    demoTimerRef.current = setInterval(() => {
+    const duration = currentStep.duration || 5000;
+    demoTimerRef.current = setTimeout(() => {
       setAnimating(true);
       setTimeout(() => {
         setStep(prev => {
           const next = prev + 1;
           if (next >= TOUR_STEPS.length - 1) {
-            // Stop at last step
             setDemoMode(false);
             setDemoPaused(false);
           }
@@ -241,15 +471,15 @@ export default function OnboardingTour() {
         });
         setAnimating(false);
       }, 150);
-    }, 4000);
+    }, duration);
 
     return () => {
       if (demoTimerRef.current) {
-        clearInterval(demoTimerRef.current);
+        clearTimeout(demoTimerRef.current);
         demoTimerRef.current = null;
       }
     };
-  }, [demoMode, demoPaused, onboardingComplete, isLastStep]);
+  }, [demoMode, demoPaused, onboardingComplete, isLastStep, actionRunning, step, currentStep.duration]);
 
   // Find target element
   useEffect(() => {
