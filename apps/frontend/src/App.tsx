@@ -13,6 +13,7 @@ import LoginPage from './pages/LoginPage';
 import PricingPage from './pages/PricingPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
+import GuidePage from './pages/GuidePage';
 import { useAuthStore } from './stores/authStore';
 
 const CanvasPage = lazy(() => import('./pages/CanvasPage'));
@@ -81,6 +82,7 @@ export default function App() {
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/guide" element={<GuidePage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>

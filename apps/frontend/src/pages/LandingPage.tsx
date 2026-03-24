@@ -253,6 +253,7 @@ export default function LandingPage() {
         <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
           <span>&copy; {new Date().getFullYear()} QualCanvas. All rights reserved. &middot; Made by <a href="https://www.jmsdevlab.com/" target="_blank" rel="noopener" className="font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">JMS Dev Lab</a></span>
           <div className="flex gap-4">
+            <Link to="/guide" className="hover:text-gray-700 dark:hover:text-gray-300">Guide</Link>
             <Link to="/pricing" className="hover:text-gray-700 dark:hover:text-gray-300">{t('pricing.title')}</Link>
             <Link to="/login" className="hover:text-gray-700 dark:hover:text-gray-300">{t('auth.signIn')}</Link>
             <Link to="/terms" className="hover:text-gray-700 dark:hover:text-gray-300">Terms</Link>
