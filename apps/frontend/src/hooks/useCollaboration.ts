@@ -43,6 +43,7 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
 
   const jwt = useAuthStore(s => s.jwt);
   const authType = useAuthStore(s => s.authType);
+  const localUserId = useAuthStore(s => s.userId);
 
   useEffect(() => {
     // Only connect for email-authenticated users with a valid canvas
@@ -91,13 +92,14 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
 
     // ─── Document sync listeners ───
 
-    const handleNodeAdded = (_data: { userId: string; data: unknown }) => {
-      // Another user added a node — refresh canvas to pick up the change
+    const handleNodeAdded = (eventData: { userId: string; data: unknown }) => {
+      // Skip events from the local user — local state is already up to date
+      if (eventData.userId === localUserId) return;
       useCanvasStore.getState().refreshCanvas();
     };
 
     const handleNodeDeleted = (data: { userId: string; data: { nodeId: string; nodeType: string } }) => {
-      // Another user deleted a node — remove it from local state
+      if (data.userId === localUserId) return;
       const store = useCanvasStore.getState();
       const ac = store.activeCanvas;
       if (!ac) return;
@@ -121,7 +123,7 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
     };
 
     const handleNodeMoved = (data: { userId: string; data: { nodeId: string; position: { x: number; y: number } } }) => {
-      // Another user moved a node — update position locally without API call
+      if (data.userId === localUserId) return;
       const store = useCanvasStore.getState();
       const ac = store.activeCanvas;
       if (!ac) return;
@@ -136,11 +138,13 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
       });
     };
 
-    const handleCodingAdded = (_data: { userId: string; data: unknown }) => {
+    const handleCodingAdded = (eventData: { userId: string; data: unknown }) => {
+      if (eventData.userId === localUserId) return;
       useCanvasStore.getState().refreshCanvas();
     };
 
     const handleCodingDeleted = (data: { userId: string; data: { codingId: string } }) => {
+      if (data.userId === localUserId) return;
       const store = useCanvasStore.getState();
       const ac = store.activeCanvas;
       if (!ac) return;
@@ -152,7 +156,8 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
       });
     };
 
-    const handleTranscriptUpdated = (_data: { userId: string; data: { transcriptId: string } }) => {
+    const handleTranscriptUpdated = (eventData: { userId: string; data: { transcriptId: string } }) => {
+      if (eventData.userId === localUserId) return;
       useCanvasStore.getState().refreshCanvas();
     };
 
