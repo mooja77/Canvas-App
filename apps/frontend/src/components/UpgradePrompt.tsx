@@ -105,7 +105,7 @@ export default function UpgradePrompt() {
             </p>
             <ul className="text-sm text-brand-700 dark:text-brand-300 space-y-1">
               <li>Unlimited canvases & transcripts</li>
-              <li>All 10 analysis tools</li>
+              <li>All 12 analysis tools</li>
               <li>Auto-code, ethics panel, cases</li>
               <li>CSV, PNG, HTML, Markdown exports</li>
             </ul>

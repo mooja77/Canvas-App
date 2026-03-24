@@ -245,7 +245,7 @@ export default function PricingPage() {
                   { feature: 'Words per transcript', free: '5,000', pro: '50,000', team: '50,000' },
                   { feature: 'Codes', free: '5', pro: 'Unlimited', team: 'Unlimited' },
                   { feature: 'Auto-code', free: false, pro: true, team: true },
-                  { feature: 'Analysis tools', free: '2 (Stats, Word Cloud)', pro: 'All 10', team: 'All 10' },
+                  { feature: 'Analysis tools', free: '2 (Stats, Word Cloud)', pro: 'All 12', team: 'All 12' },
                   { feature: 'Export formats', free: 'CSV', pro: 'CSV, PNG, HTML, MD', team: 'CSV, PNG, HTML, MD' },
                   { feature: 'Share codes', free: '0', pro: '5', team: 'Unlimited' },
                   { feature: 'Ethics panel', free: false, pro: true, team: true },
@@ -282,8 +282,8 @@ export default function PricingPage() {
           <div className="md:hidden space-y-6">
             {([
               { name: 'Free', highlight: false, features: { 'Canvases': '1', 'Transcripts per canvas': '2', 'Words per transcript': '5,000', 'Codes': '5', 'Auto-code': false, 'Analysis tools': '2 (Stats, Word Cloud)', 'Export formats': 'CSV', 'Share codes': '0', 'Ethics panel': false, 'Cases & cross-case': false, 'Intercoder reliability': false, 'Team management': false, '.edu discount': '-' } },
-              { name: 'Pro', highlight: true, features: { 'Canvases': 'Unlimited', 'Transcripts per canvas': 'Unlimited', 'Words per transcript': '50,000', 'Codes': 'Unlimited', 'Auto-code': true, 'Analysis tools': 'All 10', 'Export formats': 'CSV, PNG, HTML, MD', 'Share codes': '5', 'Ethics panel': true, 'Cases & cross-case': true, 'Intercoder reliability': false, 'Team management': false, '.edu discount': '40% off' } },
-              { name: 'Team', highlight: false, features: { 'Canvases': 'Unlimited', 'Transcripts per canvas': 'Unlimited', 'Words per transcript': '50,000', 'Codes': 'Unlimited', 'Auto-code': true, 'Analysis tools': 'All 10', 'Export formats': 'CSV, PNG, HTML, MD', 'Share codes': 'Unlimited', 'Ethics panel': true, 'Cases & cross-case': true, 'Intercoder reliability': true, 'Team management': true, '.edu discount': '40% off' } },
+              { name: 'Pro', highlight: true, features: { 'Canvases': 'Unlimited', 'Transcripts per canvas': 'Unlimited', 'Words per transcript': '50,000', 'Codes': 'Unlimited', 'Auto-code': true, 'Analysis tools': 'All 12', 'Export formats': 'CSV, PNG, HTML, MD', 'Share codes': '5', 'Ethics panel': true, 'Cases & cross-case': true, 'Intercoder reliability': false, 'Team management': false, '.edu discount': '40% off' } },
+              { name: 'Team', highlight: false, features: { 'Canvases': 'Unlimited', 'Transcripts per canvas': 'Unlimited', 'Words per transcript': '50,000', 'Codes': 'Unlimited', 'Auto-code': true, 'Analysis tools': 'All 12', 'Export formats': 'CSV, PNG, HTML, MD', 'Share codes': 'Unlimited', 'Ethics panel': true, 'Cases & cross-case': true, 'Intercoder reliability': true, 'Team management': true, '.edu discount': '40% off' } },
             ] as const).map(plan => (
               <div key={plan.name} className={`rounded-xl p-4 ${plan.highlight ? 'ring-2 ring-brand-500 bg-white dark:bg-gray-800' : 'ring-1 ring-gray-200 dark:ring-gray-700 bg-white dark:bg-gray-800'}`}>
                 <h3 className={`text-lg font-bold mb-3 ${plan.highlight ? 'text-brand-600 dark:text-brand-400' : 'text-gray-900 dark:text-white'}`}>{plan.name}</h3>
