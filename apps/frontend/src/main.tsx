@@ -1,10 +1,19 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import * as Sentry from '@sentry/react';
 import App from './App';
 import { Toaster } from 'react-hot-toast';
 import { useUIStore } from './stores/uiStore';
 import './i18n';
 import './index.css';
+
+// Initialize Sentry error tracking in production
+if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+  Sentry.init({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    sendDefaultPii: false,
+  });
+}
 
 // Initialize dark mode from persisted state
 const darkMode = useUIStore.getState().darkMode;
