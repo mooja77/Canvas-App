@@ -23,6 +23,9 @@ export default function LandingPage() {
         </div>
         {/* Desktop nav */}
         <div className="hidden sm:flex items-center gap-4">
+          <Link to="/guide" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+            Guide
+          </Link>
           <Link to="/pricing" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
             {t('pricing.title')}
           </Link>
@@ -248,7 +251,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="max-w-6xl mx-auto px-4 py-8 border-t border-gray-200 dark:border-gray-800">
         <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-          <span>QualCanvas</span>
+          <span>&copy; {new Date().getFullYear()} QualCanvas. All rights reserved. &middot; Made by <a href="https://www.jmsdevlab.com/" target="_blank" rel="noopener" className="font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">JMS Dev Lab</a></span>
           <div className="flex gap-4">
             <Link to="/pricing" className="hover:text-gray-700 dark:hover:text-gray-300">{t('pricing.title')}</Link>
             <Link to="/login" className="hover:text-gray-700 dark:hover:text-gray-300">{t('auth.signIn')}</Link>
