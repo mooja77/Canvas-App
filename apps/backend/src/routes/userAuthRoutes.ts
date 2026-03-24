@@ -164,7 +164,7 @@ userAuthRoutes.post('/auth/email-login', authLimiter, async (req, res, next) => 
 
     // Refresh plan from subscription status
     const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
-    const currentPlan = subscription && subscription.status === 'active' ? user.plan : 'free';
+    const currentPlan = subscription && ['active', 'trialing'].includes(subscription.status) ? user.plan : 'free';
 
     // Sync plan in DB if it differs
     if (currentPlan !== user.plan) {
@@ -291,7 +291,7 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
 
     // Refresh plan from subscription status
     const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
-    const currentPlan = subscription && subscription.status === 'active' ? user.plan : 'free';
+    const currentPlan = subscription && ['active', 'trialing'].includes(subscription.status) ? user.plan : 'free';
 
     if (currentPlan !== user.plan) {
       await prisma.user.update({ where: { id: user.id }, data: { plan: currentPlan } });
@@ -481,6 +481,14 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
         include: { subscription: true },
       });
       if (!user) throw new AppError('User not found', 404);
+
+      // Validate plan matches subscription status (auto-downgrade if expired/canceled)
+      const activeSub = user.subscription && ['active', 'trialing'].includes(user.subscription.status);
+      const validPlan = activeSub ? user.plan : 'free';
+      if (validPlan !== user.plan) {
+        await prisma.user.update({ where: { id: userId }, data: { plan: validPlan } });
+        user.plan = validPlan;
+      }
 
       // Count resources for usage
       const [canvasCount, totalTranscripts, totalCodes, totalShares] = await Promise.all([

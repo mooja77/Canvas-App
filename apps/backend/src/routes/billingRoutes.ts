@@ -172,10 +172,10 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       case 'customer.subscription.updated': {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sub = event.data.object as any;
-        const existing = await prisma.subscription.findUnique({
+        const existingSub = await prisma.subscription.findUnique({
           where: { stripeSubscriptionId: sub.id },
         });
-        if (existing) {
+        if (existingSub) {
           await prisma.subscription.update({
             where: { stripeSubscriptionId: sub.id },
             data: {
@@ -183,9 +183,16 @@ export async function handleStripeWebhook(req: Request, res: Response) {
               currentPeriodStart: new Date(sub.current_period_start * 1000),
               currentPeriodEnd: new Date(sub.current_period_end * 1000),
               cancelAtPeriodEnd: sub.cancel_at_period_end || false,
-              stripePriceId: sub.items.data[0]?.price?.id || existing.stripePriceId,
+              stripePriceId: sub.items.data[0]?.price?.id || existingSub.stripePriceId,
             },
           });
+          // Downgrade user if subscription is no longer active
+          if (!['active', 'trialing'].includes(sub.status)) {
+            await prisma.user.update({
+              where: { id: existingSub.userId },
+              data: { plan: 'free' },
+            });
+          }
         }
         break;
       }
@@ -217,10 +224,21 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         const invoice = event.data.object as any;
         const subscriptionId = invoice.subscription as string;
         if (subscriptionId) {
-          await prisma.subscription.updateMany({
+          const failedSub = await prisma.subscription.findUnique({
             where: { stripeSubscriptionId: subscriptionId },
-            data: { status: 'past_due' },
           });
+          if (failedSub) {
+            await prisma.$transaction([
+              prisma.subscription.update({
+                where: { stripeSubscriptionId: subscriptionId },
+                data: { status: 'past_due' },
+              }),
+              prisma.user.update({
+                where: { id: failedSub.userId },
+                data: { plan: 'free' },
+              }),
+            ]);
+          }
         }
         break;
       }
