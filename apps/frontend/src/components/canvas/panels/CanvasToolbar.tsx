@@ -40,7 +40,7 @@ function ToolbarDropdown({ label, icon, children, className }: { label?: string;
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-40 w-56 rounded-xl bg-white dark:bg-gray-800 shadow-xl ring-1 ring-gray-200 dark:ring-gray-700 py-1.5">
+          <div className="absolute right-0 sm:right-0 top-full mt-1 z-40 w-56 max-w-[calc(100vw-16px)] rounded-xl bg-white dark:bg-gray-800 shadow-xl ring-1 ring-gray-200 dark:ring-gray-700 py-1.5">
             <div onClick={() => setOpen(false)}>
               {children}
             </div>
@@ -146,7 +146,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
 
   return (
     <>
-      <div data-tour="canvas-toolbar" className="relative z-10 flex items-center justify-between border-b border-gray-200/80 bg-white/90 px-3 py-2 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90">
+      <div data-tour="canvas-toolbar" className="relative z-10 flex flex-wrap items-center justify-between gap-y-1 border-b border-gray-200/80 bg-white/90 px-3 py-2 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90">
         {/* ── Left side: nav, back, canvas name, data buttons ── */}
         <div className="flex items-center gap-2 min-w-0">
           {/* Navigator toggle */}
