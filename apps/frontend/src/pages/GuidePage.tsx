@@ -172,7 +172,7 @@ const SECTIONS: GuideSection[] = [
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           The Code Navigator in the left sidebar gives you a real-time overview of your codebook. It shows every code with a frequency bar indicating how often each code was used.
         </p>
-        <Screenshot src="/guide/12-navigator.png" alt="Code navigator sidebar" caption="The navigator shows transcripts with word counts, code counts, and coding coverage" />
+        <Screenshot src="/guide/12-navigator.png" alt="Code navigator sidebar" caption="The Codes tab shows all codes sorted by frequency with color-coded bars" />
         <Steps steps={[
           'Click "Codes" tab to see all codes sorted by frequency or alphabetically.',
           'Click any code to highlight its connections on the canvas and see all coded passages.',
@@ -190,23 +190,28 @@ const SECTIONS: GuideSection[] = [
     content: (
       <>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          QualCanvas includes 12 analysis tools that run live on your coded data. Click the "Analyze" button in the toolbar to add analysis nodes to your canvas.
+          QualCanvas includes 10 analysis tools organized into three categories. Click the "Analyze" button in the toolbar to add analysis nodes to your canvas.
         </p>
-        <Screenshot src="/guide/15-analyze-menu.png" alt="Analysis tools menu" caption="11 analysis types organized by category: Text, Coding, and Frameworks" />
+        <Screenshot src="/guide/15-analyze-menu.png" alt="Analysis tools menu" caption="10 analysis types organized by category: Text, Coding, and Frameworks" />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-2">Available Analysis Types</h3>
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mt-4 mb-1">Text Analysis</p>
         <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
+          <li><strong>Text Search:</strong> Find patterns across transcripts with regex support.</li>
           <li><strong>Word Cloud:</strong> Visualize word frequency across coded passages.</li>
+          <li><strong>Sentiment:</strong> Positive/negative/neutral analysis of coded text.</li>
+        </ul>
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mt-4 mb-1">Coding Analysis</p>
+        <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
           <li><strong>Statistics:</strong> Code frequency, distribution, and coverage metrics.</li>
           <li><strong>Co-occurrence:</strong> Matrix showing which codes appear together.</li>
-          <li><strong>Sentiment:</strong> Positive/negative/neutral analysis of coded text.</li>
+          <li><strong>Coding Query:</strong> Boolean AND/OR/NOT queries on your codings.</li>
+          <li><strong>Clustering:</strong> Group similar coded segments together.</li>
+        </ul>
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mt-4 mb-1">Frameworks & Comparison</p>
+        <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
+          <li><strong>Framework Matrix:</strong> Case x Question grid for structured analysis.</li>
           <li><strong>Comparison:</strong> Compare coding patterns across transcripts.</li>
-          <li><strong>Treemap:</strong> Hierarchical visualization of code frequencies.</li>
-          <li><strong>Cluster:</strong> Group codes by similarity.</li>
-          <li><strong>Coding Query:</strong> Search for specific patterns in your codings.</li>
-          <li><strong>Timeline:</strong> Temporal distribution of codes.</li>
-          <li><strong>Document Portrait:</strong> Visual summary of each transcript's coding.</li>
-          <li><strong>Search:</strong> Full-text search across all transcripts.</li>
-          <li><strong>Geo Map:</strong> Geographic distribution (if location data present).</li>
+          <li><strong>Theme Map:</strong> Visual theme proportions across your data.</li>
         </ul>
         <ProTip>Analysis nodes update live as you add more codings. Keep a word cloud on your canvas to see patterns emerge in real time.</ProTip>
       </>
