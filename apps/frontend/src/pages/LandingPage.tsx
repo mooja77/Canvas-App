@@ -65,6 +65,9 @@ export default function LandingPage() {
       {/* Mobile nav menu */}
       {mobileMenuOpen && (
         <div className="sm:hidden px-4 pb-4 space-y-2 border-b border-gray-200 dark:border-gray-700">
+          <Link to="/guide" className="block py-2 text-sm text-gray-600 dark:text-gray-400" onClick={() => setMobileMenuOpen(false)}>
+            Guide
+          </Link>
           <Link to="/pricing" className="block py-2 text-sm text-gray-600 dark:text-gray-400" onClick={() => setMobileMenuOpen(false)}>
             {t('pricing.title')}
           </Link>
