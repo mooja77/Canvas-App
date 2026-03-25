@@ -5,13 +5,15 @@ const AUTH_FILE = 'e2e/.auth/user.json';
 
 setup('authenticate', async ({ page }) => {
   await page.goto('/login');
-  await page.getByRole('button', { name: 'Sign in with access code' }).click();
-  const codeInput = page.getByRole('textbox', { name: 'Enter your access code' });
+  // Expand the "Sign In with Code" disclosure section
+  await page.getByText('Sign In with Code').first().click();
+  const codeInput = page.locator('input').last();
   await codeInput.waitFor({ state: 'visible' });
   await codeInput.fill('CANVAS-DEMO2025');
   await page.waitForTimeout(200);
 
-  const signInBtn = page.getByRole('button', { name: 'Sign In with Code' });
+  // Click the submit button (type="submit") inside the code form
+  const signInBtn = page.locator('button[type="submit"]').filter({ hasText: /Sign In with Code/i });
   await expect(signInBtn).toBeEnabled({ timeout: 5000 });
   await signInBtn.click();
 

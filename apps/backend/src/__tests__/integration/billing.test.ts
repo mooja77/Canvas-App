@@ -308,15 +308,27 @@ describe('Stripe Webhook Handler', () => {
       };
 
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
-      mockPrisma.subscription.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.subscription.findUnique.mockResolvedValue({
+        id: 'sub-record-1',
+        userId: 'user-1',
+        stripeSubscriptionId: 'sub_123',
+      });
+      mockPrisma.subscription.update.mockResolvedValue({});
+      mockPrisma.user.update.mockResolvedValue({});
+      mockPrisma.$transaction.mockResolvedValue([{}, {}]);
 
       const { req, res } = createMockReqRes(Buffer.from('{}'));
       await handleStripeWebhook(req, res);
 
       expect(res.json).toHaveBeenCalledWith({ received: true });
-      expect(mockPrisma.subscription.updateMany).toHaveBeenCalledWith({
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.subscription.update).toHaveBeenCalledWith({
         where: { stripeSubscriptionId: 'sub_123' },
         data: { status: 'past_due' },
+      });
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { plan: 'free' },
       });
     });
 

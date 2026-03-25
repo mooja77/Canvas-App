@@ -106,12 +106,14 @@ app.use((_req, _res, next) => { requestCount++; next(); });
 // CSRF protection
 app.use(csrfProtection);
 
-// Rate limiting
+// Rate limiting (skip in E2E/test environments)
+const isTestEnv = process.env.NODE_ENV === 'test' || process.env.E2E_TEST === 'true';
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 500,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => isTestEnv,
 });
 app.use('/api', generalLimiter);
 
@@ -122,6 +124,7 @@ const computeLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many computation requests, please try again later' },
+  skip: () => isTestEnv,
 });
 app.use('/api/canvas/:id/computed/:nodeId/run', computeLimiter);
 
