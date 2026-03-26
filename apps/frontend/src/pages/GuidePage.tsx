@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 interface GuideSection {
   id: string;
@@ -399,12 +400,10 @@ const SECTIONS: GuideSection[] = [
 export default function GuidePage() {
   const [activeSection, setActiveSection] = useState('getting-started');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Set page title
-  useEffect(() => {
-    document.title = 'Guide — QualCanvas';
-    return () => { document.title = 'QualCanvas - Qualitative Coding'; };
-  }, []);
+  usePageMeta(
+    'Guide — QualCanvas',
+    'Complete guide to QualCanvas: transcripts, coding, analysis tools, AI features, collaboration, and more.'
+  );
 
   // Track scroll position to highlight active section
   useEffect(() => {

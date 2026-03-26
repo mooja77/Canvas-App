@@ -22,13 +22,15 @@ test.describe('Canvas Navigation Features', () => {
     // Click on the pane first to ensure keyboard focus is on the canvas
     const pane = page.locator('.react-flow__pane');
     await pane.click();
-    await page.waitForTimeout(300);
 
     // Press G to toggle snap-to-grid
     await page.keyboard.press('g');
-    await page.waitForTimeout(500);
 
     // After toggle, background variant should change (dots -> lines)
+    // Also verify the "GRID" indicator appears in the status bar
+    const gridIndicator = page.getByText('GRID');
+    const hasGrid = await gridIndicator.isVisible({ timeout: 2000 }).catch(() => false);
+
     // Check that the background pattern changed
     const hasLineAfter = await page.evaluate(() => {
       const bg = document.querySelector('.react-flow__background');
@@ -37,17 +39,11 @@ test.describe('Canvas Navigation Features', () => {
       return bg.querySelectorAll('line').length > 0 || bg.querySelector('[class*="line"]') !== null;
     });
 
-    // At least one of the checks should show a change
-    // Also verify the "GRID" indicator appears in the status bar
-    const gridIndicator = page.getByText('GRID');
-    const hasGrid = await gridIndicator.isVisible({ timeout: 2000 }).catch(() => false);
-
     // Either the background pattern changed or the GRID indicator appeared
     expect(hasLineAfter || hasGrid).toBe(true);
 
     // Press G again to toggle back
     await page.keyboard.press('g');
-    await page.waitForTimeout(300);
   });
 
   test('focus mode hides sidebar and toolbar then restores', async ({ page }) => {
@@ -57,16 +53,13 @@ test.describe('Canvas Navigation Features', () => {
 
     // Verify minimap is visible before focus mode
     const minimap = page.locator('.react-flow__minimap');
-    const minimapVisibleBefore = await minimap.isVisible({ timeout: 2000 }).catch(() => false);
 
     // Click the pane to ensure canvas has focus
     const pane = page.locator('.react-flow__pane');
     await pane.click();
-    await page.waitForTimeout(300);
 
     // Press Ctrl+. to enter focus mode
     await page.keyboard.press('Control+.');
-    await page.waitForTimeout(500);
 
     // Toolbar should be hidden in focus mode
     await expect(toolbar).not.toBeVisible({ timeout: 3000 });
@@ -80,7 +73,6 @@ test.describe('Canvas Navigation Features', () => {
 
     // Press Ctrl+. again to exit focus mode
     await page.keyboard.press('Control+.');
-    await page.waitForTimeout(500);
 
     // Toolbar should be visible again
     await expect(toolbar).toBeVisible({ timeout: 3000 });
@@ -98,18 +90,26 @@ test.describe('Canvas Navigation Features', () => {
 
     // Click the dark mode toggle
     await darkModeBtn.click();
-    await page.waitForTimeout(500);
 
     // Dark class should have toggled
+    await page.waitForFunction(
+      (wasDark) => document.documentElement.classList.contains('dark') !== wasDark,
+      isDarkBefore,
+      { timeout: 2000 }
+    );
     const isDarkAfter = await page.evaluate(() => document.documentElement.classList.contains('dark'));
     expect(isDarkAfter).toBe(!isDarkBefore);
 
     // Toggle back to original state
     const darkModeBtnAgain = page.locator('button[aria-label*="dark mode"], button[aria-label*="light mode"]');
     await darkModeBtnAgain.click();
-    await page.waitForTimeout(500);
 
     // Should be back to original
+    await page.waitForFunction(
+      (wasDark) => document.documentElement.classList.contains('dark') === wasDark,
+      isDarkBefore,
+      { timeout: 2000 }
+    );
     const isDarkFinal = await page.evaluate(() => document.documentElement.classList.contains('dark'));
     expect(isDarkFinal).toBe(isDarkBefore);
   });
@@ -122,7 +122,6 @@ test.describe('Canvas Navigation Features', () => {
     }
 
     await arrangeBtn.first().click();
-    await page.waitForTimeout(500);
 
     // Check for either "Canvas arranged" success toast or "No nodes to arrange" info toast
     const successToast = page.getByText('Canvas arranged');
@@ -150,28 +149,24 @@ test.describe('Canvas Navigation Features', () => {
     if (isNavigatorVisible) {
       // Navigator is shown — click to hide
       await hideNavBtn.click();
-      await page.waitForTimeout(500);
 
       // The "Show navigator" button should now be visible
       await expect(showNavBtn).toBeVisible({ timeout: 3000 });
 
       // Click to show again
       await showNavBtn.click();
-      await page.waitForTimeout(500);
 
       // The "Hide navigator" button should be back
       await expect(hideNavBtn).toBeVisible({ timeout: 3000 });
     } else {
       // Navigator is hidden — click to show
       await showNavBtn.click();
-      await page.waitForTimeout(500);
 
       // The "Hide navigator" button should now be visible
       await expect(hideNavBtn).toBeVisible({ timeout: 3000 });
 
       // Click to hide again
       await hideNavBtn.click();
-      await page.waitForTimeout(500);
 
       // The "Show navigator" button should be back
       await expect(showNavBtn).toBeVisible({ timeout: 3000 });

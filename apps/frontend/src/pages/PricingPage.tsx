@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
 import { billingApi } from '../services/api';
+import { usePageMeta } from '../hooks/usePageMeta';
 import toast from 'react-hot-toast';
 
 const PRICE_IDS = {
@@ -86,6 +87,10 @@ export default function PricingPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { authenticated, plan, authType } = useAuthStore();
+  usePageMeta(
+    'Pricing — QualCanvas',
+    'Free, Pro ($12/mo), and Team ($29/mo) plans. Academic discount available. Start coding interviews today.'
+  );
 
   const handleUpgrade = async (tier: 'pro' | 'team') => {
     if (!authenticated) {

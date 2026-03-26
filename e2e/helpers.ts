@@ -14,13 +14,12 @@ export async function openCanvas(page: Page) {
   });
 
   await page.goto('/canvas');
-  await page.waitForTimeout(1000);
+  await page.waitForLoadState('networkidle');
 
   // If no canvases, create one via the UI
   const emptyState = page.getByText('Create your first canvas');
   if (await emptyState.isVisible({ timeout: 2000 }).catch(() => false)) {
     await page.getByRole('button', { name: /New Canvas|Get Started/i }).first().click();
-    await page.waitForTimeout(500);
     // Fill name and create
     const nameInput = page.locator('input').filter({ hasText: '' }).first();
     const inputs = page.locator('input[type="text"], input:not([type])');
@@ -32,11 +31,10 @@ export async function openCanvas(page: Page) {
         break;
       }
     }
-    await page.waitForTimeout(300);
     const createBtn = page.getByRole('button', { name: /Create Canvas/i });
     if (await createBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await createBtn.click();
-      await page.waitForTimeout(2000);
+      await page.waitForLoadState('networkidle');
     }
   }
 
@@ -44,23 +42,20 @@ export async function openCanvas(page: Page) {
   const heading = page.locator('h3').first();
   if (await heading.isVisible({ timeout: 3000 }).catch(() => false)) {
     await heading.click();
-    await page.waitForTimeout(500);
   }
 
   // Wait for ReactFlow pane
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
-  await page.waitForTimeout(1000);
+  await page.waitForLoadState('networkidle');
 
   // Dismiss any remaining tour overlay
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
   if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
     await skipBtn.first().click();
-    await page.waitForTimeout(300);
   }
   const overlay = page.locator('.fixed.inset-0.z-\\[10000\\]');
   if (await overlay.isVisible({ timeout: 300 }).catch(() => false)) {
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
   }
 }
 

@@ -2,12 +2,17 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const authenticated = useAuthStore(s => s.authenticated);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  usePageMeta(
+    'QualCanvas — Visual Workspace for Qualitative Research',
+    'Code interview transcripts visually. Thematic analysis, grounded theory, IPA. Free tier available.'
+  );
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">

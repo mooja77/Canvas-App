@@ -3,6 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
 import { authApi, billingApi, aiSettingsApi } from '../services/api';
+import { usePageMeta } from '../hooks/usePageMeta';
 import toast from 'react-hot-toast';
 
 interface UserProfile {
@@ -35,6 +36,7 @@ export default function AccountPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { authenticated, logout, authType: _authType } = useAuthStore();
+  usePageMeta('Account — QualCanvas', 'Manage your QualCanvas account, profile, plan, and billing.');
 
   // Edit profile state
   const [editName, setEditName] = useState('');

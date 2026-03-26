@@ -12,12 +12,11 @@ test.describe('Canvas Full Workflow', () => {
     });
 
     await page.goto('/canvas');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // Click "New Canvas" button
     const newCanvasBtn = page.getByRole('button', { name: /New Canvas/i });
     await newCanvasBtn.first().click();
-    await page.waitForTimeout(500);
 
     // Look for an input to fill the canvas name
     const nameInput = page.locator('input[type="text"], input:not([type])');
@@ -33,7 +32,7 @@ test.describe('Canvas Full Workflow', () => {
     const createBtn = page.getByRole('button', { name: /Create Canvas/i });
     if (await createBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await createBtn.click();
-      await page.waitForTimeout(2000);
+      await page.waitForLoadState('networkidle');
     }
 
     // Should now be on the canvas workspace or see the canvas in the list
@@ -56,7 +55,6 @@ test.describe('Canvas Full Workflow', () => {
     }
 
     await transcriptBtn.first().click();
-    await page.waitForTimeout(500);
 
     // Should see either a dialog/modal or the transcript input area
     const dialog = page.locator('[role="dialog"], .modal, [class*="dialog"]');
@@ -79,11 +77,11 @@ test.describe('Canvas Full Workflow', () => {
     });
 
     await page.goto('/canvas');
-    await page.waitForTimeout(1500);
+    await page.waitForLoadState('networkidle');
 
     // The canvas list page should show at least one canvas
-    // Either as h3 headings (canvas cards) or in some list
     const headings = page.locator('h3');
+    await expect(headings.first()).toBeVisible({ timeout: 5000 });
     const count = await headings.count();
 
     // We should have at least one canvas from the auth setup seeding
@@ -98,10 +96,10 @@ test.describe('Canvas Full Workflow', () => {
     if (!await backBtn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
       // Try the browser back
       await page.goBack();
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle');
     } else {
       await backBtn.first().click();
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle');
     }
 
     // Should be back on the canvas list
@@ -123,14 +121,18 @@ test.describe('Canvas Full Workflow', () => {
 
     // Toggle dark mode
     await darkModeBtn.first().click();
-    await page.waitForTimeout(500);
 
+    await page.waitForFunction(
+      (wasDarkBefore) => document.documentElement.classList.contains('dark') !== wasDarkBefore,
+      wasDark,
+      { timeout: 2000 }
+    );
     const isNowDark = await page.evaluate(() => document.documentElement.classList.contains('dark'));
     expect(isNowDark).toBe(!wasDark);
 
     // Reload the page
     await page.reload();
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
 
     // Dark mode should persist
     const afterReloadDark = await page.evaluate(() => document.documentElement.classList.contains('dark'));
@@ -140,7 +142,6 @@ test.describe('Canvas Full Workflow', () => {
     const toggleBackBtn = page.locator('button[aria-label*="dark mode"], button[aria-label*="light mode"]');
     if (await toggleBackBtn.first().isVisible({ timeout: 2000 }).catch(() => false)) {
       await toggleBackBtn.first().click();
-      await page.waitForTimeout(300);
     }
   });
 
@@ -149,7 +150,6 @@ test.describe('Canvas Full Workflow', () => {
 
     // Press Ctrl+K to open command palette
     await page.keyboard.press('Control+k');
-    await page.waitForTimeout(500);
 
     // Should see a search input or command palette modal
     const paletteInput = page.locator('input[placeholder*="Search" i], input[placeholder*="command" i], input[placeholder*="Type" i]');
@@ -163,11 +163,9 @@ test.describe('Canvas Full Workflow', () => {
 
     // Type a query
     await paletteInput.first().fill('test');
-    await page.waitForTimeout(300);
 
     // Close with Escape
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
   });
 
   test('keyboard shortcuts modal via ?', async ({ page }) => {
@@ -176,11 +174,9 @@ test.describe('Canvas Full Workflow', () => {
     // Click on the pane first to ensure focus
     const pane = page.locator('.react-flow__pane');
     await pane.click();
-    await page.waitForTimeout(300);
 
     // Press ? to open shortcuts modal
     await page.keyboard.press('Shift+/'); // ? is Shift+/
-    await page.waitForTimeout(500);
 
     // Should see a modal with keyboard shortcuts
     const shortcutModal = page.getByText(/Keyboard Shortcuts/i);
@@ -195,7 +191,6 @@ test.describe('Canvas Full Workflow', () => {
 
     // Close with Escape
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
   });
 
   test('delete canvas removes it from list', async ({ page }) => {
@@ -208,10 +203,11 @@ test.describe('Canvas Full Workflow', () => {
     });
 
     await page.goto('/canvas');
-    await page.waitForTimeout(1500);
+    await page.waitForLoadState('networkidle');
 
     // Count canvases before
     const headingsBefore = page.locator('h3');
+    await expect(headingsBefore.first()).toBeVisible({ timeout: 5000 }).catch(() => {});
     const countBefore = await headingsBefore.count();
 
     if (countBefore === 0) {
@@ -225,7 +221,6 @@ test.describe('Canvas Full Workflow', () => {
       // Try right-clicking on the first canvas card
       const firstCard = headingsBefore.first();
       await firstCard.click({ button: 'right' });
-      await page.waitForTimeout(300);
 
       const contextDelete = page.getByText(/Delete/i);
       if (!await contextDelete.first().isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -236,13 +231,12 @@ test.describe('Canvas Full Workflow', () => {
     } else {
       await deleteBtn.first().click();
     }
-    await page.waitForTimeout(500);
 
     // Handle confirmation dialog if present
     const confirmBtn = page.getByRole('button', { name: /Delete|Confirm|Yes/i });
     if (await confirmBtn.first().isVisible({ timeout: 2000 }).catch(() => false)) {
       await confirmBtn.first().click();
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle');
     }
 
     // The canvas count should have decreased or a success toast appeared

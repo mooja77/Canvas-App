@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function NotFoundPage() {
   const { t } = useTranslation();
+  usePageMeta('Page Not Found — QualCanvas', 'The page you are looking for does not exist.');
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">

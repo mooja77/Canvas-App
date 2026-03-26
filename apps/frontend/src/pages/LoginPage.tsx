@@ -3,6 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
 import { authApi } from '../services/api';
+import { usePageMeta } from '../hooks/usePageMeta';
 import toast from 'react-hot-toast';
 
 declare global {
@@ -61,6 +62,10 @@ export default function LoginPage() {
   const setAuth = useAuthStore(s => s.setAuth);
   const setEmailAuth = useAuthStore(s => s.setEmailAuth);
   const navigate = useNavigate();
+  usePageMeta(
+    'Sign In — QualCanvas',
+    'Sign in to QualCanvas with email, Google, or access code.'
+  );
 
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;

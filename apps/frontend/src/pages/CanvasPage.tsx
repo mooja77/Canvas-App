@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useUIStore } from '../stores/uiStore';
 import { authApi } from '../services/api';
+import { usePageMeta } from '../hooks/usePageMeta';
 import CodingCanvas from '../components/canvas/CodingCanvas';
 import { SunIcon, MoonIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
@@ -11,6 +12,7 @@ export default function CanvasPage() {
   const { authenticated, name, logout, authType, emailVerified } = useAuthStore();
   const { darkMode, toggleDarkMode } = useUIStore();
   const navigate = useNavigate();
+  usePageMeta('Canvas — QualCanvas', 'Your qualitative research workspace. Code transcripts, analyze themes, and collaborate.');
   const [resending, setResending] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
 

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Page-Level Tests', () => {
   test('landing page renders', async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
 
     // Verify main heading
     const heading = page.locator('h1');
@@ -23,7 +23,7 @@ test.describe('Page-Level Tests', () => {
 
   test('pricing page renders', async ({ page }) => {
     await page.goto('/pricing');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
 
     // Verify tier cards exist (Free, Pro, Team)
     await expect(page.getByText('Free').first()).toBeVisible();
@@ -33,7 +33,7 @@ test.describe('Page-Level Tests', () => {
 
   test('login page renders', async ({ page }) => {
     await page.goto('/login');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
 
     // Verify email input
     const emailInput = page.getByRole('textbox', { name: /email/i }).or(
@@ -56,14 +56,14 @@ test.describe('Page-Level Tests', () => {
 
   test('session expired banner', async ({ page }) => {
     await page.goto('/login?expired=true');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
 
     await expect(page.getByText(/session has expired/i)).toBeVisible();
   });
 
   test('404 page', async ({ page }) => {
     await page.goto('/nonexistent-route');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
 
     const notFoundText = page.getByText(/not found/i).or(
       page.getByText(/404/i)
@@ -73,7 +73,7 @@ test.describe('Page-Level Tests', () => {
 
   test('account page accessible', async ({ page }) => {
     await page.goto('/account');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // Verify profile section loads (authenticated via setup)
     const profileSection = page.getByText(/profile|account|plan|usage/i);

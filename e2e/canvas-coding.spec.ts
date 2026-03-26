@@ -55,11 +55,6 @@ test.describe('Canvas Coding Workflow', () => {
 
   test('clicking code in sidebar focuses it', async ({ page }) => {
     // The CodeNavigator sidebar shows code names as clickable items
-    // Look for code items in the navigator (role="button" inside the navigator panel)
-    const navigatorPanel = page.locator('[data-tour="canvas-navigator"]').or(
-      page.locator('.react-flow__pane').locator('..').locator('..').locator('div').first()
-    );
-
     // Find code/question entries in the sidebar by looking for small colored dots followed by text
     const codeItems = page.locator('div[role="button"]').filter({
       has: page.locator('.rounded-full'),
@@ -70,7 +65,6 @@ test.describe('Canvas Coding Workflow', () => {
 
     // Click the first code item in the navigator
     await codeItems.first().click();
-    await page.waitForTimeout(500);
 
     // After clicking, the corresponding node should be centered/focused
     // Check that a question node exists (the sidebar focuses it via onFocusNode)
@@ -89,7 +83,6 @@ test.describe('Canvas Coding Workflow', () => {
 
     // Click the first "View coded segments" button
     await viewSegmentsBtn.first().click();
-    await page.waitForTimeout(500);
 
     // The CodingDetailPanel should appear with "Coded Segments" heading
     const detailPanel = page.getByText('Coded Segments');
