@@ -7,7 +7,7 @@ describe('useMobile', () => {
 
   beforeEach(() => {
     // Ensure ontouchstart is not present (desktop)
-    delete (window as Record<string, unknown>).ontouchstart;
+    delete (window as unknown as Record<string, unknown>).ontouchstart;
   });
 
   afterEach(() => {

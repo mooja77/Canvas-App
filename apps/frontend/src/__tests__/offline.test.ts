@@ -48,8 +48,8 @@ function createMockIndexedDB() {
 
       // Fire upgrade + success asynchronously
       Promise.resolve().then(() => {
-        request.onupgradeneeded?.();
-        (request.onsuccess as (() => void) | null)?.();
+        (request as any).onupgradeneeded?.();
+        (request as any).onsuccess?.();
       });
 
       return request;

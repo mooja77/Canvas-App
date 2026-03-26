@@ -258,7 +258,7 @@ describe('Large canvas render', () => {
       });
     }).not.toThrow();
 
-    expect(useCanvasStore.getState().activeCanvas?.positions).toHaveLength(100);
+    expect((useCanvasStore.getState().activeCanvas as any)?.positions).toHaveLength(100);
   });
 });
 

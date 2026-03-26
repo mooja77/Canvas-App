@@ -117,7 +117,7 @@ function renderWith(ui: React.ReactElement) {
   return render(<MemoryRouter>{ui}</MemoryRouter>);
 }
 
-function ThrowingChild() {
+function ThrowingChild(): React.ReactNode {
   throw new Error('Boom');
 }
 

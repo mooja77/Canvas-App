@@ -113,7 +113,7 @@ describe('useFileUpload', () => {
   });
 
   it('calls progress callback during upload', async () => {
-    mockUploadFileDirect.mockImplementation((_canvasId, _formData, onProgress) => {
+    mockUploadFileDirect.mockImplementation(((_canvasId: string, _formData: FormData, onProgress?: (pct: number) => void) => {
       // Simulate progress callbacks
       if (onProgress) {
         onProgress(25);
@@ -122,8 +122,9 @@ describe('useFileUpload', () => {
       }
       return Promise.resolve({
         data: { data: { id: 'upload-1', name: 'file.txt' } },
+        status: 200, statusText: 'OK', headers: {}, config: {},
       });
-    });
+    }) as any);
 
     const { result } = renderHook(() => useFileUpload());
     const file = new File(['content'], 'file.txt', { type: 'text/plain' });
