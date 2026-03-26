@@ -26,7 +26,7 @@ vi.mock('react-i18next', () => ({
         'pricing.faq': 'Frequently Asked Questions',
         'pricing.moneyBack': '30-day money-back guarantee',
         'pricing.unlimitedCanvases': 'Unlimited canvases & transcripts',
-        'pricing.allAnalysisTools': 'All 12 analysis tools',
+        'pricing.allAnalysisTools': 'All 10 analysis tools',
         'pricing.eduDiscount': '40% off for .edu emails',
         'pricing.intercoderReliability': 'Intercoder reliability (Kappa)',
         'pricing.teamManagement': 'Team management',

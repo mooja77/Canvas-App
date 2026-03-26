@@ -21,7 +21,11 @@
     "format": "prettier --write \"apps/**/*.{ts,tsx}\" \"shared/**/*.ts\"",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx}\" \"shared/**/*.ts\"",
     "test": "npm run test -w apps/backend && npm run test -w apps/frontend",
-    "test:e2e": "npx playwright test",
+    "test:e2e": "npx playwright test --project=setup --project=chromium",
+    "test:e2e:all": "npx playwright test",
+    "test:e2e:firefox": "npx playwright test --project=setup --project=firefox",
+    "test:e2e:webkit": "npx playwright test --project=setup --project=webkit",
+    "test:e2e:mobile": "npx playwright test --project=setup --project=mobile-chrome --project=mobile-safari",
     "typecheck": "tsc -b apps/backend apps/frontend"
   },
   "devDependencies": {

@@ -499,6 +499,8 @@ describe('Stripe Billing – Extended Tests', () => {
         id: userId,
         email: 'checkout@example.com',
         name: 'Checkout User',
+        role: 'researcher',
+        plan: 'pro',
         stripeCustomerId: 'cus_existing',
       });
       mockStripe.checkout.sessions.create.mockResolvedValue({
@@ -528,6 +530,8 @@ describe('Stripe Billing – Extended Tests', () => {
         id: userId,
         email: 'checkout@example.com',
         name: 'Checkout User',
+        role: 'researcher',
+        plan: 'pro',
         stripeCustomerId: 'cus_existing',
       });
 
@@ -545,6 +549,8 @@ describe('Stripe Billing – Extended Tests', () => {
         id: userId,
         email: 'new@example.com',
         name: 'New User',
+        role: 'researcher',
+        plan: 'pro',
         stripeCustomerId: null,
       });
       mockStripe.customers.create.mockResolvedValue({ id: 'cus_new_123' });
@@ -574,6 +580,8 @@ describe('Stripe Billing – Extended Tests', () => {
         id: userId,
         email: 'student@university.edu',
         name: 'Student',
+        role: 'researcher',
+        plan: 'pro',
         stripeCustomerId: 'cus_edu_1',
       });
       mockStripe.checkout.sessions.create.mockResolvedValue({
@@ -600,6 +608,8 @@ describe('Stripe Billing – Extended Tests', () => {
         id: userId,
         email: 'user@gmail.com',
         name: 'User',
+        role: 'researcher',
+        plan: 'pro',
         stripeCustomerId: 'cus_nonedu',
       });
       mockStripe.checkout.sessions.create.mockResolvedValue({
@@ -632,6 +642,8 @@ describe('Stripe Billing – Extended Tests', () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: userId,
         email: 'portal@example.com',
+        role: 'researcher',
+        plan: 'pro',
         stripeCustomerId: 'cus_portal_1',
       });
       mockStripe.billingPortal.sessions.create.mockResolvedValue({
@@ -651,6 +663,8 @@ describe('Stripe Billing – Extended Tests', () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: userId,
         email: 'free@example.com',
+        role: 'researcher',
+        plan: 'free',
         stripeCustomerId: null,
       });
 
@@ -677,6 +691,12 @@ describe('Stripe Billing – Extended Tests', () => {
     beforeEach(() => {
       jwt = signUserToken(userId, 'researcher', 'pro');
       app = createApp();
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: userId,
+        email: 'sub@example.com',
+        role: 'researcher',
+        plan: 'pro',
+      });
     });
 
     it('returns subscription details for subscribed user', async () => {

@@ -138,10 +138,10 @@ describe('AccountPage', () => {
     render(<AccountPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Change Password')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Current password')).toBeInTheDocument();
     });
 
-    expect(screen.getByPlaceholderText('Current password')).toBeInTheDocument();
+    expect(screen.getAllByText('Change Password').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByPlaceholderText('New password (min 8 characters)')).toBeInTheDocument();
   });
 

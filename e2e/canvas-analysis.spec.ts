@@ -134,8 +134,10 @@ test.describe('Canvas Analysis', () => {
   test('5 - Add Comparison node', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await openAnalyzeMenu(page);
-    await page.getByRole('button', { name: /Comparison/i }).first().click();
-    await expect(page.getByText(/comparison.*added/i)).toBeVisible({ timeout: 5000 });
+    // Click the button that contains a <p> with exact text "Comparison" (not the category "Frameworks & Comparison")
+    const comparisonBtn = page.locator('[data-tour="canvas-btn-query"] button').filter({ has: page.locator('p', { hasText: /^Comparison$/ }) });
+    await comparisonBtn.first().click();
+    await expect(page.getByText('Comparison node added')).toBeVisible({ timeout: 5000 });
   });
 
   test('6 - Add Clustering node', async ({ page }) => {

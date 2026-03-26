@@ -236,7 +236,7 @@ const TOUR_STEPS: TourStep[] = [
     description: 'Click Analyze to add analysis nodes \u2014 word clouds, co-occurrence matrices, sentiment analysis, statistics, treemaps, and more. Each analysis runs live on your coded data.',
     position: 'bottom',
     icon: 'chart',
-    tip: '12 analysis tools available on Pro and Team plans.',
+    tip: '10 analysis tools available on Pro and Team plans.',
     duration: 5000,
   },
 
