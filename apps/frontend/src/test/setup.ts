@@ -16,6 +16,9 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
+// Mock Element.scrollIntoView (not available in jsdom)
+Element.prototype.scrollIntoView = vi.fn();
+
 // Mock ResizeObserver (needed for React Flow and many UI components)
 global.ResizeObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
