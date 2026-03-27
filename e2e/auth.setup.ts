@@ -10,7 +10,6 @@ setup('authenticate', async ({ page }) => {
   const codeInput = page.locator('input').last();
   await codeInput.waitFor({ state: 'visible' });
   await codeInput.fill('CANVAS-DEMO2025');
-  await page.waitForTimeout(200);
 
   // Click the submit button (type="submit") inside the code form
   const signInBtn = page.locator('button[type="submit"]').filter({ hasText: /Sign In with Code/i });
@@ -124,7 +123,7 @@ setup('authenticate', async ({ page }) => {
 
     // Reload so the seeded data is picked up by the canvas page state
     await page.goto('/canvas');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
   }
 
   // Save auth state (localStorage + cookies)

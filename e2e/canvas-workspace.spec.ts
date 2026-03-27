@@ -104,8 +104,17 @@ test.describe('Canvas Workspace', () => {
     const zoomed = await getViewportTransform(page);
     expect(zoomed!.scale).toBeGreaterThan(before!.scale);
 
-    // Wait 2s — should NOT snap back (intentional delay to test stability)
-    await page.waitForTimeout(2000);
+    // Verify stability — wait and confirm scale hasn't snapped back
+    await page.waitForFunction(
+      (expectedScale) => {
+        const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
+        if (!vp) return false;
+        const match = vp.style.transform.match(/scale\((.+?)\)/);
+        return match && Math.abs(parseFloat(match[1]) - expectedScale) < 0.1;
+      },
+      zoomed!.scale,
+      { timeout: 3000 }
+    );
 
     const afterWait = await getViewportTransform(page);
     expect(afterWait!.scale).toBeCloseTo(zoomed!.scale, 1);

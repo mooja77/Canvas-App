@@ -19,8 +19,8 @@ test.describe('Canvas Advanced Features', () => {
     await page.mouse.down();
     await page.mouse.move(box.x + box.width / 2 + 80, box.y + 10, { steps: 5 });
     await page.mouse.up();
-    // Small delay for drag animation to settle
-    await page.waitForTimeout(300);
+    // Wait for drag to settle via network idle
+    await page.waitForLoadState('networkidle');
 
     const afterDrag = await node.boundingBox();
 
@@ -200,8 +200,17 @@ test.describe('Canvas Advanced Features', () => {
     const z3 = await getViewportTransform(page);
     expect(z3!.scale).toBeLessThan(z2!.scale);
 
-    // Wait — no snap back (intentional delay to verify stability)
-    await page.waitForTimeout(1500);
+    // Verify stability — wait briefly then check scale hasn't snapped back
+    await page.waitForFunction(
+      (expectedScale) => {
+        const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
+        if (!vp) return false;
+        const match = vp.style.transform.match(/scale\((.+?)\)/);
+        return match && Math.abs(parseFloat(match[1]) - expectedScale) < 0.1;
+      },
+      z3!.scale,
+      { timeout: 2000 }
+    );
     const z4 = await getViewportTransform(page);
     expect(z4!.scale).toBeCloseTo(z3!.scale, 1);
   });

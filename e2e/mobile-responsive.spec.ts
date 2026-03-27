@@ -12,7 +12,7 @@ test.describe('Mobile Responsive', () => {
   test('landing page hamburger menu appears on mobile', async ({ page }) => {
     await page.setViewportSize({ width: MOBILE_WIDTH, height: MOBILE_HEIGHT });
     await page.goto('/');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
 
     // On mobile, a hamburger menu button should appear
     const hamburger = page.locator('button[aria-label*="menu" i], button[aria-label*="Menu"], button[aria-label*="navigation" i]')
@@ -31,7 +31,7 @@ test.describe('Mobile Responsive', () => {
   test('landing page hamburger menu opens and closes', async ({ page }) => {
     await page.setViewportSize({ width: MOBILE_WIDTH, height: MOBILE_HEIGHT });
     await page.goto('/');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
 
     // Find the hamburger / mobile menu button
     const hamburger = page.locator('button[aria-label="Toggle menu"]');
@@ -42,7 +42,6 @@ test.describe('Mobile Responsive', () => {
 
     // Click hamburger to open menu
     await hamburger.click();
-    await page.waitForTimeout(500);
 
     // The mobile nav menu div should appear (sm:hidden div with links)
     const mobileMenu = page.locator('.sm\\:hidden').filter({ has: page.locator('a') });
@@ -55,13 +54,12 @@ test.describe('Mobile Responsive', () => {
 
     // Close menu by clicking the toggle again
     await hamburger.click();
-    await page.waitForTimeout(500);
   });
 
   test('login page is usable at mobile width', async ({ page }) => {
     await page.setViewportSize({ width: MOBILE_WIDTH, height: MOBILE_HEIGHT });
     await page.goto('/login');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
 
     // Email input should be visible and within viewport
     const emailInput = page.getByRole('textbox', { name: /email/i }).or(
@@ -94,7 +92,7 @@ test.describe('Mobile Responsive', () => {
     });
 
     await page.goto('/canvas');
-    await page.waitForTimeout(1500);
+    await page.waitForLoadState('networkidle');
 
     // Canvas list or empty state should be visible within mobile viewport
     const canvasList = page.getByText('Coding Canvases').or(page.getByText('Create your first canvas'));
@@ -108,7 +106,7 @@ test.describe('Mobile Responsive', () => {
   test('pricing page stacks plan cards vertically', async ({ page }) => {
     await page.setViewportSize({ width: MOBILE_WIDTH, height: MOBILE_HEIGHT });
     await page.goto('/pricing');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     // All three plan names should be visible
     await expect(page.getByText('Free').first()).toBeVisible({ timeout: 5000 });
@@ -123,7 +121,7 @@ test.describe('Mobile Responsive', () => {
   test('guide page sidebar collapses on mobile', async ({ page }) => {
     await page.setViewportSize({ width: MOBILE_WIDTH, height: MOBILE_HEIGHT });
     await page.goto('/guide');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     // The guide main heading should be visible
     await expect(page.getByRole('heading', { name: /Complete Guide/i }).first()).toBeVisible({ timeout: 5000 });
@@ -136,7 +134,7 @@ test.describe('Mobile Responsive', () => {
   test('guide page is scrollable on mobile', async ({ page }) => {
     await page.setViewportSize({ width: MOBILE_WIDTH, height: MOBILE_HEIGHT });
     await page.goto('/guide');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     // Guide page has lots of content, so it should be scrollable
     const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight);
@@ -144,7 +142,6 @@ test.describe('Mobile Responsive', () => {
 
     // Scroll down and verify scrolling works
     await page.evaluate(() => window.scrollBy(0, 500));
-    await page.waitForTimeout(300);
 
     const scrollTop = await page.evaluate(() => window.scrollY);
     expect(scrollTop).toBeGreaterThan(0);
@@ -160,7 +157,7 @@ test.describe('Mobile Responsive', () => {
 
     await page.setViewportSize({ width: MOBILE_WIDTH, height: MOBILE_HEIGHT });
     await page.goto('/canvas');
-    await page.waitForTimeout(1500);
+    await page.waitForLoadState('networkidle');
 
     // On mobile, the canvas list page should render
     const canvasList = page.getByText('Coding Canvases').or(page.getByText('Create your first canvas'));
@@ -170,7 +167,7 @@ test.describe('Mobile Responsive', () => {
     const heading = page.locator('h3').first();
     if (await heading.isVisible({ timeout: 3000 }).catch(() => false)) {
       await heading.click();
-      await page.waitForTimeout(2000);
+      await page.waitForSelector('.react-flow__pane', { timeout: 10000 }).catch(() => {});
     }
 
     // At mobile width the canvas may show a simplified view or the pane may be visible

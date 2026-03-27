@@ -24,7 +24,7 @@ async function goToCanvasList(page: Page) {
   });
   await page.goto('/canvas');
   await page.waitForSelector('[data-tour="canvas-list"], h2', { timeout: 10000 });
-  await page.waitForTimeout(500);
+  await page.waitForLoadState('networkidle');
 }
 
 async function createCanvasViaApi(page: Page, name: string): Promise<string> {
@@ -50,14 +50,12 @@ async function openCanvasById(page: Page, canvasId: string) {
   });
   await page.goto(`/canvas/${canvasId}`);
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
-  await page.waitForTimeout(1500);
+  await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
   if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
     await skipBtn.first().click();
-    await page.waitForTimeout(300);
   }
   await page.waitForSelector('.react-flow__node', { timeout: 10000 }).catch(() => {});
-  await page.waitForTimeout(500);
 }
 
 /** Open the Export dropdown in the toolbar (icon-only button with upload/download icon) */
@@ -76,14 +74,15 @@ async function openExportDropdown(page: Page) {
     });
     await allBtns.first().click();
   }
-  await page.waitForTimeout(300);
+  // Wait for dropdown menu to appear
+  await page.getByText('Export PNG').first().waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
 }
 
 /** Open the Tools dropdown in the toolbar */
 async function openToolsDropdown(page: Page) {
   const toolsBtn = page.getByText('Tools').first();
   await toolsBtn.click();
-  await page.waitForTimeout(300);
+  await page.getByText('Cases').first().waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -110,7 +109,7 @@ test.describe('Canvas Export & Tools', () => {
   test.afterAll(async ({ browser }) => {
     const page = await browser.newPage({ storageState: 'e2e/.auth/user.json' });
     await page.goto('/canvas');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     if (canvasId) await deleteCanvasViaApi(page, canvasId);
     await page.close();
   });
@@ -129,7 +128,6 @@ test.describe('Canvas Export & Tools', () => {
     const downloadPromise = page.waitForEvent('download', { timeout: 5000 }).catch(() => null);
     const pngBtn = page.getByText('Export PNG').first();
     await pngBtn.click();
-    await page.waitForTimeout(1000);
     // PNG export may trigger a download or show a toast
     const download = await downloadPromise;
     const toastShown = await page.getByText(/exported|saved|PNG/i).first().isVisible({ timeout: 3000 }).catch(() => false);
@@ -141,7 +139,6 @@ test.describe('Canvas Export & Tools', () => {
     await openCanvasById(page, canvasId);
     await openExportDropdown(page);
     await page.getByText('Export Report (HTML/MD)').first().click();
-    await page.waitForTimeout(500);
     // The RichExportModal should appear
     const modal = page.locator('[role="dialog"]').or(page.locator('.modal-backdrop'));
     const visible = await modal.first().isVisible({ timeout: 5000 }).catch(() => false);
@@ -150,7 +147,6 @@ test.describe('Canvas Export & Tools', () => {
     expect(hasExportUI).toBe(true);
     // Close if open
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
   });
 
   test('4 - QDPX export button exists in dropdown', async ({ page }) => {
@@ -165,14 +161,12 @@ test.describe('Canvas Export & Tools', () => {
     await openCanvasById(page, canvasId);
     await openExportDropdown(page);
     await page.getByText('QDPX Import').first().click();
-    await page.waitForTimeout(500);
     // Should open QdpxImportModal
     const modal = page.locator('[role="dialog"]').or(page.locator('.modal-backdrop'));
     const hasModal = await modal.first().isVisible({ timeout: 5000 }).catch(() => false);
     const hasImportUI = hasModal || await page.getByText(/Import|QDPX|file/i).first().isVisible({ timeout: 3000 }).catch(() => false);
     expect(hasImportUI).toBe(true);
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
   });
 
   test('6 - Tools dropdown shows Cases, Ethics, Codebook', async ({ page }) => {
@@ -187,25 +181,21 @@ test.describe('Canvas Export & Tools', () => {
     await openCanvasById(page, canvasId);
     await openToolsDropdown(page);
     await page.getByText('Codebook').first().click();
-    await page.waitForTimeout(500);
     const modal = page.locator('[role="dialog"]').or(page.locator('.modal-backdrop'));
     const hasModal = await modal.first().isVisible({ timeout: 5000 }).catch(() => false);
     const hasCodebookUI = hasModal || await page.getByText(/Codebook|codes|export/i).first().isVisible({ timeout: 3000 }).catch(() => false);
     expect(hasCodebookUI).toBe(true);
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
   });
 
   test('8 - Excerpts browser opens modal from Tools dropdown', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await openToolsDropdown(page);
     await page.getByText('Excerpts').first().click();
-    await page.waitForTimeout(500);
     const modal = page.locator('[role="dialog"]').or(page.locator('.modal-backdrop'));
     const hasModal = await modal.first().isVisible({ timeout: 5000 }).catch(() => false);
     const hasExcerptsUI = hasModal || await page.getByText(/Excerpts|coded|segments/i).first().isVisible({ timeout: 3000 }).catch(() => false);
     expect(hasExcerptsUI).toBe(true);
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
   });
 });

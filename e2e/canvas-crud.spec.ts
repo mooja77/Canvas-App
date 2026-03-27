@@ -11,7 +11,7 @@ async function goToCanvasList(page: Page) {
   });
   await page.goto('/canvas');
   await page.waitForSelector('[data-tour="canvas-list"], h2', { timeout: 10000 });
-  await page.waitForTimeout(500);
+  await page.waitForLoadState('networkidle');
 }
 
 async function getJwt(page: Page): Promise<string> {
@@ -65,7 +65,6 @@ async function deleteCanvasViaApi(page: Page, canvasId: string) {
 
 async function scrollNodeIntoView(page: Page, loc: ReturnType<Page['locator']>) {
   await loc.evaluate((el: HTMLElement) => el.scrollIntoViewIfNeeded());
-  await page.waitForTimeout(200);
 }
 
 async function openCanvasById(page: Page, canvasId: string) {
@@ -77,18 +76,16 @@ async function openCanvasById(page: Page, canvasId: string) {
   });
   await page.goto(`/canvas/${canvasId}`);
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
-  await page.waitForTimeout(1500);
+  await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
   if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
     await skipBtn.first().click();
-    await page.waitForTimeout(300);
   }
   await page.waitForSelector('.react-flow__node', { timeout: 10000 }).catch(() => {});
-  await page.waitForTimeout(500);
   const fitBtn = page.getByRole('button', { name: 'Fit View' });
   if (await fitBtn.isVisible({ timeout: 500 }).catch(() => false)) {
     await fitBtn.click();
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
   }
 }
 
@@ -102,9 +99,11 @@ test.describe('Canvas CRUD', () => {
     await goToCanvasList(page);
     await cleanupE2ECanvases(page);
     await page.reload();
-    await page.waitForTimeout(500);
-    await page.getByRole('button', { name: /New Canvas/i }).first().click();
-    await page.waitForTimeout(300);
+    await page.waitForLoadState('networkidle');
+    const newCanvasBtn = page.getByRole('button', { name: /New Canvas/i }).first();
+    await newCanvasBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await newCanvasBtn.click();
+    await page.locator('#canvas-name').waitFor({ state: 'visible', timeout: 3000 });
     await page.locator('#canvas-name').fill('E2E Blank Canvas');
     await page.getByRole('button', { name: /Create Canvas/i }).click();
     await page.waitForSelector('.react-flow__pane', { timeout: 20000 });
@@ -115,17 +114,18 @@ test.describe('Canvas CRUD', () => {
     await goToCanvasList(page);
     await cleanupE2ECanvases(page);
     await page.reload();
-    await page.waitForTimeout(500);
-    await page.getByRole('button', { name: /New Canvas/i }).first().click();
-    await page.waitForTimeout(300);
+    await page.waitForLoadState('networkidle');
+    const newCanvasBtn = page.getByRole('button', { name: /New Canvas/i }).first();
+    await newCanvasBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await newCanvasBtn.click();
+    await page.getByText('Thematic Analysis').first().waitFor({ state: 'visible', timeout: 3000 });
     await page.getByText('Thematic Analysis').first().click();
-    await page.waitForTimeout(200);
+    await page.locator('#canvas-name').waitFor({ state: 'visible', timeout: 3000 });
     await page.locator('#canvas-name').fill('E2E Thematic Canvas');
     await page.getByRole('button', { name: /Create Canvas/i }).click();
     await expect(page.getByText(/Canvas created with \d+ starter codes/i)).toBeVisible({ timeout: 15000 });
     await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
-    await page.waitForTimeout(3000);
-    await expect(page.locator('.react-flow__node[data-id^="question-"]')).toHaveCount(5, { timeout: 5000 });
+    await expect(page.locator('.react-flow__node[data-id^="question-"]')).toHaveCount(5, { timeout: 10000 });
   });
 
   test('3 - canvas appears in list', async ({ page }) => {
@@ -134,7 +134,7 @@ test.describe('Canvas CRUD', () => {
     const name = `E2E ListCheck ${Date.now()}`;
     const id = await createCanvasViaApi(page, name);
     await page.reload();
-    await page.waitForTimeout(1500);
+    await page.waitForLoadState('networkidle');
     await expect(page.getByText(name)).toBeVisible({ timeout: 5000 });
     await deleteCanvasViaApi(page, id);
   });
@@ -145,7 +145,7 @@ test.describe('Canvas CRUD', () => {
     const name = `E2E DelTest ${Date.now()}`;
     const id = await createCanvasViaApi(page, name);
     await page.reload();
-    await page.waitForTimeout(1500);
+    await page.waitForLoadState('networkidle');
     await page.locator(`button[aria-label="Delete canvas ${name}"]`).click();
     const dialog = page.locator('[role="alertdialog"]');
     await expect(dialog).toBeVisible({ timeout: 3000 });
@@ -163,9 +163,10 @@ test.describe('Canvas CRUD', () => {
     const jwt = await getJwt(page);
     await page.request.delete(`http://localhost:3007/api/canvas/${id}`, { headers: { Authorization: `Bearer ${jwt}` } });
     await page.reload();
-    await page.waitForTimeout(1500);
-    await page.getByRole('button', { name: /Trash/i }).click();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
+    const trashBtn = page.getByRole('button', { name: /Trash/i });
+    await trashBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await trashBtn.click();
     await expect(page.getByText(name)).toBeVisible({ timeout: 5000 });
     await page.request.delete(`http://localhost:3007/api/canvas/${id}/permanent`, { headers: { Authorization: `Bearer ${jwt}` } });
   });
@@ -178,12 +179,13 @@ test.describe('Canvas CRUD', () => {
     const jwt = await getJwt(page);
     await page.request.delete(`http://localhost:3007/api/canvas/${id}`, { headers: { Authorization: `Bearer ${jwt}` } });
     await page.reload();
-    await page.waitForTimeout(1500);
-    await page.getByRole('button', { name: /Trash/i }).click();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
+    const trashBtn = page.getByRole('button', { name: /Trash/i });
+    await trashBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await trashBtn.click();
+    await page.locator('button[title="Restore canvas"]').first().waitFor({ state: 'visible', timeout: 5000 });
     await page.locator('button[title="Restore canvas"]').first().click();
     await expect(page.getByText('Canvas restored')).toBeVisible({ timeout: 5000 });
-    await page.waitForTimeout(500);
     await expect(page.getByRole('heading', { name })).toBeVisible({ timeout: 5000 });
     await deleteCanvasViaApi(page, id);
   });
@@ -196,9 +198,11 @@ test.describe('Canvas CRUD', () => {
     const jwt = await getJwt(page);
     await page.request.delete(`http://localhost:3007/api/canvas/${id}`, { headers: { Authorization: `Bearer ${jwt}` } });
     await page.reload();
-    await page.waitForTimeout(1500);
-    await page.getByRole('button', { name: /Trash/i }).click();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
+    const trashBtn = page.getByRole('button', { name: /Trash/i });
+    await trashBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await trashBtn.click();
+    await page.locator('button[title="Delete permanently"]').first().waitFor({ state: 'visible', timeout: 5000 });
     await page.locator('button[title="Delete permanently"]').first().click();
     const dialog = page.locator('[role="alertdialog"]');
     await expect(dialog).toBeVisible({ timeout: 3000 });
@@ -234,7 +238,7 @@ test.describe('Workspace Tests', () => {
   test.afterAll(async ({ browser }) => {
     const page = await browser.newPage({ storageState: 'e2e/.auth/user.json' });
     await page.goto('/canvas');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     if (canvasId) await deleteCanvasViaApi(page, canvasId);
     await page.close();
   });
@@ -244,9 +248,9 @@ test.describe('Workspace Tests', () => {
   test('8 - add transcript via Paste Text', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await page.locator('[data-tour="canvas-btn-transcript"]').click();
-    await page.waitForTimeout(300);
+    await page.getByText('Paste Text').waitFor({ state: 'visible', timeout: 3000 });
     await page.getByText('Paste Text').click();
-    await page.waitForTimeout(500);
+    await page.locator('#transcript-title').waitFor({ state: 'visible', timeout: 3000 });
     await page.locator('#transcript-title').fill('E2E Pasted Interview');
     await page.locator('#transcript-content').fill('End-to-end testing content.');
     await page.getByRole('button', { name: /Add Transcript/i }).click();
@@ -269,7 +273,7 @@ test.describe('Workspace Tests', () => {
   test('11 - delete transcript via context menu', async ({ page }) => {
     // Add a throwaway transcript
     await page.goto(`/canvas/${canvasId}`);
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     const headers = await apiHeaders(page);
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
       headers, data: { title: 'DeleteMe', content: 'Will be deleted.' },
@@ -280,16 +284,15 @@ test.describe('Workspace Tests', () => {
     const node = page.locator('.react-flow__node[data-id^="transcript-"]').first();
     await scrollNodeIntoView(page, node);
     await node.click({ button: 'right', force: true });
-    await page.waitForTimeout(300);
     const del = page.getByText('Delete').last();
+    await del.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
     if (await del.isVisible({ timeout: 2000 }).catch(() => false)) {
       await del.click();
-      await page.waitForTimeout(500);
       const dlg = page.locator('[role="alertdialog"]');
       if (await dlg.isVisible({ timeout: 1000 }).catch(() => false)) {
         await dlg.getByRole('button', { name: /Delete|Confirm/i }).click();
       }
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle');
       expect(await page.locator('.react-flow__node[data-id^="transcript-"]').count()).toBeLessThan(before);
     }
   });
@@ -303,13 +306,19 @@ test.describe('Workspace Tests', () => {
     const collapseBtn = node.locator('button[title="Collapse"]');
     if (await collapseBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await collapseBtn.click();
-      await page.waitForTimeout(500);
+      await page.waitForFunction(
+        (nodeId) => {
+          const el = document.querySelector(`[data-id="${nodeId}"]`);
+          return el && el.getBoundingClientRect().height < 200;
+        },
+        await node.getAttribute('data-id') || '',
+        { timeout: 3000 }
+      ).catch(() => {});
       const boxAfter = await node.boundingBox();
       if (boxBefore && boxAfter) expect(boxAfter.height).toBeLessThan(boxBefore.height);
       const expandBtn = node.locator('button[title="Expand"]');
       if (await expandBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await expandBtn.click();
-        await page.waitForTimeout(500);
       }
     }
   });
@@ -319,7 +328,6 @@ test.describe('Workspace Tests', () => {
   test('13 - add code via toolbar', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await page.locator('[data-tour="canvas-btn-question"]').click();
-    await page.waitForTimeout(300);
     const input = page.locator('input[placeholder*="research question"]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Professional Development');
@@ -332,7 +340,6 @@ test.describe('Workspace Tests', () => {
     const showNavBtn = page.locator('button[title="Show navigator"]');
     if (await showNavBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
       await showNavBtn.click();
-      await page.waitForTimeout(500);
     }
     await expect(page.getByText('Methodology').first()).toBeVisible({ timeout: 5000 });
   });
@@ -351,7 +358,7 @@ test.describe('Workspace Tests', () => {
   test('17 - delete code node', async ({ page }) => {
     // Add throwaway code
     await page.goto(`/canvas/${canvasId}`);
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     const headers = await apiHeaders(page);
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
       headers, data: { text: 'Delete Me', color: '#DC2626' },
@@ -362,16 +369,15 @@ test.describe('Workspace Tests', () => {
     const node = page.locator('.react-flow__node[data-id^="question-"]').last();
     await scrollNodeIntoView(page, node);
     await node.click({ button: 'right', force: true });
-    await page.waitForTimeout(300);
     const del = page.getByText('Delete').last();
+    await del.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
     if (await del.isVisible({ timeout: 2000 }).catch(() => false)) {
       await del.click();
-      await page.waitForTimeout(500);
       const dlg = page.locator('[role="alertdialog"]');
       if (await dlg.isVisible({ timeout: 1000 }).catch(() => false)) {
         await dlg.getByRole('button', { name: /Delete|Confirm/i }).click();
       }
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle');
       expect(await page.locator('.react-flow__node[data-id^="question-"]').count()).toBeLessThan(before);
     }
   });
@@ -384,13 +390,11 @@ test.describe('Workspace Tests', () => {
     const showNavBtn = page.locator('button[title="Show navigator"]');
     if (await showNavBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
       await showNavBtn.click();
-      await page.waitForTimeout(500);
     }
     // Click a code item in the navigator to focus it
     const codeItem = page.locator('div[role="button"]').filter({ has: page.locator('.rounded-full') }).first();
     if (await codeItem.isVisible({ timeout: 2000 }).catch(() => false)) {
       await codeItem.click();
-      await page.waitForTimeout(500);
       // The node should be focused/selected
       const selected = page.getByText('1 selected');
       const hasSelected = await selected.isVisible({ timeout: 2000 }).catch(() => false);
@@ -407,7 +411,7 @@ test.describe('Workspace Tests', () => {
 
   test('20 - coding creates an edge', async ({ page }) => {
     await page.goto(`/canvas/${canvasId}`);
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     const headers = await apiHeaders(page);
 
     // Ensure we have a transcript and code to link
@@ -439,7 +443,6 @@ test.describe('Workspace Tests', () => {
     const showNavBtn = page.locator('button[title="Show navigator"]');
     if (await showNavBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
       await showNavBtn.click();
-      await page.waitForTimeout(500);
     }
     await expect(page.getByText('Methodology').first()).toBeVisible({ timeout: 5000 });
   });
@@ -453,8 +456,10 @@ test.describe('Workspace Tests', () => {
 
   test('23 - add Word Cloud', async ({ page }) => {
     await openCanvasById(page, canvasId);
-    await page.locator('[data-tour="canvas-btn-query"] button').first().click();
-    await page.waitForTimeout(300);
+    const analyzeBtn = page.locator('[data-tour="canvas-btn-query"] button').first();
+    await analyzeBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await analyzeBtn.click();
+    await page.getByText('Word Cloud').first().waitFor({ state: 'visible', timeout: 3000 });
     await page.getByText('Word Cloud').first().click();
     await expect(page.getByText('Word Cloud node added')).toBeVisible({ timeout: 5000 });
   });
@@ -463,26 +468,32 @@ test.describe('Workspace Tests', () => {
     await openCanvasById(page, canvasId);
     const nodes = page.locator('.react-flow__node[class*="wordcloud"]');
     if (await nodes.count() === 0) {
-      await page.locator('[data-tour="canvas-btn-query"] button').first().click();
-      await page.waitForTimeout(300);
+      const analyzeBtn = page.locator('[data-tour="canvas-btn-query"] button').first();
+      await analyzeBtn.waitFor({ state: 'visible', timeout: 5000 });
+      await analyzeBtn.click();
+      await page.getByText('Word Cloud').first().waitFor({ state: 'visible', timeout: 3000 });
       await page.getByText('Word Cloud').first().click();
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle');
     }
     await expect(nodes.first()).toBeAttached({ timeout: 5000 });
   });
 
   test('25 - add Statistics node', async ({ page }) => {
     await openCanvasById(page, canvasId);
-    await page.locator('[data-tour="canvas-btn-query"] button').first().click();
-    await page.waitForTimeout(300);
+    const analyzeBtn = page.locator('[data-tour="canvas-btn-query"] button').first();
+    await analyzeBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await analyzeBtn.click();
+    await page.getByText('Statistics').first().waitFor({ state: 'visible', timeout: 3000 });
     await page.getByText('Statistics').first().click();
     await expect(page.getByText('Statistics node added')).toBeVisible({ timeout: 5000 });
   });
 
   test('26 - add Text Search node', async ({ page }) => {
     await openCanvasById(page, canvasId);
-    await page.locator('[data-tour="canvas-btn-query"] button').first().click();
-    await page.waitForTimeout(300);
+    const analyzeBtn = page.locator('[data-tour="canvas-btn-query"] button').first();
+    await analyzeBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await analyzeBtn.click();
+    await page.getByText('Text Search').first().waitFor({ state: 'visible', timeout: 3000 });
     await page.getByText('Text Search').first().click();
     await expect(page.getByText('Text Search node added')).toBeVisible({ timeout: 5000 });
   });
@@ -495,7 +506,7 @@ test.describe('Workspace Tests', () => {
     const arrangeBtn = page.getByRole('button', { name: /Arrange/i });
     if (await arrangeBtn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
       await arrangeBtn.first().click();
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle');
       const ok = await page.getByText('Canvas arranged').isVisible({ timeout: 3000 }).catch(() => false)
         || await page.getByText('No nodes to arrange').isVisible({ timeout: 1000 }).catch(() => false);
       expect(ok).toBe(true);
@@ -513,10 +524,9 @@ test.describe('Workspace Tests', () => {
     await page.mouse.down();
     await page.mouse.move(box.x + box.width / 2 + 120, box.y + 10, { steps: 10 });
     await page.mouse.up();
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     const afterDrag = await node.boundingBox();
     await page.keyboard.press('Control+z');
-    await page.waitForTimeout(500);
     const undid = await page.getByText('Undone').isVisible({ timeout: 2000 }).catch(() => false);
     const afterUndo = await node.boundingBox();
     if (undid && afterUndo && afterDrag) {
@@ -528,7 +538,6 @@ test.describe('Workspace Tests', () => {
     await openCanvasById(page, canvasId);
     await page.locator('[data-tour="canvas-btn-memo"]').click();
     await expect(page.getByText('Memo added')).toBeVisible({ timeout: 5000 });
-    await page.waitForTimeout(1000);
     await expect(page.locator('.react-flow__node[data-id^="memo-"]').first()).toBeAttached({ timeout: 5000 });
   });
 

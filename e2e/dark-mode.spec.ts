@@ -16,7 +16,7 @@ async function enableDarkMode(page: import('@playwright/test').Page) {
     localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
   });
   await page.goto('/canvas');
-  await page.waitForTimeout(1000);
+  await page.waitForLoadState('networkidle');
 
   const darkModeBtn = page.locator('button[aria-label="Switch to dark mode"]');
   const lightModeBtn = page.locator('button[aria-label="Switch to light mode"]');
@@ -29,7 +29,6 @@ async function enableDarkMode(page: import('@playwright/test').Page) {
   // Click dark mode toggle
   if (await darkModeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
     await darkModeBtn.click();
-    await page.waitForTimeout(500);
   }
 }
 
@@ -38,7 +37,6 @@ async function restoreLightMode(page: import('@playwright/test').Page) {
   const lightModeBtn = page.locator('button[aria-label="Switch to light mode"]');
   if (await lightModeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
     await lightModeBtn.click();
-    await page.waitForTimeout(300);
   }
 }
 
@@ -52,7 +50,7 @@ test.describe('Dark Mode', () => {
       localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
     });
     await page.goto('/canvas');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // Record background color before toggle
     const bgBefore = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -65,7 +63,12 @@ test.describe('Dark Mode', () => {
     }
 
     await btn.first().click();
-    await page.waitForTimeout(500);
+    // Wait for the dark class to toggle on <html>
+    await page.waitForFunction(
+      (bgBeforeVal) => getComputedStyle(document.body).backgroundColor !== bgBeforeVal,
+      bgBefore,
+      { timeout: 3000 }
+    ).catch(() => {});
 
     const bgAfter = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     expect(bgAfter).not.toBe(bgBefore);
@@ -82,14 +85,14 @@ test.describe('Dark Mode', () => {
 
     // Navigate to pricing page
     await page.goto('/pricing');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     // Dark mode should persist
     expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(true);
 
     // Navigate back to canvas to clean up
     await page.goto('/canvas');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     await restoreLightMode(page);
   });
 
@@ -100,7 +103,7 @@ test.describe('Dark Mode', () => {
 
     // Reload
     await page.reload();
-    await page.waitForTimeout(1500);
+    await page.waitForLoadState('networkidle');
 
     expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(true);
 
@@ -135,7 +138,7 @@ test.describe('Dark Mode', () => {
     await enableDarkMode(page);
 
     await page.goto('/pricing');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(true);
 
@@ -146,7 +149,7 @@ test.describe('Dark Mode', () => {
 
     // Clean up
     await page.goto('/canvas');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     await restoreLightMode(page);
   });
 
@@ -154,7 +157,7 @@ test.describe('Dark Mode', () => {
     await enableDarkMode(page);
 
     await page.goto('/login');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(true);
 
@@ -167,7 +170,7 @@ test.describe('Dark Mode', () => {
 
     // Clean up
     await page.goto('/canvas');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     await restoreLightMode(page);
   });
 
@@ -175,7 +178,7 @@ test.describe('Dark Mode', () => {
     await enableDarkMode(page);
 
     await page.goto('/guide');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(true);
 
@@ -184,7 +187,7 @@ test.describe('Dark Mode', () => {
 
     // Clean up
     await page.goto('/canvas');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     await restoreLightMode(page);
   });
 
@@ -197,7 +200,7 @@ test.describe('Dark Mode', () => {
     const page = await darkContext.newPage();
 
     await page.goto('/');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     // The app should detect the system dark preference
     const isDark = await page.evaluate(() => document.documentElement.classList.contains('dark'));

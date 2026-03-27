@@ -12,7 +12,7 @@ async function goToCanvasList(page: Page) {
   });
   await page.goto('/canvas');
   await page.waitForSelector('[data-tour="canvas-list"], h2', { timeout: 10000 });
-  await page.waitForTimeout(500);
+  await page.waitForLoadState('networkidle');
 }
 
 async function getJwt(page: Page): Promise<string> {
@@ -51,14 +51,12 @@ async function openCanvasById(page: Page, canvasId: string) {
   });
   await page.goto(`/canvas/${canvasId}`);
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
-  await page.waitForTimeout(1500);
+  await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
   if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
     await skipBtn.first().click();
-    await page.waitForTimeout(300);
   }
   await page.waitForSelector('.react-flow__node', { timeout: 10000 }).catch(() => {});
-  await page.waitForTimeout(500);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -82,7 +80,7 @@ test.describe('Canvas Sharing', () => {
   test.afterAll(async ({ browser }) => {
     const page = await browser.newPage({ storageState: 'e2e/.auth/user.json' });
     await page.goto('/canvas');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     if (canvasId) await deleteCanvasViaApi(page, canvasId);
     await page.close();
   });
@@ -92,7 +90,6 @@ test.describe('Canvas Sharing', () => {
     const shareBtn = page.locator('button[title="Share canvas"]');
     await expect(shareBtn).toBeVisible({ timeout: 5000 });
     await shareBtn.click();
-    await page.waitForTimeout(500);
     const modal = page.locator('[role="dialog"][aria-label="Share Canvas"]');
     await expect(modal).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Share Canvas')).toBeVisible();
@@ -101,7 +98,7 @@ test.describe('Canvas Sharing', () => {
   test('2 - Generate Share Code creates a code', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await page.locator('button[title="Share canvas"]').click();
-    await page.waitForTimeout(500);
+    await page.locator('[role="dialog"][aria-label="Share Canvas"]').waitFor({ state: 'visible', timeout: 5000 });
     await page.getByRole('button', { name: /Generate Share Code/i }).click();
     await expect(page.getByText('Share code created')).toBeVisible({ timeout: 5000 });
   });
@@ -109,12 +106,12 @@ test.describe('Canvas Sharing', () => {
   test('3 - Share code is displayed with copy button', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await page.locator('button[title="Share canvas"]').click();
-    await page.waitForTimeout(1000);
+    await page.locator('[role="dialog"][aria-label="Share Canvas"]').waitFor({ state: 'visible', timeout: 5000 });
     // Should show at least one share code (created in test 2 or generate a new one)
     const codeEl = page.locator('code');
     if (await codeEl.count() === 0) {
       await page.getByRole('button', { name: /Generate Share Code/i }).click();
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle');
     }
     await expect(codeEl.first()).toBeVisible({ timeout: 5000 });
     // Copy button should be next to it
@@ -125,11 +122,11 @@ test.describe('Canvas Sharing', () => {
   test('4 - Copy button triggers copy action', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await page.locator('button[title="Share canvas"]').click();
-    await page.waitForTimeout(1000);
+    await page.locator('[role="dialog"][aria-label="Share Canvas"]').waitFor({ state: 'visible', timeout: 5000 });
     const codeEl = page.locator('code');
     if (await codeEl.count() === 0) {
       await page.getByRole('button', { name: /Generate Share Code/i }).click();
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle');
     }
     // Grant clipboard permissions
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -145,17 +142,16 @@ test.describe('Canvas Sharing', () => {
   test('5 - Revoke button removes share code', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await page.locator('button[title="Share canvas"]').click();
-    await page.waitForTimeout(1000);
+    await page.locator('[role="dialog"][aria-label="Share Canvas"]').waitFor({ state: 'visible', timeout: 5000 });
     // Ensure a code exists
     const codeEl = page.locator('code');
     if (await codeEl.count() === 0) {
       await page.getByRole('button', { name: /Generate Share Code/i }).click();
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle');
     }
     const revokeBtn = page.locator('button[aria-label="Revoke share code"]').first();
     if (await revokeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await revokeBtn.click();
-      await page.waitForTimeout(300);
       // Confirm dialog should appear
       const confirmBtn = page.locator('[role="alertdialog"]').getByRole('button', { name: /Revoke/i });
       if (await confirmBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -168,10 +164,10 @@ test.describe('Canvas Sharing', () => {
   test('6 - Share modal shows clone count', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await page.locator('button[title="Share canvas"]').click();
-    await page.waitForTimeout(500);
+    await page.locator('[role="dialog"][aria-label="Share Canvas"]').waitFor({ state: 'visible', timeout: 5000 });
     // Generate a new code to ensure one exists
     await page.getByRole('button', { name: /Generate Share Code/i }).click();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
     // Should show clone count text (e.g., "0 clones")
     await expect(page.getByText(/\d+ clones?/).first()).toBeVisible({ timeout: 5000 });
   });
@@ -179,11 +175,9 @@ test.describe('Canvas Sharing', () => {
   test('7 - Share modal close button works', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await page.locator('button[title="Share canvas"]').click();
-    await page.waitForTimeout(500);
     const modal = page.locator('[role="dialog"][aria-label="Share Canvas"]');
     await expect(modal).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: /Close/i }).click();
-    await page.waitForTimeout(500);
     await expect(modal).not.toBeVisible({ timeout: 3000 });
   });
 
@@ -192,7 +186,6 @@ test.describe('Canvas Sharing', () => {
     const summary = page.getByText('Have a share code? Import a canvas');
     await expect(summary).toBeVisible({ timeout: 5000 });
     await summary.click();
-    await page.waitForTimeout(300);
     const input = page.locator('input[placeholder*="share code"]');
     await expect(input).toBeVisible({ timeout: 3000 });
   });
@@ -200,7 +193,6 @@ test.describe('Canvas Sharing', () => {
   test('9 - Import canvas with share code input appears', async ({ page }) => {
     await goToCanvasList(page);
     await page.getByText('Have a share code? Import a canvas').click();
-    await page.waitForTimeout(300);
     const input = page.locator('input[placeholder*="share code"]');
     await expect(input).toBeVisible({ timeout: 3000 });
     // There should also be an import/clone button
@@ -211,12 +203,10 @@ test.describe('Canvas Sharing', () => {
   test('10 - Invalid share code shows error', async ({ page }) => {
     await goToCanvasList(page);
     await page.getByText('Have a share code? Import a canvas').click();
-    await page.waitForTimeout(300);
     const input = page.locator('input[placeholder*="share code"]');
     await input.fill('INVALID-CODE-12345');
     const cloneBtn = page.getByRole('button', { name: /Clone|Import/i });
     await cloneBtn.first().click();
-    await page.waitForTimeout(1000);
     // Should show error toast
     const err = await page.getByText(/not found|invalid|failed/i).first().isVisible({ timeout: 5000 }).catch(() => false);
     expect(err).toBe(true);

@@ -24,7 +24,7 @@ async function goToCanvasList(page: Page) {
   });
   await page.goto('/canvas');
   await page.waitForSelector('[data-tour="canvas-list"], h2', { timeout: 10000 });
-  await page.waitForTimeout(500);
+  await page.waitForLoadState('networkidle');
 }
 
 async function createCanvasViaApi(page: Page, name: string): Promise<string> {
@@ -50,19 +50,18 @@ async function openCanvasById(page: Page, canvasId: string) {
   });
   await page.goto(`/canvas/${canvasId}`);
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
-  await page.waitForTimeout(1500);
+  await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
   if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
     await skipBtn.first().click();
-    await page.waitForTimeout(300);
   }
   await page.waitForSelector('.react-flow__node', { timeout: 10000 }).catch(() => {});
-  await page.waitForTimeout(500);
 }
 
 async function openAnalyzeMenu(page: Page) {
-  await page.locator('[data-tour="canvas-btn-query"] button').first().click();
-  await page.waitForTimeout(300);
+  const analyzeBtn = page.locator('[data-tour="canvas-btn-query"] button').first();
+  await analyzeBtn.waitFor({ state: 'visible', timeout: 5000 });
+  await analyzeBtn.click();
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -96,7 +95,7 @@ test.describe('Canvas Analysis', () => {
   test.afterAll(async ({ browser }) => {
     const page = await browser.newPage({ storageState: 'e2e/.auth/user.json' });
     await page.goto('/canvas');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     if (canvasId) await deleteCanvasViaApi(page, canvasId);
     await page.close();
   });
@@ -173,7 +172,7 @@ test.describe('Canvas Analysis', () => {
     // Ensure a stats node exists
     await openAnalyzeMenu(page);
     await page.getByText('Statistics').first().click();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
     // The stats node should render — look for it in the DOM
     const statsNode = page.locator('.react-flow__node').filter({ hasText: /Statistics|Coding frequency/i });
     const found = await statsNode.first().isVisible({ timeout: 5000 }).catch(() => false);

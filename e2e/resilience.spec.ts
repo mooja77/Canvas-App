@@ -19,7 +19,7 @@ test.describe('Resilience', () => {
     });
 
     await page.goto('/');
-    await page.waitForTimeout(1500);
+    await page.waitForLoadState('networkidle');
 
     // Filter out network errors that are expected in E2E
     const criticalErrors = consoleErrors.filter((e) =>
@@ -36,7 +36,7 @@ test.describe('Resilience', () => {
 
   test('404 page displays for unknown routes', async ({ page }) => {
     await page.goto('/this-route-does-not-exist-12345');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
 
     const notFoundText = page.getByText(/not found/i).or(
       page.getByText(/404/i)
@@ -67,7 +67,7 @@ test.describe('Resilience', () => {
 
     // Reload the page
     await page.reload();
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
 
     // After reload, the app may return to canvas list. Re-enter the canvas if needed.
     const paneVisible = await page.locator('.react-flow__pane').isVisible({ timeout: 3000 }).catch(() => false);
@@ -75,12 +75,12 @@ test.describe('Resilience', () => {
       // Click first canvas card or navigate to the canvas by ID
       if (canvasId) {
         await page.goto(`/canvas/${canvasId}`);
-        await page.waitForTimeout(2000);
+        await page.waitForLoadState('networkidle');
       } else {
         const heading = page.locator('h3').first();
         if (await heading.isVisible({ timeout: 3000 }).catch(() => false)) {
           await heading.click();
-          await page.waitForTimeout(2000);
+          await page.waitForLoadState('networkidle');
         }
       }
     }
@@ -96,27 +96,27 @@ test.describe('Resilience', () => {
   test('browser back button navigates correctly', async ({ page }) => {
     // Start at landing page
     await page.goto('/');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
 
     // Navigate to pricing
     await page.goto('/pricing');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.getByText('Free').first()).toBeVisible({ timeout: 5000 });
 
     // Navigate to login
     await page.goto('/login');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('input[type="password"]').first()).toBeVisible({ timeout: 5000 });
 
     // Go back to pricing
     await page.goBack();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
     expect(page.url()).toContain('/pricing');
     await expect(page.getByText('Free').first()).toBeVisible({ timeout: 5000 });
 
     // Go back to landing
     await page.goBack();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
     const url = page.url();
     expect(url.endsWith('/') || url.endsWith(':5174')).toBe(true);
   });
@@ -144,11 +144,11 @@ test.describe('Resilience', () => {
 
     // Navigate away
     await page.goto('/');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
 
     // Deep link directly to the canvas
     await page.goto(`/canvas/${canvasId}`);
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
 
     // Canvas workspace should load
     await expect(page.locator('.react-flow__pane')).toBeVisible({ timeout: 10000 });
@@ -160,12 +160,9 @@ test.describe('Resilience', () => {
 
     for (const route of routes) {
       await page.goto(route);
-      // Only wait briefly — testing rapid navigation
-      await page.waitForTimeout(200);
+      // Use domcontentloaded for rapid navigation testing
+      await page.waitForLoadState('domcontentloaded');
     }
-
-    // Wait for final page to stabilize
-    await page.waitForTimeout(1000);
 
     // Page should not have crashed — verify it's interactive
     await expect(page.locator('body')).toBeVisible({ timeout: 5000 });
