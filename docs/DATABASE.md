@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-QualCanvas uses **34 Prisma models** stored in a relational database.
+QualCanvas uses **37 Prisma models** stored in a relational database.
 
 - **Production:** PostgreSQL 16 (hosted on Railway)
 - **Local development:** SQLite via `DATABASE_URL="file:./canvas-app.db"`
@@ -59,6 +59,9 @@ The Prisma schema is at `apps/backend/prisma/schema.prisma` with `provider = "po
    │FileUpload│──────────>│TranscriptionJob  │
    └──────────┘           └─────────────────┘
 
+   User also has:
+     Notification, ReportSchedule, CalendarEvent
+
    Standalone models (no FK relations):
      AuditLog, WebhookEvent, AiUsage
 ```
@@ -93,6 +96,9 @@ Core user account model. Supports email/password auth with optional Google OAuth
 - `aiConfig` -> UserAiConfig (one-to-one)
 - `ownedTeams` -> Team[] (one-to-many, named "TeamOwner")
 - `teamMemberships` -> TeamMember[] (one-to-many)
+- `notifications` -> Notification[] (one-to-many)
+- `reportSchedules` -> ReportSchedule[] (one-to-many)
+- `calendarEvents` -> CalendarEvent[] (one-to-many)
 
 **Indexes:** `email`, `stripeCustomerId`
 
@@ -917,6 +923,88 @@ Team membership with role-based access.
 
 **Indexes:** `teamId`, `userId`
 
+### Notification
+
+In-app notifications pushed via WebSocket and persisted for later viewing.
+
+| Field | Type | Constraints | Default |
+|-------|------|-------------|---------|
+| `id` | String | `@id` | `cuid()` |
+| `userId` | String | — | — |
+| `type` | String | — | — |
+| `title` | String | — | — |
+| `message` | String | — | — |
+| `read` | Boolean | — | `false` |
+| `metadata` | String | — | `"{}"` |
+| `createdAt` | DateTime | — | `now()` |
+
+**Type values:** `coding_added`, `canvas_shared`, `team_invite`, `comment`, `mention`
+
+**JSON fields:** `metadata` stores `{ canvasId, canvasName, actorName, actorId, teamId, teamName }`.
+
+**Relations:** `user` -> User (on delete: **Cascade**)
+
+**Indexes:** `[userId, read]`, `[userId, createdAt]`
+
+---
+
+### ReportSchedule
+
+Scheduled email report configurations (daily, weekly, monthly).
+
+| Field | Type | Constraints | Default |
+|-------|------|-------------|---------|
+| `id` | String | `@id` | `cuid()` |
+| `userId` | String | — | — |
+| `canvasId` | String? | — | — |
+| `teamId` | String? | — | — |
+| `frequency` | String | — | `"weekly"` |
+| `dayOfWeek` | Int? | — | `1` |
+| `lastSent` | DateTime? | — | — |
+| `enabled` | Boolean | — | `true` |
+| `createdAt` | DateTime | — | `now()` |
+
+**Frequency values:** `daily`, `weekly`, `monthly`
+
+**dayOfWeek:** 0=Sunday through 6=Saturday (used for weekly reports).
+
+**Relations:** `user` -> User (on delete: **Cascade**)
+
+**Indexes:** `userId`, `[enabled, lastSent]`
+
+---
+
+### CalendarEvent
+
+Research calendar events for tracking milestones, deadlines, and sessions.
+
+| Field | Type | Constraints | Default |
+|-------|------|-------------|---------|
+| `id` | String | `@id` | `cuid()` |
+| `userId` | String | — | — |
+| `canvasId` | String? | — | — |
+| `teamId` | String? | — | — |
+| `title` | String | — | — |
+| `description` | String? | — | — |
+| `startDate` | DateTime | — | — |
+| `endDate` | DateTime? | — | — |
+| `allDay` | Boolean | — | `false` |
+| `type` | String | — | `"milestone"` |
+| `color` | String? | — | — |
+| `reminder` | Int? | — | — |
+| `createdAt` | DateTime | — | `now()` |
+| `updatedAt` | DateTime | `@updatedAt` | — |
+
+**Type values:** `milestone`, `deadline`, `session`, `review`
+
+**reminder:** Minutes before the event to trigger a reminder (used in iCal alarm output).
+
+**Relations:** `user` -> User (on delete: **Cascade**)
+
+**Indexes:** `[userId, startDate]`, `canvasId`
+
+---
+
 ## 4. Key Patterns
 
 ### Soft Delete
@@ -966,6 +1054,7 @@ Several models store structured data as JSON strings (since SQLite compatibility
 | RepositoryInsight | `tags` | String array |
 | Integration | `metadata` | Provider-specific config |
 | AuditLog | `meta` | Additional context |
+| Notification | `metadata` | `{ canvasId, canvasName, actorName, actorId, ... }` |
 
 ### Webhook Idempotency
 

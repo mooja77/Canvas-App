@@ -1181,7 +1181,17 @@ function withErrorBoundary(NodeComponent) {
     - **AiAutoCodeModal** - Configure AI auto-coding
     - **IntercoderPanel** - Manage intercoder reliability
 
-13. **Additional Panels:**
+13. **CalendarPanel** (`panels/CalendarPanel.tsx`)
+    - **Trigger:** Toolbar calendar button
+    - **Features:**
+      - Event list split into Upcoming / Past sections
+      - Add/edit form with title, description, start/end dates, type, all-day toggle, reminder
+      - Event types: milestone (blue), deadline (red), session (green), review (purple)
+      - Filter by event type
+      - Export to iCal (.ics) file via `GET /calendar/export.ics`
+      - Edit and delete individual events
+
+14. **Additional Panels:**
     - **PresenceAvatars** - Show active collaborators
     - **CollabCursors** - Show remote cursor positions
     - **CanvasTabBar** - Multi-canvas tab switching
@@ -1205,6 +1215,56 @@ function withErrorBoundary(NodeComponent) {
 - **AnnotationPopover** (`AnnotationPopover.tsx`)
   - Inline annotation editor for codings
   - Rich text or plain text notes
+
+---
+
+## 6b. GLOBAL COMPONENTS
+
+### NotificationBell (`components/NotificationBell.tsx`)
+
+Bell icon with unread badge, renders in the app header for email-authenticated users.
+
+**Features:**
+- Polls `GET /notifications` every 30 seconds
+- Unread count badge (shows "99+" for >99)
+- Dropdown panel with notification list:
+  - Type-specific icons (coding, share, team invite, mention)
+  - Relative timestamps ("5m ago", "2h ago", "3d ago")
+  - Click to mark as read, X button to delete
+  - "Mark all as read" bulk action
+- Unread notifications highlighted with blue background
+- Only rendered for `authType === 'email'` users
+
+### SetupWizard (`components/SetupWizard.tsx`)
+
+4-step first-run wizard shown to new users. Controlled by `setupWizardComplete` in `uiStore`.
+
+**Steps:**
+1. **Welcome** — Overview of QualCanvas capabilities (Import, Code, Analyze)
+2. **Methodology** — Choose a research framework (Thematic Analysis, Grounded Theory, IPA, Framework Analysis, Content Analysis, or Blank Canvas). Each template pre-populates starter codes.
+3. **Create Project** — Name the canvas, preview template codes, create canvas with template codes applied
+4. **Quick Tips** — Key shortcuts (Ctrl+K, ?, Ctrl+Z, Alt+Drag, Esc) and guided tour info
+
+**Features:**
+- Progress bar and step dots
+- Skip setup button on every step
+- Back/Next navigation
+- "Create Canvas" button on step 3 creates canvas + adds template codes
+- Methodology templates: 6 options with color-coded cards and code previews
+
+### usePageMeta Hook (`hooks/usePageMeta.ts`)
+
+Sets dynamic `<title>`, `<meta name="description">`, `<link rel="canonical">`, and Open Graph tags.
+
+```typescript
+usePageMeta(title: string, description: string): void
+```
+
+**Behavior:**
+- Sets `document.title` and `<meta name="description">`
+- Sets `og:title` and `og:description` meta tags
+- Sets `<link rel="canonical">` to `https://qualcanvas.com{pathname}`
+- Restores previous title/description on unmount
 
 ---
 

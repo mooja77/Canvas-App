@@ -2212,6 +2212,208 @@ These endpoints are NOT under the `/api` prefix.
 
 ---
 
+## 28. Notifications
+
+### GET /api/notifications
+**Auth:** Required (email auth)
+**Description:** List user's notifications, paginated. Returns unread count.
+**Query:** `?page=1&limit=20&unreadOnly=true`
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [{ "id", "type", "title", "message", "read", "metadata": {}, "createdAt" }],
+  "pagination": { "page": 1, "limit": 20, "total": 50, "totalPages": 3 },
+  "unreadCount": 5
+}
+```
+
+---
+
+### PUT /api/notifications/:id/read
+**Auth:** Required (email auth)
+**Description:** Mark a single notification as read.
+**Response (200):**
+```json
+{ "success": true, "message": "Notification marked as read" }
+```
+**Errors:** 403 (not owner), 404 (not found)
+
+---
+
+### PUT /api/notifications/read-all
+**Auth:** Required (email auth)
+**Description:** Mark all unread notifications as read.
+**Response (200):**
+```json
+{ "success": true, "message": "All notifications marked as read" }
+```
+
+---
+
+### DELETE /api/notifications/:id
+**Auth:** Required (email auth)
+**Description:** Delete a notification.
+**Response (200):**
+```json
+{ "success": true, "message": "Notification deleted" }
+```
+**Errors:** 403 (not owner), 404 (not found)
+
+---
+
+## 29. Reports
+
+### POST /api/reports/schedule
+**Auth:** Required (email auth)
+**Description:** Create a scheduled report configuration.
+**Body:**
+```json
+{
+  "canvasId": "string (optional, scope to canvas)",
+  "teamId": "string (optional, scope to team)",
+  "frequency": "daily | weekly | monthly (default: weekly)",
+  "dayOfWeek": 0-6 // optional, 0=Sun (for weekly reports)
+}
+```
+**Response (201):**
+```json
+{ "success": true, "data": { "id", "userId", "canvasId", "frequency", "dayOfWeek", "enabled", "createdAt" } }
+```
+
+---
+
+### GET /api/reports/schedules
+**Auth:** Required (email auth)
+**Description:** List user's report schedules.
+**Response (200):**
+```json
+{ "success": true, "data": [{ "id", "canvasId", "teamId", "frequency", "dayOfWeek", "lastSent", "enabled" }] }
+```
+
+---
+
+### PUT /api/reports/schedules/:id
+**Auth:** Required (email auth)
+**Description:** Update a schedule (enable/disable, change frequency).
+**Body:**
+```json
+{
+  "frequency": "daily | weekly | monthly (optional)",
+  "dayOfWeek": 0-6 // optional
+  "enabled": true | false // optional
+}
+```
+**Response (200):**
+```json
+{ "success": true, "data": { "id", "frequency", "dayOfWeek", "enabled" } }
+```
+**Errors:** 403 (not owner), 404 (not found)
+
+---
+
+### DELETE /api/reports/schedules/:id
+**Auth:** Required (email auth)
+**Description:** Delete a report schedule.
+**Response (200):**
+```json
+{ "success": true, "message": "Schedule deleted" }
+```
+**Errors:** 403 (not owner), 404 (not found)
+
+---
+
+### POST /api/reports/generate
+**Auth:** Required (email auth)
+**Description:** Generate a report on-demand (returns HTML).
+**Body:**
+```json
+{ "canvasId": "string (optional)" }
+```
+**Response (200):**
+```json
+{ "success": true, "data": { "html": "<html>...</html>", "subject": "QualCanvas Weekly Report — 3/27/2026" } }
+```
+
+---
+
+## 30. Calendar
+
+### GET /api/calendar/events
+**Auth:** Required (email auth)
+**Description:** List calendar events with optional filters.
+**Query:** `?from=ISO&to=ISO&type=milestone&canvasId=xxx`
+**Response (200):**
+```json
+{ "success": true, "data": [{ "id", "title", "description", "startDate", "endDate", "allDay", "type", "color", "reminder", "canvasId", "teamId" }] }
+```
+
+---
+
+### POST /api/calendar/events
+**Auth:** Required (email auth)
+**Description:** Create a calendar event.
+**Body:**
+```json
+{
+  "title": "string (1-500, required)",
+  "description": "string (max 5000, optional)",
+  "startDate": "ISO datetime (required)",
+  "endDate": "ISO datetime (optional)",
+  "allDay": false,
+  "type": "milestone | deadline | session | review (default: milestone)",
+  "color": "string (max 20, optional)",
+  "reminder": 0-10080, // minutes before event (optional)
+  "canvasId": "string (optional)",
+  "teamId": "string (optional)"
+}
+```
+**Response (201):**
+```json
+{ "success": true, "data": { "id", "title", "startDate", "type", "createdAt" } }
+```
+
+---
+
+### PUT /api/calendar/events/:id
+**Auth:** Required (email auth)
+**Description:** Update a calendar event.
+**Body:** Same fields as POST, all optional.
+**Response (200):**
+```json
+{ "success": true, "data": { "id", "title", "startDate", "type", "updatedAt" } }
+```
+**Errors:** 403 (not owner), 404 (not found)
+
+---
+
+### DELETE /api/calendar/events/:id
+**Auth:** Required (email auth)
+**Description:** Delete a calendar event.
+**Response (200):**
+```json
+{ "success": true, "message": "Event deleted" }
+```
+**Errors:** 403 (not owner), 404 (not found)
+
+---
+
+### GET /api/calendar/export.ics
+**Auth:** Required (email auth)
+**Description:** Export all calendar events as an iCal (.ics) file.
+**Response:** `text/calendar` file download (`qualcanvas-calendar.ics`)
+
+---
+
+## 31. Excel Export
+
+### GET /api/canvas/:id/export/excel
+**Auth:** Required
+**Description:** Download canvas data as a styled Excel workbook (.xlsx). Includes three sheets: Codebook (codes with colors and frequencies), Codings (all coded segments), and Case Matrix (case-by-code frequency table).
+**Response:** Binary `.xlsx` file (Content-Type: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`)
+
+---
+
 ## Plan Limits Reference
 
 Plan limit enforcement returns HTTP 403 with:

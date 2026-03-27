@@ -93,7 +93,7 @@ qualcanvas/
 ├── apps/
 │   ├── backend/
 │   │   ├── prisma/
-│   │   │   ├── schema.prisma          # 34 models, PostgreSQL provider
+│   │   │   ├── schema.prisma          # 37 models, PostgreSQL provider
 │   │   │   ├── migrations/            # Prisma migration files
 │   │   │   └── seed.ts                # Demo data seeder
 │   │   ├── src/
@@ -111,12 +111,17 @@ qualcanvas/
 │   │   │   │   ├── errorHandler.ts    # Global error handler (AppError)
 │   │   │   │   ├── planLimits.ts      # Plan enforcement middleware factories
 │   │   │   │   └── validation.ts      # Zod schema validation middleware
-│   │   │   ├── routes/                # 21 route modules
+│   │   │   ├── jobs/
+│   │   │   │   └── reportScheduler.ts # Scheduled report delivery (setInterval)
+│   │   │   ├── routes/                # 25 route modules
 │   │   │   └── utils/
 │   │   │       ├── textAnalysis.ts    # Analysis engine (~766 lines)
 │   │   │       ├── routeHelpers.ts    # getAuthId, getAuthUserId, getOwnedCanvas
 │   │   │       ├── jwt.ts            # Token sign/verify helpers
-│   │   │       └── hashing.ts        # SHA-256, bcrypt utilities
+│   │   │       ├── hashing.ts        # SHA-256, bcrypt utilities
+│   │   │       ├── excelExport.ts    # ExcelJS workbook generation (codebook, codings, case matrix)
+│   │   │       ├── notifications.ts  # Notification creation + WebSocket push
+│   │   │       └── reportGenerator.ts # HTML report generation for scheduled emails
 │   │   ├── scripts/
 │   │   │   └── backup.sh             # DB backup script
 │   │   ├── package.json
@@ -127,6 +132,10 @@ qualcanvas/
 │       │   ├── App.tsx                # Route definitions
 │       │   ├── components/
 │       │   │   ├── canvas/            # Canvas workspace + node components
+│       │   │   │   └── panels/
+│       │   │   │       └── CalendarPanel.tsx  # Research calendar (events, iCal export)
+│       │   │   ├── NotificationBell.tsx  # Bell icon + badge + dropdown
+│       │   │   ├── SetupWizard.tsx       # 4-step first-run wizard
 │       │   │   ├── ErrorBoundary.tsx
 │       │   │   ├── UpgradePrompt.tsx
 │       │   │   ├── OfflineBanner.tsx
@@ -220,6 +229,10 @@ All routes are mounted under `/api/v1` and `/api` (backwards compat).
 | `repositoryRoutes.ts` | `/repositories` | Yes | Yes | Research insight repository |
 | `integrationRoutes.ts` | `/integrations` | Yes | Yes | Third-party integrations (Zoom, Slack, Qualtrics) |
 | `teamRoutes.ts` | `/teams` | Yes | Yes | Team management, member roles |
+| `notificationRoutes.ts` | `/notifications` | Yes | No | User notifications (list, read, delete) |
+| `reportRoutes.ts` | `/reports` | Yes | No | Scheduled reports (CRUD, on-demand generate) |
+| `calendarRoutes.ts` | `/calendar` | Yes | No | Research calendar events + iCal export |
+| `exportRoutes.ts` | `/canvas/:id/export` | Yes | No | Excel (.xlsx) export via ExcelJS |
 
 Public (unauthenticated) routes:
 - `GET /health` — DB health check
@@ -227,7 +240,7 @@ Public (unauthenticated) routes:
 - `GET /metrics` — Basic request count + memory metrics
 - `GET /canvas/shared/:code` — Public shared canvas viewing
 
-### 4.3 Database Schema (34 Models)
+### 4.3 Database Schema (37 Models)
 
 ```
 ┌──────────────────┐       ┌───────────────────┐
@@ -291,6 +304,11 @@ Key relationships:
   User ──< Team (owner) ──< TeamMember
   User ──< ResearchRepository ──< RepositoryInsight
   User ──< Integration (per-provider)
+
+User also has:
+  Notification      — in-app notifications (coding_added, canvas_shared, team_invite, mention)
+  ReportSchedule    — scheduled email report configs (daily/weekly/monthly)
+  CalendarEvent     — research calendar events (milestones, deadlines, sessions, reviews)
 
 Standalone:
   AuditLog          — action/resource audit trail
@@ -410,7 +428,7 @@ Components use granular Zustand selector hooks (migrated in commit `95c0449`).
 | `useContainerSize` | `hooks/useContainerSize.ts` | Responsive container dimensions |
 | `useNodeColors` | `hooks/useNodeColors.ts` | Node color management |
 | `useSessionTimeout` | `hooks/useSessionTimeout.ts` | Auto-logout on session expiry |
-| `usePageMeta` | `hooks/usePageMeta.ts` | Dynamic page title/meta |
+| `usePageMeta` | `hooks/usePageMeta.ts` | Dynamic page title, description, canonical URL, OG tags |
 
 ### 5.4 Canvas Node Types (21 Total)
 
@@ -568,7 +586,36 @@ Usage tracked per-request in `AiUsage` table (input/output tokens, cost).
 - If SMTP is not configured, reset links are logged to console (development mode)
 - Recommended production provider: Resend.com
 
-### 7.5 Third-Party Integrations (Team plan)
+### 7.5 Excel Export
+
+- **ExcelJS** (`exceljs`): Generates styled `.xlsx` workbooks with three sheets:
+  - **Codebook** — codes with colors, frequencies, parent codes
+  - **Codings** — all coded segments with transcript/code cross-reference
+  - **Case Matrix** — case-by-code frequency matrix with conditional highlighting
+- Route: `GET /canvas/:id/export/excel`
+
+### 7.6 Report Scheduler
+
+- Background job in `apps/backend/src/jobs/reportScheduler.ts`
+- Runs every hour via `setInterval` (not cron — keeps deployment simple)
+- Processes `ReportSchedule` records: generates HTML reports and sends via SMTP
+- Frequencies: daily, weekly (configurable day), monthly
+- HTML report includes: new/total codings, top codes, recent activity, collaborator count
+
+### 7.7 Notifications
+
+- In-app notification system via `apps/backend/src/utils/notifications.ts`
+- Creates `Notification` records and pushes via WebSocket (`notification:new` event)
+- Types: `coding_added`, `canvas_shared`, `team_invite`, `mention`
+- Frontend: `NotificationBell` component polls every 30s + receives WebSocket pushes
+
+### 7.8 Calendar (iCal)
+
+- Research calendar with `ical-generator` for `.ics` export
+- Event types: milestone, deadline, session, review
+- Supports reminders (alarm triggers in iCal output)
+
+### 7.9 Third-Party Integrations (Team plan)
 
 Stored in `Integration` model with OAuth tokens:
 - **Zoom** — Meeting recording import
@@ -704,7 +751,7 @@ push/PR to main
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │  Type Check   │────▶│  Unit Tests   │────▶│  E2E Tests   │
 │  (tsc -b)     │     │  (vitest)     │     │  (Playwright) │
-│               │     │  234 + 131    │     │  44 tests     │
+│               │     │  570 + 333    │     │  ~130 tests   │
 │  ubuntu-latest│     │  SQLite test  │     │  Chromium     │
 │  Node 20      │     │  DB           │     │  Artifacts on │
 │               │     │               │     │  failure      │
@@ -721,10 +768,10 @@ All jobs use `ubuntu-latest` with Node 20 and npm caching. E2E test failures upl
 
 | Layer | Framework | Count | Location |
 |-------|-----------|-------|----------|
-| Backend unit | Vitest | 234 | `apps/backend/src/**/*.test.ts` |
-| Frontend unit | Vitest + Testing Library | 131 | `apps/frontend/src/**/*.test.ts` |
-| E2E | Playwright | 44 | `e2e/` |
-| **Total** | | **409** | |
+| Backend unit | Vitest | 570 | `apps/backend/src/**/*.test.ts` |
+| Frontend unit | Vitest + Testing Library | 333 | `apps/frontend/src/**/*.test.ts` |
+| E2E | Playwright | ~130 | `e2e/` |
+| **Total** | | **~1033** | |
 
 ### 10.2 Test Infrastructure
 

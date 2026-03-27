@@ -56,8 +56,8 @@ npm run dev
 | `npm start` | Start the compiled backend (`apps/backend/dist`) |
 | `npm run db:migrate` | Run Prisma migrations |
 | `npm run db:seed` | Seed demo data (access code: `CANVAS-DEMO2025`) |
-| `npm test` | Run all unit tests (234 backend + 131 frontend) |
-| `npm run test:e2e` | Run 44 Playwright E2E tests (Chromium) |
+| `npm test` | Run all unit tests (570 backend + 333 frontend) |
+| `npm run test:e2e` | Run ~130 Playwright E2E tests (Chromium) |
 | `npm run test:e2e:all` | Run E2E tests across all browsers |
 | `npm run test:e2e:firefox` | Run E2E tests on Firefox |
 | `npm run test:e2e:webkit` | Run E2E tests on WebKit |
@@ -332,7 +332,7 @@ GitHub Actions runs on every push to `main` and every pull request targeting `ma
 - Depends on: Type Check
 - Uses SQLite (`DATABASE_URL=file:./test.db`) — no external database needed
 - Generates Prisma client and runs migrations
-- Runs `npm test` (234 backend + 131 frontend tests via Vitest)
+- Runs `npm test` (570 backend + 333 frontend tests via Vitest)
 - Environment: `JWT_SECRET` and `ENCRYPTION_KEY` set to CI-only values
 
 ### Job 3: E2E Tests
@@ -340,7 +340,7 @@ GitHub Actions runs on every push to `main` and every pull request targeting `ma
 - Depends on: Unit Tests
 - Installs Chromium via Playwright
 - Generates Prisma client, runs migrations, and seeds test data
-- Runs `npm run test:e2e` (44 Playwright tests)
+- Runs `npm run test:e2e` (~130 Playwright tests)
 - On failure: uploads `test-results/` as an artifact (retained 7 days)
 
 ### Pipeline Summary
@@ -402,7 +402,28 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3007}/health || exit 1
 ```
 
-## 10. Troubleshooting
+## 10. Background Jobs
+
+### Report Scheduler
+
+The backend runs a report scheduler as a background `setInterval` job (not a separate cron process). It starts automatically when the server boots.
+
+- **File:** `apps/backend/src/jobs/reportScheduler.ts`
+- **Check interval:** Every hour (60 minutes)
+- **Startup delay:** 10 seconds after server start (allows DB connection to settle)
+- **Behavior:** Queries all enabled `ReportSchedule` records, generates HTML reports via `reportGenerator.ts`, and sends them via SMTP (using the same email transport as password resets)
+- **No external scheduler needed:** Works on Railway, Docker, or any host — no cron configuration required
+
+### New Backend Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `exceljs` | Excel workbook generation for `.xlsx` export |
+| `ical-generator` | iCal (.ics) file generation for calendar export |
+
+These are included in the backend `package.json` and installed automatically with `npm install`.
+
+## 11. Troubleshooting
 
 ### Common Issues
 
