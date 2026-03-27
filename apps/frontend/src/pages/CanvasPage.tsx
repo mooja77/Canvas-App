@@ -1,22 +1,50 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useUIStore } from '../stores/uiStore';
+import { useCanvasStore } from '../stores/canvasStore';
 import { authApi } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 import CodingCanvas from '../components/canvas/CodingCanvas';
+import SetupWizard from '../components/SetupWizard';
 import { SunIcon, MoonIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
 export default function CanvasPage() {
   const { authenticated, name, logout, authType, emailVerified } = useAuthStore();
-  const { darkMode, toggleDarkMode } = useUIStore();
+  const { darkMode, toggleDarkMode, setupWizardComplete, resetOnboarding } = useUIStore();
+  const canvases = useCanvasStore(s => s.canvases);
+  const fetchCanvases = useCanvasStore(s => s.fetchCanvases);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   usePageMeta('Canvas — QualCanvas', 'Your qualitative research workspace. Code transcripts, analyze themes, and collaborate.');
   const [resending, setResending] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+  const [canvasesLoaded, setCanvasesLoaded] = useState(false);
 
   const showVerificationBanner = authType === 'email' && !emailVerified && !bannerDismissed;
+
+  // Fetch canvases on mount to decide whether to show setup wizard
+  useEffect(() => {
+    if (authenticated && !canvasesLoaded) {
+      fetchCanvases().finally(() => setCanvasesLoaded(true));
+    }
+  }, [authenticated, canvasesLoaded, fetchCanvases]);
+
+  // Show setup wizard for first-time users with no canvases
+  useEffect(() => {
+    if (canvasesLoaded && !setupWizardComplete && canvases.length === 0) {
+      setShowWizard(true);
+    }
+  }, [canvasesLoaded, setupWizardComplete, canvases.length]);
+
+  // Demo mode: ?demo=true triggers the guided tour
+  useEffect(() => {
+    if (searchParams.get('demo') === 'true' && authenticated) {
+      resetOnboarding();
+    }
+  }, [searchParams, authenticated, resetOnboarding]);
 
   const handleResendVerification = async () => {
     if (resending) return;
@@ -118,6 +146,11 @@ export default function CanvasPage() {
             </svg>
           </button>
         </div>
+      )}
+
+      {/* Setup wizard for first-time users */}
+      {showWizard && (
+        <SetupWizard onComplete={() => setShowWizard(false)} />
       )}
 
       {/* Full-screen canvas workspace */}

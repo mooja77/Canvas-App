@@ -345,6 +345,10 @@ export const canvasApi = {
   getTrainingAttempts: (canvasId: string, docId: string) =>
     canvasClient.get(`/canvas/${canvasId}/training/${docId}/attempts`),
 
+  // ─── Excel Export ───
+  exportExcel: (canvasId: string) =>
+    canvasClient.get(`/canvas/${canvasId}/export/excel`, { responseType: 'arraybuffer' }),
+
   // ─── QDPX Import/Export ───
   exportQdpx: (canvasId: string) =>
     canvasClient.get(`/canvas/${canvasId}/export/qdpx`, { responseType: 'arraybuffer' }),

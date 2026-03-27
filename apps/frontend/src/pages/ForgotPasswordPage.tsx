@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authApi } from '../services/api';
 import toast from 'react-hot-toast';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function ForgotPasswordPage() {
+  usePageMeta('Forgot Password — QualCanvas', 'Reset your QualCanvas password. Enter your email to receive a password reset link.');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);

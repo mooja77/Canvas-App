@@ -10,6 +10,17 @@ function setMetaTag(property: string, content: string): void {
   el.setAttribute('content', content);
 }
 
+function setCanonicalLink(path: string): void {
+  const url = `https://qualcanvas.com${path}`;
+  let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+  if (!link) {
+    link = document.createElement('link');
+    link.setAttribute('rel', 'canonical');
+    document.head.appendChild(link);
+  }
+  link.setAttribute('href', url);
+}
+
 export function usePageMeta(title: string, description: string) {
   useEffect(() => {
     const prevTitle = document.title;
@@ -27,6 +38,9 @@ export function usePageMeta(title: string, description: string) {
     // OG tags
     setMetaTag('og:title', title);
     setMetaTag('og:description', description);
+
+    // Canonical link
+    setCanonicalLink(window.location.pathname);
 
     return () => {
       document.title = prevTitle;

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QualCanvas OG Image</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 1200px;
+      height: 630px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #f8fafc;
+      overflow: hidden;
+    }
+    .container {
+      text-align: center;
+      padding: 60px;
+    }
+    .logo {
+      font-size: 72px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .tagline {
+      font-size: 28px;
+      font-weight: 400;
+      color: #94a3b8;
+      max-width: 700px;
+      margin: 0 auto 40px;
+      line-height: 1.4;
+    }
+    .badges {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+    }
+    .badge {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 16px;
+      color: #cbd5e1;
+    }
+    .dots {
+      position: absolute;
+      top: 40px;
+      right: 60px;
+      display: grid;
+      grid-template-columns: repeat(4, 12px);
+      gap: 8px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      opacity: 0.3;
+    }
+    .dot:nth-child(1) { background: #60a5fa; }
+    .dot:nth-child(2) { background: #a78bfa; }
+    .dot:nth-child(3) { background: #34d399; }
+    .dot:nth-child(4) { background: #fbbf24; }
+    .dot:nth-child(5) { background: #f472b6; }
+    .dot:nth-child(6) { background: #60a5fa; }
+    .dot:nth-child(7) { background: #a78bfa; }
+    .dot:nth-child(8) { background: #34d399; }
+    .url {
+      position: absolute;
+      bottom: 40px;
+      font-size: 18px;
+      color: #64748b;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="dots">
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+  </div>
+  <div class="container">
+    <div class="logo">QualCanvas</div>
+    <div class="tagline">Visual workspace for qualitative research. Code, organize, and analyze interview transcripts.</div>
+    <div class="badges">
+      <div class="badge">Transcript Coding</div>
+      <div class="badge">Theme Analysis</div>
+      <div class="badge">Drag &amp; Drop Canvas</div>
+    </div>
+  </div>
+  <div class="url">qualcanvas.com</div>
+</body>
+</html>

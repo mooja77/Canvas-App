@@ -9,6 +9,7 @@ export type ZoomTier = 'full' | 'reduced' | 'minimal';
 interface UIState {
   darkMode: boolean;
   onboardingComplete: boolean;
+  setupWizardComplete: boolean;
   sidebarCollapsed: boolean;
   edgeStyle: EdgeStyleType;
   scrollMode: ScrollMode;
@@ -17,6 +18,8 @@ interface UIState {
   toggleDarkMode: () => void;
   completeOnboarding: () => void;
   resetOnboarding: () => void;
+  completeSetupWizard: () => void;
+  resetSetupWizard: () => void;
   setSidebarCollapsed: (v: boolean) => void;
   setEdgeStyle: (style: EdgeStyleType) => void;
   setScrollMode: (mode: ScrollMode) => void;
@@ -28,6 +31,7 @@ export const useUIStore = create<UIState>()(
     (set) => ({
       darkMode: typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches,
       onboardingComplete: false,
+      setupWizardComplete: false,
       sidebarCollapsed: false,
       edgeStyle: 'bezier' as EdgeStyleType,
       scrollMode: 'zoom' as ScrollMode,
@@ -45,6 +49,8 @@ export const useUIStore = create<UIState>()(
 
       completeOnboarding: () => set({ onboardingComplete: true }),
       resetOnboarding: () => set({ onboardingComplete: false }),
+      completeSetupWizard: () => set({ setupWizardComplete: true }),
+      resetSetupWizard: () => set({ setupWizardComplete: false }),
       setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
       setEdgeStyle: (style) => set({ edgeStyle: style }),
       setScrollMode: (mode) => set({ scrollMode: mode }),

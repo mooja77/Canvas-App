@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../services/api';
 import toast from 'react-hot-toast';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function ResetPasswordPage() {
+  usePageMeta('Reset Password — QualCanvas', 'Create a new password for your QualCanvas account.');
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
   const email = searchParams.get('email') || '';

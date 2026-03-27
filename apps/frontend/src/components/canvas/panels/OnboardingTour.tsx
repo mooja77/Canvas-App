@@ -271,7 +271,36 @@ const TOUR_STEPS: TourStep[] = [
     duration: 5000,
   },
 
-  // === PHASE 9: COLLABORATION & STATUS ===
+  // === PHASE 9: CASES, ETHICS & SHARING ===
+  {
+    target: 'canvas-toolbar',
+    title: 'Cases & Cross-Case Analysis',
+    description: 'Use Cases to group transcripts by participant or site. The cross-case view lets you compare how themes manifest across different cases \u2014 essential for multi-site studies.',
+    position: 'bottom',
+    icon: 'case',
+    tip: 'Cases are available on Pro and Team plans.',
+    duration: 5000,
+  },
+  {
+    target: 'canvas-toolbar',
+    title: 'Ethics & Audit Trail',
+    description: 'The Ethics panel helps you document informed consent, track IRB approvals, and maintain a full audit trail of your coding decisions \u2014 critical for research integrity.',
+    position: 'bottom',
+    icon: 'memo',
+    tip: 'Ethics features are available on Pro and Team plans.',
+    duration: 5000,
+  },
+  {
+    target: 'canvas-toolbar',
+    title: 'Share Your Canvas',
+    description: 'Generate a share code to let colleagues clone your canvas. They get a complete copy of your transcripts, codes, and codings to review or extend your analysis independently.',
+    position: 'bottom',
+    icon: 'collab',
+    tip: 'Up to 5 shares on Pro, unlimited on Team plans.',
+    duration: 5000,
+  },
+
+  // === PHASE 10: COLLABORATION & STATUS ===
   {
     target: 'canvas-status-bar',
     title: 'Real-Time Collaboration',
@@ -404,7 +433,14 @@ export default function OnboardingTour() {
   const [step, setStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [animating, setAnimating] = useState(false);
-  const [demoMode, setDemoMode] = useState(false);
+  const [demoMode, setDemoMode] = useState(() => {
+    // Auto-start demo mode if ?demo=true URL param is present
+    try {
+      return new URLSearchParams(window.location.search).get('demo') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [demoPaused, setDemoPaused] = useState(false);
   const [actionRunning, setActionRunning] = useState(false);
   const demoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

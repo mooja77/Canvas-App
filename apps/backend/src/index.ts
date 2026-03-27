@@ -50,6 +50,7 @@ import { repositoryRoutes } from './routes/repositoryRoutes.js';
 import { integrationRoutes } from './routes/integrationRoutes.js';
 import { aiSettingsRoutes } from './routes/aiSettingsRoutes.js';
 import { teamRoutes } from './routes/teamRoutes.js';
+import { exportRoutes } from './routes/exportRoutes.js';
 import { prisma } from './lib/prisma.js';
 import { initSocketServer } from './lib/socket.js';
 
@@ -229,6 +230,9 @@ v1Router.use(auth, aiSettingsRoutes);
 
 // Protected team routes
 v1Router.use(auth, auditLog, teamRoutes);
+
+// Export routes (Excel)
+v1Router.use(auth, auditLog, exportRoutes);
 
 // Mount under /api/v1 (versioned) and /api (backwards compat)
 app.use('/api/v1', v1Router);

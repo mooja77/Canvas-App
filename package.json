@@ -26,7 +26,8 @@
     "test:e2e:firefox": "npx playwright test --project=setup --project=firefox",
     "test:e2e:webkit": "npx playwright test --project=setup --project=webkit",
     "test:e2e:mobile": "npx playwright test --project=setup --project=mobile-chrome --project=mobile-safari",
-    "typecheck": "tsc -b apps/backend apps/frontend"
+    "typecheck": "tsc -b apps/backend apps/frontend",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
@@ -38,8 +39,14 @@
     "concurrently": "^9.1.0",
     "eslint": "^9.39.3",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "husky": "^9.1.7",
     "jsdom": "^29.0.1",
+    "lint-staged": "^16.4.0",
     "typescript": "^5.7.0",
     "vite-plugin-pwa": "^0.21.1"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": ["eslint --fix", "prettier --write"],
+    "*.{json,md,yml}": ["prettier --write"]
   }
 }

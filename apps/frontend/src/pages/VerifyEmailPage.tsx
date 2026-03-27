@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { authApi } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function VerifyEmailPage() {
+  usePageMeta('Verify Email — QualCanvas', 'Verify your email address to activate your QualCanvas account.');
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
   const email = searchParams.get('email') || '';

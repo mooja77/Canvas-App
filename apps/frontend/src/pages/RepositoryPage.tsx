@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { canvasApi } from '../services/api';
 import toast from 'react-hot-toast';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 interface Repository {
   id: string;
@@ -25,6 +26,7 @@ interface Insight {
 }
 
 export default function RepositoryPage() {
+  usePageMeta('Repository — QualCanvas', 'Manage your QualCanvas research repositories and insights.');
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
   const [insights, setInsights] = useState<Insight[]>([]);

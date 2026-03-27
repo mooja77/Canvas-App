@@ -6,6 +6,7 @@ function resetStore() {
   useUIStore.setState({
     darkMode: false,
     onboardingComplete: false,
+    setupWizardComplete: false,
     sidebarCollapsed: false,
     edgeStyle: 'bezier',
   });
@@ -66,6 +67,23 @@ describe('uiStore', () => {
       useUIStore.getState().completeOnboarding();
       useUIStore.getState().resetOnboarding();
       expect(useUIStore.getState().onboardingComplete).toBe(false);
+    });
+  });
+
+  describe('completeSetupWizard / resetSetupWizard', () => {
+    it('has setupWizardComplete false by default', () => {
+      expect(useUIStore.getState().setupWizardComplete).toBe(false);
+    });
+
+    it('completeSetupWizard sets setupWizardComplete to true', () => {
+      useUIStore.getState().completeSetupWizard();
+      expect(useUIStore.getState().setupWizardComplete).toBe(true);
+    });
+
+    it('resetSetupWizard sets setupWizardComplete back to false', () => {
+      useUIStore.getState().completeSetupWizard();
+      useUIStore.getState().resetSetupWizard();
+      expect(useUIStore.getState().setupWizardComplete).toBe(false);
     });
   });
 

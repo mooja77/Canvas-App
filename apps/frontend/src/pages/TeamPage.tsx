@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { teamApi } from '../services/api';
 import toast from 'react-hot-toast';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 interface TeamMember {
   id: string;
@@ -28,6 +29,7 @@ interface Team {
 }
 
 export default function TeamPage() {
+  usePageMeta('Team — QualCanvas', 'Manage your QualCanvas team members, invitations, and collaborative workspace.');
   const [teams, setTeams] = useState<Team[]>([]);
   const [activeTeam, setActiveTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
