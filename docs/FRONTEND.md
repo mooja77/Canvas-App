@@ -1729,4 +1729,63 @@ Map<userId, { x, y, name, color }>
 
 ---
 
+## 12. ADMIN PAGE (`pages/AdminPage.tsx`)
+
+### Overview
+
+The admin portal is a standalone page at `/admin` that provides platform monitoring and user management. It is **not** wrapped in `ProtectedRoute` — instead it uses its own admin key gate (see below). The component is lazy-loaded.
+
+### Admin Key Gate
+
+- On mount, checks `sessionStorage` for `admin-api-key`
+- If not found, renders a full-screen key entry form
+- Verifies the key by calling `GET /api/admin/health` with the `x-admin-key` header
+- On success, stores the key in `sessionStorage` (persists for the browser tab session)
+- On failure, shows "Access Denied" error
+
+### Tabs (6)
+
+| Tab | Description |
+|-----|-------------|
+| **Dashboard** | KPI stat cards (total users, active users, signups, MRR, errors), PieChart for plan distribution (Recharts), top features list |
+| **Users** | Searchable, paginated, sortable user table with email, name, plan, signup date, status, canvas count. Click a row for full user detail |
+| **Billing** | MRR, ARR, churn rate, paying vs free counts, plan breakdown table, recent transactions |
+| **Health** | System status indicator (healthy/degraded/unhealthy), uptime, DB response time, memory usage, app version, Node.js version |
+| **Activity** | Paginated audit log with action type filter, timestamps, user email lookup |
+| **Features** | Feature usage table (sorted by total usage), source type (computed_node/ai_usage), unique canvases/users counts |
+
+### Auto-Refresh
+
+All tabs auto-refresh every 60 seconds (`AUTO_REFRESH_MS = 60_000`) via `setInterval` in each tab's `useEffect`.
+
+### Charts (Recharts)
+
+- **PieChart** — Plan distribution on Dashboard tab (colors: indigo, green, amber, red, violet, cyan)
+- **BarChart** — Feature usage on Features tab (XAxis: feature name, YAxis: usage count)
+
+### Pagination & Tables
+
+- Reusable `Pagination` component with prev/next buttons, page/total display
+- Tables support column sorting and search filtering
+- Page size default: 20, max: 100
+
+### Dark Mode
+
+Full dark mode support using Tailwind `dark:` classes throughout all admin components (`dark:bg-gray-800`, `dark:text-white`, `dark:border-gray-600`, etc.).
+
+### API Client
+
+Uses `adminApi` methods from `services/api.ts`:
+- `adminApi.getDashboard(key)` — `GET /api/admin/dashboard`
+- `adminApi.getUsers(key, params)` — `GET /api/admin/users`
+- `adminApi.getUserDetail(key, id)` — `GET /api/admin/users/:id`
+- `adminApi.getBilling(key)` — `GET /api/admin/billing`
+- `adminApi.getHealth(key)` — `GET /api/admin/health`
+- `adminApi.getActivity(key, params)` — `GET /api/admin/activity`
+- `adminApi.getFeatures(key)` — `GET /api/admin/features`
+
+All methods pass the admin key via the `x-admin-key` request header.
+
+---
+
 This concludes the comprehensive technical documentation of the QualCanvas frontend. All major areas have been covered with exact details, types, line references, and behavioral specifications.

@@ -98,6 +98,14 @@ Copy `.env.example` to `.env` and configure. Variables are organized by category
 | `REGISTRATION_ENABLED` | No | `false` | Set to `true` to allow new user signups in production |
 | `GOOGLE_CLIENT_ID` | No | — | Google OAuth client ID for Google sign-in |
 
+### Admin Portal
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `ADMIN_API_KEY` | For admin | — | Secret key for admin portal access (`/admin`). Generate: `openssl rand -hex 32` or `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+
+> **Note:** The `/admin` route is not included in the sitemap and is not publicly linked. It is a private internal tool. Without `ADMIN_API_KEY` set, admin endpoints return 503.
+
 ### Stripe / Billing
 
 | Variable | Required | Default | Description |
@@ -300,6 +308,7 @@ Update the Railway URL in `vercel.json` to match your deployment.
    - `ALLOWED_ORIGINS=https://your-vercel-domain.com`
    - `APP_URL=https://your-vercel-domain.com`
    - `REGISTRATION_ENABLED=true` (if allowing signups)
+   - `ADMIN_API_KEY` (generate: `openssl rand -hex 32`)
    - All Stripe, SMTP, and optional variables as needed
 6. Deploy — Railway builds and starts the backend automatically
 7. After first deploy, seed the database from the Railway shell:

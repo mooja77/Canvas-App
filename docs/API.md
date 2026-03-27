@@ -2414,6 +2414,214 @@ These endpoints are NOT under the `/api` prefix.
 
 ---
 
+## 32. Admin Portal
+
+**Auth:** All admin endpoints require the `x-admin-key` header containing the `ADMIN_API_KEY` environment variable value. This is separate from JWT authentication.
+
+**Rate Limit:** 30 requests / 1 minute (per IP).
+
+**Error Responses:**
+- 403 — Missing or invalid admin key
+- 503 — `ADMIN_API_KEY` not configured on the server
+
+---
+
+### GET /api/admin/dashboard
+**Auth:** Admin key
+**Description:** Aggregate platform metrics for the admin dashboard.
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "totalUsers": 150,
+    "activeUsers": 42,
+    "newSignups7d": 8,
+    "newSignups30d": 23,
+    "mrr": 456,
+    "errorCount24h": 3,
+    "activeSessions": 0,
+    "planDistribution": { "free": 100, "pro": 40, "team": 10 },
+    "topFeatures": [
+      { "name": "wordcloud", "source": "computed_node", "count": 120 },
+      { "name": "auto_code", "source": "ai_usage", "count": 85 }
+    ]
+  }
+}
+```
+
+---
+
+### GET /api/admin/users
+**Auth:** Admin key
+**Description:** Paginated, searchable user list with last login and canvas count.
+**Query Parameters:**
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `search` | string | `""` | Filter by email or name (contains match) |
+| `page` | number | `1` | Page number |
+| `limit` | number | `20` | Results per page (max 100) |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "string",
+      "email": "user@example.com",
+      "name": "Jane Doe",
+      "plan": "pro",
+      "signupDate": "2025-06-01T00:00:00.000Z",
+      "lastLogin": "2026-03-25T14:30:00.000Z",
+      "status": "active",
+      "canvasCount": 5
+    }
+  ],
+  "pagination": { "page": 1, "limit": 20, "total": 150, "totalPages": 8 }
+}
+```
+
+---
+
+### GET /api/admin/users/:id
+**Auth:** Admin key
+**Description:** Full user detail including canvases, recent activity, AI usage stats, and subscription info. Sensitive fields (passwordHash, resetTokenHash) are excluded.
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "string",
+    "email": "user@example.com",
+    "name": "Jane Doe",
+    "plan": "pro",
+    "subscription": { "...subscription fields" },
+    "codingCanvases": [
+      { "id": "string", "name": "Study 1", "createdAt": "...", "updatedAt": "...", "_count": { "transcripts": 3, "codings": 45, "computedNodes": 8 } }
+    ],
+    "recentActivity": [ { "id": "string", "action": "login", "timestamp": "...", "..." : "..." } ],
+    "aiUsageStats": [
+      { "feature": "auto_code", "count": 12, "totalInputTokens": 5000, "totalOutputTokens": 3000, "totalCostCents": 8 }
+    ]
+  }
+}
+```
+**Errors:** 404 (user not found)
+
+---
+
+### GET /api/admin/billing
+**Auth:** Admin key
+**Description:** Billing metrics including MRR, ARR, churn rate, plan breakdown, and recent transactions.
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "mrr": 456,
+    "arr": 5472,
+    "totalPaying": 50,
+    "totalFree": 100,
+    "churnRate30d": 0.02,
+    "planBreakdown": [
+      { "plan": "pro", "count": 40, "revenue": 480 },
+      { "plan": "team", "count": 10, "revenue": 290 }
+    ],
+    "recentTransactions": [
+      {
+        "id": "string",
+        "userId": "string",
+        "userEmail": "user@example.com",
+        "plan": "pro",
+        "status": "active",
+        "stripeSubscriptionId": "sub_...",
+        "currentPeriodStart": "...",
+        "currentPeriodEnd": "...",
+        "cancelAtPeriodEnd": false,
+        "updatedAt": "..."
+      }
+    ]
+  }
+}
+```
+
+---
+
+### GET /api/admin/health
+**Auth:** Admin key
+**Description:** System health including database connectivity, memory usage, uptime, and version.
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "status": "healthy",
+    "uptime": 86400.5,
+    "dbConnected": true,
+    "dbResponseMs": 12,
+    "memoryUsageMb": 128.45,
+    "version": "1.0.0",
+    "nodeVersion": "v20.11.0"
+  }
+}
+```
+
+`status` is one of: `healthy` (db < 1000ms), `degraded` (db >= 1000ms), `unhealthy` (db unreachable).
+
+---
+
+### GET /api/admin/activity
+**Auth:** Admin key
+**Description:** Paginated audit log with user email lookup.
+**Query Parameters:**
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | number | `1` | Page number |
+| `limit` | number | `20` | Results per page (max 100) |
+| `type` | string | `""` | Filter by action type (exact match) |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "string",
+      "action": "login",
+      "actorId": "string",
+      "resourceType": "user",
+      "resourceId": "string",
+      "timestamp": "2026-03-25T14:30:00.000Z",
+      "userEmail": "user@example.com"
+    }
+  ],
+  "pagination": { "page": 1, "limit": 20, "total": 500, "totalPages": 25 }
+}
+```
+
+---
+
+### GET /api/admin/features
+**Auth:** Admin key
+**Description:** Feature usage aggregation across computed nodes and AI features, with unique canvas/user counts.
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    { "name": "wordcloud", "source": "computed_node", "totalUsage": 120, "uniqueCanvases": 35, "uniqueUsers": 0 },
+    { "name": "auto_code", "source": "ai_usage", "totalUsage": 85, "uniqueCanvases": 0, "uniqueUsers": 28 }
+  ]
+}
+```
+
+Results are sorted by `totalUsage` descending.
+
+---
+
 ## Plan Limits Reference
 
 Plan limit enforcement returns HTTP 403 with:

@@ -2,7 +2,7 @@
 
 ## 1. System Overview
 
-QualCanvas is a SaaS qualitative coding canvas for researchers, built as a monorepo with an Express + Prisma + PostgreSQL backend, a React 18 + Vite frontend, and a shared types package. The system supports real-time collaboration via WebSockets, Stripe billing with Free/Pro/Team tiers, AI-assisted coding (OpenAI, Anthropic, Google), file uploads to S3, and QDPX interoperability.
+QualCanvas is a SaaS qualitative coding canvas for researchers, built as a monorepo with an Express + Prisma + PostgreSQL backend, a React 18 + Vite frontend, and a shared types package. The system supports real-time collaboration via WebSockets, Stripe billing with Free/Pro/Team tiers, AI-assisted coding (OpenAI, Anthropic, Google), file uploads to S3, QDPX interoperability, and an admin portal for platform monitoring and user management.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -113,7 +113,7 @@ qualcanvas/
 │   │   │   │   └── validation.ts      # Zod schema validation middleware
 │   │   │   ├── jobs/
 │   │   │   │   └── reportScheduler.ts # Scheduled report delivery (setInterval)
-│   │   │   ├── routes/                # 25 route modules
+│   │   │   ├── routes/                # 26 route modules
 │   │   │   └── utils/
 │   │   │       ├── textAnalysis.ts    # Analysis engine (~766 lines)
 │   │   │       ├── routeHelpers.ts    # getAuthId, getAuthUserId, getOwnedCanvas
@@ -233,6 +233,7 @@ All routes are mounted under `/api/v1` and `/api` (backwards compat).
 | `reportRoutes.ts` | `/reports` | Yes | No | Scheduled reports (CRUD, on-demand generate) |
 | `calendarRoutes.ts` | `/calendar` | Yes | No | Research calendar events + iCal export |
 | `exportRoutes.ts` | `/canvas/:id/export` | Yes | No | Excel (.xlsx) export via ExcelJS |
+| `adminRoutes.ts` | `/admin` | Admin key | No | Admin dashboard, user management, billing metrics, health, activity log, feature usage |
 
 Public (unauthenticated) routes:
 - `GET /health` — DB health check
@@ -394,6 +395,7 @@ Academic discount: 40% off for `.edu` emails via Stripe coupon.
 | `/terms` | `TermsPage` | No | No | Terms of service |
 | `/privacy` | `PrivacyPage` | No | No | Privacy policy |
 | `/guide` | `GuidePage` | No | No | User guide |
+| `/admin` | `AdminPage` | No (admin key gate) | Yes | Admin portal (6-tab dashboard) |
 | `*` | `NotFoundPage` | No | No | 404 fallback |
 
 Global components rendered on all routes: `ErrorBoundary`, `OfflineBanner`, `UpgradePrompt`.
@@ -665,16 +667,29 @@ child-src:   'self', blob:
 
 HSTS enabled in production: `max-age=31536000; includeSubDomains`.
 
-### 8.5 Rate Limiting
+### 8.5 Admin Auth
+
+The admin portal uses a separate authentication mechanism from the dual JWT auth system:
+
+| Mechanism | Details |
+|-----------|---------|
+| Header | `x-admin-key` — must match `ADMIN_API_KEY` environment variable |
+| Scope | All `/api/admin/*` endpoints |
+| Error | 403 if key is missing/invalid, 503 if `ADMIN_API_KEY` is not configured |
+
+The admin key is not a JWT and does not go through the standard auth middleware. The frontend stores the key in `sessionStorage` (cleared on tab close).
+
+### 8.6 Rate Limiting
 
 | Scope | Limit | Window |
 |-------|-------|--------|
 | General API (`/api/*`) | 500 requests | 15 minutes |
 | Compute endpoints (`/computed/:nid/run`) | 30 requests | 15 minutes |
+| Admin endpoints (`/api/admin/*`) | 30 requests | 1 minute |
 
-Both limits are disabled when `NODE_ENV=test` or `E2E_TEST=true`.
+All limits are disabled when `NODE_ENV=test` or `E2E_TEST=true`.
 
-### 8.6 API Key Encryption
+### 8.7 API Key Encryption
 
 User AI API keys (`UserAiConfig`) are encrypted at rest using AES-256-GCM:
 - `apiKeyEncrypted` — ciphertext
@@ -682,14 +697,14 @@ User AI API keys (`UserAiConfig`) are encrypted at rest using AES-256-GCM:
 - `apiKeyTag` — authentication tag
 - Encryption key from `ENCRYPTION_KEY` env var (32-byte hex)
 
-### 8.7 Input Validation
+### 8.8 Input Validation
 
 - Zod schemas applied via `validate()` and `validateParams()` middleware
 - 24+ validation schemas in `apps/backend/src/middleware/validation.ts`
 - Body size limits: 1MB default, 10MB for transcript/import routes
 - Request timeout: 30 seconds
 
-### 8.8 Additional
+### 8.9 Additional
 
 - Soft delete for canvases (recoverable via trash)
 - Audit logging on all protected routes via `auditLog` middleware
@@ -861,6 +876,12 @@ npm run lint
 | `SMTP_USER` | SMTP username | — |
 | `SMTP_PASS` | SMTP password | — |
 | `SMTP_FROM` | From address for emails | — |
+
+### Optional — Admin
+
+| Variable | Description |
+|----------|-------------|
+| `ADMIN_API_KEY` | Secret key for admin portal access. Generate: `openssl rand -hex 32` |
 
 ### Optional — AI / OAuth
 

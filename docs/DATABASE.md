@@ -1110,3 +1110,17 @@ CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
 - The schema provider must stay as `"postgresql"` in committed code
 - For local SQLite: use `prisma db push` or temporarily switch the provider (don't commit)
 - Always generate the Prisma client after schema changes: `npx prisma generate`
+
+## 6. Admin Portal Queries
+
+The admin portal (`adminRoutes.ts`) does not introduce new database models. Instead, it aggregates data from existing tables:
+
+| Admin Endpoint | Tables Queried |
+|----------------|---------------|
+| `GET /admin/dashboard` | User, CodingCanvas, AuditLog, Subscription, CanvasComputedNode, AiUsage |
+| `GET /admin/users` | User, AuditLog (last login lookup), CodingCanvas (count) |
+| `GET /admin/users/:id` | User, Subscription, CodingCanvas, AuditLog, AiUsage |
+| `GET /admin/billing` | Subscription, User |
+| `GET /admin/health` | Raw SQL (`SELECT 1`) for connectivity check |
+| `GET /admin/activity` | AuditLog, User (email lookup) |
+| `GET /admin/features` | CanvasComputedNode, AiUsage |
