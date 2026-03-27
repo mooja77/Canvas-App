@@ -25,7 +25,7 @@ setup('authenticate', async ({ page }) => {
   await page.evaluate(() => {
     const existing = localStorage.getItem('qualcanvas-ui');
     const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
-    state.state = { ...state.state, onboardingComplete: true };
+    state.state = { ...state.state, onboardingComplete: true, setupWizardComplete: true };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
   });
 
