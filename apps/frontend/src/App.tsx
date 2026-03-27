@@ -20,6 +20,7 @@ const CanvasPage = lazy(() => import('./pages/CanvasPage'));
 const AccountPage = lazy(() => import('./pages/AccountPage'));
 const RepositoryPage = lazy(() => import('./pages/RepositoryPage'));
 const TeamPage = lazy(() => import('./pages/TeamPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const authenticated = useAuthStore(s => s.authenticated);
@@ -83,6 +84,14 @@ export default function App() {
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/guide" element={<GuidePage />} />
+        <Route
+          path="/admin"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <AdminPage />
+            </Suspense>
+          }
+        />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>

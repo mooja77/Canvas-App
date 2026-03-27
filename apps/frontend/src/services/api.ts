@@ -571,3 +571,32 @@ export function createWiseShiftBridge(baseUrl: string, dashboardCode: string) {
       client.get('/api/v1/research/assessments'),
   };
 }
+
+// ─── Admin API ───
+
+function adminHeaders(adminKey: string) {
+  return { headers: { 'x-admin-key': adminKey } };
+}
+
+export const adminApi = {
+  getDashboard: (adminKey: string) =>
+    canvasClient.get('/admin/dashboard', adminHeaders(adminKey)),
+
+  getUsers: (adminKey: string, params?: { page?: number; perPage?: number; search?: string; sortField?: string; sortDir?: string }) =>
+    canvasClient.get('/admin/users', { ...adminHeaders(adminKey), params }),
+
+  getUserDetail: (adminKey: string, userId: string) =>
+    canvasClient.get(`/admin/users/${userId}`, adminHeaders(adminKey)),
+
+  getBilling: (adminKey: string) =>
+    canvasClient.get('/admin/billing', adminHeaders(adminKey)),
+
+  getHealth: (adminKey: string) =>
+    canvasClient.get('/admin/health', adminHeaders(adminKey)),
+
+  getActivity: (adminKey: string, params?: { page?: number; perPage?: number; action?: string }) =>
+    canvasClient.get('/admin/activity', { ...adminHeaders(adminKey), params }),
+
+  getFeatures: (adminKey: string) =>
+    canvasClient.get('/admin/features', adminHeaders(adminKey)),
+};

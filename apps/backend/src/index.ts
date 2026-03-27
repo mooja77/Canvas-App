@@ -54,6 +54,7 @@ import { calendarRoutes } from './routes/calendarRoutes.js';
 import { exportRoutes } from './routes/exportRoutes.js';
 import { notificationRoutes } from './routes/notificationRoutes.js';
 import { reportRoutes } from './routes/reportRoutes.js';
+import { adminRoutes } from './routes/adminRoutes.js';
 import { prisma } from './lib/prisma.js';
 import { initSocketServer } from './lib/socket.js';
 import { startReportScheduler, stopReportScheduler } from './jobs/reportScheduler.js';
@@ -250,6 +251,9 @@ v1Router.use(auth, auditLog, exportRoutes);
 // Mount under /api/v1 (versioned) and /api (backwards compat)
 app.use('/api/v1', v1Router);
 app.use('/api', v1Router);
+
+// Admin routes (own key-based auth, not JWT)
+app.use('/api/admin', adminRoutes);
 
 // ─── Production: serve frontend static build ───
 if (process.env.NODE_ENV === 'production') {
