@@ -484,6 +484,73 @@ export const billingApi = {
     canvasClient.get('/billing/subscription'),
 };
 
+// ─── Calendar API ───
+
+export interface CalendarEventInput {
+  title: string;
+  description?: string;
+  startDate: string;
+  endDate?: string;
+  allDay?: boolean;
+  type?: 'milestone' | 'deadline' | 'session' | 'review';
+  color?: string;
+  reminder?: number;
+  canvasId?: string;
+  teamId?: string;
+}
+
+export const calendarApi = {
+  getEvents: (params?: { from?: string; to?: string; type?: string; canvasId?: string }) =>
+    canvasClient.get('/calendar/events', { params }),
+
+  createEvent: (data: CalendarEventInput) =>
+    canvasClient.post('/calendar/events', data),
+
+  updateEvent: (id: string, data: Partial<CalendarEventInput>) =>
+    canvasClient.put(`/calendar/events/${id}`, data),
+
+  deleteEvent: (id: string) =>
+    canvasClient.delete(`/calendar/events/${id}`),
+
+  exportIcal: () =>
+    canvasClient.get('/calendar/export.ics', { responseType: 'blob' }),
+};
+
+// ─── Notification API ───
+
+export const notificationApi = {
+  getNotifications: (params?: { page?: number; limit?: number; unreadOnly?: boolean }) =>
+    canvasClient.get('/notifications', { params }),
+
+  markAsRead: (id: string) =>
+    canvasClient.put(`/notifications/${id}/read`),
+
+  markAllAsRead: () =>
+    canvasClient.put('/notifications/read-all'),
+
+  deleteNotification: (id: string) =>
+    canvasClient.delete(`/notifications/${id}`),
+};
+
+// ─── Report API ───
+
+export const reportApi = {
+  getSchedules: () =>
+    canvasClient.get('/reports/schedules'),
+
+  createSchedule: (data: { canvasId?: string; teamId?: string; frequency?: string; dayOfWeek?: number }) =>
+    canvasClient.post('/reports/schedule', data),
+
+  updateSchedule: (id: string, data: { frequency?: string; dayOfWeek?: number; enabled?: boolean }) =>
+    canvasClient.put(`/reports/schedules/${id}`, data),
+
+  deleteSchedule: (id: string) =>
+    canvasClient.delete(`/reports/schedules/${id}`),
+
+  generateReport: (canvasId?: string) =>
+    canvasClient.post('/reports/generate', { canvasId }),
+};
+
 // ─── WISEShift Bridge Client (for importing narratives from WISEShift) ───
 
 export function createWiseShiftBridge(baseUrl: string, dashboardCode: string) {

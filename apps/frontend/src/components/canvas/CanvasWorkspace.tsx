@@ -67,6 +67,7 @@ const CrossCaseAnalysisModal = React.lazy(() => import('./panels/CrossCaseAnalys
 const PresentationMode = React.lazy(() => import('./panels/PresentationMode'));
 const AiAutoCodeModal = React.lazy(() => import('./panels/AiAutoCodeModal'));
 import PresenceAvatars from './panels/PresenceAvatars';
+import NotificationBell from '../NotificationBell';
 import CollabCursors from './CollabCursors';
 import ConfirmDialog from './ConfirmDialog';
 import { ErrorBoundary } from '../ErrorBoundary';
@@ -2044,6 +2045,7 @@ export default function CanvasWorkspace() {
               </span>
             )}
             <span>{savingLayout ? 'Saving...' : 'Saved'}</span>
+            <NotificationBell />
             {collaboration.isConnected && collaboration.collaborators.length > 0 && (
               <PresenceAvatars collaborators={collaboration.collaborators} isConnected={collaboration.isConnected} />
             )}

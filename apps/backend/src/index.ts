@@ -50,9 +50,13 @@ import { repositoryRoutes } from './routes/repositoryRoutes.js';
 import { integrationRoutes } from './routes/integrationRoutes.js';
 import { aiSettingsRoutes } from './routes/aiSettingsRoutes.js';
 import { teamRoutes } from './routes/teamRoutes.js';
+import { calendarRoutes } from './routes/calendarRoutes.js';
 import { exportRoutes } from './routes/exportRoutes.js';
+import { notificationRoutes } from './routes/notificationRoutes.js';
+import { reportRoutes } from './routes/reportRoutes.js';
 import { prisma } from './lib/prisma.js';
 import { initSocketServer } from './lib/socket.js';
+import { startReportScheduler, stopReportScheduler } from './jobs/reportScheduler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -231,6 +235,15 @@ v1Router.use(auth, aiSettingsRoutes);
 // Protected team routes
 v1Router.use(auth, auditLog, teamRoutes);
 
+// Protected calendar routes
+v1Router.use(auth, auditLog, calendarRoutes);
+
+// Protected notification routes
+v1Router.use(auth, notificationRoutes);
+
+// Protected report routes
+v1Router.use(auth, auditLog, reportRoutes);
+
 // Export routes (Excel)
 v1Router.use(auth, auditLog, exportRoutes);
 
@@ -255,11 +268,16 @@ initSocketServer(httpServer);
 
 const server = httpServer.listen(PORT, () => {
   console.log(`QualCanvas backend running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  // Start report scheduler in non-test environments
+  if (process.env.NODE_ENV !== 'test') {
+    startReportScheduler();
+  }
 });
 
 // Graceful shutdown
 function shutdown(signal: string) {
   console.log(`${signal} received — shutting down gracefully`);
+  stopReportScheduler();
   server.close(async () => {
     await prisma.$disconnect();
     console.log('Server closed');

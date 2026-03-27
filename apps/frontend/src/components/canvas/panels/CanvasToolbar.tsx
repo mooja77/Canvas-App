@@ -24,6 +24,7 @@ import CanvasSwitcher from './CanvasSwitcher';
 import SurveyImportModal from './SurveyImportModal';
 import QdpxExportButton from './QdpxExportButton';
 import QdpxImportModal from './QdpxImportModal';
+import CalendarPanel from './CalendarPanel';
 import toast from 'react-hot-toast';
 import { canvasApi } from '../../../services/api';
 
@@ -112,6 +113,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
   const [showSummary, setShowSummary] = useState(false);
   const [showSurveyImport, setShowSurveyImport] = useState(false);
   const [showQdpxImport, setShowQdpxImport] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [addingMemo, setAddingMemo] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -379,6 +381,11 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
               label="Codebook"
               onClick={() => setShowCodebook(true)}
             />
+            <DropdownItem
+              icon={<svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>}
+              label="Research Calendar"
+              onClick={() => setShowCalendar(true)}
+            />
             <DropdownDivider />
             {/* Edge style */}
             <div className="px-3 py-2 flex items-center gap-2">
@@ -552,6 +559,7 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
           }}
         />
       )}
+      {showCalendar && <CalendarPanel onClose={() => setShowCalendar(false)} />}
     </>
   );
 }

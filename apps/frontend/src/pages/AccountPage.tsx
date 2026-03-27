@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
-import { authApi, billingApi, aiSettingsApi } from '../services/api';
+import { authApi, billingApi, aiSettingsApi, reportApi } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 import toast from 'react-hot-toast';
 
@@ -63,6 +63,20 @@ export default function AccountPage() {
   const [_aiTesting, _setAiTesting] = useState(false);
   const [showAiKey, setShowAiKey] = useState(false);
 
+  // Scheduled reports state
+  interface ReportSchedule {
+    id: string;
+    frequency: string;
+    dayOfWeek: number | null;
+    enabled: boolean;
+    canvasId: string | null;
+    lastSent: string | null;
+  }
+  const [reportSchedules, setReportSchedules] = useState<ReportSchedule[]>([]);
+  const [reportFrequency, setReportFrequency] = useState('weekly');
+  const [reportSaving, setReportSaving] = useState(false);
+  const [reportGenerating, setReportGenerating] = useState(false);
+
   // Post-upgrade welcome state
   const [searchParams, setSearchParams] = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
@@ -105,6 +119,13 @@ export default function AccountPage() {
         }
       })
       .catch(() => { /* no AI config yet */ });
+
+    // Load report schedules
+    reportApi.getSchedules()
+      .then(res => {
+        setReportSchedules(res.data.data || []);
+      })
+      .catch(() => { /* no schedules yet */ });
   }, [authenticated, navigate]);
 
   const handleManageBilling = async () => {
@@ -177,6 +198,57 @@ export default function AccountPage() {
       toast.error(err.response?.data?.error || 'Failed to delete account');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleCreateSchedule = async () => {
+    setReportSaving(true);
+    try {
+      const res = await reportApi.createSchedule({ frequency: reportFrequency });
+      setReportSchedules(prev => [res.data.data, ...prev]);
+      toast.success('Report schedule created');
+    } catch {
+      toast.error('Failed to create report schedule');
+    } finally {
+      setReportSaving(false);
+    }
+  };
+
+  const handleToggleSchedule = async (id: string, enabled: boolean) => {
+    try {
+      await reportApi.updateSchedule(id, { enabled });
+      setReportSchedules(prev => prev.map(s => s.id === id ? { ...s, enabled } : s));
+    } catch {
+      toast.error('Failed to update schedule');
+    }
+  };
+
+  const handleDeleteSchedule = async (id: string) => {
+    try {
+      await reportApi.deleteSchedule(id);
+      setReportSchedules(prev => prev.filter(s => s.id !== id));
+      toast.success('Schedule removed');
+    } catch {
+      toast.error('Failed to delete schedule');
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    setReportGenerating(true);
+    try {
+      const res = await reportApi.generateReport();
+      const { html } = res.data.data;
+      // Open report in new window
+      const win = window.open('', '_blank');
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+      }
+      toast.success('Report generated');
+    } catch {
+      toast.error('Failed to generate report');
+    } finally {
+      setReportGenerating(false);
     }
   };
 
@@ -555,6 +627,78 @@ export default function AccountPage() {
                 {savingPassword ? 'Changing...' : 'Change Password'}
               </button>
             </form>
+          </div>
+        )}
+
+        {/* Scheduled Reports */}
+        {isEmailAuth && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">Scheduled Reports</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Receive periodic email reports summarizing your coding activity, code frequencies, and collaborator updates.
+            </p>
+
+            {reportSchedules.length > 0 ? (
+              <div className="space-y-3 mb-4">
+                {reportSchedules.map(schedule => (
+                  <div key={schedule.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-750 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleToggleSchedule(schedule.id, !schedule.enabled)}
+                        className={`relative w-10 h-5 rounded-full transition-colors ${schedule.enabled ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-600'}`}
+                      >
+                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${schedule.enabled ? 'left-5' : 'left-0.5'}`} />
+                      </button>
+                      <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">
+                        {schedule.frequency} report
+                        {schedule.lastSent && (
+                          <span className="text-xs text-gray-400 ml-2">
+                            Last sent: {new Date(schedule.lastSent).toLocaleDateString()}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteSchedule(schedule.id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                      title="Remove schedule"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 dark:text-gray-500 mb-4 italic">No report schedules configured.</p>
+            )}
+
+            <div className="flex items-center gap-3">
+              <select
+                value={reportFrequency}
+                onChange={e => setReportFrequency(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+              <button
+                onClick={handleCreateSchedule}
+                disabled={reportSaving}
+                className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {reportSaving ? 'Creating...' : 'Add Schedule'}
+              </button>
+              <button
+                onClick={handleGenerateReport}
+                disabled={reportGenerating}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                {reportGenerating ? 'Generating...' : 'Send Now'}
+              </button>
+            </div>
           </div>
         )}
 

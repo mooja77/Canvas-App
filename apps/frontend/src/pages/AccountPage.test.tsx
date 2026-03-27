@@ -60,6 +60,13 @@ vi.mock('../services/api', () => ({
     updateSettings: vi.fn(),
     deleteSettings: vi.fn(),
   },
+  reportApi: {
+    getSchedules: vi.fn().mockResolvedValue({ data: { data: [] } }),
+    listSchedules: vi.fn().mockResolvedValue({ data: { data: [] } }),
+    createSchedule: vi.fn(),
+    deleteSchedule: vi.fn(),
+    generateNow: vi.fn(),
+  },
 }));
 
 // Mock react-hot-toast

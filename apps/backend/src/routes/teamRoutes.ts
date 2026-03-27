@@ -6,6 +6,7 @@ import { getPlanLimits } from '../config/plans.js';
 import { validate, validateParams } from '../middleware/validation.js';
 import { teamIdParam, createTeamSchema, inviteMemberSchema, teamIdUserIdParams } from '../middleware/validation.js';
 import { sendTeamInviteEmail } from '../lib/email.js';
+import { notifyTeamInvite } from '../utils/notifications.js';
 
 export const teamRoutes = Router();
 
@@ -171,6 +172,10 @@ teamRoutes.post('/teams/:teamId/members', validateParams(teamIdParam), validate(
     await sendTeamInviteEmail(email, team.name, `${appUrl}/login`).catch((err: unknown) => {
       console.error('[TeamRoutes] Failed to send invite email:', err);
     });
+
+    // Create in-app notification for the invited user
+    const inviter = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+    await notifyTeamInvite(targetUser.id, inviter?.name || 'Someone', teamId, team.name).catch(() => {});
 
     res.status(201).json({ success: true, data: member });
   } catch (err) { next(err); }
