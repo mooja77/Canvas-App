@@ -248,12 +248,13 @@ v1Router.use(auth, auditLog, reportRoutes);
 // Export routes (Excel)
 v1Router.use(auth, auditLog, exportRoutes);
 
+// Admin routes (own key-based auth, not JWT) — must be before v1Router
+// so /api/admin/* doesn't get caught by /api/* prefix
+app.use('/api/admin', adminRoutes);
+
 // Mount under /api/v1 (versioned) and /api (backwards compat)
 app.use('/api/v1', v1Router);
 app.use('/api', v1Router);
-
-// Admin routes (own key-based auth, not JWT)
-app.use('/api/admin', adminRoutes);
 
 // ─── Production: serve frontend static build ───
 if (process.env.NODE_ENV === 'production') {
