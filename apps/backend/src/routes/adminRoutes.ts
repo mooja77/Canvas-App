@@ -4,6 +4,60 @@ import { prisma } from '../lib/prisma.js';
 
 export const adminRoutes = Router();
 
+// ─── Test user filtering (per TEST-USER-FILTER.md standard) ───
+const TEST_EMAIL_PATTERNS = [
+  '@example.com', '@test.com', '@mailinator.com', '@x.com',
+  '@staffhubtest.com', '@spamshield.app', '@jewelvalue.app',
+  '@smartcashapp.net', '@staffhubapp.com', '@mygrowthmap.net',
+  '@shopify.com',
+];
+
+const TEST_EMAIL_CONTAINS = [
+  'test', 'demo', 'e2e', 'smoke', 'qa', 'cors-', 'fake', 'seed',
+];
+
+const INTERNAL_EMAILS = [
+  'mooja77@gmail.com', 'john@mooresjewellers.com', 'john@jmsdevlab.com',
+];
+
+function isTestEmail(email: string): boolean {
+  if (!email) return true;
+  const lower = email.toLowerCase();
+  if (INTERNAL_EMAILS.includes(lower)) return true;
+  if (lower.endsWith('.test')) return true;
+  if (TEST_EMAIL_PATTERNS.some(p => lower.endsWith(p))) return true;
+  if (TEST_EMAIL_CONTAINS.some(p => lower.includes(p))) return true;
+  if (lower.match(/mooja77\+.*@gmail\.com/)) return true;
+  return false;
+}
+
+// Prisma WHERE clause to exclude test users
+const realUsersWhere = {
+  AND: [
+    { email: { notIn: INTERNAL_EMAILS } },
+    { email: { not: { contains: 'test' } } },
+    { email: { not: { contains: 'demo' } } },
+    { email: { not: { contains: 'e2e' } } },
+    { email: { not: { contains: 'smoke' } } },
+    { email: { not: { contains: 'qa' } } },
+    { email: { not: { contains: 'cors-' } } },
+    { email: { not: { contains: 'fake' } } },
+    { email: { not: { contains: 'seed' } } },
+    { email: { not: { endsWith: '.test' } } },
+    { email: { not: { endsWith: '@example.com' } } },
+    { email: { not: { endsWith: '@test.com' } } },
+    { email: { not: { endsWith: '@mailinator.com' } } },
+    { email: { not: { endsWith: '@x.com' } } },
+    { email: { not: { endsWith: '@shopify.com' } } },
+    { email: { not: { endsWith: '@staffhubtest.com' } } },
+    { email: { not: { endsWith: '@spamshield.app' } } },
+    { email: { not: { endsWith: '@jewelvalue.app' } } },
+    { email: { not: { endsWith: '@smartcashapp.net' } } },
+    { email: { not: { endsWith: '@staffhubapp.com' } } },
+    { email: { not: { endsWith: '@mygrowthmap.net' } } },
+  ],
+};
+
 // ─── Rate limit: 30 req/min ───
 const isTestEnv = process.env.NODE_ENV === 'test' || process.env.E2E_TEST === 'true';
 const adminLimiter = rateLimit({
@@ -40,6 +94,7 @@ adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {
 
     const [
       totalUsers,
+      totalAllUsers,
       newSignups7d,
       newSignups30d,
       activeUsersByCanvas,
@@ -49,9 +104,10 @@ adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {
       computedNodeTypes,
       aiFeatures,
     ] = await Promise.all([
+      prisma.user.count({ where: realUsersWhere }),
       prisma.user.count(),
-      prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
-      prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.user.count({ where: { ...realUsersWhere, createdAt: { gte: sevenDaysAgo } } }),
+      prisma.user.count({ where: { ...realUsersWhere, createdAt: { gte: thirtyDaysAgo } } }),
       prisma.codingCanvas.findMany({
         where: { updatedAt: { gte: thirtyDaysAgo }, userId: { not: null } },
         select: { userId: true },
@@ -66,22 +122,33 @@ adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {
           ],
         },
       }),
-      prisma.user.groupBy({ by: ['plan'], _count: { id: true } }),
+      prisma.user.groupBy({ by: ['plan'], where: realUsersWhere, _count: { id: true } }),
       prisma.subscription.findMany({
         where: { status: 'active' },
-        include: { user: { select: { plan: true } } },
+        include: { user: { select: { plan: true, email: true } } },
       }),
       prisma.canvasComputedNode.groupBy({ by: ['nodeType'], _count: { id: true } }),
       prisma.aiUsage.groupBy({ by: ['feature'], _count: { id: true } }),
     ]);
 
-    const activeUsers = activeUsersByCanvas.length;
+    // Get emails of active canvas users to filter out test accounts
+    const activeUserIds = activeUsersByCanvas.map(c => c.userId!).filter(Boolean);
+    const activeUserEmails = activeUserIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: activeUserIds } },
+          select: { email: true },
+        })
+      : [];
+    const activeUsers = activeUserEmails.filter(u => !isTestEmail(u.email)).length;
+    const testUsers = totalAllUsers - totalUsers;
 
-    // Calculate MRR: Pro=$12, Team=$29
+    // Calculate MRR: Pro=$12, Team=$29 — only real subscriptions
     const PLAN_PRICES: Record<string, number> = { pro: 12, team: 29 };
     let mrr = 0;
     for (const sub of subscriptions) {
-      mrr += PLAN_PRICES[sub.user.plan] || 0;
+      if (!isTestEmail(sub.user.email)) {
+        mrr += PLAN_PRICES[sub.user.plan] || 0;
+      }
     }
 
     const planDistribution: Record<string, number> = {};
@@ -98,6 +165,7 @@ adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {
       success: true,
       data: {
         totalUsers,
+        testUsers,
         activeUsers,
         newSignups7d,
         newSignups30d,
@@ -175,10 +243,20 @@ adminRoutes.get('/users', async (req: Request, res: Response) => {
         lastLogin,
         status: lastLogin && lastLogin >= thirtyDaysAgo ? 'active' : 'inactive',
         canvasCount: u._count.codingCanvases,
+        isTest: isTestEmail(u.email),
       };
     });
 
-    res.json({ success: true, data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    const realUsersCount = data.filter(u => !u.isTest).length;
+    const testUsersCount = data.filter(u => u.isTest).length;
+
+    res.json({
+      success: true,
+      data,
+      realUsers: realUsersCount,
+      testUsers: testUsersCount,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   } catch (err) {
     console.error('Admin users list error:', err);
     res.status(500).json({ success: false, error: 'Failed to load users' });
