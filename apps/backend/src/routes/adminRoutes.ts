@@ -132,14 +132,14 @@ adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {
     ]);
 
     // Get emails of active canvas users to filter out test accounts
-    const activeUserIds = activeUsersByCanvas.map(c => c.userId!).filter(Boolean);
+    const activeUserIds = activeUsersByCanvas.map((c: { userId: string | null }) => c.userId!).filter(Boolean);
     const activeUserEmails = activeUserIds.length
       ? await prisma.user.findMany({
           where: { id: { in: activeUserIds } },
           select: { email: true },
         })
       : [];
-    const activeUsers = activeUserEmails.filter(u => !isTestEmail(u.email)).length;
+    const activeUsers = activeUserEmails.filter((u: { email: string }) => !isTestEmail(u.email)).length;
     const testUsers = totalAllUsers - totalUsers;
 
     // Calculate MRR: Pro=$12, Team=$29 — only real subscriptions
@@ -157,9 +157,9 @@ adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {
     }
 
     const topFeatures = [
-      ...computedNodeTypes.map((n) => ({ name: n.nodeType, source: 'computed_node', count: n._count.id })),
-      ...aiFeatures.map((a) => ({ name: a.feature, source: 'ai_usage', count: a._count.id })),
-    ].sort((a, b) => b.count - a.count);
+      ...computedNodeTypes.map((n: { nodeType: string; _count: { id: number } }) => ({ name: n.nodeType, source: 'computed_node', count: n._count.id })),
+      ...aiFeatures.map((a: { feature: string; _count: { id: number } }) => ({ name: a.feature, source: 'ai_usage', count: a._count.id })),
+    ].sort((a: { count: number }, b: { count: number }) => b.count - a.count);
 
     res.json({
       success: true,
@@ -218,7 +218,7 @@ adminRoutes.get('/users', async (req: Request, res: Response) => {
     ]);
 
     // Get last login from AuditLog for each user
-    const userIds = users.map((u) => u.id);
+    const userIds = users.map((u: { id: string }) => u.id);
     const lastLogins = await prisma.auditLog.findMany({
       where: {
         actorId: { in: userIds },
@@ -228,11 +228,11 @@ adminRoutes.get('/users', async (req: Request, res: Response) => {
       distinct: ['actorId'],
       select: { actorId: true, timestamp: true },
     });
-    const lastLoginMap = new Map(lastLogins.map((l) => [l.actorId, l.timestamp]));
+    const lastLoginMap = new Map(lastLogins.map((l: { actorId: string | null; timestamp: Date }) => [l.actorId, l.timestamp]));
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    const data = users.map((u) => {
+    const data = users.map((u: any) => {
       const lastLogin = lastLoginMap.get(u.id) || null;
       return {
         id: u.id,
@@ -247,8 +247,8 @@ adminRoutes.get('/users', async (req: Request, res: Response) => {
       };
     });
 
-    const realUsersCount = data.filter(u => !u.isTest).length;
-    const testUsersCount = data.filter(u => u.isTest).length;
+    const realUsersCount = data.filter((u: any) => !u.isTest).length;
+    const testUsersCount = data.filter((u: any) => u.isTest).length;
 
     res.json({
       success: true,
@@ -317,7 +317,7 @@ adminRoutes.get('/users/:id', async (req: Request, res: Response) => {
       data: {
         ...safeUser,
         recentActivity,
-        aiUsageStats: aiUsageStats.map((a) => ({
+        aiUsageStats: aiUsageStats.map((a: any) => ({
           feature: a.feature,
           count: a._count.id,
           totalInputTokens: a._sum.inputTokens || 0,
@@ -357,7 +357,7 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
     ]);
 
     // Filter to real (non-test) active subscriptions only
-    const realActiveSubs = allSubs.filter((s) => s.status === 'active' && !isTestEmail(s.user.email));
+    const realActiveSubs = allSubs.filter((s: any) => s.status === 'active' && !isTestEmail(s.user.email));
     let mrr = 0;
     const planCounts: Record<string, { count: number; revenue: number }> = {};
 
@@ -372,7 +372,7 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
     }
 
     const totalPaying = realActiveSubs.length;
-    const realSubs = allSubs.filter((s) => !isTestEmail(s.user.email));
+    const realSubs = allSubs.filter((s: any) => !isTestEmail(s.user.email));
     const totalSubsForChurn = realSubs.length || 1;
     const churnRate30d = parseFloat((canceledRecent / totalSubsForChurn).toFixed(4));
 
@@ -391,7 +391,7 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
         totalFree,
         churnRate30d,
         planBreakdown,
-        recentTransactions: recentTransactions.map((t) => ({
+        recentTransactions: recentTransactions.map((t: any) => ({
           id: t.id,
           userId: t.userId,
           userEmail: t.user.email,
@@ -473,14 +473,14 @@ adminRoutes.get('/activity', async (req: Request, res: Response) => {
     ]);
 
     // Look up user emails for entries with actorId
-    const actorIds = [...new Set(entries.map((e) => e.actorId).filter(Boolean))] as string[];
+    const actorIds = [...new Set(entries.map((e: any) => e.actorId).filter(Boolean))] as string[];
     const users = actorIds.length
       ? await prisma.user.findMany({
           where: { id: { in: actorIds } },
           select: { id: true, email: true },
         })
       : [];
-    const emailMap = new Map(users.map((u) => [u.id, u.email]));
+    const emailMap = new Map(users.map((u: { id: string; email: string }) => [u.id, u.email]));
 
     const data = entries.map((e) => ({
       ...e,
@@ -510,7 +510,7 @@ adminRoutes.get('/features', async (_req: Request, res: Response) => {
 
     // For computed nodes, also count unique canvases
     const computedCanvasCounts = await Promise.all(
-      computedNodes.map(async (n) => {
+      computedNodes.map(async (n: any) => {
         const uniqueCanvases = await prisma.canvasComputedNode.findMany({
           where: { nodeType: n.nodeType },
           select: { canvasId: true },
@@ -523,7 +523,7 @@ adminRoutes.get('/features', async (_req: Request, res: Response) => {
 
     // For AI usage, also count unique users
     const aiUserCounts = await Promise.all(
-      aiUsage.map(async (a) => {
+      aiUsage.map(async (a: any) => {
         const uniqueUsers = await prisma.aiUsage.findMany({
           where: { feature: a.feature, userId: { not: null } },
           select: { userId: true },
