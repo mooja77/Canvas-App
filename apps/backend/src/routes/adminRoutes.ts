@@ -340,7 +340,7 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
 
     const [allSubs, canceledRecent, totalFree, recentTransactions] = await Promise.all([
       prisma.subscription.findMany({
-        include: { user: { select: { plan: true } } },
+        include: { user: { select: { plan: true, email: true } } },
       }),
       prisma.subscription.count({
         where: {
@@ -348,7 +348,7 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
           updatedAt: { gte: thirtyDaysAgo },
         },
       }),
-      prisma.user.count({ where: { plan: 'free' } }),
+      prisma.user.count({ where: { ...realUsersWhere, plan: 'free' } }),
       prisma.subscription.findMany({
         orderBy: { updatedAt: 'desc' },
         take: 10,
@@ -356,11 +356,12 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
       }),
     ]);
 
-    const activeSubs = allSubs.filter((s) => s.status === 'active');
+    // Filter to real (non-test) active subscriptions only
+    const realActiveSubs = allSubs.filter((s) => s.status === 'active' && !isTestEmail(s.user.email));
     let mrr = 0;
     const planCounts: Record<string, { count: number; revenue: number }> = {};
 
-    for (const sub of activeSubs) {
+    for (const sub of realActiveSubs) {
       const price = PLAN_PRICES[sub.user.plan] || 0;
       mrr += price;
       if (!planCounts[sub.user.plan]) {
@@ -370,8 +371,9 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
       planCounts[sub.user.plan].revenue += price;
     }
 
-    const totalPaying = activeSubs.length;
-    const totalSubsForChurn = allSubs.length || 1;
+    const totalPaying = realActiveSubs.length;
+    const realSubs = allSubs.filter((s) => !isTestEmail(s.user.email));
+    const totalSubsForChurn = realSubs.length || 1;
     const churnRate30d = parseFloat((canceledRecent / totalSubsForChurn).toFixed(4));
 
     const planBreakdown = Object.entries(planCounts).map(([plan, data]) => ({
