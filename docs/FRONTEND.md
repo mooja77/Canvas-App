@@ -132,9 +132,9 @@ All lazy routes use `<Suspense fallback={<PageSkeleton />}>` for smooth loading 
 | `fetchCanvases` | `() => Promise<void>` | GET `/canvas`, populates canvases list |
 | `createCanvas` | `(name: string, description?: string) => Promise<CodingCanvas>` | POST `/canvas`, prepends to list |
 | `deleteCanvas` | `(id: string) => Promise<void>` | DELETE `/canvas/{id}`, removes from list |
-| `openCanvas` | `(id: string) => Promise<void>` | GET `/canvas/{id}`, sets activeCanvas; fallback to IndexedDB on error |
+| `openCanvas` | `(id: string) => Promise<void>` | GET `/canvas/{id}`, sets activeCanvas; clears `pendingSelection` on open; fallback to IndexedDB on error |
 | `closeCanvas` | `() => void` | Clears activeCanvasId, activeCanvas, pendingSelection, selectedQuestionId |
-| `refreshCanvas` | `() => Promise<void>` | Refetch active canvas (no-op if none open) |
+| `refreshCanvas` | `() => Promise<void>` | Refetch active canvas (no-op if none open); errors are logged to console instead of thrown to avoid UI disruption |
 | `fetchTrash` | `() => Promise<void>` | GET `/canvas/trash`, populates trashedCanvases |
 | `restoreCanvas` | `(id: string) => Promise<void>` | POST `/canvas/{id}/restore`, removes from trash |
 | `permanentDeleteCanvas` | `(id: string) => Promise<void>` | DELETE `/canvas/{id}/permanent` |
@@ -165,6 +165,7 @@ deleteMemo(mid)
 **Coding Actions (Lines 349-399):**
 ```typescript
 createCoding(transcriptId, questionId, startOffset, endOffset, codedText) → CanvasTextCoding
+  // Note: clears pendingSelection after successful creation to prevent stale selection state
 deleteCoding(codingId)
 updateCodingAnnotation(codingId, annotation: string | null)
 reassignCoding(codingId, newQuestionId)
@@ -1170,6 +1171,7 @@ function withErrorBoundary(NodeComponent) {
     - **Tour:** First-time user walkthrough
     - **Data attributes:** `data-tour="canvas-main"`, etc.
     - **State:** `onboardingComplete` in uiStore
+    - **Context validation:** Includes a `validateCanvas` check that verifies the active canvas exists and has expected data before starting the tour. If validation fails, the tour is skipped gracefully to prevent errors when canvas context is unavailable.
 
 12. **Lazy-Loaded Modals** (imported with React.lazy):
     - **ExcerptBrowserModal** - Browse all coded text segments
@@ -1238,6 +1240,8 @@ Bell icon with unread badge, renders in the app header for email-authenticated u
 ### SetupWizard (`components/SetupWizard.tsx`)
 
 4-step first-run wizard shown to new users. Controlled by `setupWizardComplete` in `uiStore`.
+
+**Conditional Render Fix:** The SetupWizard only renders for users with 0 canvases. If the user already has canvases (e.g., created via access code or migration), the wizard is skipped even if `setupWizardComplete` is false. This prevents the wizard from appearing for returning users who haven't seen it before but already have data.
 
 **Steps:**
 1. **Welcome** — Overview of QualCanvas capabilities (Import, Code, Analyze)
@@ -1785,6 +1789,24 @@ Uses `adminApi` methods from `services/api.ts`:
 - `adminApi.getFeatures(key)` — `GET /api/admin/features`
 
 All methods pass the admin key via the `x-admin-key` request header.
+
+---
+
+## E2E TEST COVERAGE
+
+The frontend is covered by ~257 Playwright E2E tests across 23 spec files. The 7 canvas-specific E2E test suites added most recently are:
+
+| Suite | File | Focus |
+|-------|------|-------|
+| Canvas Transcripts | `canvas-transcripts-full.spec.ts` | Transcript CRUD, content editing, import |
+| Canvas Errors | `canvas-errors-full.spec.ts` | Error handling, network failures, recovery |
+| Canvas Lifecycle | `canvas-lifecycle-full.spec.ts` | Create, open, rename, delete, restore flows |
+| Canvas Coding | `canvas-coding-full.spec.ts` | Code creation, text coding, annotation workflows |
+| Canvas Codes | `canvas-codes-full.spec.ts` | Code management, color, merge, hierarchy |
+| Canvas Toolbar | `canvas-toolbar-full.spec.ts` | Toolbar actions, panels, mode toggles |
+| Canvas Workspace | `canvas-workspace-full.spec.ts` | Workspace layout, zoom, pan, node interactions |
+
+Total test counts: 570 backend + 333 frontend + ~257 E2E = ~1,160 total.
 
 ---
 

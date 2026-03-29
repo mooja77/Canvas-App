@@ -156,7 +156,7 @@ qualcanvas/
 │   ├── types/
 │   │   └── canvas.types.ts            # ~370 lines of shared interfaces
 │   └── package.json
-├── e2e/                               # Playwright E2E tests
+├── e2e/                               # Playwright E2E tests (23 spec files)
 ├── docs/
 │   ├── API.md                         # REST API reference
 │   ├── DEPLOY.md                      # Deployment guide
@@ -198,7 +198,8 @@ The middleware stack in `apps/backend/src/index.ts` is applied in this order:
 | 10 | `computeLimiter` | 30 req/15min on computed node `/run` endpoints |
 | 11 | `express.json(10mb)` | Larger body limit for transcript/import routes |
 | 12 | Request timeout | 30-second timeout per request |
-| 13 | Route handlers | Versioned API router (`/api/v1` + `/api`) |
+| 13a | Admin routes | `/api/admin/*` (mounted before v1Router to avoid auth middleware) |
+| 13b | Route handlers | Versioned API router (`/api/v1` + `/api`) |
 | 14 | Static files | Production-only: serves frontend build |
 | 15 | `errorHandler` | Global error handler (AppError class) |
 
@@ -679,6 +680,10 @@ The admin portal uses a separate authentication mechanism from the dual JWT auth
 
 The admin key is not a JWT and does not go through the standard auth middleware. The frontend stores the key in `sessionStorage` (cleared on tab close).
 
+**Important:** Admin routes must be mounted *before* the versioned API router (`v1Router`) in `index.ts`. This ensures `/api/admin/*` is not intercepted by the general auth middleware on the v1 router.
+
+**Test user filtering:** Admin dashboard and billing endpoints automatically filter out test users (emails matching `*@test.com` or `test-*` patterns) from metrics like user counts and MRR, ensuring accurate production analytics.
+
 ### 8.6 Rate Limiting
 
 | Scope | Limit | Window |
@@ -766,7 +771,7 @@ push/PR to main
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │  Type Check   │────▶│  Unit Tests   │────▶│  E2E Tests   │
 │  (tsc -b)     │     │  (vitest)     │     │  (Playwright) │
-│               │     │  570 + 333    │     │  ~130 tests   │
+│               │     │  570 + 333    │     │  ~257 tests   │
 │  ubuntu-latest│     │  SQLite test  │     │  Chromium     │
 │  Node 20      │     │  DB           │     │  Artifacts on │
 │               │     │               │     │  failure      │
@@ -785,8 +790,8 @@ All jobs use `ubuntu-latest` with Node 20 and npm caching. E2E test failures upl
 |-------|-----------|-------|----------|
 | Backend unit | Vitest | 570 | `apps/backend/src/**/*.test.ts` |
 | Frontend unit | Vitest + Testing Library | 333 | `apps/frontend/src/**/*.test.ts` |
-| E2E | Playwright | ~130 | `e2e/` |
-| **Total** | | **~1033** | |
+| E2E | Playwright | ~257 | `e2e/` (23 spec files) |
+| **Total** | | **~1,160** | |
 
 ### 10.2 Test Infrastructure
 
@@ -835,6 +840,18 @@ npm run typecheck
 # Linting
 npm run lint
 ```
+
+### 10.5 Recent Bug Fixes (Canvas)
+
+| Component | Fix | Impact |
+|-----------|-----|--------|
+| `SetupWizard` | Conditional render — only shows for users with 0 canvases | Prevents wizard from appearing for returning users who already have data |
+| `canvasStore.refreshCanvas` | Error logging instead of throwing | Prevents UI disruption on background refresh failures |
+| `canvasStore.createCoding` | Clears `pendingSelection` after creation | Prevents stale text selection state after coding |
+| `canvasStore.openCanvas` | Clears `pendingSelection` on open | Prevents stale selection from previous canvas carrying over |
+| `OnboardingTour` | Added `validateCanvas` context check | Prevents tour errors when canvas context is unavailable |
+| `adminRoutes.ts` | 15 TypeScript `noImplicitAny` fixes | Improved type safety across all admin route handlers |
+| `index.ts` | Admin routes mounted before `v1Router` | Prevents admin endpoints from being intercepted by v1 auth middleware |
 
 ---
 
@@ -912,8 +929,8 @@ npm run lint
 | `npm run dev:frontend` | Start frontend only (Vite) |
 | `npm run build` | Full production build (shared -> backend -> frontend) |
 | `npm start` | Start production server (from apps/backend) |
-| `npm test` | Run all unit tests (234 backend + 131 frontend) |
-| `npm run test:e2e` | Run E2E tests (Chromium, 44 tests) |
+| `npm test` | Run all unit tests (570 backend + 333 frontend) |
+| `npm run test:e2e` | Run E2E tests (Chromium, ~257 tests) |
 | `npm run test:e2e:all` | Run E2E tests on all browsers |
 | `npm run test:e2e:firefox` | Run E2E tests on Firefox |
 | `npm run test:e2e:webkit` | Run E2E tests on WebKit |

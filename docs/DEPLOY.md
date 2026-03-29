@@ -57,7 +57,7 @@ npm run dev
 | `npm run db:migrate` | Run Prisma migrations |
 | `npm run db:seed` | Seed demo data (access code: `CANVAS-DEMO2025`) |
 | `npm test` | Run all unit tests (570 backend + 333 frontend) |
-| `npm run test:e2e` | Run ~130 Playwright E2E tests (Chromium) |
+| `npm run test:e2e` | Run ~257 Playwright E2E tests (Chromium, 23 spec files) |
 | `npm run test:e2e:all` | Run E2E tests across all browsers |
 | `npm run test:e2e:firefox` | Run E2E tests on Firefox |
 | `npm run test:e2e:webkit` | Run E2E tests on WebKit |
@@ -105,6 +105,8 @@ Copy `.env.example` to `.env` and configure. Variables are organized by category
 | `ADMIN_API_KEY` | For admin | — | Secret key for admin portal access (`/admin`). Generate: `openssl rand -hex 32` or `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 
 > **Note:** The `/admin` route is not included in the sitemap and is not publicly linked. It is a private internal tool. Without `ADMIN_API_KEY` set, admin endpoints return 503.
+>
+> **Route mounting order:** Admin routes are mounted *before* the versioned API router (`v1Router`) in `index.ts`. If you modify route registration, ensure `/api/admin/*` remains above the general v1 router to avoid auth middleware conflicts.
 
 ### Stripe / Billing
 
@@ -341,7 +343,7 @@ GitHub Actions runs on every push to `main` and every pull request targeting `ma
 - Depends on: Type Check
 - Uses SQLite (`DATABASE_URL=file:./test.db`) — no external database needed
 - Generates Prisma client and runs migrations
-- Runs `npm test` (570 backend + 333 frontend tests via Vitest)
+- Runs `npm test` (570 backend + 333 frontend unit tests via Vitest)
 - Environment: `JWT_SECRET` and `ENCRYPTION_KEY` set to CI-only values
 
 ### Job 3: E2E Tests
@@ -349,7 +351,7 @@ GitHub Actions runs on every push to `main` and every pull request targeting `ma
 - Depends on: Unit Tests
 - Installs Chromium via Playwright
 - Generates Prisma client, runs migrations, and seeds test data
-- Runs `npm run test:e2e` (~130 Playwright tests)
+- Runs `npm run test:e2e` (~257 Playwright tests across 23 spec files)
 - On failure: uploads `test-results/` as an artifact (retained 7 days)
 
 ### Pipeline Summary

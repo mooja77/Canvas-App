@@ -2442,6 +2442,7 @@ These endpoints are NOT under the `/api` prefix.
     "errorCount24h": 3,
     "activeSessions": 0,
     "planDistribution": { "free": 100, "pro": 40, "team": 10 },
+    "testUsers": 3,
     "topFeatures": [
       { "name": "wordcloud", "source": "computed_node", "count": 120 },
       { "name": "auto_code", "source": "ai_usage", "count": 85 }
@@ -2449,6 +2450,8 @@ These endpoints are NOT under the `/api` prefix.
   }
 }
 ```
+
+> **Note:** `totalUsers`, `activeUsers`, `newSignups7d`, `newSignups30d`, and `mrr` all exclude test users (emails matching `*@test.com` or `test-*` patterns). The `testUsers` field reports the count of excluded test accounts.
 
 ---
 
@@ -2476,10 +2479,11 @@ These endpoints are NOT under the `/api` prefix.
       "signupDate": "2025-06-01T00:00:00.000Z",
       "lastLogin": "2026-03-25T14:30:00.000Z",
       "status": "active",
-      "canvasCount": 5
+      "canvasCount": 5,
+      "isTest": false
     }
   ],
-  "pagination": { "page": 1, "limit": 20, "total": 150, "totalPages": 8 }
+  "pagination": { "page": 1, "limit": 20, "total": 150, "totalPages": 8, "realUsers": 147, "testUsers": 3 }
 }
 ```
 
@@ -2514,7 +2518,7 @@ These endpoints are NOT under the `/api` prefix.
 
 ### GET /api/admin/billing
 **Auth:** Admin key
-**Description:** Billing metrics including MRR, ARR, churn rate, plan breakdown, and recent transactions.
+**Description:** Billing metrics including MRR, ARR, churn rate, plan breakdown, and recent transactions. Test user subscriptions are excluded from MRR/ARR calculations and paying user counts.
 **Response (200):**
 ```json
 {
