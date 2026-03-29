@@ -231,7 +231,7 @@ v1Router.use(auth, auditLog, repositoryRoutes);
 v1Router.use(auth, auditLog, integrationRoutes);
 
 // Protected AI settings routes
-v1Router.use(auth, aiSettingsRoutes);
+v1Router.use(auth, auditLog, aiSettingsRoutes);
 
 // Protected team routes
 v1Router.use(auth, auditLog, teamRoutes);
@@ -240,7 +240,7 @@ v1Router.use(auth, auditLog, teamRoutes);
 v1Router.use(auth, auditLog, calendarRoutes);
 
 // Protected notification routes
-v1Router.use(auth, notificationRoutes);
+v1Router.use(auth, auditLog, notificationRoutes);
 
 // Protected report routes
 v1Router.use(auth, auditLog, reportRoutes);

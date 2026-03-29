@@ -51,35 +51,44 @@ function getDemoActions(canvasId: string | null): Record<number, () => Promise<v
     const c = canvas();
     return c?.questions.some((q: { text: string }) => q.text === text);
   };
+  // Helper: validate canvas context hasn't changed during tour
+  const validateCanvas = () => {
+    const currentId = getState().activeCanvasId;
+    if (currentId !== canvasId) {
+      console.warn('[Tour] Canvas changed during tour, skipping action');
+      return false;
+    }
+    return true;
+  };
   return {
     // Step 2: Add first transcript
     2: async () => {
-      if (!canvasId || hasTranscript('Patient Interview - Sarah')) return;
+      if (!canvasId || !validateCanvas() || hasTranscript('Patient Interview - Sarah')) return;
       try { await getState().addTranscript('Patient Interview - Sarah', DEMO_TRANSCRIPT_1); } catch { /* ignore */ }
     },
     // Step 3: Add second transcript
     3: async () => {
-      if (!canvasId || hasTranscript('Patient Interview - Michael')) return;
+      if (!canvasId || !validateCanvas() || hasTranscript('Patient Interview - Michael')) return;
       try { await getState().addTranscript('Patient Interview - Michael', DEMO_TRANSCRIPT_2); } catch { /* ignore */ }
     },
     // Step 5: Create first code
     5: async () => {
-      if (!canvasId || hasCode('Trust Issues')) return;
+      if (!canvasId || !validateCanvas() || hasCode('Trust Issues')) return;
       try { await getState().addQuestion('Trust Issues', '#ef4444'); } catch { /* ignore */ }
     },
     // Step 6: Create second code
     6: async () => {
-      if (!canvasId || hasCode('Barriers to Care')) return;
+      if (!canvasId || !validateCanvas() || hasCode('Barriers to Care')) return;
       try { await getState().addQuestion('Barriers to Care', '#f59e0b'); } catch { /* ignore */ }
     },
     // Step 7: Create third code
     7: async () => {
-      if (!canvasId || hasCode('Positive Experience')) return;
+      if (!canvasId || !validateCanvas() || hasCode('Positive Experience')) return;
       try { await getState().addQuestion('Positive Experience', '#22c55e'); } catch { /* ignore */ }
     },
     // Step 9: Create coding (connect transcript to code)
     9: async () => {
-      if (!canvasId) return;
+      if (!canvasId || !validateCanvas()) return;
       const c = canvas();
       if (!c || c.codings.length >= 1 || c.transcripts.length === 0 || c.questions.length === 0) return;
       const t = c.transcripts.find((t: { title: string }) => t.title === 'Patient Interview - Sarah') || c.transcripts[0];
@@ -89,7 +98,7 @@ function getDemoActions(canvasId: string | null): Record<number, () => Promise<v
     },
     // Step 10: Create second coding
     10: async () => {
-      if (!canvasId) return;
+      if (!canvasId || !validateCanvas()) return;
       const c = canvas();
       if (!c || c.codings.length >= 2 || c.transcripts.length < 2 || c.questions.length < 2) return;
       const t = c.transcripts.find((t: { title: string }) => t.title === 'Patient Interview - Michael') || c.transcripts[1];
@@ -99,7 +108,7 @@ function getDemoActions(canvasId: string | null): Record<number, () => Promise<v
     },
     // Step 11: Create third coding
     11: async () => {
-      if (!canvasId) return;
+      if (!canvasId || !validateCanvas()) return;
       const c = canvas();
       if (!c || c.codings.length >= 3) return;
       const t = c.transcripts.find((t: { title: string }) => t.title === 'Patient Interview - Sarah') || c.transcripts[0];

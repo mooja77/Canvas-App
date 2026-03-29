@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 
 export default function CanvasPage() {
   const { authenticated, name, logout, authType, emailVerified } = useAuthStore();
-  const { darkMode, toggleDarkMode, setupWizardComplete, resetOnboarding } = useUIStore();
+  const { darkMode, toggleDarkMode, setupWizardComplete, completeSetupWizard, resetOnboarding } = useUIStore();
   const canvases = useCanvasStore(s => s.canvases);
   const fetchCanvases = useCanvasStore(s => s.fetchCanvases);
   const navigate = useNavigate();
@@ -32,12 +32,17 @@ export default function CanvasPage() {
     }
   }, [authenticated, canvasesLoaded, fetchCanvases]);
 
-  // Show setup wizard for first-time users with no canvases
+  // Show setup wizard for first-time users with no canvases.
+  // Auto-mark wizard complete for existing users who already have canvases
+  // (handles legacy users who never had the flag set).
   useEffect(() => {
-    if (canvasesLoaded && !setupWizardComplete && canvases.length === 0) {
+    if (!canvasesLoaded) return;
+    if (!setupWizardComplete && canvases.length === 0) {
       setShowWizard(true);
+    } else if (!setupWizardComplete && canvases.length > 0) {
+      completeSetupWizard();
     }
-  }, [canvasesLoaded, setupWizardComplete, canvases.length]);
+  }, [canvasesLoaded, setupWizardComplete, canvases.length, completeSetupWizard]);
 
   // Demo mode: ?demo=true triggers the guided tour
   useEffect(() => {
@@ -148,15 +153,15 @@ export default function CanvasPage() {
         </div>
       )}
 
-      {/* Setup wizard for first-time users */}
-      {showWizard && (
+      {/* Setup wizard for first-time users — replaces canvas until complete */}
+      {showWizard ? (
         <SetupWizard onComplete={() => setShowWizard(false)} />
+      ) : (
+        /* Full-screen canvas workspace */
+        <main id="canvas-main" className="flex-1 overflow-hidden" aria-label="Canvas workspace">
+          <CodingCanvas />
+        </main>
       )}
-
-      {/* Full-screen canvas workspace */}
-      <main id="canvas-main" className="flex-1 overflow-hidden" aria-label="Canvas workspace">
-        <CodingCanvas />
-      </main>
     </div>
   );
 }

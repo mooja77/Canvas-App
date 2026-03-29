@@ -8,8 +8,7 @@ import { z } from 'zod';
 
 export const notificationRoutes = Router();
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const prismaNotification = (prisma as any).notification;
+const prismaNotification = prisma.notification;
 
 const notificationIdParam = z.object({ id: z.string().min(1).max(64) });
 

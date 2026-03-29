@@ -164,14 +164,14 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     set({ loading: true, error: null });
     try {
       const res = await canvasApi.getCanvas(id);
-      set({ activeCanvasId: id, activeCanvas: res.data.data, loading: false });
+      set({ activeCanvasId: id, activeCanvas: res.data.data, loading: false, pendingSelection: null });
       // Cache for offline use
       cacheCanvas(res.data.data).catch(() => {});
     } catch {
       // Try offline fallback
       const cached = await getCachedCanvas(id).catch(() => null);
       if (cached) {
-        set({ activeCanvasId: id, activeCanvas: cached, loading: false });
+        set({ activeCanvasId: id, activeCanvas: cached, loading: false, pendingSelection: null });
         toast('Loaded from offline cache', { icon: '\u{1F4F1}' });
       } else {
         set({ error: 'Failed to open canvas', loading: false });
@@ -190,7 +190,10 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     try {
       const res = await canvasApi.getCanvas(activeCanvasId);
       set({ activeCanvas: res.data.data });
-    } catch { /* silent */ }
+    } catch (err) {
+      console.error('[canvasStore] refreshCanvas failed:', err);
+      // Don't clear activeCanvas — keep stale data rather than blank screen
+    }
   },
 
   fetchTrash: async () => {
@@ -349,18 +352,24 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
   createCoding: async (transcriptId, questionId, startOffset, endOffset, codedText) => {
     const { activeCanvasId } = get();
     if (!activeCanvasId) throw new Error('No canvas open');
-    const res = await canvasApi.createCoding(activeCanvasId, {
-      transcriptId, questionId, startOffset, endOffset, codedText,
-    });
-    const coding = res.data.data;
-    set(s => ({
-      activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, codings: [...s.activeCanvas.codings, coding] }
-        : null,
-      pendingSelection: null,
-    }));
-    emitSocketEvent('canvas:coding-added', { canvasId: activeCanvasId, data: { id: coding.id, transcriptId, questionId } });
-    return coding;
+    try {
+      const res = await canvasApi.createCoding(activeCanvasId, {
+        transcriptId, questionId, startOffset, endOffset, codedText,
+      });
+      const coding = res.data.data;
+      set(s => ({
+        activeCanvas: s.activeCanvas
+          ? { ...s.activeCanvas, codings: [...s.activeCanvas.codings, coding] }
+          : null,
+        pendingSelection: null,
+      }));
+      emitSocketEvent('canvas:coding-added', { canvasId: activeCanvasId, data: { id: coding.id, transcriptId, questionId } });
+      return coding;
+    } catch (err) {
+      console.error('[canvasStore] createCoding failed:', err);
+      set({ pendingSelection: null }); // Clear even on error
+      throw err;
+    }
   },
 
   deleteCoding: async (codingId) => {
