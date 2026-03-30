@@ -330,6 +330,20 @@ export default function CanvasWorkspace() {
     });
   }, [activeCanvas?.id]);
 
+  // Clean stale tabs — remove IDs for canvases that no longer exist
+  useEffect(() => {
+    if (!canvases.length) return;
+    const validIds = new Set(canvases.map((c: { id: string }) => c.id));
+    setOpenTabs(prev => {
+      const cleaned = prev.filter(id => validIds.has(id));
+      if (cleaned.length !== prev.length) {
+        try { localStorage.setItem('canvas-open-tabs', JSON.stringify(cleaned)); } catch {}
+        return cleaned;
+      }
+      return prev;
+    });
+  }, [canvases]);
+
   // Build position map with dimensions and collapsed state
   const nodePositions = activeCanvas?.nodePositions;
   const posMap = useMemo(() => {
@@ -1660,7 +1674,7 @@ export default function CanvasWorkspace() {
         <div
           ref={canvasContainerRef}
           data-tour="canvas-flow-area"
-          className="relative flex-1"
+          className="relative flex-1 h-full"
           onDragEnter={handleFileDragEnter}
           onDragLeave={handleFileDragLeave}
           onDragOver={handleFileDragOver}
