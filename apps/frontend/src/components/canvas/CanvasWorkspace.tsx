@@ -14,6 +14,7 @@ import {
   type OnSelectionChangeParams,
   BackgroundVariant,
   reconnectEdge,
+  useViewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -85,6 +86,7 @@ import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import { useMobile } from '../../hooks/useMobile';
 import { useCollaboration } from '../../hooks/useCollaboration';
 import { useAiSuggestions } from '../../hooks/useAiSuggestions';
+import { useAlignmentGuides, type GuideLine } from '../../hooks/useAlignmentGuides';
 import { useAiConfigStore } from '../../stores/aiConfigStore';
 import { useUIStore } from '../../stores/uiStore';
 import type {
@@ -158,6 +160,40 @@ const SNAP_GRID: [number, number] = [20, 20];
 const FIT_VIEW_OPTIONS = { padding: 0.4, maxZoom: 1.0 };
 const PRO_OPTIONS = { hideAttribution: true };
 
+/** SVG overlay that renders alignment guide lines in flow coordinate space */
+function AlignmentGuideOverlay({ guideLines }: { guideLines: GuideLine[] }) {
+  const { x, y, zoom } = useViewport();
+  return (
+    <svg
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: 1000,
+      }}
+    >
+      <g transform={`translate(${x}, ${y}) scale(${zoom})`}>
+        {guideLines.map((line, i) => (
+          <line
+            key={i}
+            x1={line.x1}
+            y1={line.y1}
+            x2={line.x2}
+            y2={line.y2}
+            stroke="#3B82F6"
+            strokeWidth={1 / zoom}
+            strokeDasharray={`${4 / zoom} ${3 / zoom}`}
+            opacity={0.7}
+          />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
 export default function CanvasWorkspace() {
   // Granular selector hooks for read-only data
   const activeCanvas = useActiveCanvas();
@@ -204,6 +240,9 @@ export default function CanvasWorkspace() {
   // AI coding assistant
   const aiSuggestions = useAiSuggestions();
   const [showAiAutoCode, setShowAiAutoCode] = useState(false);
+
+  // Alignment guides (snap lines)
+  const { guideLines, onNodeDrag: alignmentOnNodeDrag, onNodeDragStop: alignmentOnNodeDragStop } = useAlignmentGuides();
   const [showAiSetupGuide, setShowAiSetupGuide] = useState<string | null>(null);
   const { configured: aiConfigured, fetchConfig: fetchAiConfig } = useAiConfigStore();
 
@@ -569,18 +608,32 @@ export default function CanvasWorkspace() {
     const questionColorMap = new Map<string, string>();
     activeCanvas.questions.forEach((q: CanvasQuestion) => questionColorMap.set(q.id, q.color));
 
-    const codingEdges: Edge[] = activeCanvas.codings.map((c: CanvasTextCoding) => ({
-      id: `coding-${c.id}`,
-      source: `transcript-${c.transcriptId}`,
-      target: `question-${c.questionId}`,
-      type: 'coding',
-      reconnectable: true,
-      data: {
-        codingId: c.id,
-        codedText: c.codedText,
-        questionColor: questionColorMap.get(c.questionId) || '#3B82F6',
-      },
-    }));
+    // Bundle codings by (transcriptId, questionId) pair to reduce visual clutter
+    const codingGroups = new Map<string, CanvasTextCoding[]>();
+    activeCanvas.codings.forEach((c: CanvasTextCoding) => {
+      const key = `${c.transcriptId}::${c.questionId}`;
+      const group = codingGroups.get(key);
+      if (group) group.push(c);
+      else codingGroups.set(key, [c]);
+    });
+
+    const codingEdges: Edge[] = Array.from(codingGroups.entries()).map(([key, codings]) => {
+      const first = codings[0];
+      return {
+        id: `coding-bundle-${key}`,
+        source: `transcript-${first.transcriptId}`,
+        target: `question-${first.questionId}`,
+        type: 'coding',
+        reconnectable: true,
+        data: {
+          codingId: first.id,
+          codedText: first.codedText,
+          questionColor: questionColorMap.get(first.questionId) || '#3B82F6',
+          count: codings.length,
+          codings,
+        },
+      };
+    });
 
     // Relation edges
     const relationEdges: Edge[] = (activeCanvas.relations ?? []).map((r: CanvasRelation) => ({
@@ -936,9 +989,14 @@ export default function CanvasWorkspace() {
     }
   }, [handleDuplicate]);
 
+  const handleNodeDrag = useCallback((_event: React.MouseEvent, node: Node, allNodes: Node[]) => {
+    alignmentOnNodeDrag(_event, node, allNodes);
+  }, [alignmentOnNodeDrag]);
+
   const handleNodeDragStop = useCallback(() => {
     altDragDuplicatedRef.current = false;
-  }, []);
+    alignmentOnNodeDragStop();
+  }, [alignmentOnNodeDragStop]);
 
   // Select all
   const handleSelectAll = useCallback(() => {
@@ -1718,6 +1776,7 @@ export default function CanvasWorkspace() {
             onEdgeContextMenu={handleEdgeContextMenu}
             onPaneClick={handlePaneClick}
             onNodeDragStart={handleNodeDragStart}
+            onNodeDrag={handleNodeDrag}
             onNodeDragStop={handleNodeDragStop}
             onSelectionChange={handleSelectionChange}
             nodeTypes={nodeTypes}
@@ -1761,6 +1820,9 @@ export default function CanvasWorkspace() {
               className="!bg-white/90 !backdrop-blur-sm !rounded-xl !shadow-node dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700"
             />}
             {collaboration.isConnected && <CollabCursors cursors={collaboration.cursors} />}
+
+            {/* Alignment guide lines rendered in flow coordinate space */}
+            {guideLines.length > 0 && <AlignmentGuideOverlay guideLines={guideLines} />}
           </ReactFlow>
 
           {/* Focus mode exit button */}
