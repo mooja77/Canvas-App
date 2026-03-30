@@ -319,6 +319,23 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
         handleDistributeH();
         return;
       }
+
+      // Arrow key panning (no ctrl/alt/meta modifier, shift for larger jump)
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const rfInstance = rfInstanceRef.current;
+        if (!rfInstance) return;
+        e.preventDefault();
+        const step = e.shiftKey ? 200 : 50;
+        const vp = rfInstance.getViewport();
+        let dx = 0;
+        let dy = 0;
+        if (e.key === 'ArrowUp') dy = step;
+        if (e.key === 'ArrowDown') dy = -step;
+        if (e.key === 'ArrowLeft') dx = step;
+        if (e.key === 'ArrowRight') dx = -step;
+        rfInstance.setViewport({ x: vp.x + dx, y: vp.y + dy, zoom: vp.zoom }, { duration: 100 });
+        return;
+      }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);

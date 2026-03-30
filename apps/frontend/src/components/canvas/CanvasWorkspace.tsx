@@ -38,6 +38,7 @@ import TimelineNode from './nodes/TimelineNode';
 import GeoMapNode from './nodes/GeoMapNode';
 import DocumentNode from './nodes/DocumentNode';
 import DocumentPortraitNode from './nodes/DocumentPortraitNode';
+import ConnectionLine from './edges/ConnectionLine';
 import CodingEdge from './edges/CodingEdge';
 import RelationEdge from './edges/RelationEdge';
 import CodeNavigator from './panels/CodeNavigator';
@@ -1732,7 +1733,8 @@ export default function CanvasWorkspace() {
             fitViewOptions={FIT_VIEW_OPTIONS}
             minZoom={0.15}
             maxZoom={2}
-            className="bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900"
+            className="bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-[#0f1117] dark:via-[#131620] dark:to-[#0f1117]"
+            connectionLineComponent={ConnectionLine}
             onlyRenderVisibleElements
             proOptions={PRO_OPTIONS}
           >

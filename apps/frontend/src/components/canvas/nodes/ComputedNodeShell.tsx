@@ -54,7 +54,7 @@ function ComputedNodeShell({
   };
 
   return (
-    <div className={`min-w-[280px] w-full h-full rounded-xl border-2 shadow-node transition-all duration-200 hover:shadow-node-hover ${selected ? 'ring-2 ring-blue-400' : ''} ${isRunningGlobal ? 'animate-pulse ring-2 ring-offset-1 ring-green-400/60' : ''}`} style={{ borderColor: isRunningGlobal ? '#22c55e' : color }}>
+    <div className={`min-w-[280px] w-full h-full rounded-xl border-2 shadow-node transition-all duration-200 hover:shadow-node-hover ${selected ? 'ring-2 ring-blue-400' : ''} ${(running || isRunningGlobal) ? 'animate-pulse ring-2 ring-offset-1' : ''}`} style={{ borderColor: (running || isRunningGlobal) ? color : color, boxShadow: (running || isRunningGlobal) ? `0 0 12px ${color}40` : undefined, ...(running || isRunningGlobal ? { '--tw-ring-color': `${color}99` } as React.CSSProperties : {}) }}>
       <NodeResizer
         minWidth={280}
         minHeight={collapsed ? 44 : 100}
@@ -135,11 +135,17 @@ function ComputedNodeShell({
 
       {/* Body - collapsible */}
       {!collapsed && !isZoomedOut && (
-        <div className="bg-white dark:bg-gray-800 rounded-b-xl nodrag nowheel">
+        <div className="relative bg-white dark:bg-gray-800 rounded-b-xl nodrag nowheel overflow-hidden">
           {error && (
             <div className="px-3 py-1.5 text-xs text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400">
               {error}
             </div>
+          )}
+          {(running || isRunningGlobal) && (
+            <div
+              className="skeleton absolute inset-0 z-10 pointer-events-none"
+              style={{ opacity: 0.35, borderRadius: 0 }}
+            />
           )}
           {children}
         </div>

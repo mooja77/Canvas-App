@@ -6,6 +6,11 @@ import { useCanvasStore } from '../../../stores/canvasStore';
 import { useUIStore } from '../../../stores/uiStore';
 import ConfirmDialog from '../ConfirmDialog';
 
+function useIsDarkMode() {
+  const darkMode = useUIStore(s => s.darkMode);
+  return darkMode;
+}
+
 export default function CodingEdge({
   id,
   sourceX,
@@ -21,6 +26,7 @@ export default function CodingEdge({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { deleteCoding } = useCanvasStore();
   const edgeStyle = useUIStore(s => s.edgeStyle);
+  const isDark = useIsDarkMode();
   const edgeData = data as { codingId: string; codedText: string; questionColor: string } | undefined;
 
   const pathParams = { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition };
@@ -54,7 +60,7 @@ export default function CodingEdge({
           strokeWidth: hovered ? 2.5 : 1.5,
           strokeDasharray: undefined,
           transition: 'stroke-width 200ms ease, opacity 200ms ease',
-          opacity: hovered ? 1 : 0.65,
+          opacity: hovered ? 1 : (isDark ? 0.8 : 0.65),
         }}
       />
       {hovered && edgeData && (

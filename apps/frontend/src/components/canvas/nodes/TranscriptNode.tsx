@@ -349,6 +349,32 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
         </div>
       </div>
 
+      {/* Always-visible coverage bar at bottom of header */}
+      {(() => {
+        const contentLen = nodeData.content.length;
+        if (contentLen === 0) return null;
+        // Calculate coded character coverage using a boolean array approach
+        const covered = new Uint8Array(contentLen);
+        for (const c of codings) {
+          const s = Math.max(0, Math.min(c.startOffset, contentLen));
+          const e = Math.max(0, Math.min(c.endOffset, contentLen));
+          for (let i = s; i < e; i++) covered[i] = 1;
+        }
+        let codedChars = 0;
+        for (let i = 0; i < contentLen; i++) if (covered[i]) codedChars++;
+        const pct = Math.round((codedChars / contentLen) * 100);
+        // Color: gray(0%) -> blue(partial) -> green(100%)
+        const barColor = pct === 0 ? '#9CA3AF' : pct === 100 ? '#22C55E' : '#3B82F6';
+        return (
+          <div className="h-[3px] w-full bg-gray-200 dark:bg-gray-700" title={`${pct}% coded`}>
+            <div
+              className="h-full transition-all duration-500 ease-out"
+              style={{ width: `${pct}%`, backgroundColor: barColor }}
+            />
+          </div>
+        );
+      })()}
+
       {/* Body - collapsible with transition */}
       {!collapsed && zoomTier === 'full' && (
         <div className="flex-1 min-h-0 overflow-hidden transition-[max-height] duration-200 flex flex-col">

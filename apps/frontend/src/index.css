@@ -145,8 +145,20 @@
 }
 
 /* MiniMap / Controls polish */
+.react-flow__minimap-node {
+  rx: 3;
+  ry: 3;
+}
+
 .react-flow__minimap {
-  @apply rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+  border: 1px solid rgba(0,0,0,0.06) !important;
+}
+
+.dark .react-flow__minimap {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
 }
 .react-flow__controls {
   @apply rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden !important;
