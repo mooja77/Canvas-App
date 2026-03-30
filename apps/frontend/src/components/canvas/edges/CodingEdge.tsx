@@ -84,6 +84,36 @@ export default function CodingEdge({
           <animateMotion dur="3s" repeatCount="indefinite" path={edgePath} />
         </circle>
       )}
+
+      {/* Annotation badge at edge midpoint — visible at full zoom when NOT hovered */}
+      {!hovered && zoomTier === 'full' && edgeData && (
+        <EdgeLabelRenderer>
+          <div
+            className="nodrag nopan pointer-events-auto absolute"
+            style={{
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            }}
+            onClick={() => setHovered(true)}
+          >
+            <div
+              className="flex items-center justify-center rounded-full shadow-sm cursor-pointer transition-transform hover:scale-110"
+              style={{
+                width: 16,
+                height: 16,
+                backgroundColor: color,
+                color: '#fff',
+                fontSize: count > 1 ? 9 : 10,
+                fontWeight: 700,
+                lineHeight: 1,
+              }}
+              title={count > 1 ? `${count} coded segments` : 'Coded segment'}
+            >
+              {count > 1 ? count : '\u201C'}
+            </div>
+          </div>
+        </EdgeLabelRenderer>
+      )}
+
       {hovered && edgeData && (
         <EdgeLabelRenderer>
           <div

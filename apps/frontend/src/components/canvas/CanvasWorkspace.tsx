@@ -300,8 +300,8 @@ export default function CanvasWorkspace() {
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const dragCounterRef = useRef(0);
 
-  // Clipboard for copy/paste
-  const clipboardRef = useRef<Node[]>([]);
+  // Clipboard for copy/paste (nodes + relation edges between copied nodes)
+  const clipboardRef = useRef<{ nodes: Node[]; relationEdges: Edge[] }>({ nodes: [], relationEdges: [] });
 
   // Resize detection refs
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -934,19 +934,26 @@ export default function CanvasWorkspace() {
     setTimeout(() => pushHistorySnapshot(), 300);
   }, [selectedNodes, deleteTranscript, deleteQuestion, deleteMemo, deleteCase, deleteComputedNode, removeGroup, pushHistorySnapshot]);
 
-  // Copy selected nodes
+  // Copy selected nodes (with relation edges between them)
   const handleCopy = useCallback(() => {
     const selected = nodes.filter(n => n.selected);
     if (selected.length === 0) return;
-    clipboardRef.current = selected;
+    const selectedIds = new Set(selected.map(n => n.id));
+    // Capture relation edges where both source and target are in the copied set
+    const relationEdges = edges.filter(
+      e => e.type === 'relation' && selectedIds.has(e.source) && selectedIds.has(e.target)
+    );
+    clipboardRef.current = { nodes: selected, relationEdges };
     toast.success(`Copied ${selected.length} node(s)`);
-  }, [nodes]);
+  }, [nodes, edges]);
 
-  // Paste nodes
+  // Paste nodes (with relation edges between them)
   const handlePaste = useCallback(async () => {
-    const toPaste = clipboardRef.current;
+    const { nodes: toPaste, relationEdges } = clipboardRef.current;
     if (toPaste.length === 0) return;
     let pasted = 0;
+    // Map old node IDs to new entity IDs (e.g. "question-abc" -> new question id)
+    const oldIdToNewId = new Map<string, { type: 'case' | 'question'; id: string }>();
     for (const node of toPaste) {
       try {
         const d = node.data as Record<string, unknown>;
@@ -954,7 +961,8 @@ export default function CanvasWorkspace() {
           await addTranscript(d.title + ' (copy)', d.content as string);
           pasted++;
         } else if (node.type === 'question') {
-          await addQuestion(d.text + ' (copy)', d.color as string);
+          const newQ = await addQuestion(d.text + ' (copy)', d.color as string);
+          if (newQ) oldIdToNewId.set(node.id, { type: 'question', id: newQ.id });
           pasted++;
         } else if (node.type === 'memo') {
           await addMemo(d.content as string, d.title ? (d.title as string) + ' (copy)' : undefined, d.color as string);
@@ -968,11 +976,27 @@ export default function CanvasWorkspace() {
         }
       } catch { /* skip */ }
     }
+    // Recreate relation edges between pasted nodes
+    let relationsCreated = 0;
+    for (const edge of relationEdges) {
+      const srcMapping = oldIdToNewId.get(edge.source);
+      const tgtMapping = oldIdToNewId.get(edge.target);
+      if (srcMapping && tgtMapping) {
+        try {
+          const label = (edge.data as Record<string, unknown>)?.label as string || 'related';
+          await addRelation(srcMapping.type, srcMapping.id, tgtMapping.type, tgtMapping.id, label);
+          relationsCreated++;
+        } catch { /* skip */ }
+      }
+    }
     if (pasted > 0) {
-      toast.success(`Pasted ${pasted} node(s)`);
+      const msg = relationsCreated > 0
+        ? `Pasted ${pasted} node(s) with ${relationsCreated} connection(s)`
+        : `Pasted ${pasted} node(s)`;
+      toast.success(msg);
       setTimeout(() => pushHistorySnapshot(), 300);
     }
-  }, [activeCanvas, addTranscript, addQuestion, addMemo, addComputedNode, pushHistorySnapshot]);
+  }, [activeCanvas, addTranscript, addQuestion, addMemo, addComputedNode, addRelation, pushHistorySnapshot]);
 
   // Duplicate (copy + paste)
   const handleDuplicate = useCallback(async () => {

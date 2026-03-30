@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
-import type { CanvasTextCoding, CanvasQuestion } from '@qualcanvas/shared';
+import type { CanvasTextCoding, CanvasQuestion, CodingCanvas } from '@qualcanvas/shared';
+import { getCrossCanvasRef, setCrossCanvasRef, removeCrossCanvasRef } from '../../../lib/crossCanvasRefs';
 
 // ─── Preset colors (same as ColorPicker) ───
 
@@ -62,13 +63,21 @@ export default function NodeContextMenu({
   const ref = useRef<HTMLDivElement>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showCoverage, setShowCoverage] = useState(false);
+  const [showCanvasLinker, setShowCanvasLinker] = useState(false);
+  const [canvasSearch, setCanvasSearch] = useState('');
 
   const activeCanvas = useActiveCanvas();
+  const canvases = useCanvasStore(s => s.canvases);
+  const activeCanvasId = useCanvasStore(s => s.activeCanvasId);
+  const fetchCanvases = useCanvasStore(s => s.fetchCanvases);
   const setSelectedQuestionId = useCanvasStore(s => s.setSelectedQuestionId);
   const updateQuestion = useCanvasStore(s => s.updateQuestion);
   const updateMemo = useCanvasStore(s => s.updateMemo);
   const addQuestion = useCanvasStore(s => s.addQuestion);
   const refreshCanvas = useCanvasStore(s => s.refreshCanvas);
+
+  // Existing cross-canvas ref for this node
+  const existingRef = useMemo(() => getCrossCanvasRef(nodeId), [nodeId]);
 
   const entityId = extractEntityId(nodeId);
 
@@ -191,6 +200,33 @@ export default function NodeContextMenu({
     onClose();
   };
 
+  const handleOpenCanvasLinker = useCallback(() => {
+    setShowCanvasLinker(prev => !prev);
+    // Ensure canvas list is loaded
+    if (canvases.length === 0) fetchCanvases();
+  }, [canvases.length, fetchCanvases]);
+
+  const handleLinkCanvas = useCallback((canvas: CodingCanvas) => {
+    setCrossCanvasRef(nodeId, { canvasId: canvas.id, canvasName: canvas.name });
+    toast.success(`Linked to "${canvas.name}"`);
+    setShowCanvasLinker(false);
+    onClose();
+  }, [nodeId, onClose]);
+
+  const handleUnlinkCanvas = useCallback(() => {
+    removeCrossCanvasRef(nodeId);
+    toast.success('Cross-canvas link removed');
+    setShowCanvasLinker(false);
+    onClose();
+  }, [nodeId, onClose]);
+
+  const filteredCanvases = useMemo(() => {
+    const others = canvases.filter(c => c.id !== activeCanvasId);
+    if (!canvasSearch.trim()) return others;
+    const q = canvasSearch.toLowerCase();
+    return others.filter(c => c.name.toLowerCase().includes(q));
+  }, [canvases, activeCanvasId, canvasSearch]);
+
   // ─── Styling constants ───
 
   const btnClass = 'flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-750';
@@ -214,6 +250,9 @@ export default function NodeContextMenu({
     delete: 'M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0',
     chevronDown: 'M19.5 8.25l-7.5 7.5-7.5-7.5',
     chevronUp: 'M4.5 15.75l7.5-7.5 7.5 7.5',
+    link: 'M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244',
+    unlink: 'M6 18 18 6M6 6l12 12',
+    arrowRight: 'M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3',
   };
 
   const Icon = ({ d, className }: { d: string; className?: string }) => (
@@ -422,6 +461,62 @@ export default function NodeContextMenu({
           {separator}
         </>
       )}
+
+      {/* ─── Cross-canvas link (all node types) ─── */}
+      <button onClick={handleOpenCanvasLinker} className={btnClass}>
+        <Icon d={icons.link} />
+        {existingRef ? 'Change Canvas Link' : 'Link to Canvas'}
+        <span className="ml-auto">
+          <Icon
+            d={showCanvasLinker ? icons.chevronUp : icons.chevronDown}
+            className="h-3 w-3 text-gray-400"
+          />
+        </span>
+      </button>
+      {existingRef && (
+        <div className="mx-2 mb-1 flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50/80 px-2 py-1.5 dark:border-blue-900 dark:bg-blue-950/50">
+          <Icon d={icons.arrowRight} className="h-3 w-3 flex-shrink-0 text-blue-500" />
+          <span className="flex-1 truncate text-[11px] font-medium text-blue-700 dark:text-blue-300">
+            {existingRef.canvasName}
+          </span>
+          <button
+            onClick={handleUnlinkCanvas}
+            className="flex-shrink-0 rounded p-0.5 text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+            title="Remove link"
+          >
+            <Icon d={icons.unlink} className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+      {showCanvasLinker && (
+        <div className="mx-2 mb-1 rounded-lg border border-gray-100 bg-gray-50/80 p-2 dark:border-gray-700 dark:bg-gray-750/80">
+          <input
+            type="text"
+            value={canvasSearch}
+            onChange={e => setCanvasSearch(e.target.value)}
+            placeholder="Search canvases..."
+            className="mb-1.5 w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-700 placeholder-gray-400 outline-none focus:border-blue-400 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:placeholder-gray-500"
+            autoFocus
+          />
+          <div className="max-h-[120px] overflow-y-auto space-y-0.5 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+            {filteredCanvases.length === 0 ? (
+              <p className="py-2 text-center text-[10px] text-gray-400">No other canvases found</p>
+            ) : (
+              filteredCanvases.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => handleLinkCanvas(c)}
+                  className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[11px] text-gray-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Icon d={icons.arrowRight} className="h-3 w-3 flex-shrink-0 text-gray-400" />
+                  <span className="truncate">{c.name}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+      {separator}
 
       {/* ─── Common items ─── */}
       {sharedItems}

@@ -6,6 +6,7 @@ import { useCanvasStore, useCanvasCodings, useCanvasQuestions, useSelectedQuesti
 import { useUIStore } from '../../../stores/uiStore';
 import ConfirmDialog from '../ConfirmDialog';
 import ColorPicker from '../panels/ColorPicker';
+import CrossCanvasRefBadge from '../CrossCanvasRefBadge';
 import type { CanvasTextCoding, CanvasQuestion } from '@qualcanvas/shared';
 
 export interface QuestionNodeData {
@@ -136,7 +137,8 @@ function QuestionNode({ data, id, selected }: NodeProps) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
+          <CrossCanvasRefBadge nodeId={id} />
           {collapsed && codingCount > 0 && (
             <span
               className="rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white"

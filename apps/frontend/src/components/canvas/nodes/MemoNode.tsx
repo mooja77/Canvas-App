@@ -4,6 +4,7 @@ import { NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { useCanvasStore } from '../../../stores/canvasStore';
 import { useUIStore } from '../../../stores/uiStore';
+import CrossCanvasRefBadge from '../CrossCanvasRefBadge';
 import ConfirmDialog from '../ConfirmDialog';
 
 export interface MemoNodeData {
@@ -103,7 +104,7 @@ function formatInline(text: string): React.ReactNode {
   return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : <>{parts}</>;
 }
 
-function MemoNode({ data, selected }: NodeProps) {
+function MemoNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as MemoNodeData;
   const { updateMemo, deleteMemo } = useCanvasStore();
   const [editing, setEditing] = useState(false);
@@ -180,7 +181,8 @@ function MemoNode({ data, selected }: NodeProps) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
+          <CrossCanvasRefBadge nodeId={id} />
           <button
             onClick={() => setCollapsed(c => !c)}
             className="rounded p-0.5 text-gray-500/50 hover:text-gray-700 transition-colors"

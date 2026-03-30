@@ -388,18 +388,31 @@ export default function CanvasToolbar({ showNavigator, onToggleNavigator, onOpen
             />
             <DropdownDivider />
             {/* Edge style */}
-            <div className="px-3 py-2 flex items-center gap-2">
-              <span className="text-xs text-gray-500 dark:text-gray-400">Edges:</span>
-              <select
-                value={edgeStyle}
-                onChange={e => setEdgeStyle(e.target.value as EdgeStyleType)}
-                className="h-6 flex-1 rounded border border-gray-200 bg-gray-50 px-1.5 text-[10px] text-gray-600 outline-none hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors cursor-pointer"
-              >
-                <option value="bezier">Bezier</option>
-                <option value="straight">Straight</option>
-                <option value="step">Step</option>
-                <option value="smoothstep">Smooth Step</option>
-              </select>
+            <div className="px-3 py-2">
+              <span className="text-xs text-gray-500 dark:text-gray-400 mb-1.5 block">Edges:</span>
+              <div className="grid grid-cols-2 gap-1.5">
+                {([
+                  { value: 'bezier' as EdgeStyleType, label: 'Bezier', path: 'M2 10 C8 2, 12 2, 18 10' },
+                  { value: 'straight' as EdgeStyleType, label: 'Straight', path: 'M2 10 L18 2' },
+                  { value: 'step' as EdgeStyleType, label: 'Step', path: 'M2 10 L2 2 L18 2 L18 10' },
+                  { value: 'smoothstep' as EdgeStyleType, label: 'Smooth Step', path: 'M2 10 L2 4 Q2 2 4 2 L16 2 Q18 2 18 4 L18 10' },
+                ]).map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setEdgeStyle(opt.value)}
+                    className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] font-medium transition-colors cursor-pointer ${
+                      edgeStyle === opt.value
+                        ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-300 dark:bg-brand-900/30 dark:text-brand-300 dark:ring-brand-600'
+                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <svg width="20" height="12" viewBox="0 0 20 12" fill="none" className="shrink-0">
+                      <path d={opt.path} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                    </svg>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
             {onToggleFocusMode && (
               <DropdownItem

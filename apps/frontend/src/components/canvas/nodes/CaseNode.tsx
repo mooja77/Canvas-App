@@ -4,6 +4,7 @@ import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { useCanvasStore, useCanvasCases, useCanvasTranscripts } from '../../../stores/canvasStore';
 import { useUIStore } from '../../../stores/uiStore';
+import CrossCanvasRefBadge from '../CrossCanvasRefBadge';
 import ConfirmDialog from '../ConfirmDialog';
 import type { CanvasCase, CanvasTranscript } from '@qualcanvas/shared';
 
@@ -81,7 +82,8 @@ function CaseNode({ data, id, selected }: NodeProps) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
+          <CrossCanvasRefBadge nodeId={id} />
           <button
             onClick={() => setCollapsed(c => !c)}
             className="rounded p-0.5 text-teal-400 hover:text-teal-600 dark:hover:text-teal-300"

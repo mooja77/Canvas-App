@@ -9,6 +9,7 @@ import CodingSegmentPopover from '../panels/CodingSegmentPopover';
 import CodingStripesOverlay from '../panels/CodingStripesOverlay';
 import CodingDensityBar from '../CodingDensityBar';
 import TranscriptContextMenu from '../TranscriptContextMenu';
+import CrossCanvasRefBadge from '../CrossCanvasRefBadge';
 import ConfirmDialog from '../ConfirmDialog';
 import type { CanvasTextCoding, CanvasQuestion, CanvasCase } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
@@ -322,7 +323,8 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
+          <CrossCanvasRefBadge nodeId={id} />
           {collapsed && codings.length > 0 && (
             <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
               {codings.length} coding{codings.length !== 1 ? 's' : ''}
