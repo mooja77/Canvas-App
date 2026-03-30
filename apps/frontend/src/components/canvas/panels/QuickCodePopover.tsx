@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from 'react';
+import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useCanvasStore, useCanvasQuestions, useCanvasCodings } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding } from '@qualcanvas/shared';
@@ -51,6 +51,15 @@ export default function QuickCodePopover({
     return new Set(ids);
   }, [codings, transcriptId]);
 
+  // Coding frequency per question (how many times each code has been used)
+  const codingFrequency = useMemo(() => {
+    const freq = new Map<string, number>();
+    for (const c of codings) {
+      freq.set(c.questionId, (freq.get(c.questionId) || 0) + 1);
+    }
+    return freq;
+  }, [codings]);
+
   // Filtered and sorted questions
   const filteredQuestions = useMemo(() => {
     let result = questions;
@@ -67,12 +76,32 @@ export default function QuickCodePopover({
     });
   }, [questions, search, recentQuestionIds]);
 
+  const handleCodeToQuestion = useCallback(async (questionId: string, questionText: string) => {
+    try {
+      await createCoding(transcriptId, questionId, startOffset, endOffset, codedText);
+      window.getSelection()?.removeAllRanges();
+      toast.success(`Coded to "${questionText.slice(0, 30)}${questionText.length > 30 ? '...' : ''}"`);
+      onClose();
+    } catch {
+      toast.error('Failed to code text');
+    }
+  }, [createCoding, transcriptId, startOffset, endOffset, codedText, onClose]);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as HTMLElement)) onClose();
     };
     const keyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
+      // Number keys 1-9 for quick assignment (only when search input is not focused)
+      const num = parseInt(e.key);
+      if (num >= 1 && num <= 9 && document.activeElement !== searchRef.current) {
+        const idx = num - 1;
+        if (idx < filteredQuestions.length) {
+          const q = filteredQuestions[idx];
+          handleCodeToQuestion(q.id, q.text);
+        }
+      }
     };
     // Delay adding listener to avoid immediate close from the mouseup that triggered this
     const timeout = setTimeout(() => {
@@ -84,7 +113,7 @@ export default function QuickCodePopover({
       document.removeEventListener('mousedown', handler);
       document.removeEventListener('keydown', keyHandler);
     };
-  }, [onClose]);
+  }, [onClose, filteredQuestions, handleCodeToQuestion]);
 
   // Focus search on open if there are questions
   useEffect(() => {
@@ -92,17 +121,6 @@ export default function QuickCodePopover({
       setTimeout(() => searchRef.current?.focus(), 100);
     }
   }, [questions.length]);
-
-  const handleCodeToQuestion = async (questionId: string, questionText: string) => {
-    try {
-      await createCoding(transcriptId, questionId, startOffset, endOffset, codedText);
-      window.getSelection()?.removeAllRanges();
-      toast.success(`Coded to "${questionText.slice(0, 30)}${questionText.length > 30 ? '...' : ''}"`);
-      onClose();
-    } catch {
-      toast.error('Failed to code text');
-    }
-  };
 
   const handleCodeInVivo = async () => {
     try {
@@ -190,23 +208,34 @@ export default function QuickCodePopover({
         {filteredQuestions.length > 0 && (
           <div className="px-2 pb-1">
             <div className="max-h-[200px] overflow-y-auto space-y-0.5">
-              {filteredQuestions.map((q: CanvasQuestion) => {
+              {filteredQuestions.map((q: CanvasQuestion, idx: number) => {
                 const isRecent = recentQuestionIds.has(q.id);
+                const freq = codingFrequency.get(q.id) || 0;
                 return (
                   <button
                     key={q.id}
                     onClick={() => handleCodeToQuestion(q.id, q.text)}
-                    className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-all duration-75 group ${
+                    className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-all duration-75 group ${
                       isRecent
                         ? 'bg-gray-50/80 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/60'
                         : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
                     }`}
                   >
+                    {/* Number key hint (1-9) */}
+                    {idx < 9 && (
+                      <span className="text-[9px] text-gray-400 dark:text-gray-500 font-mono w-3 shrink-0 text-center">{idx + 1}</span>
+                    )}
+                    {idx >= 9 && <span className="w-3 shrink-0" />}
+                    {/* Colored dot */}
                     <div
-                      className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white dark:ring-gray-800 transition-transform group-hover:scale-110"
+                      className="h-2.5 w-2.5 shrink-0 rounded-full transition-transform group-hover:scale-110"
                       style={{ backgroundColor: q.color }}
                     />
                     <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">{q.text}</span>
+                    {/* Frequency count */}
+                    {freq > 0 && (
+                      <span className="text-[9px] text-gray-400 dark:text-gray-500 font-mono shrink-0 tabular-nums">{freq}</span>
+                    )}
                     {isRecent && (
                       <span className="text-[8px] text-gray-400 dark:text-gray-500 uppercase tracking-wider shrink-0">recent</span>
                     )}

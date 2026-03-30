@@ -234,6 +234,7 @@ export default function NodeContextMenu({
       <button onClick={() => { onToggleCollapse(); onClose(); }} className={btnClass}>
         <Icon d={collapsed ? icons.expand : icons.collapse} />
         {collapsed ? 'Expand' : 'Collapse'}
+        <span className={kbdClass}>C</span>
       </button>
       <button onClick={() => { onResetSize(); onClose(); }} className={btnClass}>
         <Icon d={icons.resetSize} />

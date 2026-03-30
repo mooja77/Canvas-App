@@ -175,7 +175,7 @@ export default function CanvasContextMenu({
         <button onClick={() => { onToggleSnapGrid(); onClose(); }} className={btnClass}>
           <Icon d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-12.75m0 0A1.125 1.125 0 0 1 3.375 4.5h7.5c.621 0 1.125.504 1.125 1.125m-9.75 0h9.75m0 0v12.75" />
           Toggle Grid Snap
-          {snapToGrid && <span className="ml-auto text-blue-500 text-[10px]">ON</span>}
+          {snapToGrid && <span className="ml-auto text-blue-500 text-[10px] font-mono">ON</span>}
           {!snapToGrid && <span className={kbdClass}>G</span>}
         </button>
         <button onClick={() => { onShowShortcuts(); onClose(); }} className={btnClass}>

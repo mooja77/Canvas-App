@@ -164,6 +164,7 @@ export default function CanvasWorkspace() {
   const selectedQuestionId = useSelectedQuestionId();
   const scrollMode = useUIStore(s => s.scrollMode);
   const setScrollMode = useUIStore(s => s.setScrollMode);
+  const darkMode = useUIStore(s => s.darkMode);
 
   // Individual action selectors
   const {
@@ -240,7 +241,7 @@ export default function CanvasWorkspace() {
   const [contextMenu, setContextMenu] = useState<{ show: boolean; x: number; y: number } | null>(null);
   const [nodeContextMenu, setNodeContextMenu] = useState<{ show: boolean; x: number; y: number; nodeId: string; nodeType: string; collapsed: boolean } | null>(null);
   const [edgeContextMenu, setEdgeContextMenu] = useState<{ show: boolean; x: number; y: number; edgeId: string; edgeType: string; label?: string } | null>(null);
-  const [quickAddMenu, setQuickAddMenu] = useState<{ x: number; y: number } | null>(null);
+  const [quickAddMenu, setQuickAddMenu] = useState<{ x: number; y: number; flowX: number; flowY: number } | null>(null);
   const [_smartLinkSource, setSmartLinkSource] = useState<{ nodeId: string; nodeType: string } | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
   const zoomLevelRef = useRef(zoomLevel);
@@ -775,7 +776,10 @@ export default function CanvasWorkspace() {
       }
 
       setSmartLinkSource(sourceInfo);
-      setQuickAddMenu({ x: clientX, y: clientY });
+      const viewport = rfInstanceRef.current?.getViewport();
+      const smartFlowX = viewport ? (clientX - viewport.x) / viewport.zoom : clientX;
+      const smartFlowY = viewport ? (clientY - viewport.y) / viewport.zoom : clientY;
+      setQuickAddMenu({ x: clientX, y: clientY, flowX: smartFlowX, flowY: smartFlowY });
       // Store allowed items in a ref so QuickAddMenu can use it
       smartLinkAllowedRef.current = allowedItems || null;
     },
@@ -1114,7 +1118,10 @@ export default function CanvasWorkspace() {
     const dx = Math.abs(event.clientX - last.x);
     const dy = Math.abs(event.clientY - last.y);
     if (now - last.time < 400 && dx < 10 && dy < 10) {
-      setQuickAddMenu({ x: event.clientX, y: event.clientY });
+      const viewport = rfInstanceRef.current?.getViewport();
+      const flowX = viewport ? (event.clientX - viewport.x) / viewport.zoom : event.clientX;
+      const flowY = viewport ? (event.clientY - viewport.y) / viewport.zoom : event.clientY;
+      setQuickAddMenu({ x: event.clientX, y: event.clientY, flowX, flowY });
       lastPaneClickRef.current = { time: 0, x: 0, y: 0 };
       return;
     }
@@ -1235,29 +1242,38 @@ export default function CanvasWorkspace() {
     toast('Use the Transcript button in the toolbar to add transcripts', { icon: '\u2139\uFE0F' });
   }, []);
 
-  const handleQuickAddQuestion = useCallback(async () => {
+  const handleQuickAddQuestion = useCallback(async (flowPos?: { x: number; y: number }) => {
     try {
-      await addQuestion('New question — double-click to edit');
+      const question = await addQuestion('New question — double-click to edit');
+      if (flowPos) {
+        await saveLayout([{ id: '', canvasId: '', nodeId: `question-${question.id}`, nodeType: 'question', x: flowPos.x, y: flowPos.y }]);
+      }
       toast.success('Question added');
       setTimeout(() => pushHistorySnapshot(), 300);
     } catch { toast.error('Failed to add question'); }
-  }, [addQuestion, pushHistorySnapshot]);
+  }, [addQuestion, saveLayout, pushHistorySnapshot]);
 
-  const handleQuickAddMemo = useCallback(async () => {
+  const handleQuickAddMemo = useCallback(async (flowPos?: { x: number; y: number }) => {
     try {
-      await addMemo('New memo — click to edit');
+      const memo = await addMemo('New memo — click to edit');
+      if (flowPos) {
+        await saveLayout([{ id: '', canvasId: '', nodeId: `memo-${memo.id}`, nodeType: 'memo', x: flowPos.x, y: flowPos.y }]);
+      }
       toast.success('Memo added');
       setTimeout(() => pushHistorySnapshot(), 300);
     } catch { toast.error('Failed to add memo'); }
-  }, [addMemo, pushHistorySnapshot]);
+  }, [addMemo, saveLayout, pushHistorySnapshot]);
 
-  const handleQuickAddComputed = useCallback(async (type: ComputedNodeType, label: string) => {
+  const handleQuickAddComputed = useCallback(async (type: ComputedNodeType, label: string, flowPos?: { x: number; y: number }) => {
     try {
-      await addComputedNode(type, label);
+      const node = await addComputedNode(type, label);
+      if (flowPos) {
+        await saveLayout([{ id: '', canvasId: '', nodeId: `computed-${node.id}`, nodeType: 'computed', x: flowPos.x, y: flowPos.y }]);
+      }
       toast.success(`${label} node added`);
       setTimeout(() => pushHistorySnapshot(), 300);
     } catch { toast.error('Failed to add node'); }
-  }, [addComputedNode, pushHistorySnapshot]);
+  }, [addComputedNode, saveLayout, pushHistorySnapshot]);
 
   // Create visual group from selected nodes (Ctrl+G)
   const handleCreateGroup = useCallback(() => {
@@ -1710,7 +1726,7 @@ export default function CanvasWorkspace() {
             edgesReconnectable
             zoomOnScroll={scrollMode === 'zoom'}
             panOnScroll={scrollMode === 'pan'}
-            zoomOnDoubleClick
+            zoomOnDoubleClick={false}
             panActivationKeyCode="Space"
             fitView
             fitViewOptions={FIT_VIEW_OPTIONS}
@@ -1721,11 +1737,21 @@ export default function CanvasWorkspace() {
             proOptions={PRO_OPTIONS}
           >
             <Background
-              variant={snapToGrid ? BackgroundVariant.Lines : BackgroundVariant.Dots}
-              gap={snapToGrid ? 20 : 24}
-              size={snapToGrid ? 0.5 : 0.8}
-              color={snapToGrid ? '#d1d5db60' : '#d1d5db40'}
+              id="bg-dots"
+              variant={BackgroundVariant.Dots}
+              gap={24}
+              size={0.8}
+              color={darkMode ? '#2a2f3d' : '#e2e8f0'}
             />
+            {snapToGrid && (
+              <Background
+                id="bg-grid"
+                variant={BackgroundVariant.Dots}
+                gap={100}
+                size={1.5}
+                color={darkMode ? '#2a2f3d' : '#e2e8f0'}
+              />
+            )}
             {!focusMode && <Controls fitViewOptions={FIT_VIEW_OPTIONS} className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700" />}
             {!focusMode && <MiniMap
               nodeColor={minimapColor}
@@ -1861,18 +1887,11 @@ export default function CanvasWorkspace() {
               x={quickAddMenu.x}
               y={quickAddMenu.y}
               onAddTranscript={handleQuickAddTranscript}
-              onAddQuestion={handleQuickAddQuestion}
-              onAddMemo={handleQuickAddMemo}
-              onAddComputedNode={handleQuickAddComputed}
+              onAddQuestion={() => handleQuickAddQuestion({ x: quickAddMenu.flowX, y: quickAddMenu.flowY })}
+              onAddMemo={() => handleQuickAddMemo({ x: quickAddMenu.flowX, y: quickAddMenu.flowY })}
+              onAddComputedNode={(type, label) => handleQuickAddComputed(type, label, { x: quickAddMenu.flowX, y: quickAddMenu.flowY })}
               onAddStickyNote={() => {
-                const viewport = rfInstanceRef.current?.getViewport();
-                if (viewport) {
-                  const x = (quickAddMenu.x - viewport.x) / viewport.zoom;
-                  const y = (quickAddMenu.y - viewport.y) / viewport.zoom;
-                  addStickyNote(x, y);
-                } else {
-                  addStickyNote(quickAddMenu.x, quickAddMenu.y);
-                }
+                addStickyNote(quickAddMenu.flowX, quickAddMenu.flowY);
               }}
               onClose={() => { setQuickAddMenu(null); setSmartLinkSource(null); smartLinkAllowedRef.current = null; }}
               allowedItems={smartLinkAllowedRef.current || undefined}
