@@ -1124,3 +1124,15 @@ The admin portal (`adminRoutes.ts`) does not introduce new database models. Inst
 | `GET /admin/health` | Raw SQL (`SELECT 1`) for connectivity check |
 | `GET /admin/activity` | AuditLog, User (email lookup) |
 | `GET /admin/features` | CanvasComputedNode, AiUsage |
+
+---
+
+## 10. Client-Side Data (No Schema Changes)
+
+### Cross-Canvas References
+
+Cross-canvas reference links (Phase 4 UX feature) are stored entirely in the browser via `localStorage`, not in the database. The implementation lives in `apps/frontend/src/lib/crossCanvasRefs.ts`.
+
+**Storage key:** `qualcanvas-cross-refs`
+
+This design means cross-canvas refs are per-browser and do not sync between users or devices. A future iteration could persist them to the database if needed, but the current 37-model schema remains unchanged.

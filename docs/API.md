@@ -27,6 +27,8 @@ Base URL: `/api` (also available at `/api/v1`)
 
 **Plan header:** Authenticated responses include the `X-User-Plan` response header for client-side plan sync.
 
+**Note:** The canvas UX improvements (Phases 1-4: smart placement, edge bundling, alignment guides, cross-canvas refs, etc.) are entirely frontend features. No new API endpoints were added for these features. Cross-canvas references use localStorage rather than a backend API.
+
 ---
 
 ## 1. Auth — Legacy Access Code

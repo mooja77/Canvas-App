@@ -156,7 +156,7 @@ qualcanvas/
 │   ├── types/
 │   │   └── canvas.types.ts            # ~370 lines of shared interfaces
 │   └── package.json
-├── e2e/                               # Playwright E2E tests (23 spec files)
+├── e2e/                               # Playwright E2E tests (39 spec files)
 ├── docs/
 │   ├── API.md                         # REST API reference
 │   ├── DEPLOY.md                      # Deployment guide
@@ -427,13 +427,41 @@ Components use granular Zustand selector hooks (migrated in commit `95c0449`).
 | `useCanvasGroups` | `hooks/useCanvasGroups.ts` | Visual node grouping |
 | `useCanvasStickyNotes` | `hooks/useCanvasStickyNotes.ts` | Sticky note CRUD |
 | `useCanvasRerouteNodes` | `hooks/useCanvasRerouteNodes.ts` | Edge reroute waypoints |
+| `useAlignmentGuides` | `hooks/useAlignmentGuides.ts` | Snap-line alignment guides for node placement |
 | `useCodeBookmarks` | `hooks/useCodeBookmarks.ts` | Code bookmark management |
 | `useContainerSize` | `hooks/useContainerSize.ts` | Responsive container dimensions |
 | `useNodeColors` | `hooks/useNodeColors.ts` | Node color management |
 | `useSessionTimeout` | `hooks/useSessionTimeout.ts` | Auto-logout on session expiry |
 | `usePageMeta` | `hooks/usePageMeta.ts` | Dynamic page title, description, canonical URL, OG tags |
 
-### 5.4 Canvas Node Types (21 Total)
+### 5.4 Canvas UX Architecture (ComfyUI-Inspired)
+
+The canvas uses a ComfyUI-inspired UX with 20 enhancements across 4 phases:
+
+**Phase 1 — Smart Placement:** Nodes placed at cursor position, fuzzy-search QuickAddMenu with recent nodes and keyboard navigation, keyboard shortcuts shown in context menus, grid dot background, hover lift effect, selection glow, number-key shortcuts in QuickCodePopover.
+
+**Phase 2 — Visual Polish:** Dark mode deep blue-black (`#0d1117`), connection line preview (`ConnectionLine.tsx`), arrow key panning, loading shimmer animation, coverage bar in TranscriptNode, improved minimap with semi-transparent styling.
+
+**Phase 3 — Power Features:** Edge bundling for coding density visualization (in `CodingEdge`), alignment guides with snap lines (`useAlignmentGuides` hook), animated edge direction indicator dots.
+
+**Phase 4 — Advanced:** Edge style toggle with SVG previews, paste-with-connections, annotation bubbles on edges, cross-canvas reference links (`CrossCanvasRefBadge.tsx` + `lib/crossCanvasRefs.ts`, localStorage-based).
+
+**New Components:**
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| `ConnectionLine` | `edges/ConnectionLine.tsx` | Animated connection preview line during edge creation |
+| `CrossCanvasRefBadge` | `canvas/CrossCanvasRefBadge.tsx` | Badge linking to nodes in other canvases |
+
+**New Libraries:**
+
+| File | Purpose |
+|------|---------|
+| `lib/crossCanvasRefs.ts` | localStorage-based cross-canvas reference storage (no DB schema needed) |
+
+**CSS Fix (index.css):** `visibility: visible !important` on `.react-flow__node` — React Flow v12 hides nodes with `visibility:hidden` until ResizeObserver reports dimensions; in some environments the measurement cycle stalls, leaving nodes permanently invisible.
+
+### 5.5 Canvas Node Types (21 Total)
 
 Defined in `CanvasWorkspace.tsx`:
 
@@ -468,7 +496,7 @@ Defined in `CanvasWorkspace.tsx`:
 | `document` | `DocumentNode` | PDF/image document viewer |
 | `documentportrait` | `DocumentPortraitNode` | Document portrait visualization |
 
-### 5.5 Build Configuration
+### 5.6 Build Configuration
 
 Vite config (`apps/frontend/vite.config.ts`):
 - **PWA**: Auto-update service worker, NetworkFirst API caching (5min TTL, 50 entries)
@@ -771,7 +799,7 @@ push/PR to main
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │  Type Check   │────▶│  Unit Tests   │────▶│  E2E Tests   │
 │  (tsc -b)     │     │  (vitest)     │     │  (Playwright) │
-│               │     │  570 + 333    │     │  ~257 tests   │
+│               │     │  570 + 333    │     │  ~564 tests   │
 │  ubuntu-latest│     │  SQLite test  │     │  Chromium     │
 │  Node 20      │     │  DB           │     │  Artifacts on │
 │               │     │               │     │  failure      │
@@ -790,8 +818,8 @@ All jobs use `ubuntu-latest` with Node 20 and npm caching. E2E test failures upl
 |-------|-----------|-------|----------|
 | Backend unit | Vitest | 570 | `apps/backend/src/**/*.test.ts` |
 | Frontend unit | Vitest + Testing Library | 333 | `apps/frontend/src/**/*.test.ts` |
-| E2E | Playwright | ~257 | `e2e/` (23 spec files) |
-| **Total** | | **~1,160** | |
+| E2E | Playwright | ~564 | `e2e/` (39 spec files) |
+| **Total** | | **~1,467** | |
 
 ### 10.2 Test Infrastructure
 
@@ -930,7 +958,7 @@ npm run lint
 | `npm run build` | Full production build (shared -> backend -> frontend) |
 | `npm start` | Start production server (from apps/backend) |
 | `npm test` | Run all unit tests (570 backend + 333 frontend) |
-| `npm run test:e2e` | Run E2E tests (Chromium, ~257 tests) |
+| `npm run test:e2e` | Run E2E tests (Chromium, ~564 tests) |
 | `npm run test:e2e:all` | Run E2E tests on all browsers |
 | `npm run test:e2e:firefox` | Run E2E tests on Firefox |
 | `npm run test:e2e:webkit` | Run E2E tests on WebKit |

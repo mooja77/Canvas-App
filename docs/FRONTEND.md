@@ -592,7 +592,30 @@ useMobile(breakpoint = 768): boolean
 
 ---
 
-### 3.9 useCanvasGroups (`useCanvasGroups.ts`, 100+ lines)
+### 3.9 useAlignmentGuides (`useAlignmentGuides.ts`, ~130 lines)
+
+**Purpose:** Provides snap-line alignment guides for node placement (Phase 3 UX).
+
+**Return:**
+```typescript
+{
+  guides: AlignmentGuide[]
+  updateGuides: (draggingNodeId: string, nodes: Node[]) => void
+  clearGuides: () => void
+  snapPosition: (pos: { x: number, y: number }, threshold?: number) => { x: number, y: number }
+}
+```
+
+**Behavior:**
+- Computes horizontal and vertical alignment guides relative to other nodes
+- Snaps dragged node position when within threshold (default 5px)
+- Renders visual guide lines (dashed, colored) on the canvas during drag
+- Supports center, left, right, top, bottom edge alignment
+- Guides are cleared when drag ends
+
+---
+
+### 3.10 useCanvasGroups (`useCanvasGroups.ts`, 100+ lines)
 
 **Return:**
 ```typescript
@@ -623,7 +646,7 @@ useMobile(breakpoint = 768): boolean
 
 ---
 
-### 3.10 useFileUpload (`useFileUpload.ts`, 53 lines)
+### 3.11 useFileUpload (`useFileUpload.ts`, 53 lines)
 
 **Return:**
 ```typescript
@@ -646,7 +669,7 @@ useMobile(breakpoint = 768): boolean
 
 ---
 
-### 3.11 useCanvasBookmarks (`useCanvasBookmarks.ts`)
+### 3.12 useCanvasBookmarks (`useCanvasBookmarks.ts`)
 
 **Slots:** 5 viewport bookmarks (keyed by canvas)
 ```typescript
@@ -660,7 +683,7 @@ useMobile(breakpoint = 768): boolean
 
 ---
 
-### 3.12 useNodeColors (`useNodeColors.ts`)
+### 3.13 useNodeColors (`useNodeColors.ts`)
 
 ```typescript
 {
@@ -673,7 +696,7 @@ Persists in localStorage per canvas.
 
 ---
 
-### 3.13 useCanvasStickyNotes (`useCanvasStickyNotes.ts`)
+### 3.14 useCanvasStickyNotes (`useCanvasStickyNotes.ts`)
 
 ```typescript
 {
@@ -1146,6 +1169,11 @@ function withErrorBoundary(NodeComponent) {
    - **Trigger:** Canvas double-click or toolbar button
    - **Options:** Select node type to add
    - **Position:** Popup at click location
+   - **Enhancements (Phase 1 UX):**
+     - Fuzzy search filtering of node types
+     - Recent nodes section (last 5 used types)
+     - Full keyboard navigation (arrow keys + Enter)
+     - Nodes placed at cursor position (not canvas center)
 
 8. **CanvasSearchOverlay** (`CanvasSearchOverlay.tsx`)
    - **Trigger:** Ctrl+F or toolbar search
@@ -1208,6 +1236,7 @@ function withErrorBoundary(NodeComponent) {
   - Appears when text selected in transcript
   - Shows available codes to assign
   - Click code → create coding with selected text
+  - **Enhancements (Phase 1 UX):** Number key shortcuts (1-9) for quick code assignment, frequency indicators showing coding count per code
 
 - **CodingSegmentPopover** (`CodingSegmentPopover.tsx`)
   - Shows on hover over coded segment
@@ -1792,9 +1821,68 @@ All methods pass the admin key via the `x-admin-key` request header.
 
 ---
 
+## CANVAS UX IMPROVEMENTS (ComfyUI-Inspired, 20 Items)
+
+### CSS Fixes
+
+- **React Flow v12 visibility fix:** `visibility: visible !important` on `.react-flow__node` in `index.css` — prevents nodes from being permanently hidden when ResizeObserver measurement cycle stalls
+- **Canvas container `h-full`:** Ensures the canvas fills its parent container correctly
+- **Stale tabs cleanup:** localStorage tab IDs for deleted canvases are cleaned on canvas list fetch
+
+### Phase 1 — Smart Placement & Quick Access
+
+1. **Smart node placement at cursor** — new nodes placed at mouse position, not canvas center
+2. **Fuzzy search in QuickAddMenu** — type to filter node types
+3. **Recent nodes in QuickAddMenu** — shows last 5 used node types
+4. **Keyboard navigation in QuickAddMenu** — arrow keys + Enter
+5. **Shortcuts shown in context menus** — keyboard shortcut hints next to actions
+6. **Grid dots background** — `BackgroundVariant.Dots` (subtler than lines)
+7. **Hover lift effect** — CSS transform + box-shadow on `.react-flow__node` hover
+8. **Selection glow** — Blue glow on selected nodes via CSS
+9. **QuickCodePopover number keys** — Press 1-9 to assign codes, frequency indicators
+
+### Phase 2 — Visual Polish
+
+10. **Dark mode deep blue-black** — `#0d1117` background for dark canvas
+11. **Connection line preview** — `ConnectionLine.tsx` shows animated dashed line during edge creation
+12. **Arrow key panning** — Arrow keys pan the viewport
+13. **Loading shimmer** — CSS shimmer animation on loading states
+14. **Coverage bar** — Coding density visualization bar in TranscriptNode
+15. **Improved minimap** — Semi-transparent styling with better contrast
+
+### Phase 3 — Power Features
+
+16. **Edge bundling** — `CodingEdge` bundles parallel edges for coding density visualization
+17. **Alignment guides** — `useAlignmentGuides` hook provides snap lines when dragging nodes
+18. **Animated edge direction dots** — CSS-animated dots flowing along edges to show direction
+
+### Phase 4 — Advanced Features
+
+19. **Edge style toggle with SVG previews** — UI to switch between Bezier/straight/step/smoothstep with visual previews
+20. **Paste with connections** — Pasted nodes preserve their edge connections
+21. **Annotation bubbles on edges** — Floating labels on relation edges
+22. **Cross-canvas reference links** — `CrossCanvasRefBadge.tsx` + `lib/crossCanvasRefs.ts` (localStorage-based, no DB schema)
+
+### New Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| `ConnectionLine` | `components/canvas/edges/ConnectionLine.tsx` | Animated dashed connection preview during edge creation |
+| `CrossCanvasRefBadge` | `components/canvas/CrossCanvasRefBadge.tsx` | Badge/link to nodes in other canvases |
+
+### New Libraries
+
+| File | Purpose |
+|------|---------|
+| `lib/crossCanvasRefs.ts` | CRUD for cross-canvas references in localStorage |
+
+---
+
 ## E2E TEST COVERAGE
 
-The frontend is covered by ~257 Playwright E2E tests across 23 spec files. The 7 canvas-specific E2E test suites added most recently are:
+The frontend is covered by ~564 Playwright E2E tests across 39 spec files.
+
+### Canvas-Specific E2E Suites
 
 | Suite | File | Focus |
 |-------|------|-------|
@@ -1806,7 +1894,33 @@ The frontend is covered by ~257 Playwright E2E tests across 23 spec files. The 7
 | Canvas Toolbar | `canvas-toolbar-full.spec.ts` | Toolbar actions, panels, mode toggles |
 | Canvas Workspace | `canvas-workspace-full.spec.ts` | Workspace layout, zoom, pan, node interactions |
 
-Total test counts: 570 backend + 333 frontend + ~257 E2E = ~1,160 total.
+### UX Phase E2E Suites (49 tests)
+
+| Suite | File | Focus |
+|-------|------|-------|
+| UX Phase 1 | `ux-phase1-placement.spec.ts` | Smart placement, fuzzy search, keyboard nav, grid dots |
+| UX Phase 2 | `ux-phase2-polish.spec.ts` | Dark mode, connection preview, arrow panning, shimmer |
+| UX Phase 3 | `ux-phase3-power.spec.ts` | Edge bundling, alignment guides, animated dots |
+| UX Phase 4 | `ux-phase4-advanced.spec.ts` | Edge toggle, paste connections, annotations, cross-refs |
+
+### Researcher Workflow Scenario Suites (262 tests)
+
+| Suite | File | Focus |
+|-------|------|-------|
+| Scenario A | `scenario-a-healthcare-thematic.spec.ts` | Healthcare thematic analysis workflow (56 tests) |
+| Scenario B | `scenario-b-grounded-theory.spec.ts` | Grounded theory methodology (27 tests) |
+| Scenario C | `scenario-c-cross-case.spec.ts` | Cross-case comparison (18 tests) |
+| Scenario D | `scenario-d-ethics.spec.ts` | Ethics review workflow (20 tests) |
+| Scenario E | `scenario-e-intercoder.spec.ts` | Intercoder reliability (14 tests) |
+| Scenario F | `scenario-f-mixed-methods.spec.ts` | Mixed methods research (12 tests) |
+| Scenario G | `scenario-g-emergent-coding.spec.ts` | Emergent coding workflow (18 tests) |
+| Scenario H | `scenario-h-export.spec.ts` | Export workflows (14 tests) |
+| Scenario I | `scenario-i-workspace.spec.ts` | Workspace management (22 tests) |
+| Scenario J | `scenario-j-stress.spec.ts` | Stress/load testing (26 tests) |
+| Scenario K | `scenario-k-training.spec.ts` | Training exercises (10 tests) |
+| Scenario L | `scenario-l-visual-canvas.spec.ts` | Visual canvas operations (25 tests) |
+
+Total test counts: 570 backend + 333 frontend + ~564 E2E = ~1,467 total.
 
 ---
 

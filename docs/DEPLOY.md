@@ -57,7 +57,7 @@ npm run dev
 | `npm run db:migrate` | Run Prisma migrations |
 | `npm run db:seed` | Seed demo data (access code: `CANVAS-DEMO2025`) |
 | `npm test` | Run all unit tests (570 backend + 333 frontend) |
-| `npm run test:e2e` | Run ~257 Playwright E2E tests (Chromium, 23 spec files) |
+| `npm run test:e2e` | Run ~564 Playwright E2E tests (Chromium, 39 spec files) |
 | `npm run test:e2e:all` | Run E2E tests across all browsers |
 | `npm run test:e2e:firefox` | Run E2E tests on Firefox |
 | `npm run test:e2e:webkit` | Run E2E tests on WebKit |
@@ -351,7 +351,7 @@ GitHub Actions runs on every push to `main` and every pull request targeting `ma
 - Depends on: Unit Tests
 - Installs Chromium via Playwright
 - Generates Prisma client, runs migrations, and seeds test data
-- Runs `npm run test:e2e` (~257 Playwright tests across 23 spec files)
+- Runs `npm run test:e2e` (~564 Playwright tests across 39 spec files)
 - On failure: uploads `test-results/` as an artifact (retained 7 days)
 
 ### Pipeline Summary
@@ -450,6 +450,9 @@ These are included in the backend `package.json` and installed automatically wit
 | Registration disabled | `REGISTRATION_ENABLED` defaults to `false` | Set `REGISTRATION_ENABLED=true` in production env vars |
 | WebSocket connection fails | `VITE_WS_URL` not set or wrong | Set `VITE_WS_URL=wss://your-railway-url.up.railway.app` on Vercel |
 | E2E tests fail locally | Playwright browsers not installed | Run `npx playwright install --with-deps chromium` |
+| Canvas nodes invisible | React Flow v12 measurement stall | CSS fix applied: `visibility: visible !important` on `.react-flow__node` in `index.css`. If nodes still don't render, ensure the canvas container has `h-full` class |
+| Stale frontend after deploy | Vercel CDN chunk caching | Clear Vercel CDN cache in dashboard, or redeploy. Users may need hard refresh (Ctrl+Shift+R) to pick up new JS chunks |
+| Stale canvas tabs after deletion | localStorage retains deleted canvas tab IDs | Fixed in code: tab cleanup runs on canvas list fetch, removing tabs for deleted canvases |
 
 ### Verifying a Deployment
 
