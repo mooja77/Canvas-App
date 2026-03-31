@@ -82,14 +82,14 @@ collaborationRoutes.get('/canvas/:id/collaborators', validateParams(canvasIdPara
     });
 
     // Enrich with user names
-    const userIds = collaborators.map(c => c.userId);
+    const userIds = collaborators.map((c: any) => c.userId);
     const users = await prisma.user.findMany({
       where: { id: { in: userIds } },
       select: { id: true, name: true, email: true },
     });
-    const userMap = new Map(users.map(u => [u.id, u]));
+    const userMap = new Map(users.map((u: any) => [u.id, u]));
 
-    const enriched = collaborators.map(c => ({
+    const enriched = collaborators.map((c: any) => ({
       ...c,
       userName: userMap.get(c.userId)?.name || 'Unknown',
       userEmail: userMap.get(c.userId)?.email || '',

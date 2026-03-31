@@ -111,7 +111,7 @@ computedRoutes.post('/canvas/:id/computed/:nodeId/run', validateParams(canvasCom
         select: { id: true, name: true, attributes: true },
       }),
     ]);
-    const cases = rawCases.map(c => ({ ...c, attributes: safeJsonParse(c.attributes) }));
+    const cases = rawCases.map((c: any) => ({ ...c, attributes: safeJsonParse(c.attributes) }));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let result: any = {};
@@ -128,7 +128,7 @@ computedRoutes.post('/canvas/:id/computed/:nodeId/run', validateParams(canvasCom
           transcripts,
           questions,
           codings,
-          cases.map(c => ({ ...c, attributes: safeJsonParse(c.attributes) })),
+          cases.map((c: any) => ({ ...c, attributes: safeJsonParse(c.attributes) })),
           config.questionIds,
           config.caseIds,
         );
@@ -154,7 +154,7 @@ computedRoutes.post('/canvas/:id/computed/:nodeId/run', validateParams(canvasCom
       case 'treemap':
         result = computeTreemap(
           codings,
-          questions.map(q => ({ ...q, parentQuestionId: q.parentQuestionId })),
+          questions.map((q: any) => ({ ...q, parentQuestionId: q.parentQuestionId })),
           config.metric || 'count',
           config.questionIds,
         );
@@ -176,7 +176,7 @@ computedRoutes.post('/canvas/:id/computed/:nodeId/run', validateParams(canvasCom
           where: { canvasId: req.params.id, deletedAt: null },
         });
         result = {
-          points: geoTranscripts.map(t => ({
+          points: geoTranscripts.map((t: any) => ({
             transcriptId: t.id,
             title: t.title,
             latitude: t.latitude!,

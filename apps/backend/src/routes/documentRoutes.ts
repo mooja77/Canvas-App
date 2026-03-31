@@ -60,7 +60,7 @@ documentRoutes.get('/canvas/:id/documents', validateParams(canvasIdParam), async
 
     res.json({
       success: true,
-      data: documents.map(d => ({ ...d, metadata: safeJsonParse(d.metadata) })),
+      data: documents.map((d: any) => ({ ...d, metadata: safeJsonParse(d.metadata) })),
     });
   } catch (err) { next(err); }
 });

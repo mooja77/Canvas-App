@@ -261,8 +261,8 @@ canvasPublicRoutes.get('/canvas/shared/:code', validateParams(shareCodeParam), a
 
     const data = {
       ...canvas,
-      cases: canvas.cases.map(c => ({ ...c, attributes: safeJsonParse(c.attributes) })),
-      computedNodes: canvas.computedNodes.map(n => ({
+      cases: canvas.cases.map((c: any) => ({ ...c, attributes: safeJsonParse(c.attributes) })),
+      computedNodes: canvas.computedNodes.map((n: any) => ({
         ...n,
         config: safeJsonParse(n.config),
         result: safeJsonParse(n.result),

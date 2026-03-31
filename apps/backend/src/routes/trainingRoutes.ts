@@ -63,7 +63,7 @@ trainingRoutes.get('/canvas/:id/training', validateParams(canvasIdParam), async 
 
     res.json({
       success: true,
-      data: docs.map(d => ({
+      data: docs.map((d: any) => ({
         ...d,
         goldCodings: safeJsonParse(d.goldCodings, []),
       })),
@@ -92,7 +92,7 @@ trainingRoutes.get('/canvas/:id/training/:docId', validateParams(canvasIdDocIdPa
       data: {
         ...doc,
         goldCodings: safeJsonParse(doc.goldCodings, []),
-        attempts: doc.attempts.map(a => ({
+        attempts: doc.attempts.map((a: any) => ({
           ...a,
           codings: safeJsonParse(a.codings, []),
         })),
@@ -190,7 +190,7 @@ trainingRoutes.get('/canvas/:id/training/:docId/attempts', validateParams(canvas
 
     res.json({
       success: true,
-      data: attempts.map(a => ({
+      data: attempts.map((a: any) => ({
         ...a,
         codings: safeJsonParse(a.codings, []),
       })),

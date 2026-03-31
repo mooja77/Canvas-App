@@ -31,7 +31,7 @@ exportRoutes.get('/canvas/:id/export/excel', validateParams(canvasIdParam), asyn
       questions: canvas.questions,
       transcripts: canvas.transcripts,
       codings: canvas.codings,
-      cases: canvas.cases.map(c => ({
+      cases: canvas.cases.map((c: any) => ({
         ...c,
         attributes: safeJsonParse(c.attributes),
       })),

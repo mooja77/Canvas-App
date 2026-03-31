@@ -49,9 +49,9 @@ export async function generateReport(
     },
   });
 
-  const reports: ReportData[] = canvases.map(canvas => {
-    const newCodings = canvas.codings.filter(c => c.createdAt >= since);
-    const questionsSummary = canvas.questions.map(q => ({
+  const reports: ReportData[] = canvases.map((canvas: any) => {
+    const newCodings = canvas.codings.filter((c: any) => c.createdAt >= since);
+    const questionsSummary = canvas.questions.map((q: any) => ({
       text: q.text,
       codingCount: q.codings.length,
     })).sort((a: any, b: any) => b.codingCount - a.codingCount).slice(0, 10);
@@ -61,7 +61,7 @@ export async function generateReport(
       newCodingsCount: newCodings.length,
       totalCodingsCount: canvas.codings.length,
       questionsSummary,
-      recentActivity: newCodings.slice(0, 5).map(c => ({
+      recentActivity: newCodings.slice(0, 5).map((c: any) => ({
         action: `Coded: "${c.codedText.substring(0, 60)}${c.codedText.length > 60 ? '...' : ''}"`,
         timestamp: c.createdAt.toISOString(),
       })),
@@ -72,7 +72,7 @@ export async function generateReport(
   const periodLabel = periodDays === 1 ? 'Daily' : periodDays === 7 ? 'Weekly' : 'Monthly';
   const subject = `QualCanvas ${periodLabel} Report — ${new Date().toLocaleDateString()}`;
 
-  const canvasSections = reports.map(r => `
+  const canvasSections = reports.map((r: any) => `
     <div style="margin-bottom:24px;padding:16px;border:1px solid #e5e7eb;border-radius:8px;">
       <h3 style="margin:0 0 8px;color:#1f2937;font-size:16px;">${escapeHtml(r.canvasName)}</h3>
       <div style="display:flex;gap:24px;margin-bottom:12px;">
@@ -92,7 +92,7 @@ export async function generateReport(
       ${r.questionsSummary.length > 0 ? `
         <h4 style="margin:12px 0 8px;font-size:13px;color:#374151;">Top Codes</h4>
         <table style="width:100%;font-size:13px;border-collapse:collapse;">
-          ${r.questionsSummary.map(q => `
+          ${r.questionsSummary.map((q: any) => `
             <tr>
               <td style="padding:4px 8px;border-bottom:1px solid #f3f4f6;">${escapeHtml(q.text)}</td>
               <td style="padding:4px 8px;text-align:right;border-bottom:1px solid #f3f4f6;color:#6b7280;">${q.codingCount} codings</td>
@@ -103,7 +103,7 @@ export async function generateReport(
       ${r.recentActivity.length > 0 ? `
         <h4 style="margin:12px 0 8px;font-size:13px;color:#374151;">Recent Activity</h4>
         <ul style="margin:0;padding-left:16px;font-size:12px;color:#6b7280;">
-          ${r.recentActivity.map(a => `<li style="margin-bottom:4px;">${escapeHtml(a.action)}</li>`).join('')}
+          ${r.recentActivity.map((a: any) => `<li style="margin-bottom:4px;">${escapeHtml(a.action)}</li>`).join('')}
         </ul>
       ` : ''}
     </div>
