@@ -260,7 +260,7 @@ ethicsRoutes.post('/canvas/:canvasId/transcripts/:transcriptId/anonymize', valid
     });
 
     const codingUpdates = codings
-      .map((coding) => {
+      .map((coding: any) => {
         let newCodedText = coding.codedText;
         for (const { find, replace } of replacements) {
           const findRegex = new RegExp('\\b' + escapeRegex(find) + '\\b', 'gi');
