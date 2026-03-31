@@ -87,7 +87,7 @@ collaborationRoutes.get('/canvas/:id/collaborators', validateParams(canvasIdPara
       where: { id: { in: userIds } },
       select: { id: true, name: true, email: true },
     });
-    const userMap = new Map(users.map((u: any) => [u.id, u]));
+    const userMap = new Map<string, { id: string; name: string; email: string }>(users.map((u: any) => [u.id, u]));
 
     const enriched = collaborators.map((c: any) => ({
       ...c,
