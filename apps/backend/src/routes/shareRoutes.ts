@@ -125,7 +125,7 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
       cloneName = `${baseName} ${attempt}`;
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const newCanvas = await tx.codingCanvas.create({
         data: {
           dashboardAccessId,

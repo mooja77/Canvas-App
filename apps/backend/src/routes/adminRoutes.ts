@@ -482,7 +482,7 @@ adminRoutes.get('/activity', async (req: Request, res: Response) => {
       : [];
     const emailMap = new Map(users.map((u: { id: string; email: string }) => [u.id, u.email]));
 
-    const data = entries.map((e) => ({
+    const data = entries.map((e: any) => ({
       ...e,
       userEmail: e.actorId ? emailMap.get(e.actorId) || null : null,
     }));
@@ -519,7 +519,7 @@ adminRoutes.get('/features', async (_req: Request, res: Response) => {
         return { nodeType: n.nodeType, uniqueCanvases: uniqueCanvases.length };
       })
     );
-    const canvasCountMap = new Map(computedCanvasCounts.map((c) => [c.nodeType, c.uniqueCanvases]));
+    const canvasCountMap = new Map(computedCanvasCounts.map((c: any) => [c.nodeType, c.uniqueCanvases]));
 
     // For AI usage, also count unique users
     const aiUserCounts = await Promise.all(
@@ -532,24 +532,24 @@ adminRoutes.get('/features', async (_req: Request, res: Response) => {
         return { feature: a.feature, uniqueUsers: uniqueUsers.length };
       })
     );
-    const userCountMap = new Map(aiUserCounts.map((c) => [c.feature, c.uniqueUsers]));
+    const userCountMap = new Map(aiUserCounts.map((c: any) => [c.feature, c.uniqueUsers]));
 
     const features = [
-      ...computedNodes.map((n) => ({
+      ...computedNodes.map((n: any) => ({
         name: n.nodeType,
         source: 'computed_node' as const,
         totalUsage: n._count.id,
         uniqueCanvases: canvasCountMap.get(n.nodeType) || 0,
         uniqueUsers: 0,
       })),
-      ...aiUsage.map((a) => ({
+      ...aiUsage.map((a: any) => ({
         name: a.feature,
         source: 'ai_usage' as const,
         totalUsage: a._count.id,
         uniqueCanvases: 0,
         uniqueUsers: userCountMap.get(a.feature) || 0,
       })),
-    ].sort((a, b) => b.totalUsage - a.totalUsage);
+    ].sort((a: any, b: any) => b.totalUsage - a.totalUsage);
 
     res.json({ success: true, data: features });
   } catch (err) {

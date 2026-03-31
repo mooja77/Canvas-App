@@ -43,7 +43,7 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     // Create user + linked DashboardAccess in a transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const user = await tx.user.create({
         data: {
           email: normalizedEmail,
@@ -236,7 +236,7 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
 
     if (!user) {
       // Create new user via Google OAuth
-      user = await prisma.$transaction(async (tx) => {
+      user = await prisma.$transaction(async (tx: any) => {
         const newUser = await tx.user.create({
           data: {
             email: normalizedEmail,
@@ -270,7 +270,7 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
         action: 'auth.signup',
         resource: 'user',
         actorType: 'user',
-        actorId: user.id,
+        actorId: user!.id,
         ip: hashedIp,
         method: 'POST',
         path: '/api/auth/google',
@@ -288,6 +288,9 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
         meta: JSON.stringify({ provider: 'google' }),
       });
     }
+
+    // user is guaranteed non-null (either found or created in transaction above)
+    user = user!;
 
     // Refresh plan from subscription status
     const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
@@ -578,7 +581,7 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    const user = await prisma.$transaction(async (tx) => {
+    const user = await prisma.$transaction(async (tx: any) => {
       const newUser = await tx.user.create({
         data: {
           email: normalizedEmail,

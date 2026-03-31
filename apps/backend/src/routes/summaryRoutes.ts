@@ -67,7 +67,7 @@ summaryRoutes.post(
           where: { questionId: sourceId, canvasId: canvas.id },
           include: { transcript: { select: { title: true } } },
         });
-        sourceText = `[Code: ${question.text}]\n\n${codings.map((c) => `From "${c.transcript.title}": ${c.codedText}`).join('\n\n')}`;
+        sourceText = `[Code: ${question.text}]\n\n${codings.map((c: any) => `From "${c.transcript.title}": ${c.codedText}`).join('\n\n')}`;
       } else if (sourceType === 'canvas') {
         // Summarize entire canvas
         const transcripts = await prisma.canvasTranscript.findMany({
@@ -85,7 +85,7 @@ summaryRoutes.post(
 
         const parts: string[] = [];
         if (questions.length > 0) {
-          parts.push(`Research codes: ${questions.map((q) => q.text).join(', ')}`);
+          parts.push(`Research codes: ${questions.map((q: any) => q.text).join(', ')}`);
         }
         for (const t of transcripts.slice(0, 10)) {
           // Truncate to fit context
@@ -191,7 +191,7 @@ summaryRoutes.get(
         orderBy: { createdAt: 'desc' },
       });
 
-      const formatted = summaries.map((s) => ({
+      const formatted = summaries.map((s: any) => ({
         id: s.id,
         canvasId: s.canvasId,
         sourceType: s.sourceType,

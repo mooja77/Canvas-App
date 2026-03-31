@@ -54,7 +54,7 @@ export async function generateReport(
     const questionsSummary = canvas.questions.map(q => ({
       text: q.text,
       codingCount: q.codings.length,
-    })).sort((a, b) => b.codingCount - a.codingCount).slice(0, 10);
+    })).sort((a: any, b: any) => b.codingCount - a.codingCount).slice(0, 10);
 
     return {
       canvasName: canvas.name,

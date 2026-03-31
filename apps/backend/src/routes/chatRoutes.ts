@@ -99,7 +99,7 @@ chatRoutes.post(
 
       for (let i = 0; i < allChunks.length; i += batchSize) {
         const batch = allChunks.slice(i, i + batchSize);
-        const texts = batch.map((c) => c.chunkText);
+        const texts = batch.map((c: any) => c.chunkText);
         const embedResults = await req.llmProvider.embedBatch(texts);
 
         // Save embeddings
@@ -225,7 +225,7 @@ chatRoutes.get(
         take: limit,
       });
 
-      const formatted = messages.map((m) => ({
+      const formatted = messages.map((m: any) => ({
         id: m.id,
         canvasId: m.canvasId,
         userId: m.userId,
