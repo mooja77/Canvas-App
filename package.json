@@ -27,6 +27,7 @@
     "test:e2e:webkit": "npx playwright test --project=setup --project=webkit",
     "test:e2e:mobile": "npx playwright test --project=setup --project=mobile-chrome --project=mobile-safari",
     "typecheck": "tsc -b apps/backend apps/frontend",
+    "smoke-test": "bash scripts/smoke-test.sh",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -42,11 +43,17 @@
     "husky": "^9.1.7",
     "jsdom": "^29.0.1",
     "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
     "typescript": "^5.7.0",
     "vite-plugin-pwa": "^0.21.1"
   },
   "lint-staged": {
-    "*.{ts,tsx}": ["eslint --fix", "prettier --write"],
-    "*.{json,md,yml}": ["prettier --write"]
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml}": [
+      "prettier --write"
+    ]
   }
 }

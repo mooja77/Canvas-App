@@ -106,6 +106,8 @@ adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {
       subscriptions,
       computedNodeTypes,
       aiFeatures,
+      webhookCount24h,
+      lastWebhookEvent,
     ] = await Promise.all([
       prisma.user.count({ where: realUsersWhere }),
       prisma.user.count(),
@@ -129,6 +131,8 @@ adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {
       }),
       prisma.canvasComputedNode.groupBy({ by: ['nodeType'], _count: { id: true } }),
       prisma.aiUsage.groupBy({ by: ['feature'], _count: { id: true } }),
+      prisma.webhookEvent.count({ where: { createdAt: { gte: twentyFourHoursAgo } } }),
+      prisma.webhookEvent.findFirst({ orderBy: { createdAt: 'desc' } }),
     ]);
 
     // Get emails of active canvas users to filter out test accounts
@@ -180,6 +184,8 @@ adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {
         mrr,
         errorCount24h,
         activeSessions: 0,
+        webhookEvents24h: webhookCount24h,
+        lastWebhookAt: (lastWebhookEvent as { createdAt: Date } | null)?.createdAt || null,
         planDistribution,
         topFeatures,
       },

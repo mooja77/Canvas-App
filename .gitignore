@@ -41,14 +41,13 @@ apps/backend/prisma/migrations/*.db
 
 .vercel
 
-# Security - auto-added by Coda (2026-03-21 audit)
-.env.production
+# Security - environment files (keep .env.production for Vite build)
 .env.local
 .env.*.local
-*.env.production*
 !.env.example
 !.env.*.example
 !.env.*.template
+!apps/frontend/.env.production
 .playwright-mcp/
 cookies.txt
 *-cookies.txt

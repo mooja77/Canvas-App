@@ -56,7 +56,9 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
     });
 
     res.json({ success: true, data: { url: session.url } });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/billing/create-portal — create a Stripe Customer Portal session
@@ -76,7 +78,9 @@ billingRoutes.post('/billing/create-portal', auth, async (req: Request, res: Res
     });
 
     res.json({ success: true, data: { url: session.url } });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /api/billing/subscription — get subscription details
@@ -89,14 +93,18 @@ billingRoutes.get('/billing/subscription', auth, async (req: Request, res: Respo
 
     res.json({
       success: true,
-      data: subscription ? {
-        status: subscription.status,
-        currentPeriodStart: subscription.currentPeriodStart,
-        currentPeriodEnd: subscription.currentPeriodEnd,
-        cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
-      } : null,
+      data: subscription
+        ? {
+            status: subscription.status,
+            currentPeriodStart: subscription.currentPeriodStart,
+            currentPeriodEnd: subscription.currentPeriodEnd,
+            cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+          }
+        : null,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/billing/webhook — Stripe webhook handler
@@ -244,9 +252,11 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       }
     }
 
+    console.log(`[Stripe Webhook] Processed: ${event.type} (${event.id})`);
     res.json({ received: true });
   } catch (err) {
-    console.error('Webhook handler error:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[Stripe Webhook] Failed: ${event.type} (${event.id}) — ${message}`);
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 }
