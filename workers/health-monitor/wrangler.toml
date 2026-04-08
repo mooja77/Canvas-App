@@ -1,0 +1,16 @@
+name = "qualcanvas-health-monitor"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[kv_namespaces]]
+binding = "HEALTH_KV"
+id = "620e726768ac4f51b7988bcb37ef89ea"
+
+[vars]
+BACKEND_URL = "https://canvas-app-production.up.railway.app/health"
+FRONTEND_URL = "https://qualcanvas.com"
+ALERT_EMAIL = "mooja77@gmail.com"
+FROM_EMAIL = "noreply@qualcanvas.com"
