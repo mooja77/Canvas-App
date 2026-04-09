@@ -5,6 +5,27 @@ export type EdgeStyleType = 'bezier' | 'straight' | 'step' | 'smoothstep';
 
 export type ScrollMode = 'zoom' | 'pan';
 export type ZoomTier = 'full' | 'reduced' | 'minimal';
+export type UserProfile = 'academic' | 'student' | 'ux' | 'team' | null;
+
+export interface FeatureDiscovery {
+  analyzeSeen: boolean;
+  excerptBrowserSeen: boolean;
+  aiPromptSeen: boolean;
+  teamPromptSeen: boolean;
+  ethicsSeen: boolean;
+  exportSeen: boolean;
+  planWelcomeSeen: boolean;
+}
+
+const DEFAULT_FEATURE_DISCOVERY: FeatureDiscovery = {
+  analyzeSeen: false,
+  excerptBrowserSeen: false,
+  aiPromptSeen: false,
+  teamPromptSeen: false,
+  ethicsSeen: false,
+  exportSeen: false,
+  planWelcomeSeen: false,
+};
 
 interface UIState {
   darkMode: boolean;
@@ -14,6 +35,8 @@ interface UIState {
   edgeStyle: EdgeStyleType;
   scrollMode: ScrollMode;
   zoomTier: ZoomTier;
+  userProfile: UserProfile;
+  featureDiscovery: FeatureDiscovery;
 
   toggleDarkMode: () => void;
   completeOnboarding: () => void;
@@ -24,6 +47,8 @@ interface UIState {
   setEdgeStyle: (style: EdgeStyleType) => void;
   setScrollMode: (mode: ScrollMode) => void;
   setZoomTier: (tier: ZoomTier) => void;
+  setUserProfile: (profile: UserProfile) => void;
+  markFeatureSeen: (feature: keyof FeatureDiscovery) => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -36,16 +61,19 @@ export const useUIStore = create<UIState>()(
       edgeStyle: 'bezier' as EdgeStyleType,
       scrollMode: 'zoom' as ScrollMode,
       zoomTier: 'full' as ZoomTier,
+      userProfile: null as UserProfile,
+      featureDiscovery: { ...DEFAULT_FEATURE_DISCOVERY },
 
-      toggleDarkMode: () => set((s) => {
-        const next = !s.darkMode;
-        if (next) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-        return { darkMode: next };
-      }),
+      toggleDarkMode: () =>
+        set((s) => {
+          const next = !s.darkMode;
+          if (next) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+          return { darkMode: next };
+        }),
 
       completeOnboarding: () => set({ onboardingComplete: true }),
       resetOnboarding: () => set({ onboardingComplete: false }),
@@ -55,6 +83,11 @@ export const useUIStore = create<UIState>()(
       setEdgeStyle: (style) => set({ edgeStyle: style }),
       setScrollMode: (mode) => set({ scrollMode: mode }),
       setZoomTier: (tier) => set({ zoomTier: tier }),
+      setUserProfile: (profile) => set({ userProfile: profile }),
+      markFeatureSeen: (feature) =>
+        set((s) => ({
+          featureDiscovery: { ...s.featureDiscovery, [feature]: true },
+        })),
     }),
     {
       name: 'qualcanvas-ui',
@@ -63,6 +96,6 @@ export const useUIStore = create<UIState>()(
         const { zoomTier, ...persisted } = state;
         return persisted;
       },
-    }
-  )
+    },
+  ),
 );
