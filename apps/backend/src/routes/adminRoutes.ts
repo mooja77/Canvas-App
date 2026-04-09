@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { timingSafeEqual } from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { prisma } from '../lib/prisma.js';
 
@@ -73,14 +74,26 @@ const adminLimiter = rateLimit({
 });
 adminRoutes.use(adminLimiter);
 
-// ─── Admin key auth middleware ───
+// ─── Admin key auth middleware (timing-safe comparison) ───
 function adminAuth(req: Request, res: Response, next: NextFunction) {
   const adminKey = process.env.ADMIN_API_KEY;
   if (!adminKey) {
     return res.status(503).json({ success: false, error: 'Admin API not configured' });
   }
   const provided = req.headers['x-admin-key'] as string | undefined;
-  if (!provided || provided !== adminKey) {
+  if (!provided) {
+    return res.status(403).json({ success: false, error: 'Forbidden' });
+  }
+  // Timing-safe comparison to prevent brute-force via response time analysis
+  let keysMatch = false;
+  try {
+    const a = Buffer.from(provided);
+    const b = Buffer.from(adminKey);
+    keysMatch = a.length === b.length && timingSafeEqual(a, b);
+  } catch {
+    keysMatch = false;
+  }
+  if (!keysMatch) {
     return res.status(403).json({ success: false, error: 'Forbidden' });
   }
   next();

@@ -1,5 +1,16 @@
 import ExcelJS from 'exceljs';
 
+/**
+ * Sanitize cell values to prevent Excel formula injection.
+ * Prefixes values starting with =, +, -, @, or tab/CR with a single quote.
+ */
+function sanitizeCell(value: string | number | null | undefined): string {
+  if (value == null) return '';
+  const s = String(value);
+  if (/^[=+\-@\t\r]/.test(s)) return `'${s}`;
+  return s;
+}
+
 // ─── Types for canvas data passed from route ───
 
 interface CanvasQuestion {
@@ -82,16 +93,16 @@ function styleHeaderRow(ws: ExcelJS.Worksheet): void {
   headerRow.fill = HEADER_FILL;
   headerRow.alignment = HEADER_ALIGNMENT;
   headerRow.height = 28;
-  headerRow.eachCell(cell => {
+  headerRow.eachCell((cell) => {
     cell.border = THIN_BORDER;
   });
 }
 
 /** Auto-fit column widths based on content (approximate) */
 function autoFitColumns(ws: ExcelJS.Worksheet): void {
-  ws.columns.forEach(col => {
+  ws.columns.forEach((col) => {
     let maxLen = 10;
-    col.eachCell?.({ includeEmpty: false }, cell => {
+    col.eachCell?.({ includeEmpty: false }, (cell) => {
       const val = cell.value?.toString() || '';
       maxLen = Math.max(maxLen, Math.min(val.length + 2, 60));
     });
@@ -114,11 +125,11 @@ function buildCodebookSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
 
   // Build question lookup
   const questionMap = new Map<string, CanvasQuestion>();
-  data.questions.forEach(q => questionMap.set(q.id, q));
+  data.questions.forEach((q) => questionMap.set(q.id, q));
 
   // Count codings per question
   const freqMap = new Map<string, number>();
-  data.codings.forEach(c => {
+  data.codings.forEach((c) => {
     freqMap.set(c.questionId, (freqMap.get(c.questionId) || 0) + 1);
   });
 
@@ -129,7 +140,7 @@ function buildCodebookSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
     { header: 'Parent Code', key: 'parent', width: 30 },
   ];
 
-  data.questions.forEach(q => {
+  data.questions.forEach((q) => {
     const parent = q.parentQuestionId ? questionMap.get(q.parentQuestionId) : null;
     const row = ws.addRow({
       name: q.text,
@@ -162,7 +173,7 @@ function buildCodebookSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
     };
     colorCell.font = { color: { argb: luminance > 0.5 ? 'FF000000' : 'FFFFFFFF' }, size: 10 };
 
-    row.eachCell(cell => {
+    row.eachCell((cell) => {
       cell.border = THIN_BORDER;
     });
   });
@@ -175,10 +186,10 @@ function buildCodingsSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
   const ws = wb.addWorksheet('Codings');
 
   const transcriptMap = new Map<string, CanvasTranscript>();
-  data.transcripts.forEach(t => transcriptMap.set(t.id, t));
+  data.transcripts.forEach((t) => transcriptMap.set(t.id, t));
 
   const questionMap = new Map<string, CanvasQuestion>();
-  data.questions.forEach(q => questionMap.set(q.id, q));
+  data.questions.forEach((q) => questionMap.set(q.id, q));
 
   ws.columns = [
     { header: 'Transcript', key: 'transcript', width: 25 },
@@ -190,18 +201,18 @@ function buildCodingsSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
     { header: 'Annotation', key: 'annotation', width: 30 },
   ];
 
-  data.codings.forEach(c => {
+  data.codings.forEach((c) => {
     const transcript = transcriptMap.get(c.transcriptId);
     const question = questionMap.get(c.questionId);
 
     const row = ws.addRow({
-      transcript: transcript?.title || 'Unknown',
-      code: question?.text || 'Unknown',
-      codedText: c.codedText,
+      transcript: sanitizeCell(transcript?.title || 'Unknown'),
+      code: sanitizeCell(question?.text || 'Unknown'),
+      codedText: sanitizeCell(c.codedText),
       startOffset: c.startOffset,
       endOffset: c.endOffset,
-      note: c.note || '',
-      annotation: c.annotation || '',
+      note: sanitizeCell(c.note || ''),
+      annotation: sanitizeCell(c.annotation || ''),
     });
 
     // Color the code cell
@@ -223,7 +234,7 @@ function buildCodingsSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
     // Wrap text for coded text cell
     row.getCell('codedText').alignment = { wrapText: true, vertical: 'top' };
 
-    row.eachCell(cell => {
+    row.eachCell((cell) => {
       cell.border = THIN_BORDER;
     });
   });
@@ -242,18 +253,16 @@ function buildCaseMatrixSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
 
   // Build case-to-transcripts mapping
   const caseTranscripts = new Map<string, Set<string>>();
-  data.cases.forEach(c => caseTranscripts.set(c.id, new Set()));
-  data.transcripts.forEach(t => {
+  data.cases.forEach((c) => caseTranscripts.set(c.id, new Set()));
+  data.transcripts.forEach((t) => {
     if (t.caseId && caseTranscripts.has(t.caseId)) {
       caseTranscripts.get(t.caseId)!.add(t.id);
     }
   });
 
   // Header row: Case Name | Code1 | Code2 | ...
-  const columns: Partial<ExcelJS.Column>[] = [
-    { header: 'Case', key: 'case', width: 25 },
-  ];
-  data.questions.forEach(q => {
+  const columns: Partial<ExcelJS.Column>[] = [{ header: 'Case', key: 'case', width: 25 }];
+  data.questions.forEach((q) => {
     columns.push({ header: q.text, key: q.id, width: 14 });
   });
   ws.columns = columns;
@@ -276,20 +285,18 @@ function buildCaseMatrixSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
   });
 
   // Fill data rows
-  data.cases.forEach(c => {
+  data.cases.forEach((c) => {
     const tIds = caseTranscripts.get(c.id) || new Set();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rowData: Record<string, any> = { case: c.name };
 
-    data.questions.forEach(q => {
-      const count = data.codings.filter(
-        coding => coding.questionId === q.id && tIds.has(coding.transcriptId)
-      ).length;
+    data.questions.forEach((q) => {
+      const count = data.codings.filter((coding) => coding.questionId === q.id && tIds.has(coding.transcriptId)).length;
       rowData[q.id] = count;
     });
 
     const row = ws.addRow(rowData);
-    row.eachCell(cell => {
+    row.eachCell((cell) => {
       cell.border = THIN_BORDER;
     });
 

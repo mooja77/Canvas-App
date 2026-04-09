@@ -45,7 +45,7 @@ export function signUserToken(userId: string, role: string, plan: string): strin
  */
 export function verifyResearcherToken(token: string): LegacyJwtPayload | null {
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as LegacyJwtPayload;
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as LegacyJwtPayload;
     if (payload.accountId && payload.role) {
       return payload;
     }
@@ -60,7 +60,7 @@ export function verifyResearcherToken(token: string): LegacyJwtPayload | null {
  */
 export function verifyToken(token: string): JwtPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as JwtPayload;
+    return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JwtPayload;
   } catch {
     return null;
   }

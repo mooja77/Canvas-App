@@ -114,7 +114,9 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
         },
       },
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/auth/email-login — email/password login
@@ -197,7 +199,9 @@ userAuthRoutes.post('/auth/email-login', authLimiter, async (req, res, next) => 
         },
       },
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/auth/google — Google OAuth login/signup
@@ -316,7 +320,9 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
         },
       },
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/auth/forgot-password — initiate password reset
@@ -353,7 +359,9 @@ userAuthRoutes.post('/auth/forgot-password', authLimiter, async (req, res, next)
     await sendPasswordResetEmail(normalizedEmail, resetUrl);
 
     res.json({ success: true, message: 'If an account exists, a reset link has been sent' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/auth/reset-password — complete password reset
@@ -375,7 +383,15 @@ userAuthRoutes.post('/auth/reset-password', authLimiter, async (req, res, next) 
     }
 
     const tokenHash = sha256(token);
-    if (!user.resetTokenHash || user.resetTokenHash !== tokenHash || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+    let tokenValid = false;
+    try {
+      if (user.resetTokenHash) {
+        tokenValid = crypto.timingSafeEqual(Buffer.from(user.resetTokenHash), Buffer.from(tokenHash));
+      }
+    } catch {
+      tokenValid = false;
+    }
+    if (!tokenValid || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
       return res.status(400).json({ success: false, error: 'Invalid or expired reset token' });
     }
 
@@ -392,7 +408,9 @@ userAuthRoutes.post('/auth/reset-password', authLimiter, async (req, res, next) 
     });
 
     res.json({ success: true, message: 'Password has been reset successfully' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/auth/verify-email — verify email address
@@ -418,7 +436,15 @@ userAuthRoutes.post('/auth/verify-email', authLimiter, async (req, res, next) =>
     }
 
     const tokenHash = sha256(token);
-    if (!user.resetTokenHash || user.resetTokenHash !== tokenHash || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+    let tokenValid = false;
+    try {
+      if (user.resetTokenHash) {
+        tokenValid = crypto.timingSafeEqual(Buffer.from(user.resetTokenHash), Buffer.from(tokenHash));
+      }
+    } catch {
+      tokenValid = false;
+    }
+    if (!tokenValid || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
       return res.status(400).json({ success: false, error: 'Invalid or expired verification token' });
     }
 
@@ -437,7 +463,9 @@ userAuthRoutes.post('/auth/verify-email', authLimiter, async (req, res, next) =>
     });
 
     res.json({ success: true, message: 'Email verified successfully' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/auth/resend-verification — resend verification email
@@ -468,7 +496,9 @@ userAuthRoutes.post('/auth/resend-verification', auth, async (req, res, next) =>
     await sendVerificationEmail(user.email, verifyUrl);
 
     res.json({ success: true, message: 'Verification email sent' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /api/auth/me — current user profile + usage
@@ -521,11 +551,13 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
             emailVerified: user.emailVerified,
             createdAt: user.createdAt,
           },
-          subscription: user.subscription ? {
-            status: user.subscription.status,
-            currentPeriodEnd: user.subscription.currentPeriodEnd,
-            cancelAtPeriodEnd: user.subscription.cancelAtPeriodEnd,
-          } : null,
+          subscription: user.subscription
+            ? {
+                status: user.subscription.status,
+                currentPeriodEnd: user.subscription.currentPeriodEnd,
+                cancelAtPeriodEnd: user.subscription.cancelAtPeriodEnd,
+              }
+            : null,
           usage: { canvasCount, totalTranscripts, totalCodes, totalShares },
           authType: 'email',
         },
@@ -553,7 +585,9 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
     }
 
     throw new AppError('Authentication required', 401);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/auth/link-account — legacy user adds email to their account
@@ -621,7 +655,9 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
         },
       },
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // PUT /api/auth/profile — update name/email
@@ -667,7 +703,9 @@ userAuthRoutes.put('/auth/profile', auth, async (req, res, next) => {
       success: true,
       data: { id: user.id, email: user.email, name: user.name, emailVerified: user.emailVerified },
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // PUT /api/auth/change-password — change password
@@ -696,7 +734,9 @@ userAuthRoutes.put('/auth/change-password', auth, async (req, res, next) => {
     await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
 
     res.json({ success: true, message: 'Password changed successfully' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // DELETE /api/auth/account — delete account
@@ -738,7 +778,9 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
     await prisma.user.delete({ where: { id: userId } });
 
     res.json({ success: true, message: 'Account deleted' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/auth/admin/seed-demo — seed demo access code (protected by admin secret)
@@ -763,5 +805,7 @@ userAuthRoutes.post('/auth/admin/seed-demo', async (req, res, next) => {
       },
     });
     res.json({ success: true, message: 'Demo access code seeded' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });

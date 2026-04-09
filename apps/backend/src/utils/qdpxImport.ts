@@ -41,11 +41,7 @@ function extractZipEntry(zipBuffer: Buffer, entryName: string): Promise<string> 
       zipfile.readEntry();
 
       zipfile.on('entry', (entry) => {
-        if (
-          entry.fileName.endsWith('.qde') ||
-          entry.fileName.endsWith('.xml') ||
-          entry.fileName === entryName
-        ) {
+        if (entry.fileName.endsWith('.qde') || entry.fileName.endsWith('.xml') || entry.fileName === entryName) {
           found = true;
           zipfile.openReadStream(entry, (err2, readStream) => {
             if (err2 || !readStream) return reject(err2 || new Error('Failed to read entry'));
@@ -72,7 +68,10 @@ function toArray<T>(val: T | T[] | undefined): T[] {
   return Array.isArray(val) ? val : [val];
 }
 
-export async function importQdpx(canvasId: string, zipBuffer: Buffer): Promise<{ codes: number; sources: number; codings: number }> {
+export async function importQdpx(
+  canvasId: string,
+  zipBuffer: Buffer,
+): Promise<{ codes: number; sources: number; codings: number }> {
   // Verify canvas exists
   const canvas = await prisma.codingCanvas.findUnique({ where: { id: canvasId } });
   if (!canvas) throw new AppError('Canvas not found', 404);
@@ -84,6 +83,8 @@ export async function importQdpx(canvasId: string, zipBuffer: Buffer): Promise<{
     ignoreAttributes: false,
     attributeNamePrefix: '@_',
     isArray: (name) => ['Code', 'TextSource', 'Coding', 'TextSelection'].includes(name),
+    processEntities: false, // Prevent XXE attacks
+    htmlEntities: false,
   });
 
   const parsed = parser.parse(xmlContent);
