@@ -144,8 +144,8 @@ adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {
       }),
       prisma.canvasComputedNode.groupBy({ by: ['nodeType'], _count: { id: true } }),
       prisma.aiUsage.groupBy({ by: ['feature'], _count: { id: true } }),
-      prisma.webhookEvent.count({ where: { createdAt: { gte: twentyFourHoursAgo } } }),
-      prisma.webhookEvent.findFirst({ orderBy: { createdAt: 'desc' } }),
+      prisma.webhookEvent.count({ where: { createdAt: { gte: twentyFourHoursAgo } } }).catch(() => 0),
+      prisma.webhookEvent.findFirst({ orderBy: { createdAt: 'desc' } }).catch(() => null),
     ]);
 
     // Get emails of active canvas users to filter out test accounts
