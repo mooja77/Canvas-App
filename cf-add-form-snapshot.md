@@ -1,0 +1,163 @@
+- generic [ref=e8]:
+  - generic [ref=e12]:
+    - generic [ref=e13]:
+      - complementary [ref=e14]:
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - link [ref=e17] [cursor=pointer]:
+              - /url: /
+              - img [ref=e19]
+            - button "Mooja77@gmail.com's Account" [ref=e24] [cursor=pointer]:
+              - paragraph [ref=e25]: Mooja77@gmail.com's Account
+              - img [ref=e27]
+          - navigation [ref=e30]:
+            - generic [ref=e34]:
+              - button "Quick search..." [ref=e36] [cursor=pointer]:
+                - generic [ref=e37]
+              - generic [ref=e44]:
+                - link "Back to Domains" [ref=e47] [cursor=pointer]:
+                  - /url: /fe8383fe03ab5000c8fc4b13e4e2f0a8/domains/overview
+                - list [ref=e54]
+        - button "Collapse sidebar" [expanded] [ref=e503] [cursor=pointer]:
+          - img
+      - generic [ref=e504]:
+        - banner [ref=e505]:
+          - generic [ref=e506]:
+            - button "qualcanvas.com" [ref=e508] [cursor=pointer]:
+              - generic [ref=e509]: qualcanvas.com
+              - img [ref=e510]
+            - button "Star domain" [ref=e513] [cursor=pointer]:
+              - img "Star domain" [ref=e514]
+            - button "Free" [ref=e517] [cursor=pointer]
+          - generic [ref=e518]:
+            - button "Ask AI" [ref=e519] [cursor=pointer]:
+              - img [ref=e520]
+              - generic [ref=e522]: Ask AI
+            - button "Support" [ref=e523] [cursor=pointer]:
+              - img [ref=e524]
+              - generic [ref=e526]: Support
+            - button "User menu" [ref=e527] [cursor=pointer]:
+              - img [ref=e528]
+        - main [ref=e531]:
+          - generic [ref=e533]:
+            - generic [ref=e535]:
+              - paragraph [ref=e536]: DNS
+              - heading "Records" [level=1] [ref=e538]
+              - paragraph [ref=e539]:
+                - text: Configure DNS records and review
+                - link "proxy statusdocumentation" [ref=e540] [cursor=pointer]:
+                  - /url: https://developers.cloudflare.com/dns/manage-dns-records/reference/proxied-dns-records/
+                - text: of your hostnames.
+              - button "open documentation" [ref=e545] [cursor=pointer]:
+                - button "open documentation" [ref=e546]
+            - generic [ref=e550]:
+              - generic [ref=e1228]:
+                - heading "Recommended steps to complete zone set-up Hide" [level=3] [ref=e1229]
+                - generic [ref=e1232]
+              - generic [ref=e551]:
+                - generic [ref=e552]
+                - generic [ref=e577]
+            - generic [ref=e917]:
+              - generic [ref=e919]:
+                - heading "Cloudflare Nameservers" [level=3] [ref=e920]
+                - text: Every DNS zone on Cloudflare is assigned a set of Cloudflare-branded nameservers.
+              - table [ref=e923] [cursor=pointer]:
+                - rowgroup [ref=e924]
+                - rowgroup [ref=e928]
+        - contentinfo [ref=e935]:
+          - list [ref=e937]:
+            - listitem [ref=e938]:
+              - link "Support" [ref=e939] [cursor=pointer]:
+                - /url: https://support.cloudflare.com
+            - listitem [ref=e940]:
+              - link "System status" [ref=e941] [cursor=pointer]:
+                - /url: https://www.cloudflarestatus.com
+            - listitem [ref=e942]:
+              - link "Careers" [ref=e943] [cursor=pointer]:
+                - /url: https://www.cloudflare.com/careers/
+            - listitem [ref=e944]:
+              - link "Terms of Use" [ref=e945] [cursor=pointer]:
+                - /url: https://www.cloudflare.com/website-terms/
+            - listitem [ref=e946]:
+              - link "Report Security Issues" [ref=e947] [cursor=pointer]:
+                - /url: https://www.cloudflare.com/disclosure/
+            - listitem [ref=e948]:
+              - link "Privacy Policy" [ref=e949] [cursor=pointer]:
+                - /url: https://www.cloudflare.com/privacypolicy/
+            - listitem [ref=e950]:
+              - button "A blue and white pill with a checkmark and an x, representing privacy choices Cookie Preferences" [ref=e951] [cursor=pointer]:
+                - img "A blue and white pill with a checkmark and an x, representing privacy choices" [ref=e952]
+                - text: Cookie Preferences
+            - listitem [ref=e953]:
+              - generic [ref=e954]: © 2026 Cloudflare, Inc.
+    - generic [ref=e956]:
+      - generic [ref=e958]:
+        - button "New conversation" [ref=e961] [cursor=pointer]:
+          - generic [ref=e962]: New conversation
+          - img [ref=e963]
+        - generic [ref=e965]:
+          - button "New chat" [ref=e966] [cursor=pointer]:
+            - img [ref=e967]
+          - button "Expand sidebar" [ref=e969] [cursor=pointer]:
+            - img [ref=e970]
+          - button "Close sidebar" [ref=e972] [cursor=pointer]:
+            - img [ref=e973]
+      - generic [ref=e975]:
+        - generic [ref=e976]:
+          - paragraph [ref=e977]: Need more help?
+          - link "Support" [ref=e978] [cursor=pointer]:
+            - /url: /fe8383fe03ab5000c8fc4b13e4e2f0a8/support
+            - button "Support" [ref=e979]
+        - generic [ref=e981]:
+          - generic [ref=e992]:
+            - heading "Good afternoon." [level=3] [ref=e993]
+            - paragraph [ref=e994]: What are we doing today?
+          - generic [ref=e995]:
+            - button "Bind R2 to a Worker Connect object storage" [ref=e996] [cursor=pointer]:
+              - img [ref=e998]
+              - generic [ref=e1000]:
+                - generic [ref=e1001]: Bind R2 to a Worker
+                - generic [ref=e1002]: Connect object storage
+              - img [ref=e1004]
+            - button "Durable Objects Explain how they work" [ref=e1006] [cursor=pointer]:
+              - img [ref=e1008]
+              - generic [ref=e1010]:
+                - generic [ref=e1011]: Durable Objects
+                - generic [ref=e1012]: Explain how they work
+              - img [ref=e1014]
+            - button "Deploy a Worker Help me get started" [ref=e1016] [cursor=pointer]:
+              - img [ref=e1018]
+              - generic [ref=e1020]:
+                - generic [ref=e1021]: Deploy a Worker
+                - generic [ref=e1022]: Help me get started
+              - img [ref=e1024]
+            - button "Find my account ID Locate account and zone IDs" [ref=e1026] [cursor=pointer]:
+              - img [ref=e1028]
+              - generic [ref=e1030]:
+                - generic [ref=e1031]: Find my account ID
+                - generic [ref=e1032]: Locate account and zone IDs
+              - img [ref=e1034]
+            - button "Transfer a domain Walk me through the process" [ref=e1036] [cursor=pointer]:
+              - img [ref=e1038]
+              - generic [ref=e1040]:
+                - generic [ref=e1041]: Transfer a domain
+                - generic [ref=e1042]: Walk me through the process
+              - img [ref=e1044]
+        - generic [ref=e1046]:
+          - generic [ref=e1048]:
+            - paragraph [ref=e1049]:
+              - text: Chats are recorded to improve the service and are processed in accordance with our
+              - link "Privacy Policy" [ref=e1050] [cursor=pointer]:
+                - /url: https://www.cloudflare.com/privacypolicy/
+              - text: .
+            - button "Close privacy notice" [ref=e1051] [cursor=pointer]:
+              - img [ref=e1052]
+          - generic [ref=e1055]:
+            - textbox "What can we help you with?" [ref=e1056]
+            - generic [ref=e1057]:
+              - button "Settings" [ref=e1058] [cursor=pointer]:
+                - img [ref=e1059]
+              - button "Submit" [disabled] [ref=e1061]:
+                - img [ref=e1062]
+  - generic:
+    - region "Notifications"
