@@ -7,6 +7,7 @@ Qualitative coding canvas for researchers. React 18 + Vite frontend, Express + P
 ## Rules
 
 - **Never use `killall`** — do not use the `killall` command under any circumstances.
+- **Never run Vercel CLI deploys** (`vercel --prod`, `vercel deploy`, etc.). If this repo is ever re-connected to Vercel, GitHub integration handles auto-deploys on every push. CLI deploys create duplicate builds per commit and double the bill. If you need to redeploy the same commit, push an empty commit (`git commit --allow-empty -m "redeploy"`) or use the "Redeploy" button in the Vercel dashboard. Cost audit on 2026-04-22 found CLI/git dual deploys were a major contributor to a $186/wk portfolio Vercel bill.
 
 ## Commands
 
