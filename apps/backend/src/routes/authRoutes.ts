@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { sha256, verifyAccessCode, hashAccessCode } from '../utils/hashing.js';
 import { signResearcherToken } from '../utils/jwt.js';
+import { setAuthCookie } from '../utils/authCookie.js';
 import { logAudit } from '../middleware/auditLog.js';
 import { authLimiter } from '../middleware/authLimiter.js';
 import { nanoid } from 'nanoid';
@@ -93,6 +94,7 @@ authRoutes.post('/auth', authLimiter, async (req, res, next) => {
       path: '/api/auth',
     });
 
+    setAuthCookie(res, jwt);
     res.json({
       success: true,
       data: {
@@ -102,7 +104,9 @@ authRoutes.post('/auth', authLimiter, async (req, res, next) => {
         dashboardAccessId: access.id,
       },
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/auth/register — create a new dashboard access (for standalone use)
@@ -124,7 +128,9 @@ authRoutes.post('/auth/register', authLimiter, async (req, res, next) => {
     const validRoles = ['researcher', 'policymaker', 'funder'];
     const sanitizedRole = validRoles.includes(role) ? role : 'researcher';
 
-    const code = `CANVAS-${nanoid(8).toUpperCase().replace(/[^A-Z0-9]/g, 'X')}`;
+    const code = `CANVAS-${nanoid(8)
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, 'X')}`;
     const { sha256Index, bcryptHash } = await hashAccessCode(code);
 
     const access = await prisma.dashboardAccess.create({
@@ -139,6 +145,7 @@ authRoutes.post('/auth/register', authLimiter, async (req, res, next) => {
 
     const jwt = signResearcherToken(access.id, access.role);
 
+    setAuthCookie(res, jwt);
     res.status(201).json({
       success: true,
       data: {
@@ -149,5 +156,7 @@ authRoutes.post('/auth/register', authLimiter, async (req, res, next) => {
         dashboardAccessId: access.id,
       },
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });

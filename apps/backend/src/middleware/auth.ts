@@ -4,15 +4,15 @@ import { AppError } from './errorHandler.js';
 import { sha256, verifyAccessCode } from '../utils/hashing.js';
 import { verifyToken, isUserPayload, isLegacyPayload } from '../utils/jwt.js';
 
-export async function auth(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  // Try Bearer token first (email auth sends this way)
+export async function auth(req: Request, res: Response, next: NextFunction) {
+  // Prefer the httpOnly cookie (set by login endpoints) over the Authorization
+  // header. Bearer header + x-dashboard-code remain supported for the migration
+  // window — existing sessions stored in localStorage keep working, and mobile
+  // clients can still use header auth if cookies are unavailable.
+  const cookieJwt = (req as Request & { cookies?: Record<string, string> }).cookies?.jwt;
   const authHeader = req.headers['authorization'] as string | undefined;
   const dashboardCode = req.headers['x-dashboard-code'] as string;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : dashboardCode;
+  const token = cookieJwt || (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : dashboardCode);
 
   if (!token) {
     return next(new AppError('Authentication required', 401));

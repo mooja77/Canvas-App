@@ -22,8 +22,22 @@ interface AuthState {
   emailVerified: boolean;
 
   // Actions
-  setAuth: (data: { dashboardCode: string; jwt: string; name: string; role: string; dashboardAccessId: string }) => void;
-  setEmailAuth: (data: { jwt: string; email: string; userId: string; name: string; role: string; plan: string; emailVerified?: boolean }) => void;
+  setAuth: (data: {
+    dashboardCode: string;
+    jwt: string;
+    name: string;
+    role: string;
+    dashboardAccessId: string;
+  }) => void;
+  setEmailAuth: (data: {
+    jwt: string;
+    email: string;
+    userId: string;
+    name: string;
+    role: string;
+    plan: string;
+    emailVerified?: boolean;
+  }) => void;
   setEmailVerified: (verified: boolean) => void;
   updatePlan: (plan: string) => void;
   logout: () => void;
@@ -47,49 +61,58 @@ export const useAuthStore = create<AuthState>()(
       emailVerified: false,
 
       // Legacy access-code login
-      setAuth: (data) => set({
-        dashboardCode: data.dashboardCode,
-        jwt: data.jwt,
-        name: data.name,
-        role: data.role,
-        dashboardAccessId: data.dashboardAccessId,
-        authenticated: true,
-        authType: 'legacy',
-        plan: 'pro', // Grandfathered
-      }),
+      setAuth: (data) =>
+        set({
+          dashboardCode: data.dashboardCode,
+          jwt: data.jwt,
+          name: data.name,
+          role: data.role,
+          dashboardAccessId: data.dashboardAccessId,
+          authenticated: true,
+          authType: 'legacy',
+          plan: 'pro', // Grandfathered
+        }),
 
       // Email login
-      setEmailAuth: (data) => set({
-        jwt: data.jwt,
-        email: data.email,
-        userId: data.userId,
-        name: data.name,
-        role: data.role,
-        plan: data.plan,
-        emailVerified: data.emailVerified ?? false,
-        authenticated: true,
-        authType: 'email',
-        dashboardCode: null,
-        dashboardAccessId: null,
-      }),
+      setEmailAuth: (data) =>
+        set({
+          jwt: data.jwt,
+          email: data.email,
+          userId: data.userId,
+          name: data.name,
+          role: data.role,
+          plan: data.plan,
+          emailVerified: data.emailVerified ?? false,
+          authenticated: true,
+          authType: 'email',
+          dashboardCode: null,
+          dashboardAccessId: null,
+        }),
 
       setEmailVerified: (verified) => set({ emailVerified: verified }),
 
       updatePlan: (plan) => set({ plan }),
 
-      logout: () => set({
-        dashboardCode: null,
-        jwt: null,
-        name: null,
-        role: null,
-        dashboardAccessId: null,
-        authenticated: false,
-        authType: null,
-        email: null,
-        userId: null,
-        plan: null,
-        emailVerified: false,
-      }),
+      logout: () => {
+        // Fire-and-forget: clear the httpOnly cookie on the server. Local
+        // state clears immediately regardless so the UI doesn't wait on
+        // network — a failed request just leaves a stale cookie that the
+        // next login will overwrite.
+        void fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+        set({
+          dashboardCode: null,
+          jwt: null,
+          name: null,
+          role: null,
+          dashboardAccessId: null,
+          authenticated: false,
+          authType: null,
+          email: null,
+          userId: null,
+          plan: null,
+          emailVerified: false,
+        });
+      },
     }),
     {
       name: 'qualcanvas-auth',
@@ -110,6 +133,6 @@ export const useAuthStore = create<AuthState>()(
           }
         };
       },
-    }
-  )
+    },
+  ),
 );

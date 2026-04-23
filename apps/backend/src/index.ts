@@ -58,6 +58,7 @@ if (process.env.NODE_ENV !== 'test') {
 
 import express from 'express';
 import { createServer } from 'http';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -148,6 +149,10 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), hand
 
 // Body parsing — default limit for most routes
 app.use(express.json({ limit: '1mb' }));
+
+// Cookie parsing — populates req.cookies for auth middleware to read the
+// httpOnly jwt cookie set by login endpoints.
+app.use(cookieParser());
 
 // ─── Request counter for /metrics ───
 let requestCount = 0;

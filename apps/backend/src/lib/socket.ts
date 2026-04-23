@@ -40,9 +40,19 @@ export function initSocketServer(httpServer: HttpServer): Server {
     transports: ['websocket', 'polling'],
   });
 
-  // JWT authentication middleware
+  // JWT authentication middleware — prefer cookie (set by login endpoints),
+  // fall back to auth.token for backward compatibility with clients that
+  // still pass the JWT from localStorage through the handshake.
   io.use(async (socket, next) => {
-    const token = socket.handshake.auth?.token as string | undefined;
+    const cookieHeader = socket.handshake.headers.cookie;
+    const cookieJwt = cookieHeader
+      ? cookieHeader
+          .split(';')
+          .map((c) => c.trim())
+          .find((c) => c.startsWith('jwt='))
+          ?.slice(4)
+      : undefined;
+    const token = cookieJwt || (socket.handshake.auth?.token as string | undefined);
     if (!token) {
       return next(new Error('Authentication required'));
     }

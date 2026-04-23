@@ -2,10 +2,9 @@ import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
 
-const SOCKET_URL = import.meta.env.VITE_WS_URL
-  || (import.meta.env.VITE_API_URL
-    ? new URL(import.meta.env.VITE_API_URL).origin
-    : window.location.origin);
+const SOCKET_URL =
+  import.meta.env.VITE_WS_URL ||
+  (import.meta.env.VITE_API_URL ? new URL(import.meta.env.VITE_API_URL).origin : window.location.origin);
 
 /** Get or create the singleton Socket.io client. */
 export function getSocket(token: string): Socket {
@@ -17,7 +16,11 @@ export function getSocket(token: string): Socket {
   }
 
   socket = io(SOCKET_URL, {
+    // Auth via cookie (primary) — withCredentials sends the httpOnly jwt
+    // cookie on the handshake. auth.token stays as a fallback for existing
+    // sessions that still hold the JWT in localStorage.
     auth: { token },
+    withCredentials: true,
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: 10,

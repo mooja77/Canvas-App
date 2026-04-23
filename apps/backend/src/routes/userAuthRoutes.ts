@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma.js';
 import { signUserToken } from '../utils/jwt.js';
+import { setAuthCookie, clearAuthCookie } from '../utils/authCookie.js';
 import { logAudit } from '../middleware/auditLog.js';
 import { authLimiter } from '../middleware/authLimiter.js';
 import { auth } from '../middleware/auth.js';
@@ -100,6 +101,7 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
       path: '/api/auth/signup',
     });
 
+    setAuthCookie(res, jwt);
     res.status(201).json({
       success: true,
       data: {
@@ -185,6 +187,7 @@ userAuthRoutes.post('/auth/email-login', authLimiter, async (req, res, next) => 
       path: '/api/auth/email-login',
     });
 
+    setAuthCookie(res, jwt);
     res.json({
       success: true,
       data: {
@@ -306,6 +309,7 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
 
     const jwt = signUserToken(user.id, user.role, currentPlan);
 
+    setAuthCookie(res, jwt);
     res.json({
       success: true,
       data: {
@@ -508,6 +512,13 @@ userAuthRoutes.post('/auth/resend-verification', auth, async (req, res, next) =>
   }
 });
 
+// POST /api/auth/logout — clear the jwt cookie. Idempotent; doesn't require
+// a valid session (so clients can safely call it on 401s / expired sessions).
+userAuthRoutes.post('/auth/logout', (_req, res) => {
+  clearAuthCookie(res);
+  res.json({ success: true });
+});
+
 // GET /api/auth/me — current user profile + usage
 userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
   try {
@@ -649,6 +660,7 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
 
     const jwt = signUserToken(user.id, user.role, user.plan);
 
+    setAuthCookie(res, jwt);
     res.json({
       success: true,
       data: {

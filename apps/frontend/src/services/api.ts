@@ -25,13 +25,17 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
+// withCredentials: true so the httpOnly jwt cookie (set by login endpoints)
+// rides along on every request. Safe because the deployment reverse-proxies
+// `/api` under the same origin — no cross-site cookie shipping.
 export const canvasClient = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
 // Inject auth token from authStore
-canvasClient.interceptors.request.use(config => {
+canvasClient.interceptors.request.use((config) => {
   try {
     const stored = localStorage.getItem('qualcanvas-auth');
     if (stored) {
@@ -46,25 +50,27 @@ canvasClient.interceptors.request.use(config => {
         }
       }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return config;
 });
 
 // Plan limit interceptor — fires custom event on PLAN_LIMIT_EXCEEDED
 canvasClient.interceptors.response.use(
-  response => response,
-  error => {
+  (response) => response,
+  (error) => {
     if (error.response?.status === 403 && error.response?.data?.code === 'PLAN_LIMIT_EXCEEDED') {
       const detail = error.response.data;
       window.dispatchEvent(new CustomEvent('plan-limit-exceeded', { detail }));
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // Plan sync interceptor — reads X-User-Plan header from server
 canvasClient.interceptors.response.use(
-  response => {
+  (response) => {
     const serverPlan = response.headers['x-user-plan'];
     if (serverPlan) {
       const currentPlan = useAuthStore.getState().plan;
@@ -74,53 +80,47 @@ canvasClient.interceptors.response.use(
     }
     return response;
   },
-  error => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 let isRedirecting = false;
 
 // 401 interceptor — expired JWT redirect
 canvasClient.interceptors.response.use(
-  response => response,
-  error => {
+  (response) => response,
+  (error) => {
     if (error.response?.status === 401 && error.response?.data?.code !== 'PLAN_LIMIT_EXCEEDED') {
       if (!isRedirecting && useAuthStore.getState().authenticated) {
         isRedirecting = true;
         useAuthStore.getState().logout();
         window.location.href = '/login?expired=true';
-        setTimeout(() => { isRedirecting = false; }, 2000);
+        setTimeout(() => {
+          isRedirecting = false;
+        }, 2000);
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export const canvasApi = {
   // ─── Canvas CRUD ───
-  getCanvases: () =>
-    canvasClient.get('/canvas'),
+  getCanvases: () => canvasClient.get('/canvas'),
 
-  createCanvas: (data: CreateCanvasInput) =>
-    canvasClient.post('/canvas', data),
+  createCanvas: (data: CreateCanvasInput) => canvasClient.post('/canvas', data),
 
-  getCanvas: (canvasId: string) =>
-    canvasClient.get(`/canvas/${canvasId}`),
+  getCanvas: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}`),
 
-  updateCanvas: (canvasId: string, data: Partial<CreateCanvasInput>) =>
-    canvasClient.put(`/canvas/${canvasId}`, data),
+  updateCanvas: (canvasId: string, data: Partial<CreateCanvasInput>) => canvasClient.put(`/canvas/${canvasId}`, data),
 
-  deleteCanvas: (canvasId: string) =>
-    canvasClient.delete(`/canvas/${canvasId}`),
+  deleteCanvas: (canvasId: string) => canvasClient.delete(`/canvas/${canvasId}`),
 
   // ─── Trash (soft delete) ───
-  getTrash: () =>
-    canvasClient.get('/canvas/trash'),
+  getTrash: () => canvasClient.get('/canvas/trash'),
 
-  restoreCanvas: (canvasId: string) =>
-    canvasClient.post(`/canvas/${canvasId}/restore`),
+  restoreCanvas: (canvasId: string) => canvasClient.post(`/canvas/${canvasId}/restore`),
 
-  permanentDeleteCanvas: (canvasId: string) =>
-    canvasClient.delete(`/canvas/${canvasId}/permanent`),
+  permanentDeleteCanvas: (canvasId: string) => canvasClient.delete(`/canvas/${canvasId}/permanent`),
 
   // ─── Transcripts ───
   addTranscript: (canvasId: string, data: CreateTranscriptInput) =>
@@ -129,8 +129,7 @@ export const canvasApi = {
   updateTranscript: (canvasId: string, tid: string, data: UpdateTranscriptInput) =>
     canvasClient.put(`/canvas/${canvasId}/transcripts/${tid}`, data),
 
-  deleteTranscript: (canvasId: string, tid: string) =>
-    canvasClient.delete(`/canvas/${canvasId}/transcripts/${tid}`),
+  deleteTranscript: (canvasId: string, tid: string) => canvasClient.delete(`/canvas/${canvasId}/transcripts/${tid}`),
 
   // ─── Questions ───
   addQuestion: (canvasId: string, data: CreateQuestionInput) =>
@@ -139,25 +138,20 @@ export const canvasApi = {
   updateQuestion: (canvasId: string, qid: string, data: UpdateQuestionInput) =>
     canvasClient.put(`/canvas/${canvasId}/questions/${qid}`, data),
 
-  deleteQuestion: (canvasId: string, qid: string) =>
-    canvasClient.delete(`/canvas/${canvasId}/questions/${qid}`),
+  deleteQuestion: (canvasId: string, qid: string) => canvasClient.delete(`/canvas/${canvasId}/questions/${qid}`),
 
   // ─── Memos ───
-  addMemo: (canvasId: string, data: CreateMemoInput) =>
-    canvasClient.post(`/canvas/${canvasId}/memos`, data),
+  addMemo: (canvasId: string, data: CreateMemoInput) => canvasClient.post(`/canvas/${canvasId}/memos`, data),
 
   updateMemo: (canvasId: string, mid: string, data: UpdateMemoInput) =>
     canvasClient.put(`/canvas/${canvasId}/memos/${mid}`, data),
 
-  deleteMemo: (canvasId: string, mid: string) =>
-    canvasClient.delete(`/canvas/${canvasId}/memos/${mid}`),
+  deleteMemo: (canvasId: string, mid: string) => canvasClient.delete(`/canvas/${canvasId}/memos/${mid}`),
 
   // ─── Codings ───
-  createCoding: (canvasId: string, data: CreateCodingInput) =>
-    canvasClient.post(`/canvas/${canvasId}/codings`, data),
+  createCoding: (canvasId: string, data: CreateCodingInput) => canvasClient.post(`/canvas/${canvasId}/codings`, data),
 
-  deleteCoding: (canvasId: string, codingId: string) =>
-    canvasClient.delete(`/canvas/${canvasId}/codings/${codingId}`),
+  deleteCoding: (canvasId: string, codingId: string) => canvasClient.delete(`/canvas/${canvasId}/codings/${codingId}`),
 
   reassignCoding: (canvasId: string, codingId: string, newQuestionId: string) =>
     canvasClient.put(`/canvas/${canvasId}/codings/${codingId}/reassign`, { newQuestionId }),
@@ -166,18 +160,15 @@ export const canvasApi = {
     canvasClient.put(`/canvas/${canvasId}/codings/${codingId}`, data),
 
   // ─── Layout ───
-  saveLayout: (canvasId: string, data: SaveLayoutInput) =>
-    canvasClient.put(`/canvas/${canvasId}/layout`, data),
+  saveLayout: (canvasId: string, data: SaveLayoutInput) => canvasClient.put(`/canvas/${canvasId}/layout`, data),
 
   // ─── Cases ───
-  createCase: (canvasId: string, data: CreateCaseInput) =>
-    canvasClient.post(`/canvas/${canvasId}/cases`, data),
+  createCase: (canvasId: string, data: CreateCaseInput) => canvasClient.post(`/canvas/${canvasId}/cases`, data),
 
   updateCase: (canvasId: string, caseId: string, data: UpdateCaseInput) =>
     canvasClient.put(`/canvas/${canvasId}/cases/${caseId}`, data),
 
-  deleteCase: (canvasId: string, caseId: string) =>
-    canvasClient.delete(`/canvas/${canvasId}/cases/${caseId}`),
+  deleteCase: (canvasId: string, caseId: string) => canvasClient.delete(`/canvas/${canvasId}/cases/${caseId}`),
 
   // ─── Relations ───
   createRelation: (canvasId: string, data: CreateRelationInput) =>
@@ -186,8 +177,7 @@ export const canvasApi = {
   updateRelation: (canvasId: string, relId: string, data: { label: string }) =>
     canvasClient.put(`/canvas/${canvasId}/relations/${relId}`, data),
 
-  deleteRelation: (canvasId: string, relId: string) =>
-    canvasClient.delete(`/canvas/${canvasId}/relations/${relId}`),
+  deleteRelation: (canvasId: string, relId: string) => canvasClient.delete(`/canvas/${canvasId}/relations/${relId}`),
 
   // ─── Computed Nodes ───
   createComputedNode: (canvasId: string, data: CreateComputedNodeInput) =>
@@ -203,36 +193,32 @@ export const canvasApi = {
     canvasClient.post(`/canvas/${canvasId}/computed/${nodeId}/run`),
 
   // ─── Auto-Code ───
-  autoCode: (canvasId: string, data: AutoCodeInput) =>
-    canvasClient.post(`/canvas/${canvasId}/auto-code`, data),
+  autoCode: (canvasId: string, data: AutoCodeInput) => canvasClient.post(`/canvas/${canvasId}/auto-code`, data),
 
   // ─── Merge Questions ───
   mergeQuestions: (canvasId: string, sourceId: string, targetId: string) =>
     canvasClient.post(`/canvas/${canvasId}/questions/merge`, { sourceId, targetId }),
 
   // ─── Import Narratives (pre-formatted) ───
-  importNarratives: (canvasId: string, data: { narratives: { title: string; content: string; sourceType?: string; sourceId?: string }[] }) =>
-    canvasClient.post(`/canvas/${canvasId}/import-narratives`, data),
+  importNarratives: (
+    canvasId: string,
+    data: { narratives: { title: string; content: string; sourceType?: string; sourceId?: string }[] },
+  ) => canvasClient.post(`/canvas/${canvasId}/import-narratives`, data),
 
   // ─── Import from Canvas ───
   importFromCanvas: (canvasId: string, data: { sourceCanvasId: string; transcriptIds: string[] }) =>
     canvasClient.post(`/canvas/${canvasId}/import-from-canvas`, data),
 
   // ─── Canvas Sharing ───
-  shareCanvas: (canvasId: string) =>
-    canvasClient.post(`/canvas/${canvasId}/share`),
+  shareCanvas: (canvasId: string) => canvasClient.post(`/canvas/${canvasId}/share`),
 
-  getShares: (canvasId: string) =>
-    canvasClient.get(`/canvas/${canvasId}/shares`),
+  getShares: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}/shares`),
 
-  revokeShare: (canvasId: string, shareId: string) =>
-    canvasClient.delete(`/canvas/${canvasId}/share/${shareId}`),
+  revokeShare: (canvasId: string, shareId: string) => canvasClient.delete(`/canvas/${canvasId}/share/${shareId}`),
 
-  cloneCanvas: (shareCode: string) =>
-    canvasClient.post(`/canvas/clone/${shareCode}`),
+  cloneCanvas: (shareCode: string) => canvasClient.post(`/canvas/clone/${shareCode}`),
 
-  getSharedCanvas: (shareCode: string) =>
-    canvasClient.get(`/canvas/shared/${shareCode}`),
+  getSharedCanvas: (shareCode: string) => canvasClient.get(`/canvas/shared/${shareCode}`),
 
   // ─── AI ───
   aiSuggestCodes: (canvasId: string, data: SuggestCodesInput) =>
@@ -251,14 +237,11 @@ export const canvasApi = {
     canvasClient.post(`/canvas/${canvasId}/ai/suggestions/bulk-action`, data),
 
   // ─── Research Assistant ───
-  embedCanvasData: (canvasId: string) =>
-    canvasClient.post(`/canvas/${canvasId}/ai/embed`),
+  embedCanvasData: (canvasId: string) => canvasClient.post(`/canvas/${canvasId}/ai/embed`),
 
-  chatQuery: (canvasId: string, message: string) =>
-    canvasClient.post(`/canvas/${canvasId}/ai/chat`, { message }),
+  chatQuery: (canvasId: string, message: string) => canvasClient.post(`/canvas/${canvasId}/ai/chat`, { message }),
 
-  getChatHistory: (canvasId: string) =>
-    canvasClient.get(`/canvas/${canvasId}/ai/chat/history`),
+  getChatHistory: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}/ai/chat/history`),
 
   generateSummary: (canvasId: string, data: { sourceType: string; sourceId?: string; summaryType?: string }) =>
     canvasClient.post(`/canvas/${canvasId}/ai/summarize`, data),
@@ -273,8 +256,10 @@ export const canvasApi = {
   getPresignedUploadUrl: (canvasId: string, data: { fileName: string; contentType: string }) =>
     canvasClient.post(`/canvas/${canvasId}/upload/presigned`, data),
 
-  confirmUpload: (canvasId: string, data: { storageKey: string; originalName: string; mimeType: string; sizeBytes: number }) =>
-    canvasClient.post(`/canvas/${canvasId}/upload/confirm`, data),
+  confirmUpload: (
+    canvasId: string,
+    data: { storageKey: string; originalName: string; mimeType: string; sizeBytes: number },
+  ) => canvasClient.post(`/canvas/${canvasId}/upload/confirm`, data),
 
   uploadFileDirect: (canvasId: string, formData: FormData, onProgress?: (pct: number) => void) =>
     canvasClient.post(`/canvas/${canvasId}/upload/direct`, formData, {
@@ -287,8 +272,7 @@ export const canvasApi = {
   startTranscription: (canvasId: string, data: { fileUploadId: string; language?: string }) =>
     canvasClient.post(`/canvas/${canvasId}/transcribe`, data),
 
-  getTranscriptionJob: (canvasId: string, jobId: string) =>
-    canvasClient.get(`/canvas/${canvasId}/transcribe/${jobId}`),
+  getTranscriptionJob: (canvasId: string, jobId: string) => canvasClient.get(`/canvas/${canvasId}/transcribe/${jobId}`),
 
   acceptTranscription: (canvasId: string, jobId: string, title?: string) =>
     canvasClient.post(`/canvas/${canvasId}/transcribe/${jobId}/accept`, { title }),
@@ -298,8 +282,7 @@ export const canvasApi = {
     canvasClient.post(`/canvas/${canvasId}/intercoder`, data),
 
   // ─── Collaboration ───
-  getCollaborators: (canvasId: string) =>
-    canvasClient.get(`/canvas/${canvasId}/collaborators`),
+  getCollaborators: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}/collaborators`),
 
   addCollaborator: (canvasId: string, data: { userId: string; role?: string }) =>
     canvasClient.post(`/canvas/${canvasId}/collaborators`, data),
@@ -308,17 +291,34 @@ export const canvasApi = {
     canvasClient.delete(`/canvas/${canvasId}/collaborators/${userId}`),
 
   // ─── Documents & Region Coding ───
-  createDocument: (canvasId: string, data: { fileUploadId: string; title: string; docType: string; pageCount?: number; metadata?: Record<string, unknown> }) =>
-    canvasClient.post(`/canvas/${canvasId}/documents`, data),
+  createDocument: (
+    canvasId: string,
+    data: {
+      fileUploadId: string;
+      title: string;
+      docType: string;
+      pageCount?: number;
+      metadata?: Record<string, unknown>;
+    },
+  ) => canvasClient.post(`/canvas/${canvasId}/documents`, data),
 
-  getDocuments: (canvasId: string) =>
-    canvasClient.get(`/canvas/${canvasId}/documents`),
+  getDocuments: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}/documents`),
 
-  deleteDocument: (canvasId: string, docId: string) =>
-    canvasClient.delete(`/canvas/${canvasId}/documents/${docId}`),
+  deleteDocument: (canvasId: string, docId: string) => canvasClient.delete(`/canvas/${canvasId}/documents/${docId}`),
 
-  createRegionCoding: (canvasId: string, docId: string, data: { questionId: string; pageNumber?: number; x: number; y: number; width: number; height: number; note?: string }) =>
-    canvasClient.post(`/canvas/${canvasId}/documents/${docId}/regions`, data),
+  createRegionCoding: (
+    canvasId: string,
+    docId: string,
+    data: {
+      questionId: string;
+      pageNumber?: number;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      note?: string;
+    },
+  ) => canvasClient.post(`/canvas/${canvasId}/documents/${docId}/regions`, data),
 
   getRegionCodings: (canvasId: string, docId: string) =>
     canvasClient.get(`/canvas/${canvasId}/documents/${docId}/regions`),
@@ -327,14 +327,14 @@ export const canvasApi = {
     canvasClient.delete(`/canvas/${canvasId}/documents/${docId}/regions/${regionId}`),
 
   // ─── Training Center ───
-  createTrainingDocument: (canvasId: string, data: { transcriptId: string; name: string; instructions?: string; goldCodings: unknown[]; passThreshold?: number }) =>
-    canvasClient.post(`/canvas/${canvasId}/training`, data),
+  createTrainingDocument: (
+    canvasId: string,
+    data: { transcriptId: string; name: string; instructions?: string; goldCodings: unknown[]; passThreshold?: number },
+  ) => canvasClient.post(`/canvas/${canvasId}/training`, data),
 
-  getTrainingDocuments: (canvasId: string) =>
-    canvasClient.get(`/canvas/${canvasId}/training`),
+  getTrainingDocuments: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}/training`),
 
-  getTrainingDocument: (canvasId: string, docId: string) =>
-    canvasClient.get(`/canvas/${canvasId}/training/${docId}`),
+  getTrainingDocument: (canvasId: string, docId: string) => canvasClient.get(`/canvas/${canvasId}/training/${docId}`),
 
   deleteTrainingDocument: (canvasId: string, docId: string) =>
     canvasClient.delete(`/canvas/${canvasId}/training/${docId}`),
@@ -359,17 +359,14 @@ export const canvasApi = {
     }),
 
   // ─── Repository & Insights ───
-  getRepositories: () =>
-    canvasClient.get('/repositories'),
+  getRepositories: () => canvasClient.get('/repositories'),
 
   createRepository: (data: { name: string; description?: string; canvasIds?: string[] }) =>
     canvasClient.post('/repositories', data),
 
-  deleteRepository: (repoId: string) =>
-    canvasClient.delete(`/repositories/${repoId}`),
+  deleteRepository: (repoId: string) => canvasClient.delete(`/repositories/${repoId}`),
 
-  getInsights: (repoId: string) =>
-    canvasClient.get(`/repositories/${repoId}/insights`),
+  getInsights: (repoId: string) => canvasClient.get(`/repositories/${repoId}/insights`),
 
   createInsight: (repoId: string, data: { title: string; content: string; type?: string }) =>
     canvasClient.post(`/repositories/${repoId}/insights`, data),
@@ -378,110 +375,96 @@ export const canvasApi = {
     canvasClient.delete(`/repositories/${repoId}/insights/${insightId}`),
 
   // ─── Integrations ───
-  getIntegrations: () =>
-    canvasClient.get('/integrations'),
+  getIntegrations: () => canvasClient.get('/integrations'),
 
-  connectIntegration: (data: { provider: string; accessToken: string; refreshToken?: string; metadata?: Record<string, unknown>; expiresAt?: string }) =>
-    canvasClient.post('/integrations/connect', data),
+  connectIntegration: (data: {
+    provider: string;
+    accessToken: string;
+    refreshToken?: string;
+    metadata?: Record<string, unknown>;
+    expiresAt?: string;
+  }) => canvasClient.post('/integrations/connect', data),
 
-  disconnectIntegration: (integrationId: string) =>
-    canvasClient.delete(`/integrations/${integrationId}`),
+  disconnectIntegration: (integrationId: string) => canvasClient.delete(`/integrations/${integrationId}`),
 };
 
 // ─── Auth API ───
 
 export const authApi = {
   // Legacy access-code auth
-  login: (dashboardCode: string) =>
-    canvasClient.post('/auth', { dashboardCode }),
+  login: (dashboardCode: string) => canvasClient.post('/auth', { dashboardCode }),
 
-  register: (name: string, role?: string) =>
-    canvasClient.post('/auth/register', { name, role }),
+  register: (name: string, role?: string) => canvasClient.post('/auth/register', { name, role }),
 
   // Email auth
   emailSignup: (email: string, password: string, name: string) =>
     canvasClient.post('/auth/signup', { email, password, name }),
 
-  emailLogin: (email: string, password: string) =>
-    canvasClient.post('/auth/email-login', { email, password }),
+  emailLogin: (email: string, password: string) => canvasClient.post('/auth/email-login', { email, password }),
 
-  googleLogin: (credential: string) =>
-    canvasClient.post('/auth/google', { credential }),
+  googleLogin: (credential: string) => canvasClient.post('/auth/google', { credential }),
 
-  forgotPassword: (email: string) =>
-    canvasClient.post('/auth/forgot-password', { email }),
+  forgotPassword: (email: string) => canvasClient.post('/auth/forgot-password', { email }),
 
   resetPassword: (email: string, token: string, newPassword: string) =>
     canvasClient.post('/auth/reset-password', { email, token, newPassword }),
 
-  verifyEmail: (email: string, token: string) =>
-    canvasClient.post('/auth/verify-email', { email, token }),
+  verifyEmail: (email: string, token: string) => canvasClient.post('/auth/verify-email', { email, token }),
 
-  resendVerification: () =>
-    canvasClient.post('/auth/resend-verification'),
+  resendVerification: () => canvasClient.post('/auth/resend-verification'),
 
-  getMe: () =>
-    canvasClient.get('/auth/me'),
+  // Clears the httpOnly jwt cookie on the server. Safe to call even when
+  // unauthenticated; the route doesn't require a valid session.
+  logout: () => canvasClient.post('/auth/logout'),
+
+  getMe: () => canvasClient.get('/auth/me'),
 
   linkAccount: (email: string, password: string, name?: string) =>
     canvasClient.post('/auth/link-account', { email, password, name }),
 
-  updateProfile: (data: { name?: string; email?: string }) =>
-    canvasClient.put('/auth/profile', data),
+  updateProfile: (data: { name?: string; email?: string }) => canvasClient.put('/auth/profile', data),
 
   changePassword: (currentPassword: string, newPassword: string) =>
     canvasClient.put('/auth/change-password', { currentPassword, newPassword }),
 
-  deleteAccount: (password: string) =>
-    canvasClient.delete('/auth/account', { data: { password } }),
+  deleteAccount: (password: string) => canvasClient.delete('/auth/account', { data: { password } }),
 };
 
 // ─── AI Settings API ───
 
 export const aiSettingsApi = {
-  getSettings: () =>
-    canvasClient.get('/ai-settings'),
+  getSettings: () => canvasClient.get('/ai-settings'),
 
   updateSettings: (data: { provider: string; apiKey: string; model?: string; embeddingModel?: string }) =>
     canvasClient.put('/ai-settings', data),
 
-  deleteSettings: () =>
-    canvasClient.delete('/ai-settings'),
+  deleteSettings: () => canvasClient.delete('/ai-settings'),
 };
 
 // ─── Team API ───
 
 export const teamApi = {
-  list: () =>
-    canvasClient.get('/teams'),
+  list: () => canvasClient.get('/teams'),
 
-  create: (name: string) =>
-    canvasClient.post('/teams', { name }),
+  create: (name: string) => canvasClient.post('/teams', { name }),
 
-  get: (teamId: string) =>
-    canvasClient.get(`/teams/${teamId}`),
+  get: (teamId: string) => canvasClient.get(`/teams/${teamId}`),
 
-  invite: (teamId: string, email: string) =>
-    canvasClient.post(`/teams/${teamId}/members`, { email }),
+  invite: (teamId: string, email: string) => canvasClient.post(`/teams/${teamId}/members`, { email }),
 
-  removeMember: (teamId: string, userId: string) =>
-    canvasClient.delete(`/teams/${teamId}/members/${userId}`),
+  removeMember: (teamId: string, userId: string) => canvasClient.delete(`/teams/${teamId}/members/${userId}`),
 
-  deleteTeam: (teamId: string) =>
-    canvasClient.delete(`/teams/${teamId}`),
+  deleteTeam: (teamId: string) => canvasClient.delete(`/teams/${teamId}`),
 };
 
 // ─── Billing API ───
 
 export const billingApi = {
-  createCheckout: (priceId: string, plan: string) =>
-    canvasClient.post('/billing/create-checkout', { priceId, plan }),
+  createCheckout: (priceId: string, plan: string) => canvasClient.post('/billing/create-checkout', { priceId, plan }),
 
-  createPortal: () =>
-    canvasClient.post('/billing/create-portal'),
+  createPortal: () => canvasClient.post('/billing/create-portal'),
 
-  getSubscription: () =>
-    canvasClient.get('/billing/subscription'),
+  getSubscription: () => canvasClient.get('/billing/subscription'),
 };
 
 // ─── Calendar API ───
@@ -503,17 +486,13 @@ export const calendarApi = {
   getEvents: (params?: { from?: string; to?: string; type?: string; canvasId?: string }) =>
     canvasClient.get('/calendar/events', { params }),
 
-  createEvent: (data: CalendarEventInput) =>
-    canvasClient.post('/calendar/events', data),
+  createEvent: (data: CalendarEventInput) => canvasClient.post('/calendar/events', data),
 
-  updateEvent: (id: string, data: Partial<CalendarEventInput>) =>
-    canvasClient.put(`/calendar/events/${id}`, data),
+  updateEvent: (id: string, data: Partial<CalendarEventInput>) => canvasClient.put(`/calendar/events/${id}`, data),
 
-  deleteEvent: (id: string) =>
-    canvasClient.delete(`/calendar/events/${id}`),
+  deleteEvent: (id: string) => canvasClient.delete(`/calendar/events/${id}`),
 
-  exportIcal: () =>
-    canvasClient.get('/calendar/export.ics', { responseType: 'blob' }),
+  exportIcal: () => canvasClient.get('/calendar/export.ics', { responseType: 'blob' }),
 };
 
 // ─── Notification API ───
@@ -522,21 +501,17 @@ export const notificationApi = {
   getNotifications: (params?: { page?: number; limit?: number; unreadOnly?: boolean }) =>
     canvasClient.get('/notifications', { params }),
 
-  markAsRead: (id: string) =>
-    canvasClient.put(`/notifications/${id}/read`),
+  markAsRead: (id: string) => canvasClient.put(`/notifications/${id}/read`),
 
-  markAllAsRead: () =>
-    canvasClient.put('/notifications/read-all'),
+  markAllAsRead: () => canvasClient.put('/notifications/read-all'),
 
-  deleteNotification: (id: string) =>
-    canvasClient.delete(`/notifications/${id}`),
+  deleteNotification: (id: string) => canvasClient.delete(`/notifications/${id}`),
 };
 
 // ─── Report API ───
 
 export const reportApi = {
-  getSchedules: () =>
-    canvasClient.get('/reports/schedules'),
+  getSchedules: () => canvasClient.get('/reports/schedules'),
 
   createSchedule: (data: { canvasId?: string; teamId?: string; frequency?: string; dayOfWeek?: number }) =>
     canvasClient.post('/reports/schedule', data),
@@ -544,11 +519,9 @@ export const reportApi = {
   updateSchedule: (id: string, data: { frequency?: string; dayOfWeek?: number; enabled?: boolean }) =>
     canvasClient.put(`/reports/schedules/${id}`, data),
 
-  deleteSchedule: (id: string) =>
-    canvasClient.delete(`/reports/schedules/${id}`),
+  deleteSchedule: (id: string) => canvasClient.delete(`/reports/schedules/${id}`),
 
-  generateReport: (canvasId?: string) =>
-    canvasClient.post('/reports/generate', { canvasId }),
+  generateReport: (canvasId?: string) => canvasClient.post('/reports/generate', { canvasId }),
 };
 
 // ─── WISEShift Bridge Client (for importing narratives from WISEShift) ───
@@ -567,8 +540,7 @@ export function createWiseShiftBridge(baseUrl: string, dashboardCode: string) {
     getNarratives: (params: { ids?: string; assessmentId?: string }) =>
       client.get('/api/v1/research/narratives', { params }),
 
-    getAssessments: () =>
-      client.get('/api/v1/research/assessments'),
+    getAssessments: () => client.get('/api/v1/research/assessments'),
   };
 }
 
@@ -579,24 +551,22 @@ function adminHeaders(adminKey: string) {
 }
 
 export const adminApi = {
-  getDashboard: (adminKey: string) =>
-    canvasClient.get('/admin/dashboard', adminHeaders(adminKey)),
+  getDashboard: (adminKey: string) => canvasClient.get('/admin/dashboard', adminHeaders(adminKey)),
 
-  getUsers: (adminKey: string, params?: { page?: number; perPage?: number; search?: string; sortField?: string; sortDir?: string }) =>
-    canvasClient.get('/admin/users', { ...adminHeaders(adminKey), params }),
+  getUsers: (
+    adminKey: string,
+    params?: { page?: number; perPage?: number; search?: string; sortField?: string; sortDir?: string },
+  ) => canvasClient.get('/admin/users', { ...adminHeaders(adminKey), params }),
 
   getUserDetail: (adminKey: string, userId: string) =>
     canvasClient.get(`/admin/users/${userId}`, adminHeaders(adminKey)),
 
-  getBilling: (adminKey: string) =>
-    canvasClient.get('/admin/billing', adminHeaders(adminKey)),
+  getBilling: (adminKey: string) => canvasClient.get('/admin/billing', adminHeaders(adminKey)),
 
-  getHealth: (adminKey: string) =>
-    canvasClient.get('/admin/health', adminHeaders(adminKey)),
+  getHealth: (adminKey: string) => canvasClient.get('/admin/health', adminHeaders(adminKey)),
 
   getActivity: (adminKey: string, params?: { page?: number; perPage?: number; action?: string }) =>
     canvasClient.get('/admin/activity', { ...adminHeaders(adminKey), params }),
 
-  getFeatures: (adminKey: string) =>
-    canvasClient.get('/admin/features', adminHeaders(adminKey)),
+  getFeatures: (adminKey: string) => canvasClient.get('/admin/features', adminHeaders(adminKey)),
 };
