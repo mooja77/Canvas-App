@@ -7,17 +7,24 @@ import { authApi } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 import CodingCanvas from '../components/canvas/CodingCanvas';
 import SetupWizard from '../components/SetupWizard';
+import PlanWelcome from '../components/PlanWelcome';
+import AiSetupBanner from '../components/AiSetupBanner';
 import { SunIcon, MoonIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
 export default function CanvasPage() {
   const { authenticated, name, logout, authType, emailVerified } = useAuthStore();
   const { darkMode, toggleDarkMode, setupWizardComplete, completeSetupWizard, resetOnboarding } = useUIStore();
-  const canvases = useCanvasStore(s => s.canvases);
-  const fetchCanvases = useCanvasStore(s => s.fetchCanvases);
+  const planWelcomeSeen = useUIStore((s) => s.featureDiscovery.planWelcomeSeen);
+  const [showPlanWelcome, setShowPlanWelcome] = useState(false);
+  const canvases = useCanvasStore((s) => s.canvases);
+  const fetchCanvases = useCanvasStore((s) => s.fetchCanvases);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  usePageMeta('Canvas — QualCanvas', 'Your qualitative research workspace. Code transcripts, analyze themes, and collaborate.');
+  usePageMeta(
+    'Canvas — QualCanvas',
+    'Your qualitative research workspace. Code transcripts, analyze themes, and collaborate.',
+  );
   const [resending, setResending] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
@@ -79,7 +86,10 @@ export default function CanvasPage() {
 
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
-      <a href="#canvas-main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2 focus:bg-brand-600 focus:text-white focus:rounded">
+      <a
+        href="#canvas-main"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2 focus:bg-brand-600 focus:text-white focus:rounded"
+      >
         Skip to canvas
       </a>
       {/* Minimal header */}
@@ -87,8 +97,18 @@ export default function CanvasPage() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg flex items-center justify-center shadow-sm">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
+                />
               </svg>
             </div>
             <span className="font-semibold text-gray-900 dark:text-white text-sm tracking-tight">Canvas</span>
@@ -97,7 +117,10 @@ export default function CanvasPage() {
 
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-[10px] font-bold text-white shadow-sm" aria-hidden="true">
+            <div
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-[10px] font-bold text-white shadow-sm"
+              aria-hidden="true"
+            >
               {name?.charAt(0).toUpperCase()}
             </div>
             <span className="text-xs font-medium text-gray-600 dark:text-gray-300 hidden sm:inline">{name}</span>
@@ -126,8 +149,18 @@ export default function CanvasPage() {
       {showVerificationBanner && (
         <div className="flex-shrink-0 bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800 px-4 py-2 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
-            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+            <svg
+              className="w-4 h-4 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
+              />
             </svg>
             <span>
               Please verify your email. Check your inbox or{' '}
@@ -137,7 +170,8 @@ export default function CanvasPage() {
                 className="font-medium underline hover:no-underline disabled:opacity-50"
               >
                 {resending ? 'sending...' : 'resend verification email'}
-              </button>.
+              </button>
+              .
             </span>
           </div>
           <button
@@ -153,9 +187,18 @@ export default function CanvasPage() {
         </div>
       )}
 
+      <AiSetupBanner />
+
+      {showPlanWelcome && <PlanWelcome onClose={() => setShowPlanWelcome(false)} />}
+
       {/* Setup wizard for first-time users — replaces canvas until complete */}
       {showWizard ? (
-        <SetupWizard onComplete={() => setShowWizard(false)} />
+        <SetupWizard
+          onComplete={() => {
+            setShowWizard(false);
+            if (!planWelcomeSeen) setShowPlanWelcome(true);
+          }}
+        />
       ) : (
         /* Full-screen canvas workspace */
         <main id="canvas-main" className="flex-1 overflow-hidden" aria-label="Canvas workspace">

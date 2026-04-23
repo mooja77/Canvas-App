@@ -71,7 +71,23 @@ vi.mock('../stores/authStore', () => ({
 }));
 
 // Mock uiStore
-const mockUIStore = { darkMode: false, toggleDarkMode: vi.fn() };
+const mockUIStore = {
+  darkMode: false,
+  toggleDarkMode: vi.fn(),
+  setupWizardComplete: true,
+  completeSetupWizard: vi.fn(),
+  resetOnboarding: vi.fn(),
+  featureDiscovery: {
+    analyzeSeen: false,
+    excerptBrowserSeen: false,
+    aiPromptSeen: false,
+    teamPromptSeen: false,
+    ethicsSeen: false,
+    exportSeen: false,
+    planWelcomeSeen: false,
+  },
+  markFeatureSeen: vi.fn(),
+};
 vi.mock('../stores/uiStore', () => ({
   useUIStore: (selector?: (state: Record<string, unknown>) => unknown) =>
     selector ? selector(mockUIStore as unknown as Record<string, unknown>) : mockUIStore,
@@ -193,10 +209,10 @@ describe('Accessibility', () => {
       const tabs = screen.getAllByRole('tab');
       expect(tabs.length).toBe(2);
 
-      const signInTab = tabs.find(tab => tab.textContent === 'Sign In');
+      const signInTab = tabs.find((tab) => tab.textContent === 'Sign In');
       expect(signInTab).toHaveAttribute('aria-selected', 'true');
 
-      const signUpTab = tabs.find(tab => tab.textContent === 'Sign Up');
+      const signUpTab = tabs.find((tab) => tab.textContent === 'Sign Up');
       expect(signUpTab).toHaveAttribute('aria-selected', 'false');
     });
 
@@ -267,7 +283,7 @@ describe('Accessibility', () => {
       render(
         <ErrorBoundary>
           <ThrowingChild />
-        </ErrorBoundary>
+        </ErrorBoundary>,
       );
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
@@ -298,16 +314,18 @@ describe('Accessibility', () => {
       renderWith(<UpgradePrompt />);
 
       act(() => {
-        window.dispatchEvent(new CustomEvent('plan-limit-exceeded', {
-          detail: {
-            error: 'Limit reached',
-            code: 'CANVAS_LIMIT',
-            limit: 'canvases',
-            current: 1,
-            max: 1,
-            upgrade: true,
-          },
-        }));
+        window.dispatchEvent(
+          new CustomEvent('plan-limit-exceeded', {
+            detail: {
+              error: 'Limit reached',
+              code: 'CANVAS_LIMIT',
+              limit: 'canvases',
+              current: 1,
+              max: 1,
+              upgrade: true,
+            },
+          }),
+        );
       });
 
       const dialog = screen.getByRole('alertdialog');
@@ -328,16 +346,14 @@ describe('Accessibility', () => {
 
       // Get all buttons that contain only SVG (icon-only)
       const buttons = container.querySelectorAll('button');
-      buttons.forEach(button => {
+      buttons.forEach((button) => {
         const hasTextContent = button.textContent && button.textContent.trim().length > 0;
         const hasSrOnly = button.querySelector('.sr-only');
         const hasAriaLabel = button.hasAttribute('aria-label');
         const hasTitle = button.hasAttribute('title');
 
         // Every button must have some accessible name
-        expect(
-          hasTextContent || hasSrOnly || hasAriaLabel || hasTitle
-        ).toBe(true);
+        expect(hasTextContent || hasSrOnly || hasAriaLabel || hasTitle).toBe(true);
       });
     });
 

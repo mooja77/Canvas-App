@@ -17,14 +17,18 @@ const { mockTeamApi, mockToast, getMockPlan, setMockPlan } = vi.hoisted(() => {
     mockTeamApi,
     mockToast,
     getMockPlan: () => mockPlan,
-    setMockPlan: (p: string) => { mockPlan = p; },
+    setMockPlan: (p: string) => {
+      mockPlan = p;
+    },
   };
 });
 
 // Mock react-router-dom
 vi.mock('react-router-dom', () => ({
-  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode;[key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
+  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
   ),
 }));
 
@@ -89,17 +93,17 @@ describe('TeamPage', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
-  it('shows "No Team Yet" with create form for users without a team on team plan', async () => {
+  it('shows guided 3-step setup with create form for users without a team on team plan', async () => {
     mockTeamApi.list.mockResolvedValue({ data: { data: [] } });
 
     render(<TeamPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('No Team Yet')).toBeInTheDocument();
+      expect(screen.getByText(/Set up your team in 3 steps/i)).toBeInTheDocument();
     });
 
-    expect(screen.getByPlaceholderText('Team name')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Create a Team/i })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/e.g\./i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Create Team/i })).toBeInTheDocument();
   });
 
   it('shows team name and member list when team exists', async () => {

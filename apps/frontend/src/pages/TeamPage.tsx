@@ -140,7 +140,7 @@ export default function TeamPage() {
 
   // Find the current user's role in the active team
   const myMembership = activeTeam?.members?.find(
-    (m: TeamMember) => m.userId === activeTeam.ownerId && activeTeam.owner
+    (m: TeamMember) => m.userId === activeTeam.ownerId && activeTeam.owner,
   );
   const myRole = teams[0]?.myRole || myMembership?.role || 'member';
   const canManage = ['owner', 'admin'].includes(myRole);
@@ -152,7 +152,9 @@ export default function TeamPage() {
       member: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
     };
     return (
-      <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${colors[role] || colors.member}`}>
+      <span
+        className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${colors[role] || colors.member}`}
+      >
         {role}
       </span>
     );
@@ -169,61 +171,114 @@ export default function TeamPage() {
         </div>
 
         {!activeTeam ? (
-          /* No team — show create form */
-          <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6">
-            <div className="text-center py-8">
-              <svg className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600 mb-4" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-              </svg>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Team Yet</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
-                Create a team to collaborate with others, manage members, and use intercoder reliability features.
-              </p>
-              {plan !== 'team' ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-amber-600 dark:text-amber-400">
-                    Team features require a Team plan.
-                  </p>
-                  <Link
-                    to="/pricing"
-                    className="inline-block px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors text-sm"
-                  >
-                    Upgrade to Team
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    placeholder="Team name"
-                    value={teamName}
-                    onChange={e => setTeamName(e.target.value)}
-                    className="w-full max-w-xs mx-auto px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+          /* No team — guided 3-step setup */
+          plan !== 'team' ? (
+            <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6">
+              <div className="text-center py-8">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600 mb-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"
                   />
-                  <div>
-                    <button
-                      onClick={handleCreateTeam}
-                      disabled={creating || !teamName.trim()}
-                      className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors text-sm disabled:opacity-50"
-                    >
-                      {creating ? 'Creating...' : 'Create a Team'}
-                    </button>
-                  </div>
-                </div>
-              )}
+                </svg>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Team features require a Team plan
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
+                  Team plans unlock multi-coder canvases, intercoder reliability, and real-time collaboration.
+                </p>
+                <Link
+                  to="/pricing"
+                  className="inline-block px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors text-sm"
+                >
+                  Upgrade to Team
+                </Link>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
+                  Set up your team in 3 steps
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+                  You'll do this once. Members can then collaborate on any canvas you share.
+                </p>
+                <ol className="space-y-4">
+                  <li className="flex gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
+                      1
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Name your team</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 mb-2">
+                        Usually your lab, department, or project name.
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="e.g. Health Comms Lab"
+                          value={teamName}
+                          onChange={(e) => setTeamName(e.target.value)}
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                        />
+                        <button
+                          onClick={handleCreateTeam}
+                          disabled={creating || !teamName.trim()}
+                          className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors text-sm disabled:opacity-50"
+                        >
+                          {creating ? 'Creating...' : 'Create Team'}
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                  <li className="flex gap-3 opacity-50">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-300 dark:bg-gray-600 text-xs font-bold text-white">
+                      2
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Invite members by email</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        They'll get an invite link and join immediately.
+                      </p>
+                    </div>
+                  </li>
+                  <li className="flex gap-3 opacity-50">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-300 dark:bg-gray-600 text-xs font-bold text-white">
+                      3
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Share a canvas</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        Open any canvas → Share → add your team for real-time coding.
+                      </p>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+            </div>
+          )
         ) : (
           /* Has team — show details */
           <>
             {/* Team Info */}
             <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
-              <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Team Info</h2>
+              <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+                Team Info
+              </h2>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-lg font-bold text-gray-900 dark:text-white">{activeTeam.name}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Created {new Date(activeTeam.createdAt).toLocaleDateString()} by {activeTeam.owner?.name || 'Unknown'}
+                    Created {new Date(activeTeam.createdAt).toLocaleDateString()} by{' '}
+                    {activeTeam.owner?.name || 'Unknown'}
                   </p>
                 </div>
                 {roleBadge(myRole)}
@@ -237,7 +292,10 @@ export default function TeamPage() {
               </h2>
               <div className="space-y-3">
                 {activeTeam.members?.map((member: TeamMember) => (
-                  <div key={member.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700/50 last:border-0">
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700/50 last:border-0"
+                  >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xs font-semibold text-gray-600 dark:text-gray-300">
                         {member.user.name?.charAt(0)?.toUpperCase() || '?'}
@@ -255,7 +313,13 @@ export default function TeamPage() {
                           className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                           title="Remove member"
                         >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                          >
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                           </svg>
                         </button>
@@ -269,13 +333,15 @@ export default function TeamPage() {
             {/* Invite Form */}
             {canManage && (
               <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
-                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Invite Member</h2>
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+                  Invite Member
+                </h2>
                 <form onSubmit={handleInvite} className="flex gap-3">
                   <input
                     type="email"
                     placeholder="Email address"
                     value={inviteEmail}
-                    onChange={e => setInviteEmail(e.target.value)}
+                    onChange={(e) => setInviteEmail(e.target.value)}
                     required
                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                   />
@@ -293,7 +359,9 @@ export default function TeamPage() {
             {/* Danger Zone */}
             {myRole === 'owner' && (
               <div className="bg-white dark:bg-gray-800 rounded-xl ring-2 ring-red-200 dark:ring-red-900/50 p-6">
-                <h2 className="text-sm font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">Danger Zone</h2>
+                <h2 className="text-sm font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">
+                  Danger Zone
+                </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                   Permanently delete this team and remove all members. This action cannot be undone.
                 </p>
