@@ -4,6 +4,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { getAuthUserId } from '../utils/routeHelpers.js';
 import { safeJsonParse } from '../utils/routeHelpers.js';
 import { validateParams } from '../middleware/validation.js';
+import { mutationLimiter } from '../middleware/rateLimiters.js';
 import { z } from 'zod';
 
 export const notificationRoutes = Router();
@@ -55,30 +56,39 @@ notificationRoutes.get('/notifications', async (req, res, next) => {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
       unreadCount,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── PUT /api/notifications/:id/read — Mark single notification as read ───
-notificationRoutes.put('/notifications/:id/read', validateParams(notificationIdParam), async (req, res, next) => {
-  try {
-    const userId = requireUserId(req);
-    const { id } = req.params;
+notificationRoutes.put(
+  '/notifications/:id/read',
+  mutationLimiter,
+  validateParams(notificationIdParam),
+  async (req, res, next) => {
+    try {
+      const userId = requireUserId(req);
+      const { id } = req.params;
 
-    const notification = await prismaNotification.findUnique({ where: { id } });
-    if (!notification) throw new AppError('Notification not found', 404);
-    if (notification.userId !== userId) throw new AppError('Access denied', 403);
+      const notification = await prismaNotification.findUnique({ where: { id } });
+      if (!notification) throw new AppError('Notification not found', 404);
+      if (notification.userId !== userId) throw new AppError('Access denied', 403);
 
-    await prismaNotification.update({
-      where: { id },
-      data: { read: true },
-    });
+      await prismaNotification.update({
+        where: { id },
+        data: { read: true },
+      });
 
-    res.json({ success: true, message: 'Notification marked as read' });
-  } catch (err) { next(err); }
-});
+      res.json({ success: true, message: 'Notification marked as read' });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // ─── PUT /api/notifications/read-all — Mark all notifications as read ───
-notificationRoutes.put('/notifications/read-all', async (req, res, next) => {
+notificationRoutes.put('/notifications/read-all', mutationLimiter, async (req, res, next) => {
   try {
     const userId = requireUserId(req);
 
@@ -88,21 +98,30 @@ notificationRoutes.put('/notifications/read-all', async (req, res, next) => {
     });
 
     res.json({ success: true, message: 'All notifications marked as read' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── DELETE /api/notifications/:id — Delete a notification ───
-notificationRoutes.delete('/notifications/:id', validateParams(notificationIdParam), async (req, res, next) => {
-  try {
-    const userId = requireUserId(req);
-    const { id } = req.params;
+notificationRoutes.delete(
+  '/notifications/:id',
+  mutationLimiter,
+  validateParams(notificationIdParam),
+  async (req, res, next) => {
+    try {
+      const userId = requireUserId(req);
+      const { id } = req.params;
 
-    const notification = await prismaNotification.findUnique({ where: { id } });
-    if (!notification) throw new AppError('Notification not found', 404);
-    if (notification.userId !== userId) throw new AppError('Access denied', 403);
+      const notification = await prismaNotification.findUnique({ where: { id } });
+      if (!notification) throw new AppError('Notification not found', 404);
+      if (notification.userId !== userId) throw new AppError('Access denied', 403);
 
-    await prismaNotification.delete({ where: { id } });
+      await prismaNotification.delete({ where: { id } });
 
-    res.json({ success: true, message: 'Notification deleted' });
-  } catch (err) { next(err); }
-});
+      res.json({ success: true, message: 'Notification deleted' });
+    } catch (err) {
+      next(err);
+    }
+  },
+);

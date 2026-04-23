@@ -7,50 +7,51 @@ import '../lib/llm-openai.js';
 import '../lib/llm-anthropic.js';
 import '../lib/llm-google.js';
 import { validate, updateAiSettingsSchema } from '../middleware/validation.js';
+import { sensitiveValidationLimiter } from '../middleware/rateLimiters.js';
 
 export const aiSettingsRoutes = Router();
 
 // ─── GET /ai-settings — Get user's AI config (never returns the actual key) ───
-aiSettingsRoutes.get(
-  '/ai-settings',
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (!req.userId) {
-        // Legacy access-code auth has no userId — return graceful "not configured"
-        return res.json({ success: true, data: { hasApiKey: false } });
-      }
-
-      const config = await prisma.userAiConfig.findUnique({
-        where: { userId: req.userId },
-        select: {
-          provider: true,
-          model: true,
-          embeddingModel: true,
-        },
-      });
-
-      if (!config) {
-        return res.json({ success: true, data: { hasApiKey: false } });
-      }
-
-      res.json({
-        success: true,
-        data: {
-          provider: config.provider,
-          model: config.model,
-          embeddingModel: config.embeddingModel,
-          hasApiKey: true,
-        },
-      });
-    } catch (err) {
-      next(err);
+aiSettingsRoutes.get('/ai-settings', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.userId) {
+      // Legacy access-code auth has no userId — return graceful "not configured"
+      return res.json({ success: true, data: { hasApiKey: false } });
     }
-  },
-);
+
+    const config = await prisma.userAiConfig.findUnique({
+      where: { userId: req.userId },
+      select: {
+        provider: true,
+        model: true,
+        embeddingModel: true,
+      },
+    });
+
+    if (!config) {
+      return res.json({ success: true, data: { hasApiKey: false } });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        provider: config.provider,
+        model: config.model,
+        embeddingModel: config.embeddingModel,
+        hasApiKey: true,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ─── PUT /ai-settings — Create or update user's AI config ───
+// Tight limit because this endpoint performs an outbound LLM validation call
+// with user-supplied credentials — vulnerable to brute-force otherwise.
 aiSettingsRoutes.put(
   '/ai-settings',
+  sensitiveValidationLimiter,
   validate(updateAiSettingsSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -108,21 +109,18 @@ aiSettingsRoutes.put(
 );
 
 // ─── DELETE /ai-settings — Remove user's AI config ───
-aiSettingsRoutes.delete(
-  '/ai-settings',
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (!req.userId) {
-        return res.status(401).json({ success: false, error: 'Authentication required' });
-      }
-
-      await prisma.userAiConfig.deleteMany({
-        where: { userId: req.userId },
-      });
-
-      res.json({ success: true, data: { hasApiKey: false } });
-    } catch (err) {
-      next(err);
+aiSettingsRoutes.delete('/ai-settings', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
     }
-  },
-);
+
+    await prisma.userAiConfig.deleteMany({
+      where: { userId: req.userId },
+    });
+
+    res.json({ success: true, data: { hasApiKey: false } });
+  } catch (err) {
+    next(err);
+  }
+});

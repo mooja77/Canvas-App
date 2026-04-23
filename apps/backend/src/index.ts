@@ -3,7 +3,7 @@ import 'dotenv/config';
 // Validate required environment variables (skip in test — tests mock env vars)
 if (process.env.NODE_ENV !== 'test') {
   const REQUIRED_VARS = ['JWT_SECRET', 'DATABASE_URL'];
-  const OPTIONAL_VARS = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'SMTP_HOST', 'ENCRYPTION_KEY'];
+  const OPTIONAL_VARS = ['SMTP_HOST', 'ENCRYPTION_KEY'];
 
   for (const v of REQUIRED_VARS) {
     if (!process.env[v]) {
@@ -15,6 +15,43 @@ if (process.env.NODE_ENV !== 'test') {
   for (const v of OPTIONAL_VARS) {
     if (!process.env[v]) {
       console.warn(`Warning: Optional environment variable not set: ${v}`);
+    }
+  }
+
+  // Production-only hardening: fail fast on misconfigurations that silently
+  // weaken security in prod (open CORS fallback, plaintext email links, etc.).
+  if (process.env.NODE_ENV === 'production') {
+    const origins = (process.env.ALLOWED_ORIGINS || '')
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
+    if (origins.length === 0) {
+      console.error('FATAL: ALLOWED_ORIGINS must be set in production to a comma-separated list of frontend origins.');
+      process.exit(1);
+    }
+
+    const appUrl = process.env.APP_URL;
+    if (!appUrl) {
+      console.error('FATAL: APP_URL must be set in production (used in verification / reset email links).');
+      process.exit(1);
+    }
+    try {
+      const parsed = new URL(appUrl);
+      if (parsed.protocol !== 'https:') {
+        console.error(`FATAL: APP_URL must use HTTPS in production (got ${parsed.protocol}).`);
+        process.exit(1);
+      }
+    } catch {
+      console.error(`FATAL: APP_URL is not a valid URL: ${appUrl}`);
+      process.exit(1);
+    }
+
+    // If Stripe is wired up, the webhook secret is required to safely process
+    // subscription events. Without it, webhooks fail open with 500s and
+    // billing state drifts from Stripe's source of truth.
+    if (process.env.STRIPE_SECRET_KEY && !process.env.STRIPE_WEBHOOK_SECRET) {
+      console.error('FATAL: STRIPE_WEBHOOK_SECRET must be set when STRIPE_SECRET_KEY is configured.');
+      process.exit(1);
     }
   }
 }
@@ -70,31 +107,38 @@ app.set('trust proxy', 1);
 
 // Security headers
 const isProduction = process.env.NODE_ENV === 'production';
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://accounts.google.com"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'", "https://accounts.google.com"],
-      fontSrc: ["'self'"],
-      frameSrc: ["'self'", "https://accounts.google.com"],
-      workerSrc: ["'self'", "blob:"],
-      childSrc: ["'self'", "blob:"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", 'https://accounts.google.com'],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'", 'https://accounts.google.com'],
+        fontSrc: ["'self'"],
+        frameSrc: ["'self'", 'https://accounts.google.com'],
+        workerSrc: ["'self'", 'blob:'],
+        childSrc: ["'self'", 'blob:'],
+      },
     },
-  },
-  hsts: isProduction ? { maxAge: 31536000, includeSubDomains: true } : false,
-  permittedCrossDomainPolicies: { permittedPolicies: 'none' },
-}));
+    hsts: isProduction ? { maxAge: 31536000, includeSubDomains: true } : false,
+    permittedCrossDomainPolicies: { permittedPolicies: 'none' },
+  }),
+);
 
 // CORS
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : false)
-    : ['http://localhost:5174', 'http://localhost:3007'],
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === 'production'
+        ? process.env.ALLOWED_ORIGINS
+          ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+          : false
+        : ['http://localhost:5174', 'http://localhost:3007'],
+    credentials: true,
+  }),
+);
 
 // Logging
 app.use(morgan(isProduction ? 'combined' : 'dev'));
@@ -107,7 +151,10 @@ app.use(express.json({ limit: '1mb' }));
 
 // ─── Request counter for /metrics ───
 let requestCount = 0;
-app.use((_req, _res, next) => { requestCount++; next(); });
+app.use((_req, _res, next) => {
+  requestCount++;
+  next();
+});
 
 // CSRF protection
 app.use(csrfProtection);

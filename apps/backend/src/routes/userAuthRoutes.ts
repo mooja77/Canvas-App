@@ -327,6 +327,7 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
 
 // POST /api/auth/forgot-password — initiate password reset
 userAuthRoutes.post('/auth/forgot-password', authLimiter, async (req, res, next) => {
+  const responseStart = Date.now();
   try {
     const { email } = req.body;
     if (!email || typeof email !== 'string') {
@@ -336,27 +337,33 @@ userAuthRoutes.post('/auth/forgot-password', authLimiter, async (req, res, next)
     const normalizedEmail = email.toLowerCase().trim();
     const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
-    // Always return success to prevent email enumeration
-    if (!user) {
-      return res.json({ success: true, message: 'If an account exists, a reset link has been sent' });
+    if (user) {
+      // Generate a reset token (stored hashed, sent plain). Any prior unused
+      // token is overwritten here — reissuing a reset invalidates older ones
+      // so an attacker who captured an earlier link can't reuse it.
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenHash = sha256(resetToken);
+      const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { resetTokenHash, resetTokenExpiry: resetExpiry },
+      });
+
+      const appUrl = process.env.APP_URL || 'http://localhost:5174';
+      const resetUrl = `${appUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(normalizedEmail)}`;
+
+      await sendPasswordResetEmail(normalizedEmail, resetUrl);
     }
 
-    // Generate a reset token (stored hashed, sent plain)
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenHash = sha256(resetToken);
-    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { resetTokenHash, resetTokenExpiry: resetExpiry },
-    });
-
-    // In production, send email with reset link
-    // For dev, log the token
-    const appUrl = process.env.APP_URL || 'http://localhost:5174';
-    const resetUrl = `${appUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(normalizedEmail)}`;
-
-    await sendPasswordResetEmail(normalizedEmail, resetUrl);
+    // Equalize timing so observers can't distinguish the "user exists" branch
+    // (DB update + email send) from the "user does not exist" branch by
+    // measuring response latency. 400ms is longer than either branch takes.
+    const elapsed = Date.now() - responseStart;
+    const targetMs = 400;
+    if (elapsed < targetMs) {
+      await new Promise((resolve) => setTimeout(resolve, targetMs - elapsed));
+    }
 
     res.json({ success: true, message: 'If an account exists, a reset link has been sent' });
   } catch (err) {
