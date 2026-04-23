@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { logError, fieldsFromReq } from '../lib/logger.js';
 
 export class AppError extends Error {
   statusCode: number;
@@ -9,11 +10,15 @@ export class AppError extends Error {
 }
 
 export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction) {
-  const requestId = req.requestId;
+  const fields = fieldsFromReq(req);
+  const requestId = fields.requestId;
+
   if (err instanceof AppError) {
-    // Only log 5xx AppErrors with stack trace
+    // Only log 5xx AppErrors — 4xx client errors are expected and would drown
+    // the real signal. AppErrors still flow through logError so the optional
+    // exception hook (e.g. Sentry) can see them if we choose.
     if (err.statusCode >= 500) {
-      console.error(JSON.stringify({ level: 'error', message: err.message, stack: err.stack, requestId }));
+      logError(err, { ...fields, statusCode: err.statusCode });
     }
     return res.status(err.statusCode).json({
       success: false,
@@ -22,16 +27,8 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
     });
   }
 
-  // Unexpected errors — log full stack
-  console.error(
-    JSON.stringify({
-      level: 'error',
-      message: err.message,
-      stack: err.stack,
-      type: err.constructor.name,
-      requestId,
-    }),
-  );
+  // Unexpected errors — always log, always capture, never leak stack to client.
+  logError(err, fields);
 
   res.status(500).json({
     success: false,

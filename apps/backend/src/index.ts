@@ -207,17 +207,69 @@ app.get('/health', async (_req, res) => {
 });
 
 // ─── Readiness check ───
+// Reports every external dependency. Optional services (Stripe, SMTP,
+// encryption) are marked "degraded" rather than "not ready" — we don't want
+// a Stripe blip to restart the container. Only the DB being down fails hard.
 app.get('/ready', async (_req, res) => {
+  const checks: Record<string, 'ok' | 'error' | 'skipped'> = {};
+  const details: Record<string, string> = {};
+
+  // DB — hard dependency
   try {
     await prisma.$queryRawUnsafe('SELECT 1');
-    res.json({
-      status: 'ready',
-      version: process.env.npm_package_version || '1.0.0',
-      uptime: process.uptime(),
-    });
-  } catch {
-    res.status(503).json({ status: 'not ready' });
+    checks.database = 'ok';
+  } catch (err) {
+    checks.database = 'error';
+    details.database = (err as Error).message;
   }
+
+  // Encryption key — silent in prod if key is wrong would mean every AI-key
+  // save/load fails later. Verify we can round-trip something.
+  try {
+    if (process.env.ENCRYPTION_KEY) {
+      const { encryptApiKey, decryptApiKey } = await import('./utils/encryption.js');
+      const probe = encryptApiKey('probe');
+      const round = decryptApiKey(probe.encrypted, probe.iv, probe.tag);
+      checks.encryption = round === 'probe' ? 'ok' : 'error';
+    } else {
+      checks.encryption = 'skipped';
+    }
+  } catch (err) {
+    checks.encryption = 'error';
+    details.encryption = (err as Error).message;
+  }
+
+  // Stripe — optional, only if keys configured. We don't actually call
+  // Stripe (avoid rate-limited external calls on every health probe) —
+  // just confirm the SDK can be constructed.
+  if (process.env.STRIPE_SECRET_KEY) {
+    try {
+      const { getStripe } = await import('./lib/stripe.js');
+      getStripe();
+      checks.stripe = 'ok';
+    } catch (err) {
+      checks.stripe = 'error';
+      details.stripe = (err as Error).message;
+    }
+  } else {
+    checks.stripe = 'skipped';
+  }
+
+  // SMTP — only if configured. We don't open a real TCP connection on
+  // every probe; just verify config is present.
+  checks.smtp = process.env.SMTP_HOST ? 'ok' : 'skipped';
+
+  const dbDown = checks.database === 'error';
+  const anyDegraded = Object.values(checks).some((v) => v === 'error');
+
+  const status = dbDown ? 'not ready' : anyDegraded ? 'degraded' : 'ready';
+  res.status(dbDown ? 503 : 200).json({
+    status,
+    version: process.env.npm_package_version || '1.0.0',
+    uptime: process.uptime(),
+    checks,
+    ...(Object.keys(details).length > 0 ? { details } : {}),
+  });
 });
 
 // ─── Basic metrics ───

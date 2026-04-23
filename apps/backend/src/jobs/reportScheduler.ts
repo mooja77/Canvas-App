@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { generateReport } from '../utils/reportGenerator.js';
 import { sendEmail } from '../lib/email.js';
+import { logError } from '../lib/logger.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const prismaReportSchedule = (prisma as any).reportSchedule;
@@ -51,7 +52,7 @@ async function checkErrorSpike(): Promise<void> {
       console.log(`[ReportScheduler] Error spike alert sent: ${errorCount} errors`);
     }
   } catch (err) {
-    console.error('[ReportScheduler] Error spike check failed:', err);
+    logError(err as Error, { action: 'reportScheduler.errorSpikeCheck' });
   }
 }
 
@@ -100,14 +101,16 @@ async function processSchedules(): Promise<void> {
           where: { id: schedule.id },
           data: { lastSent: now },
         });
-
-        console.log(`[ReportScheduler] Sent report for user ${schedule.userId} (${schedule.frequency})`);
       } catch (err) {
-        console.error(`[ReportScheduler] Failed to process schedule ${schedule.id}:`, err);
+        logError(err as Error, {
+          action: 'reportScheduler.processSchedule',
+          scheduleId: schedule.id,
+          userId: schedule.userId,
+        });
       }
     }
   } catch (err) {
-    console.error('[ReportScheduler] Failed to process schedules:', err);
+    logError(err as Error, { action: 'reportScheduler.processAll' });
   }
 }
 

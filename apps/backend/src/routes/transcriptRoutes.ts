@@ -52,7 +52,10 @@ transcriptRoutes.put(
       // Confirm the transcript belongs to this canvas. Without this, a user
       // who owns canvas A could update a transcript in someone else's canvas
       // just by knowing the transcript ID (IDOR).
-      const existing = await prisma.canvasTranscript.findUnique({ where: { id: req.params.tid } });
+      const existing = await prisma.canvasTranscript.findUnique({
+        where: { id: req.params.tid },
+        select: { canvasId: true },
+      });
       if (!existing || existing.canvasId !== req.params.id) {
         return next(new AppError('Transcript not found in this canvas', 404));
       }
@@ -74,7 +77,10 @@ transcriptRoutes.delete(
     try {
       const dashboardAccessId = getAuthId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
-      const existing = await prisma.canvasTranscript.findUnique({ where: { id: req.params.tid } });
+      const existing = await prisma.canvasTranscript.findUnique({
+        where: { id: req.params.tid },
+        select: { canvasId: true },
+      });
       if (!existing || existing.canvasId !== req.params.id) {
         return next(new AppError('Transcript not found in this canvas', 404));
       }

@@ -69,7 +69,10 @@ computedRoutes.put(
       const updateData: any = {};
       if (req.body.label !== undefined) updateData.label = req.body.label;
       if (req.body.config !== undefined) updateData.config = JSON.stringify(req.body.config);
-      const existing = await prisma.canvasComputedNode.findUnique({ where: { id: req.params.nodeId } });
+      const existing = await prisma.canvasComputedNode.findUnique({
+        where: { id: req.params.nodeId },
+        select: { canvasId: true },
+      });
       if (!existing || existing.canvasId !== req.params.id) {
         return next(new AppError('Computed node not found in this canvas', 404));
       }
