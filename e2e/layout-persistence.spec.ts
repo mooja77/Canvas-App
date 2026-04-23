@@ -173,29 +173,48 @@ test.describe('Layout Persistence', () => {
   test('3 - collapse node, reload, still collapsed', async ({ page }) => {
     await openCanvasById(page, canvasId);
 
-    // Find a code node and its collapse button
+    // Capture expanded height of the first code node before collapsing.
     const codeNode = page.locator('.react-flow__node[data-id^="question-"]').first();
     await codeNode.waitFor({ timeout: 10000 });
+    const expandedBox = await codeNode.boundingBox();
+    expect(expandedBox).toBeTruthy();
+    const expandedHeight = expandedBox!.height;
 
-    const collapseBtn = codeNode.locator('button[title="Collapse"], button:has(svg)').first();
-    if (await collapseBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await collapseBtn.click();
-      await page.waitForTimeout(1500);
+    // The header collapse button is titled "Collapse" when expanded,
+    // "Expand" when collapsed — strong signal for state.
+    const collapseBtn = codeNode.locator('button[title="Collapse"]');
+    await expect(collapseBtn).toBeVisible({ timeout: 5000 });
+    await collapseBtn.click();
 
-      // Reload
-      await page.reload();
-      await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
-      await page.waitForLoadState('networkidle');
+    // Wait for the title to flip, meaning state mutated and re-rendered.
+    const expandBtn = codeNode.locator('button[title="Expand"]');
+    await expect(expandBtn).toBeVisible({ timeout: 5000 });
 
-      // Verify the node is still in collapsed state (smaller height)
-      const reloadedNode = page.locator('.react-flow__node[data-id^="question-"]').first();
-      await reloadedNode.waitFor({ timeout: 10000 });
-      const box = await reloadedNode.boundingBox();
-      expect(box).toBeTruthy();
-      // Collapsed nodes are typically shorter than 100px
-      // This is a soft check — we mainly verify no crash on reload
-    }
-    expect(true).toBe(true); // No crash = pass
+    // Collapsed node should be noticeably shorter than its expanded form.
+    const collapsedBox = await codeNode.boundingBox();
+    expect(collapsedBox).toBeTruthy();
+    expect(collapsedBox!.height).toBeLessThan(expandedHeight);
+    const collapsedHeight = collapsedBox!.height;
+
+    // Give the debounced layout save a moment to flush to the backend.
+    await page.waitForTimeout(1000);
+
+    // Reload — the canonical test of persistence.
+    await page.reload();
+    await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
+    await page.waitForLoadState('networkidle');
+
+    const reloadedNode = page.locator('.react-flow__node[data-id^="question-"]').first();
+    await reloadedNode.waitFor({ timeout: 10000 });
+
+    // After reload the button should still say "Expand" (i.e. still collapsed).
+    await expect(reloadedNode.locator('button[title="Expand"]')).toBeVisible({ timeout: 5000 });
+
+    // And height should roughly match the pre-reload collapsed height, not the expanded one.
+    const reloadedBox = await reloadedNode.boundingBox();
+    expect(reloadedBox).toBeTruthy();
+    expect(reloadedBox!.height).toBeLessThan(expandedHeight);
+    expect(Math.abs(reloadedBox!.height - collapsedHeight)).toBeLessThan(20);
   });
 
   test('4 - edges persist after node move', async ({ page }) => {
