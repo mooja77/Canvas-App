@@ -552,15 +552,22 @@ model RepositoryInsight {
 // ─── Integrations ───
 
 model Integration {
-  id           String    @id @default(cuid())
-  userId       String
-  provider     String    // zoom | slack | qualtrics
-  accessToken  String
-  refreshToken String?
-  metadata     String    @default("{}")
-  expiresAt    DateTime?
-  createdAt    DateTime  @default(now())
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String    @id @default(cuid())
+  userId          String
+  provider        String    // zoom | slack | qualtrics
+  // Tokens are AES-256-GCM encrypted (see utils/encryption.ts).
+  // accessToken / refreshToken hold the base64 ciphertext; the matching
+  // Iv / Tag fields are required to decrypt.
+  accessToken     String
+  accessTokenIv   String?
+  accessTokenTag  String?
+  refreshToken    String?
+  refreshTokenIv  String?
+  refreshTokenTag String?
+  metadata        String    @default("{}")
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([userId, provider])
 }
 

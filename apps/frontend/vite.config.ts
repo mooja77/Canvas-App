@@ -38,6 +38,10 @@ export default defineConfig({
     },
   },
   build: {
+    // Don't ship source maps to production — they let anyone reconstruct the
+    // original source (including inline comments and business logic) from
+    // the minified bundle. Keep them during local dev for debugging.
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {

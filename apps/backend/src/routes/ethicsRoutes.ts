@@ -12,6 +12,7 @@ import {
 import { sha256 } from '../utils/hashing.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
 import { checkEthicsAccess } from '../middleware/planLimits.js';
+import { mutationLimiter } from '../middleware/rateLimiters.js';
 
 export const ethicsRoutes = Router();
 
@@ -221,7 +222,10 @@ ethicsRoutes.put(
 // ─── Audit Log Export ───
 
 // GET /api/audit-log - Export audit trail (own data only)
-ethicsRoutes.get('/audit-log', async (req, res, next) => {
+// Rate-limited + pagination clamped to prevent the log from being scraped in
+// a tight loop or used as a DoS vector. Audit log scans are relatively
+// expensive due to the row volume.
+ethicsRoutes.get('/audit-log', mutationLimiter, async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
 
@@ -240,8 +244,12 @@ ethicsRoutes.get('/audit-log', async (req, res, next) => {
     if (action) where.action = action as string;
     if (resource) where.resource = resource as string;
 
-    const take = Math.min(parseInt(limit as string) || 100, 1000);
-    const skip = parseInt(offset as string) || 0;
+    // Cap page size at 200 (was 1000 — excessive for a UI export flow) and
+    // clamp offset to a sane maximum so a scraper can't trigger deep-paging.
+    const rawLimit = parseInt(limit as string, 10);
+    const take = Math.min(Math.max(Number.isFinite(rawLimit) ? rawLimit : 100, 1), 200);
+    const rawOffset = parseInt(offset as string, 10);
+    const skip = Math.min(Math.max(Number.isFinite(rawOffset) ? rawOffset : 0, 0), 100_000);
 
     const [entries, total] = await Promise.all([
       prisma.auditLog.findMany({

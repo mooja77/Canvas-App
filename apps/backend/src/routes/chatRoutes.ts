@@ -18,7 +18,9 @@ chatRoutes.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.llmProvider) {
-        return res.status(400).json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+        return res
+          .status(400)
+          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
       }
 
       const dashboardAccessId = getAuthId(req);
@@ -147,7 +149,9 @@ chatRoutes.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.llmProvider) {
-        return res.status(400).json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+        return res
+          .status(400)
+          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
       }
 
       const dashboardAccessId = getAuthId(req);
@@ -209,35 +213,33 @@ chatRoutes.post(
 );
 
 // ─── GET /canvas/:id/ai/chat/history — Chat history ───
-chatRoutes.get(
-  '/canvas/:id/ai/chat/history',
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const dashboardAccessId = getAuthId(req);
-      const userId = getAuthUserId(req);
-      await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+chatRoutes.get('/canvas/:id/ai/chat/history', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    const userId = getAuthUserId(req);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
 
-      const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+    const rawLimit = parseInt(req.query.limit as string, 10);
+    const limit = Math.min(Math.max(Number.isFinite(rawLimit) ? rawLimit : 50, 1), 200);
 
-      const messages = await prisma.chatMessage.findMany({
-        where: { canvasId: req.params.id },
-        orderBy: { createdAt: 'asc' },
-        take: limit,
-      });
+    const messages = await prisma.chatMessage.findMany({
+      where: { canvasId: req.params.id },
+      orderBy: { createdAt: 'asc' },
+      take: limit,
+    });
 
-      const formatted = messages.map((m: any) => ({
-        id: m.id,
-        canvasId: m.canvasId,
-        userId: m.userId,
-        role: m.role,
-        content: m.content,
-        citations: safeJsonParse(m.citations || '[]'),
-        createdAt: m.createdAt.toISOString(),
-      }));
+    const formatted = messages.map((m: any) => ({
+      id: m.id,
+      canvasId: m.canvasId,
+      userId: m.userId,
+      role: m.role,
+      content: m.content,
+      citations: safeJsonParse(m.citations || '[]'),
+      createdAt: m.createdAt.toISOString(),
+    }));
 
-      res.json({ success: true, data: formatted });
-    } catch (err) {
-      next(err);
-    }
-  },
-);
+    res.json({ success: true, data: formatted });
+  } catch (err) {
+    next(err);
+  }
+});

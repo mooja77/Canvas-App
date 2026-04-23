@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { checkIntegrationsAccess } from '../middleware/planLimits.js';
 import { validateParams, integrationIdParam } from '../middleware/validation.js';
+import { encryptApiKey } from '../utils/encryption.js';
 
 export const integrationRoutes = Router();
 
@@ -51,19 +52,32 @@ integrationRoutes.post('/integrations/connect', async (req, res, next) => {
       throw new AppError(`Invalid provider. Must be one of: ${validProviders.join(', ')}`, 400);
     }
 
+    // Encrypt the OAuth tokens at rest — they grant access to the user's
+    // Zoom / Slack / Qualtrics accounts on their behalf. A DB dump should
+    // not be enough to impersonate them.
+    const access = encryptApiKey(accessToken);
+    const refresh = refreshToken ? encryptApiKey(refreshToken) : null;
+
+    const tokenData = {
+      accessToken: access.encrypted,
+      accessTokenIv: access.iv,
+      accessTokenTag: access.tag,
+      refreshToken: refresh?.encrypted ?? null,
+      refreshTokenIv: refresh?.iv ?? null,
+      refreshTokenTag: refresh?.tag ?? null,
+    };
+
     const integration = await prisma.integration.upsert({
       where: { userId_provider: { userId, provider } },
       update: {
-        accessToken,
-        refreshToken: refreshToken || null,
+        ...tokenData,
         metadata: JSON.stringify(metadata || {}),
         expiresAt: expiresAt ? new Date(expiresAt) : null,
       },
       create: {
         userId,
         provider,
-        accessToken,
-        refreshToken: refreshToken || null,
+        ...tokenData,
         metadata: JSON.stringify(metadata || {}),
         expiresAt: expiresAt ? new Date(expiresAt) : null,
       },
