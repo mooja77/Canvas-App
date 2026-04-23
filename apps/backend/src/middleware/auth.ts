@@ -28,6 +28,16 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
         include: { dashboardAccess: true },
       });
       if (user) {
+        // Session invalidation: if the user rotated credentials after this
+        // JWT was issued, reject the token so stolen/shared tokens can't
+        // outlive a password reset or email change.
+        if (user.sessionsInvalidAt && jwtPayload.iat) {
+          const jwtIssuedMs = jwtPayload.iat * 1000;
+          if (jwtIssuedMs < user.sessionsInvalidAt.getTime()) {
+            return next(new AppError('Session has been invalidated. Please log in again.', 401));
+          }
+        }
+
         req.userId = user.id;
         req.userPlan = user.plan;
         res.setHeader('X-User-Plan', user.plan);

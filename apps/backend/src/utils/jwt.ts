@@ -11,6 +11,8 @@ const JWT_EXPIRY = '24h';
 interface LegacyJwtPayload {
   accountId: string;
   role: string;
+  iat?: number; // issued-at (seconds since epoch); added by jsonwebtoken
+  exp?: number;
 }
 
 // New JWT payload (email auth)
@@ -18,6 +20,8 @@ interface UserJwtPayload {
   userId: string;
   role: string;
   plan: string;
+  iat?: number;
+  exp?: number;
 }
 
 export type JwtPayload = LegacyJwtPayload | UserJwtPayload;

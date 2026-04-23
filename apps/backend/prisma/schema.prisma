@@ -28,6 +28,10 @@ model User {
   updatedAt        DateTime  @updatedAt
   resetTokenHash   String?
   resetTokenExpiry DateTime?
+  // Any JWT issued before this timestamp is rejected by the auth middleware.
+  // Set on password reset, password change, and email change so stolen or
+  // shared tokens don't outlive the credential change.
+  sessionsInvalidAt DateTime?
 
   subscription     Subscription?
   codingCanvases   CodingCanvas[]

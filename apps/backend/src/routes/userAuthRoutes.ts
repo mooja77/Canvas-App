@@ -407,16 +407,24 @@ userAuthRoutes.post('/auth/reset-password', authLimiter, async (req, res, next) 
     }
 
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    // Set sessionsInvalidAt = now so any JWT issued before this moment is
+    // rejected by auth middleware. Protects against an attacker who stole
+    // the JWT before the reset; their token is dead the instant the
+    // password is rotated.
     await prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        resetTokenHash: null,
+        resetTokenExpiry: null,
+        sessionsInvalidAt: new Date(),
+      },
     });
 
-    // Clear the reset token
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { resetTokenHash: null, resetTokenExpiry: null },
-    });
+    // Clear the cookie on the response so the legitimate user's current
+    // browser session is also logged out; they'll re-authenticate with the
+    // new password.
+    clearAuthCookie(res);
 
     res.json({ success: true, message: 'Password has been reset successfully' });
   } catch (err) {
@@ -696,6 +704,7 @@ userAuthRoutes.put('/auth/profile', auth, async (req, res, next) => {
       updateData.name = name.trim();
     }
 
+    let emailChanged = false;
     if (email !== undefined) {
       if (typeof email !== 'string' || !email.includes('@')) {
         return res.status(400).json({ success: false, error: 'Valid email is required' });
@@ -707,16 +716,27 @@ userAuthRoutes.put('/auth/profile', auth, async (req, res, next) => {
       }
       updateData.email = normalizedEmail;
       updateData.emailVerified = false; // Re-verify if email changed
+      emailChanged = true;
     }
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ success: false, error: 'No fields to update' });
     }
 
+    // Changing the email is a credential change — invalidate all existing
+    // sessions so stolen tokens pre-dating the email change stop working.
+    if (emailChanged) {
+      updateData.sessionsInvalidAt = new Date();
+    }
+
     const user = await prisma.user.update({
       where: { id: userId },
       data: updateData,
     });
+
+    if (emailChanged) {
+      clearAuthCookie(res);
+    }
 
     res.json({
       success: true,
@@ -750,7 +770,13 @@ userAuthRoutes.put('/auth/change-password', auth, async (req, res, next) => {
     }
 
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
-    await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    // Invalidate all prior sessions (other devices, stolen tokens) on password
+    // change. Clear the cookie so this session has to re-authenticate too.
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, sessionsInvalidAt: new Date() },
+    });
+    clearAuthCookie(res);
 
     res.json({ success: true, message: 'Password changed successfully' });
   } catch (err) {
