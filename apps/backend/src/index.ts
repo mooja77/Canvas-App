@@ -71,6 +71,7 @@ import { auth } from './middleware/auth.js';
 import { auditLog } from './middleware/auditLog.js';
 import { csrfProtection } from './middleware/csrf.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { requestId } from './middleware/requestId.js';
 import { canvasRoutes, canvasPublicRoutes } from './routes/canvasRoutes.js';
 import { authRoutes } from './routes/authRoutes.js';
 import { userAuthRoutes } from './routes/userAuthRoutes.js';
@@ -105,6 +106,10 @@ const PORT = parseInt(process.env.PORT || '3007', 10);
 
 // Trust proxy (Railway/Vercel run behind reverse proxies)
 app.set('trust proxy', 1);
+
+// Assign a correlation ID to every request — echoed in X-Request-ID response
+// header and available as req.requestId for logging / error responses.
+app.use(requestId);
 
 // Security headers
 const isProduction = process.env.NODE_ENV === 'production';

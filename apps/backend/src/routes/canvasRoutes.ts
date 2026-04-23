@@ -38,8 +38,13 @@ canvasRoutes.get('/canvas', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     const userId = getAuthUserId(req);
-    const take = Math.min(parseInt(req.query.limit as string) || 50, 200);
-    const skip = parseInt(req.query.offset as string) || 0;
+    // Clamp pagination to sane ranges. parseInt can return NaN or negative
+    // numbers from untrusted query params — passing those to Prisma yields
+    // either an error or an empty page silently.
+    const rawLimit = parseInt(req.query.limit as string, 10);
+    const take = Math.min(Math.max(Number.isFinite(rawLimit) ? rawLimit : 50, 1), 200);
+    const rawOffset = parseInt(req.query.offset as string, 10);
+    const skip = Math.max(Number.isFinite(rawOffset) ? rawOffset : 0, 0);
 
     // Show canvases owned via dashboardAccess OR userId, excluding soft-deleted
     const ownerFilter = userId ? { OR: [{ dashboardAccessId }, { userId }] } : { dashboardAccessId };
@@ -211,7 +216,9 @@ canvasRoutes.delete('/canvas/:canvasId', validateParams(canvasCanvasIdParam), as
 canvasRoutes.post('/canvas/:canvasId/restore', validateParams(canvasCanvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    const canvas = await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
+    const canvas = await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req), {
+      allowDeleted: true,
+    });
     if (!canvas.deletedAt) return next(new AppError('Canvas is not in trash', 400));
     const restored = await prisma.codingCanvas.update({
       where: { id: req.params.canvasId },
@@ -227,7 +234,9 @@ canvasRoutes.post('/canvas/:canvasId/restore', validateParams(canvasCanvasIdPara
 canvasRoutes.delete('/canvas/:canvasId/permanent', validateParams(canvasCanvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    const canvas = await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
+    const canvas = await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req), {
+      allowDeleted: true,
+    });
     if (!canvas.deletedAt) return next(new AppError('Canvas must be in trash before permanent deletion', 400));
     await prisma.codingCanvas.delete({ where: { id: req.params.canvasId } });
     res.json({ success: true });

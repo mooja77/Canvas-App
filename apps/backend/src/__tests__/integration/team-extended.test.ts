@@ -153,10 +153,7 @@ describe('Team extended integration tests', () => {
 
   // ─── 2. POST /teams rejects empty name (validation) ───
   it('POST /api/teams rejects empty name', async () => {
-    const res = await request(app)
-      .post('/api/teams')
-      .set('Authorization', `Bearer ${teamJwt}`)
-      .send({ name: '' });
+    const res = await request(app).post('/api/teams').set('Authorization', `Bearer ${teamJwt}`).send({ name: '' });
 
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
@@ -176,9 +173,7 @@ describe('Team extended integration tests', () => {
     };
     mockPrisma.team.findUnique.mockResolvedValue(teamDetail);
 
-    const res = await request(app)
-      .get(`/api/teams/${teamId}`)
-      .set('Authorization', `Bearer ${teamJwt}`);
+    const res = await request(app).get(`/api/teams/${teamId}`).set('Authorization', `Bearer ${teamJwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -190,9 +185,7 @@ describe('Team extended integration tests', () => {
   it('GET /api/teams/:teamId returns 404 for unknown team', async () => {
     mockPrisma.team.findUnique.mockResolvedValue(null);
 
-    const res = await request(app)
-      .get('/api/teams/nonexistent')
-      .set('Authorization', `Bearer ${teamJwt}`);
+    const res = await request(app).get('/api/teams/nonexistent').set('Authorization', `Bearer ${teamJwt}`);
 
     expect(res.status).toBe(404);
   });
@@ -217,14 +210,10 @@ describe('Team extended integration tests', () => {
       name: 'Research Lab',
       ownerId: userId,
       owner: { id: userId, name: 'Team Owner', email: 'teamowner@example.com' },
-      members: [
-        { userId, role: 'owner', user: { id: userId, name: 'Team Owner', email: 'teamowner@example.com' } },
-      ],
+      members: [{ userId, role: 'owner', user: { id: userId, name: 'Team Owner', email: 'teamowner@example.com' } }],
     });
 
-    const res = await request(app)
-      .get(`/api/teams/${teamId}`)
-      .set('Authorization', `Bearer ${nonMemberJwt}`);
+    const res = await request(app).get(`/api/teams/${teamId}`).set('Authorization', `Bearer ${nonMemberJwt}`);
 
     expect(res.status).toBe(403);
   });
@@ -244,11 +233,14 @@ describe('Team extended integration tests', () => {
       .mockResolvedValueOnce({ ...mockUser }) // auth middleware
       .mockResolvedValueOnce(targetUser); // find target user
 
-    mockPrisma.teamMember.findUnique.mockResolvedValue({
-      teamId,
-      userId: targetUser.id,
-      role: 'member',
-    });
+    // Simulate the unique-violation Prisma throws when the team+user pair
+    // already exists. The route catches P2002 and maps it to 409. This is
+    // atomic — prior implementation had a findUnique + create race that
+    // could surface as a 500 under concurrent invites.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p2002: any = new Error('Unique constraint violation');
+    p2002.code = 'P2002';
+    mockPrisma.teamMember.create.mockRejectedValue(p2002);
 
     const res = await request(app)
       .post(`/api/teams/${teamId}/members`)

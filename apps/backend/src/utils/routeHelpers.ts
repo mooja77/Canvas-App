@@ -24,8 +24,18 @@ export function getAuthUserId(req: Request): string | null {
   return req.userId || null;
 }
 
-/** Verify a canvas exists and belongs to the authenticated user, or throw 404/403. */
-export async function getOwnedCanvas(canvasId: string, dashboardAccessId: string, userId?: string | null) {
+/**
+ * Verify a canvas exists and belongs to the authenticated user, or throw 404/403.
+ * By default rejects soft-deleted canvases so mutation / analysis endpoints can't
+ * operate on trashed content. Trash management routes (restore, permanent delete)
+ * opt in to `allowDeleted: true`.
+ */
+export async function getOwnedCanvas(
+  canvasId: string,
+  dashboardAccessId: string,
+  userId?: string | null,
+  options?: { allowDeleted?: boolean },
+) {
   const canvas = await prisma.codingCanvas.findUnique({ where: { id: canvasId } });
   if (!canvas) throw new AppError('Canvas not found', 404);
 
@@ -34,6 +44,13 @@ export async function getOwnedCanvas(canvasId: string, dashboardAccessId: string
   const ownsViaDashboard = canvas.dashboardAccessId === dashboardAccessId;
 
   if (!ownsViaUser && !ownsViaDashboard) throw new AppError('Access denied', 403);
+
+  // Don't leak data from trashed canvases to normal operations. Return 404 —
+  // treating a soft-deleted canvas as "not found" is consistent with the
+  // list endpoints (which also exclude deleted).
+  if (canvas.deletedAt && !options?.allowDeleted) {
+    throw new AppError('Canvas not found', 404);
+  }
   return canvas;
 }
 

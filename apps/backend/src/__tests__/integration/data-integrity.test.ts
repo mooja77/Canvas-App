@@ -608,16 +608,19 @@ describe('Data integrity integration tests', () => {
       });
     });
 
-    it('double soft-delete is idempotent', async () => {
-      // Canvas already soft-deleted — soft-deleting again still works (just updates deletedAt)
+    it('soft-deleting an already-deleted canvas returns 404', async () => {
+      // Behavior change: getOwnedCanvas() now rejects soft-deleted canvases
+      // for non-trash routes. Stale UI state calling DELETE twice hits a 404
+      // — "canvas not found" is consistent with the list endpoints that
+      // exclude deleted canvases. Restore and permanent-delete explicitly
+      // opt in to allowDeleted:true.
       const alreadyDeleted = { ...mockCanvas, deletedAt: new Date('2025-01-01') };
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...alreadyDeleted });
-      mockPrisma.codingCanvas.update.mockResolvedValue({ ...alreadyDeleted, deletedAt: new Date() });
 
       const res = await request(app).delete(`/api/canvas/${canvasId}`).set('Authorization', `Bearer ${jwt}`);
 
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
     });
   });
 });

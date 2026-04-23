@@ -26,10 +26,7 @@ function requireTeamPlan(req: import('express').Request): string {
   const plan = req.userPlan || 'free';
   const limits = getPlanLimits(plan);
   if (!limits.intercoderEnabled) {
-    throw new AppError(
-      `Team features require a Team plan (current: ${plan})`,
-      403,
-    );
+    throw new AppError(`Team features require a Team plan (current: ${plan})`, 403);
   }
   return userId;
 }
@@ -52,7 +49,9 @@ teamRoutes.post('/teams', validate(createTeamSchema), async (req, res, next) => 
     });
 
     res.status(201).json({ success: true, data: team });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── GET /api/teams — List user's teams ───
@@ -82,7 +81,9 @@ teamRoutes.get('/teams', async (req, res, next) => {
     }));
 
     res.json({ success: true, data: teams });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── GET /api/teams/:teamId — Get team details + members ───
@@ -112,74 +113,88 @@ teamRoutes.get('/teams/:teamId', validateParams(teamIdParam), async (req, res, n
     if (!isMember) throw new AppError('Access denied', 403);
 
     res.json({ success: true, data: team });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── POST /api/teams/:teamId/members — Invite member by email ───
-teamRoutes.post('/teams/:teamId/members', validateParams(teamIdParam), validate(inviteMemberSchema), async (req, res, next) => {
-  try {
-    const userId = requireTeamPlan(req);
-    const { teamId } = req.params;
-    const { email, role } = req.body;
+teamRoutes.post(
+  '/teams/:teamId/members',
+  validateParams(teamIdParam),
+  validate(inviteMemberSchema),
+  async (req, res, next) => {
+    try {
+      const userId = requireTeamPlan(req);
+      const { teamId } = req.params;
+      const { email, role } = req.body;
 
-    // Verify team exists and user is owner or admin
-    const team = await prismaTeam.findUnique({
-      where: { id: teamId },
-      include: { members: true },
-    });
-    if (!team) throw new AppError('Team not found', 404);
+      // Verify team exists and user is owner or admin
+      const team = await prismaTeam.findUnique({
+        where: { id: teamId },
+        include: { members: true },
+      });
+      if (!team) throw new AppError('Team not found', 404);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const callerMembership = team.members.find((m: any) => m.userId === userId);
-    if (!callerMembership || !['owner', 'admin'].includes(callerMembership.role)) {
-      throw new AppError('Only team owners and admins can invite members', 403);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const callerMembership = team.members.find((m: any) => m.userId === userId);
+      if (!callerMembership || !['owner', 'admin'].includes(callerMembership.role)) {
+        throw new AppError('Only team owners and admins can invite members', 403);
+      }
+
+      // Find user by email
+      const targetUser = await prisma.user.findUnique({ where: { email } });
+      if (!targetUser) {
+        throw new AppError('No user found with that email address', 404);
+      }
+
+      if (targetUser.id === userId) {
+        throw new AppError('Cannot invite yourself', 400);
+      }
+
+      const validRoles = ['admin', 'member'];
+      const assignedRole = validRoles.includes(role) ? role : 'member';
+
+      // Atomic create — let the unique(teamId, userId) index reject duplicates
+      // instead of the non-atomic findUnique + create dance, which can race
+      // under concurrent invite-by-email requests and surface as a 500 on the
+      // second one. Prisma P2002 is the unique-violation error.
+      let member;
+      try {
+        member = await prismaTeamMember.create({
+          data: {
+            teamId,
+            userId: targetUser.id,
+            role: assignedRole,
+          },
+          include: {
+            user: { select: { id: true, name: true, email: true } },
+          },
+        });
+      } catch (err: unknown) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((err as any)?.code === 'P2002') {
+          throw new AppError('User is already a member of this team', 409);
+        }
+        throw err;
+      }
+
+      // Send invitation email (best effort)
+      const appUrl = process.env.APP_URL || 'http://localhost:5174';
+      await sendTeamInviteEmail(email, team.name, `${appUrl}/login`).catch((err: unknown) => {
+        console.error('[TeamRoutes] Failed to send invite email:', err);
+      });
+
+      // Create in-app notification for the invited user
+      const inviter = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+      await notifyTeamInvite(targetUser.id, inviter?.name || 'Someone', teamId, team.name).catch(() => {});
+
+      res.status(201).json({ success: true, data: member });
+    } catch (err) {
+      next(err);
     }
-
-    // Find user by email
-    const targetUser = await prisma.user.findUnique({ where: { email } });
-    if (!targetUser) {
-      throw new AppError('No user found with that email address', 404);
-    }
-
-    if (targetUser.id === userId) {
-      throw new AppError('Cannot invite yourself', 400);
-    }
-
-    // Check if already a member
-    const existing = await prismaTeamMember.findUnique({
-      where: { teamId_userId: { teamId, userId: targetUser.id } },
-    });
-    if (existing) {
-      throw new AppError('User is already a member of this team', 409);
-    }
-
-    const validRoles = ['admin', 'member'];
-    const assignedRole = validRoles.includes(role) ? role : 'member';
-
-    const member = await prismaTeamMember.create({
-      data: {
-        teamId,
-        userId: targetUser.id,
-        role: assignedRole,
-      },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-      },
-    });
-
-    // Send invitation email (best effort)
-    const appUrl = process.env.APP_URL || 'http://localhost:5174';
-    await sendTeamInviteEmail(email, team.name, `${appUrl}/login`).catch((err: unknown) => {
-      console.error('[TeamRoutes] Failed to send invite email:', err);
-    });
-
-    // Create in-app notification for the invited user
-    const inviter = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
-    await notifyTeamInvite(targetUser.id, inviter?.name || 'Someone', teamId, team.name).catch(() => {});
-
-    res.status(201).json({ success: true, data: member });
-  } catch (err) { next(err); }
-});
+  },
+);
 
 // ─── DELETE /api/teams/:teamId/members/:userId — Remove member ───
 teamRoutes.delete('/teams/:teamId/members/:userId', validateParams(teamIdUserIdParams), async (req, res, next) => {
@@ -218,7 +233,9 @@ teamRoutes.delete('/teams/:teamId/members/:userId', validateParams(teamIdUserIdP
     }
 
     res.json({ success: true, message: 'Member removed' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── DELETE /api/teams/:teamId — Delete team (owner only) ───
@@ -237,5 +254,7 @@ teamRoutes.delete('/teams/:teamId', validateParams(teamIdParam), async (req, res
     await prismaTeam.delete({ where: { id: team.id } });
 
     res.json({ success: true, message: 'Team deleted' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
