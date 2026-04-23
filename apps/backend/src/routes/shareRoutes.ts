@@ -2,17 +2,9 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { nanoid } from 'nanoid';
-import {
-  validateParams,
-  canvasIdParam,
-  canvasShareIdParams,
-  shareCodeParam,
-} from '../middleware/validation.js';
+import { validateParams, canvasIdParam, canvasShareIdParams, shareCodeParam } from '../middleware/validation.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
-import {
-  checkCanvasLimit,
-  checkShareLimit,
-} from '../middleware/planLimits.js';
+import { checkCanvasLimit, checkShareLimit } from '../middleware/planLimits.js';
 import { getPlanLimits } from '../config/plans.js';
 
 export const shareRoutes = Router();
@@ -25,7 +17,9 @@ shareRoutes.post('/canvas/:id/share', validateParams(canvasIdParam), checkShareL
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
 
-    const shareCode = `SHARE-${nanoid(8).toUpperCase().replace(/[^A-Z0-9]/g, 'X')}`;
+    const shareCode = `SHARE-${nanoid(8)
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, 'X')}`;
 
     const share = await prisma.canvasShare.create({
       data: {
@@ -36,7 +30,9 @@ shareRoutes.post('/canvas/:id/share', validateParams(canvasIdParam), checkShareL
     });
 
     res.status(201).json({ success: true, data: share });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 shareRoutes.get('/canvas/:id/shares', validateParams(canvasIdParam), async (req, res, next) => {
@@ -50,7 +46,9 @@ shareRoutes.get('/canvas/:id/shares', validateParams(canvasIdParam), async (req,
     });
 
     res.json({ success: true, data: shares });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 shareRoutes.delete('/canvas/:id/share/:shareId', validateParams(canvasShareIdParams), async (req, res, next) => {
@@ -65,7 +63,9 @@ shareRoutes.delete('/canvas/:id/share/:shareId', validateParams(canvasShareIdPar
 
     await prisma.canvasShare.delete({ where: { id: req.params.shareId } });
     res.json({ success: true });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCanvasLimit(), async (req, res, next) => {
@@ -92,14 +92,22 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
       },
     });
 
-    if (!source) return next(new AppError('Source canvas not found', 404));
+    // Treat a soft-deleted source as not-found. The share row persists after
+    // the owner trashes the canvas, but cloning from trashed data produces
+    // surprising behavior (revived stale content) — reject the clone.
+    if (!source || source.deletedAt) return next(new AppError('Source canvas not found', 404));
 
     // Enforce plan limits on cloned content
     const plan = req.userPlan || 'free';
     const limits = getPlanLimits(plan);
 
     if (limits.maxTranscriptsPerCanvas !== Infinity && source.transcripts.length > limits.maxTranscriptsPerCanvas) {
-      return next(new AppError(`Clone would exceed your plan's transcript limit (${limits.maxTranscriptsPerCanvas} per canvas)`, 403));
+      return next(
+        new AppError(
+          `Clone would exceed your plan's transcript limit (${limits.maxTranscriptsPerCanvas} per canvas)`,
+          403,
+        ),
+      );
     }
     if (limits.maxCodes !== Infinity && source.questions.length > limits.maxCodes) {
       return next(new AppError(`Clone would exceed your plan's code limit (${limits.maxCodes} codes)`, 403));
@@ -108,7 +116,12 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
       for (const t of source.transcripts) {
         const wordCount = t.content.trim().split(/\s+/).filter(Boolean).length;
         if (wordCount > limits.maxWordsPerTranscript) {
-          return next(new AppError(`Clone contains a transcript exceeding your plan's word limit (${limits.maxWordsPerTranscript.toLocaleString()} words)`, 403));
+          return next(
+            new AppError(
+              `Clone contains a transcript exceeding your plan's word limit (${limits.maxWordsPerTranscript.toLocaleString()} words)`,
+              403,
+            ),
+          );
         }
       }
     }
@@ -270,5 +283,7 @@ canvasPublicRoutes.get('/canvas/shared/:code', validateParams(shareCodeParam), a
     };
 
     res.json({ success: true, data });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });

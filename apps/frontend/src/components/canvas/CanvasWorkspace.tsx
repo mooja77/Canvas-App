@@ -671,12 +671,17 @@ export default function CanvasWorkspace() {
   // Build edges from codings and relations
   const buildEdges = useCallback((): Edge[] => {
     if (!activeCanvas) return [];
+    // Defensive: a partial canvas payload (e.g. restored from offline cache
+    // before all fields landed) could have undefined arrays. Matches the
+    // nullish-coalesce pattern used for relations below.
+    const questions = activeCanvas.questions ?? [];
+    const codings = activeCanvas.codings ?? [];
     const questionColorMap = new Map<string, string>();
-    activeCanvas.questions.forEach((q: CanvasQuestion) => questionColorMap.set(q.id, q.color));
+    questions.forEach((q: CanvasQuestion) => questionColorMap.set(q.id, q.color));
 
     // Bundle codings by (transcriptId, questionId) pair to reduce visual clutter
     const codingGroups = new Map<string, CanvasTextCoding[]>();
-    activeCanvas.codings.forEach((c: CanvasTextCoding) => {
+    codings.forEach((c: CanvasTextCoding) => {
       const key = `${c.transcriptId}::${c.questionId}`;
       const group = codingGroups.get(key);
       if (group) group.push(c);
@@ -874,7 +879,7 @@ export default function CanvasWorkspace() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- accessing internal ReactFlow API
     const _connectingNodeId = (rfInstanceRef.current as any)
       ?.toObject?.()
-      ?.nodes// eslint-disable-next-line @typescript-eslint/no-explicit-any -- internal ReactFlow node shape
+      ?.nodes // eslint-disable-next-line @typescript-eslint/no-explicit-any -- internal ReactFlow node shape
       ?.find((n: any) => n.selected)?.id;
 
     // Fall back to checking which node started the connection via the store
