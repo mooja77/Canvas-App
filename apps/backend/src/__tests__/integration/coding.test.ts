@@ -49,6 +49,7 @@ const { mockPrisma } = vi.hoisted(() => {
       count: vi.fn(),
     },
     canvasMemo: {
+      findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -210,6 +211,7 @@ describe('Coding integration tests', () => {
   it('PUT /canvas/:id/questions/:qid updates text and color', async () => {
     const questionId = 'question-c1';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: questionId, canvasId });
     mockPrisma.canvasQuestion.update.mockResolvedValue({
       id: questionId,
       canvasId,
@@ -233,6 +235,7 @@ describe('Coding integration tests', () => {
   it('DELETE /canvas/:id/questions/:qid deletes a question', async () => {
     const questionId = 'question-c1';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: questionId, canvasId });
     mockPrisma.canvasQuestion.delete.mockResolvedValue({ id: questionId });
 
     const res = await request(app)
@@ -268,16 +271,13 @@ describe('Coding integration tests', () => {
       codedText: 'patterns emerge',
     });
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/codings`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        transcriptId,
-        questionId,
-        startOffset: 0,
-        endOffset: 15,
-        codedText: 'patterns emerge',
-      });
+    const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId,
+      questionId,
+      startOffset: 0,
+      endOffset: 15,
+      codedText: 'patterns emerge',
+    });
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
@@ -287,16 +287,13 @@ describe('Coding integration tests', () => {
 
   // ─── 6. POST /canvas/:id/codings — validates startOffset < endOffset ───
   it('POST /canvas/:id/codings validates endOffset must be >= 1', async () => {
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/codings`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        transcriptId: 'transcript-c1',
-        questionId: 'question-c1',
-        startOffset: 10,
-        endOffset: 0,
-        codedText: 'text',
-      });
+    const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId: 'transcript-c1',
+      questionId: 'question-c1',
+      startOffset: 10,
+      endOffset: 0,
+      codedText: 'text',
+    });
 
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
@@ -380,6 +377,7 @@ describe('Coding integration tests', () => {
   it('PUT /canvas/:id/memos/:mid updates a memo', async () => {
     const memoId = 'memo-c1';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasMemo.findUnique.mockResolvedValue({ id: memoId, canvasId });
     mockPrisma.canvasMemo.update.mockResolvedValue({
       id: memoId,
       canvasId,
@@ -401,6 +399,7 @@ describe('Coding integration tests', () => {
   it('DELETE /canvas/:id/memos/:mid deletes a memo', async () => {
     const memoId = 'memo-c1';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasMemo.findUnique.mockResolvedValue({ id: memoId, canvasId });
     mockPrisma.canvasMemo.delete.mockResolvedValue({ id: memoId });
 
     const res = await request(app)
@@ -445,11 +444,31 @@ describe('Coding integration tests', () => {
       text: 'Auto-code question',
     });
     mockPrisma.canvasTranscript.findMany.mockResolvedValue([
-      { id: 'tr-1', title: 'Transcript 1', content: 'The theme of resilience emerged in the data. Resilience was a key finding.' },
+      {
+        id: 'tr-1',
+        title: 'Transcript 1',
+        content: 'The theme of resilience emerged in the data. Resilience was a key finding.',
+      },
     ]);
     mockPrisma.$transaction.mockResolvedValue([
-      { id: 'ac-1', canvasId, transcriptId: 'tr-1', questionId, startOffset: 13, endOffset: 23, codedText: 'resilience' },
-      { id: 'ac-2', canvasId, transcriptId: 'tr-1', questionId, startOffset: 44, endOffset: 54, codedText: 'Resilience' },
+      {
+        id: 'ac-1',
+        canvasId,
+        transcriptId: 'tr-1',
+        questionId,
+        startOffset: 13,
+        endOffset: 23,
+        codedText: 'resilience',
+      },
+      {
+        id: 'ac-2',
+        canvasId,
+        transcriptId: 'tr-1',
+        questionId,
+        startOffset: 44,
+        endOffset: 54,
+        codedText: 'Resilience',
+      },
     ]);
 
     const res = await request(app)

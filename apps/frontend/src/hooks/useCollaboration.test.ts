@@ -21,7 +21,7 @@ function createMockSocket() {
     disconnect: vi.fn(),
     // Helper: simulate server event
     _trigger(event: string, ...args: unknown[]) {
-      listeners.get(event)?.forEach(fn => fn(...args));
+      listeners.get(event)?.forEach((fn) => fn(...args));
     },
   };
   return socket;
@@ -46,7 +46,6 @@ function setEmailAuth() {
 
 function resetAuth() {
   useAuthStore.setState({
-    jwt: null,
     name: null,
     role: null,
     authenticated: false,
@@ -71,18 +70,14 @@ describe('useCollaboration', () => {
 
   it('returns empty collaborators when disabled', () => {
     setEmailAuth();
-    const { result } = renderHook(() =>
-      useCollaboration({ canvasId: 'c1', enabled: false }),
-    );
+    const { result } = renderHook(() => useCollaboration({ canvasId: 'c1', enabled: false }));
     expect(result.current.collaborators).toEqual([]);
     expect(result.current.isConnected).toBe(false);
   });
 
   it('returns empty collaborators when no canvasId', () => {
     setEmailAuth();
-    const { result } = renderHook(() =>
-      useCollaboration({ canvasId: null }),
-    );
+    const { result } = renderHook(() => useCollaboration({ canvasId: null }));
     expect(result.current.collaborators).toEqual([]);
   });
 
@@ -95,9 +90,7 @@ describe('useCollaboration', () => {
       dashboardAccessId: 'access-1',
     });
 
-    const { result } = renderHook(() =>
-      useCollaboration({ canvasId: 'c1' }),
-    );
+    const { result } = renderHook(() => useCollaboration({ canvasId: 'c1' }));
     expect(result.current.isConnected).toBe(false);
     expect(mockSocket.on).not.toHaveBeenCalled();
   });
@@ -116,13 +109,9 @@ describe('useCollaboration', () => {
 
   it('updates collaborators on presence:updated event', () => {
     setEmailAuth();
-    const { result } = renderHook(() =>
-      useCollaboration({ canvasId: 'c1' }),
-    );
+    const { result } = renderHook(() => useCollaboration({ canvasId: 'c1' }));
 
-    const users = [
-      { userId: 'u2', name: 'Alice', color: '#ff0000' },
-    ];
+    const users = [{ userId: 'u2', name: 'Alice', color: '#ff0000' }];
 
     act(() => {
       mockSocket._trigger('presence:updated', { canvasId: 'c1', users });
@@ -133,9 +122,7 @@ describe('useCollaboration', () => {
 
   it('updates cursors on cursor:moved event', () => {
     setEmailAuth();
-    const { result } = renderHook(() =>
-      useCollaboration({ canvasId: 'c1' }),
-    );
+    const { result } = renderHook(() => useCollaboration({ canvasId: 'c1' }));
 
     act(() => {
       mockSocket._trigger('cursor:moved', {
@@ -172,18 +159,14 @@ describe('useCollaboration', () => {
     });
 
     // Only first should have been emitted (second throttled within 50ms)
-    const cursorMoveEmits = mockSocket.emit.mock.calls.filter(
-      (c: unknown[]) => c[0] === 'cursor:move'
-    );
+    const cursorMoveEmits = mockSocket.emit.mock.calls.filter((c: unknown[]) => c[0] === 'cursor:move');
     expect(cursorMoveEmits).toHaveLength(1);
     expect(cursorMoveEmits[0][1]).toEqual({ canvasId: 'c1', x: 10, y: 20 });
   });
 
   it('emitNodeMove sends node:move with canvasId, nodeId, x, y', () => {
     setEmailAuth();
-    const { result } = renderHook(() =>
-      useCollaboration({ canvasId: 'c1' }),
-    );
+    const { result } = renderHook(() => useCollaboration({ canvasId: 'c1' }));
 
     // Connect the socket so socketRef is populated
     act(() => {
@@ -204,10 +187,10 @@ describe('useCollaboration', () => {
 
   it('emitNodeAdded sends canvas:node-added event', () => {
     setEmailAuth();
-    const { result } = renderHook(() =>
-      useCollaboration({ canvasId: 'c1' }),
-    );
-    act(() => { mockSocket._trigger('connect'); });
+    const { result } = renderHook(() => useCollaboration({ canvasId: 'c1' }));
+    act(() => {
+      mockSocket._trigger('connect');
+    });
 
     act(() => {
       result.current.emitNodeAdded('c1', { type: 'transcript', id: 'n1' });
@@ -221,10 +204,10 @@ describe('useCollaboration', () => {
 
   it('emitNodeDeleted sends canvas:node-deleted event', () => {
     setEmailAuth();
-    const { result } = renderHook(() =>
-      useCollaboration({ canvasId: 'c1' }),
-    );
-    act(() => { mockSocket._trigger('connect'); });
+    const { result } = renderHook(() => useCollaboration({ canvasId: 'c1' }));
+    act(() => {
+      mockSocket._trigger('connect');
+    });
 
     act(() => {
       result.current.emitNodeDeleted('c1', 'n1', 'transcript');
@@ -238,10 +221,10 @@ describe('useCollaboration', () => {
 
   it('emitCodingAdded sends canvas:coding-added event', () => {
     setEmailAuth();
-    const { result } = renderHook(() =>
-      useCollaboration({ canvasId: 'c1' }),
-    );
-    act(() => { mockSocket._trigger('connect'); });
+    const { result } = renderHook(() => useCollaboration({ canvasId: 'c1' }));
+    act(() => {
+      mockSocket._trigger('connect');
+    });
 
     act(() => {
       result.current.emitCodingAdded('c1', { id: 'cod1', transcriptId: 't1', questionId: 'q1' });
@@ -255,10 +238,10 @@ describe('useCollaboration', () => {
 
   it('emitCodingDeleted sends canvas:coding-deleted event', () => {
     setEmailAuth();
-    const { result } = renderHook(() =>
-      useCollaboration({ canvasId: 'c1' }),
-    );
-    act(() => { mockSocket._trigger('connect'); });
+    const { result } = renderHook(() => useCollaboration({ canvasId: 'c1' }));
+    act(() => {
+      mockSocket._trigger('connect');
+    });
 
     act(() => {
       result.current.emitCodingDeleted('c1', 'cod1');
@@ -272,9 +255,7 @@ describe('useCollaboration', () => {
 
   it('cleans up listeners on unmount (canvas:leave emitted)', () => {
     setEmailAuth();
-    const { unmount } = renderHook(() =>
-      useCollaboration({ canvasId: 'c1' }),
-    );
+    const { unmount } = renderHook(() => useCollaboration({ canvasId: 'c1' }));
 
     unmount();
 
@@ -304,9 +285,7 @@ describe('useCollaboration', () => {
 
   it('does not ignore presence:updated filtering by canvasId', () => {
     setEmailAuth();
-    const { result } = renderHook(() =>
-      useCollaboration({ canvasId: 'c1' }),
-    );
+    const { result } = renderHook(() => useCollaboration({ canvasId: 'c1' }));
 
     // Trigger presence for different canvas — should be ignored
     act(() => {

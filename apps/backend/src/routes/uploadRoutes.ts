@@ -286,6 +286,21 @@ registerJobHandler('transcribe', async (job, updateProgress) => {
 
   const { jobDbId, storageKey, canvasId, language } = meta;
 
+  // Short-circuit if the canvas has been deleted (hard or soft) between
+  // enqueue and execution. Otherwise the job burns AI cost and writes a
+  // result row that no UI can reach.
+  const canvas = await prisma.codingCanvas.findUnique({
+    where: { id: canvasId },
+    select: { id: true, deletedAt: true },
+  });
+  if (!canvas || canvas.deletedAt) {
+    await prisma.transcriptionJob.update({
+      where: { id: jobDbId },
+      data: { status: 'failed', errorMessage: 'Canvas was deleted before transcription completed' },
+    });
+    return;
+  }
+
   // Update DB status
   await prisma.transcriptionJob.update({
     where: { id: jobDbId },

@@ -313,6 +313,7 @@ describe('Data integrity integration tests', () => {
     it('delete transcript cascades its codings via DB onDelete: Cascade', async () => {
       const transcriptId = 'transcript-cascade-1';
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+      mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ id: transcriptId, canvasId });
       mockPrisma.canvasTranscript.delete.mockResolvedValue({ id: transcriptId });
 
       const res = await request(app)
@@ -327,6 +328,7 @@ describe('Data integrity integration tests', () => {
     it('delete question cascades its codings via DB onDelete: Cascade', async () => {
       const questionId = 'question-cascade-1';
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+      mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: questionId, canvasId });
       mockPrisma.canvasQuestion.delete.mockResolvedValue({ id: questionId });
 
       const res = await request(app)
@@ -341,6 +343,7 @@ describe('Data integrity integration tests', () => {
     it('delete question with children — children parentQuestionId set null (onDelete: SetNull)', async () => {
       const parentId = 'question-parent-1';
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+      mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: parentId, canvasId });
       // DB handles SetNull for children via schema relation
       mockPrisma.canvasQuestion.delete.mockResolvedValue({ id: parentId });
 

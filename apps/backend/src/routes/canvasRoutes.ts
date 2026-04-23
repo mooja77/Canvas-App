@@ -12,6 +12,7 @@ import {
 } from '../middleware/validation.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import { checkCanvasLimit } from '../middleware/planLimits.js';
+import { getPlanLimits } from '../config/plans.js';
 
 // Sub-routers
 import { transcriptRoutes } from './transcriptRoutes.js';
@@ -41,9 +42,7 @@ canvasRoutes.get('/canvas', async (req, res, next) => {
     const skip = parseInt(req.query.offset as string) || 0;
 
     // Show canvases owned via dashboardAccess OR userId, excluding soft-deleted
-    const ownerFilter = userId
-      ? { OR: [{ dashboardAccessId }, { userId }] }
-      : { dashboardAccessId };
+    const ownerFilter = userId ? { OR: [{ dashboardAccessId }, { userId }] } : { dashboardAccessId };
     const where = { ...ownerFilter, deletedAt: null };
 
     const [canvases, total] = await Promise.all([
@@ -59,7 +58,9 @@ canvasRoutes.get('/canvas', async (req, res, next) => {
       prisma.codingCanvas.count({ where }),
     ]);
     res.json({ success: true, data: canvases, total, limit: take, offset: skip });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /canvas/trash — list soft-deleted canvases
@@ -68,9 +69,7 @@ canvasRoutes.get('/canvas/trash', async (req, res, next) => {
     const dashboardAccessId = getAuthId(req);
     const userId = getAuthUserId(req);
 
-    const ownerFilter = userId
-      ? { OR: [{ dashboardAccessId }, { userId }] }
-      : { dashboardAccessId };
+    const ownerFilter = userId ? { OR: [{ dashboardAccessId }, { userId }] } : { dashboardAccessId };
     const where = { ...ownerFilter, deletedAt: { not: null } };
 
     const canvases = await prisma.codingCanvas.findMany({
@@ -81,7 +80,9 @@ canvasRoutes.get('/canvas/trash', async (req, res, next) => {
       },
     });
     res.json({ success: true, data: canvases });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /canvas — create canvas
@@ -90,6 +91,7 @@ canvasRoutes.post('/canvas', validate(createCanvasSchema), checkCanvasLimit(), a
     const dashboardAccessId = getAuthId(req);
     const userId = getAuthUserId(req);
     const { name, description } = req.body;
+
     const canvas = await prisma.codingCanvas.create({
       data: {
         dashboardAccessId,
@@ -98,6 +100,32 @@ canvasRoutes.post('/canvas', validate(createCanvasSchema), checkCanvasLimit(), a
         ...(userId ? { userId } : {}),
       },
     });
+
+    // Post-create guard against the plan-limit race: two parallel requests
+    // can both pass checkCanvasLimit() (count was N below limit for both)
+    // and then both create, overshooting the cap. Recount and hard-delete
+    // anything that pushed us over — belt-and-suspenders on top of the
+    // middleware check.
+    const plan = req.userPlan || 'free';
+    const limits = getPlanLimits(plan);
+    if (limits.maxCanvases !== Infinity) {
+      const finalCount = await prisma.codingCanvas.count({
+        where: userId ? { OR: [{ userId }, { dashboardAccessId }] } : { dashboardAccessId },
+      });
+      if (finalCount > limits.maxCanvases) {
+        await prisma.codingCanvas.delete({ where: { id: canvas.id } }).catch(() => {});
+        return res.status(403).json({
+          success: false,
+          error: `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxCanvases} canvas${limits.maxCanvases === 1 ? '' : 'es'}`,
+          code: 'PLAN_LIMIT_EXCEEDED',
+          limit: 'maxCanvases',
+          current: limits.maxCanvases,
+          max: limits.maxCanvases,
+          upgrade: true,
+        });
+      }
+    }
+
     res.status(201).json({ success: true, data: canvas });
   } catch (err: unknown) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -137,25 +165,32 @@ canvasRoutes.get('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async
     };
 
     res.json({ success: true, data });
-  } catch (err) { next(err); }
-});
-
-// PUT /canvas/:canvasId — update name/description
-canvasRoutes.put('/canvas/:canvasId', validateParams(canvasCanvasIdParam), validate(updateCanvasSchema), async (req, res, next) => {
-  try {
-    const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
-    const canvas = await prisma.codingCanvas.update({
-      where: { id: req.params.canvasId },
-      data: req.body,
-    });
-    res.json({ success: true, data: canvas });
-  } catch (err: unknown) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((err as any)?.code === 'P2002') return next(new AppError('A canvas with this name already exists', 409));
+  } catch (err) {
     next(err);
   }
 });
+
+// PUT /canvas/:canvasId — update name/description
+canvasRoutes.put(
+  '/canvas/:canvasId',
+  validateParams(canvasCanvasIdParam),
+  validate(updateCanvasSchema),
+  async (req, res, next) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
+      const canvas = await prisma.codingCanvas.update({
+        where: { id: req.params.canvasId },
+        data: req.body,
+      });
+      res.json({ success: true, data: canvas });
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((err as any)?.code === 'P2002') return next(new AppError('A canvas with this name already exists', 409));
+      next(err);
+    }
+  },
+);
 
 // DELETE /canvas/:canvasId — soft delete (move to trash)
 canvasRoutes.delete('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async (req, res, next) => {
@@ -167,7 +202,9 @@ canvasRoutes.delete('/canvas/:canvasId', validateParams(canvasCanvasIdParam), as
       data: { deletedAt: new Date() },
     });
     res.json({ success: true });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /canvas/:canvasId/restore — restore a soft-deleted canvas
@@ -181,7 +218,9 @@ canvasRoutes.post('/canvas/:canvasId/restore', validateParams(canvasCanvasIdPara
       data: { deletedAt: null },
     });
     res.json({ success: true, data: restored });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // DELETE /canvas/:canvasId/permanent — permanently delete a trashed canvas
@@ -192,28 +231,37 @@ canvasRoutes.delete('/canvas/:canvasId/permanent', validateParams(canvasCanvasId
     if (!canvas.deletedAt) return next(new AppError('Canvas must be in trash before permanent deletion', 400));
     await prisma.codingCanvas.delete({ where: { id: req.params.canvasId } });
     res.json({ success: true });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── Layout (Node Positions) ───
 
-canvasRoutes.put('/canvas/:id/layout', validateParams(canvasIdParam), validate(saveLayoutSchema), async (req, res, next) => {
-  try {
-    const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
-    const { positions } = req.body;
+canvasRoutes.put(
+  '/canvas/:id/layout',
+  validateParams(canvasIdParam),
+  validate(saveLayoutSchema),
+  async (req, res, next) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+      const { positions } = req.body;
 
-    await prisma.$transaction(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      positions.map((pos: any) =>
-        prisma.canvasNodePosition.upsert({
-          where: { canvasId_nodeId: { canvasId: req.params.id, nodeId: pos.nodeId } },
-          create: { canvasId: req.params.id, ...pos },
-          update: { x: pos.x, y: pos.y, width: pos.width, height: pos.height, collapsed: pos.collapsed },
-        })
-      )
-    );
+      await prisma.$transaction(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        positions.map((pos: any) =>
+          prisma.canvasNodePosition.upsert({
+            where: { canvasId_nodeId: { canvasId: req.params.id, nodeId: pos.nodeId } },
+            create: { canvasId: req.params.id, ...pos },
+            update: { x: pos.x, y: pos.y, width: pos.width, height: pos.height, collapsed: pos.collapsed },
+          }),
+        ),
+      );
 
-    res.json({ success: true });
-  } catch (err) { next(err); }
-});
+      res.json({ success: true });
+    } catch (err) {
+      next(err);
+    }
+  },
+);

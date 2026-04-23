@@ -218,6 +218,7 @@ describe('Transcript integration tests', () => {
   it('PUT /canvas/:id/transcripts/:tid updates title and content', async () => {
     const transcriptId = 'transcript-t1';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ id: transcriptId, canvasId });
     mockPrisma.canvasTranscript.update.mockResolvedValue({
       id: transcriptId,
       canvasId,
@@ -241,6 +242,7 @@ describe('Transcript integration tests', () => {
   it('DELETE /canvas/:id/transcripts/:tid deletes a transcript', async () => {
     const transcriptId = 'transcript-t1';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ id: transcriptId, canvasId });
     mockPrisma.canvasTranscript.delete.mockResolvedValue({ id: transcriptId });
 
     const res = await request(app)
@@ -303,9 +305,7 @@ describe('Transcript integration tests', () => {
       .post(`/api/canvas/${canvasId}/import-narratives`)
       .set('Authorization', `Bearer ${jwt}`)
       .send({
-        narratives: [
-          { title: '', content: 'Some content' },
-        ],
+        narratives: [{ title: '', content: 'Some content' }],
       });
 
     expect(res.status).toBe(400);
@@ -357,16 +357,13 @@ describe('Transcript integration tests', () => {
   });
 
   it('PUT /canvas/:id/transcripts/:tid returns 401 without auth', async () => {
-    const res = await request(app)
-      .put(`/api/canvas/${canvasId}/transcripts/tid-1`)
-      .send({ title: 'Updated' });
+    const res = await request(app).put(`/api/canvas/${canvasId}/transcripts/tid-1`).send({ title: 'Updated' });
 
     expect(res.status).toBe(401);
   });
 
   it('DELETE /canvas/:id/transcripts/:tid returns 401 without auth', async () => {
-    const res = await request(app)
-      .delete(`/api/canvas/${canvasId}/transcripts/tid-1`);
+    const res = await request(app).delete(`/api/canvas/${canvasId}/transcripts/tid-1`);
 
     expect(res.status).toBe(401);
   });

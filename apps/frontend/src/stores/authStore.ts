@@ -5,7 +5,6 @@ export type AuthType = 'email' | 'legacy';
 
 interface AuthState {
   // Common
-  jwt: string | null;
   name: string | null;
   role: string | null;
   authenticated: boolean;
@@ -22,15 +21,18 @@ interface AuthState {
   emailVerified: boolean;
 
   // Actions
+  // `jwt` is still accepted in the action payload because login responses
+  // still include it (backend body hasn't dropped it yet) — we just don't
+  // persist it anywhere. Auth is carried by an httpOnly cookie.
   setAuth: (data: {
     dashboardCode: string;
-    jwt: string;
+    jwt?: string;
     name: string;
     role: string;
     dashboardAccessId: string;
   }) => void;
   setEmailAuth: (data: {
-    jwt: string;
+    jwt?: string;
     email: string;
     userId: string;
     name: string;
@@ -46,7 +48,6 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      jwt: null,
       name: null,
       role: null,
       authenticated: false,
@@ -60,11 +61,10 @@ export const useAuthStore = create<AuthState>()(
       plan: null,
       emailVerified: false,
 
-      // Legacy access-code login
+      // Legacy access-code login — jwt payload intentionally not stored
       setAuth: (data) =>
         set({
           dashboardCode: data.dashboardCode,
-          jwt: data.jwt,
           name: data.name,
           role: data.role,
           dashboardAccessId: data.dashboardAccessId,
@@ -73,10 +73,9 @@ export const useAuthStore = create<AuthState>()(
           plan: 'pro', // Grandfathered
         }),
 
-      // Email login
+      // Email login — jwt payload intentionally not stored
       setEmailAuth: (data) =>
         set({
-          jwt: data.jwt,
           email: data.email,
           userId: data.userId,
           name: data.name,
@@ -101,7 +100,6 @@ export const useAuthStore = create<AuthState>()(
         void fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
         set({
           dashboardCode: null,
-          jwt: null,
           name: null,
           role: null,
           dashboardAccessId: null,
@@ -118,18 +116,15 @@ export const useAuthStore = create<AuthState>()(
       name: 'qualcanvas-auth',
       onRehydrateStorage: () => {
         return (state) => {
-          // If authenticated but missing JWT, reset to logged-out state
-          if (state && state.authenticated && !state.jwt) {
-            state.authenticated = false;
-            state.jwt = null;
-            state.authType = null;
-            state.email = null;
-            state.userId = null;
-            state.plan = null;
-            state.dashboardCode = null;
-            state.dashboardAccessId = null;
-            state.name = null;
-            state.role = null;
+          // Auth is now carried by an httpOnly cookie, not by anything we can
+          // see from JS. The persisted profile fields are still useful (the
+          // UI shows the user's name / plan during the brief window before
+          // /auth/me lands). If no cookie is present server-side, the first
+          // API call returns 401 and the 401 interceptor clears state.
+          if (state) {
+            // Strip any stale jwt that older versions persisted.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            delete (state as any).jwt;
           }
         };
       },

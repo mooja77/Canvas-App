@@ -25,6 +25,10 @@ const { mockPrisma } = vi.hoisted(() => {
     },
     canvasTranscript: {
       create: vi.fn(),
+      count: vi.fn().mockResolvedValue(1),
+    },
+    canvasTextCoding: {
+      count: vi.fn().mockResolvedValue(1),
     },
     aiUsage: {
       create: vi.fn(),
@@ -344,6 +348,9 @@ describe('Upload and QDPX integration tests', () => {
   it('GET /canvas/:id/export/qdpx returns QDPX data', async () => {
     const qdpxBuffer = Buffer.from('PK mock zip content');
     mockExportQdpx.mockResolvedValue(qdpxBuffer);
+    // Export guard counts transcripts + codings to block empty-canvas exports.
+    mockPrisma.canvasTranscript.count.mockResolvedValue(3);
+    mockPrisma.canvasTextCoding.count.mockResolvedValue(5);
 
     const res = await request(app).get(`/api/canvas/${canvasId}/export/qdpx`).set('Authorization', `Bearer ${jwt}`);
 
@@ -353,15 +360,17 @@ describe('Upload and QDPX integration tests', () => {
     expect(mockExportQdpx).toHaveBeenCalledWith(canvasId);
   });
 
-  // ─── 11. GET /canvas/:id/export/qdpx on empty canvas returns valid response ───
-  it('GET /canvas/:id/export/qdpx on empty canvas returns valid QDPX', async () => {
-    const emptyQdpx = Buffer.from('PK empty qdpx');
-    mockExportQdpx.mockResolvedValue(emptyQdpx);
+  // ─── 11. GET /canvas/:id/export/qdpx on empty canvas rejects with 400 ───
+  it('GET /canvas/:id/export/qdpx on empty canvas rejects with 400', async () => {
+    // No transcripts and no codings — export would be semantically empty.
+    // NVivo/ATLAS.ti silently import such archives; we block to avoid silent data loss.
+    mockPrisma.canvasTranscript.count.mockResolvedValue(0);
+    mockPrisma.canvasTextCoding.count.mockResolvedValue(0);
 
     const res = await request(app).get(`/api/canvas/${canvasId}/export/qdpx`).set('Authorization', `Bearer ${jwt}`);
 
-    expect(res.status).toBe(200);
-    expect(res.headers['content-type']).toContain('application/zip');
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('EMPTY_CANVAS');
   });
 
   // ─── 12. GET /canvas/:id/export/qdpx on another user's canvas returns 403 ───

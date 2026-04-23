@@ -20,7 +20,6 @@ describe('useSessionTimeout', () => {
   afterEach(() => {
     vi.useRealTimers();
     useAuthStore.setState({
-      jwt: null,
       name: null,
       role: null,
       authenticated: false,

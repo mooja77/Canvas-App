@@ -40,9 +40,12 @@ export function initSocketServer(httpServer: HttpServer): Server {
     transports: ['websocket', 'polling'],
   });
 
-  // JWT authentication middleware — prefer cookie (set by login endpoints),
-  // fall back to auth.token for backward compatibility with clients that
-  // still pass the JWT from localStorage through the handshake.
+  // JWT auth middleware.
+  //   1. Prefer the httpOnly cookie — shipped automatically by the browser
+  //      when the client sets withCredentials on the Socket.IO connection.
+  //   2. Fall back to socket.handshake.auth.token for non-browser clients
+  //      (integration tests, CLI, future mobile). The frontend no longer
+  //      sends a token there.
   io.use(async (socket, next) => {
     const cookieHeader = socket.handshake.headers.cookie;
     const cookieJwt = cookieHeader
@@ -62,13 +65,23 @@ export function initSocketServer(httpServer: HttpServer): Server {
       return next(new Error('Invalid token'));
     }
 
-    // Look up user name
+    // Look up user + session invalidation timestamp
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, sessionsInvalidAt: true },
     });
     if (!user) {
       return next(new Error('User not found'));
+    }
+
+    // Mirror HTTP auth middleware: reject tokens older than the user's last
+    // credential rotation so a stolen JWT can't keep the websocket open after
+    // a password reset / email change.
+    if (user.sessionsInvalidAt && payload.iat) {
+      const jwtIssuedMs = payload.iat * 1000;
+      if (jwtIssuedMs < user.sessionsInvalidAt.getTime()) {
+        return next(new Error('Session invalidated'));
+      }
     }
 
     // Attach user info to socket data

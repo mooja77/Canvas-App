@@ -159,8 +159,20 @@ describe('Computed node extended tests', () => {
 
   // Reusable test data
   const transcripts = [
-    { id: 'tr-1', title: 'Interview A', content: 'The participants felt great satisfaction and wonderful progress.', caseId: 'case-1', eventDate: null },
-    { id: 'tr-2', title: 'Interview B', content: 'Some terrible problems and frustrating issues emerged here.', caseId: 'case-2', eventDate: null },
+    {
+      id: 'tr-1',
+      title: 'Interview A',
+      content: 'The participants felt great satisfaction and wonderful progress.',
+      caseId: 'case-1',
+      eventDate: null,
+    },
+    {
+      id: 'tr-2',
+      title: 'Interview B',
+      content: 'Some terrible problems and frustrating issues emerged here.',
+      caseId: 'case-2',
+      eventDate: null,
+    },
   ];
   const questions = [
     { id: 'q-1', text: 'Positive Theme', color: '#00FF00', parentQuestionId: null },
@@ -168,10 +180,38 @@ describe('Computed node extended tests', () => {
     { id: 'q-3', text: 'Neutral Theme', color: '#888888', parentQuestionId: null },
   ];
   const codings = [
-    { id: 'c-1', transcriptId: 'tr-1', questionId: 'q-1', startOffset: 0, endOffset: 30, codedText: 'participants felt great satisfaction' },
-    { id: 'c-2', transcriptId: 'tr-1', questionId: 'q-2', startOffset: 10, endOffset: 30, codedText: 'great satisfaction' },
-    { id: 'c-3', transcriptId: 'tr-2', questionId: 'q-2', startOffset: 5, endOffset: 40, codedText: 'terrible problems and frustrating issues' },
-    { id: 'c-4', transcriptId: 'tr-2', questionId: 'q-1', startOffset: 0, endOffset: 20, codedText: 'Some terrible problems' },
+    {
+      id: 'c-1',
+      transcriptId: 'tr-1',
+      questionId: 'q-1',
+      startOffset: 0,
+      endOffset: 30,
+      codedText: 'participants felt great satisfaction',
+    },
+    {
+      id: 'c-2',
+      transcriptId: 'tr-1',
+      questionId: 'q-2',
+      startOffset: 10,
+      endOffset: 30,
+      codedText: 'great satisfaction',
+    },
+    {
+      id: 'c-3',
+      transcriptId: 'tr-2',
+      questionId: 'q-2',
+      startOffset: 5,
+      endOffset: 40,
+      codedText: 'terrible problems and frustrating issues',
+    },
+    {
+      id: 'c-4',
+      transcriptId: 'tr-2',
+      questionId: 'q-1',
+      startOffset: 0,
+      endOffset: 20,
+      codedText: 'Some terrible problems',
+    },
   ];
   const cases = [
     { id: 'case-1', name: 'Case Alpha', attributes: '{"region":"north"}' },
@@ -748,6 +788,7 @@ describe('Computed node extended tests', () => {
   it('PUT updates both label and config in one request', async () => {
     const nodeId = 'node-put-both';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasComputedNode.findUnique.mockResolvedValue({ id: nodeId, canvasId });
     mockPrisma.canvasComputedNode.update.mockResolvedValue({
       id: nodeId,
       canvasId,

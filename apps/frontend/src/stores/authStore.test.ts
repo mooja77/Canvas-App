@@ -3,7 +3,6 @@ import { useAuthStore } from './authStore';
 
 function resetStore() {
   useAuthStore.setState({
-    jwt: null,
     name: null,
     role: null,
     authenticated: false,
@@ -25,7 +24,6 @@ describe('authStore', () => {
     it('is not authenticated', () => {
       const state = useAuthStore.getState();
       expect(state.authenticated).toBe(false);
-      expect(state.jwt).toBeNull();
       expect(state.authType).toBeNull();
     });
 
@@ -58,7 +56,6 @@ describe('authStore', () => {
       const state = useAuthStore.getState();
       expect(state.authenticated).toBe(true);
       expect(state.authType).toBe('legacy');
-      expect(state.jwt).toBe('legacy-jwt-token');
       expect(state.name).toBe('Test User');
       expect(state.role).toBe('admin');
       expect(state.dashboardCode).toBe('DEMO-CODE');
@@ -90,7 +87,6 @@ describe('authStore', () => {
       const state = useAuthStore.getState();
       expect(state.authenticated).toBe(true);
       expect(state.authType).toBe('email');
-      expect(state.jwt).toBe('email-jwt-token');
       expect(state.email).toBe('user@example.com');
       expect(state.userId).toBe('user-789');
       expect(state.name).toBe('Email User');
@@ -136,7 +132,6 @@ describe('authStore', () => {
 
       const state = useAuthStore.getState();
       expect(state.authenticated).toBe(false);
-      expect(state.jwt).toBeNull();
       expect(state.authType).toBeNull();
       expect(state.name).toBeNull();
       expect(state.role).toBeNull();
@@ -161,7 +156,6 @@ describe('authStore', () => {
 
       const state = useAuthStore.getState();
       expect(state.authenticated).toBe(false);
-      expect(state.jwt).toBeNull();
       expect(state.email).toBeNull();
       expect(state.userId).toBeNull();
       expect(state.plan).toBeNull();
@@ -184,7 +178,6 @@ describe('authStore', () => {
       const state = useAuthStore.getState();
       expect(state.plan).toBe('team');
       expect(state.authenticated).toBe(true);
-      expect(state.jwt).toBe('jwt');
       expect(state.name).toBe('User');
     });
   });
@@ -302,7 +295,6 @@ describe('authStore', () => {
       });
 
       const state = useAuthStore.getState();
-      expect(state.jwt).toBe('jwt-2');
       expect(state.email).toBe('second@example.com');
       expect(state.userId).toBe('u2');
       expect(state.name).toBe('Second User');
@@ -335,7 +327,6 @@ describe('authStore', () => {
       expect(state.dashboardCode).toBeNull();
       expect(state.dashboardAccessId).toBeNull();
       expect(state.email).toBe('new@example.com');
-      expect(state.jwt).toBe('email-jwt');
     });
   });
 });

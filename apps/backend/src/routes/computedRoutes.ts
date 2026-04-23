@@ -69,6 +69,10 @@ computedRoutes.put(
       const updateData: any = {};
       if (req.body.label !== undefined) updateData.label = req.body.label;
       if (req.body.config !== undefined) updateData.config = JSON.stringify(req.body.config);
+      const existing = await prisma.canvasComputedNode.findUnique({ where: { id: req.params.nodeId } });
+      if (!existing || existing.canvasId !== req.params.id) {
+        return next(new AppError('Computed node not found in this canvas', 404));
+      }
       const node = await prisma.canvasComputedNode.update({
         where: { id: req.params.nodeId },
         data: updateData,
@@ -87,6 +91,10 @@ computedRoutes.delete('/canvas/:id/computed/:nodeId', validateParams(canvasCompu
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    const existing = await prisma.canvasComputedNode.findUnique({ where: { id: req.params.nodeId } });
+    if (!existing || existing.canvasId !== req.params.id) {
+      return next(new AppError('Computed node not found in this canvas', 404));
+    }
     await prisma.canvasComputedNode.delete({ where: { id: req.params.nodeId } });
     res.json({ success: true });
   } catch (err) {

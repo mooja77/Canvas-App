@@ -146,7 +146,7 @@ describe('API error handling', () => {
     }
 
     const events = dispatchSpy.mock.calls.filter(
-      c => c[0] instanceof CustomEvent && c[0].type === 'plan-limit-exceeded',
+      (c) => c[0] instanceof CustomEvent && c[0].type === 'plan-limit-exceeded',
     );
     expect(events).toHaveLength(1);
     expect((events[0][0] as CustomEvent).detail.limit).toBe('transcripts');
@@ -214,7 +214,7 @@ describe('API error handling', () => {
 
   it('expired session: 401 triggers logout and redirect', async () => {
     const { useAuthStore } = await import('../stores/authStore');
-    useAuthStore.setState({ authenticated: true, jwt: 'old-jwt', authType: 'email' });
+    useAuthStore.setState({ authenticated: true, authType: 'email' });
 
     Object.defineProperty(window, 'location', {
       value: { href: '/canvas' },
@@ -238,7 +238,6 @@ describe('API error handling', () => {
 
     // Auth store should be cleared
     expect(useAuthStore.getState().authenticated).toBe(false);
-    expect(useAuthStore.getState().jwt).toBeNull();
   });
 
   it('concurrent API failures: does not crash app (no cascading errors)', async () => {
@@ -260,7 +259,7 @@ describe('API error handling', () => {
     ]);
 
     // All should be rejected, none should cause unhandled exceptions
-    expect(results.every(r => r.status === 'rejected')).toBe(true);
+    expect(results.every((r) => r.status === 'rejected')).toBe(true);
     expect(results).toHaveLength(5);
   });
 });

@@ -289,7 +289,14 @@ describe('Computed node integration tests', () => {
     ]);
     mockPrisma.canvasQuestion.findMany.mockResolvedValue([]);
     mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
-      { id: 'c-1', transcriptId: 'tr-1', questionId: 'q-1', startOffset: 0, endOffset: 10, codedText: 'Many words here repeated words' },
+      {
+        id: 'c-1',
+        transcriptId: 'tr-1',
+        questionId: 'q-1',
+        startOffset: 0,
+        endOffset: 10,
+        codedText: 'Many words here repeated words',
+      },
     ]);
     mockPrisma.canvasCase.findMany.mockResolvedValue([]);
 
@@ -313,6 +320,7 @@ describe('Computed node integration tests', () => {
   it('PUT /canvas/:id/computed/:nodeId updates config', async () => {
     const nodeId = 'node-cp1';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasComputedNode.findUnique.mockResolvedValue({ id: nodeId, canvasId });
     mockPrisma.canvasComputedNode.update.mockResolvedValue({
       id: nodeId,
       canvasId,
@@ -337,6 +345,7 @@ describe('Computed node integration tests', () => {
   it('DELETE /canvas/:id/computed/:nodeId deletes a computed node', async () => {
     const nodeId = 'node-cp1';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasComputedNode.findUnique.mockResolvedValue({ id: nodeId, canvasId });
     mockPrisma.canvasComputedNode.delete.mockResolvedValue({ id: nodeId });
 
     const res = await request(app)

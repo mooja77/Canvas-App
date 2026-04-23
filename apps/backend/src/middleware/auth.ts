@@ -5,10 +5,13 @@ import { sha256, verifyAccessCode } from '../utils/hashing.js';
 import { verifyToken, isUserPayload, isLegacyPayload } from '../utils/jwt.js';
 
 export async function auth(req: Request, res: Response, next: NextFunction) {
-  // Prefer the httpOnly cookie (set by login endpoints) over the Authorization
-  // header. Bearer header + x-dashboard-code remain supported for the migration
-  // window — existing sessions stored in localStorage keep working, and mobile
-  // clients can still use header auth if cookies are unavailable.
+  // Auth sources, in priority order:
+  //   1. `jwt` httpOnly cookie — set by login endpoints, used by the web app
+  //      and WebSocket handshake. XSS can't read httpOnly cookies, which is
+  //      why we migrated the frontend away from localStorage JWTs.
+  //   2. Authorization: Bearer header / x-dashboard-code — retained for
+  //      server-to-server clients, integration tests, and CLI tools. The
+  //      frontend no longer sends these (see apps/frontend/src/services/api.ts).
   const cookieJwt = (req as Request & { cookies?: Record<string, string> }).cookies?.jwt;
   const authHeader = req.headers['authorization'] as string | undefined;
   const dashboardCode = req.headers['x-dashboard-code'] as string;

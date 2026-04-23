@@ -297,9 +297,7 @@ describe('Canvas CRUD extended tests', () => {
       .put(`/api/canvas/${canvasId}/layout`)
       .set('Authorization', `Bearer ${jwt}`)
       .send({
-        positions: [
-          { nodeType: 'transcript', x: 100, y: 200 },
-        ],
+        positions: [{ nodeType: 'transcript', x: 100, y: 200 }],
       });
 
     expect(res.status).toBe(400);
@@ -377,42 +375,32 @@ describe('Canvas CRUD extended tests', () => {
     mockPrisma.codingCanvas.findMany.mockResolvedValue(canvases);
     mockPrisma.codingCanvas.count.mockResolvedValue(10);
 
-    const res = await request(app)
-      .get('/api/canvas?limit=3&offset=2')
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get('/api/canvas?limit=3&offset=2').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(3);
     expect(res.body.total).toBe(10);
     expect(res.body.limit).toBe(3);
     expect(res.body.offset).toBe(2);
-    expect(mockPrisma.codingCanvas.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 3, skip: 2 })
-    );
+    expect(mockPrisma.codingCanvas.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 3, skip: 2 }));
   });
 
   it('GET /canvas caps limit at 200', async () => {
     mockPrisma.codingCanvas.findMany.mockResolvedValue([]);
     mockPrisma.codingCanvas.count.mockResolvedValue(0);
 
-    const res = await request(app)
-      .get('/api/canvas?limit=500')
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get('/api/canvas?limit=500').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.limit).toBe(200);
-    expect(mockPrisma.codingCanvas.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 200 })
-    );
+    expect(mockPrisma.codingCanvas.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 200 }));
   });
 
   it('GET /canvas defaults limit=50 and offset=0', async () => {
     mockPrisma.codingCanvas.findMany.mockResolvedValue([]);
     mockPrisma.codingCanvas.count.mockResolvedValue(0);
 
-    const res = await request(app)
-      .get('/api/canvas')
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get('/api/canvas').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.limit).toBe(50);
@@ -424,9 +412,7 @@ describe('Canvas CRUD extended tests', () => {
   it('POST /canvas/:id/restore returns 404 for non-existent canvas', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue(null);
 
-    const res = await request(app)
-      .post(`/api/canvas/nonexistent/restore`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post(`/api/canvas/nonexistent/restore`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(404);
   });
@@ -438,9 +424,7 @@ describe('Canvas CRUD extended tests', () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...trashedCanvas });
     mockPrisma.codingCanvas.update.mockResolvedValue({ ...restoredCanvas });
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/restore`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post(`/api/canvas/${canvasId}/restore`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -478,9 +462,7 @@ describe('Canvas CRUD extended tests', () => {
   it('DELETE /canvas/:id/permanent returns 404 for non-existent canvas', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue(null);
 
-    const res = await request(app)
-      .delete('/api/canvas/nonexistent/permanent')
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).delete('/api/canvas/nonexistent/permanent').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(404);
   });
@@ -557,9 +539,7 @@ describe('Canvas CRUD extended tests', () => {
   });
 
   it('POST /canvas/:id/import-from-canvas returns 404 for non-existent source canvas', async () => {
-    mockPrisma.codingCanvas.findUnique
-      .mockResolvedValueOnce({ ...mockCanvas })
-      .mockResolvedValueOnce(null);
+    mockPrisma.codingCanvas.findUnique.mockResolvedValueOnce({ ...mockCanvas }).mockResolvedValueOnce(null);
 
     const res = await request(app)
       .post(`/api/canvas/${canvasId}/import-from-canvas`)
@@ -614,6 +594,7 @@ describe('Canvas CRUD extended tests', () => {
   it('PUT /canvas/:id/transcripts/:tid assigns caseId to transcript', async () => {
     const transcriptId = 'transcript-case-1';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ id: transcriptId, canvasId });
     mockPrisma.canvasTranscript.update.mockResolvedValue({
       id: transcriptId,
       canvasId,
@@ -634,6 +615,7 @@ describe('Canvas CRUD extended tests', () => {
   it('PUT /canvas/:id/transcripts/:tid removes caseId with null', async () => {
     const transcriptId = 'transcript-case-2';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ id: transcriptId, canvasId });
     mockPrisma.canvasTranscript.update.mockResolvedValue({
       id: transcriptId,
       canvasId,

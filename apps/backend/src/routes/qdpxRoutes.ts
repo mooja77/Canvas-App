@@ -6,6 +6,7 @@ import { importQdpx } from '../utils/qdpxImport.js';
 import { checkExportFormat } from '../middleware/planLimits.js';
 import { validateParams, canvasIdParam } from '../middleware/validation.js';
 import { isValidSignature } from '../utils/magicBytes.js';
+import { prisma } from '../lib/prisma.js';
 
 export const qdpxRoutes = Router();
 
@@ -34,6 +35,21 @@ qdpxRoutes.get(
       const dashboardAccessId = getAuthId(req);
       const userId = getAuthUserId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+
+      // Reject exports that would produce a semantically empty QDPX. NVivo
+      // and ATLAS.ti will silently accept such archives and the researcher
+      // will blame QualCanvas when no content appears on import.
+      const [transcriptCount, codingCount] = await Promise.all([
+        prisma.canvasTranscript.count({ where: { canvasId: req.params.id } }),
+        prisma.canvasTextCoding.count({ where: { canvasId: req.params.id } }),
+      ]);
+      if (transcriptCount === 0 && codingCount === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Canvas has no transcripts or codings to export. Add content first.',
+          code: 'EMPTY_CANVAS',
+        });
+      }
 
       const buffer = await exportQdpx(req.params.id);
 

@@ -6,8 +6,13 @@ const SOCKET_URL =
   import.meta.env.VITE_WS_URL ||
   (import.meta.env.VITE_API_URL ? new URL(import.meta.env.VITE_API_URL).origin : window.location.origin);
 
-/** Get or create the singleton Socket.io client. */
-export function getSocket(token: string): Socket {
+/**
+ * Get or create the singleton Socket.io client. The `_token` param is kept
+ * for call-site compatibility but ignored — auth now rides on the httpOnly
+ * jwt cookie via withCredentials.
+ */
+
+export function getSocket(_token: string): Socket {
   if (socket?.connected) return socket;
 
   // Disconnect old socket if it exists but isn't connected
@@ -16,10 +21,8 @@ export function getSocket(token: string): Socket {
   }
 
   socket = io(SOCKET_URL, {
-    // Auth via cookie (primary) — withCredentials sends the httpOnly jwt
-    // cookie on the handshake. auth.token stays as a fallback for existing
-    // sessions that still hold the JWT in localStorage.
-    auth: { token },
+    // Cookie-only auth: withCredentials sends the httpOnly jwt cookie on the
+    // handshake. The server-side socket middleware reads it from headers.
     withCredentials: true,
     transports: ['websocket', 'polling'],
     reconnection: true,

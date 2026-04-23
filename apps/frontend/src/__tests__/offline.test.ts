@@ -172,8 +172,9 @@ describe('offlineQueue', () => {
 
   it('handles replay failure gracefully (stops at failed op)', async () => {
     const { queueOperation, replayQueue, getQueue } = await import('../lib/offlineQueue');
-    const fetchSpy = vi.fn()
-      .mockResolvedValueOnce({ ok: true })      // first succeeds
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true }) // first succeeds
       .mockRejectedValueOnce(new Error('offline')); // second fails
     vi.stubGlobal('fetch', fetchSpy);
 
@@ -206,7 +207,7 @@ describe('API interceptors', () => {
   it('detects 401 and logs out', async () => {
     // We need to test the interceptor behavior by importing the configured client
     const { useAuthStore } = await import('../stores/authStore');
-    useAuthStore.setState({ authenticated: true, jwt: 'test-jwt', authType: 'email' });
+    useAuthStore.setState({ authenticated: true, authType: 'email' });
 
     const { canvasClient } = await import('../services/api');
 
@@ -260,7 +261,7 @@ describe('API interceptors', () => {
     }
 
     const planLimitEvent = dispatchSpy.mock.calls.find(
-      c => c[0] instanceof CustomEvent && c[0].type === 'plan-limit-exceeded',
+      (c) => c[0] instanceof CustomEvent && c[0].type === 'plan-limit-exceeded',
     );
     expect(planLimitEvent).toBeDefined();
     expect((planLimitEvent![0] as CustomEvent).detail.code).toBe('PLAN_LIMIT_EXCEEDED');

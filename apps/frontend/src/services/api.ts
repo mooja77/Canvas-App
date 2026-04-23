@@ -34,27 +34,10 @@ export const canvasClient = axios.create({
   withCredentials: true,
 });
 
-// Inject auth token from authStore
-canvasClient.interceptors.request.use((config) => {
-  try {
-    const stored = localStorage.getItem('qualcanvas-auth');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      const jwt = parsed?.state?.jwt;
-      const authType = parsed?.state?.authType;
-      if (jwt) {
-        if (authType === 'email') {
-          config.headers['Authorization'] = `Bearer ${jwt}`;
-        } else {
-          config.headers['x-dashboard-code'] = jwt;
-        }
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-  return config;
-});
+// Auth is now carried by the httpOnly jwt cookie (set by login endpoints and
+// automatically sent with every request thanks to withCredentials above).
+// The previous localStorage-based Bearer header injection was removed as part
+// of the C3 phase 2 cookie-only migration.
 
 // Plan limit interceptor — fires custom event on PLAN_LIMIT_EXCEEDED
 canvasClient.interceptors.response.use(

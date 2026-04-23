@@ -62,6 +62,10 @@ codingRoutes.put(
     try {
       const dashboardAccessId = getAuthId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+      const existing = await prisma.canvasQuestion.findUnique({ where: { id: req.params.qid } });
+      if (!existing || existing.canvasId !== req.params.id) {
+        return next(new AppError('Question not found in this canvas', 404));
+      }
       const question = await prisma.canvasQuestion.update({
         where: { id: req.params.qid },
         data: req.body,
@@ -77,6 +81,10 @@ codingRoutes.delete('/canvas/:id/questions/:qid', validateParams(canvasQuestionP
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    const existing = await prisma.canvasQuestion.findUnique({ where: { id: req.params.qid } });
+    if (!existing || existing.canvasId !== req.params.id) {
+      return next(new AppError('Question not found in this canvas', 404));
+    }
     await prisma.canvasQuestion.delete({ where: { id: req.params.qid } });
     res.json({ success: true });
   } catch (err) {
@@ -158,6 +166,10 @@ codingRoutes.put(
     try {
       const dashboardAccessId = getAuthId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+      const existing = await prisma.canvasMemo.findUnique({ where: { id: req.params.mid } });
+      if (!existing || existing.canvasId !== req.params.id) {
+        return next(new AppError('Memo not found in this canvas', 404));
+      }
       const memo = await prisma.canvasMemo.update({
         where: { id: req.params.mid },
         data: req.body,
@@ -173,6 +185,10 @@ codingRoutes.delete('/canvas/:id/memos/:mid', validateParams(canvasMemoParams), 
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    const existing = await prisma.canvasMemo.findUnique({ where: { id: req.params.mid } });
+    if (!existing || existing.canvasId !== req.params.id) {
+      return next(new AppError('Memo not found in this canvas', 404));
+    }
     await prisma.canvasMemo.delete({ where: { id: req.params.mid } });
     res.json({ success: true });
   } catch (err) {
@@ -243,6 +259,9 @@ codingRoutes.put(
       const dashboardAccessId = getAuthId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
       const oldCoding = await prisma.canvasTextCoding.findUnique({ where: { id: req.params.cid } });
+      if (!oldCoding || oldCoding.canvasId !== req.params.id) {
+        return next(new AppError('Coding not found in this canvas', 404));
+      }
       const coding = await prisma.canvasTextCoding.update({
         where: { id: req.params.cid },
         data: req.body,
@@ -277,6 +296,9 @@ codingRoutes.delete('/canvas/:id/codings/:cid', validateParams(canvasCodingCidPa
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
     const deleted = await prisma.canvasTextCoding.findUnique({ where: { id: req.params.cid } });
+    if (!deleted || deleted.canvasId !== req.params.id) {
+      return next(new AppError('Coding not found in this canvas', 404));
+    }
     await prisma.canvasTextCoding.delete({ where: { id: req.params.cid } });
 
     const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
@@ -318,6 +340,9 @@ codingRoutes.put(
       }
 
       const oldCoding = await prisma.canvasTextCoding.findUnique({ where: { id: req.params.cid } });
+      if (!oldCoding || oldCoding.canvasId !== req.params.id) {
+        return next(new AppError('Coding not found in this canvas', 404));
+      }
       const coding = await prisma.canvasTextCoding.update({
         where: { id: req.params.cid },
         data: { questionId: newQuestionId },
@@ -450,6 +475,10 @@ codingRoutes.put(
       const updateData: any = {};
       if (req.body.name !== undefined) updateData.name = req.body.name;
       if (req.body.attributes !== undefined) updateData.attributes = JSON.stringify(req.body.attributes);
+      const existing = await prisma.canvasCase.findUnique({ where: { id: req.params.caseId } });
+      if (!existing || existing.canvasId !== req.params.id) {
+        return next(new AppError('Case not found in this canvas', 404));
+      }
       const caseRecord = await prisma.canvasCase.update({
         where: { id: req.params.caseId },
         data: updateData,
@@ -471,6 +500,10 @@ codingRoutes.delete('/canvas/:id/cases/:caseId', validateParams(canvasCaseParams
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    const existing = await prisma.canvasCase.findUnique({ where: { id: req.params.caseId } });
+    if (!existing || existing.canvasId !== req.params.id) {
+      return next(new AppError('Case not found in this canvas', 404));
+    }
     await prisma.canvasCase.delete({ where: { id: req.params.caseId } });
     res.json({ success: true });
   } catch (err) {
@@ -506,6 +539,10 @@ codingRoutes.put(
     try {
       const dashboardAccessId = getAuthId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+      const existing = await prisma.canvasRelation.findUnique({ where: { id: req.params.relId } });
+      if (!existing || existing.canvasId !== req.params.id) {
+        return next(new AppError('Relation not found in this canvas', 404));
+      }
       const relation = await prisma.canvasRelation.update({
         where: { id: req.params.relId },
         data: { label: req.body.label },
@@ -521,6 +558,10 @@ codingRoutes.delete('/canvas/:id/relations/:relId', validateParams(canvasRelatio
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    const existing = await prisma.canvasRelation.findUnique({ where: { id: req.params.relId } });
+    if (!existing || existing.canvasId !== req.params.id) {
+      return next(new AppError('Relation not found in this canvas', 404));
+    }
     await prisma.canvasRelation.delete({ where: { id: req.params.relId } });
     res.json({ success: true });
   } catch (err) {

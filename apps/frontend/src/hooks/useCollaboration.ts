@@ -41,17 +41,19 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
   const lastCursorEmit = useRef(0);
   const lastNodeMoveEmit = useRef(0);
 
-  const jwt = useAuthStore((s) => s.jwt);
+  const authenticated = useAuthStore((s) => s.authenticated);
   const authType = useAuthStore((s) => s.authType);
   const localUserId = useAuthStore((s) => s.userId);
 
   useEffect(() => {
-    // Only connect for email-authenticated users with a valid canvas
-    if (!enabled || !canvasId || !jwt || authType !== 'email') {
+    // Only connect for email-authenticated users with a valid canvas.
+    // Auth now rides on the httpOnly cookie, so we just need to know the
+    // user is logged in — the socket client picks up the cookie itself.
+    if (!enabled || !canvasId || !authenticated || authType !== 'email') {
       return;
     }
 
-    const socket = getSocket(jwt);
+    const socket = getSocket('');
     socketRef.current = socket;
 
     const handleConnect = () => {
@@ -203,7 +205,7 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
     // localUserId is read by every handler above to suppress self-echoes.
     // It's stable for a given login session, so including it here only causes
     // a reconnect when the user actually changes (which is the correct behavior).
-  }, [canvasId, jwt, authType, enabled, localUserId]);
+  }, [canvasId, authenticated, authType, enabled, localUserId]);
 
   // Throttled cursor emission via mousemove (called from the component)
   useEffect(() => {

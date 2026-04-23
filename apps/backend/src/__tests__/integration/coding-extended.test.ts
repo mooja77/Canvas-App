@@ -58,12 +58,14 @@ const { mockPrisma } = vi.hoisted(() => {
       upsert: vi.fn(),
     },
     canvasCase: {
+      findUnique: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
     },
     canvasRelation: {
+      findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -231,48 +233,39 @@ describe('Coding extended tests', () => {
   });
 
   it('POST /canvas/:id/codings rejects startOffset < 0', async () => {
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/codings`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        transcriptId: 'tr-1',
-        questionId: 'q-1',
-        startOffset: -1,
-        endOffset: 10,
-        codedText: 'text',
-      });
+    const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId: 'tr-1',
+      questionId: 'q-1',
+      startOffset: -1,
+      endOffset: 10,
+      codedText: 'text',
+    });
 
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
   });
 
   it('POST /canvas/:id/codings rejects non-integer offsets', async () => {
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/codings`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        transcriptId: 'tr-1',
-        questionId: 'q-1',
-        startOffset: 1.5,
-        endOffset: 10.7,
-        codedText: 'text',
-      });
+    const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId: 'tr-1',
+      questionId: 'q-1',
+      startOffset: 1.5,
+      endOffset: 10.7,
+      codedText: 'text',
+    });
 
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
   });
 
   it('POST /canvas/:id/codings rejects empty codedText', async () => {
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/codings`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        transcriptId: 'tr-1',
-        questionId: 'q-1',
-        startOffset: 0,
-        endOffset: 10,
-        codedText: '',
-      });
+    const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId: 'tr-1',
+      questionId: 'q-1',
+      startOffset: 0,
+      endOffset: 10,
+      codedText: '',
+    });
 
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
@@ -293,17 +286,14 @@ describe('Coding extended tests', () => {
       note: 'Interesting passage',
     });
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/codings`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        transcriptId: 'tr-note',
-        questionId: 'q-note',
-        startOffset: 0,
-        endOffset: 5,
-        codedText: 'hello',
-        note: 'Interesting passage',
-      });
+    const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId: 'tr-note',
+      questionId: 'q-note',
+      startOffset: 0,
+      endOffset: 5,
+      codedText: 'hello',
+      note: 'Interesting passage',
+    });
 
     expect(res.status).toBe(201);
     expect(res.body.data.note).toBe('Interesting passage');
@@ -368,8 +358,24 @@ describe('Coding extended tests', () => {
       { id: 'tr-regex', title: 'Transcript', content: 'The participant said "I feel happy" and later "I feel sad".' },
     ]);
     mockPrisma.$transaction.mockResolvedValue([
-      { id: 'ac-regex-1', canvasId, transcriptId: 'tr-regex', questionId, startOffset: 22, endOffset: 34, codedText: 'I feel happy' },
-      { id: 'ac-regex-2', canvasId, transcriptId: 'tr-regex', questionId, startOffset: 46, endOffset: 56, codedText: 'I feel sad' },
+      {
+        id: 'ac-regex-1',
+        canvasId,
+        transcriptId: 'tr-regex',
+        questionId,
+        startOffset: 22,
+        endOffset: 34,
+        codedText: 'I feel happy',
+      },
+      {
+        id: 'ac-regex-2',
+        canvasId,
+        transcriptId: 'tr-regex',
+        questionId,
+        startOffset: 46,
+        endOffset: 56,
+        codedText: 'I feel sad',
+      },
     ]);
 
     const res = await request(app)
@@ -426,7 +432,15 @@ describe('Coding extended tests', () => {
       { id: 'tr-filter-1', title: 'Filtered', content: 'The data shows patterns.' },
     ]);
     mockPrisma.$transaction.mockResolvedValue([
-      { id: 'ac-f1', canvasId, transcriptId: 'tr-filter-1', questionId, startOffset: 15, endOffset: 23, codedText: 'patterns' },
+      {
+        id: 'ac-f1',
+        canvasId,
+        transcriptId: 'tr-filter-1',
+        questionId,
+        startOffset: 15,
+        endOffset: 23,
+        codedText: 'patterns',
+      },
     ]);
 
     const res = await request(app)
@@ -440,7 +454,7 @@ describe('Coding extended tests', () => {
     expect(mockPrisma.canvasTranscript.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ id: { in: ['tr-filter-1'] } }),
-      })
+      }),
     );
   });
 
@@ -516,6 +530,7 @@ describe('Coding extended tests', () => {
     const childId = 'q-child';
     const parentId = 'q-parent';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: childId, canvasId });
     mockPrisma.canvasQuestion.update.mockResolvedValue({
       id: childId,
       canvasId,
@@ -535,6 +550,7 @@ describe('Coding extended tests', () => {
   it('PUT /canvas/:id/questions/:qid removes parent with null', async () => {
     const childId = 'q-child-orphan';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: childId, canvasId });
     mockPrisma.canvasQuestion.update.mockResolvedValue({
       id: childId,
       canvasId,
@@ -618,6 +634,7 @@ describe('Coding extended tests', () => {
 
   it('PUT /canvas/:id/cases/:caseId updates case name and attributes', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasCase.findUnique.mockResolvedValue({ id: 'case-1', canvasId });
     mockPrisma.canvasCase.update.mockResolvedValue({
       id: 'case-1',
       canvasId,
@@ -637,11 +654,10 @@ describe('Coding extended tests', () => {
 
   it('DELETE /canvas/:id/cases/:caseId deletes a case', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasCase.findUnique.mockResolvedValue({ id: 'case-1', canvasId });
     mockPrisma.canvasCase.delete.mockResolvedValue({ id: 'case-1' });
 
-    const res = await request(app)
-      .delete(`/api/canvas/${canvasId}/cases/case-1`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).delete(`/api/canvas/${canvasId}/cases/case-1`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -682,6 +698,7 @@ describe('Coding extended tests', () => {
 
   it('PUT /canvas/:id/relations/:relId updates relation label', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasRelation.findUnique.mockResolvedValue({ id: 'rel-1', canvasId });
     mockPrisma.canvasRelation.update.mockResolvedValue({
       id: 'rel-1',
       canvasId,
@@ -699,6 +716,7 @@ describe('Coding extended tests', () => {
 
   it('DELETE /canvas/:id/relations/:relId deletes a relation', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasRelation.findUnique.mockResolvedValue({ id: 'rel-1', canvasId });
     mockPrisma.canvasRelation.delete.mockResolvedValue({ id: 'rel-1' });
 
     const res = await request(app)
