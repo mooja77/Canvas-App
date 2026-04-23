@@ -188,10 +188,14 @@ describe('Data integrity integration tests', () => {
     jwt = signUserToken(userId, 'researcher', 'pro');
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetAllMocks();
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
+    // resetAllMocks wipes the mockReturnValue set at module-init. Re-apply so
+    // audit log callsites that hash PII still get a string back.
+    const hashing = await import('../../utils/hashing.js');
+    (hashing.sha256 as unknown as { mockReturnValue: (v: string) => void }).mockReturnValue('sha256hash');
   });
 
   // ═══════════════════════════════════════════════
@@ -205,9 +209,7 @@ describe('Data integrity integration tests', () => {
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...softDeletedCanvas });
       mockPrisma.codingCanvas.delete.mockResolvedValue({ ...softDeletedCanvas });
 
-      const res = await request(app)
-        .delete(`/api/canvas/${canvasId}/permanent`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).delete(`/api/canvas/${canvasId}/permanent`).set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -218,9 +220,7 @@ describe('Data integrity integration tests', () => {
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...softDeletedCanvas });
       mockPrisma.codingCanvas.delete.mockResolvedValue({ ...softDeletedCanvas });
 
-      const res = await request(app)
-        .delete(`/api/canvas/${canvasId}/permanent`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).delete(`/api/canvas/${canvasId}/permanent`).set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       // The single delete call triggers DB-level cascades for questions
@@ -231,9 +231,7 @@ describe('Data integrity integration tests', () => {
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...softDeletedCanvas });
       mockPrisma.codingCanvas.delete.mockResolvedValue({ ...softDeletedCanvas });
 
-      const res = await request(app)
-        .delete(`/api/canvas/${canvasId}/permanent`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).delete(`/api/canvas/${canvasId}/permanent`).set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(mockPrisma.codingCanvas.delete).toHaveBeenCalledWith({ where: { id: canvasId } });
@@ -243,9 +241,7 @@ describe('Data integrity integration tests', () => {
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...softDeletedCanvas });
       mockPrisma.codingCanvas.delete.mockResolvedValue({ ...softDeletedCanvas });
 
-      const res = await request(app)
-        .delete(`/api/canvas/${canvasId}/permanent`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).delete(`/api/canvas/${canvasId}/permanent`).set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -255,9 +251,7 @@ describe('Data integrity integration tests', () => {
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...softDeletedCanvas });
       mockPrisma.codingCanvas.delete.mockResolvedValue({ ...softDeletedCanvas });
 
-      const res = await request(app)
-        .delete(`/api/canvas/${canvasId}/permanent`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).delete(`/api/canvas/${canvasId}/permanent`).set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -267,9 +261,7 @@ describe('Data integrity integration tests', () => {
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...softDeletedCanvas });
       mockPrisma.codingCanvas.delete.mockResolvedValue({ ...softDeletedCanvas });
 
-      const res = await request(app)
-        .delete(`/api/canvas/${canvasId}/permanent`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).delete(`/api/canvas/${canvasId}/permanent`).set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -279,9 +271,7 @@ describe('Data integrity integration tests', () => {
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...softDeletedCanvas });
       mockPrisma.codingCanvas.delete.mockResolvedValue({ ...softDeletedCanvas });
 
-      const res = await request(app)
-        .delete(`/api/canvas/${canvasId}/permanent`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).delete(`/api/canvas/${canvasId}/permanent`).set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -291,9 +281,7 @@ describe('Data integrity integration tests', () => {
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...softDeletedCanvas });
       mockPrisma.codingCanvas.delete.mockResolvedValue({ ...softDeletedCanvas });
 
-      const res = await request(app)
-        .delete(`/api/canvas/${canvasId}/permanent`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).delete(`/api/canvas/${canvasId}/permanent`).set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -303,9 +291,7 @@ describe('Data integrity integration tests', () => {
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...softDeletedCanvas });
       mockPrisma.codingCanvas.delete.mockResolvedValue({ ...softDeletedCanvas });
 
-      const res = await request(app)
-        .delete(`/api/canvas/${canvasId}/permanent`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).delete(`/api/canvas/${canvasId}/permanent`).set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -315,9 +301,7 @@ describe('Data integrity integration tests', () => {
       // Canvas NOT soft-deleted
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas, deletedAt: null });
 
-      const res = await request(app)
-        .delete(`/api/canvas/${canvasId}/permanent`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).delete(`/api/canvas/${canvasId}/permanent`).set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/trash/i);
@@ -461,14 +445,8 @@ describe('Data integrity integration tests', () => {
         .mockResolvedValueOnce({ ...mockCanvas, name: 'Update B' });
 
       const [resA, resB] = await Promise.all([
-        request(app)
-          .put(`/api/canvas/${canvasId}`)
-          .set('Authorization', `Bearer ${jwt}`)
-          .send({ name: 'Update A' }),
-        request(app)
-          .put(`/api/canvas/${canvasId}`)
-          .set('Authorization', `Bearer ${jwt}`)
-          .send({ name: 'Update B' }),
+        request(app).put(`/api/canvas/${canvasId}`).set('Authorization', `Bearer ${jwt}`).send({ name: 'Update A' }),
+        request(app).put(`/api/canvas/${canvasId}`).set('Authorization', `Bearer ${jwt}`).send({ name: 'Update B' }),
       ]);
 
       expect(resA.status).toBe(200);
@@ -517,14 +495,8 @@ describe('Data integrity integration tests', () => {
       };
 
       const [resA, resB] = await Promise.all([
-        request(app)
-          .post(`/api/canvas/${canvasId}/codings`)
-          .set('Authorization', `Bearer ${jwt}`)
-          .send(payload),
-        request(app)
-          .post(`/api/canvas/${canvasId}/codings`)
-          .set('Authorization', `Bearer ${jwt}`)
-          .send(payload),
+        request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send(payload),
+        request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send(payload),
       ]);
 
       expect(resA.status).toBe(201);
@@ -549,7 +521,7 @@ describe('Data integrity integration tests', () => {
         canvasId,
       });
       mockPrisma.canvasTextCoding.create.mockRejectedValue(
-        Object.assign(new Error('Foreign key constraint failed'), { code: 'P2003' })
+        Object.assign(new Error('Foreign key constraint failed'), { code: 'P2003' }),
       );
 
       mockPrisma.codingCanvas.update.mockResolvedValue({ ...mockCanvas, deletedAt: new Date() });
@@ -580,9 +552,7 @@ describe('Data integrity integration tests', () => {
       mockPrisma.codingCanvas.findMany.mockResolvedValue([]);
       mockPrisma.codingCanvas.count.mockResolvedValue(0);
 
-      const res = await request(app)
-        .get('/api/canvas')
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).get('/api/canvas').set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveLength(0);
@@ -592,12 +562,14 @@ describe('Data integrity integration tests', () => {
     });
 
     it('soft-deleted canvas included in GET /canvas/trash', async () => {
-      const trashedCanvas = { ...mockCanvas, deletedAt: new Date(), _count: { transcripts: 0, questions: 0, codings: 0 } };
+      const trashedCanvas = {
+        ...mockCanvas,
+        deletedAt: new Date(),
+        _count: { transcripts: 0, questions: 0, codings: 0 },
+      };
       mockPrisma.codingCanvas.findMany.mockResolvedValue([trashedCanvas]);
 
-      const res = await request(app)
-        .get('/api/canvas/trash')
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).get('/api/canvas/trash').set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveLength(1);
@@ -611,9 +583,7 @@ describe('Data integrity integration tests', () => {
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...softDeletedCanvas });
       mockPrisma.codingCanvas.update.mockResolvedValue({ ...softDeletedCanvas, deletedAt: null });
 
-      const res = await request(app)
-        .post(`/api/canvas/${canvasId}/restore`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).post(`/api/canvas/${canvasId}/restore`).set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -625,9 +595,7 @@ describe('Data integrity integration tests', () => {
       const restoredCanvas = { ...softDeletedCanvas, deletedAt: null };
       mockPrisma.codingCanvas.update.mockResolvedValue(restoredCanvas);
 
-      const res = await request(app)
-        .post(`/api/canvas/${canvasId}/restore`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).post(`/api/canvas/${canvasId}/restore`).set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -643,9 +611,7 @@ describe('Data integrity integration tests', () => {
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...alreadyDeleted });
       mockPrisma.codingCanvas.update.mockResolvedValue({ ...alreadyDeleted, deletedAt: new Date() });
 
-      const res = await request(app)
-        .delete(`/api/canvas/${canvasId}`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).delete(`/api/canvas/${canvasId}`).set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);

@@ -10,6 +10,12 @@ const { mockPrisma } = vi.hoisted(() => {
     user: {
       findUnique: vi.fn(),
     },
+    codingCanvas: {
+      findUnique: vi.fn(),
+    },
+    canvasCollaborator: {
+      findUnique: vi.fn(),
+    },
     $disconnect: vi.fn(),
   };
   return { mockPrisma };
@@ -63,6 +69,13 @@ describe('WebSocket / Socket.IO server', () => {
       id: 'user-1',
       name: 'Alice Test',
     });
+    // Default: canvas exists and is owned by user-1. For any other user, the
+    // collaborator check returns truthy so access is still granted. Tests that
+    // want to assert denial can override one of these.
+    mockPrisma.codingCanvas.findUnique.mockImplementation(({ where }) => {
+      return Promise.resolve({ userId: 'user-1', id: where.id });
+    });
+    mockPrisma.canvasCollaborator.findUnique.mockResolvedValue({ id: 'collab-1' });
 
     httpServer = createServer();
     ioServer = initSocketServer(httpServer);
@@ -160,10 +173,7 @@ describe('WebSocket / Socket.IO server', () => {
     await waitForEvent(client2, 'presence:current');
 
     // Client2 observes client1 leaving
-    const updatedPromise = waitForEvent<{ canvasId: string; users: unknown[] }>(
-      client2,
-      'presence:updated',
-    );
+    const updatedPromise = waitForEvent<{ canvasId: string; users: unknown[] }>(client2, 'presence:updated');
     client1.emit('canvas:leave', { canvasId: 'canvas-leave-test' });
 
     const updated = await updatedPromise;
@@ -192,10 +202,7 @@ describe('WebSocket / Socket.IO server', () => {
     const client2 = connectClient(signTestToken('user-2'));
     await waitForEvent(client2, 'connect');
 
-    const presenceUpdate = waitForEvent<{ canvasId: string; users: unknown[] }>(
-      client1,
-      'presence:updated',
-    );
+    const presenceUpdate = waitForEvent<{ canvasId: string; users: unknown[] }>(client1, 'presence:updated');
     client2.emit('canvas:join', { canvasId: 'canvas-multi' });
 
     const updated = await presenceUpdate;
@@ -227,10 +234,7 @@ describe('WebSocket / Socket.IO server', () => {
     await join2;
 
     // Listen for presence update on client1 after client2 disconnects
-    const presenceUpdate = waitForEvent<{ canvasId: string; users: unknown[] }>(
-      client1,
-      'presence:updated',
-    );
+    const presenceUpdate = waitForEvent<{ canvasId: string; users: unknown[] }>(client1, 'presence:updated');
     client2.disconnect();
 
     const updated = await presenceUpdate;
@@ -407,10 +411,7 @@ describe('WebSocket / Socket.IO server', () => {
     await waitForEvent(client2, 'presence:current');
 
     const codingData = { id: 'coding-1', transcriptId: 't-1', questionId: 'q-1' };
-    const eventPromise = waitForEvent<{ userId: string; data: unknown }>(
-      client2,
-      'canvas:coding-added',
-    );
+    const eventPromise = waitForEvent<{ userId: string; data: unknown }>(client2, 'canvas:coding-added');
     client1.emit('canvas:coding-added', {
       canvasId: 'canvas-code',
       data: codingData,
@@ -438,10 +439,7 @@ describe('WebSocket / Socket.IO server', () => {
     client2.emit('canvas:join', { canvasId: 'canvas-codedel' });
     await waitForEvent(client2, 'presence:current');
 
-    const eventPromise = waitForEvent<{ userId: string; data: { codingId: string } }>(
-      client2,
-      'canvas:coding-deleted',
-    );
+    const eventPromise = waitForEvent<{ userId: string; data: { codingId: string } }>(client2, 'canvas:coding-deleted');
     client1.emit('canvas:coding-deleted', {
       canvasId: 'canvas-codedel',
       data: { codingId: 'coding-99' },

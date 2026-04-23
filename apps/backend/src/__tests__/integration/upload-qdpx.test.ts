@@ -345,9 +345,7 @@ describe('Upload and QDPX integration tests', () => {
     const qdpxBuffer = Buffer.from('PK mock zip content');
     mockExportQdpx.mockResolvedValue(qdpxBuffer);
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}/export/qdpx`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}/export/qdpx`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('application/zip');
@@ -360,9 +358,7 @@ describe('Upload and QDPX integration tests', () => {
     const emptyQdpx = Buffer.from('PK empty qdpx');
     mockExportQdpx.mockResolvedValue(emptyQdpx);
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}/export/qdpx`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}/export/qdpx`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('application/zip');
@@ -395,10 +391,12 @@ describe('Upload and QDPX integration tests', () => {
   it('POST /canvas/:id/import/qdpx imports QDPX file', async () => {
     mockImportQdpx.mockResolvedValue({ codes: 5, sources: 3, codings: 12 });
 
+    // Proper ZIP local file header signature so magic-bytes validation passes.
+    const zipFixture = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from(' mock qdpx')]);
     const res = await request(app)
       .post(`/api/canvas/${canvasId}/import/qdpx`)
       .set('Authorization', `Bearer ${jwt}`)
-      .attach('file', Buffer.from('PK mock qdpx'), { filename: 'export.qdpx' });
+      .attach('file', zipFixture, { filename: 'export.qdpx' });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -410,9 +408,7 @@ describe('Upload and QDPX integration tests', () => {
 
   // ─── 14. POST /canvas/:id/import/qdpx with no file returns 400 ───
   it('POST /canvas/:id/import/qdpx with no file returns 400', async () => {
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/import/qdpx`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post(`/api/canvas/${canvasId}/import/qdpx`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);

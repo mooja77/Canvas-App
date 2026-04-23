@@ -7,15 +7,28 @@ import { AppError } from '../middleware/errorHandler.js';
 
 /**
  * Check if a regex pattern is safe from ReDoS attacks.
- * Rejects overly long patterns and those with nested quantifiers.
+ * Rejects patterns with constructs known to enable catastrophic backtracking.
+ * Defense in depth: matchers also enforce a wall-clock budget.
  */
 function isSafeRegex(pattern: string): boolean {
   if (pattern.length > 200) return false;
-  // Detect nested quantifiers: (group+)+ etc
+  // Nested quantifiers: (group+)+ , (group*)* , (group+){n,m}
   if (/\([^)]*[+*]\)\s*[+*]/.test(pattern)) return false;
   if (/\([^)]*[+*]\)\s*\{/.test(pattern)) return false;
+  // Overlapping alternation under a quantifier: (a|a)+, (a|aa)+, (ab|abc)+
+  if (/\([^()]*\|[^()]*\)\s*[+*{]/.test(pattern)) {
+    return false;
+  }
+  // Backreferences combined with quantifiers are a common ReDoS pattern
+  if (/\\[1-9]\s*[+*]/.test(pattern)) return false;
+  // Excessive quantifier bounds
+  if (/\{(\d{3,}|\d+,\d{3,})\}/.test(pattern)) return false;
   return true;
 }
+
+// Cap per-transcript regex work. Even if isSafeRegex misses something, no
+// single transcript can burn more than this many wall-clock ms.
+const REGEX_MATCH_BUDGET_MS = 100;
 
 // Configuration constants
 const SEARCH_CONTEXT_CHARS = 50;
@@ -59,24 +72,161 @@ interface CaseData {
 
 // ─── Stop words for English text analysis ───
 const STOP_WORDS = new Set([
-  'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-  'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been',
-  'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
-  'could', 'should', 'may', 'might', 'shall', 'can', 'need', 'dare',
-  'it', 'its', 'this', 'that', 'these', 'those', 'i', 'me', 'my', 'we',
-  'our', 'you', 'your', 'he', 'him', 'his', 'she', 'her', 'they', 'them',
-  'their', 'what', 'which', 'who', 'whom', 'when', 'where', 'why', 'how',
-  'not', 'no', 'nor', 'if', 'then', 'else', 'so', 'as', 'than', 'too',
-  'very', 'just', 'about', 'above', 'after', 'again', 'all', 'also',
-  'am', 'any', 'because', 'before', 'below', 'between', 'both', 'each',
-  'few', 'get', 'got', 'here', 'into', 'more', 'most', 'much', 'must',
-  'now', 'only', 'other', 'out', 'own', 'said', 'same', 'some', 'still',
-  'such', 'take', 'there', 'through', 'under', 'up', 'us', 'well',
-  'over', 'down', 'while', 'during', 'until', 'against', 'further',
-  'once', 'upon', 'already', 'always', 'never', 'often', 'however',
-  'although', 'since', 'within', 'without', 'like', 'even', 'also',
-  'back', 'make', 'made', 'way', 'think', 'know', 'see', 'look',
-  'come', 'go', 'going', 'went', 'really', 'thing', 'things',
+  'a',
+  'an',
+  'the',
+  'and',
+  'or',
+  'but',
+  'in',
+  'on',
+  'at',
+  'to',
+  'for',
+  'of',
+  'with',
+  'by',
+  'from',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'been',
+  'being',
+  'have',
+  'has',
+  'had',
+  'do',
+  'does',
+  'did',
+  'will',
+  'would',
+  'could',
+  'should',
+  'may',
+  'might',
+  'shall',
+  'can',
+  'need',
+  'dare',
+  'it',
+  'its',
+  'this',
+  'that',
+  'these',
+  'those',
+  'i',
+  'me',
+  'my',
+  'we',
+  'our',
+  'you',
+  'your',
+  'he',
+  'him',
+  'his',
+  'she',
+  'her',
+  'they',
+  'them',
+  'their',
+  'what',
+  'which',
+  'who',
+  'whom',
+  'when',
+  'where',
+  'why',
+  'how',
+  'not',
+  'no',
+  'nor',
+  'if',
+  'then',
+  'else',
+  'so',
+  'as',
+  'than',
+  'too',
+  'very',
+  'just',
+  'about',
+  'above',
+  'after',
+  'again',
+  'all',
+  'also',
+  'am',
+  'any',
+  'because',
+  'before',
+  'below',
+  'between',
+  'both',
+  'each',
+  'few',
+  'get',
+  'got',
+  'here',
+  'into',
+  'more',
+  'most',
+  'much',
+  'must',
+  'now',
+  'only',
+  'other',
+  'out',
+  'own',
+  'said',
+  'same',
+  'some',
+  'still',
+  'such',
+  'take',
+  'there',
+  'through',
+  'under',
+  'up',
+  'us',
+  'well',
+  'over',
+  'down',
+  'while',
+  'during',
+  'until',
+  'against',
+  'further',
+  'once',
+  'upon',
+  'already',
+  'always',
+  'never',
+  'often',
+  'however',
+  'although',
+  'since',
+  'within',
+  'without',
+  'like',
+  'even',
+  'also',
+  'back',
+  'make',
+  'made',
+  'way',
+  'think',
+  'know',
+  'see',
+  'look',
+  'come',
+  'go',
+  'going',
+  'went',
+  'really',
+  'thing',
+  'things',
 ]);
 
 // ─── 1. Text Search ───
@@ -96,9 +246,7 @@ export function searchTranscripts(
     context: string;
   }[] = [];
 
-  const filtered = transcriptIds?.length
-    ? transcripts.filter(t => transcriptIds.includes(t.id))
-    : transcripts;
+  const filtered = transcriptIds?.length ? transcripts.filter((t) => transcriptIds.includes(t.id)) : transcripts;
 
   for (const t of filtered) {
     let regex: RegExp;
@@ -116,7 +264,11 @@ export function searchTranscripts(
     }
 
     let match: RegExpExecArray | null;
+    const budgetStart = Date.now();
     while ((match = regex.exec(t.content)) !== null) {
+      // Bail out if matching this transcript is taking too long. A cheap
+      // wall-clock check catches anything isSafeRegex might have missed.
+      if (Date.now() - budgetStart > REGEX_MATCH_BUDGET_MS) break;
       const start = Math.max(0, match.index - contextWindow);
       const end = Math.min(t.content.length, match.index + match[0].length + contextWindow);
       matches.push({
@@ -136,11 +288,7 @@ export function searchTranscripts(
 
 // ─── 2. Co-occurrence ───
 
-export function computeCooccurrence(
-  codings: CodingData[],
-  questionIds: string[],
-  minOverlap?: number,
-) {
+export function computeCooccurrence(codings: CodingData[], questionIds: string[], minOverlap?: number) {
   if (questionIds.length < 2) return { pairs: [] };
 
   const overlap = minOverlap ?? 1;
@@ -156,7 +304,7 @@ export function computeCooccurrence(
 
   // For each pair of question IDs, find overlapping ranges
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pairMap = new Map<string, { questionIds: string[]; segments: any[]; }>();
+  const pairMap = new Map<string, { questionIds: string[]; segments: any[] }>();
 
   for (let i = 0; i < questionIds.length; i++) {
     for (let j = i + 1; j < questionIds.length; j++) {
@@ -167,8 +315,8 @@ export function computeCooccurrence(
       const segments: any[] = [];
 
       for (const [tid, tCodings] of byTranscript) {
-        const aCodes = tCodings.filter(c => c.questionId === qA);
-        const bCodes = tCodings.filter(c => c.questionId === qB);
+        const aCodes = tCodings.filter((c) => c.questionId === qA);
+        const bCodes = tCodings.filter((c) => c.questionId === qB);
 
         for (const a of aCodes) {
           for (const b of bCodes) {
@@ -177,10 +325,7 @@ export function computeCooccurrence(
             if (overlapEnd - overlapStart >= overlap) {
               segments.push({
                 transcriptId: tid,
-                text: a.codedText.slice(
-                  Math.max(0, overlapStart - a.startOffset),
-                  overlapEnd - a.startOffset,
-                ),
+                text: a.codedText.slice(Math.max(0, overlapStart - a.startOffset), overlapEnd - a.startOffset),
                 startOffset: overlapStart,
                 endOffset: overlapEnd,
               });
@@ -196,7 +341,7 @@ export function computeCooccurrence(
   }
 
   return {
-    pairs: Array.from(pairMap.values()).map(p => ({
+    pairs: Array.from(pairMap.values()).map((p) => ({
       ...p,
       count: p.segments.length,
     })),
@@ -213,12 +358,8 @@ export function buildFrameworkMatrix(
   questionIds?: string[],
   caseIds?: string[],
 ) {
-  const filteredQuestions = questionIds?.length
-    ? questions.filter(q => questionIds.includes(q.id))
-    : questions;
-  const filteredCases = caseIds?.length
-    ? cases.filter(c => caseIds.includes(c.id))
-    : cases;
+  const filteredQuestions = questionIds?.length ? questions.filter((q) => questionIds.includes(q.id)) : questions;
+  const filteredCases = caseIds?.length ? cases.filter((c) => caseIds.includes(c.id)) : cases;
 
   // Map transcript -> case
   const transcriptCaseMap = new Map<string, string>();
@@ -226,19 +367,15 @@ export function buildFrameworkMatrix(
     if (t.caseId) transcriptCaseMap.set(t.id, t.caseId);
   }
 
-  const rows = filteredCases.map(cs => {
+  const rows = filteredCases.map((cs) => {
     // Get transcripts belonging to this case
-    const caseTranscriptIds = transcripts
-      .filter(t => t.caseId === cs.id)
-      .map(t => t.id);
+    const caseTranscriptIds = transcripts.filter((t) => t.caseId === cs.id).map((t) => t.id);
 
-    const cells = filteredQuestions.map(q => {
-      const cellCodings = codings.filter(
-        c => c.questionId === q.id && caseTranscriptIds.includes(c.transcriptId),
-      );
+    const cells = filteredQuestions.map((q) => {
+      const cellCodings = codings.filter((c) => c.questionId === q.id && caseTranscriptIds.includes(c.transcriptId));
       return {
         questionId: q.id,
-        excerpts: cellCodings.map(c => c.codedText).slice(0, MAX_MATRIX_EXCERPTS),
+        excerpts: cellCodings.map((c) => c.codedText).slice(0, MAX_MATRIX_EXCERPTS),
         count: cellCodings.length,
       };
     });
@@ -258,23 +395,19 @@ export function computeStats(
   groupBy: string,
   questionIds?: string[],
 ) {
-  const filteredCodings = questionIds?.length
-    ? codings.filter(c => questionIds.includes(c.questionId))
-    : codings;
+  const filteredCodings = questionIds?.length ? codings.filter((c) => questionIds.includes(c.questionId)) : codings;
 
   const total = filteredCodings.length;
 
   if (groupBy === 'question') {
-    const filteredQuestions = questionIds?.length
-      ? questions.filter(q => questionIds.includes(q.id))
-      : questions;
+    const filteredQuestions = questionIds?.length ? questions.filter((q) => questionIds.includes(q.id)) : questions;
 
-    const items = filteredQuestions.map(q => {
-      const qCodings = filteredCodings.filter(c => c.questionId === q.id);
+    const items = filteredQuestions.map((q) => {
+      const qCodings = filteredCodings.filter((c) => c.questionId === q.id);
       const totalChars = qCodings.reduce((sum, c) => sum + (c.endOffset - c.startOffset), 0);
-      const relevantTranscriptIds = new Set(qCodings.map(c => c.transcriptId));
+      const relevantTranscriptIds = new Set(qCodings.map((c) => c.transcriptId));
       const totalTranscriptChars = transcripts
-        .filter(t => relevantTranscriptIds.has(t.id))
+        .filter((t) => relevantTranscriptIds.has(t.id))
         .reduce((sum, t) => sum + t.content.length, 0);
       return {
         id: q.id,
@@ -289,8 +422,8 @@ export function computeStats(
   }
 
   // Group by transcript
-  const items = transcripts.map(t => {
-    const tCodings = filteredCodings.filter(c => c.transcriptId === t.id);
+  const items = transcripts.map((t) => {
+    const tCodings = filteredCodings.filter((c) => c.transcriptId === t.id);
     const totalChars = tCodings.reduce((sum, c) => sum + (c.endOffset - c.startOffset), 0);
     return {
       id: t.id,
@@ -314,15 +447,13 @@ export function computeComparison(
   questionIds?: string[],
 ) {
   const filteredTranscripts = transcriptIds.length
-    ? transcripts.filter(t => transcriptIds.includes(t.id))
+    ? transcripts.filter((t) => transcriptIds.includes(t.id))
     : transcripts;
-  const filteredQuestions = questionIds?.length
-    ? questions.filter(q => questionIds.includes(q.id))
-    : questions;
+  const filteredQuestions = questionIds?.length ? questions.filter((q) => questionIds.includes(q.id)) : questions;
 
-  const result = filteredTranscripts.map(t => {
-    const profile = filteredQuestions.map(q => {
-      const qCodings = codings.filter(c => c.transcriptId === t.id && c.questionId === q.id);
+  const result = filteredTranscripts.map((t) => {
+    const profile = filteredQuestions.map((q) => {
+      const qCodings = codings.filter((c) => c.transcriptId === t.id && c.questionId === q.id);
       const totalChars = qCodings.reduce((sum, c) => sum + (c.endOffset - c.startOffset), 0);
       return {
         questionId: q.id,
@@ -343,7 +474,7 @@ function tokenize(text: string): string[] {
     .toLowerCase()
     .replace(/[^a-z0-9\s'-]/g, ' ')
     .split(/\s+/)
-    .filter(w => w.length >= MIN_WORD_LENGTH && !STOP_WORDS.has(w));
+    .filter((w) => w.length >= MIN_WORD_LENGTH && !STOP_WORDS.has(w));
 }
 
 export function computeWordFrequency(
@@ -352,11 +483,9 @@ export function computeWordFrequency(
   maxWords?: number,
   customStopWords?: string[],
 ) {
-  const filtered = questionId
-    ? codings.filter(c => c.questionId === questionId)
-    : codings;
+  const filtered = questionId ? codings.filter((c) => c.questionId === questionId) : codings;
 
-  const extraStops = new Set(customStopWords?.map(w => w.toLowerCase()) || []);
+  const extraStops = new Set(customStopWords?.map((w) => w.toLowerCase()) || []);
   const freq = new Map<string, number>();
 
   for (const c of filtered) {
@@ -396,12 +525,12 @@ function buildTfIdf(documents: string[][]): { vectors: number[][]; vocabulary: s
   const N = documents.length;
 
   // Build TF-IDF vectors
-  const vectors = documents.map(doc => {
+  const vectors = documents.map((doc) => {
     const tf = new Map<string, number>();
     for (const term of doc) {
       tf.set(term, (tf.get(term) || 0) + 1);
     }
-    return vocabulary.map(term => {
+    return vocabulary.map((term) => {
       const termFreq = (tf.get(term) || 0) / (doc.length || 1);
       const idf = Math.log((N + 1) / ((df.get(term) || 0) + 1)) + 1;
       return termFreq * idf;
@@ -412,7 +541,9 @@ function buildTfIdf(documents: string[][]): { vectors: number[][]; vocabulary: s
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {
-  let dot = 0, magA = 0, magB = 0;
+  let dot = 0,
+    magA = 0,
+    magB = 0;
   for (let i = 0; i < a.length; i++) {
     dot += a[i] * b[i];
     magA += a[i] * a[i];
@@ -438,7 +569,7 @@ function kMeans(vectors: number[][], k: number, maxIter = KMEANS_MAX_ITERATIONS)
       const j = Math.floor(Math.random() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
-    const centroids = indices.slice(0, actualK).map(i => [...vectors[i]]);
+    const centroids = indices.slice(0, actualK).map((i) => [...vectors[i]]);
     const labels = new Array(vectors.length).fill(0);
 
     for (let iter = 0; iter < maxIter; iter++) {
@@ -487,19 +618,13 @@ function kMeans(vectors: number[][], k: number, maxIter = KMEANS_MAX_ITERATIONS)
   return bestLabels;
 }
 
-export function computeClusters(
-  codings: CodingData[],
-  k: number,
-  questionIds?: string[],
-) {
-  const filtered = questionIds?.length
-    ? codings.filter(c => questionIds.includes(c.questionId))
-    : codings;
+export function computeClusters(codings: CodingData[], k: number, questionIds?: string[]) {
+  const filtered = questionIds?.length ? codings.filter((c) => questionIds.includes(c.questionId)) : codings;
 
   if (filtered.length === 0) return { clusters: [] };
 
   // Tokenize each coding
-  const documents = filtered.map(c => tokenize(c.codedText));
+  const documents = filtered.map((c) => tokenize(c.codedText));
   const { vectors, vocabulary } = buildTfIdf(documents);
 
   // Cluster
@@ -528,8 +653,8 @@ export function computeClusters(
       .map((score, idx) => ({ word: vocabulary[idx], score }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 5)
-      .filter(k => k.score > 0)
-      .map(k => k.word);
+      .filter((k) => k.score > 0)
+      .map((k) => k.word);
 
     return {
       id,
@@ -558,7 +683,7 @@ export function computeCodingQuery(
   if (conditions.length === 0) return { matches: [], totalMatches: 0 };
 
   const transcriptMap = new Map<string, TranscriptLookup>();
-  transcripts.forEach(t => transcriptMap.set(t.id, t));
+  transcripts.forEach((t) => transcriptMap.set(t.id, t));
 
   // Group codings by transcript
   const byTranscript = new Map<string, CodingData[]>();
@@ -568,7 +693,13 @@ export function computeCodingQuery(
     byTranscript.set(c.transcriptId, arr);
   }
 
-  const matches: { transcriptId: string; transcriptTitle: string; text: string; startOffset: number; endOffset: number }[] = [];
+  const matches: {
+    transcriptId: string;
+    transcriptTitle: string;
+    text: string;
+    startOffset: number;
+    endOffset: number;
+  }[] = [];
 
   for (const [tid, tCodings] of byTranscript) {
     const transcript = transcriptMap.get(tid);
@@ -576,25 +707,33 @@ export function computeCodingQuery(
 
     // Get codings for the first condition's question
     const firstQ = conditions[0].questionId;
-    const baseCodes = tCodings.filter(c => c.questionId === firstQ);
+    const baseCodes = tCodings.filter((c) => c.questionId === firstQ);
 
     for (const baseCode of baseCodes) {
       let include = true;
 
       for (let i = 1; i < conditions.length; i++) {
         const cond = conditions[i];
-        const qCodes = tCodings.filter(c => c.questionId === cond.questionId);
+        const qCodes = tCodings.filter((c) => c.questionId === cond.questionId);
 
         // Check overlap with base coding
-        const hasOverlap = qCodes.some(c => {
+        const hasOverlap = qCodes.some((c) => {
           const overlapStart = Math.max(baseCode.startOffset, c.startOffset);
           const overlapEnd = Math.min(baseCode.endOffset, c.endOffset);
           return overlapEnd > overlapStart;
         });
 
-        if (cond.operator === 'AND' && !hasOverlap) { include = false; break; }
-        if (cond.operator === 'OR') { /* OR always includes — just expands the base set */ }
-        if (cond.operator === 'NOT' && hasOverlap) { include = false; break; }
+        if (cond.operator === 'AND' && !hasOverlap) {
+          include = false;
+          break;
+        }
+        if (cond.operator === 'OR') {
+          /* OR always includes — just expands the base set */
+        }
+        if (cond.operator === 'NOT' && hasOverlap) {
+          include = false;
+          break;
+        }
       }
 
       if (include) {
@@ -611,10 +750,10 @@ export function computeCodingQuery(
     // For OR conditions, also include codings from OR-questions not already matched
     for (let i = 1; i < conditions.length; i++) {
       if (conditions[i].operator !== 'OR') continue;
-      const orCodes = tCodings.filter(c => c.questionId === conditions[i].questionId);
+      const orCodes = tCodings.filter((c) => c.questionId === conditions[i].questionId);
       for (const oc of orCodes) {
-        const alreadyMatched = matches.some(m =>
-          m.transcriptId === tid && m.startOffset === oc.startOffset && m.endOffset === oc.endOffset
+        const alreadyMatched = matches.some(
+          (m) => m.transcriptId === tid && m.startOffset === oc.startOffset && m.endOffset === oc.endOffset,
         );
         if (!alreadyMatched) {
           matches.push({
@@ -636,58 +775,219 @@ export function computeCodingQuery(
 
 const AFINN_LEXICON: Record<string, number> = {
   // Positive words
-  'good': 3, 'great': 3, 'excellent': 4, 'amazing': 4, 'wonderful': 4,
-  'fantastic': 4, 'outstanding': 5, 'superb': 5, 'brilliant': 4, 'awesome': 4,
-  'love': 3, 'loved': 3, 'like': 2, 'enjoy': 2, 'happy': 3, 'pleased': 3,
-  'satisfied': 2, 'delighted': 4, 'thrilled': 4, 'excited': 3, 'grateful': 3,
-  'thankful': 2, 'beautiful': 3, 'best': 3, 'better': 2, 'improve': 2,
-  'improved': 2, 'improvement': 2, 'success': 3, 'successful': 3, 'win': 3,
-  'won': 3, 'strong': 2, 'strength': 2, 'positive': 2, 'benefit': 2,
-  'beneficial': 2, 'effective': 2, 'efficient': 2, 'helpful': 2, 'hope': 2,
-  'hopeful': 2, 'inspire': 3, 'inspired': 3, 'innovative': 3, 'progress': 2,
-  'valuable': 2, 'support': 2, 'supported': 2, 'encourage': 2, 'encouraged': 2,
-  'proud': 3, 'confident': 2, 'trust': 2, 'trusted': 2, 'impressive': 3,
-  'remarkable': 3, 'perfect': 3, 'exceptional': 4, 'incredible': 4,
-  'nice': 2, 'kind': 2, 'generous': 3, 'warm': 2, 'friendly': 2,
-  'safe': 1, 'secure': 2, 'comfortable': 2, 'fun': 3, 'interesting': 2,
-  'fascinating': 3, 'engaging': 2, 'rewarding': 2, 'worthy': 2,
-  'agree': 1, 'advantage': 2, 'achieve': 2, 'achievement': 3,
-  'capable': 2, 'commitment': 2, 'committed': 2, 'opportunity': 2,
+  good: 3,
+  great: 3,
+  excellent: 4,
+  amazing: 4,
+  wonderful: 4,
+  fantastic: 4,
+  outstanding: 5,
+  superb: 5,
+  brilliant: 4,
+  awesome: 4,
+  love: 3,
+  loved: 3,
+  like: 2,
+  enjoy: 2,
+  happy: 3,
+  pleased: 3,
+  satisfied: 2,
+  delighted: 4,
+  thrilled: 4,
+  excited: 3,
+  grateful: 3,
+  thankful: 2,
+  beautiful: 3,
+  best: 3,
+  better: 2,
+  improve: 2,
+  improved: 2,
+  improvement: 2,
+  success: 3,
+  successful: 3,
+  win: 3,
+  won: 3,
+  strong: 2,
+  strength: 2,
+  positive: 2,
+  benefit: 2,
+  beneficial: 2,
+  effective: 2,
+  efficient: 2,
+  helpful: 2,
+  hope: 2,
+  hopeful: 2,
+  inspire: 3,
+  inspired: 3,
+  innovative: 3,
+  progress: 2,
+  valuable: 2,
+  support: 2,
+  supported: 2,
+  encourage: 2,
+  encouraged: 2,
+  proud: 3,
+  confident: 2,
+  trust: 2,
+  trusted: 2,
+  impressive: 3,
+  remarkable: 3,
+  perfect: 3,
+  exceptional: 4,
+  incredible: 4,
+  nice: 2,
+  kind: 2,
+  generous: 3,
+  warm: 2,
+  friendly: 2,
+  safe: 1,
+  secure: 2,
+  comfortable: 2,
+  fun: 3,
+  interesting: 2,
+  fascinating: 3,
+  engaging: 2,
+  rewarding: 2,
+  worthy: 2,
+  agree: 1,
+  advantage: 2,
+  achieve: 2,
+  achievement: 3,
+  capable: 2,
+  commitment: 2,
+  committed: 2,
+  opportunity: 2,
   // Negative words
-  'bad': -3, 'terrible': -4, 'horrible': -4, 'awful': -4, 'worst': -4,
-  'poor': -2, 'worse': -3, 'negative': -2, 'fail': -3, 'failed': -3,
-  'failure': -3, 'problem': -2, 'issue': -1, 'concern': -1, 'concerned': -2,
-  'worried': -2, 'worry': -2, 'fear': -2, 'afraid': -2, 'angry': -3,
-  'frustrate': -3, 'frustrated': -3, 'frustrating': -3, 'annoyed': -2,
-  'annoying': -2, 'disappoint': -3, 'disappointed': -3, 'disappointing': -3,
-  'sad': -2, 'unhappy': -2, 'unfortunate': -2, 'unfortunately': -2,
-  'hate': -4, 'hated': -4, 'dislike': -2, 'difficult': -1, 'hard': -1,
-  'struggle': -2, 'struggling': -2, 'suffer': -3, 'suffering': -3,
-  'pain': -2, 'painful': -2, 'stress': -2, 'stressed': -2, 'stressful': -2,
-  'weak': -2, 'weakness': -2, 'lack': -2, 'lacking': -2, 'loss': -3,
-  'lost': -2, 'miss': -1, 'missing': -2, 'damage': -3, 'damaged': -3,
-  'harm': -3, 'harmful': -3, 'danger': -3, 'dangerous': -3,
-  'risk': -1, 'risky': -2, 'threat': -3, 'crisis': -3,
-  'conflict': -2, 'disagree': -2, 'wrong': -2, 'mistake': -2,
-  'error': -2, 'fault': -2, 'blame': -2, 'complain': -2, 'complaint': -2,
-  'reject': -3, 'rejected': -3, 'deny': -2, 'denied': -2,
-  'confuse': -2, 'confused': -2, 'confusing': -2, 'unclear': -1,
-  'impossible': -3, 'useless': -3, 'worthless': -4, 'boring': -2,
-  'tired': -2, 'exhausted': -3, 'overwhelm': -3, 'overwhelmed': -3,
-  'abuse': -4, 'corrupt': -4, 'corruption': -4, 'unfair': -3,
-  'unjust': -3, 'inequality': -2, 'barrier': -2, 'obstacle': -2,
-  'neglect': -3, 'neglected': -3, 'ignore': -2, 'ignored': -2,
+  bad: -3,
+  terrible: -4,
+  horrible: -4,
+  awful: -4,
+  worst: -4,
+  poor: -2,
+  worse: -3,
+  negative: -2,
+  fail: -3,
+  failed: -3,
+  failure: -3,
+  problem: -2,
+  issue: -1,
+  concern: -1,
+  concerned: -2,
+  worried: -2,
+  worry: -2,
+  fear: -2,
+  afraid: -2,
+  angry: -3,
+  frustrate: -3,
+  frustrated: -3,
+  frustrating: -3,
+  annoyed: -2,
+  annoying: -2,
+  disappoint: -3,
+  disappointed: -3,
+  disappointing: -3,
+  sad: -2,
+  unhappy: -2,
+  unfortunate: -2,
+  unfortunately: -2,
+  hate: -4,
+  hated: -4,
+  dislike: -2,
+  difficult: -1,
+  hard: -1,
+  struggle: -2,
+  struggling: -2,
+  suffer: -3,
+  suffering: -3,
+  pain: -2,
+  painful: -2,
+  stress: -2,
+  stressed: -2,
+  stressful: -2,
+  weak: -2,
+  weakness: -2,
+  lack: -2,
+  lacking: -2,
+  loss: -3,
+  lost: -2,
+  miss: -1,
+  missing: -2,
+  damage: -3,
+  damaged: -3,
+  harm: -3,
+  harmful: -3,
+  danger: -3,
+  dangerous: -3,
+  risk: -1,
+  risky: -2,
+  threat: -3,
+  crisis: -3,
+  conflict: -2,
+  disagree: -2,
+  wrong: -2,
+  mistake: -2,
+  error: -2,
+  fault: -2,
+  blame: -2,
+  complain: -2,
+  complaint: -2,
+  reject: -3,
+  rejected: -3,
+  deny: -2,
+  denied: -2,
+  confuse: -2,
+  confused: -2,
+  confusing: -2,
+  unclear: -1,
+  impossible: -3,
+  useless: -3,
+  worthless: -4,
+  boring: -2,
+  tired: -2,
+  exhausted: -3,
+  overwhelm: -3,
+  overwhelmed: -3,
+  abuse: -4,
+  corrupt: -4,
+  corruption: -4,
+  unfair: -3,
+  unjust: -3,
+  inequality: -2,
+  barrier: -2,
+  obstacle: -2,
+  neglect: -3,
+  neglected: -3,
+  ignore: -2,
+  ignored: -2,
 };
 
 const NEGATION_WORDS = new Set([
-  'not', 'no', 'never', 'neither', 'nor',
-  "don't", "doesn't", "didn't", "won't", "wouldn't",
-  "couldn't", "shouldn't", "isn't", "aren't",
-  "wasn't", "weren't", "can't", "hasn't", "haven't",
+  'not',
+  'no',
+  'never',
+  'neither',
+  'nor',
+  "don't",
+  "doesn't",
+  "didn't",
+  "won't",
+  "wouldn't",
+  "couldn't",
+  "shouldn't",
+  "isn't",
+  "aren't",
+  "wasn't",
+  "weren't",
+  "can't",
+  "hasn't",
+  "haven't",
 ]);
 
 function scoreSentiment(text: string): { score: number; magnitude: number } {
-  const words = text.toLowerCase().replace(/[^a-z0-9\s'-]/g, ' ').split(/\s+/);
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s'-]/g, ' ')
+    .split(/\s+/);
   let totalScore = 0;
   let magnitude = 0;
   let _matched = 0;
@@ -723,12 +1023,14 @@ export function computeSentiment(
 ) {
   let filteredCodings = codings;
   if (scope === 'question' && scopeId) {
-    filteredCodings = codings.filter(c => c.questionId === scopeId);
+    filteredCodings = codings.filter((c) => c.questionId === scopeId);
   } else if (scope === 'transcript' && scopeId) {
-    filteredCodings = codings.filter(c => c.transcriptId === scopeId);
+    filteredCodings = codings.filter((c) => c.transcriptId === scopeId);
   }
 
-  let positive = 0, negative = 0, neutral = 0;
+  let positive = 0,
+    negative = 0,
+    neutral = 0;
   let totalScore = 0;
 
   for (const c of filteredCodings) {
@@ -754,23 +1056,25 @@ export function computeSentiment(
 
   const labelMap = new Map<string, string>();
   if (scope === 'transcript' || scope === 'all') {
-    transcripts.forEach(t => labelMap.set(t.id, t.title));
+    transcripts.forEach((t) => labelMap.set(t.id, t.title));
   }
   if (scope === 'question' || scope === 'all') {
-    questions.forEach(q => labelMap.set(q.id, q.text));
+    questions.forEach((q) => labelMap.set(q.id, q.text));
   }
 
-  const items = Array.from(groupMap.entries()).map(([id, groupCodings]) => {
-    const allText = groupCodings.map(c => c.codedText).join(' ');
-    const { score, magnitude } = scoreSentiment(allText);
-    return {
-      id,
-      label: labelMap.get(id) || id,
-      score,
-      magnitude,
-      sampleText: groupCodings[0]?.codedText.slice(0, 80) || '',
-    };
-  }).sort((a, b) => b.score - a.score);
+  const items = Array.from(groupMap.entries())
+    .map(([id, groupCodings]) => {
+      const allText = groupCodings.map((c) => c.codedText).join(' ');
+      const { score, magnitude } = scoreSentiment(allText);
+      return {
+        id,
+        label: labelMap.get(id) || id,
+        score,
+        magnitude,
+        sampleText: groupCodings[0]?.codedText.slice(0, 80) || '',
+      };
+    })
+    .sort((a, b) => b.score - a.score);
 
   return {
     overall: { positive, negative, neutral, averageScore },
@@ -800,22 +1104,22 @@ export function computeTimeline(
 ) {
   // Only include transcripts with an eventDate
   const dated = transcripts
-    .filter(t => t.eventDate)
-    .map(t => ({
+    .filter((t) => t.eventDate)
+    .map((t) => ({
       ...t,
       eventDate: new Date(t.eventDate as string | Date),
     }))
     .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
 
-  const questionMap = new Map(questions.map(q => [q.id, q]));
+  const questionMap = new Map(questions.map((q) => [q.id, q]));
 
-  const entries = dated.map(t => {
-    const tCodings = codings.filter(c => c.transcriptId === t.id);
+  const entries = dated.map((t) => {
+    const tCodings = codings.filter((c) => c.transcriptId === t.id);
     return {
       transcriptId: t.id,
       title: t.title,
       date: t.eventDate.toISOString(),
-      codings: tCodings.map(c => ({
+      codings: tCodings.map((c) => ({
         codingId: c.id,
         codedText: c.codedText.slice(0, 100),
         questionId: c.questionId,
@@ -837,24 +1141,23 @@ export function computeTreemap(
   metric: string,
   questionIds?: string[],
 ) {
-  const filteredQuestions = questionIds?.length
-    ? questions.filter(q => questionIds.includes(q.id))
-    : questions;
+  const filteredQuestions = questionIds?.length ? questions.filter((q) => questionIds.includes(q.id)) : questions;
 
-  const nodes = filteredQuestions.map(q => {
-    const qCodings = codings.filter(c => c.questionId === q.id);
-    const size = metric === 'characters'
-      ? qCodings.reduce((sum, c) => sum + (c.endOffset - c.startOffset), 0)
-      : qCodings.length;
+  const nodes = filteredQuestions
+    .map((q) => {
+      const qCodings = codings.filter((c) => c.questionId === q.id);
+      const size =
+        metric === 'characters' ? qCodings.reduce((sum, c) => sum + (c.endOffset - c.startOffset), 0) : qCodings.length;
 
-    return {
-      id: q.id,
-      name: q.text,
-      size,
-      color: q.color,
-      parentId: q.parentQuestionId || undefined,
-    };
-  }).filter(n => n.size > 0);
+      return {
+        id: q.id,
+        name: q.text,
+        size,
+        color: q.color,
+        parentId: q.parentQuestionId || undefined,
+      };
+    })
+    .filter((n) => n.size > 0);
 
   const total = nodes.reduce((sum, n) => sum + n.size, 0);
 
@@ -882,8 +1185,8 @@ interface SegmentComparison {
   transcriptId: string;
   startOffset: number;
   endOffset: number;
-  coderA: string[];  // question IDs assigned by coder A
-  coderB: string[];  // question IDs assigned by coder B
+  coderA: string[]; // question IDs assigned by coder A
+  coderB: string[]; // question IDs assigned by coder B
   agree: boolean;
 }
 
@@ -928,26 +1231,22 @@ export function computeCohenKappa(
   for (const seg of segments) {
     // Find codings from each coder that overlap this segment
     const aCodesForSeg = codingsA
-      .filter(c =>
-        c.transcriptId === seg.transcriptId &&
-        c.startOffset < seg.endOffset &&
-        c.endOffset > seg.startOffset
+      .filter(
+        (c) => c.transcriptId === seg.transcriptId && c.startOffset < seg.endOffset && c.endOffset > seg.startOffset,
       )
-      .map(c => c.questionId);
+      .map((c) => c.questionId);
 
     const bCodesForSeg = codingsB
-      .filter(c =>
-        c.transcriptId === seg.transcriptId &&
-        c.startOffset < seg.endOffset &&
-        c.endOffset > seg.startOffset
+      .filter(
+        (c) => c.transcriptId === seg.transcriptId && c.startOffset < seg.endOffset && c.endOffset > seg.startOffset,
       )
-      .map(c => c.questionId);
+      .map((c) => c.questionId);
 
     const aSet = new Set(aCodesForSeg);
     const bSet = new Set(bCodesForSeg);
 
     // Per-segment agreement: same set of codes applied
-    const setsEqual = aSet.size === bSet.size && [...aSet].every(q => bSet.has(q));
+    const setsEqual = aSet.size === bSet.size && [...aSet].every((q) => bSet.has(q));
     if (setsEqual) agreeCount++;
 
     segmentComparisons.push({
@@ -982,7 +1281,7 @@ export function computeCohenKappa(
   const pByes = coderBPositive / totalDecisions;
   const pAno = 1 - pAyes;
   const pBno = 1 - pByes;
-  const Pe = (pAyes * pByes) + (pAno * pBno);
+  const Pe = pAyes * pByes + pAno * pBno;
 
   let kappa: number;
   if (Pe >= 1) {

@@ -5,6 +5,7 @@ import { exportQdpx } from '../utils/qdpxExport.js';
 import { importQdpx } from '../utils/qdpxImport.js';
 import { checkExportFormat } from '../middleware/planLimits.js';
 import { validateParams, canvasIdParam } from '../middleware/validation.js';
+import { isValidSignature } from '../utils/magicBytes.js';
 
 export const qdpxRoutes = Router();
 
@@ -24,41 +25,57 @@ const upload = multer({
 });
 
 // GET /api/canvas/:id/export/qdpx — Export canvas as QDPX
-qdpxRoutes.get('/canvas/:id/export/qdpx', validateParams(canvasIdParam), checkExportFormat(), async (req, res, next) => {
-  try {
-    const dashboardAccessId = getAuthId(req);
-    const userId = getAuthUserId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+qdpxRoutes.get(
+  '/canvas/:id/export/qdpx',
+  validateParams(canvasIdParam),
+  checkExportFormat(),
+  async (req, res, next) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      const userId = getAuthUserId(req);
+      await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
 
-    const buffer = await exportQdpx(req.params.id);
+      const buffer = await exportQdpx(req.params.id);
 
-    res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', 'attachment; filename="canvas-export.qdpx"');
-    res.send(buffer);
-  } catch (err) {
-    next(err);
-  }
-});
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', 'attachment; filename="canvas-export.qdpx"');
+      res.send(buffer);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // POST /api/canvas/:id/import/qdpx — Import QDPX file
-qdpxRoutes.post('/canvas/:id/import/qdpx', validateParams(canvasIdParam), upload.single('file'), async (req, res, next) => {
-  try {
-    const dashboardAccessId = getAuthId(req);
-    const userId = getAuthUserId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+qdpxRoutes.post(
+  '/canvas/:id/import/qdpx',
+  validateParams(canvasIdParam),
+  upload.single('file'),
+  async (req, res, next) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      const userId = getAuthUserId(req);
+      await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
 
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: 'No file uploaded' });
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: 'No file uploaded' });
+      }
+
+      // Extension check isn't sufficient — verify ZIP magic bytes before passing
+      // the buffer to the zip library. Rejects spoofed .qdpx uploads cheaply.
+      if (!isValidSignature(req.file.buffer, 'zip')) {
+        return res.status(400).json({ success: false, error: 'Invalid QDPX file: not a valid ZIP archive' });
+      }
+
+      const result = await importQdpx(req.params.id, req.file.buffer);
+
+      res.json({
+        success: true,
+        message: `Imported ${result.codes} codes, ${result.sources} sources, ${result.codings} codings`,
+        ...result,
+      });
+    } catch (err) {
+      next(err);
     }
-
-    const result = await importQdpx(req.params.id, req.file.buffer);
-
-    res.json({
-      success: true,
-      message: `Imported ${result.codes} codes, ${result.sources} sources, ${result.codings} codings`,
-      ...result,
-    });
-  } catch (err) {
-    next(err);
-  }
-});
+  },
+);

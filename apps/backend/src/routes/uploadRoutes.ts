@@ -12,6 +12,7 @@ import '../lib/storage-local.js'; // register local fallback
 import { createJob } from '../lib/jobs.js';
 import { registerJobHandler } from '../lib/jobs.js';
 import { transcribeAudio, getLocalUploadPath } from '../utils/transcription.js';
+import { isValidSignature } from '../utils/magicBytes.js';
 
 export const uploadRoutes = Router();
 
@@ -21,8 +22,15 @@ const upload = multer({
   limits: { fileSize: 500 * 1024 * 1024 }, // 500MB max
   fileFilter: (_req, file, cb) => {
     const allowed = [
-      'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/x-m4a', 'audio/ogg',
-      'audio/webm', 'audio/flac', 'video/mp4', 'video/webm',
+      'audio/mpeg',
+      'audio/wav',
+      'audio/mp4',
+      'audio/x-m4a',
+      'audio/ogg',
+      'audio/webm',
+      'audio/flac',
+      'video/mp4',
+      'video/webm',
     ];
     if (allowed.includes(file.mimetype)) {
       cb(null, true);
@@ -111,6 +119,13 @@ uploadRoutes.post(
 
       if (!req.file) {
         return res.status(400).json({ success: false, error: 'No file uploaded' });
+      }
+
+      // Content-sniff the first bytes so a renamed .exe or .html can't slip
+      // through just because multer accepted the MIME string from the client.
+      const kind: 'audio' | 'video' = req.file.mimetype.startsWith('video/') ? 'video' : 'audio';
+      if (!isValidSignature(req.file.buffer, kind)) {
+        return res.status(400).json({ success: false, error: 'File contents do not match declared type' });
       }
 
       const ext = path.extname(req.file.originalname);
