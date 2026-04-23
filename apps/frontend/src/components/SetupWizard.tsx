@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useUIStore, type UserProfile } from '../stores/uiStore';
 import { useAuthStore } from '../stores/authStore';
 import { useCanvasStore } from '../stores/canvasStore';
+import { useOpenCanvas } from '../hooks/useOpenCanvas';
 
 // ─── User Profile Options ───
 const USER_PROFILES: { id: UserProfile & string; label: string; description: string; icon: string }[] = [
@@ -167,7 +168,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const setUserProfile = useUIStore((s) => s.setUserProfile);
   const plan = useAuthStore((s) => s.plan);
   const createCanvas = useCanvasStore((s) => s.createCanvas);
-  const openCanvas = useCanvasStore((s) => s.openCanvas);
+  const openCanvas = useOpenCanvas();
   const addQuestion = useCanvasStore((s) => s.addQuestion);
 
   const totalSteps = 5; // profile → methodology → name → tips → done

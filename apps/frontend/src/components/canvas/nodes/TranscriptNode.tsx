@@ -1,8 +1,17 @@
 import { memo, useCallback, useRef, useMemo, useState } from 'react';
+import { useNodeCollapsed } from './useNodeCollapsed';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import { useCanvasStore, useCanvasCodings, useCanvasQuestions, useCanvasTranscripts, useCanvasCases, usePendingSelection, useShowCodingStripes } from '../../../stores/canvasStore';
+import {
+  useCanvasStore,
+  useCanvasCodings,
+  useCanvasQuestions,
+  useCanvasTranscripts,
+  useCanvasCases,
+  usePendingSelection,
+  useShowCodingStripes,
+} from '../../../stores/canvasStore';
 import { useUIStore } from '../../../stores/uiStore';
 import QuickCodePopover from '../panels/QuickCodePopover';
 import CodingSegmentPopover from '../panels/CodingSegmentPopover';
@@ -28,12 +37,9 @@ export interface TranscriptNodeData {
 }
 
 // Compute overlapping highlight segments from codings
-function computeOverlappingSegments(
-  text: string,
-  codings: CanvasTextCoding[],
-  colorMap: Map<string, string>,
-) {
-  if (codings.length === 0) return [{ start: 0, end: text.length, questionColors: [] as string[], codingIds: [] as string[] }];
+function computeOverlappingSegments(text: string, codings: CanvasTextCoding[], colorMap: Map<string, string>) {
+  if (codings.length === 0)
+    return [{ start: 0, end: text.length, questionColors: [] as string[], codingIds: [] as string[] }];
 
   // Collect all boundary points
   const boundaries = new Set<number>();
@@ -86,14 +92,11 @@ function HighlightedTranscript({
 }) {
   const colorMap = useMemo(() => {
     const map = new Map<string, string>();
-    questions.forEach(q => map.set(q.id, q.color));
+    questions.forEach((q) => map.set(q.id, q.color));
     return map;
   }, [questions]);
 
-  const segments = useMemo(
-    () => computeOverlappingSegments(text, codings, colorMap),
-    [text, codings, colorMap],
-  );
+  const segments = useMemo(() => computeOverlappingSegments(text, codings, colorMap), [text, codings, colorMap]);
 
   return (
     <>
@@ -155,18 +158,18 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
   const allCases = useCanvasCases();
   const pendingSelection = usePendingSelection();
   const showCodingStripes = useShowCodingStripes();
-  const setPendingSelection = useCanvasStore(s => s.setPendingSelection);
-  const deleteTranscript = useCanvasStore(s => s.deleteTranscript);
-  const codeInVivo = useCanvasStore(s => s.codeInVivo);
-  const spreadToParagraph = useCanvasStore(s => s.spreadToParagraph);
+  const setPendingSelection = useCanvasStore((s) => s.setPendingSelection);
+  const deleteTranscript = useCanvasStore((s) => s.deleteTranscript);
+  const codeInVivo = useCanvasStore((s) => s.codeInVivo);
+  const spreadToParagraph = useCanvasStore((s) => s.spreadToParagraph);
   const nodeData = data as unknown as TranscriptNodeData;
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [quickCodePopover, setQuickCodePopover] = useState<{ x: number; y: number } | null>(null);
   const [codingPopover, setCodingPopover] = useState<{ codingIds: string[]; x: number; y: number } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [collapsed, setCollapsed] = useState(nodeData.collapsed ?? false);
+  const { collapsed, toggleCollapsed } = useNodeCollapsed(id, nodeData.collapsed);
 
-  const zoomTier = useUIStore(s => s.zoomTier);
+  const zoomTier = useUIStore((s) => s.zoomTier);
   const isReduced = zoomTier === 'reduced';
   const isMinimal = zoomTier === 'minimal';
 
@@ -181,7 +184,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
   );
 
   const transcript = useMemo(
-    () => allTranscripts.find(t => t.id === nodeData.transcriptId),
+    () => allTranscripts.find((t) => t.id === nodeData.transcriptId),
     [allTranscripts, nodeData.transcriptId],
   );
 
@@ -192,10 +195,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
   }, [transcript?.caseId, allCases]);
 
   // Word count
-  const wordCount = useMemo(
-    () => nodeData.content.split(/\s+/).filter(Boolean).length,
-    [nodeData.content],
-  );
+  const wordCount = useMemo(() => nodeData.content.split(/\s+/).filter(Boolean).length, [nodeData.content]);
 
   const handleMouseUp = useCallback(() => {
     const sel = window.getSelection();
@@ -203,16 +203,25 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
       return;
     }
 
-    const selText = sel.toString().trim();
-    if (!selText) return;
+    const rawText = sel.toString();
+    if (!rawText.trim()) return;
 
     // Walk the DOM to find the actual character offset within the text container
     const range = sel.getRangeAt(0);
     const preRange = document.createRange();
     preRange.selectNodeContents(textRef.current!);
     preRange.setEnd(range.startContainer, range.startOffset);
-    const startIdx = preRange.toString().length;
-    const endIdx = startIdx + selText.length;
+    const rawStart = preRange.toString().length;
+
+    // Trim leading/trailing whitespace from the selection while keeping offsets
+    // aligned with the actual substring we store. Otherwise a user selecting
+    // " word " would save a range that spans whitespace — later highlights
+    // would drift relative to the codedText.
+    const leading = rawText.length - rawText.trimStart().length;
+    const trailing = rawText.length - rawText.trimEnd().length;
+    const startIdx = rawStart + leading;
+    const endIdx = rawStart + rawText.length - trailing;
+    const selText = rawText.slice(leading, rawText.length - trailing);
 
     setPendingSelection({
       transcriptId: nodeData.transcriptId,
@@ -232,17 +241,25 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
     });
   }, [nodeData.transcriptId, setPendingSelection]);
 
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    if (!pendingSelection || pendingSelection.transcriptId !== nodeData.transcriptId) return;
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY });
-    setQuickCodePopover(null);
-  }, [pendingSelection, nodeData.transcriptId]);
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      if (!pendingSelection || pendingSelection.transcriptId !== nodeData.transcriptId) return;
+      e.preventDefault();
+      setContextMenu({ x: e.clientX, y: e.clientY });
+      setQuickCodePopover(null);
+    },
+    [pendingSelection, nodeData.transcriptId],
+  );
 
   const handleCodeInVivo = useCallback(async () => {
     if (!pendingSelection || pendingSelection.transcriptId !== nodeData.transcriptId) return;
     try {
-      await codeInVivo(pendingSelection.transcriptId, pendingSelection.startOffset, pendingSelection.endOffset, pendingSelection.codedText);
+      await codeInVivo(
+        pendingSelection.transcriptId,
+        pendingSelection.startOffset,
+        pendingSelection.endOffset,
+        pendingSelection.codedText,
+      );
       window.getSelection()?.removeAllRanges();
       toast.success('In-vivo code created');
     } catch {
@@ -254,7 +271,12 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
   const handleSpreadToParagraph = useCallback(async () => {
     if (!pendingSelection || pendingSelection.transcriptId !== nodeData.transcriptId) return;
     try {
-      await spreadToParagraph(pendingSelection.transcriptId, pendingSelection.startOffset, pendingSelection.endOffset, pendingSelection.codedText);
+      await spreadToParagraph(
+        pendingSelection.transcriptId,
+        pendingSelection.startOffset,
+        pendingSelection.endOffset,
+        pendingSelection.codedText,
+      );
       window.getSelection()?.removeAllRanges();
       toast.success('Spread to paragraph — new code created');
     } catch {
@@ -280,16 +302,13 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
 
   const codingPopoverCodings = useMemo(() => {
     if (!codingPopover) return [];
-    return codings.filter(c => codingPopover.codingIds.includes(c.id));
+    return codings.filter((c) => codingPopover.codingIds.includes(c.id));
   }, [codingPopover, codings]);
 
   const hasSelection = pendingSelection?.transcriptId === nodeData.transcriptId;
 
   // Unique question count for this transcript
-  const uniqueQuestionCount = useMemo(
-    () => new Set(codings.map(c => c.questionId)).size,
-    [codings],
-  );
+  const uniqueQuestionCount = useMemo(() => new Set(codings.map((c) => c.questionId)).size, [codings]);
 
   return (
     <div
@@ -307,8 +326,18 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
       {/* Drag handle header */}
       <div className="drag-handle flex items-center justify-between rounded-t-xl bg-gradient-to-r from-blue-50 to-blue-50/60 px-3 py-2.5 cursor-grab active:cursor-grabbing dark:from-blue-900/30 dark:to-blue-900/15">
         <div className="flex items-center gap-2 min-w-0">
-          <svg className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+          <svg
+            className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+            />
           </svg>
           <span className="text-sm font-medium text-blue-800 dark:text-blue-200 truncate">{nodeData.title}</span>
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -331,11 +360,17 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
             </span>
           )}
           <button
-            onClick={() => setCollapsed(c => !c)}
+            onClick={toggleCollapsed}
             className="rounded p-0.5 text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800"
             title={collapsed ? 'Expand' : 'Collapse'}
           >
-            <svg className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg
+              className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
             </svg>
           </button>
@@ -401,7 +436,14 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
             <div
               ref={textRef}
               className="nodrag nowheel flex-1 min-h-0 overflow-y-auto px-3 py-2"
-              style={{ paddingLeft: codings.length > 0 ? (showCodingStripes ? `${([...new Set(codings.map(c => c.questionId))].length * 6) + 20}px` : '20px') : undefined }}
+              style={{
+                paddingLeft:
+                  codings.length > 0
+                    ? showCodingStripes
+                      ? `${[...new Set(codings.map((c) => c.questionId))].length * 6 + 20}px`
+                      : '20px'
+                    : undefined,
+              }}
               onMouseUp={handleMouseUp}
               onContextMenu={handleContextMenu}
             >
@@ -450,9 +492,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
       )}
 
       {/* Minimal zoom: colored rectangle with truncated title */}
-      {!collapsed && isMinimal && (
-        <div className="px-2 py-1 text-[9px] text-gray-400 truncate">{codings.length}c</div>
-      )}
+      {!collapsed && isMinimal && <div className="px-2 py-1 text-[9px] text-gray-400 truncate">{codings.length}c</div>}
 
       {/* Source handle — visible when there's a pending selection */}
       <Handle
@@ -488,28 +528,34 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
       )}
 
       {/* Right-click context menu — portal to body so CSS transforms don't break fixed positioning */}
-      {contextMenu && hasSelection && createPortal(
-        <TranscriptContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          hasSelection={hasSelection}
-          onCodeInVivo={handleCodeInVivo}
-          onSpreadToParagraph={handleSpreadToParagraph}
-          onClose={() => setContextMenu(null)}
-        />,
-        document.body,
-      )}
+      {contextMenu &&
+        hasSelection &&
+        createPortal(
+          <TranscriptContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            hasSelection={hasSelection}
+            onCodeInVivo={handleCodeInVivo}
+            onSpreadToParagraph={handleSpreadToParagraph}
+            onClose={() => setContextMenu(null)}
+          />,
+          document.body,
+        )}
 
       {/* Delete confirmation */}
-      {showDeleteConfirm && createPortal(
-        <ConfirmDialog
-          title="Delete Transcript"
-          message="Delete this transcript and all its coded segments?"
-          onConfirm={() => { setShowDeleteConfirm(false); deleteTranscript(nodeData.transcriptId); }}
-          onCancel={() => setShowDeleteConfirm(false)}
-        />,
-        document.body,
-      )}
+      {showDeleteConfirm &&
+        createPortal(
+          <ConfirmDialog
+            title="Delete Transcript"
+            message="Delete this transcript and all its coded segments?"
+            onConfirm={() => {
+              setShowDeleteConfirm(false);
+              deleteTranscript(nodeData.transcriptId);
+            }}
+            onCancel={() => setShowDeleteConfirm(false)}
+          />,
+          document.body,
+        )}
     </div>
   );
 }

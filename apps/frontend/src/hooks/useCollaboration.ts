@@ -41,9 +41,9 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
   const lastCursorEmit = useRef(0);
   const lastNodeMoveEmit = useRef(0);
 
-  const jwt = useAuthStore(s => s.jwt);
-  const authType = useAuthStore(s => s.authType);
-  const localUserId = useAuthStore(s => s.userId);
+  const jwt = useAuthStore((s) => s.jwt);
+  const authType = useAuthStore((s) => s.authType);
+  const localUserId = useAuthStore((s) => s.userId);
 
   useEffect(() => {
     // Only connect for email-authenticated users with a valid canvas
@@ -69,14 +69,18 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
       }
     };
 
-    const handlePresenceCurrent = (data: { canvasId: string; users: CollaboratorPresence[]; self: CollaboratorPresence }) => {
+    const handlePresenceCurrent = (data: {
+      canvasId: string;
+      users: CollaboratorPresence[];
+      self: CollaboratorPresence;
+    }) => {
       if (data.canvasId === canvasId) {
         setCollaborators(data.users);
       }
     };
 
     const handleCursorMoved = (data: { userId: string; userName: string; x: number; y: number }) => {
-      setCursors(prev => {
+      setCursors((prev) => {
         const next = new Map(prev);
         // Color from collaborator list is not available in this closure to avoid
         // re-subscribing on every collaborator change; use a default color instead
@@ -107,22 +111,26 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
       useCanvasStore.setState({
         activeCanvas: {
           ...ac,
-          transcripts: nodeType === 'transcript' ? ac.transcripts.filter(t => t.id !== nodeId) : ac.transcripts,
-          questions: nodeType === 'question' ? ac.questions.filter(q => q.id !== nodeId) : ac.questions,
-          memos: nodeType === 'memo' ? ac.memos.filter(m => m.id !== nodeId) : ac.memos,
-          cases: nodeType === 'case' ? ac.cases.filter(c => c.id !== nodeId) : ac.cases,
-          computedNodes: nodeType === 'computed' ? ac.computedNodes.filter(n => n.id !== nodeId) : ac.computedNodes,
+          transcripts: nodeType === 'transcript' ? ac.transcripts.filter((t) => t.id !== nodeId) : ac.transcripts,
+          questions: nodeType === 'question' ? ac.questions.filter((q) => q.id !== nodeId) : ac.questions,
+          memos: nodeType === 'memo' ? ac.memos.filter((m) => m.id !== nodeId) : ac.memos,
+          cases: nodeType === 'case' ? ac.cases.filter((c) => c.id !== nodeId) : ac.cases,
+          computedNodes: nodeType === 'computed' ? ac.computedNodes.filter((n) => n.id !== nodeId) : ac.computedNodes,
           // Also remove codings that reference deleted transcript/question
-          codings: nodeType === 'transcript'
-            ? ac.codings.filter(c => c.transcriptId !== nodeId)
-            : nodeType === 'question'
-              ? ac.codings.filter(c => c.questionId !== nodeId)
-              : ac.codings,
+          codings:
+            nodeType === 'transcript'
+              ? ac.codings.filter((c) => c.transcriptId !== nodeId)
+              : nodeType === 'question'
+                ? ac.codings.filter((c) => c.questionId !== nodeId)
+                : ac.codings,
         },
       });
     };
 
-    const handleNodeMoved = (data: { userId: string; data: { nodeId: string; position: { x: number; y: number } } }) => {
+    const handleNodeMoved = (data: {
+      userId: string;
+      data: { nodeId: string; position: { x: number; y: number } };
+    }) => {
       if (data.userId === localUserId) return;
       const store = useCanvasStore.getState();
       const ac = store.activeCanvas;
@@ -131,8 +139,8 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
       useCanvasStore.setState({
         activeCanvas: {
           ...ac,
-          nodePositions: ac.nodePositions.map(np =>
-            np.nodeId === nodeId ? { ...np, x: position.x, y: position.y } : np
+          nodePositions: ac.nodePositions.map((np) =>
+            np.nodeId === nodeId ? { ...np, x: position.x, y: position.y } : np,
           ),
         },
       });
@@ -151,7 +159,7 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
       useCanvasStore.setState({
         activeCanvas: {
           ...ac,
-          codings: ac.codings.filter(c => c.id !== data.data.codingId),
+          codings: ac.codings.filter((c) => c.id !== data.data.codingId),
         },
       });
     };
@@ -192,7 +200,10 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
       socket.off('canvas:transcript-updated', handleTranscriptUpdated);
       socket.emit('canvas:leave', { canvasId });
     };
-  }, [canvasId, jwt, authType, enabled]);
+    // localUserId is read by every handler above to suppress self-echoes.
+    // It's stable for a given login session, so including it here only causes
+    // a reconnect when the user actually changes (which is the correct behavior).
+  }, [canvasId, jwt, authType, enabled, localUserId]);
 
   // Throttled cursor emission via mousemove (called from the component)
   useEffect(() => {
@@ -214,15 +225,21 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
     return () => document.removeEventListener('mousemove', handleMouseMove);
   }, [canvasId, enabled]);
 
-  const emitNodeMove = useCallback((nodeId: string, x: number, y: number) => {
-    if (!canvasId || !socketRef.current) return;
-    socketRef.current.emit('node:move', { canvasId, nodeId, x, y });
-  }, [canvasId]);
+  const emitNodeMove = useCallback(
+    (nodeId: string, x: number, y: number) => {
+      if (!canvasId || !socketRef.current) return;
+      socketRef.current.emit('node:move', { canvasId, nodeId, x, y });
+    },
+    [canvasId],
+  );
 
-  const emitCanvasChange = useCallback((changeType: string, payload?: unknown) => {
-    if (!canvasId || !socketRef.current) return;
-    socketRef.current.emit('canvas:change', { canvasId, changeType, payload });
-  }, [canvasId]);
+  const emitCanvasChange = useCallback(
+    (changeType: string, payload?: unknown) => {
+      if (!canvasId || !socketRef.current) return;
+      socketRef.current.emit('canvas:change', { canvasId, changeType, payload });
+    },
+    [canvasId],
+  );
 
   // ─── Document sync emit functions ───
 
@@ -245,10 +262,13 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
     socketRef.current.emit('canvas:node-moved', { canvasId: cid, data: { nodeId, position } });
   }, []);
 
-  const emitCodingAdded = useCallback((cid: string, coding: { id: string; transcriptId: string; questionId: string }) => {
-    if (!socketRef.current) return;
-    socketRef.current.emit('canvas:coding-added', { canvasId: cid, data: coding });
-  }, []);
+  const emitCodingAdded = useCallback(
+    (cid: string, coding: { id: string; transcriptId: string; questionId: string }) => {
+      if (!socketRef.current) return;
+      socketRef.current.emit('canvas:coding-added', { canvasId: cid, data: coding });
+    },
+    [],
+  );
 
   const emitCodingDeleted = useCallback((cid: string, codingId: string) => {
     if (!socketRef.current) return;

@@ -6,6 +6,10 @@
  */
 
 const STORAGE_KEY = 'qualcanvas-cross-refs';
+// Browsers only fire `storage` events in *other* tabs. Dispatch this event
+// in the current tab after any write so CrossCanvasRefBadge stays fresh
+// without requiring a remount.
+export const CROSS_CANVAS_REFS_CHANGED = 'qualcanvas:cross-canvas-refs-changed';
 
 export interface CrossCanvasRef {
   canvasId: string;
@@ -25,6 +29,11 @@ function getAll(): CrossCanvasRefMap {
 
 function saveAll(map: CrossCanvasRefMap): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  try {
+    window.dispatchEvent(new Event(CROSS_CANVAS_REFS_CHANGED));
+  } catch {
+    // SSR / non-DOM environments — no-op.
+  }
 }
 
 export function getCrossCanvasRef(nodeId: string): CrossCanvasRef | null {

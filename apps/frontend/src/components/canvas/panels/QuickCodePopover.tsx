@@ -27,10 +27,10 @@ export default function QuickCodePopover({
   const searchRef = useRef<HTMLInputElement>(null);
   const questions = useCanvasQuestions();
   const codings = useCanvasCodings();
-  const createCoding = useCanvasStore(s => s.createCoding);
-  const codeInVivo = useCanvasStore(s => s.codeInVivo);
-  const spreadToParagraph = useCanvasStore(s => s.spreadToParagraph);
-  const addQuestion = useCanvasStore(s => s.addQuestion);
+  const createCoding = useCanvasStore((s) => s.createCoding);
+  const codeInVivo = useCanvasStore((s) => s.codeInVivo);
+  const spreadToParagraph = useCanvasStore((s) => s.spreadToParagraph);
+  const addQuestion = useCanvasStore((s) => s.addQuestion);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
 
@@ -38,7 +38,10 @@ export default function QuickCodePopover({
   const recentQuestionIds = useMemo(() => {
     const tCodings = codings
       .filter((c: CanvasTextCoding) => c.transcriptId === transcriptId)
-      .sort((a: CanvasTextCoding, b: CanvasTextCoding) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      .sort(
+        (a: CanvasTextCoding, b: CanvasTextCoding) =>
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+      );
     const seen = new Set<string>();
     const ids: string[] = [];
     for (const c of tCodings) {
@@ -76,16 +79,19 @@ export default function QuickCodePopover({
     });
   }, [questions, search, recentQuestionIds]);
 
-  const handleCodeToQuestion = useCallback(async (questionId: string, questionText: string) => {
-    try {
-      await createCoding(transcriptId, questionId, startOffset, endOffset, codedText);
-      window.getSelection()?.removeAllRanges();
-      toast.success(`Coded to "${questionText.slice(0, 30)}${questionText.length > 30 ? '...' : ''}"`);
-      onClose();
-    } catch {
-      toast.error('Failed to code text');
-    }
-  }, [createCoding, transcriptId, startOffset, endOffset, codedText, onClose]);
+  const handleCodeToQuestion = useCallback(
+    async (questionId: string, questionText: string) => {
+      try {
+        await createCoding(transcriptId, questionId, startOffset, endOffset, codedText);
+        window.getSelection()?.removeAllRanges();
+        toast.success(`Coded to "${questionText.slice(0, 30)}${questionText.length > 30 ? '...' : ''}"`);
+        onClose();
+      } catch {
+        toast.error('Failed to code text');
+      }
+    },
+    [createCoding, transcriptId, startOffset, endOffset, codedText, onClose],
+  );
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -172,37 +178,48 @@ export default function QuickCodePopover({
   return createPortal(
     <div ref={ref} className="context-menu-enter" style={popoverStyle}>
       <div className="w-[280px] rounded-xl border border-gray-200/60 bg-white/98 shadow-2xl backdrop-blur-xl dark:border-gray-700 dark:bg-gray-800/98 overflow-hidden">
-
         {/* Selected text preview */}
         <div className="px-3 pt-2.5 pb-1.5">
           <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate italic">
-            &ldquo;{codedText.slice(0, 60)}{codedText.length > 60 ? '...' : ''}&rdquo;
+            &ldquo;{codedText.slice(0, 60)}
+            {codedText.length > 60 ? '...' : ''}&rdquo;
           </p>
         </div>
 
-        {/* Search bar — shown when > 3 questions */}
-        {questions.length > 3 && (
-          <div className="px-2.5 pb-1.5">
-            <div className="relative">
-              <svg className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
-              <input
-                ref={searchRef}
-                type="text"
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 pl-7 pr-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-brand-400 focus:ring-1 focus:ring-brand-400 outline-none transition-colors"
-                placeholder="Search or create code..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && search.trim() && filteredQuestions.length === 0) {
-                    handleCreateNewCode();
-                  }
-                }}
+        {/* Search / create input — always available so users with few or no
+            existing codes can still create a custom-named code. */}
+        <div className="px-2.5 pb-1.5">
+          <div className="relative">
+            <svg
+              className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
               />
-            </div>
+            </svg>
+            <input
+              ref={searchRef}
+              type="text"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 pl-7 pr-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-brand-400 focus:ring-1 focus:ring-brand-400 outline-none transition-colors"
+              placeholder={
+                questions.length === 0 ? 'Type a name and press Enter to create' : 'Search or create code...'
+              }
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && search.trim() && filteredQuestions.length === 0) {
+                  handleCreateNewCode();
+                }
+              }}
+            />
           </div>
-        )}
+        </div>
 
         {/* Question buttons */}
         {filteredQuestions.length > 0 && (
@@ -223,7 +240,9 @@ export default function QuickCodePopover({
                   >
                     {/* Number key hint (1-9) */}
                     {idx < 9 && (
-                      <span className="text-[9px] text-gray-400 dark:text-gray-500 font-mono w-3 shrink-0 text-center">{idx + 1}</span>
+                      <span className="text-[9px] text-gray-400 dark:text-gray-500 font-mono w-3 shrink-0 text-center">
+                        {idx + 1}
+                      </span>
                     )}
                     {idx >= 9 && <span className="w-3 shrink-0" />}
                     {/* Colored dot */}
@@ -234,10 +253,14 @@ export default function QuickCodePopover({
                     <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">{q.text}</span>
                     {/* Frequency count */}
                     {freq > 0 && (
-                      <span className="text-[9px] text-gray-400 dark:text-gray-500 font-mono shrink-0 tabular-nums">{freq}</span>
+                      <span className="text-[9px] text-gray-400 dark:text-gray-500 font-mono shrink-0 tabular-nums">
+                        {freq}
+                      </span>
                     )}
                     {isRecent && (
-                      <span className="text-[8px] text-gray-400 dark:text-gray-500 uppercase tracking-wider shrink-0">recent</span>
+                      <span className="text-[8px] text-gray-400 dark:text-gray-500 uppercase tracking-wider shrink-0">
+                        recent
+                      </span>
                     )}
                   </button>
                 );
@@ -254,11 +277,19 @@ export default function QuickCodePopover({
               disabled={creating}
               className="flex w-full items-center gap-2 rounded-lg bg-brand-50 dark:bg-brand-900/20 px-2.5 py-2 text-left transition-colors hover:bg-brand-100 dark:hover:bg-brand-900/30 disabled:opacity-50"
             >
-              <svg className="h-3.5 w-3.5 text-brand-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <svg
+                className="h-3.5 w-3.5 text-brand-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
               <span className="text-xs font-medium text-brand-600 dark:text-brand-400">
-                {creating ? 'Creating...' : `Create "${search.trim().slice(0, 25)}${search.trim().length > 25 ? '...' : ''}" and code`}
+                {creating
+                  ? 'Creating...'
+                  : `Create "${search.trim().slice(0, 25)}${search.trim().length > 25 ? '...' : ''}" and code`}
               </span>
             </button>
           </div>
@@ -275,7 +306,11 @@ export default function QuickCodePopover({
             title="Create a new code from the selected text"
           >
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"
+              />
             </svg>
             In Vivo
           </button>
@@ -291,12 +326,19 @@ export default function QuickCodePopover({
           </button>
           {onAiSuggest && (
             <button
-              onClick={() => { onAiSuggest(transcriptId, codedText, startOffset, endOffset); onClose(); }}
+              onClick={() => {
+                onAiSuggest(transcriptId, codedText, startOffset, endOffset);
+                onClose();
+              }}
               className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/30 transition-colors"
               title="AI suggest codes"
             >
               <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
+                />
               </svg>
               AI
             </button>

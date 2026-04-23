@@ -6,15 +6,21 @@ import CanvasWorkspace from './CanvasWorkspace';
 
 export default function CodingCanvas() {
   const activeCanvasId = useActiveCanvasId();
-  const openCanvas = useCanvasStore(s => s.openCanvas);
+  const openCanvas = useCanvasStore((s) => s.openCanvas);
+  const closeCanvas = useCanvasStore((s) => s.closeCanvas);
   const { canvasId: urlCanvasId } = useParams<{ canvasId?: string }>();
 
-  // Deep link: auto-open canvas from URL param
+  // Route is the source of truth. Sync store to url on any change —
+  // including back/forward, tab switch via navigate, or refresh.
   useEffect(() => {
-    if (urlCanvasId && !activeCanvasId) {
-      openCanvas(urlCanvasId).catch(() => {});
+    if (urlCanvasId) {
+      if (urlCanvasId !== activeCanvasId) {
+        openCanvas(urlCanvasId).catch(() => {});
+      }
+    } else if (activeCanvasId) {
+      closeCanvas();
     }
-  }, [urlCanvasId, activeCanvasId, openCanvas]);
+  }, [urlCanvasId, activeCanvasId, openCanvas, closeCanvas]);
 
   if (activeCanvasId) {
     return (

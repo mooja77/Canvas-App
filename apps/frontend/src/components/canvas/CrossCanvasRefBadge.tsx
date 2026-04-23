@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useCanvasStore } from '../../stores/canvasStore';
-import { getCrossCanvasRef, removeCrossCanvasRef } from '../../lib/crossCanvasRefs';
+import { useOpenCanvas } from '../../hooks/useOpenCanvas';
+import { getCrossCanvasRef, removeCrossCanvasRef, CROSS_CANVAS_REFS_CHANGED } from '../../lib/crossCanvasRefs';
 
 interface CrossCanvasRefBadgeProps {
   nodeId: string;
@@ -11,7 +11,7 @@ interface CrossCanvasRefBadgeProps {
  * Clicking it navigates to the linked canvas.
  */
 export default function CrossCanvasRefBadge({ nodeId }: CrossCanvasRefBadgeProps) {
-  const openCanvas = useCanvasStore(s => s.openCanvas);
+  const openCanvas = useOpenCanvas();
   const [ref, setRef] = useState(() => getCrossCanvasRef(nodeId));
 
   // Re-check on mount and when nodeId changes
@@ -19,27 +19,37 @@ export default function CrossCanvasRefBadge({ nodeId }: CrossCanvasRefBadgeProps
     setRef(getCrossCanvasRef(nodeId));
   }, [nodeId]);
 
-  // Listen to storage events (cross-tab sync + same-tab updates)
+  // Storage events fire cross-tab only. The custom event from saveAll covers
+  // same-tab updates (linking a node from the context menu, etc.).
   useEffect(() => {
+    const refresh = () => setRef(getCrossCanvasRef(nodeId));
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'qualcanvas-cross-refs') {
-        setRef(getCrossCanvasRef(nodeId));
-      }
+      if (e.key === 'qualcanvas-cross-refs') refresh();
     };
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener(CROSS_CANVAS_REFS_CHANGED, refresh);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(CROSS_CANVAS_REFS_CHANGED, refresh);
+    };
   }, [nodeId]);
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (ref) openCanvas(ref.canvasId);
-  }, [ref, openCanvas]);
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (ref) openCanvas(ref.canvasId);
+    },
+    [ref, openCanvas],
+  );
 
-  const handleRemove = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    removeCrossCanvasRef(nodeId);
-    setRef(null);
-  }, [nodeId]);
+  const handleRemove = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      removeCrossCanvasRef(nodeId);
+      setRef(null);
+    },
+    [nodeId],
+  );
 
   if (!ref) return null;
 

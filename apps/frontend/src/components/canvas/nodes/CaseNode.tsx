@@ -1,4 +1,5 @@
 import { memo, useMemo, useState } from 'react';
+import { useNodeCollapsed } from './useNodeCollapsed';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
@@ -21,16 +22,13 @@ function CaseNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as CaseNodeData;
   const cases = useCanvasCases();
   const transcripts = useCanvasTranscripts();
-  const deleteCase = useCanvasStore(s => s.deleteCase);
+  const deleteCase = useCanvasStore((s) => s.deleteCase);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [collapsed, setCollapsed] = useState(nodeData.collapsed ?? false);
+  const { collapsed, toggleCollapsed } = useNodeCollapsed(id, nodeData.collapsed);
 
-  const zoomTier = useUIStore(s => s.zoomTier);
+  const zoomTier = useUIStore((s) => s.zoomTier);
 
-  const caseRecord = useMemo(
-    () => cases.find((c: CanvasCase) => c.id === nodeData.caseId),
-    [cases, nodeData.caseId],
-  );
+  const caseRecord = useMemo(() => cases.find((c: CanvasCase) => c.id === nodeData.caseId), [cases, nodeData.caseId]);
 
   const linkedTranscripts = useMemo(
     () => transcripts.filter((t: CanvasTranscript) => t.caseId === nodeData.caseId).length,
@@ -42,7 +40,9 @@ function CaseNode({ data, id, selected }: NodeProps) {
   const attrs = typeof caseRecord.attributes === 'object' ? caseRecord.attributes : {};
 
   return (
-    <div className={`min-w-[200px] w-full h-full rounded-xl border-2 border-teal-300/60 shadow-node transition-all duration-200 hover:shadow-node-hover dark:border-teal-700/60 ${selected ? 'ring-2 ring-blue-400' : ''}`}>
+    <div
+      className={`min-w-[200px] w-full h-full rounded-xl border-2 border-teal-300/60 shadow-node transition-all duration-200 hover:shadow-node-hover dark:border-teal-700/60 ${selected ? 'ring-2 ring-blue-400' : ''}`}
+    >
       <NodeResizer
         minWidth={200}
         minHeight={collapsed ? 44 : 80}
@@ -69,10 +69,25 @@ function CaseNode({ data, id, selected }: NodeProps) {
       {/* Header */}
       <div
         className={`drag-handle flex items-center justify-between rounded-t-lg px-3 py-2.5 cursor-grab active:cursor-grabbing ${nodeData.customColor ? '' : 'bg-gradient-to-r from-teal-50 to-teal-50/60 dark:from-teal-900/30 dark:to-teal-900/15'}`}
-        style={nodeData.customColor ? { background: `linear-gradient(135deg, ${nodeData.customColor}20, ${nodeData.customColor}10)` } : undefined}>
+        style={
+          nodeData.customColor
+            ? { background: `linear-gradient(135deg, ${nodeData.customColor}20, ${nodeData.customColor}10)` }
+            : undefined
+        }
+      >
         <div className="flex items-center gap-2 min-w-0">
-          <svg className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+          <svg
+            className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
+            />
           </svg>
           <span className="text-sm font-medium text-teal-800 dark:text-teal-200 truncate">{caseRecord.name}</span>
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -85,11 +100,17 @@ function CaseNode({ data, id, selected }: NodeProps) {
         <div className="flex items-center gap-1">
           <CrossCanvasRefBadge nodeId={id} />
           <button
-            onClick={() => setCollapsed(c => !c)}
+            onClick={toggleCollapsed}
             className="rounded p-0.5 text-teal-400 hover:text-teal-600 dark:hover:text-teal-300"
             title={collapsed ? 'Expand' : 'Collapse'}
           >
-            <svg className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg
+              className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
             </svg>
           </button>
@@ -112,7 +133,10 @@ function CaseNode({ data, id, selected }: NodeProps) {
           {Object.keys(attrs).length > 0 && (
             <div className="flex flex-wrap gap-1 mb-2">
               {Object.entries(attrs).map(([key, val]) => (
-                <span key={key} className="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[10px] text-teal-700 dark:bg-teal-900/30 dark:text-teal-300">
+                <span
+                  key={key}
+                  className="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[10px] text-teal-700 dark:bg-teal-900/30 dark:text-teal-300"
+                >
                   <span className="font-medium">{key}:</span>&nbsp;{val}
                 </span>
               ))}
@@ -128,15 +152,19 @@ function CaseNode({ data, id, selected }: NodeProps) {
       )}
 
       {/* Delete confirmation */}
-      {showDeleteConfirm && createPortal(
-        <ConfirmDialog
-          title="Delete Case"
-          message="Delete this case? Transcripts will be unlinked and relations removed."
-          onConfirm={() => { setShowDeleteConfirm(false); deleteCase(nodeData.caseId); }}
-          onCancel={() => setShowDeleteConfirm(false)}
-        />,
-        document.body,
-      )}
+      {showDeleteConfirm &&
+        createPortal(
+          <ConfirmDialog
+            title="Delete Case"
+            message="Delete this case? Transcripts will be unlinked and relations removed."
+            onConfirm={() => {
+              setShowDeleteConfirm(false);
+              deleteCase(nodeData.caseId);
+            }}
+            onCancel={() => setShowDeleteConfirm(false)}
+          />,
+          document.body,
+        )}
     </div>
   );
 }

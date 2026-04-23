@@ -1,6 +1,7 @@
 import { memo, useState, useRef, useEffect, useCallback } from 'react';
 import { NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
+import { useNodeCollapsed } from './useNodeCollapsed';
 
 export interface GroupNodeData {
   title: string;
@@ -18,20 +19,15 @@ export interface GroupNodeData {
 
 const DEFAULT_COLOR = '#3B82F6';
 
-function GroupNode({ data, selected }: NodeProps) {
+function GroupNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as GroupNodeData;
   const color = nodeData.color || DEFAULT_COLOR;
   const title = nodeData.title || 'Group';
 
-  const [collapsed, setCollapsed] = useState(nodeData.collapsed ?? false);
+  const { collapsed, toggleCollapsed } = useNodeCollapsed(id, nodeData.collapsed);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Sync collapsed state from external data changes
-  useEffect(() => {
-    setCollapsed(nodeData.collapsed ?? false);
-  }, [nodeData.collapsed]);
 
   // Sync title from external data changes
   useEffect(() => {
@@ -61,21 +57,22 @@ function GroupNode({ data, selected }: NodeProps) {
     }
   }, [editTitle, nodeData]);
 
-  const handleTitleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleTitleSave();
-    }
-    if (e.key === 'Escape') {
-      setEditTitle(nodeData.title || 'Group');
-      setEditing(false);
-    }
-  }, [nodeData.title, handleTitleSave]);
+  const handleTitleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        handleTitleSave();
+      }
+      if (e.key === 'Escape') {
+        setEditTitle(nodeData.title || 'Group');
+        setEditing(false);
+      }
+    },
+    [nodeData.title, handleTitleSave],
+  );
 
   return (
     <div
-      className={`w-full rounded-2xl transition-shadow duration-200 ${
-        collapsed ? 'h-auto' : 'h-full'
-      }`}
+      className={`w-full rounded-2xl transition-shadow duration-200 ${collapsed ? 'h-auto' : 'h-full'}`}
       style={{
         backgroundColor: `${color}14`,
         border: `2px dashed ${color}4D`,
@@ -140,25 +137,19 @@ function GroupNode({ data, selected }: NodeProps) {
         <div className="flex items-center gap-0.5 ml-2 shrink-0">
           {/* Collapse toggle */}
           <button
-            onClick={() => setCollapsed((c) => !c)}
+            onClick={toggleCollapsed}
             className="rounded p-0.5 transition-colors hover:bg-white/30 dark:hover:bg-gray-700/30"
             style={{ color: `${color}99` }}
             title={collapsed ? 'Expand group' : 'Collapse group'}
           >
             <svg
-              className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                collapsed ? 'rotate-180' : ''
-              }`}
+              className={`h-3.5 w-3.5 transition-transform duration-200 ${collapsed ? 'rotate-180' : ''}`}
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
               stroke="currentColor"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m4.5 15.75 7.5-7.5 7.5 7.5"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
             </svg>
           </button>
         </div>
@@ -166,20 +157,11 @@ function GroupNode({ data, selected }: NodeProps) {
 
       {/* Theme summary when collapsed as theme */}
       {nodeData.collapsedAsTheme && (
-        <div
-          className="px-3 py-2 rounded-b-2xl"
-          style={{ backgroundColor: `${color}0A`, pointerEvents: 'auto' }}
-        >
+        <div className="px-3 py-2 rounded-b-2xl" style={{ backgroundColor: `${color}0A`, pointerEvents: 'auto' }}>
           <div className="flex items-center gap-3 text-[10px] text-gray-500 dark:text-gray-400">
-            {nodeData.memberCount != null && (
-              <span>{nodeData.memberCount} nodes</span>
-            )}
-            {(nodeData.codingCount ?? 0) > 0 && (
-              <span>{nodeData.codingCount} codings</span>
-            )}
-            {(nodeData.memoCount ?? 0) > 0 && (
-              <span>{nodeData.memoCount} memos</span>
-            )}
+            {nodeData.memberCount != null && <span>{nodeData.memberCount} nodes</span>}
+            {(nodeData.codingCount ?? 0) > 0 && <span>{nodeData.codingCount} codings</span>}
+            {(nodeData.memoCount ?? 0) > 0 && <span>{nodeData.memoCount} memos</span>}
           </div>
           {nodeData.onExpandTheme && (
             <button

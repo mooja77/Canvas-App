@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useCanvasStore, useActiveCanvasId } from '../../../stores/canvasStore';
+import { useOpenCanvas } from '../../../hooks/useOpenCanvas';
 
 interface Props {
   canvasName: string;
@@ -7,9 +8,9 @@ interface Props {
 
 export default function CanvasSwitcher({ canvasName }: Props) {
   const activeCanvasId = useActiveCanvasId();
-  const canvases = useCanvasStore(s => s.canvases);
-  const fetchCanvases = useCanvasStore(s => s.fetchCanvases);
-  const openCanvas = useCanvasStore(s => s.openCanvas);
+  const canvases = useCanvasStore((s) => s.canvases);
+  const fetchCanvases = useCanvasStore((s) => s.fetchCanvases);
+  const openCanvas = useOpenCanvas();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
@@ -42,14 +43,16 @@ export default function CanvasSwitcher({ canvasName }: Props) {
   // Close on Escape
   useEffect(() => {
     if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [open]);
 
-  const otherCanvases = canvases.filter(c => c.id !== activeCanvasId);
+  const otherCanvases = canvases.filter((c) => c.id !== activeCanvasId);
   const filtered = search
-    ? otherCanvases.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+    ? otherCanvases.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     : otherCanvases;
 
   const handleSwitch = (id: string) => {
@@ -60,12 +63,18 @@ export default function CanvasSwitcher({ canvasName }: Props) {
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o) => !o)}
         className="group flex items-center gap-1.5 rounded-lg px-1 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors max-w-[180px]"
         title="Switch canvas"
       >
         <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate text-sm">{canvasName}</h3>
-        <svg className={`h-3 w-3 shrink-0 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+        <svg
+          className={`h-3 w-3 shrink-0 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+          stroke="currentColor"
+        >
           <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
         </svg>
       </button>
@@ -75,8 +84,18 @@ export default function CanvasSwitcher({ canvasName }: Props) {
           {/* Search */}
           <div className="border-b border-gray-100 dark:border-gray-700 p-2">
             <div className="flex items-center gap-2 rounded-lg bg-gray-50 dark:bg-gray-750 px-2.5 py-1.5">
-              <svg className="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+              <svg
+                className="h-3.5 w-3.5 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                />
               </svg>
               <input
                 ref={inputRef}
@@ -84,7 +103,7 @@ export default function CanvasSwitcher({ canvasName }: Props) {
                 className="flex-1 bg-transparent text-xs text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:outline-none"
                 placeholder="Search canvases..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </div>
           </div>
@@ -96,7 +115,7 @@ export default function CanvasSwitcher({ canvasName }: Props) {
                 {otherCanvases.length === 0 ? 'No other canvases' : 'No matches'}
               </p>
             ) : (
-              filtered.map(c => (
+              filtered.map((c) => (
                 <button
                   key={c.id}
                   onClick={() => handleSwitch(c.id)}

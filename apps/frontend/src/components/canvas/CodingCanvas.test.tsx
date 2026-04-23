@@ -9,10 +9,12 @@ vi.mock('react-router-dom', () => ({
 
 // Mock canvasStore
 const mockOpenCanvas = vi.fn(() => Promise.resolve());
+const mockCloseCanvas = vi.fn();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockCanvasStoreState: Record<string, any> = {
   activeCanvasId: null,
   openCanvas: mockOpenCanvas,
+  closeCanvas: mockCloseCanvas,
 };
 vi.mock('../../stores/canvasStore', () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,6 +40,7 @@ describe('CodingCanvas', () => {
     vi.clearAllMocks();
     mockCanvasStoreState.activeCanvasId = null;
     mockCanvasStoreState.openCanvas = mockOpenCanvas;
+    mockCanvasStoreState.closeCanvas = mockCloseCanvas;
     mockUseParams.mockReturnValue({});
   });
 
@@ -47,29 +50,45 @@ describe('CodingCanvas', () => {
     expect(screen.queryByTestId('canvas-workspace')).not.toBeInTheDocument();
   });
 
-  it('renders CanvasWorkspace when activeCanvasId is set', () => {
+  it('renders CanvasWorkspace when activeCanvasId is set and URL matches', () => {
     mockCanvasStoreState.activeCanvasId = 'canvas-123';
+    mockUseParams.mockReturnValue({ canvasId: 'canvas-123' });
     render(<CodingCanvas />);
     expect(screen.getByTestId('canvas-workspace')).toBeInTheDocument();
     expect(screen.queryByTestId('canvas-list-panel')).not.toBeInTheDocument();
   });
 
-  it('calls openCanvas when URL has canvasId param and no active canvas', () => {
+  it('opens URL canvas when no active canvas', () => {
     mockUseParams.mockReturnValue({ canvasId: 'url-canvas-456' });
     render(<CodingCanvas />);
     expect(mockOpenCanvas).toHaveBeenCalledWith('url-canvas-456');
   });
 
-  it('does not call openCanvas when activeCanvasId is already set', () => {
+  it('opens URL canvas when a different canvas is already active (route is source of truth)', () => {
     mockCanvasStoreState.activeCanvasId = 'canvas-123';
     mockUseParams.mockReturnValue({ canvasId: 'url-canvas-456' });
+    render(<CodingCanvas />);
+    expect(mockOpenCanvas).toHaveBeenCalledWith('url-canvas-456');
+  });
+
+  it('does not re-open when URL canvasId matches active canvas', () => {
+    mockCanvasStoreState.activeCanvasId = 'canvas-123';
+    mockUseParams.mockReturnValue({ canvasId: 'canvas-123' });
     render(<CodingCanvas />);
     expect(mockOpenCanvas).not.toHaveBeenCalled();
   });
 
-  it('does not call openCanvas when no URL canvasId param', () => {
+  it('closes canvas when URL has no canvasId but a canvas is active', () => {
+    mockCanvasStoreState.activeCanvasId = 'canvas-123';
+    mockUseParams.mockReturnValue({});
+    render(<CodingCanvas />);
+    expect(mockCloseCanvas).toHaveBeenCalled();
+  });
+
+  it('does nothing when no URL canvasId and no active canvas', () => {
     mockUseParams.mockReturnValue({});
     render(<CodingCanvas />);
     expect(mockOpenCanvas).not.toHaveBeenCalled();
+    expect(mockCloseCanvas).not.toHaveBeenCalled();
   });
 });
