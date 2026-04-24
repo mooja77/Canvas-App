@@ -2483,13 +2483,18 @@ export default function CanvasWorkspace() {
                 {/* Bookmark slot indicators */}
                 <div
                   className="flex items-center gap-0.5"
-                  title="Viewport bookmarks (Ctrl+Shift+1-5 save, Alt+1-5 recall)"
+                  title="Viewport bookmarks — Ctrl+Shift+1-5 to save the current view, Alt+1-5 to recall"
+                  aria-label="Viewport bookmarks: Ctrl+Shift+1-5 to save, Alt+1-5 to recall"
                 >
                   {bookmarks.map((b, i) => (
                     <div
                       key={i}
                       className={`h-1.5 w-1.5 rounded-full transition-colors ${b ? 'bg-blue-400 dark:bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
-                      title={b ? `Bookmark ${i + 1} saved` : `Bookmark ${i + 1} empty`}
+                      title={
+                        b
+                          ? `Bookmark ${i + 1} saved — press Alt+${i + 1} to recall`
+                          : `Bookmark ${i + 1} empty — press Ctrl+Shift+${i + 1} to save current view`
+                      }
                     />
                   ))}
                 </div>
@@ -2508,10 +2513,23 @@ export default function CanvasWorkspace() {
                 )}
                 <button
                   onClick={() => setScrollMode(scrollMode === 'zoom' ? 'pan' : 'zoom')}
-                  className="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
-                  title={`Scroll mode: ${scrollMode === 'zoom' ? 'Zoom' : 'Pan'} (click to toggle)`}
+                  className="flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
+                  title={`Mouse wheel ${scrollMode === 'zoom' ? 'zooms the canvas' : 'pans the canvas'} — click to switch`}
+                  aria-label="Toggle mouse-wheel mode between zoom and pan"
                 >
-                  {scrollMode === 'zoom' ? 'Scroll: Zoom' : 'Scroll: Pan'}
+                  <svg
+                    className="h-2.5 w-2.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.8}
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    {/* scroll-wheel glyph */}
+                    <rect x="9" y="3" width="6" height="18" rx="3" />
+                    <path strokeLinecap="round" d="M12 7v3" />
+                  </svg>
+                  {scrollMode === 'zoom' ? 'Wheel zooms' : 'Wheel pans'}
                 </button>
                 <span className="tabular-nums">{zoomLevel}%</span>
               </div>

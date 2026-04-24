@@ -44,13 +44,22 @@ reportRoutes.post('/reports/schedule', validate(createScheduleSchema), async (re
     });
 
     res.status(201).json({ success: true, data: schedule });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── GET /api/reports/schedules — List user's report schedules ───
+// Unlike the create/delete endpoints, this one is called on AccountPage mount for
+// every logged-in user. Throwing 401 for legacy access-code users triggers the
+// frontend's global axios interceptor and logs them out mid-session, so we
+// return an empty array instead — same pattern as aiSettingsRoutes.ts.
 reportRoutes.get('/reports/schedules', async (req, res, next) => {
   try {
-    const userId = requireUserId(req);
+    const userId = getAuthUserId(req);
+    if (!userId) {
+      return res.json({ success: true, data: [] });
+    }
 
     const schedules = await prismaReportSchedule.findMany({
       where: { userId },
@@ -58,7 +67,9 @@ reportRoutes.get('/reports/schedules', async (req, res, next) => {
     });
 
     res.json({ success: true, data: schedules });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── DELETE /api/reports/schedules/:id — Cancel/delete a schedule ───
@@ -74,7 +85,9 @@ reportRoutes.delete('/reports/schedules/:id', validateParams(scheduleIdParam), a
     await prismaReportSchedule.delete({ where: { id } });
 
     res.json({ success: true, message: 'Schedule deleted' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── PUT /api/reports/schedules/:id — Update schedule (enable/disable, frequency) ───
@@ -98,7 +111,9 @@ reportRoutes.put('/reports/schedules/:id', validateParams(scheduleIdParam), asyn
     });
 
     res.json({ success: true, data: updated });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── POST /api/reports/generate — Generate report on-demand ───
@@ -110,5 +125,7 @@ reportRoutes.post('/reports/generate', async (req, res, next) => {
     const { html, subject } = await generateReport(userId, canvasId);
 
     res.json({ success: true, data: { html, subject } });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });

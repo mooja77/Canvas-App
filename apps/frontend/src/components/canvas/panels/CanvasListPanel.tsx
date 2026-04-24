@@ -669,7 +669,10 @@ export default function CanvasListPanel() {
                 {/* Stats row */}
                 {canvas._count && (
                   <div className="flex items-center gap-3 text-[10px] text-gray-400 dark:text-gray-500 mb-2">
-                    <span className="flex items-center gap-1">
+                    <span
+                      className="flex items-center gap-1"
+                      title={`${canvas._count.transcripts} transcript${canvas._count.transcripts === 1 ? '' : 's'}`}
+                    >
                       <svg
                         className="h-3 w-3 text-blue-400"
                         fill="none"
@@ -685,7 +688,10 @@ export default function CanvasListPanel() {
                       </svg>
                       {canvas._count.transcripts}
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span
+                      className="flex items-center gap-1"
+                      title={`${canvas._count.questions} code${canvas._count.questions === 1 ? '' : 's'}`}
+                    >
                       <svg
                         className="h-3 w-3 text-purple-400"
                         fill="none"
@@ -701,7 +707,10 @@ export default function CanvasListPanel() {
                       </svg>
                       {canvas._count.questions}
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span
+                      className="flex items-center gap-1"
+                      title={`${canvas._count.codings} coding${canvas._count.codings === 1 ? '' : 's'}`}
+                    >
                       <svg
                         className="h-3 w-3 text-emerald-400"
                         fill="none"

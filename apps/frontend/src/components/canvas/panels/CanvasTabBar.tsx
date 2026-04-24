@@ -22,13 +22,9 @@ function TabPreview({ tab, visible }: { tab: CanvasTab; visible: boolean }) {
 
   return (
     <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg bg-white p-2.5 shadow-lg ring-1 ring-black/10 dark:bg-gray-800 dark:ring-white/10">
-      <div className="text-xs font-medium text-gray-900 dark:text-gray-100 mb-1 break-words">
-        {tab.name}
-      </div>
+      <div className="text-xs font-medium text-gray-900 dark:text-gray-100 mb-1 break-words">{tab.name}</div>
       {tab.description && (
-        <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-1.5 line-clamp-2">
-          {tab.description}
-        </div>
+        <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-1.5 line-clamp-2">{tab.description}</div>
       )}
       <div className="flex items-center gap-2 text-[10px] text-gray-400 dark:text-gray-500">
         <span>{tab.transcriptCount ?? 0} transcripts</span>
@@ -77,14 +73,12 @@ export default function CanvasTabBar({ tabs, activeTabId, onSwitchTab, onCloseTa
 
   return (
     <div className="flex items-center border-b border-gray-200/80 bg-gray-50/90 backdrop-blur-sm dark:border-gray-700/80 dark:bg-gray-850/90">
-      <div
-        ref={scrollRef}
-        className="flex items-center gap-0 overflow-x-auto scrollbar-none flex-1"
-      >
-        {tabs.map(tab => (
+      <div ref={scrollRef} className="flex items-center gap-0 overflow-x-auto scrollbar-none flex-1">
+        {tabs.map((tab) => (
           <div
             key={tab.id}
             data-tab-id={tab.id}
+            title={tab.name}
             className={`group relative flex items-center gap-1.5 shrink-0 px-3 py-1.5 text-xs cursor-pointer border-b-2 transition-colors ${
               tab.id === activeTabId
                 ? 'border-brand-500 text-brand-700 bg-white dark:bg-gray-800 dark:text-brand-400'
@@ -96,7 +90,10 @@ export default function CanvasTabBar({ tabs, activeTabId, onSwitchTab, onCloseTa
           >
             <span className="truncate max-w-[120px]">{tab.name}</span>
             <button
-              onClick={e => { e.stopPropagation(); onCloseTab(tab.id); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCloseTab(tab.id);
+              }}
               className="rounded p-0.5 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-all"
               title="Close tab"
             >

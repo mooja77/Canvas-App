@@ -133,7 +133,7 @@ export default function LandingPage() {
 
       <main>
         {/* Hero */}
-        <section className="max-w-4xl mx-auto px-4 pt-20 pb-16 text-center">
+        <section className="max-w-4xl mx-auto px-4 pt-20 pb-8 text-center">
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white leading-tight mb-6">
             {t('landing.heroTitle')}
             <br />
@@ -157,11 +157,12 @@ export default function LandingPage() {
             </Link>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">{t('landing.noCreditCard')}</p>
+        </section>
 
-          {/* Hero screenshot — shows the canvas workspace users land on.
-              Wrapped in a rounded container with a subtle gradient halo so it
-              reads as a real app window, not a raw PNG. */}
-          <div className="mt-16 mx-auto max-w-6xl relative">
+        {/* Hero screenshot — lives outside the narrow hero column so it can
+            span a wider container (max-w-7xl) than the text above. */}
+        <div className="mx-auto max-w-7xl px-4 pb-16">
+          <div className="relative">
             <div
               aria-hidden="true"
               className="absolute inset-x-8 -top-4 h-32 bg-gradient-to-b from-brand-400/20 to-transparent blur-3xl -z-10"
@@ -175,7 +176,7 @@ export default function LandingPage() {
               className="w-full h-auto rounded-xl shadow-2xl ring-1 ring-gray-200 dark:ring-gray-800"
             />
           </div>
-        </section>
+        </div>
 
         {/* Features */}
         <section className="max-w-5xl mx-auto px-4 py-16">

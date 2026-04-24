@@ -302,11 +302,12 @@ export default function PricingPage() {
                               </svg>
                             ) : (
                               <svg
-                                className="w-5 h-5 text-gray-300 dark:text-gray-600 mx-auto"
+                                className="w-5 h-5 text-rose-300 dark:text-rose-800/70 mx-auto"
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 strokeWidth={2}
                                 stroke="currentColor"
+                                aria-label="Not included"
                               >
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                               </svg>

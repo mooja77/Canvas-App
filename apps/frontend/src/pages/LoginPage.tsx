@@ -503,6 +503,17 @@ export default function LoginPage() {
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
                 Start free, upgrade anytime. .edu emails get 40% off Pro.
               </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+                By creating an account, you agree to our{' '}
+                <a href="/terms" className="underline hover:text-gray-700 dark:hover:text-gray-300">
+                  Terms of Service
+                </a>{' '}
+                and{' '}
+                <a href="/privacy" className="underline hover:text-gray-700 dark:hover:text-gray-300">
+                  Privacy Policy
+                </a>
+                .
+              </p>
             </form>
           )}
 
