@@ -1,5 +1,12 @@
 import { useMemo, useState, useCallback } from 'react';
-import { useCanvasStore, useCanvasQuestions, useCanvasTranscripts, useCanvasCodings, useCanvasCases, useSelectedQuestionId } from '../../../stores/canvasStore';
+import {
+  useCanvasStore,
+  useCanvasQuestions,
+  useCanvasTranscripts,
+  useCanvasCodings,
+  useCanvasCases,
+  useSelectedQuestionId,
+} from '../../../stores/canvasStore';
 import { useCodeBookmarks } from '../../../hooks/useCodeBookmarks';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@qualcanvas/shared';
 
@@ -19,9 +26,9 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
   const codings = useCanvasCodings();
   const cases = useCanvasCases();
   const selectedQuestionId = useSelectedQuestionId();
-  const setSelectedQuestionId = useCanvasStore(s => s.setSelectedQuestionId);
-  const _updateQuestion = useCanvasStore(s => s.updateQuestion);
-  const _deleteQuestion = useCanvasStore(s => s.deleteQuestion);
+  const setSelectedQuestionId = useCanvasStore((s) => s.setSelectedQuestionId);
+  const _updateQuestion = useCanvasStore((s) => s.updateQuestion);
+  const _deleteQuestion = useCanvasStore((s) => s.deleteQuestion);
   const [activeTab, setActiveTab] = useState<'codes' | 'sources' | 'cases'>('codes');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
@@ -62,7 +69,7 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
       return a.question.text.localeCompare(b.question.text);
     };
     roots.sort(sortFn);
-    roots.forEach(r => r.children.sort(sortFn));
+    roots.forEach((r) => r.children.sort(sortFn));
 
     return roots;
   }, [questions, codings, sortMode]);
@@ -105,13 +112,16 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
   const caseMembership = useMemo(() => {
     const map = new Map<string, CanvasTranscript[]>();
     cases.forEach((c: CanvasCase) => {
-      map.set(c.id, transcripts.filter((t: CanvasTranscript) => t.caseId === c.id));
+      map.set(
+        c.id,
+        transcripts.filter((t: CanvasTranscript) => t.caseId === c.id),
+      );
     });
     return map;
   }, [cases, transcripts]);
 
   const toggleExpand = (id: string) => {
-    setExpandedIds(prev => {
+    setExpandedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -135,7 +145,7 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
     const hasChildren = item.children.length > 0;
 
     // Coding frequency bar width
-    const maxCount = Math.max(...tree.map(t => t.codingCount), 1);
+    const maxCount = Math.max(...tree.map((t) => t.codingCount), 1);
     const barWidth = Math.max(4, (item.codingCount / maxCount) * 100);
 
     return (
@@ -144,9 +154,7 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
           role="button"
           tabIndex={0}
           className={`flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left transition-all duration-75 group relative cursor-pointer ${
-            isSelected
-              ? 'bg-brand-50 dark:bg-brand-900/20 shadow-sm'
-              : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+            isSelected ? 'bg-brand-50 dark:bg-brand-900/20 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
           }`}
           style={{ paddingLeft: `${8 + depth * 16}px` }}
           onClick={() => {
@@ -165,11 +173,25 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
             <span
               role="button"
               tabIndex={0}
-              onClick={(e) => { e.stopPropagation(); toggleExpand(item.question.id); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); toggleExpand(item.question.id); } }}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpand(item.question.id);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.stopPropagation();
+                  toggleExpand(item.question.id);
+                }
+              }}
               className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
             >
-              <svg className={`h-3 w-3 text-gray-400 transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <svg
+                className={`h-3 w-3 text-gray-400 transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
               </svg>
             </span>
@@ -179,16 +201,29 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
             className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-white/50 dark:ring-gray-800/50"
             style={{ backgroundColor: item.question.color }}
           />
-          <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">
+          <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1" title={item.question.text}>
             {item.question.text}
           </span>
           <button
-            onClick={e => { e.stopPropagation(); toggleBookmark(item.question.id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleBookmark(item.question.id);
+            }}
             className={`shrink-0 p-0.5 rounded transition-colors ${isBookmarked(item.question.id) ? 'text-yellow-500' : 'text-gray-300 opacity-0 group-hover:opacity-100 hover:text-yellow-400'}`}
             title={isBookmarked(item.question.id) ? 'Remove from favorites' : 'Add to favorites'}
           >
-            <svg className="h-3 w-3" viewBox="0 0 24 24" fill={isBookmarked(item.question.id) ? 'currentColor' : 'none'} strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+            <svg
+              className="h-3 w-3"
+              viewBox="0 0 24 24"
+              fill={isBookmarked(item.question.id) ? 'currentColor' : 'none'}
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"
+              />
             </svg>
           </button>
 
@@ -210,16 +245,17 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
           </div>
         </div>
         {hasChildren && isExpanded && (
-          <div className="animate-slide-down">
-            {item.children.map(child => renderTreeItem(child, depth + 1))}
-          </div>
+          <div className="animate-slide-down">{item.children.map((child) => renderTreeItem(child, depth + 1))}</div>
         )}
       </div>
     );
   };
 
   return (
-    <div data-tour="canvas-navigator" className="sidebar-slide-in flex h-full min-w-[12rem] flex-col border-r border-gray-200/80 bg-white/95 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/95">
+    <div
+      data-tour="canvas-navigator"
+      className="sidebar-slide-in flex h-full min-w-[12rem] flex-col border-r border-gray-200/80 bg-white/95 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/95"
+    >
       {/* Tab switcher */}
       <div className="flex border-b border-gray-200 dark:border-gray-700">
         <button
@@ -265,15 +301,25 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
             {questions.length > 0 && (
               <div className="mb-1.5 space-y-1">
                 <div className="relative">
-                  <svg className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                  <svg
+                    className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                    />
                   </svg>
                   <input
                     type="text"
                     className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 pl-7 pr-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-brand-400 focus:ring-1 focus:ring-brand-400 outline-none transition-colors"
                     placeholder="Filter codes..."
                     value={search}
-                    onChange={e => setSearch(e.target.value)}
+                    onChange={(e) => setSearch(e.target.value)}
                   />
                 </div>
                 <div className="flex items-center justify-between px-1">
@@ -298,7 +344,11 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
                       title="Expand all"
                     >
                       <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"
+                        />
                       </svg>
                     </button>
                     <button
@@ -307,7 +357,11 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
                       title="Collapse all"
                     >
                       <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -319,26 +373,40 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
             {bookmarkedIds.size > 0 && (
               <div className="mb-1">
                 <button
-                  onClick={() => setShowFavorites(f => !f)}
+                  onClick={() => setShowFavorites((f) => !f)}
                   className="flex w-full items-center gap-1 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-yellow-600 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 rounded-lg transition-colors"
                 >
-                  <svg className={`h-3 w-3 transition-transform ${showFavorites ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <svg
+                    className={`h-3 w-3 transition-transform ${showFavorites ? 'rotate-90' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                   </svg>
-                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+                  <svg
+                    className="h-3 w-3"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"
+                    />
                   </svg>
                   Favorites ({bookmarkedIds.size})
                 </button>
                 {showFavorites && (
                   <div className="space-y-0.5 mt-0.5">
-                    {filteredTree
-                      .filter(item => isBookmarked(item.question.id))
-                      .map(item => renderTreeItem(item))}
+                    {filteredTree.filter((item) => isBookmarked(item.question.id)).map((item) => renderTreeItem(item))}
                     {/* Also include bookmarked children */}
                     {filteredTree
-                      .flatMap(item => item.children.filter(child => isBookmarked(child.question.id)))
-                      .map(item => renderTreeItem(item))}
+                      .flatMap((item) => item.children.filter((child) => isBookmarked(child.question.id)))
+                      .map((item) => renderTreeItem(item))}
                   </div>
                 )}
                 <div className="my-1 border-t border-gray-200/60 dark:border-gray-700/60" />
@@ -348,19 +416,25 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
             {filteredTree.length === 0 ? (
               <div className="py-6 text-center">
                 {search.trim() ? (
-                  <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                    No codes match &ldquo;{search}&rdquo;
-                  </p>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500">No codes match &ldquo;{search}&rdquo;</p>
                 ) : (
                   <>
                     <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 dark:bg-purple-900/20">
-                      <svg className="h-5 w-5 text-purple-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+                      <svg
+                        className="h-5 w-5 text-purple-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
+                        />
                       </svg>
                     </div>
-                    <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                      No codes yet
-                    </p>
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500">No codes yet</p>
                     <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-0.5">
                       Select text in a transcript to start coding
                     </p>
@@ -368,9 +442,7 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
                 )}
               </div>
             ) : (
-              <div className="space-y-0.5">
-                {filteredTree.map(item => renderTreeItem(item))}
-              </div>
+              <div className="space-y-0.5">{filteredTree.map((item) => renderTreeItem(item))}</div>
             )}
           </div>
         )}
@@ -381,24 +453,28 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
             {transcripts.length === 0 ? (
               <div className="py-6 text-center">
                 <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-900/20">
-                  <svg className="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                  <svg
+                    className="h-5 w-5 text-blue-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                    />
                   </svg>
                 </div>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                  No sources yet
-                </p>
-                <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-0.5">
-                  Add transcripts from the toolbar
-                </p>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500">No sources yet</p>
+                <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-0.5">Add transcripts from the toolbar</p>
               </div>
             ) : (
               <div className="space-y-1">
                 {transcripts.map((t: CanvasTranscript) => {
                   const coverage = transcriptCoverage.get(t.id);
-                  const pct = coverage && coverage.total > 0
-                    ? Math.round((coverage.coded / coverage.total) * 100)
-                    : 0;
+                  const pct = coverage && coverage.total > 0 ? Math.round((coverage.coded / coverage.total) * 100) : 0;
                   const wordCount = t.content.split(/\s+/).filter(Boolean).length;
 
                   return (
@@ -408,10 +484,22 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
                       className="flex w-full flex-col gap-1 rounded-lg px-2.5 py-2 text-left transition-all hover:bg-gray-50 dark:hover:bg-gray-700/50 group"
                     >
                       <div className="flex items-center gap-2">
-                        <svg className="h-3.5 w-3.5 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                        <svg
+                          className="h-3.5 w-3.5 shrink-0 text-blue-500"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                          />
                         </svg>
-                        <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">{t.title}</span>
+                        <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1" title={t.title}>
+                          {t.title}
+                        </span>
                       </div>
                       {/* Stats row */}
                       <div className="flex items-center gap-2 pl-5.5">
@@ -425,9 +513,7 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
                       </div>
                       <div className="flex items-center gap-3 pl-5.5 text-[9px] text-gray-400">
                         <span>{wordCount.toLocaleString()} words</span>
-                        {coverage && coverage.questionCount > 0 && (
-                          <span>{coverage.questionCount} codes</span>
-                        )}
+                        {coverage && coverage.questionCount > 0 && <span>{coverage.questionCount} codes</span>}
                       </div>
                     </button>
                   );
@@ -442,9 +528,7 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
           <div className="p-1.5">
             {cases.length === 0 ? (
               <div className="py-6 text-center">
-                <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                  No cases yet
-                </p>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500">No cases yet</p>
               </div>
             ) : (
               <div className="space-y-1">
@@ -456,10 +540,22 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
                       onClick={() => onFocusNode(`case-${c.id}`)}
                       className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-all hover:bg-gray-50 dark:hover:bg-gray-700/50"
                     >
-                      <svg className="h-3.5 w-3.5 shrink-0 text-teal-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                      <svg
+                        className="h-3.5 w-3.5 shrink-0 text-teal-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
+                        />
                       </svg>
-                      <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">{c.name}</span>
+                      <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1" title={c.name}>
+                        {c.name}
+                      </span>
                       <span className="text-[10px] text-gray-400 dark:text-gray-500 tabular-nums">
                         {members.length} source{members.length !== 1 ? 's' : ''}
                       </span>
@@ -475,27 +571,33 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
       {/* Summary footer */}
       <div className="border-t border-gray-200 dark:border-gray-700 px-3 py-2">
         <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500">
-          <span>{totalCodingCount} coding{totalCodingCount !== 1 ? 's' : ''}</span>
-          {transcripts.length > 0 && (() => {
-            let totalCoded = 0;
-            let totalChars = 0;
-            transcriptCoverage.forEach(v => { totalCoded += v.coded; totalChars += v.total; });
-            const overallPct = totalChars > 0 ? Math.round((totalCoded / totalChars) * 100) : 0;
-            return (
-              <div className="flex items-center gap-1.5">
-                <div className="w-8 h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${overallPct}%`,
-                      backgroundColor: overallPct < 30 ? '#f59e0b' : overallPct < 70 ? '#3b82f6' : '#10b981',
-                    }}
-                  />
+          <span>
+            {totalCodingCount} coding{totalCodingCount !== 1 ? 's' : ''}
+          </span>
+          {transcripts.length > 0 &&
+            (() => {
+              let totalCoded = 0;
+              let totalChars = 0;
+              transcriptCoverage.forEach((v) => {
+                totalCoded += v.coded;
+                totalChars += v.total;
+              });
+              const overallPct = totalChars > 0 ? Math.round((totalCoded / totalChars) * 100) : 0;
+              return (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-8 h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${overallPct}%`,
+                        backgroundColor: overallPct < 30 ? '#f59e0b' : overallPct < 70 ? '#3b82f6' : '#10b981',
+                      }}
+                    />
+                  </div>
+                  <span>{overallPct}%</span>
                 </div>
-                <span>{overallPct}%</span>
-              </div>
-            );
-          })()}
+              );
+            })()}
         </div>
       </div>
     </div>

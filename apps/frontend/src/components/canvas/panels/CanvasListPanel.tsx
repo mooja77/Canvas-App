@@ -4,6 +4,7 @@ import { useCanvasStore, useCanvasLoading, useTrashedCanvases, useTrashLoading }
 import { useOpenCanvas } from '../../../hooks/useOpenCanvas';
 import { canvasApi } from '../../../services/api';
 import ConfirmDialog from '../ConfirmDialog';
+import CanvasThumbnail from './CanvasThumbnail';
 import toast from 'react-hot-toast';
 
 type SortMode = 'newest' | 'az' | 'codings';
@@ -654,7 +655,16 @@ export default function CanvasListPanel() {
                   </button>
                 </div>
                 {canvas.description && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate mb-3">{canvas.description}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate mb-2">{canvas.description}</p>
+                )}
+                {canvas._count && (
+                  <div className="mb-2">
+                    <CanvasThumbnail
+                      transcriptCount={canvas._count.transcripts}
+                      questionCount={canvas._count.questions}
+                      codingCount={canvas._count.codings}
+                    />
+                  </div>
                 )}
                 {/* Stats row */}
                 {canvas._count && (
