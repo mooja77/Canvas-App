@@ -157,6 +157,24 @@ export default function LandingPage() {
             </Link>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">{t('landing.noCreditCard')}</p>
+
+          {/* Hero screenshot — shows the canvas workspace users land on.
+              Wrapped in a rounded container with a subtle gradient halo so it
+              reads as a real app window, not a raw PNG. */}
+          <div className="mt-16 mx-auto max-w-6xl relative">
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-8 -top-4 h-32 bg-gradient-to-b from-brand-400/20 to-transparent blur-3xl -z-10"
+            />
+            <img
+              src="/hero-canvas.png"
+              alt="QualCanvas workspace showing a coded transcript with sentiment and word cloud analysis nodes"
+              width={1600}
+              height={1000}
+              loading="eager"
+              className="w-full h-auto rounded-xl shadow-2xl ring-1 ring-gray-200 dark:ring-gray-800"
+            />
+          </div>
         </section>
 
         {/* Features */}
