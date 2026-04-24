@@ -2,6 +2,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { usePageMeta } from '../hooks/usePageMeta';
 import SiteHeader from '../components/SiteHeader';
+import SiteFooter from '../components/SiteFooter';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -72,6 +73,8 @@ export default function LandingPage() {
               {
                 title: t('landing.codeTranscripts'),
                 desc: t('landing.codeTranscriptsDesc'),
+                tileBg: 'bg-blue-100 dark:bg-blue-900/30',
+                iconColor: 'text-blue-600 dark:text-blue-400',
                 icon: (
                   <path
                     strokeLinecap="round"
@@ -83,6 +86,8 @@ export default function LandingPage() {
               {
                 title: t('landing.visualCanvas'),
                 desc: t('landing.visualCanvasDesc'),
+                tileBg: 'bg-purple-100 dark:bg-purple-900/30',
+                iconColor: 'text-purple-600 dark:text-purple-400',
                 icon: (
                   <path
                     strokeLinecap="round"
@@ -94,6 +99,8 @@ export default function LandingPage() {
               {
                 title: t('landing.analysisTools'),
                 desc: t('landing.analysisToolsDesc'),
+                tileBg: 'bg-emerald-100 dark:bg-emerald-900/30',
+                iconColor: 'text-emerald-600 dark:text-emerald-400',
                 icon: (
                   <path
                     strokeLinecap="round"
@@ -105,6 +112,8 @@ export default function LandingPage() {
               {
                 title: t('landing.autoCode'),
                 desc: t('landing.autoCodeDesc'),
+                tileBg: 'bg-amber-100 dark:bg-amber-900/30',
+                iconColor: 'text-amber-600 dark:text-amber-400',
                 icon: (
                   <path
                     strokeLinecap="round"
@@ -116,6 +125,8 @@ export default function LandingPage() {
               {
                 title: t('landing.casesCrossCase'),
                 desc: t('landing.casesCrossCaseDesc'),
+                tileBg: 'bg-rose-100 dark:bg-rose-900/30',
+                iconColor: 'text-rose-600 dark:text-rose-400',
                 icon: (
                   <path
                     strokeLinecap="round"
@@ -127,6 +138,8 @@ export default function LandingPage() {
               {
                 title: t('landing.ethicsCompliance'),
                 desc: t('landing.ethicsComplianceDesc'),
+                tileBg: 'bg-indigo-100 dark:bg-indigo-900/30',
+                iconColor: 'text-indigo-600 dark:text-indigo-400',
                 icon: (
                   <path
                     strokeLinecap="round"
@@ -137,9 +150,9 @@ export default function LandingPage() {
               },
             ].map((feature) => (
               <div key={feature.title} className="p-6">
-                <div className="w-10 h-10 bg-brand-100 dark:bg-brand-900/30 rounded-lg flex items-center justify-center mb-4">
+                <div className={`w-10 h-10 ${feature.tileBg} rounded-lg flex items-center justify-center mb-4`}>
                   <svg
-                    className="w-5 h-5 text-brand-600 dark:text-brand-400"
+                    className={`w-5 h-5 ${feature.iconColor}`}
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
@@ -153,6 +166,66 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* Pricing teaser — anchor prices before the CTA so users don't
+            have to leave the page to understand what "Start Free" buys. */}
+        <section className="max-w-5xl mx-auto px-4 py-16">
+          <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-10">
+            Simple, transparent pricing
+          </h2>
+          <div className="grid md:grid-cols-3 gap-4 items-stretch">
+            {[
+              {
+                name: 'Free',
+                price: '$0',
+                tagline: 'For trying it out',
+                bullet: '1 canvas · 5 codes · CSV export',
+              },
+              {
+                name: 'Pro',
+                price: '$12',
+                tagline: 'For working researchers',
+                bullet: 'Unlimited everything · 10 analysis tools · AI',
+                highlight: true,
+              },
+              {
+                name: 'Team',
+                price: '$29',
+                tagline: 'For research groups',
+                bullet: 'Everything in Pro · Kappa · team management',
+              },
+            ].map((tier) => (
+              <div
+                key={tier.name}
+                className={`h-full flex flex-col rounded-xl p-5 ring-1 ${
+                  tier.highlight
+                    ? 'ring-2 ring-brand-500 bg-brand-50/30 dark:bg-brand-900/10'
+                    : 'ring-gray-200 dark:ring-gray-800 bg-white dark:bg-gray-800/30'
+                }`}
+              >
+                <div className="flex items-baseline justify-between mb-1">
+                  <span className="text-lg font-bold text-gray-900 dark:text-white">{tier.name}</span>
+                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {tier.price}
+                    {tier.price !== '$0' && (
+                      <span className="text-sm font-normal text-gray-500 dark:text-gray-400">/mo</span>
+                    )}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{tier.tagline}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">{tier.bullet}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-center mt-8">
+            <Link
+              to="/pricing"
+              className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300"
+            >
+              Compare all features →
+            </Link>
+          </p>
         </section>
 
         {/* CTA */}
@@ -212,39 +285,7 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
-      {/* Footer */}
-      <footer className="max-w-6xl mx-auto px-4 py-8 border-t border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-          <span>
-            &copy; {new Date().getFullYear()} QualCanvas. All rights reserved. &middot; Made by{' '}
-            <a
-              href="https://www.jmsdevlab.com/"
-              target="_blank"
-              rel="noopener"
-              className="font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-            >
-              JMS Dev Lab
-            </a>
-          </span>
-          <div className="flex gap-4">
-            <Link to="/guide" className="hover:text-gray-700 dark:hover:text-gray-300">
-              Guide
-            </Link>
-            <Link to="/pricing" className="hover:text-gray-700 dark:hover:text-gray-300">
-              {t('pricing.title')}
-            </Link>
-            <Link to="/login" className="hover:text-gray-700 dark:hover:text-gray-300">
-              {t('auth.signIn')}
-            </Link>
-            <Link to="/terms" className="hover:text-gray-700 dark:hover:text-gray-300">
-              Terms
-            </Link>
-            <Link to="/privacy" className="hover:text-gray-700 dark:hover:text-gray-300">
-              Privacy
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

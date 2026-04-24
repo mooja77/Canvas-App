@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { billingApi } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 import SiteHeader from '../components/SiteHeader';
+import SiteFooter from '../components/SiteFooter';
 import toast from 'react-hot-toast';
 
 const PRICE_IDS = {
@@ -515,10 +516,9 @@ export default function PricingPage() {
                 q: 'Do you offer academic discounts?',
                 a: 'Yes! Sign up with a .edu email address and get 40% off any paid plan automatically at checkout.',
               },
-              {
-                q: 'Is my data secure?',
-                a: 'Your data is encrypted at rest and in transit. We support ethics compliance features including consent tracking, anonymization, and audit trails.',
-              },
+              // Data-security question intentionally lives on the landing page
+              // only — users asking the pricing page usually care about billing
+              // specifics, not encryption. See LandingPage.tsx FAQ.
               {
                 q: 'What happens to my data if I downgrade?',
                 a: "Your existing data is preserved — you just can't create new resources beyond the Free plan limits. You can always re-upgrade to access everything again.",
@@ -598,6 +598,7 @@ export default function PricingPage() {
           </div>
         )}
       </div>
+      <SiteFooter />
     </div>
   );
 }
