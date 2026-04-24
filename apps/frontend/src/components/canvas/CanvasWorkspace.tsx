@@ -158,7 +158,10 @@ const initialEdges: Edge[] = [];
 
 // Stable references for ReactFlow props (avoids re-renders from inline objects)
 const SNAP_GRID: [number, number] = [20, 20];
-const FIT_VIEW_OPTIONS = { padding: 0.4, maxZoom: 1.0 };
+// minZoom floor here prevents fitView from zooming out so far that nodes
+// become unreadable (the global ReactFlow minZoom is 0.15, but we want
+// initial framing to stay legible — 0.5 is the readable threshold).
+const FIT_VIEW_OPTIONS = { padding: 0.2, minZoom: 0.5, maxZoom: 0.85 };
 const PRO_OPTIONS = { hideAttribution: true };
 
 /** SVG overlay that renders alignment guide lines in flow coordinate space */
@@ -2062,8 +2065,10 @@ export default function CanvasWorkspace() {
               {!focusMode && (
                 <MiniMap
                   nodeColor={minimapColor}
-                  maskColor="rgba(0,0,0,0.06)"
-                  className="!bg-white/90 !backdrop-blur-sm !rounded-xl !shadow-node dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700"
+                  maskColor={darkMode ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.06)'}
+                  pannable
+                  zoomable
+                  className="!bg-white/90 !backdrop-blur-sm !rounded-xl !shadow-node dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700 !w-[160px] !h-[110px]"
                 />
               )}
               {collaboration.isConnected && <CollabCursors cursors={collaboration.cursors} />}

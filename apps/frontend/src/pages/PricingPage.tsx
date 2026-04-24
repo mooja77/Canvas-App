@@ -48,9 +48,9 @@ function TierCard({ name, price, annualPrice, period, features, highlight, cta, 
         <span className="text-4xl font-bold text-gray-900 dark:text-white">
           {period === 'annual' && annualPrice ? annualPrice : price}
         </span>
-        {price !== 'Free' && <span className="text-gray-500 dark:text-gray-400">/mo</span>}
+        {price !== '$0' && price !== 'Free' && <span className="text-gray-500 dark:text-gray-400">/mo</span>}
       </div>
-      {period === 'annual' && annualPrice && price !== 'Free' && (
+      {period === 'annual' && annualPrice && price !== '$0' && price !== 'Free' && (
         <p className="text-xs text-green-600 dark:text-green-400 mb-4">Save 25% with annual billing</p>
       )}
       <ul className="mt-4 space-y-2.5 mb-6">
@@ -168,7 +168,7 @@ export default function PricingPage() {
         <div className="grid md:grid-cols-3 gap-6">
           <TierCard
             name={t('pricing.free')}
-            price={t('pricing.free')}
+            price="$0"
             period={period}
             current={plan === 'free'}
             features={[
@@ -277,8 +277,11 @@ export default function PricingPage() {
                   { feature: 'Intercoder reliability', free: false, pro: false, team: true },
                   { feature: 'Team management', free: false, pro: false, team: true },
                   { feature: '.edu discount', free: '-', pro: '40% off', team: '40% off' },
-                ].map((row) => (
-                  <tr key={row.feature} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                ].map((row, idx) => (
+                  <tr
+                    key={row.feature}
+                    className={`${idx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} hover:bg-gray-100 dark:hover:bg-gray-800/60`}
+                  >
                     <th scope="row" className="py-2.5 px-4 text-left font-normal text-gray-700 dark:text-gray-300">
                       {row.feature}
                     </th>

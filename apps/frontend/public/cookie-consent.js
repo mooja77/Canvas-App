@@ -40,13 +40,15 @@
   function showBanner() {
   var banner = document.createElement('div');
   banner.id = 'cookie-consent-banner';
+  banner.setAttribute('role', 'region');
+  banner.setAttribute('aria-label', 'Cookie consent');
   banner.innerHTML =
     '<div class="cc-inner">' +
       '<p>We use cookies for analytics and to improve your experience. ' +
       '<a href="/privacy.html">Privacy Policy</a></p>' +
       '<div class="cc-buttons">' +
-        '<button id="cc-reject" class="cc-btn cc-btn-reject">Reject</button>' +
-        '<button id="cc-accept" class="cc-btn cc-btn-accept">Accept</button>' +
+        '<button id="cc-reject" class="cc-btn cc-btn-reject" type="button" aria-label="Reject non-essential cookies">Reject</button>' +
+        '<button id="cc-accept" class="cc-btn cc-btn-accept" type="button" aria-label="Accept all cookies">Accept</button>' +
       '</div>' +
     '</div>';
   document.body.appendChild(banner);

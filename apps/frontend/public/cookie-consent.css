@@ -1,0 +1,139 @@
+/* Cookie consent banner — fixed footer with styled buttons.
+   Ships before the React app so dark mode uses prefers-color-scheme
+   rather than the app's .dark class. */
+
+#cookie-consent-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2147483646; /* just below the chat widget's typical 2147483647 */
+  background: rgba(255, 255, 255, 0.98);
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 12px 16px;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1f2937;
+  animation: cc-slide-up 240ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes cc-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+#cookie-consent-banner .cc-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+#cookie-consent-banner p {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 240px;
+}
+
+#cookie-consent-banner a {
+  color: #4f46e5;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+#cookie-consent-banner a:hover { color: #4338ca; }
+
+#cookie-consent-banner .cc-buttons {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+#cookie-consent-banner .cc-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 120ms ease, border-color 120ms ease,
+    color 120ms ease, transform 80ms ease;
+  font-family: inherit;
+}
+
+#cookie-consent-banner .cc-btn:active { transform: translateY(1px); }
+
+#cookie-consent-banner .cc-btn:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+#cookie-consent-banner .cc-btn-reject {
+  background: transparent;
+  border-color: rgba(15, 23, 42, 0.15);
+  color: #374151;
+}
+
+#cookie-consent-banner .cc-btn-reject:hover {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.25);
+}
+
+#cookie-consent-banner .cc-btn-accept {
+  background: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
+}
+
+#cookie-consent-banner .cc-btn-accept:hover {
+  background: #4338ca;
+  border-color: #4338ca;
+}
+
+/* Dark mode via OS preference — this ships before React sets the .dark class. */
+@media (prefers-color-scheme: dark) {
+  #cookie-consent-banner {
+    background: rgba(17, 24, 39, 0.98);
+    border-top-color: rgba(255, 255, 255, 0.08);
+    color: #e5e7eb;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  #cookie-consent-banner a {
+    color: #a5b4fc;
+  }
+
+  #cookie-consent-banner a:hover { color: #c7d2fe; }
+
+  #cookie-consent-banner .cc-btn-reject {
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #d1d5db;
+  }
+
+  #cookie-consent-banner .cc-btn-reject:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+}
+
+/* Small screens — stack the text and buttons */
+@media (max-width: 640px) {
+  #cookie-consent-banner .cc-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  #cookie-consent-banner .cc-buttons {
+    justify-content: flex-end;
+  }
+}

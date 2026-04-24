@@ -38,7 +38,25 @@
     <title>QualCanvas - Qualitative Coding</title>
 
     <!-- Cookie Consent (must load BEFORE GTM) -->
+    <link rel="stylesheet" href="/cookie-consent.css" />
     <script src="/cookie-consent.js"></script>
+
+    <!-- Chat widget visibility rules. The third-party chat script
+         renders its own container; we hide it on narrow viewports
+         (where it overlaps hero text) and on the canvas page
+         (where it overlaps the status bar + bookmarks). -->
+    <style>
+      @media (max-width: 767px) {
+        #jms-chat-widget, [id^="jms-chat"], iframe[src*="chat/widget"] {
+          display: none !important;
+        }
+      }
+      body[data-page="canvas"] #jms-chat-widget,
+      body[data-page="canvas"] [id^="jms-chat"],
+      body[data-page="canvas"] iframe[src*="chat/widget"] {
+        display: none !important;
+      }
+    </style>
 
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':

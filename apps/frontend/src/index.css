@@ -160,6 +160,17 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
   border: 1px solid rgba(255,255,255,0.06) !important;
 }
+
+/* React Flow paints its own white bg on the viewport in dark mode,
+   hiding the gradient set on the parent ReactFlow element. Force the
+   internal layers transparent so the parent gradient shows through. */
+.dark .react-flow,
+.dark .react-flow__pane,
+.dark .react-flow__renderer,
+.dark .react-flow__viewport {
+  background: transparent !important;
+}
+
 .react-flow__controls {
   @apply rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden !important;
 }

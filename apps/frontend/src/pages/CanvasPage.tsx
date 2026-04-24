@@ -77,6 +77,15 @@ export default function CanvasPage() {
     }
   }, [authenticated, navigate]);
 
+  // Flag the canvas page on body so index.html's CSS can hide the chat
+  // widget (which otherwise overlaps the status bar + bookmarks).
+  useEffect(() => {
+    document.body.dataset.page = 'canvas';
+    return () => {
+      delete document.body.dataset.page;
+    };
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate('/');
