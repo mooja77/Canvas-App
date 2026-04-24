@@ -776,8 +776,14 @@ export default function CanvasListPanel() {
         ))}
       </div>
 
-      {/* Trash section */}
-      <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+      {/* Trash section — only renders when there's actually trash (or while
+          loading, to avoid a flash of nothing on first load). Previously it
+          took a full row even when empty. */}
+      <div
+        className={`mt-6 border-t border-gray-200 dark:border-gray-700 pt-4 ${
+          trashedCanvases.length === 0 && !trashLoading && !showTrash ? 'hidden' : ''
+        }`}
+      >
         <button
           onClick={handleToggleTrash}
           className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"

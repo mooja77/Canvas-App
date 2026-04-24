@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
 import { billingApi } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
+import SiteHeader from '../components/SiteHeader';
 import toast from 'react-hot-toast';
 
 const PRICE_IDS = {
@@ -32,14 +33,14 @@ interface TierCardProps {
 function TierCard({ name, price, annualPrice, period, features, highlight, cta, onSelect, current }: TierCardProps) {
   return (
     <div
-      className={`rounded-2xl p-6 ${
+      className={`h-full flex flex-col rounded-2xl p-6 ${
         highlight
           ? 'ring-2 ring-brand-500 bg-white dark:bg-gray-800 shadow-xl'
           : 'ring-1 ring-gray-200 dark:ring-gray-700 bg-white dark:bg-gray-800'
       }`}
     >
       {highlight && (
-        <span className="inline-block text-xs font-semibold bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 px-3 py-1 rounded-full mb-3">
+        <span className="inline-block text-xs font-semibold bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 px-3 py-1 rounded-full mb-3 self-start">
           Most Popular
         </span>
       )}
@@ -72,7 +73,7 @@ function TierCard({ name, price, annualPrice, period, features, highlight, cta, 
       <button
         onClick={onSelect}
         disabled={current}
-        className={`w-full py-3 rounded-lg font-medium text-sm transition-colors ${
+        className={`mt-auto w-full py-3 rounded-lg font-medium text-sm transition-colors ${
           current
             ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-default'
             : highlight
@@ -136,7 +137,8 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-5xl mx-auto px-4 py-16">
+      <SiteHeader />
+      <div className="max-w-5xl mx-auto px-4 py-16 pt-10">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">{t('pricing.pageTitle')}</h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">{t('pricing.pageSubtitle')}</p>
@@ -165,7 +167,7 @@ export default function PricingPage() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-6 items-stretch">
           <TierCard
             name={t('pricing.free')}
             price="$0"
@@ -263,62 +265,102 @@ export default function PricingPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {[
-                  { feature: 'Canvases', free: '1', pro: 'Unlimited', team: 'Unlimited' },
-                  { feature: 'Transcripts per canvas', free: '2', pro: 'Unlimited', team: 'Unlimited' },
-                  { feature: 'Words per transcript', free: '5,000', pro: '50,000', team: '50,000' },
-                  { feature: 'Codes', free: '5', pro: 'Unlimited', team: 'Unlimited' },
-                  { feature: 'Auto-code', free: false, pro: true, team: true },
-                  { feature: 'Analysis tools', free: '2 (Stats, Word Cloud)', pro: 'All 10', team: 'All 10' },
-                  { feature: 'Export formats', free: 'CSV', pro: 'CSV, PNG, HTML, MD', team: 'CSV, PNG, HTML, MD' },
-                  { feature: 'Share codes', free: '0', pro: '5', team: 'Unlimited' },
-                  { feature: 'Ethics panel', free: false, pro: true, team: true },
-                  { feature: 'Cases & cross-case', free: false, pro: true, team: true },
-                  { feature: 'Intercoder reliability', free: false, pro: false, team: true },
-                  { feature: 'Team management', free: false, pro: false, team: true },
-                  { feature: '.edu discount', free: '-', pro: '40% off', team: '40% off' },
-                ].map((row, idx) => (
-                  <tr
-                    key={row.feature}
-                    className={`${idx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} hover:bg-gray-100 dark:hover:bg-gray-800/60`}
-                  >
-                    <th scope="row" className="py-2.5 px-4 text-left font-normal text-gray-700 dark:text-gray-300">
-                      {row.feature}
-                    </th>
-                    {['free', 'pro', 'team'].map((tier) => {
-                      const val = row[tier as keyof typeof row];
-                      return (
-                        <td key={tier} className="py-2.5 px-4 text-center">
-                          {typeof val === 'boolean' ? (
-                            val ? (
-                              <svg
-                                className="w-5 h-5 text-green-500 mx-auto"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={2}
-                                stroke="currentColor"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                              </svg>
-                            ) : (
-                              <svg
-                                className="w-5 h-5 text-rose-300 dark:text-rose-800/70 mx-auto"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={2}
-                                stroke="currentColor"
-                                aria-label="Not included"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            )
-                          ) : (
-                            <span className="text-gray-700 dark:text-gray-300">{val}</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
+                {(
+                  [
+                    {
+                      label: 'Workspace',
+                      rows: [
+                        { feature: 'Canvases', free: '1', pro: 'Unlimited', team: 'Unlimited' },
+                        { feature: 'Transcripts per canvas', free: '2', pro: 'Unlimited', team: 'Unlimited' },
+                        { feature: 'Words per transcript', free: '5,000', pro: '50,000', team: '50,000' },
+                      ],
+                    },
+                    {
+                      label: 'Coding & Analysis',
+                      rows: [
+                        { feature: 'Codes', free: '5', pro: 'Unlimited', team: 'Unlimited' },
+                        { feature: 'Auto-code', free: false, pro: true, team: true },
+                        { feature: 'Analysis tools', free: '2 (Stats, Word Cloud)', pro: 'All 10', team: 'All 10' },
+                      ],
+                    },
+                    {
+                      label: 'Export & Sharing',
+                      rows: [
+                        {
+                          feature: 'Export formats',
+                          free: 'CSV',
+                          pro: 'CSV, PNG, HTML, MD',
+                          team: 'CSV, PNG, HTML, MD',
+                        },
+                        { feature: 'Share codes', free: '0', pro: '5', team: 'Unlimited' },
+                      ],
+                    },
+                    {
+                      label: 'Collaboration & Compliance',
+                      rows: [
+                        { feature: 'Ethics panel', free: false, pro: true, team: true },
+                        { feature: 'Cases & cross-case', free: false, pro: true, team: true },
+                        { feature: 'Intercoder reliability', free: false, pro: false, team: true },
+                        { feature: 'Team management', free: false, pro: false, team: true },
+                        { feature: '.edu discount', free: '-', pro: '40% off', team: '40% off' },
+                      ],
+                    },
+                  ] as const
+                ).map((group) => (
+                  <Fragment key={group.label}>
+                    <tr className="bg-gray-100/80 dark:bg-gray-800/60">
+                      <th
+                        scope="colgroup"
+                        colSpan={4}
+                        className="py-2 px-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
+                      >
+                        {group.label}
+                      </th>
+                    </tr>
+                    {group.rows.map((row, idx) => (
+                      <tr
+                        key={row.feature}
+                        className={`${idx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} hover:bg-gray-100 dark:hover:bg-gray-800/60`}
+                      >
+                        <th scope="row" className="py-2.5 px-4 text-left font-normal text-gray-700 dark:text-gray-300">
+                          {row.feature}
+                        </th>
+                        {(['free', 'pro', 'team'] as const).map((tier) => {
+                          const val = row[tier];
+                          return (
+                            <td key={tier} className="py-2.5 px-4 text-center">
+                              {typeof val === 'boolean' ? (
+                                val ? (
+                                  <svg
+                                    className="w-5 h-5 text-green-500 mx-auto"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={2}
+                                    stroke="currentColor"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                  </svg>
+                                ) : (
+                                  <svg
+                                    className="w-5 h-5 text-rose-300 dark:text-rose-800/70 mx-auto"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={2}
+                                    stroke="currentColor"
+                                    aria-label="Not included"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                )
+                              ) : (
+                                <span className="text-gray-700 dark:text-gray-300">{val}</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
