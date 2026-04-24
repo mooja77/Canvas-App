@@ -3,8 +3,17 @@ import { render, screen, fireEvent } from '@testing-library/react';
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();
+
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
+  // SiteHeader + SiteFooter (rendered by PricingPage) use Link; stub as an anchor
+  // so the test environment doesn't need a full router.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Link: ({ to, children, ...rest }: any) => (
+    <a href={typeof to === 'string' ? to : '#'} {...rest}>
+      {children}
+    </a>
+  ),
 }));
 
 // Mock i18next
