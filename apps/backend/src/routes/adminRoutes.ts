@@ -741,7 +741,9 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
         },
         actionBreakdown,
         topUsers: topUsers.map((t: any) => {
-          const info = topUserMap.get(t.actorId) || { email: 'unknown', name: 'unknown' };
+          const info: { email: string; name: string } = (topUserMap.get(t.actorId) as
+            | { email: string; name: string }
+            | undefined) || { email: 'unknown', name: 'unknown' };
           return {
             userId: t.actorId,
             email: info.email,
