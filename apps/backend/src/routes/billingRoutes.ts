@@ -227,6 +227,36 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         break;
       }
 
+      case 'invoice.payment_succeeded': {
+        // Recurring renewal succeeded — Stripe doesn't fire customer.subscription.updated
+        // on routine renewals (only on plan changes), so without this handler the
+        // Subscription.currentPeriodEnd would stay stuck at the original signup
+        // date. Refresh from Stripe so UI showing "renews on X" is accurate.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const invoice = event.data.object as any;
+        const subscriptionId = invoice.subscription as string;
+        if (subscriptionId) {
+          const existing = await prisma.subscription.findUnique({
+            where: { stripeSubscriptionId: subscriptionId },
+          });
+          if (existing) {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId);
+            const item = sub.items.data[0];
+            if (item) {
+              await prisma.subscription.update({
+                where: { stripeSubscriptionId: subscriptionId },
+                data: {
+                  status: sub.status,
+                  currentPeriodStart: new Date(item.current_period_start * 1000),
+                  currentPeriodEnd: new Date(item.current_period_end * 1000),
+                },
+              });
+            }
+          }
+        }
+        break;
+      }
+
       case 'invoice.payment_failed': {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const invoice = event.data.object as any;
@@ -255,8 +285,14 @@ export async function handleStripeWebhook(req: Request, res: Response) {
     console.log(`[Stripe Webhook] Processed: ${event.type} (${event.id})`);
     res.json({ received: true });
   } catch (err) {
+    // Acknowledge receipt with 200 so Stripe doesn't retry indefinitely with
+    // exponential backoff (up to 3 days). The event ID was already recorded
+    // in WebhookEvent above, so a re-delivery wouldn't help anyway — it'd
+    // just hit the idempotency dedupe and short-circuit. Real failures are
+    // visible in Railway logs prefixed [Stripe Webhook] FAILED.
     const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error(`[Stripe Webhook] Failed: ${event.type} (${event.id}) — ${message}`);
-    res.status(500).json({ error: 'Webhook processing failed' });
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error(`[Stripe Webhook] FAILED ${event.type} (${event.id}) — ${message}`, stack);
+    res.status(200).json({ received: true, processed: false, error: message });
   }
 }

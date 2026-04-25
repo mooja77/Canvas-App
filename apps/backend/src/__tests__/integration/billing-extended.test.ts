@@ -151,11 +151,13 @@ describe('Stripe Billing – Extended Tests', () => {
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
         items: {
-          data: [{
-            price: { id: 'price_team_monthly' },
-            current_period_start: 1700000000,
-            current_period_end: 1702592000,
-          }],
+          data: [
+            {
+              price: { id: 'price_team_monthly' },
+              current_period_start: 1700000000,
+              current_period_end: 1702592000,
+            },
+          ],
         },
       });
       mockPrisma.subscription.upsert.mockResolvedValue({});
@@ -455,9 +457,11 @@ describe('Stripe Billing – Extended Tests', () => {
     });
   });
 
-  // ─── Webhook: handler error returns 500 ───
+  // ─── Webhook: handler error returns 200 + structured log ───
+  // We acknowledge with 200 even on processing failure so Stripe doesn't
+  // retry indefinitely. The event is logged for manual review.
   describe('Webhook processing error', () => {
-    it('returns 500 when processing throws an error', async () => {
+    it('returns 200 when processing throws an error (no Stripe retry storm)', async () => {
       const event = {
         id: 'evt_error',
         type: 'checkout.session.completed',
@@ -475,8 +479,76 @@ describe('Stripe Billing – Extended Tests', () => {
       const { req, res } = createMockReqRes(Buffer.from('{}'));
       await handleStripeWebhook(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Webhook processing failed' });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        received: true,
+        processed: false,
+        error: 'Stripe API error',
+      });
+    });
+  });
+
+  // ─── invoice.payment_succeeded — recurring renewal extends period ───
+  describe('invoice.payment_succeeded', () => {
+    it('extends currentPeriodEnd when a renewal succeeds', async () => {
+      const newPeriodStart = Math.floor(Date.now() / 1000);
+      const newPeriodEnd = newPeriodStart + 30 * 24 * 3600;
+      const event = {
+        id: 'evt_pay_ok',
+        type: 'invoice.payment_succeeded',
+        data: { object: { subscription: 'sub_renewing' } },
+      };
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(event);
+      mockPrisma.subscription.findUnique.mockResolvedValue({
+        id: 'sub-row',
+        userId: 'user-renew',
+        stripeSubscriptionId: 'sub_renewing',
+      });
+      mockStripe.subscriptions.retrieve.mockResolvedValue({
+        id: 'sub_renewing',
+        status: 'active',
+        items: {
+          data: [
+            {
+              current_period_start: newPeriodStart,
+              current_period_end: newPeriodEnd,
+            },
+          ],
+        },
+      });
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      expect(mockPrisma.subscription.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { stripeSubscriptionId: 'sub_renewing' },
+          data: expect.objectContaining({
+            status: 'active',
+            currentPeriodEnd: new Date(newPeriodEnd * 1000),
+          }),
+        }),
+      );
+      expect(res.status).not.toHaveBeenCalledWith(500);
+    });
+
+    it('ignores invoice with unknown subscription (no crash)', async () => {
+      const event = {
+        id: 'evt_pay_unknown',
+        type: 'invoice.payment_succeeded',
+        data: { object: { subscription: 'sub_unknown' } },
+      };
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(event);
+      mockPrisma.subscription.findUnique.mockResolvedValue(null);
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      // Should still 200 OK, just no update applied
+      expect(mockPrisma.subscription.update).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalled();
     });
   });
 
@@ -518,9 +590,7 @@ describe('Stripe Billing – Extended Tests', () => {
     });
 
     it('returns 401 without auth', async () => {
-      const res = await request(app)
-        .post('/api/billing/create-checkout')
-        .send({ priceId: 'price_pro_monthly' });
+      const res = await request(app).post('/api/billing/create-checkout').send({ priceId: 'price_pro_monthly' });
 
       expect(res.status).toBe(401);
     });
@@ -565,9 +635,7 @@ describe('Stripe Billing – Extended Tests', () => {
         .send({ priceId: 'price_pro_monthly', plan: 'pro' });
 
       expect(res.status).toBe(200);
-      expect(mockStripe.customers.create).toHaveBeenCalledWith(
-        expect.objectContaining({ email: 'new@example.com' }),
-      );
+      expect(mockStripe.customers.create).toHaveBeenCalledWith(expect.objectContaining({ email: 'new@example.com' }));
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: userId },
         data: { stripeCustomerId: 'cus_new_123' },
@@ -650,9 +718,7 @@ describe('Stripe Billing – Extended Tests', () => {
         url: 'https://billing.stripe.com/portal/test',
       });
 
-      const res = await request(app)
-        .post('/api/billing/create-portal')
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).post('/api/billing/create-portal').set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -668,16 +734,13 @@ describe('Stripe Billing – Extended Tests', () => {
         stripeCustomerId: null,
       });
 
-      const res = await request(app)
-        .post('/api/billing/create-portal')
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).post('/api/billing/create-portal').set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(404);
     });
 
     it('returns 401 without auth', async () => {
-      const res = await request(app)
-        .post('/api/billing/create-portal');
+      const res = await request(app).post('/api/billing/create-portal');
 
       expect(res.status).toBe(401);
     });
@@ -710,9 +773,7 @@ describe('Stripe Billing – Extended Tests', () => {
         cancelAtPeriodEnd: false,
       });
 
-      const res = await request(app)
-        .get('/api/billing/subscription')
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).get('/api/billing/subscription').set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -727,9 +788,7 @@ describe('Stripe Billing – Extended Tests', () => {
     it('returns null for free user with no subscription', async () => {
       mockPrisma.subscription.findUnique.mockResolvedValue(null);
 
-      const res = await request(app)
-        .get('/api/billing/subscription')
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).get('/api/billing/subscription').set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -737,8 +796,7 @@ describe('Stripe Billing – Extended Tests', () => {
     });
 
     it('returns 401 without auth', async () => {
-      const res = await request(app)
-        .get('/api/billing/subscription');
+      const res = await request(app).get('/api/billing/subscription');
 
       expect(res.status).toBe(401);
     });
@@ -765,11 +823,13 @@ describe('Stripe Billing – Extended Tests', () => {
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
         items: {
-          data: [{
-            price: { id: 'price_pro_annual' },
-            current_period_start: 1700000000,
-            current_period_end: 1731536000,
-          }],
+          data: [
+            {
+              price: { id: 'price_pro_annual' },
+              current_period_start: 1700000000,
+              current_period_end: 1731536000,
+            },
+          ],
         },
       });
       mockPrisma.subscription.upsert.mockResolvedValue({});
@@ -805,11 +865,13 @@ describe('Stripe Billing – Extended Tests', () => {
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
         items: {
-          data: [{
-            price: { id: 'price_pro_monthly' },
-            current_period_start: periodStart,
-            current_period_end: periodEnd,
-          }],
+          data: [
+            {
+              price: { id: 'price_pro_monthly' },
+              current_period_start: periodStart,
+              current_period_end: periodEnd,
+            },
+          ],
         },
       });
       mockPrisma.subscription.upsert.mockResolvedValue({});
@@ -924,11 +986,13 @@ describe('Stripe Billing – Extended Tests', () => {
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
         items: {
-          data: [{
-            price: { id: 'price_pro_monthly' },
-            current_period_start: 1700000000,
-            current_period_end: 1702592000,
-          }],
+          data: [
+            {
+              price: { id: 'price_pro_monthly' },
+              current_period_start: 1700000000,
+              current_period_end: 1702592000,
+            },
+          ],
         },
       });
       mockPrisma.subscription.upsert.mockResolvedValue({});
@@ -997,11 +1061,13 @@ describe('Stripe Billing – Extended Tests', () => {
       mockStripe.webhooks.constructEvent.mockReturnValue(event1);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
         items: {
-          data: [{
-            price: { id: 'price_pro_monthly' },
-            current_period_start: 1700000000,
-            current_period_end: 1702592000,
-          }],
+          data: [
+            {
+              price: { id: 'price_pro_monthly' },
+              current_period_start: 1700000000,
+              current_period_end: 1702592000,
+            },
+          ],
         },
       });
       mockPrisma.subscription.upsert.mockResolvedValue({});
@@ -1127,9 +1193,7 @@ describe('Stripe Billing – Extended Tests', () => {
         url: 'https://billing.stripe.com/portal',
       });
 
-      await request(edgeApp)
-        .post('/api/billing/create-portal')
-        .set('Authorization', `Bearer ${edgeJwt}`);
+      await request(edgeApp).post('/api/billing/create-portal').set('Authorization', `Bearer ${edgeJwt}`);
 
       expect(mockStripe.billingPortal.sessions.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1186,9 +1250,7 @@ describe('Stripe Billing – Extended Tests', () => {
         cancelAtPeriodEnd: true,
       });
 
-      const res = await request(edgeApp)
-        .get('/api/billing/subscription')
-        .set('Authorization', `Bearer ${edgeJwt}`);
+      const res = await request(edgeApp).get('/api/billing/subscription').set('Authorization', `Bearer ${edgeJwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.data.cancelAtPeriodEnd).toBe(true);
@@ -1277,7 +1339,9 @@ describe('Stripe Billing – Extended Tests', () => {
     });
 
     // ─── checkout.session.completed handles subscription retrieve failure ───
-    it('returns 500 when Stripe subscription retrieve fails', async () => {
+    // We acknowledge with 200 to prevent Stripe's exponential-backoff retries;
+    // the WebhookEvent dedup table already prevents reprocessing on re-delivery.
+    it('returns 200 when Stripe subscription retrieve fails (no retry storm)', async () => {
       process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
       mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
       mockPrisma.webhookEvent.create.mockResolvedValue({});
@@ -1299,8 +1363,12 @@ describe('Stripe Billing – Extended Tests', () => {
       const { req, res } = createMockReqRes(Buffer.from('{}'));
       await handleStripeWebhook(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Webhook processing failed' });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        received: true,
+        processed: false,
+        error: 'Stripe rate limited',
+      });
     });
 
     // ─── checkout.session.completed with empty price falls back ───
