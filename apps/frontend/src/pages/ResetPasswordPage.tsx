@@ -4,11 +4,22 @@ import { authApi } from '../services/api';
 import toast from 'react-hot-toast';
 import { usePageMeta } from '../hooks/usePageMeta';
 
+// Reset token + email arrive in URL fragment to keep them out of Referer
+// headers and server logs. Falls back to query params for backwards
+// compatibility with any pending pre-rollout emails.
+function readResetParams(searchParams: URLSearchParams): { token: string; email: string } {
+  const hash = typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : '';
+  const fragmentParams = new URLSearchParams(hash);
+  return {
+    token: fragmentParams.get('token') || searchParams.get('token') || '',
+    email: fragmentParams.get('email') || searchParams.get('email') || '',
+  };
+}
+
 export default function ResetPasswordPage() {
   usePageMeta('Reset Password — QualCanvas', 'Create a new password for your QualCanvas account.');
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') || '';
-  const email = searchParams.get('email') || '';
+  const { token, email } = readResetParams(searchParams);
   const navigate = useNavigate();
 
   const [password, setPassword] = useState('');
@@ -31,7 +42,7 @@ export default function ResetPasswordPage() {
       await authApi.resetPassword(email, token, password);
       setDone(true);
       toast.success('Password reset successfully!');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Reset failed. The link may have expired.');
     } finally {
@@ -65,8 +76,18 @@ export default function ResetPasswordPage() {
           {done ? (
             <div className="text-center space-y-4">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full">
-                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="w-6 h-6 text-green-600 dark:text-green-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -82,14 +103,17 @@ export default function ResetPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  htmlFor="new-password"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
                   New Password
                 </label>
                 <input
                   id="new-password"
                   type="password"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 8 characters"
                   autoComplete="new-password"
                   autoFocus
@@ -97,14 +121,17 @@ export default function ResetPasswordPage() {
                 />
               </div>
               <div>
-                <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  htmlFor="confirm-password"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
                   Confirm Password
                 </label>
                 <input
                   id="confirm-password"
                   type="password"
                   value={confirm}
-                  onChange={e => setConfirm(e.target.value)}
+                  onChange={(e) => setConfirm(e.target.value)}
                   placeholder="Re-enter your new password"
                   autoComplete="new-password"
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"

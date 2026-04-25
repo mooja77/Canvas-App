@@ -4,15 +4,28 @@ import { authApi } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 import { usePageMeta } from '../hooks/usePageMeta';
 
+// Verification token + email arrive in the URL fragment (#token=...&email=...)
+// rather than the query string. Fragments aren't sent in Referer headers or
+// captured by server access logs / analytics, which keeps the email out of
+// shared logs. We still fall back to query params for backwards compatibility
+// with any pending pre-rollout emails.
+function readAuthParams(searchParams: URLSearchParams): { token: string; email: string } {
+  const hash = typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : '';
+  const fragmentParams = new URLSearchParams(hash);
+  return {
+    token: fragmentParams.get('token') || searchParams.get('token') || '',
+    email: fragmentParams.get('email') || searchParams.get('email') || '',
+  };
+}
+
 export default function VerifyEmailPage() {
   usePageMeta('Verify Email — QualCanvas', 'Verify your email address to activate your QualCanvas account.');
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') || '';
-  const email = searchParams.get('email') || '';
+  const { token, email } = readAuthParams(searchParams);
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
-  const setEmailVerified = useAuthStore(s => s.setEmailVerified);
+  const setEmailVerified = useAuthStore((s) => s.setEmailVerified);
 
   useEffect(() => {
     if (!token || !email) {
@@ -23,7 +36,8 @@ export default function VerifyEmailPage() {
 
     let cancelled = false;
 
-    authApi.verifyEmail(email, token)
+    authApi
+      .verifyEmail(email, token)
       .then(() => {
         if (!cancelled) {
           setStatus('success');
@@ -38,7 +52,9 @@ export default function VerifyEmailPage() {
         }
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [token, email, setEmailVerified]);
 
   return (
@@ -48,7 +64,11 @@ export default function VerifyEmailPage() {
           {status === 'loading' && (
             <div className="text-center space-y-4">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-brand-100 dark:bg-brand-900/30 rounded-full animate-pulse">
-                <svg className="w-6 h-6 text-brand-600 dark:text-brand-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg
+                  className="w-6 h-6 text-brand-600 dark:text-brand-400 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
@@ -61,8 +81,18 @@ export default function VerifyEmailPage() {
           {status === 'success' && (
             <div className="text-center space-y-4">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full">
-                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="w-6 h-6 text-green-600 dark:text-green-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
               </div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Email Verified!</h2>
@@ -81,8 +111,18 @@ export default function VerifyEmailPage() {
           {status === 'error' && (
             <div className="text-center space-y-4">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full">
-                <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                <svg
+                  className="w-6 h-6 text-red-600 dark:text-red-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+                  />
                 </svg>
               </div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Verification Failed</h2>
@@ -94,10 +134,7 @@ export default function VerifyEmailPage() {
                 >
                   Go to Canvas
                 </Link>
-                <Link
-                  to="/login"
-                  className="text-sm text-brand-600 dark:text-brand-400 hover:underline font-medium"
-                >
+                <Link to="/login" className="text-sm text-brand-600 dark:text-brand-400 hover:underline font-medium">
                   Back to Sign In
                 </Link>
               </div>

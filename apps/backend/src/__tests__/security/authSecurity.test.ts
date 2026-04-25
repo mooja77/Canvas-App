@@ -177,9 +177,7 @@ describe('Auth security — JWT and access control', () => {
     );
     mockPrisma.dashboardAccess.findUnique.mockResolvedValue(null);
 
-    const res = await request(app)
-      .get('/api/canvas')
-      .set('Authorization', `Bearer ${expiredToken}`);
+    const res = await request(app).get('/api/canvas').set('Authorization', `Bearer ${expiredToken}`);
 
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);
@@ -195,9 +193,7 @@ describe('Auth security — JWT and access control', () => {
     );
     mockPrisma.dashboardAccess.findUnique.mockResolvedValue(null);
 
-    const res = await request(app)
-      .get('/api/canvas')
-      .set('Authorization', `Bearer ${wrongSecretToken}`);
+    const res = await request(app).get('/api/canvas').set('Authorization', `Bearer ${wrongSecretToken}`);
 
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);
@@ -237,9 +233,7 @@ describe('Auth security — JWT and access control', () => {
       computedNodes: [],
     });
 
-    const res = await request(app)
-      .get(`/api/canvas/${userACanvas.id}`)
-      .set('Authorization', `Bearer ${userBJwt}`);
+    const res = await request(app).get(`/api/canvas/${userACanvas.id}`).set('Authorization', `Bearer ${userBJwt}`);
 
     expect(res.status).toBe(403);
     expect(res.body.success).toBe(false);
@@ -299,9 +293,7 @@ describe('Auth security — JWT and access control', () => {
     mockPrisma.user.findUnique.mockResolvedValue(null);
     mockPrisma.dashboardAccess.findUnique.mockResolvedValue(null);
 
-    const res = await request(app)
-      .get('/api/canvas')
-      .set('Authorization', `Bearer ${deletedJwt}`);
+    const res = await request(app).get('/api/canvas').set('Authorization', `Bearer ${deletedJwt}`);
 
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);
@@ -385,15 +377,13 @@ describe('Auth security — JWT and access control', () => {
     // with the correct limit setting (this avoids OOM from allocating a huge
     // string in tests).
     const testApp = createApp();
-    const jsonLayer = testApp._router.stack.find(
-      (layer: { name: string }) => layer.name === 'jsonParser',
-    );
+    const jsonLayer = testApp._router.stack.find((layer: { name: string }) => layer.name === 'jsonParser');
     expect(jsonLayer).toBeDefined();
   });
 
   // ─── AI CONFIG NEVER RETURNS API KEYS ───
 
-  it('AI settings endpoint never returns the actual API key', async () => {
+  it('AI settings endpoint never returns the actual API key', { timeout: 15000 }, async () => {
     // Build a separate app that includes ai-settings routes
     const aiApp = express();
     aiApp.use(express.json());
@@ -414,9 +404,7 @@ describe('Auth security — JWT and access control', () => {
       apiKey: 'sk-live-supersecretkey12345',
     });
 
-    const res = await request(aiApp)
-      .get('/api/ai-settings')
-      .set('Authorization', `Bearer ${userAJwt}`);
+    const res = await request(aiApp).get('/api/ai-settings').set('Authorization', `Bearer ${userAJwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);

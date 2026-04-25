@@ -57,7 +57,13 @@ export function checkCanvasLimit() {
     });
 
     if (count >= limits.maxCanvases) {
-      return limitResponse(res, `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxCanvases} canvas${limits.maxCanvases === 1 ? '' : 'es'}`, 'maxCanvases', count, limits.maxCanvases);
+      return limitResponse(
+        res,
+        `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxCanvases} canvas${limits.maxCanvases === 1 ? '' : 'es'}`,
+        'maxCanvases',
+        count,
+        limits.maxCanvases,
+      );
     }
     next();
   };
@@ -74,7 +80,13 @@ export function checkTranscriptLimit() {
     const count = await prisma.canvasTranscript.count({ where: { canvasId } });
 
     if (count >= limits.maxTranscriptsPerCanvas) {
-      return limitResponse(res, `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxTranscriptsPerCanvas} transcripts per canvas`, 'maxTranscriptsPerCanvas', count, limits.maxTranscriptsPerCanvas);
+      return limitResponse(
+        res,
+        `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxTranscriptsPerCanvas} transcripts per canvas`,
+        'maxTranscriptsPerCanvas',
+        count,
+        limits.maxTranscriptsPerCanvas,
+      );
     }
     next();
   };
@@ -92,7 +104,13 @@ export function checkWordLimit() {
 
     const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
     if (wordCount > limits.maxWordsPerTranscript) {
-      return limitResponse(res, `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxWordsPerTranscript.toLocaleString()} words per transcript`, 'maxWordsPerTranscript', wordCount, limits.maxWordsPerTranscript);
+      return limitResponse(
+        res,
+        `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxWordsPerTranscript.toLocaleString()} words per transcript`,
+        'maxWordsPerTranscript',
+        wordCount,
+        limits.maxWordsPerTranscript,
+      );
     }
     next();
   };
@@ -109,7 +127,13 @@ export function checkCodeLimit() {
     const count = await prisma.canvasQuestion.count({ where: { canvasId } });
 
     if (count >= limits.maxCodes) {
-      return limitResponse(res, `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxCodes} codes`, 'maxCodes', count, limits.maxCodes);
+      return limitResponse(
+        res,
+        `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxCodes} codes`,
+        'maxCodes',
+        count,
+        limits.maxCodes,
+      );
     }
     next();
   };
@@ -136,7 +160,13 @@ export function checkAnalysisType() {
     // For computed node creation, check the nodeType
     const nodeType = req.body.nodeType;
     if (nodeType && !limits.allowedAnalysisTypes.includes(nodeType)) {
-      return limitResponse(res, `${nodeType} analysis is available on Pro and Team plans`, 'allowedAnalysisTypes', 0, 0);
+      return limitResponse(
+        res,
+        `${nodeType} analysis is available on Pro and Team plans`,
+        'allowedAnalysisTypes',
+        0,
+        0,
+      );
     }
     next();
   };
@@ -155,7 +185,13 @@ export function checkAnalysisTypeOnRun() {
         select: { nodeType: true },
       });
       if (node && !limits.allowedAnalysisTypes.includes(node.nodeType)) {
-        return limitResponse(res, `${node.nodeType} analysis is available on Pro and Team plans`, 'allowedAnalysisTypes', 0, 0);
+        return limitResponse(
+          res,
+          `${node.nodeType} analysis is available on Pro and Team plans`,
+          'allowedAnalysisTypes',
+          0,
+          0,
+        );
       }
     }
     next();
@@ -176,7 +212,13 @@ export function checkShareLimit() {
     });
 
     if (count >= limits.maxShares) {
-      return limitResponse(res, `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxShares} share codes`, 'maxShares', count, limits.maxShares);
+      return limitResponse(
+        res,
+        `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxShares} share codes`,
+        'maxShares',
+        count,
+        limits.maxShares,
+      );
     }
     next();
   };
@@ -215,21 +257,32 @@ export function checkAiAccess() {
       return limitResponse(res, 'AI features are available on Pro and Team plans', 'aiEnabled', 0, 0);
     }
 
-    // Check daily rate limit
-    if (limits.aiRequestsPerDay !== Infinity) {
-      const userId = req.userId;
+    // Check daily rate limit. AiUsage schema only carries userId — legacy
+    // access-code users (req.userId undefined, req.dashboardAccessId set)
+    // can't be counted per-user without a schema change. They're a closed
+    // grandfathered cohort, so we skip the per-user check for them rather
+    // than fall through to a `userId: undefined` filter that would return
+    // a global count and either over-block or under-block the whole cohort.
+    const userId = req.userId;
+    if (limits.aiRequestsPerDay !== Infinity && userId) {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
       const usageToday = await prisma.aiUsage.count({
         where: {
-          userId: userId || undefined,
+          userId,
           createdAt: { gte: todayStart },
         },
       });
 
       if (usageToday >= limits.aiRequestsPerDay) {
-        return limitResponse(res, `Daily AI request limit reached (${limits.aiRequestsPerDay}/day)`, 'aiRequestsPerDay', usageToday, limits.aiRequestsPerDay);
+        return limitResponse(
+          res,
+          `Daily AI request limit reached (${limits.aiRequestsPerDay}/day)`,
+          'aiRequestsPerDay',
+          usageToday,
+          limits.aiRequestsPerDay,
+        );
       }
     }
 
@@ -256,7 +309,13 @@ export function checkExportFormat() {
     const limits = getPlanLimits(plan);
     const format = (req.query.format || req.body?.format || '') as string;
     if (format && !limits.allowedExportFormats.includes(format)) {
-      return limitResponse(res, `${format.toUpperCase()} export is available on Pro and Team plans`, 'allowedExportFormats', 0, 0);
+      return limitResponse(
+        res,
+        `${format.toUpperCase()} export is available on Pro and Team plans`,
+        'allowedExportFormats',
+        0,
+        0,
+      );
     }
     next();
   };

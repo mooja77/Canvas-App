@@ -93,9 +93,11 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
       data: { resetTokenHash: verifyTokenHash, resetTokenExpiry: verifyExpiry },
     });
 
-    // Send verification email
+    // Send verification email. Token + email go in the URL fragment (#) so
+    // they're stripped from browser Referer headers, server access logs, and
+    // any analytics that capture URLs. Frontend reads from window.location.hash.
     const appUrl = process.env.APP_URL || 'http://localhost:5174';
-    const verifyUrl = `${appUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(normalizedEmail)}`;
+    const verifyUrl = `${appUrl}/verify-email#token=${verifyToken}&email=${encodeURIComponent(normalizedEmail)}`;
     await sendVerificationEmail(normalizedEmail, verifyUrl);
 
     const jwt = signUserToken(result.id, result.role, result.plan);
@@ -365,8 +367,10 @@ userAuthRoutes.post('/auth/forgot-password', authLimiter, async (req, res, next)
         data: { resetTokenHash, resetTokenExpiry: resetExpiry },
       });
 
+      // Token + email go in the URL fragment so they're stripped from Referer
+      // and server logs (frontend reads from window.location.hash).
       const appUrl = process.env.APP_URL || 'http://localhost:5174';
-      const resetUrl = `${appUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(normalizedEmail)}`;
+      const resetUrl = `${appUrl}/reset-password#token=${resetToken}&email=${encodeURIComponent(normalizedEmail)}`;
 
       await sendPasswordResetEmail(normalizedEmail, resetUrl);
     }
@@ -521,8 +525,9 @@ userAuthRoutes.post('/auth/resend-verification', auth, async (req, res, next) =>
       data: { resetTokenHash: verifyTokenHash, resetTokenExpiry: verifyExpiry },
     });
 
+    // Token + email in URL fragment (see signup handler for rationale).
     const appUrl = process.env.APP_URL || 'http://localhost:5174';
-    const verifyUrl = `${appUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(user.email)}`;
+    const verifyUrl = `${appUrl}/verify-email#token=${verifyToken}&email=${encodeURIComponent(user.email)}`;
     await sendVerificationEmail(user.email, verifyUrl);
 
     res.json({ success: true, message: 'Verification email sent' });
@@ -849,9 +854,15 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
 });
 
 // POST /api/auth/admin/seed-demo — seed demo access code (protected by admin secret)
+//
+// Secret is read from the X-Admin-Secret header rather than the request body.
+// Headers are less likely than bodies to surface in error logs, request-trace
+// dumps, and crash handlers — and we still accept body.secret for
+// backwards-compatibility with any existing one-shot scripts.
 userAuthRoutes.post('/auth/admin/seed-demo', async (req, res, next) => {
   try {
-    const { secret } = req.body;
+    const headerSecret = req.headers['x-admin-secret'];
+    const secret = (typeof headerSecret === 'string' ? headerSecret : null) ?? req.body?.secret;
     if (!process.env.ADMIN_SEED_SECRET || secret !== process.env.ADMIN_SEED_SECRET) {
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
