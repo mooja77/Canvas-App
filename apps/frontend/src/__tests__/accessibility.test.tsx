@@ -101,6 +101,9 @@ vi.mock('../services/api', () => ({
     emailSignup: vi.fn(),
     googleLogin: vi.fn(),
     resendVerification: vi.fn(),
+    // CanvasPage now calls /auth/me on mount to sync trial state — return
+    // a benign empty payload so the effect doesn't crash the page.
+    getMe: vi.fn().mockResolvedValue({ data: { data: { user: {} } } }),
   },
   billingApi: { createCheckout: vi.fn() },
 }));

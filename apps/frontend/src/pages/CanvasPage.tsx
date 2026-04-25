@@ -9,6 +9,7 @@ import CodingCanvas from '../components/canvas/CodingCanvas';
 import SetupWizard from '../components/SetupWizard';
 import PlanWelcome from '../components/PlanWelcome';
 import AiSetupBanner from '../components/AiSetupBanner';
+import TrialBanner from '../components/TrialBanner';
 import { SunIcon, MoonIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -219,6 +220,7 @@ export default function CanvasPage() {
         </div>
       )}
 
+      <TrialBanner />
       <AiSetupBanner />
 
       {showPlanWelcome && <PlanWelcome onClose={() => setShowPlanWelcome(false)} />}

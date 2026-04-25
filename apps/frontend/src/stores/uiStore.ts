@@ -38,6 +38,11 @@ interface UIState {
   userProfile: UserProfile;
   featureDiscovery: FeatureDiscovery;
 
+  // Per-day dismissal for the trial countdown banner (YYYY-MM-DD).
+  // Banner re-appears the next day so users get nudged again as the
+  // trial nears expiry, but not spammed multiple times the same day.
+  lastTrialBannerDismissalDate: string | null;
+
   toggleDarkMode: () => void;
   completeOnboarding: () => void;
   resetOnboarding: () => void;
@@ -49,6 +54,7 @@ interface UIState {
   setZoomTier: (tier: ZoomTier) => void;
   setUserProfile: (profile: UserProfile) => void;
   markFeatureSeen: (feature: keyof FeatureDiscovery) => void;
+  dismissTrialBannerToday: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -63,6 +69,7 @@ export const useUIStore = create<UIState>()(
       zoomTier: 'full' as ZoomTier,
       userProfile: null as UserProfile,
       featureDiscovery: { ...DEFAULT_FEATURE_DISCOVERY },
+      lastTrialBannerDismissalDate: null,
 
       toggleDarkMode: () =>
         set((s) => {
@@ -88,6 +95,7 @@ export const useUIStore = create<UIState>()(
         set((s) => ({
           featureDiscovery: { ...s.featureDiscovery, [feature]: true },
         })),
+      dismissTrialBannerToday: () => set({ lastTrialBannerDismissalDate: new Date().toISOString().slice(0, 10) }),
     }),
     {
       name: 'qualcanvas-ui',
