@@ -210,11 +210,13 @@ describe('User auth integration tests', () => {
     });
 
     it('rejects name longer than 100 characters', async () => {
-      const res = await request(app).post('/api/auth/signup').send({
-        email: 'test@example.com',
-        password: 'securepass123',
-        name: 'A'.repeat(101),
-      });
+      const res = await request(app)
+        .post('/api/auth/signup')
+        .send({
+          email: 'test@example.com',
+          password: 'securepass123',
+          name: 'A'.repeat(101),
+        });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/name/i);
@@ -227,7 +229,12 @@ describe('User auth integration tests', () => {
         return fn({
           user: {
             create: vi.fn().mockResolvedValue({
-              id: 'user-1', email: 'test@example.com', name: 'Test', role: 'researcher', plan: 'free', emailVerified: false,
+              id: 'user-1',
+              email: 'test@example.com',
+              name: 'Test',
+              role: 'researcher',
+              plan: 'free',
+              emailVerified: false,
             }),
           },
           dashboardAccess: { create: vi.fn().mockResolvedValue({}) },
@@ -247,7 +254,12 @@ describe('User auth integration tests', () => {
         return fn({
           user: {
             create: vi.fn().mockResolvedValue({
-              id: 'user-1', email: 'newuser@example.com', name: 'Jane', role: 'researcher', plan: 'free', emailVerified: false,
+              id: 'user-1',
+              email: 'newuser@example.com',
+              name: 'Jane',
+              role: 'researcher',
+              plan: 'free',
+              emailVerified: false,
             }),
           },
           dashboardAccess: { create: vi.fn().mockResolvedValue({}) },
@@ -260,7 +272,7 @@ describe('User auth integration tests', () => {
       expect(sendVerificationEmail).toHaveBeenCalledTimes(1);
       expect(sendVerificationEmail).toHaveBeenCalledWith(
         'newuser@example.com',
-        expect.stringContaining('/verify-email?token='),
+        expect.stringContaining('/verify-email#token='),
       );
     });
 
@@ -271,7 +283,12 @@ describe('User auth integration tests', () => {
         return fn({
           user: {
             create: vi.fn().mockResolvedValue({
-              id: 'user-1', email: 'test@example.com', name: 'Test', role: 'researcher', plan: 'free', emailVerified: false,
+              id: 'user-1',
+              email: 'test@example.com',
+              name: 'Test',
+              role: 'researcher',
+              plan: 'free',
+              emailVerified: false,
             }),
           },
           dashboardAccess: { create: vi.fn().mockResolvedValue({}) },
@@ -401,7 +418,7 @@ describe('User auth integration tests', () => {
       expect(sendPasswordResetEmail).toHaveBeenCalledTimes(1);
       expect(sendPasswordResetEmail).toHaveBeenCalledWith(
         'test@example.com',
-        expect.stringContaining('/reset-password?token='),
+        expect.stringContaining('/reset-password#token='),
       );
     });
 
@@ -663,10 +680,7 @@ describe('User auth integration tests', () => {
         dashboardAccess: null,
       });
 
-      const res = await request(app)
-        .put('/api/auth/profile')
-        .set('Authorization', `Bearer ${jwt}`)
-        .send({});
+      const res = await request(app).put('/api/auth/profile').set('Authorization', `Bearer ${jwt}`).send({});
 
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/no fields/i);
@@ -718,9 +732,7 @@ describe('User auth integration tests', () => {
       };
       const jwt = signUserToken('user-1', 'researcher', 'free');
 
-      mockPrisma.user.findUnique
-        .mockResolvedValueOnce({ ...mockUser })
-        .mockResolvedValueOnce(mockUser);
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser }).mockResolvedValueOnce(mockUser);
       (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
       const res = await request(app)
@@ -741,10 +753,7 @@ describe('User auth integration tests', () => {
         dashboardAccess: null,
       });
 
-      const res = await request(app)
-        .delete('/api/auth/account')
-        .set('Authorization', `Bearer ${jwt}`)
-        .send({});
+      const res = await request(app).delete('/api/auth/account').set('Authorization', `Bearer ${jwt}`).send({});
 
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/password/i);
