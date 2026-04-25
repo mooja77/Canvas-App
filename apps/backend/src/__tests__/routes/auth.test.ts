@@ -157,6 +157,40 @@ describe('Auth routes', () => {
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/name/i);
     });
+
+    it('sets trialEndsAt 14 days in the future on new email signup', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+      const userCreate = vi.fn().mockResolvedValue({
+        id: 'trial-user',
+        email: 'trial@example.com',
+        name: 'Trial User',
+        role: 'researcher',
+        plan: 'free',
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockPrisma.$transaction.mockImplementation(async (fn: any) => {
+        return fn({
+          user: { create: userCreate },
+          dashboardAccess: { create: vi.fn().mockResolvedValue({}) },
+        });
+      });
+
+      const before = Date.now();
+      await request(app)
+        .post('/api/auth/signup')
+        .send({ email: 'trial@example.com', password: 'password123', name: 'Trial User' });
+      const after = Date.now();
+
+      expect(userCreate).toHaveBeenCalledTimes(1);
+      const data = userCreate.mock.calls[0][0].data;
+      expect(data.plan).toBe('free');
+      expect(data.trialEndsAt).toBeInstanceOf(Date);
+      const trialMs = data.trialEndsAt.getTime();
+      const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+      // Allow a small drift for test execution time.
+      expect(trialMs).toBeGreaterThanOrEqual(before + FOURTEEN_DAYS_MS - 1000);
+      expect(trialMs).toBeLessThanOrEqual(after + FOURTEEN_DAYS_MS + 1000);
+    });
   });
 
   // ─── POST /auth/email-login ───
@@ -215,9 +249,7 @@ describe('Auth routes', () => {
     it('returns success message regardless of email existence', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
-      const res = await request(app)
-        .post('/api/auth/forgot-password')
-        .send({ email: 'nobody@example.com' });
+      const res = await request(app).post('/api/auth/forgot-password').send({ email: 'nobody@example.com' });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -231,9 +263,7 @@ describe('Auth routes', () => {
       });
       mockPrisma.user.update.mockResolvedValue({});
 
-      const res = await request(app)
-        .post('/api/auth/forgot-password')
-        .send({ email: 'test@example.com' });
+      const res = await request(app).post('/api/auth/forgot-password').send({ email: 'test@example.com' });
 
       expect(res.status).toBe(200);
       expect(res.body.message).toMatch(/reset link/i);
@@ -266,9 +296,7 @@ describe('Auth routes', () => {
       mockPrisma.canvasQuestion.count.mockResolvedValue(3);
       mockPrisma.canvasShare.count.mockResolvedValue(0);
 
-      const res = await request(app)
-        .get('/api/auth/me')
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${jwt}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -323,9 +351,7 @@ describe('Auth routes', () => {
       };
       const jwt = signUserToken('user-1', 'researcher', 'free');
 
-      mockPrisma.user.findUnique
-        .mockResolvedValueOnce({ ...mockUser })
-        .mockResolvedValueOnce(mockUser);
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser }).mockResolvedValueOnce(mockUser);
       (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
       const res = await request(app)
@@ -382,9 +408,7 @@ describe('Auth routes', () => {
       };
       const jwt = signUserToken('user-1', 'researcher', 'free');
 
-      mockPrisma.user.findUnique
-        .mockResolvedValueOnce({ ...mockUser })
-        .mockResolvedValueOnce(mockUser);
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser }).mockResolvedValueOnce(mockUser);
       (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
       const res = await request(app)
@@ -407,10 +431,7 @@ describe('Auth routes', () => {
 
       mockPrisma.user.findUnique.mockResolvedValueOnce(mockUser);
 
-      const res = await request(app)
-        .delete('/api/auth/account')
-        .set('Authorization', `Bearer ${jwt}`)
-        .send({});
+      const res = await request(app).delete('/api/auth/account').set('Authorization', `Bearer ${jwt}`).send({});
 
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/password/i);

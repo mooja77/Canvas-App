@@ -16,6 +16,15 @@ import { sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
 const BCRYPT_ROUNDS = 12;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 
+// New email/Google signups get 14 days of Pro features. The trial is in-app
+// (no Stripe customer needed up front) — auth middleware reads trialEndsAt
+// and treats users as 'pro' until the date elapses, then they fall back to
+// free-tier limits unless they've upgraded.
+const TRIAL_LENGTH_DAYS = 14;
+function trialEndDate(): Date {
+  return new Date(Date.now() + TRIAL_LENGTH_DAYS * 24 * 60 * 60 * 1000);
+}
+
 export const userAuthRoutes = Router();
 
 // POST /api/auth/signup — email/password registration
@@ -51,6 +60,7 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
           passwordHash,
           name: name.trim(),
           plan: 'free',
+          trialEndsAt: trialEndDate(),
         },
       });
 
@@ -250,6 +260,7 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
             passwordHash: '',
             name: googleName || normalizedEmail.split('@')[0],
             plan: 'free',
+            trialEndsAt: trialEndDate(),
             emailVerified: true,
           },
         });
@@ -565,6 +576,13 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
         }),
       ]);
 
+      // Trial overlay: same logic as auth middleware — free users with an
+      // active trialEndsAt are effectively on Pro until expiry. The frontend
+      // uses effectivePlan for UI gating (what features to show) and
+      // trialEndsAt to render a countdown banner.
+      const trialActive = user.plan === 'free' && user.trialEndsAt && user.trialEndsAt.getTime() > Date.now();
+      const effectivePlan = trialActive ? 'pro' : user.plan;
+
       return res.json({
         success: true,
         data: {
@@ -574,6 +592,8 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
             name: user.name,
             role: user.role,
             plan: user.plan,
+            effectivePlan,
+            trialEndsAt: user.trialEndsAt,
             emailVerified: user.emailVerified,
             createdAt: user.createdAt,
           },

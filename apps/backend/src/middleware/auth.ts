@@ -41,9 +41,19 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
           }
         }
 
+        // Trial overlay: free-tier users with an active trialEndsAt are
+        // treated as 'pro' for plan-limit purposes. We don't mutate
+        // user.plan in the DB during the trial — that stays 'free' until
+        // the user actually pays, so a stale trialEndsAt can't accidentally
+        // promote someone after they've cancelled. Paid users (plan='pro'
+        // or 'team') ignore this overlay entirely.
+        const trialActive =
+          user.plan === 'free' && user.trialEndsAt instanceof Date && user.trialEndsAt.getTime() > Date.now();
+        const effectivePlan = trialActive ? 'pro' : user.plan;
+
         req.userId = user.id;
-        req.userPlan = user.plan;
-        res.setHeader('X-User-Plan', user.plan);
+        req.userPlan = effectivePlan;
+        res.setHeader('X-User-Plan', effectivePlan);
         req.userRole = user.role;
 
         if (user.dashboardAccess) {

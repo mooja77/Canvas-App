@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 
 export default function CanvasPage() {
   const { authenticated, name, logout, authType, emailVerified } = useAuthStore();
+  const setTrialState = useAuthStore((s) => s.setTrialState);
   const { darkMode, toggleDarkMode, setupWizardComplete, completeSetupWizard, resetOnboarding } = useUIStore();
   const planWelcomeSeen = useUIStore((s) => s.featureDiscovery.planWelcomeSeen);
   const [showPlanWelcome, setShowPlanWelcome] = useState(false);
@@ -38,6 +39,28 @@ export default function CanvasPage() {
       fetchCanvases().finally(() => setCanvasesLoaded(true));
     }
   }, [authenticated, canvasesLoaded, fetchCanvases]);
+
+  // Sync trial state from server on mount. The login response doesn't carry
+  // trialEndsAt yet, so we hydrate it on the canvas page (where the trial
+  // banner lives). Legacy users have authType === 'legacy' and skip this —
+  // /auth/me's legacy branch doesn't return trialEndsAt anyway.
+  useEffect(() => {
+    if (!authenticated || authType !== 'email') return;
+    authApi
+      .getMe()
+      .then((res) => {
+        const u = res.data?.data?.user;
+        if (u && typeof u.effectivePlan === 'string') {
+          setTrialState({
+            effectivePlan: u.effectivePlan,
+            trialEndsAt: u.trialEndsAt ?? null,
+          });
+        }
+      })
+      .catch(() => {
+        /* non-fatal — banner just won't appear on this page load */
+      });
+  }, [authenticated, authType, setTrialState]);
 
   // Show setup wizard for first-time users with no canvases.
   // Auto-mark wizard complete for existing users who already have canvases

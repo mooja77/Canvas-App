@@ -18,6 +18,11 @@ interface AuthState {
   email: string | null;
   userId: string | null;
   plan: string | null;
+  // Effective plan for UI gating — equals `plan` for paid users, but reads
+  // 'pro' for free users on an active trial. The trial countdown banner
+  // reads `trialEndsAt` to pick its state. Both come from /auth/me.
+  effectivePlan: string | null;
+  trialEndsAt: string | null;
   emailVerified: boolean;
 
   // Actions
@@ -38,10 +43,13 @@ interface AuthState {
     name: string;
     role: string;
     plan: string;
+    effectivePlan?: string;
+    trialEndsAt?: string | null;
     emailVerified?: boolean;
   }) => void;
   setEmailVerified: (verified: boolean) => void;
   updatePlan: (plan: string) => void;
+  setTrialState: (data: { effectivePlan: string; trialEndsAt: string | null }) => void;
   logout: () => void;
 }
 
@@ -59,6 +67,8 @@ export const useAuthStore = create<AuthState>()(
       email: null,
       userId: null,
       plan: null,
+      effectivePlan: null,
+      trialEndsAt: null,
       emailVerified: false,
 
       // Legacy access-code login — jwt payload intentionally not stored
@@ -71,6 +81,8 @@ export const useAuthStore = create<AuthState>()(
           authenticated: true,
           authType: 'legacy',
           plan: 'pro', // Grandfathered
+          effectivePlan: 'pro',
+          trialEndsAt: null,
         }),
 
       // Email login — jwt payload intentionally not stored
@@ -81,6 +93,8 @@ export const useAuthStore = create<AuthState>()(
           name: data.name,
           role: data.role,
           plan: data.plan,
+          effectivePlan: data.effectivePlan ?? data.plan,
+          trialEndsAt: data.trialEndsAt ?? null,
           emailVerified: data.emailVerified ?? false,
           authenticated: true,
           authType: 'email',
@@ -91,6 +105,8 @@ export const useAuthStore = create<AuthState>()(
       setEmailVerified: (verified) => set({ emailVerified: verified }),
 
       updatePlan: (plan) => set({ plan }),
+
+      setTrialState: (data) => set({ effectivePlan: data.effectivePlan, trialEndsAt: data.trialEndsAt }),
 
       logout: () => {
         // Fire-and-forget: clear the httpOnly cookie on the server. Local
@@ -108,6 +124,8 @@ export const useAuthStore = create<AuthState>()(
           email: null,
           userId: null,
           plan: null,
+          effectivePlan: null,
+          trialEndsAt: null,
           emailVerified: false,
         });
       },

@@ -215,4 +215,97 @@ describe('auth middleware — cookie priority and session invalidation', () => {
     expect(req.dashboardAccessId).toBe('access-1');
     expect(req.userPlan).toBe('pro'); // Legacy grandfathered
   });
+
+  // ─── Trial overlay ───
+  // free + active trial → effective plan is 'pro' (full feature access)
+  // free + expired trial → effective plan is 'free' (back to limits)
+  // pro/team users ignore trial (Stripe is the source of truth once paid)
+  it('promotes free user to pro while trial is active', async () => {
+    const jwt = signUserToken('user-trial', 'researcher', 'free');
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-trial',
+      plan: 'free',
+      role: 'researcher',
+      sessionsInvalidAt: null,
+      trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      dashboardAccess: null,
+    });
+
+    const req = makeReq({ cookies: { jwt } });
+    const res = makeRes();
+    const next = vi.fn() as unknown as NextFunction;
+
+    await auth(req, res, next);
+
+    expect(next).toHaveBeenCalledWith();
+    expect(req.userPlan).toBe('pro');
+  });
+
+  it('keeps free user on free plan after trial has expired', async () => {
+    const jwt = signUserToken('user-expired', 'researcher', 'free');
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-expired',
+      plan: 'free',
+      role: 'researcher',
+      sessionsInvalidAt: null,
+      trialEndsAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      dashboardAccess: null,
+    });
+
+    const req = makeReq({ cookies: { jwt } });
+    const res = makeRes();
+    const next = vi.fn() as unknown as NextFunction;
+
+    await auth(req, res, next);
+
+    expect(next).toHaveBeenCalledWith();
+    expect(req.userPlan).toBe('free');
+  });
+
+  it('respects user.plan over trialEndsAt — paid users ignore the overlay', async () => {
+    // Trial set in the future, but user has already paid (plan === 'pro').
+    // The overlay only kicks in for free users, so this stays 'pro'. The
+    // inverse case (free user with trial ended but plan accidentally 'pro')
+    // would also stay pro, which is correct — plan column is the source of
+    // truth post-payment, and Stripe webhooks own it.
+    const jwt = signUserToken('user-paid', 'researcher', 'pro');
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-paid',
+      plan: 'pro',
+      role: 'researcher',
+      sessionsInvalidAt: null,
+      trialEndsAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+      dashboardAccess: null,
+    });
+
+    const req = makeReq({ cookies: { jwt } });
+    const res = makeRes();
+    const next = vi.fn() as unknown as NextFunction;
+
+    await auth(req, res, next);
+
+    expect(next).toHaveBeenCalledWith();
+    expect(req.userPlan).toBe('pro');
+  });
+
+  it('treats null trialEndsAt as no trial — pre-2026 free users stay free', async () => {
+    const jwt = signUserToken('user-old-free', 'researcher', 'free');
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-old-free',
+      plan: 'free',
+      role: 'researcher',
+      sessionsInvalidAt: null,
+      trialEndsAt: null,
+      dashboardAccess: null,
+    });
+
+    const req = makeReq({ cookies: { jwt } });
+    const res = makeRes();
+    const next = vi.fn() as unknown as NextFunction;
+
+    await auth(req, res, next);
+
+    expect(next).toHaveBeenCalledWith();
+    expect(req.userPlan).toBe('free');
+  });
 });

@@ -33,6 +33,13 @@ model User {
   // shared tokens don't outlive the credential change.
   sessionsInvalidAt DateTime?
 
+  // Free-tier signups get a 14-day Pro trial. Auth middleware treats this
+  // user as 'pro' until trialEndsAt elapses, then they revert to free
+  // limits unless they've upgraded via Stripe in the meantime. Null means
+  // no trial — that path is taken by users created before this column
+  // existed (legacy / pre-2026 signups stay free unless they pay).
+  trialEndsAt DateTime?
+
   subscription     Subscription?
   codingCanvases   CodingCanvas[]
   dashboardAccess  DashboardAccess?
