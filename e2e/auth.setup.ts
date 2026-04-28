@@ -7,6 +7,10 @@ setup('authenticate', async ({ page }) => {
   setup.setTimeout(60000);
   await page.addInitScript(() => {
     localStorage.setItem('jms_cookie_consent', 'rejected');
+    const existing = localStorage.getItem('qualcanvas-ui');
+    const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
+    state.state = { ...state.state, onboardingComplete: true, setupWizardComplete: true };
+    localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
   });
 
   await expect
@@ -33,6 +37,10 @@ setup('authenticate', async ({ page }) => {
     .getByRole('button', { name: /Sign In with Code/i });
   await expect(signInBtn).toBeEnabled({ timeout: 5000 });
   await Promise.all([page.waitForURL('**/canvas**', { timeout: 20000 }), signInBtn.click()]);
+  const skipSetup = page.getByRole('button', { name: /Skip setup/i });
+  if (await skipSetup.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await skipSetup.click();
+  }
   await expect(page.locator('[data-tour="canvas-list"]')).toBeVisible({ timeout: 10000 });
 
   // Mark onboarding tour as complete so it doesn't block E2E tests.
