@@ -119,6 +119,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npx prisma generate --schema=apps/backend/prisma/schema.prisma
       - run: npx prisma db push --schema=apps/backend/prisma/schema.prisma --skip-generate
+      - run: npm run db:seed -w apps/backend
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
