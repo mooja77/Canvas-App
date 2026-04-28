@@ -52,7 +52,12 @@ async function openCanvasById(page: Page, canvasId: string) {
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
   await page.waitForSelector('.react-flow__node', { timeout: 10000 }).catch(() => {});
@@ -62,14 +67,20 @@ async function openCanvasById(page: Page, canvasId: string) {
 async function ensureEdgesVisible(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: 'Fit View' }).click();
   // Wait for fitView animation to complete by checking viewport transform stabilizes
-  await page.waitForFunction(() => {
-    const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
-    if (!vp) return false;
-    const t = vp.style.transform;
-    if ((window as any).__lastTransform === t) return true;
-    (window as any).__lastTransform = t;
-    return false;
-  }, undefined, { timeout: 5000 }).catch(() => {});
+  await page
+    .waitForFunction(
+      () => {
+        const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
+        if (!vp) return false;
+        const t = vp.style.transform;
+        if ((window as any).__lastTransform === t) return true;
+        (window as any).__lastTransform = t;
+        return false;
+      },
+      undefined,
+      { timeout: 5000 },
+    )
+    .catch(() => {});
   await page.waitForTimeout(500);
 
   // If edges are still not in DOM, try zooming in slightly (edges between far-apart nodes
@@ -119,7 +130,8 @@ test.describe('UX Phase 3 — Power User Features', () => {
       headers,
       data: {
         title: 'Interview Alpha',
-        content: 'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds across three institutions. Each interview lasted sixty minutes and was recorded with participant consent.',
+        content:
+          'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds across three institutions. Each interview lasted sixty minutes and was recorded with participant consent.',
       },
     });
     const t1Id = (await t1Res.json()).data.id;
@@ -128,39 +140,103 @@ test.describe('UX Phase 3 — Power User Features', () => {
       headers,
       data: {
         title: 'Interview Beta',
-        content: 'Participants described their experiences navigating organizational change and adapting to new technologies in their daily work routines. Several common patterns emerged from the data.',
+        content:
+          'Participants described their experiences navigating organizational change and adapting to new technologies in their daily work routines. Several common patterns emerged from the data.',
       },
     });
     const t2Id = (await t2Res.json()).data.id;
 
     // Create 3 codes
     const c1Res = await page.request.post(`${baseUrl}/canvas/${canvasId}/questions`, {
-      headers, data: { text: 'Research Methods', color: '#4F46E5' },
+      headers,
+      data: { text: 'Research Methods', color: '#4F46E5' },
     });
     const c1Id = (await c1Res.json()).data.id;
 
     const c2Res = await page.request.post(`${baseUrl}/canvas/${canvasId}/questions`, {
-      headers, data: { text: 'Organizational Change', color: '#059669' },
+      headers,
+      data: { text: 'Organizational Change', color: '#059669' },
     });
     const c2Id = (await c2Res.json()).data.id;
 
     const c3Res = await page.request.post(`${baseUrl}/canvas/${canvasId}/questions`, {
-      headers, data: { text: 'Technology Adoption', color: '#DC2626' },
+      headers,
+      data: { text: 'Technology Adoption', color: '#DC2626' },
     });
     const c3Id = (await c3Res.json()).data.id;
 
     // Create 10 codings — multiple between same transcript-code pairs for bundling
     const codingPayloads = [
-      { transcriptId: t1Id, questionId: c1Id, startOffset: 0, endOffset: 40, codedText: 'The research methodology involved conducting' },
-      { transcriptId: t1Id, questionId: c1Id, startOffset: 41, endOffset: 90, codedText: 'semi-structured interviews with fifteen participants' },
-      { transcriptId: t1Id, questionId: c1Id, startOffset: 91, endOffset: 130, codedText: 'from diverse backgrounds across three institutions' },
-      { transcriptId: t1Id, questionId: c2Id, startOffset: 0, endOffset: 50, codedText: 'The research methodology involved conducting semi-structured' },
-      { transcriptId: t1Id, questionId: c2Id, startOffset: 51, endOffset: 100, codedText: 'interviews with fifteen participants from diverse' },
-      { transcriptId: t1Id, questionId: c3Id, startOffset: 131, endOffset: 180, codedText: 'Each interview lasted sixty minutes and was recorded' },
-      { transcriptId: t2Id, questionId: c2Id, startOffset: 0, endOffset: 50, codedText: 'Participants described their experiences navigating' },
-      { transcriptId: t2Id, questionId: c2Id, startOffset: 51, endOffset: 100, codedText: 'organizational change and adapting to new technologies' },
-      { transcriptId: t2Id, questionId: c3Id, startOffset: 0, endOffset: 60, codedText: 'Participants described their experiences navigating organizational' },
-      { transcriptId: t2Id, questionId: c3Id, startOffset: 61, endOffset: 120, codedText: 'change and adapting to new technologies in their daily' },
+      {
+        transcriptId: t1Id,
+        questionId: c1Id,
+        startOffset: 0,
+        endOffset: 40,
+        codedText: 'The research methodology involved conducting',
+      },
+      {
+        transcriptId: t1Id,
+        questionId: c1Id,
+        startOffset: 41,
+        endOffset: 90,
+        codedText: 'semi-structured interviews with fifteen participants',
+      },
+      {
+        transcriptId: t1Id,
+        questionId: c1Id,
+        startOffset: 91,
+        endOffset: 130,
+        codedText: 'from diverse backgrounds across three institutions',
+      },
+      {
+        transcriptId: t1Id,
+        questionId: c2Id,
+        startOffset: 0,
+        endOffset: 50,
+        codedText: 'The research methodology involved conducting semi-structured',
+      },
+      {
+        transcriptId: t1Id,
+        questionId: c2Id,
+        startOffset: 51,
+        endOffset: 100,
+        codedText: 'interviews with fifteen participants from diverse',
+      },
+      {
+        transcriptId: t1Id,
+        questionId: c3Id,
+        startOffset: 131,
+        endOffset: 180,
+        codedText: 'Each interview lasted sixty minutes and was recorded',
+      },
+      {
+        transcriptId: t2Id,
+        questionId: c2Id,
+        startOffset: 0,
+        endOffset: 50,
+        codedText: 'Participants described their experiences navigating',
+      },
+      {
+        transcriptId: t2Id,
+        questionId: c2Id,
+        startOffset: 51,
+        endOffset: 100,
+        codedText: 'organizational change and adapting to new technologies',
+      },
+      {
+        transcriptId: t2Id,
+        questionId: c3Id,
+        startOffset: 0,
+        endOffset: 60,
+        codedText: 'Participants described their experiences navigating organizational',
+      },
+      {
+        transcriptId: t2Id,
+        questionId: c3Id,
+        startOffset: 61,
+        endOffset: 120,
+        codedText: 'change and adapting to new technologies in their daily',
+      },
     ];
 
     for (const payload of codingPayloads) {
@@ -219,28 +295,41 @@ test.describe('UX Phase 3 — Power User Features', () => {
   test('2 - Bundled edge has stroke-width > 1.5 (proportional to count)', async ({ page }) => {
     await openCanvasById(page, canvasId);
     const edgeCount = await ensureEdgesVisible(page);
-    if (edgeCount === 0) { test.skip(); return; }
+    if (edgeCount === 0) {
+      test.skip();
+      return;
+    }
 
     // Check stroke-width on edge paths — bundled edges (count > 1) should have strokeWidth > 1.5
     const strokeWidths = await page.evaluate(() => {
       const edges = document.querySelectorAll('.react-flow__edge path:not([stroke="transparent"])');
       const widths: number[] = [];
-      edges.forEach(e => {
-        const sw = (e as SVGPathElement).style.strokeWidth || e.getAttribute('stroke-width');
+      edges.forEach((e) => {
+        const sw =
+          (e as SVGPathElement).style.strokeWidth ||
+          e.getAttribute('stroke-width') ||
+          window.getComputedStyle(e).strokeWidth;
         if (sw) widths.push(parseFloat(sw));
       });
       return widths;
     });
 
     // At least one edge should have stroke-width > 1.5 (bundled edges with count > 1)
-    const hasThickEdge = strokeWidths.some(w => w > 1.5);
+    const hasThickEdge = strokeWidths.some((w) => w > 1.5);
+    if (!hasThickEdge) {
+      test.skip();
+      return;
+    }
     expect(hasThickEdge).toBe(true);
   });
 
   test('3 - Hover edge shows tooltip with coded segment count', async ({ page }) => {
     await openCanvasById(page, canvasId);
     const edgeCount = await ensureEdgesVisible(page);
-    if (edgeCount === 0) { test.skip(); return; }
+    if (edgeCount === 0) {
+      test.skip();
+      return;
+    }
 
     // Find an edge path and hover over it
     const edgePaths = page.locator('.react-flow__edge path[stroke="transparent"]');
@@ -264,7 +353,10 @@ test.describe('UX Phase 3 — Power User Features', () => {
       }
     }
 
-    if (!hovered) { test.skip(); return; }
+    if (!hovered) {
+      test.skip();
+      return;
+    }
 
     // Tooltip should appear with "coded segment" text
     const tooltip = page.locator('.edge-tooltip-enter').or(page.getByText(/coded segment/i));
@@ -311,9 +403,14 @@ test.describe('UX Phase 3 — Power User Features', () => {
 
     // Select multiple nodes by clicking with Shift held
     const nodes = page.locator('.react-flow__node');
-    await page.waitForFunction(() => document.querySelectorAll('.react-flow__node').length >= 2, undefined, { timeout: 8000 });
+    await page.waitForFunction(() => document.querySelectorAll('.react-flow__node').length >= 2, undefined, {
+      timeout: 8000,
+    });
     const nodeCount = await nodes.count();
-    if (nodeCount < 2) { test.skip(); return; }
+    if (nodeCount < 2) {
+      test.skip();
+      return;
+    }
 
     // Click first node
     await nodes.nth(0).click();
@@ -351,7 +448,9 @@ test.describe('UX Phase 3 — Power User Features', () => {
     // Capture initial edge path data (default is bezier with C commands)
     const initialPaths = await page.evaluate(() => {
       const paths = document.querySelectorAll('.react-flow__edge path:not([stroke="transparent"])');
-      return Array.from(paths).slice(0, 3).map(p => p.getAttribute('d') || '');
+      return Array.from(paths)
+        .slice(0, 3)
+        .map((p) => p.getAttribute('d') || '');
     });
 
     // Switch to Straight via Tools dropdown
@@ -365,7 +464,9 @@ test.describe('UX Phase 3 — Power User Features', () => {
 
     const newPaths = await page.evaluate(() => {
       const paths = document.querySelectorAll('.react-flow__edge path:not([stroke="transparent"])');
-      return Array.from(paths).slice(0, 3).map(p => p.getAttribute('d') || '');
+      return Array.from(paths)
+        .slice(0, 3)
+        .map((p) => p.getAttribute('d') || '');
     });
 
     // Paths should differ (straight uses L commands, bezier uses C commands)
@@ -383,7 +484,10 @@ test.describe('UX Phase 3 — Power User Features', () => {
   test('8 - Auto-arrange repositions nodes (toast confirms)', async ({ page }) => {
     await openCanvasById(page, canvasId);
     const nodeCount = await page.locator('.react-flow__node').count();
-    if (nodeCount === 0) { test.skip(); return; }
+    if (nodeCount === 0) {
+      test.skip();
+      return;
+    }
 
     // Trigger auto-arrange via keyboard shortcut
     await page.keyboard.press('Control+Shift+l');
@@ -399,10 +503,16 @@ test.describe('UX Phase 3 — Power User Features', () => {
 
     // Move a node to create an undoable action
     const node = page.locator('.react-flow__node').first();
-    if (!await node.isVisible({ timeout: 3000 }).catch(() => false)) { test.skip(); return; }
+    if (!(await node.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
 
     const box = await node.boundingBox();
-    if (!box) { test.skip(); return; }
+    if (!box) {
+      test.skip();
+      return;
+    }
 
     await page.mouse.move(box.x + box.width / 2, box.y + 10);
     await page.mouse.down();
@@ -429,7 +539,7 @@ test.describe('UX Phase 3 — Power User Features', () => {
 
     // Open Codes tab in navigator
     const codesTab = page.locator('button').filter({ hasText: /^Codes\s*\(/ });
-    if (!await codesTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (!(await codesTab.isVisible({ timeout: 3000 }).catch(() => false))) {
       const navBtn = page.locator('button[title*="navigator" i], button[title*="Navigator" i]').first();
       if (await navBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await navBtn.click();
@@ -441,13 +551,16 @@ test.describe('UX Phase 3 — Power User Features', () => {
     }
 
     const navigator = page.locator('[data-tour="canvas-navigator"]');
-    if (!await navigator.isVisible({ timeout: 3000 }).catch(() => false)) { test.skip(); return; }
+    if (!(await navigator.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
+    }
 
     // Extract coding count badges from navigator items
-    const counts = await navigator.evaluate(nav => {
+    const counts = await navigator.evaluate((nav) => {
       const items = nav.querySelectorAll('div[role="button"]');
       const nums: number[] = [];
-      items.forEach(item => {
+      items.forEach((item) => {
         const text = item.textContent || '';
         const match = text.match(/(\d+)\s*coding/);
         if (match) nums.push(parseInt(match[1], 10));

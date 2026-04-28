@@ -30,7 +30,8 @@ function ComputedNodeShell({
   zoomLevel: zoomLevelProp,
   onConfigure,
 }: ComputedNodeShellProps) {
-  const { runComputedNode, deleteComputedNode } = useCanvasStore();
+  const runComputedNode = useCanvasStore((s) => s.runComputedNode);
+  const deleteComputedNode = useCanvasStore((s) => s.deleteComputedNode);
   const runningNodeId = useRunningNodeId();
   const [running, setRunning] = useState(false);
   const isRunningGlobal = runningNodeId === computedNodeId;
@@ -81,7 +82,7 @@ function ComputedNodeShell({
 
       {/* Header */}
       <div
-        className="drag-handle flex items-center justify-between rounded-t-lg px-3 py-2.5 cursor-grab active:cursor-grabbing"
+        className="drag-handle relative z-20 flex items-center justify-between rounded-t-lg px-3 py-2.5 cursor-grab active:cursor-grabbing"
         style={{ background: `linear-gradient(135deg, ${color}12, ${color}08)` }}
       >
         <div className="flex items-center gap-2 min-w-0">
@@ -179,9 +180,9 @@ function ComputedNodeShell({
           <ConfirmDialog
             title={`Delete ${label}`}
             message={`Delete the "${label}" analysis node? This cannot be undone.`}
-            onConfirm={() => {
+            onConfirm={async () => {
+              await deleteComputedNode(computedNodeId);
               setShowDeleteConfirm(false);
-              deleteComputedNode(computedNodeId);
             }}
             onCancel={() => setShowDeleteConfirm(false)}
           />,

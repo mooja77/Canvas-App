@@ -68,7 +68,7 @@ function CaseNode({ data, id, selected }: NodeProps) {
 
       {/* Header */}
       <div
-        className={`drag-handle flex items-center justify-between rounded-t-lg px-3 py-2.5 cursor-grab active:cursor-grabbing ${nodeData.customColor ? '' : 'bg-gradient-to-r from-teal-50 to-teal-50/60 dark:from-teal-900/30 dark:to-teal-900/15'}`}
+        className={`drag-handle relative z-20 flex items-center justify-between rounded-t-lg px-3 py-2.5 cursor-grab active:cursor-grabbing ${nodeData.customColor ? '' : 'bg-gradient-to-r from-teal-50 to-teal-50/60 dark:from-teal-900/30 dark:to-teal-900/15'}`}
         style={
           nodeData.customColor
             ? { background: `linear-gradient(135deg, ${nodeData.customColor}20, ${nodeData.customColor}10)` }
@@ -157,9 +157,9 @@ function CaseNode({ data, id, selected }: NodeProps) {
           <ConfirmDialog
             title="Delete Case"
             message="Delete this case? Transcripts will be unlinked and relations removed."
-            onConfirm={() => {
+            onConfirm={async () => {
+              await deleteCase(nodeData.caseId);
               setShowDeleteConfirm(false);
-              deleteCase(nodeData.caseId);
             }}
             onCancel={() => setShowDeleteConfirm(false)}
           />,

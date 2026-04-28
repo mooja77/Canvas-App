@@ -324,7 +324,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
       />
 
       {/* Drag handle header */}
-      <div className="drag-handle flex items-center justify-between rounded-t-xl bg-gradient-to-r from-blue-50 to-blue-50/60 px-3 py-2.5 cursor-grab active:cursor-grabbing dark:from-blue-900/30 dark:to-blue-900/15">
+      <div className="drag-handle relative z-20 flex items-center justify-between rounded-t-xl bg-gradient-to-r from-blue-50 to-blue-50/60 px-3 py-2.5 cursor-grab active:cursor-grabbing dark:from-blue-900/30 dark:to-blue-900/15">
         <div className="flex items-center gap-2 min-w-0">
           <svg
             className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400"
@@ -548,9 +548,9 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
           <ConfirmDialog
             title="Delete Transcript"
             message="Delete this transcript and all its coded segments?"
-            onConfirm={() => {
+            onConfirm={async () => {
+              await deleteTranscript(nodeData.transcriptId);
               setShowDeleteConfirm(false);
-              deleteTranscript(nodeData.transcriptId);
             }}
             onCancel={() => setShowDeleteConfirm(false)}
           />,

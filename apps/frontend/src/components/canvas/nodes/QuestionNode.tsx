@@ -107,7 +107,7 @@ function QuestionNode({ data, id, selected }: NodeProps) {
 
       {/* Drag handle header */}
       <div
-        className="drag-handle flex items-center justify-between rounded-t-lg px-3 py-2.5 cursor-grab active:cursor-grabbing"
+        className="drag-handle relative z-20 flex items-center justify-between rounded-t-lg px-3 py-2.5 cursor-grab active:cursor-grabbing"
         style={{ background: `linear-gradient(135deg, ${nodeData.color}12, ${nodeData.color}08)` }}
       >
         <div className="flex items-center gap-2 min-w-0">
@@ -277,9 +277,9 @@ function QuestionNode({ data, id, selected }: NodeProps) {
           <ConfirmDialog
             title="Delete Question"
             message="Delete this question and all its codings?"
-            onConfirm={() => {
+            onConfirm={async () => {
+              await deleteQuestion(nodeData.questionId);
               setShowDeleteConfirm(false);
-              deleteQuestion(nodeData.questionId);
             }}
             onCancel={() => setShowDeleteConfirm(false)}
           />,

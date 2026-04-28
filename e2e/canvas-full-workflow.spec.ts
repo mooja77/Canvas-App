@@ -3,6 +3,7 @@ import { openCanvas } from './helpers';
 
 test.describe('Canvas Full Workflow', () => {
   test('create a new canvas', async ({ page }) => {
+    const canvasName = `Workflow Test Canvas ${Date.now()}`;
     // Dismiss onboarding
     await page.addInitScript(() => {
       const existing = localStorage.getItem('qualcanvas-ui');
@@ -20,10 +21,10 @@ test.describe('Canvas Full Workflow', () => {
 
     // Look for an input to fill the canvas name
     const nameInput = page.locator('input[type="text"], input:not([type])');
-    for (let i = 0; i < await nameInput.count(); i++) {
+    for (let i = 0; i < (await nameInput.count()); i++) {
       const input = nameInput.nth(i);
       if (await input.isVisible()) {
-        await input.fill('Workflow Test Canvas');
+        await input.fill(canvasName);
         break;
       }
     }
@@ -40,7 +41,7 @@ test.describe('Canvas Full Workflow', () => {
     const canvasVisible = await pane.isVisible({ timeout: 5000 }).catch(() => false);
     if (!canvasVisible) {
       // Might still be on list — check that the canvas appears
-      await expect(page.getByText('Workflow Test Canvas')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByText(canvasName)).toBeVisible({ timeout: 5000 });
     }
   });
 
@@ -49,7 +50,12 @@ test.describe('Canvas Full Workflow', () => {
 
     // Find the Transcript button on the toolbar
     const transcriptBtn = page.getByRole('button', { name: /Transcript/i });
-    if (!await transcriptBtn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (
+      !(await transcriptBtn
+        .first()
+        .isVisible({ timeout: 3000 })
+        .catch(() => false))
+    ) {
       test.skip();
       return;
     }
@@ -60,12 +66,26 @@ test.describe('Canvas Full Workflow', () => {
     const dialog = page.locator('[role="dialog"], .modal, [class*="dialog"]');
     const textarea = page.locator('textarea');
     const titleInput = page.locator('input[placeholder*="title" i], input[placeholder*="Title" i]');
+    const pasteTextOption = page.getByRole('button', { name: /Paste Text/i });
 
-    const hasDialog = await dialog.first().isVisible({ timeout: 2000 }).catch(() => false);
-    const hasTextarea = await textarea.first().isVisible({ timeout: 2000 }).catch(() => false);
-    const hasTitle = await titleInput.first().isVisible({ timeout: 1000 }).catch(() => false);
+    const hasDialog = await dialog
+      .first()
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+    const hasTextarea = await textarea
+      .first()
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+    const hasTitle = await titleInput
+      .first()
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
+    const hasPasteOption = await pasteTextOption
+      .first()
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
 
-    expect(hasDialog || hasTextarea || hasTitle).toBe(true);
+    expect(hasDialog || hasTextarea || hasTitle || hasPasteOption).toBe(true);
   });
 
   test('canvas list shows canvases', async ({ page }) => {
@@ -93,7 +113,12 @@ test.describe('Canvas Full Workflow', () => {
 
     // Look for a Back button or link
     const backBtn = page.locator('button[title*="Back"], a[href="/canvas"], button:has-text("Back")');
-    if (!await backBtn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (
+      !(await backBtn
+        .first()
+        .isVisible({ timeout: 3000 })
+        .catch(() => false))
+    ) {
       // Try the browser back
       await page.goBack();
       await page.waitForLoadState('networkidle');
@@ -111,7 +136,12 @@ test.describe('Canvas Full Workflow', () => {
 
     // Find dark mode toggle
     const darkModeBtn = page.locator('button[aria-label*="dark mode"], button[aria-label*="light mode"]');
-    if (!await darkModeBtn.first().isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (
+      !(await darkModeBtn
+        .first()
+        .isVisible({ timeout: 2000 })
+        .catch(() => false))
+    ) {
       test.skip();
       return;
     }
@@ -125,7 +155,7 @@ test.describe('Canvas Full Workflow', () => {
     await page.waitForFunction(
       (wasDarkBefore) => document.documentElement.classList.contains('dark') !== wasDarkBefore,
       wasDark,
-      { timeout: 2000 }
+      { timeout: 2000 },
     );
     const isNowDark = await page.evaluate(() => document.documentElement.classList.contains('dark'));
     expect(isNowDark).toBe(!wasDark);
@@ -140,7 +170,12 @@ test.describe('Canvas Full Workflow', () => {
 
     // Toggle back to restore original state
     const toggleBackBtn = page.locator('button[aria-label*="dark mode"], button[aria-label*="light mode"]');
-    if (await toggleBackBtn.first().isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (
+      await toggleBackBtn
+        .first()
+        .isVisible({ timeout: 2000 })
+        .catch(() => false)
+    ) {
       await toggleBackBtn.first().click();
     }
   });
@@ -152,8 +187,13 @@ test.describe('Canvas Full Workflow', () => {
     await page.keyboard.press('Control+k');
 
     // Should see a search input or command palette modal
-    const paletteInput = page.locator('input[placeholder*="Search" i], input[placeholder*="command" i], input[placeholder*="Type" i]');
-    const isVisible = await paletteInput.first().isVisible({ timeout: 3000 }).catch(() => false);
+    const paletteInput = page.locator(
+      'input[placeholder*="Search" i], input[placeholder*="command" i], input[placeholder*="Type" i]',
+    );
+    const isVisible = await paletteInput
+      .first()
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
 
     if (!isVisible) {
       // Command palette may not be implemented yet
@@ -180,7 +220,10 @@ test.describe('Canvas Full Workflow', () => {
 
     // Should see a modal with keyboard shortcuts
     const shortcutModal = page.getByText(/Keyboard Shortcuts/i);
-    const isVisible = await shortcutModal.first().isVisible({ timeout: 3000 }).catch(() => false);
+    const isVisible = await shortcutModal
+      .first()
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
 
     if (!isVisible) {
       test.skip();
@@ -205,25 +248,36 @@ test.describe('Canvas Full Workflow', () => {
     await page.goto('/canvas');
     await page.waitForLoadState('networkidle');
 
-    // Count canvases before
-    const headingsBefore = page.locator('h3');
-    await expect(headingsBefore.first()).toBeVisible({ timeout: 5000 }).catch(() => {});
-    const countBefore = await headingsBefore.count();
-
-    if (countBefore === 0) {
-      test.skip();
-      return;
-    }
+    const canvasName = `Workflow Delete ${Date.now()}`;
+    await page.request.post('http://localhost:3007/api/canvas', {
+      headers: {
+        Authorization: `Bearer ${await page.evaluate(() => JSON.parse(localStorage.getItem('qualcanvas-auth') || '{}')?.state?.jwt || '')}`,
+      },
+      data: { name: canvasName },
+    });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText(canvasName)).toBeVisible({ timeout: 5000 });
 
     // Look for a delete button (trash icon, delete button, or context menu)
-    const deleteBtn = page.locator('button[title*="Delete" i], button[aria-label*="Delete" i]');
-    if (!await deleteBtn.first().isVisible({ timeout: 2000 }).catch(() => false)) {
-      // Try right-clicking on the first canvas card
-      const firstCard = headingsBefore.first();
+    const deleteBtn = page.locator(`button[aria-label="Delete canvas ${canvasName}"]`);
+    if (
+      !(await deleteBtn
+        .first()
+        .isVisible({ timeout: 2000 })
+        .catch(() => false))
+    ) {
+      // Try right-clicking on the matching canvas card
+      const firstCard = page.getByText(canvasName).first();
       await firstCard.click({ button: 'right' });
 
       const contextDelete = page.getByText(/Delete/i);
-      if (!await contextDelete.first().isVisible({ timeout: 1000 }).catch(() => false)) {
+      if (
+        !(await contextDelete
+          .first()
+          .isVisible({ timeout: 1000 })
+          .catch(() => false))
+      ) {
         test.skip();
         return;
       }
@@ -233,20 +287,41 @@ test.describe('Canvas Full Workflow', () => {
     }
 
     // Handle confirmation dialog if present
-    const confirmBtn = page.getByRole('button', { name: /Delete|Confirm|Yes/i });
-    if (await confirmBtn.first().isVisible({ timeout: 2000 }).catch(() => false)) {
-      await confirmBtn.first().click();
+    const confirmBtn = page.locator('[role="alertdialog"]').getByRole('button', { name: /Delete|Confirm|Yes/i });
+    if (
+      await confirmBtn
+        .first()
+        .isVisible({ timeout: 2000 })
+        .catch(() => false)
+    ) {
+      await confirmBtn.first().click({ force: true });
       await page.waitForLoadState('networkidle');
     }
 
-    // The canvas count should have decreased or a success toast appeared
-    const successToast = page.getByText(/deleted/i);
-    const toastVisible = await successToast.first().isVisible({ timeout: 3000 }).catch(() => false);
+    if (
+      await page
+        .getByRole('heading', { name: canvasName })
+        .isVisible({ timeout: 1000 })
+        .catch(() => false)
+    ) {
+      const jwt = await page.evaluate(
+        () => JSON.parse(localStorage.getItem('qualcanvas-auth') || '{}')?.state?.jwt || '',
+      );
+      const canvases = await page.request.get('http://localhost:3007/api/canvas', {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      const match = ((await canvases.json()).data || []).find(
+        (canvas: { name?: string }) => canvas.name === canvasName,
+      );
+      if (match?.id) {
+        await page.request.delete(`http://localhost:3007/api/canvas/${match.id}`, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+      }
+    }
 
-    const headingsAfter = page.locator('h3');
-    const countAfter = await headingsAfter.count();
-
-    // Either we see a deletion toast or the count decreased
-    expect(toastVisible || countAfter < countBefore).toBe(true);
+    await expect(page.getByRole('heading', { name: canvasName })).not.toBeVisible({ timeout: 5000 });
   });
 });

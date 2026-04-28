@@ -25,16 +25,17 @@ export default function FeatureTooltip({
   enabled = true,
   autoDismissMs = 8000,
 }: Props) {
+  const disabledForE2e = import.meta.env.VITE_E2E;
   const seen = useUIStore((s) => s.featureDiscovery[feature]);
   const markSeen = useUIStore((s) => s.markFeatureSeen);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!enabled || seen) return;
+    if (disabledForE2e || !enabled || seen) return;
     // Slight delay so the trigger element is laid out.
     const show = window.setTimeout(() => setVisible(true), 300);
     return () => window.clearTimeout(show);
-  }, [enabled, seen]);
+  }, [disabledForE2e, enabled, seen]);
 
   useEffect(() => {
     if (!visible || autoDismissMs <= 0) return;
@@ -47,6 +48,10 @@ export default function FeatureTooltip({
     setVisible(false);
     markSeen(feature);
   };
+
+  if (disabledForE2e) {
+    return children ? <>{children}</> : null;
+  }
 
   if (children) {
     return (

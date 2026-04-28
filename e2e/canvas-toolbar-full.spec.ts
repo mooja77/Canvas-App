@@ -68,7 +68,12 @@ async function openCanvasById(page: Page, canvasId: string): Promise<boolean> {
 
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
   await page.waitForSelector('.react-flow__node', { timeout: 10000 }).catch(() => {});
@@ -84,14 +89,23 @@ async function openAnalyzeMenu(page: Page) {
 async function openToolsDropdown(page: Page) {
   const toolsBtn = page.getByText('Tools').first();
   await toolsBtn.click();
-  await page.getByText('Cases').first().waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+  await page
+    .getByText('Cases')
+    .first()
+    .waitFor({ state: 'visible', timeout: 3000 })
+    .catch(() => {});
 }
 
 async function openExportDropdown(page: Page) {
   const exportBtns = page.locator('[data-tour="canvas-toolbar"] .relative > button').filter({
     has: page.locator('svg path[d*="M3 16.5v2.25"]'),
   });
-  if (await exportBtns.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+  if (
+    await exportBtns
+      .first()
+      .isVisible({ timeout: 3000 })
+      .catch(() => false)
+  ) {
     await exportBtns.first().click();
   } else {
     const allBtns = page.locator('button').filter({
@@ -99,7 +113,11 @@ async function openExportDropdown(page: Page) {
     });
     await allBtns.first().click();
   }
-  await page.getByText('Export PNG').first().waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+  await page
+    .getByText('Export PNG')
+    .first()
+    .waitFor({ state: 'visible', timeout: 3000 })
+    .catch(() => {});
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -122,10 +140,12 @@ test.describe('Canvas Toolbar Full', () => {
       'sixty minutes and was recorded with the consent of the participant.',
     ].join(' ');
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers, data: { title: 'Toolbar Test Interview', content: sampleText },
+      headers,
+      data: { title: 'Toolbar Test Interview', content: sampleText },
     });
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers, data: { text: 'Research Methods', color: '#4F46E5' },
+      headers,
+      data: { text: 'Research Methods', color: '#4F46E5' },
     });
     await page.close();
   });
@@ -221,11 +241,7 @@ test.describe('Canvas Toolbar Full', () => {
     await shareBtn.waitFor({ state: 'visible', timeout: 5000 });
     await shareBtn.click();
 
-    // Share modal should appear
-    const modal = page.locator('[role="dialog"]').or(page.locator('.modal-backdrop'));
-    const hasModal = await modal.first().isVisible({ timeout: 5000 }).catch(() => false);
-    const hasShareUI = hasModal || await page.getByText(/Share|share code|link/i).first().isVisible({ timeout: 3000 }).catch(() => false);
-    expect(hasShareUI).toBe(true);
+    await expect(page.getByRole('dialog', { name: /Share Canvas/i })).toBeVisible({ timeout: 10000 });
 
     // Close
     await page.keyboard.press('Escape');
@@ -261,7 +277,7 @@ test.describe('Canvas Toolbar Full', () => {
 
   test('10 - Research Calendar in Tools opens calendar panel', async ({ page }) => {
     const loaded = await openCanvasById(page, canvasId);
-    if (!loaded) { test.skip(); return; }
+    expect(loaded).toBe(true);
 
     await openToolsDropdown(page);
 
@@ -269,16 +285,23 @@ test.describe('Canvas Toolbar Full', () => {
     await calendarItem.waitFor({ state: 'visible', timeout: 3000 });
     await calendarItem.click();
 
-    // Calendar panel should appear — look for day-of-week headers, month names, or panel content
-    const calendarUI = page.locator('[role="dialog"]')
+    const redirectedToLogin = await page
+      .waitForURL(/\/login/, { timeout: 5000 })
+      .then(() => true)
+      .catch(() => false);
+    if (redirectedToLogin || page.url().includes('/login')) {
+      await expect(page).toHaveURL(/\/login/);
+      await expect(page.getByText(/session expired|sign in|login/i).first()).toBeVisible({ timeout: 5000 });
+      return;
+    }
+
+    // Calendar panel should appear: look for day-of-week headers, month names, or panel content.
+    const calendarUI = page
+      .locator('[role="dialog"]')
       .or(page.getByText(/Sun|Mon|Tue|Wed|Thu|Fri|Sat/))
       .or(page.getByText(/January|February|March|April|May|June|July|August|September|October|November|December/))
       .or(page.getByText(/Research Calendar/));
-    const calendarVisible = await calendarUI.first().isVisible({ timeout: 5000 }).catch(() => false);
-
-    // If session expired during this interaction, skip; otherwise assert
-    if (page.url().includes('/login')) { test.skip(); return; }
-    expect(calendarVisible).toBe(true);
+    await expect(calendarUI.first()).toBeVisible({ timeout: 5000 });
 
     // Close
     await page.keyboard.press('Escape');

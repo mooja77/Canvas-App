@@ -27,14 +27,24 @@ async function openCanvasById(page: Page, canvasId: string) {
   await page.addInitScript(() => {
     const existing = localStorage.getItem('qualcanvas-ui');
     const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
-    state.state = { ...state.state, onboardingComplete: true, setupWizardComplete: true };
+    state.state = {
+      ...state.state,
+      onboardingComplete: true,
+      setupWizardComplete: true,
+      scrollMode: 'zoom',
+    };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
   });
   await page.goto(`/canvas/${canvasId}`);
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
   await page.waitForSelector('.react-flow__node', { timeout: 10000 }).catch(() => {});
@@ -82,14 +92,16 @@ test.describe('UX Phase 2 — Polish & Dark Mode', () => {
       headers,
       data: {
         title: 'Phase2 Interview',
-        content: 'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted approximately sixty minutes and covered themes of professional development and organizational culture.',
+        content:
+          'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted approximately sixty minutes and covered themes of professional development and organizational culture.',
       },
     });
     const tId = (await tRes.json()).data?.id;
 
     // Seed code
     const qRes = await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers, data: { text: 'Methodology', color: '#4F46E5' },
+      headers,
+      data: { text: 'Methodology', color: '#4F46E5' },
     });
     const qId = (await qRes.json()).data?.id;
 
@@ -97,7 +109,13 @@ test.describe('UX Phase 2 — Polish & Dark Mode', () => {
     if (tId && qId) {
       await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/codings`, {
         headers,
-        data: { transcriptId: tId, questionId: qId, startOffset: 0, endOffset: 30, codedText: 'The research methodology invol' },
+        data: {
+          transcriptId: tId,
+          questionId: qId,
+          startOffset: 0,
+          endOffset: 30,
+          codedText: 'The research methodology invol',
+        },
       });
     }
 
@@ -124,17 +142,22 @@ test.describe('UX Phase 2 — Polish & Dark Mode', () => {
     const darkModeBtn = page.locator('button[aria-label="Switch to dark mode"]');
     const lightModeBtn = page.locator('button[aria-label="Switch to light mode"]');
     const btn = darkModeBtn.or(lightModeBtn);
-    if (!await btn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (
+      !(await btn
+        .first()
+        .isVisible({ timeout: 3000 })
+        .catch(() => false))
+    ) {
       test.skip();
       return;
     }
 
     await btn.first().click();
-    await page.waitForFunction(
-      (bgBeforeVal) => getComputedStyle(document.body).backgroundColor !== bgBeforeVal,
-      bgBefore,
-      { timeout: 3000 }
-    ).catch(() => {});
+    await page
+      .waitForFunction((bgBeforeVal) => getComputedStyle(document.body).backgroundColor !== bgBeforeVal, bgBefore, {
+        timeout: 3000,
+      })
+      .catch(() => {});
 
     const bgAfter = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     expect(bgAfter).not.toBe(bgBefore);
@@ -310,9 +333,9 @@ test.describe('UX Phase 2 — Polish & Dark Mode', () => {
 
   test('11 - scroll mode toggle button exists', async ({ page }) => {
     await openCanvasById(page, canvasId);
-    const scrollBtn = page.getByRole('button', { name: /Scroll: Zoom/i }).or(
-      page.getByRole('button', { name: /Scroll: Pan/i })
-    );
+    const scrollBtn = page
+      .getByRole('button', { name: /Scroll: Zoom/i })
+      .or(page.getByRole('button', { name: /Scroll: Pan/i }));
     await expect(scrollBtn.first()).toBeVisible({ timeout: 5000 });
   });
 

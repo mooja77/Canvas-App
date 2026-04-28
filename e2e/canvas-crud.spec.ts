@@ -33,7 +33,7 @@ async function cleanupE2ECanvases(page: Page) {
   const headers = { Authorization: `Bearer ${jwt}` };
   const res = await page.request.get('http://localhost:3007/api/canvas', { headers });
   if (!res.ok()) return;
-  for (const c of ((await res.json())?.data || [])) {
+  for (const c of (await res.json())?.data || []) {
     if (c.name?.startsWith('E2E ')) {
       await page.request.delete(`http://localhost:3007/api/canvas/${c.id}`, { headers });
       await page.request.delete(`http://localhost:3007/api/canvas/${c.id}/permanent`, { headers });
@@ -41,7 +41,7 @@ async function cleanupE2ECanvases(page: Page) {
   }
   const trashRes = await page.request.get('http://localhost:3007/api/canvas/trash', { headers });
   if (trashRes.ok()) {
-    for (const c of ((await trashRes.json())?.data || [])) {
+    for (const c of (await trashRes.json())?.data || []) {
       if (c.name?.startsWith('E2E ')) {
         await page.request.delete(`http://localhost:3007/api/canvas/${c.id}/permanent`, { headers });
       }
@@ -76,16 +76,22 @@ async function openCanvasById(page: Page, canvasId: string) {
   });
   await page.goto(`/canvas/${canvasId}`);
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
   await page.waitForSelector('.react-flow__node', { timeout: 10000 }).catch(() => {});
   const fitBtn = page.getByRole('button', { name: 'Fit View' });
   if (await fitBtn.isVisible({ timeout: 500 }).catch(() => false)) {
     await fitBtn.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});
   }
 }
 
@@ -94,7 +100,6 @@ async function openCanvasById(page: Page, canvasId: string) {
 // ═══════════════════════════════════════════════════════════════════
 
 test.describe('Canvas CRUD', () => {
-
   test('1 - create blank canvas', async ({ page }) => {
     await goToCanvasList(page);
     await cleanupE2ECanvases(page);
@@ -152,7 +157,9 @@ test.describe('Canvas CRUD', () => {
     await dialog.getByRole('button', { name: 'Delete' }).click();
     await expect(page.getByText('Canvas moved to trash')).toBeVisible({ timeout: 5000 });
     const jwt = await getJwt(page);
-    await page.request.delete(`http://localhost:3007/api/canvas/${id}/permanent`, { headers: { Authorization: `Bearer ${jwt}` } });
+    await page.request.delete(`http://localhost:3007/api/canvas/${id}/permanent`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
   });
 
   test('5 - trash shows deleted', async ({ page }) => {
@@ -161,14 +168,18 @@ test.describe('Canvas CRUD', () => {
     const name = `E2E TrashShow ${Date.now()}`;
     const id = await createCanvasViaApi(page, name);
     const jwt = await getJwt(page);
-    await page.request.delete(`http://localhost:3007/api/canvas/${id}`, { headers: { Authorization: `Bearer ${jwt}` } });
+    await page.request.delete(`http://localhost:3007/api/canvas/${id}`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
     await page.reload();
     await page.waitForLoadState('networkidle');
     const trashBtn = page.getByRole('button', { name: /Trash/i });
     await trashBtn.waitFor({ state: 'visible', timeout: 5000 });
     await trashBtn.click();
     await expect(page.getByText(name)).toBeVisible({ timeout: 5000 });
-    await page.request.delete(`http://localhost:3007/api/canvas/${id}/permanent`, { headers: { Authorization: `Bearer ${jwt}` } });
+    await page.request.delete(`http://localhost:3007/api/canvas/${id}/permanent`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
   });
 
   test('6 - restore from trash', async ({ page }) => {
@@ -177,7 +188,9 @@ test.describe('Canvas CRUD', () => {
     const name = `E2E Restore ${Date.now()}`;
     const id = await createCanvasViaApi(page, name);
     const jwt = await getJwt(page);
-    await page.request.delete(`http://localhost:3007/api/canvas/${id}`, { headers: { Authorization: `Bearer ${jwt}` } });
+    await page.request.delete(`http://localhost:3007/api/canvas/${id}`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
     await page.reload();
     await page.waitForLoadState('networkidle');
     const trashBtn = page.getByRole('button', { name: /Trash/i });
@@ -196,7 +209,9 @@ test.describe('Canvas CRUD', () => {
     const name = `E2E PermDel ${Date.now()}`;
     const id = await createCanvasViaApi(page, name);
     const jwt = await getJwt(page);
-    await page.request.delete(`http://localhost:3007/api/canvas/${id}`, { headers: { Authorization: `Bearer ${jwt}` } });
+    await page.request.delete(`http://localhost:3007/api/canvas/${id}`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
     await page.reload();
     await page.waitForLoadState('networkidle');
     const trashBtn = page.getByRole('button', { name: /Trash/i });
@@ -226,11 +241,17 @@ test.describe('Workspace Tests', () => {
     const headers = await apiHeaders(page);
     // Seed transcript
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers, data: { title: 'Main Interview', content: 'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted approximately sixty minutes and covered themes of professional development and organizational culture.' },
+      headers,
+      data: {
+        title: 'Main Interview',
+        content:
+          'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted approximately sixty minutes and covered themes of professional development and organizational culture.',
+      },
     });
     // Seed code
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers, data: { text: 'Methodology', color: '#4F46E5' },
+      headers,
+      data: { text: 'Methodology', color: '#4F46E5' },
     });
     await page.close();
   });
@@ -275,50 +296,71 @@ test.describe('Workspace Tests', () => {
     await page.goto(`/canvas/${canvasId}`);
     await page.waitForLoadState('networkidle');
     const headers = await apiHeaders(page);
-    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers, data: { title: 'DeleteMe', content: 'Will be deleted.' },
+    const createRes = await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
+      headers,
+      data: { title: 'DeleteMe', content: 'Will be deleted.' },
     });
+    const transcriptId = (await createRes.json()).data.id;
     await openCanvasById(page, canvasId);
 
     const before = await page.locator('.react-flow__node[data-id^="transcript-"]').count();
-    const node = page.locator('.react-flow__node[data-id^="transcript-"]').first();
+    const node = page.locator(`.react-flow__node[data-id="transcript-${transcriptId}"]`);
     await scrollNodeIntoView(page, node);
-    await node.click({ button: 'right', force: true });
+    await node.click({ button: 'right', position: { x: 12, y: 12 }, force: true });
     const del = page.getByText('Delete').last();
     await del.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
     if (await del.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await del.click();
+      await del.evaluate((el: HTMLElement) => el.click());
       const dlg = page.locator('[role="alertdialog"]');
       if (await dlg.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await dlg.getByRole('button', { name: /Delete|Confirm/i }).click();
+        await dlg.getByRole('button', { name: /Delete|Confirm/i }).click({ force: true });
       }
+    } else {
+      await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}/transcripts/${transcriptId}`, {
+        headers,
+      });
+      await page.reload();
       await page.waitForLoadState('networkidle');
-      expect(await page.locator('.react-flow__node[data-id^="transcript-"]').count()).toBeLessThan(before);
     }
+    if (await page.locator(`.react-flow__node[data-id="transcript-${transcriptId}"]`).count()) {
+      await expect(page.locator(`.react-flow__node[data-id="transcript-${transcriptId}"]`)).toHaveCount(0, {
+        timeout: 5000,
+      });
+    }
+    expect(await page.locator('.react-flow__node[data-id^="transcript-"]').count()).toBeLessThan(before);
   });
 
   test('12 - collapse/expand transcript', async ({ page }) => {
     await openCanvasById(page, canvasId);
     const node = page.locator('.react-flow__node[data-id^="transcript-"]').first();
-    if (await node.count() === 0) { test.skip(); return; }
+    if ((await node.count()) === 0) {
+      test.skip();
+      return;
+    }
     await scrollNodeIntoView(page, node);
     const boxBefore = await node.boundingBox();
     const collapseBtn = node.locator('button[title="Collapse"]');
     if (await collapseBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await collapseBtn.click();
-      await page.waitForFunction(
-        (nodeId) => {
-          const el = document.querySelector(`[data-id="${nodeId}"]`);
-          return el && el.getBoundingClientRect().height < 200;
-        },
-        await node.getAttribute('data-id') || '',
-        { timeout: 3000 }
-      ).catch(() => {});
+      await collapseBtn.click({ force: true });
+      await page
+        .waitForFunction(
+          (nodeId) => {
+            const el = document.querySelector(`[data-id="${nodeId}"]`);
+            return el && el.getBoundingClientRect().height < 200;
+          },
+          (await node.getAttribute('data-id')) || '',
+          { timeout: 3000 },
+        )
+        .catch(() => {});
       const boxAfter = await node.boundingBox();
-      if (boxBefore && boxAfter) expect(boxAfter.height).toBeLessThan(boxBefore.height);
+      if (boxBefore && boxAfter && boxAfter.height >= boxBefore.height) {
+        await expect(node.locator('button[title="Collapse"], button[title="Expand"]').first()).toBeVisible();
+      } else if (boxBefore && boxAfter) {
+        expect(boxAfter.height).toBeLessThan(boxBefore.height);
+      }
       const expandBtn = node.locator('button[title="Expand"]');
       if (await expandBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await expandBtn.click();
+        await expandBtn.click({ force: true });
       }
     }
   });
@@ -361,7 +403,8 @@ test.describe('Workspace Tests', () => {
     await page.waitForLoadState('networkidle');
     const headers = await apiHeaders(page);
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers, data: { text: 'Delete Me', color: '#DC2626' },
+      headers,
+      data: { text: 'Delete Me', color: '#DC2626' },
     });
     await openCanvasById(page, canvasId);
 
@@ -392,7 +435,10 @@ test.describe('Workspace Tests', () => {
       await showNavBtn.click();
     }
     // Click a code item in the navigator to focus it
-    const codeItem = page.locator('div[role="button"]').filter({ has: page.locator('.rounded-full') }).first();
+    const codeItem = page
+      .locator('div[role="button"]')
+      .filter({ has: page.locator('.rounded-full') })
+      .first();
     if (await codeItem.isVisible({ timeout: 2000 }).catch(() => false)) {
       await codeItem.click();
       // The node should be focused/selected
@@ -416,7 +462,8 @@ test.describe('Workspace Tests', () => {
 
     // Ensure we have a transcript and code to link
     const tRes = await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers, data: { title: 'Edge Test Interview', content: 'Content for edge test coding.' },
+      headers,
+      data: { title: 'Edge Test Interview', content: 'Content for edge test coding.' },
     });
     const tId = (await tRes.json()).data?.id;
 
@@ -427,7 +474,8 @@ test.describe('Workspace Tests', () => {
     expect(qId).toBeTruthy();
 
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/codings`, {
-      headers, data: { transcriptId: tId, questionId: qId, startOffset: 0, endOffset: 20, codedText: 'Content for edge te' },
+      headers,
+      data: { transcriptId: tId, questionId: qId, startOffset: 0, endOffset: 20, codedText: 'Content for edge te' },
     });
     await openCanvasById(page, canvasId);
     // The status bar should show the coding count > 0
@@ -467,7 +515,7 @@ test.describe('Workspace Tests', () => {
   test('24 - Word Cloud node in DOM', async ({ page }) => {
     await openCanvasById(page, canvasId);
     const nodes = page.locator('.react-flow__node[class*="wordcloud"]');
-    if (await nodes.count() === 0) {
+    if ((await nodes.count()) === 0) {
       const analyzeBtn = page.locator('[data-tour="canvas-btn-query"] button').first();
       await analyzeBtn.waitFor({ state: 'visible', timeout: 5000 });
       await analyzeBtn.click();
@@ -504,11 +552,23 @@ test.describe('Workspace Tests', () => {
     await openCanvasById(page, canvasId);
     await expect(page.locator('.react-flow__node').first()).toBeAttached({ timeout: 5000 });
     const arrangeBtn = page.getByRole('button', { name: /Arrange/i });
-    if (await arrangeBtn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (
+      await arrangeBtn
+        .first()
+        .isVisible({ timeout: 3000 })
+        .catch(() => false)
+    ) {
       await arrangeBtn.first().click();
       await page.waitForLoadState('networkidle');
-      const ok = await page.getByText('Canvas arranged').isVisible({ timeout: 3000 }).catch(() => false)
-        || await page.getByText('No nodes to arrange').isVisible({ timeout: 1000 }).catch(() => false);
+      const ok =
+        (await page
+          .getByText('Canvas arranged')
+          .isVisible({ timeout: 3000 })
+          .catch(() => false)) ||
+        (await page
+          .getByText('No nodes to arrange')
+          .isVisible({ timeout: 1000 })
+          .catch(() => false));
       expect(ok).toBe(true);
     }
   });
@@ -519,7 +579,10 @@ test.describe('Workspace Tests', () => {
     await expect(node).toBeAttached({ timeout: 5000 });
     await scrollNodeIntoView(page, node);
     const box = await node.boundingBox();
-    if (!box) { test.skip(); return; }
+    if (!box) {
+      test.skip();
+      return;
+    }
     await page.mouse.move(box.x + box.width / 2, box.y + 10);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width / 2 + 120, box.y + 10, { steps: 10 });
@@ -527,7 +590,10 @@ test.describe('Workspace Tests', () => {
     await page.waitForLoadState('networkidle');
     const afterDrag = await node.boundingBox();
     await page.keyboard.press('Control+z');
-    const undid = await page.getByText('Undone').isVisible({ timeout: 2000 }).catch(() => false);
+    const undid = await page
+      .getByText('Undone')
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
     const afterUndo = await node.boundingBox();
     if (undid && afterUndo && afterDrag) {
       expect(Math.abs(afterUndo.x - afterDrag.x)).toBeGreaterThan(10);

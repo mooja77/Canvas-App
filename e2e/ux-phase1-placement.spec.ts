@@ -34,14 +34,24 @@ async function openCanvasById(page: Page, canvasId: string) {
   await page.addInitScript(() => {
     const existing = localStorage.getItem('qualcanvas-ui');
     const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
-    state.state = { ...state.state, onboardingComplete: true, setupWizardComplete: true };
+    state.state = {
+      ...state.state,
+      onboardingComplete: true,
+      setupWizardComplete: true,
+      scrollMode: 'zoom',
+    };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
   });
   await page.goto(`/canvas/${canvasId}`);
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
   await page.waitForSelector('.react-flow__node', { timeout: 10000 }).catch(() => {});
@@ -81,16 +91,19 @@ test.describe('UX Phase 1 — Placement & Navigation', () => {
       headers,
       data: {
         title: 'Phase1 Interview',
-        content: 'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted approximately sixty minutes and covered themes of professional development, organizational culture, and leadership practices.',
+        content:
+          'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted approximately sixty minutes and covered themes of professional development, organizational culture, and leadership practices.',
       },
     });
 
     // Seed 2 codes
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers, data: { text: 'Methodology', color: '#4F46E5' },
+      headers,
+      data: { text: 'Methodology', color: '#4F46E5' },
     });
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers, data: { text: 'Leadership', color: '#DC2626' },
+      headers,
+      data: { text: 'Leadership', color: '#DC2626' },
     });
 
     await page.close();
@@ -289,7 +302,7 @@ test.describe('UX Phase 1 — Placement & Navigation', () => {
 
     // If a node context menu appeared instead, dismiss and try different spot
     const selectAll = page.getByText('Select All');
-    if (!await selectAll.isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (!(await selectAll.isVisible({ timeout: 2000 }).catch(() => false))) {
       await page.keyboard.press('Escape');
       await page.waitForTimeout(300);
       // Try top-left corner
@@ -358,7 +371,7 @@ test.describe('UX Phase 1 — Placement & Navigation', () => {
         return match && parseFloat(match[1]) > prevScale;
       },
       before!.scale,
-      { timeout: 3000 }
+      { timeout: 3000 },
     );
 
     const after = await getViewportTransform(page);
@@ -373,26 +386,34 @@ test.describe('UX Phase 1 — Placement & Navigation', () => {
     // Zoom in first to change the viewport
     await page.mouse.move(600, 400);
     await page.mouse.wheel(0, -500);
-    await page.waitForFunction(() => {
-      const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
-      if (!vp) return false;
-      const match = vp.style.transform.match(/scale\((.+?)\)/);
-      return match && parseFloat(match[1]) > 1;
-    }, undefined, { timeout: 3000 }).catch(() => {});
+    await page
+      .waitForFunction(
+        () => {
+          const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
+          if (!vp) return false;
+          const match = vp.style.transform.match(/scale\((.+?)\)/);
+          return match && parseFloat(match[1]) > 1;
+        },
+        undefined,
+        { timeout: 3000 },
+      )
+      .catch(() => {});
 
     const zoomed = await getViewportTransform(page);
 
     await page.getByRole('button', { name: 'Fit View' }).click();
-    await page.waitForFunction(
-      (prevScale) => {
-        const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
-        if (!vp) return false;
-        const match = vp.style.transform.match(/scale\((.+?)\)/);
-        return match && Math.abs(parseFloat(match[1]) - prevScale) > 0.01;
-      },
-      zoomed!.scale,
-      { timeout: 3000 }
-    ).catch(() => {});
+    await page
+      .waitForFunction(
+        (prevScale) => {
+          const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
+          if (!vp) return false;
+          const match = vp.style.transform.match(/scale\((.+?)\)/);
+          return match && Math.abs(parseFloat(match[1]) - prevScale) > 0.01;
+        },
+        zoomed!.scale,
+        { timeout: 3000 },
+      )
+      .catch(() => {});
 
     // Nodes should be visible
     const nodes = page.locator('.react-flow__node');
@@ -422,8 +443,12 @@ test.describe('UX Phase 1 — Placement & Navigation', () => {
   test('15 - ? key opens shortcuts modal via toolbar button', async ({ page }) => {
     await openCanvasById(page, canvasId);
 
-    // Click the keyboard shortcuts button in the toolbar (labeled "Keyboard shortcuts (?)")
-    const shortcutsBtn = page.getByRole('button', { name: /Keyboard shortcuts/i });
+    await page
+      .getByRole('button', { name: /More canvas actions/i })
+      .nth(1)
+      .click();
+    // Click the keyboard shortcuts item in the overflow menu.
+    const shortcutsBtn = page.getByRole('menuitem', { name: /Keyboard shortcuts/i });
     await expect(shortcutsBtn).toBeVisible({ timeout: 3000 });
     await shortcutsBtn.click();
 

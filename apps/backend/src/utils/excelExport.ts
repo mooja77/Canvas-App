@@ -41,8 +41,7 @@ interface CanvasTextCoding {
 interface CanvasCase {
   id: string;
   name: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  attributes: any;
+  attributes: Record<string, unknown> | null;
 }
 
 interface CanvasData {
@@ -180,6 +179,7 @@ function buildCodebookSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
 
   styleHeaderRow(ws);
   addAutoFilter(ws, 4);
+  autoFitColumns(ws);
 }
 
 function buildCodingsSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
@@ -241,6 +241,7 @@ function buildCodingsSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
 
   styleHeaderRow(ws);
   addAutoFilter(ws, 7);
+  autoFitColumns(ws);
 }
 
 function buildCaseMatrixSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
@@ -287,8 +288,7 @@ function buildCaseMatrixSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
   // Fill data rows
   data.cases.forEach((c) => {
     const tIds = caseTranscripts.get(c.id) || new Set();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rowData: Record<string, any> = { case: c.name };
+    const rowData: Record<string, string | number> = { case: c.name };
 
     data.questions.forEach((q) => {
       const count = data.codings.filter((coding) => coding.questionId === q.id && tIds.has(coding.transcriptId)).length;
@@ -323,6 +323,7 @@ function buildCaseMatrixSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
   headerRow.height = 28;
 
   addAutoFilter(ws, data.questions.length + 1);
+  autoFitColumns(ws);
 }
 
 // ─── Main export function ───

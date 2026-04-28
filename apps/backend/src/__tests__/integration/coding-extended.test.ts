@@ -610,7 +610,7 @@ describe('Coding extended tests', () => {
   it('POST /canvas/:id/cases returns 409 on duplicate case name', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
     const prismaError = new Error('Unique constraint');
-    (prismaError as any).code = 'P2002';
+    (prismaError as Error & { code?: string }).code = 'P2002';
     mockPrisma.canvasCase.create.mockRejectedValue(prismaError);
 
     const res = await request(app)

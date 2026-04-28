@@ -10,10 +10,10 @@ interface CaseManagerPanelProps {
 
 export default function CaseManagerPanel({ onClose }: CaseManagerPanelProps) {
   const activeCanvas = useActiveCanvas();
-  const addCase = useCanvasStore(s => s.addCase);
-  const updateCase = useCanvasStore(s => s.updateCase);
-  const deleteCase = useCanvasStore(s => s.deleteCase);
-  const updateTranscript = useCanvasStore(s => s.updateTranscript);
+  const addCase = useCanvasStore((s) => s.addCase);
+  const updateCase = useCanvasStore((s) => s.updateCase);
+  const deleteCase = useCanvasStore((s) => s.deleteCase);
+  const updateTranscript = useCanvasStore((s) => s.updateTranscript);
   const [newName, setNewName] = useState('');
   const [newAttrs, setNewAttrs] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -26,8 +26,8 @@ export default function CaseManagerPanel({ onClose }: CaseManagerPanelProps) {
 
   const parseAttrs = (str: string): Record<string, string> => {
     const result: Record<string, string> = {};
-    str.split(',').forEach(pair => {
-      const [key, val] = pair.split(':').map(s => s.trim());
+    str.split(',').forEach((pair) => {
+      const [key, val] = pair.split(':').map((s) => s.trim());
       if (key && val) result[key] = val;
     });
     return result;
@@ -69,7 +69,11 @@ export default function CaseManagerPanel({ onClose }: CaseManagerPanelProps) {
   const startEdit = (c: CanvasCase) => {
     setEditingId(c.id);
     setEditName(c.name);
-    setEditAttrs(Object.entries(c.attributes || {}).map(([k, v]) => `${k}: ${v}`).join(', '));
+    setEditAttrs(
+      Object.entries(c.attributes || {})
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(', '),
+    );
   };
 
   return (
@@ -93,16 +97,20 @@ export default function CaseManagerPanel({ onClose }: CaseManagerPanelProps) {
               className="input w-full text-sm"
               placeholder="Case name (e.g. Participant A)"
               value={newName}
-              onChange={e => setNewName(e.target.value)}
+              onChange={(e) => setNewName(e.target.value)}
             />
             <input
               type="text"
               className="input w-full text-xs"
               placeholder="Attributes (e.g. role: Manager, org: NHS)"
               value={newAttrs}
-              onChange={e => setNewAttrs(e.target.value)}
+              onChange={(e) => setNewAttrs(e.target.value)}
             />
-            <button onClick={handleCreate} disabled={!newName.trim()} className="btn-primary h-7 px-3 text-xs disabled:opacity-50">
+            <button
+              onClick={handleCreate}
+              disabled={!newName.trim()}
+              className="btn-primary h-7 px-3 text-xs disabled:opacity-50"
+            >
               Create Case
             </button>
           </div>
@@ -112,11 +120,24 @@ export default function CaseManagerPanel({ onClose }: CaseManagerPanelProps) {
             <div key={c.id} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
               {editingId === c.id ? (
                 <div className="space-y-2">
-                  <input className="input w-full text-sm" value={editName} onChange={e => setEditName(e.target.value)} />
-                  <input className="input w-full text-xs" placeholder="key: value, key: value" value={editAttrs} onChange={e => setEditAttrs(e.target.value)} />
+                  <input
+                    className="input w-full text-sm"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                  />
+                  <input
+                    className="input w-full text-xs"
+                    placeholder="key: value, key: value"
+                    value={editAttrs}
+                    onChange={(e) => setEditAttrs(e.target.value)}
+                  />
                   <div className="flex gap-2">
-                    <button onClick={() => handleUpdate(c.id)} className="btn-primary h-7 px-2 text-xs">Save</button>
-                    <button onClick={() => setEditingId(null)} className="text-xs text-gray-400">Cancel</button>
+                    <button onClick={() => handleUpdate(c.id)} className="btn-primary h-7 px-2 text-xs">
+                      Save
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="text-xs text-gray-400">
+                      Cancel
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -124,14 +145,24 @@ export default function CaseManagerPanel({ onClose }: CaseManagerPanelProps) {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{c.name}</span>
                     <div className="flex gap-1">
-                      <button onClick={() => startEdit(c)} className="text-[10px] text-blue-500 hover:text-blue-700">Edit</button>
-                      <button onClick={() => setConfirmDeleteId(c.id)} className="text-[10px] text-red-400 hover:text-red-600">Delete</button>
+                      <button onClick={() => startEdit(c)} className="text-[10px] text-blue-500 hover:text-blue-700">
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(c.id)}
+                        className="text-[10px] text-red-400 hover:text-red-600"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                   {Object.keys(c.attributes || {}).length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-2">
                       {Object.entries(c.attributes).map(([k, v]) => (
-                        <span key={k} className="rounded-full bg-teal-50 px-2 py-0.5 text-[10px] text-teal-700 dark:bg-teal-900/30 dark:text-teal-300">
+                        <span
+                          key={k}
+                          className="rounded-full bg-teal-50 px-2 py-0.5 text-[10px] text-teal-700 dark:bg-teal-900/30 dark:text-teal-300"
+                        >
                           {k}: {v}
                         </span>
                       ))}
@@ -168,7 +199,10 @@ export default function CaseManagerPanel({ onClose }: CaseManagerPanelProps) {
           <ConfirmDialog
             title="Delete Case"
             message="Delete this case? Transcripts will be unlinked and relations removed."
-            onConfirm={() => { deleteCase(confirmDeleteId); setConfirmDeleteId(null); }}
+            onConfirm={async () => {
+              await deleteCase(confirmDeleteId);
+              setConfirmDeleteId(null);
+            }}
             onCancel={() => setConfirmDeleteId(null)}
           />
         )}

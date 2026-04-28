@@ -309,7 +309,7 @@ ethicsRoutes.post(
       });
 
       const codingUpdates = codings
-        .map((coding: any) => {
+        .map((coding) => {
           let newCodedText = coding.codedText;
           for (const { find, replace } of replacements) {
             const findRegex = new RegExp('\\b' + escapeRegex(find) + '\\b', 'gi');
@@ -323,7 +323,7 @@ ethicsRoutes.post(
           }
           return null;
         })
-        .filter(Boolean);
+        .filter((update): update is NonNullable<typeof update> => update !== null);
 
       // Execute all updates in a transaction
       await prisma.$transaction([
@@ -334,8 +334,7 @@ ethicsRoutes.post(
             isAnonymized: true,
           },
         }),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ...(codingUpdates as any[]),
+        ...codingUpdates,
       ]);
 
       const rawIp = req.ip || req.socket.remoteAddress || 'unknown';

@@ -58,7 +58,7 @@ import {
   checkAutoCode,
   checkEthicsAccess,
   checkAnalysisType,
-  checkAnalysisTypeOnRun,
+  checkAnalysisTypeOnRun as _checkAnalysisTypeOnRun,
 } from '../../middleware/planLimits.js';
 import { errorHandler } from '../../middleware/errorHandler.js';
 import { signUserToken, signResearcherToken } from '../../utils/jwt.js';
@@ -71,14 +71,9 @@ function createApp(
 ) {
   const app = express();
   app.use(express.json());
-  app[method](
-    path,
-    auth,
-    ...middlewares,
-    (_req: Request, res: Response) => {
-      res.status(201).json({ success: true });
-    },
-  );
+  app[method](path, auth, ...middlewares, (_req: Request, res: Response) => {
+    res.status(201).json({ success: true });
+  });
   app.use(errorHandler);
   return app;
 }
@@ -107,10 +102,7 @@ describe('Plan enforcement — comprehensive limits', () => {
     mockPrisma.codingCanvas.count.mockResolvedValue(1);
 
     const app = createApp('post', '/api/canvas', checkCanvasLimit());
-    const res = await request(app)
-      .post('/api/canvas')
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({});
+    const res = await request(app).post('/api/canvas').set('Authorization', `Bearer ${jwt}`).send({});
 
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('PLAN_LIMIT_EXCEEDED');
@@ -164,10 +156,7 @@ describe('Plan enforcement — comprehensive limits', () => {
     mockPrisma.canvasShare.count.mockResolvedValue(0);
 
     const app = createApp('post', '/api/canvas/:id/share', checkShareLimit());
-    const res = await request(app)
-      .post('/api/canvas/canvas-1/share')
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({});
+    const res = await request(app).post('/api/canvas/canvas-1/share').set('Authorization', `Bearer ${jwt}`).send({});
 
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('PLAN_LIMIT_EXCEEDED');
@@ -182,9 +171,7 @@ describe('Plan enforcement — comprehensive limits', () => {
     mockPrisma.user.findUnique.mockResolvedValue(mockUser('u1', 'free'));
 
     const app = createApp('get', '/api/canvas/:canvasId/ethics', checkEthicsAccess());
-    const res = await request(app)
-      .get('/api/canvas/canvas-1/ethics')
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get('/api/canvas/canvas-1/ethics').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('PLAN_LIMIT_EXCEEDED');
@@ -275,10 +262,7 @@ describe('Plan enforcement — comprehensive limits', () => {
     mockPrisma.codingCanvas.count.mockResolvedValue(100);
 
     const app = createApp('post', '/api/canvas', checkCanvasLimit());
-    const res = await request(app)
-      .post('/api/canvas')
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({});
+    const res = await request(app).post('/api/canvas').set('Authorization', `Bearer ${jwt}`).send({});
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
@@ -292,10 +276,7 @@ describe('Plan enforcement — comprehensive limits', () => {
     mockPrisma.canvasShare.count.mockResolvedValue(5);
 
     const app = createApp('post', '/api/canvas/:id/share', checkShareLimit());
-    const res = await request(app)
-      .post('/api/canvas/canvas-1/share')
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({});
+    const res = await request(app).post('/api/canvas/canvas-1/share').set('Authorization', `Bearer ${jwt}`).send({});
 
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('PLAN_LIMIT_EXCEEDED');
@@ -310,10 +291,7 @@ describe('Plan enforcement — comprehensive limits', () => {
     mockPrisma.user.findUnique.mockResolvedValue(mockUser('u3', 'team'));
 
     const app = createApp('post', '/api/canvas/:id/share', checkShareLimit());
-    const res = await request(app)
-      .post('/api/canvas/canvas-1/share')
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({});
+    const res = await request(app).post('/api/canvas/canvas-1/share').set('Authorization', `Bearer ${jwt}`).send({});
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
@@ -346,10 +324,7 @@ describe('Plan enforcement — comprehensive limits', () => {
     mockPrisma.codingCanvas.count.mockResolvedValue(1);
 
     const app = createApp('post', '/api/canvas', checkCanvasLimit());
-    const res1 = await request(app)
-      .post('/api/canvas')
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({});
+    const res1 = await request(app).post('/api/canvas').set('Authorization', `Bearer ${jwt}`).send({});
 
     expect(res1.status).toBe(403);
 
@@ -357,10 +332,7 @@ describe('Plan enforcement — comprehensive limits', () => {
     mockPrisma.user.findUnique.mockResolvedValue(mockUser('u1', 'pro'));
     mockPrisma.codingCanvas.count.mockResolvedValue(1);
 
-    const res2 = await request(app)
-      .post('/api/canvas')
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({});
+    const res2 = await request(app).post('/api/canvas').set('Authorization', `Bearer ${jwt}`).send({});
 
     // Auth middleware reads current plan from DB, so upgraded plan takes effect
     expect(res2.status).toBe(201);
@@ -385,10 +357,7 @@ describe('Plan enforcement — comprehensive limits', () => {
     mockPrisma.codingCanvas.count.mockResolvedValue(50);
 
     const app = createApp('post', '/api/canvas', checkCanvasLimit());
-    const res = await request(app)
-      .post('/api/canvas')
-      .set('Authorization', `Bearer ${legacyJwt}`)
-      .send({});
+    const res = await request(app).post('/api/canvas').set('Authorization', `Bearer ${legacyJwt}`).send({});
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);

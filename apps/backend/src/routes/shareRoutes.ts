@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { nanoid } from 'nanoid';
@@ -138,7 +139,7 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
       cloneName = `${baseName} ${attempt}`;
     }
 
-    const result = await prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const newCanvas = await tx.codingCanvas.create({
         data: {
           dashboardAccessId,
@@ -274,8 +275,8 @@ canvasPublicRoutes.get('/canvas/shared/:code', validateParams(shareCodeParam), a
 
     const data = {
       ...canvas,
-      cases: canvas.cases.map((c: any) => ({ ...c, attributes: safeJsonParse(c.attributes) })),
-      computedNodes: canvas.computedNodes.map((n: any) => ({
+      cases: canvas.cases.map((c) => ({ ...c, attributes: safeJsonParse(c.attributes) })),
+      computedNodes: canvas.computedNodes.map((n) => ({
         ...n,
         config: safeJsonParse(n.config),
         result: safeJsonParse(n.result),

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
@@ -53,7 +54,7 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     // Create user + linked DashboardAccess in a transaction
-    const result = await prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const user = await tx.user.create({
         data: {
           email: normalizedEmail,
@@ -255,7 +256,7 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
 
     if (!user) {
       // Create new user via Google OAuth
-      user = await prisma.$transaction(async (tx: any) => {
+      user = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const newUser = await tx.user.create({
           data: {
             email: normalizedEmail,
@@ -666,7 +667,7 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    const user = await prisma.$transaction(async (tx: any) => {
+    const user = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const newUser = await tx.user.create({
         data: {
           email: normalizedEmail,

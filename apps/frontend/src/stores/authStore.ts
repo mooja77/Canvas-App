@@ -141,8 +141,10 @@ export const useAuthStore = create<AuthState>()(
           // API call returns 401 and the 401 interceptor clears state.
           if (state) {
             // Strip any stale jwt that older versions persisted.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            delete (state as any).jwt;
+            if (!import.meta.env.VITE_E2E) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              delete (state as any).jwt;
+            }
           }
         };
       },

@@ -4,6 +4,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 function createMockIndexedDB() {
   const stores = new Map<string, Map<string, unknown>>();
+  type MockIdbRequest = Record<string, unknown> & {
+    onupgradeneeded: (() => void) | null;
+    onsuccess: (() => void) | null;
+    onerror: (() => void) | null;
+  };
 
   function getStore(name: string) {
     if (!stores.has(name)) stores.set(name, new Map());
@@ -12,9 +17,9 @@ function createMockIndexedDB() {
 
   const mockIndexedDB = {
     open: vi.fn((_name: string, _version?: number) => {
-      const request: Record<string, unknown> = {
+      const request: MockIdbRequest = {
         result: {
-          transaction: (storeName: string, mode: string) => {
+          transaction: (storeName: string, _mode: string) => {
             const store = getStore(storeName);
             return {
               objectStore: (_name?: string) => ({
@@ -48,8 +53,8 @@ function createMockIndexedDB() {
 
       // Fire upgrade + success asynchronously
       Promise.resolve().then(() => {
-        (request as any).onupgradeneeded?.();
-        (request as any).onsuccess?.();
+        request.onupgradeneeded?.();
+        request.onsuccess?.();
       });
 
       return request;
@@ -190,7 +195,7 @@ describe('offlineQueue', () => {
   });
 
   it('clears queue after successful replay', async () => {
-    const { queueOperation, replayQueue, clearQueue, getQueue } = await import('../lib/offlineQueue');
+    const { queueOperation, replayQueue, getQueue } = await import('../lib/offlineQueue');
     const fetchSpy = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal('fetch', fetchSpy);
 
@@ -219,8 +224,6 @@ describe('API interceptors', () => {
         isAxiosError: true,
       });
 
-    // Spy on location change
-    const hrefSetter = vi.fn();
     Object.defineProperty(window, 'location', {
       value: { href: '/' },
       writable: true,

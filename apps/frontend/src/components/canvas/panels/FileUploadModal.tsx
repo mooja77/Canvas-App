@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { useCanvasStore } from '../../../stores/canvasStore';
+import { parseCsvRecords } from '../../../utils/csv';
 import toast from 'react-hot-toast';
 
 interface ParsedEntry {
@@ -11,54 +12,14 @@ interface Props {
   onClose: () => void;
 }
 
-function parseCSVLine(line: string): string[] {
-  const fields: string[] = [];
-  let current = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (i + 1 < line.length && line[i + 1] === '"') {
-          current += '"';
-          i++; // skip escaped quote
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        current += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ',') {
-        fields.push(current.trim());
-        current = '';
-      } else {
-        current += ch;
-      }
-    }
-  }
-  fields.push(current.trim());
-  return fields;
-}
-
 function parseCsv(text: string): ParsedEntry[] {
-  const lines = text.replace(/\r\n/g, '\n').split('\n').filter(l => l.trim());
-  if (lines.length === 0) return [];
-
-  const entries: ParsedEntry[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    const fields = parseCSVLine(lines[i]);
+  return parseCsvRecords(text).map((fields, i) => {
     if (fields.length < 2 || !fields[1]) {
-      entries.push({ title: `Row ${i + 1}`, content: fields[0] || '' });
-    } else {
-      const title = fields[0] || `Row ${i + 1}`;
-      const content = fields[1];
-      entries.push({ title, content });
+      return { title: `Row ${i + 1}`, content: fields[0] || '' };
     }
-  }
-  return entries;
+    const title = fields[0] || `Row ${i + 1}`;
+    return { title, content: fields[1] };
+  });
 }
 
 export default function FileUploadModal({ onClose }: Props) {
@@ -104,12 +65,15 @@ export default function FileUploadModal({ onClose }: Props) {
     reader.readAsText(file);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) processFile(file);
-  }, [processFile]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragging(false);
+      const file = e.dataTransfer.files[0];
+      if (file) processFile(file);
+    },
+    [processFile],
+  );
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,10 +101,13 @@ export default function FileUploadModal({ onClose }: Props) {
   };
 
   return (
-    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
         className="modal-content w-full max-w-2xl max-h-[80vh] flex flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 pb-3">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Upload File</h3>
@@ -152,7 +119,10 @@ export default function FileUploadModal({ onClose }: Props) {
         <div className="flex-1 overflow-y-auto px-6 pb-6">
           {entries.length === 0 ? (
             <div
-              onDragOver={e => { e.preventDefault(); setDragging(true); }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
               onDragLeave={() => setDragging(false)}
               onDrop={handleDrop}
               className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-12 transition-colors ${
@@ -161,12 +131,20 @@ export default function FileUploadModal({ onClose }: Props) {
                   : 'border-gray-300 hover:border-gray-400 dark:border-gray-600'
               }`}
             >
-              <svg className="h-10 w-10 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+              <svg
+                className="h-10 w-10 text-gray-300 dark:text-gray-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+                />
               </svg>
-              <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                Drag and drop a file here, or
-              </p>
+              <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Drag and drop a file here, or</p>
               <button
                 onClick={() => inputRef.current?.click()}
                 className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
@@ -174,13 +152,7 @@ export default function FileUploadModal({ onClose }: Props) {
                 Browse files
               </button>
               <p className="mt-2 text-xs text-gray-400">Supports .txt and .csv</p>
-              <input
-                ref={inputRef}
-                type="file"
-                accept=".txt,.csv"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
+              <input ref={inputRef} type="file" accept=".txt,.csv" onChange={handleFileSelect} className="hidden" />
             </div>
           ) : (
             <div>
@@ -192,7 +164,11 @@ export default function FileUploadModal({ onClose }: Props) {
                   </span>
                 </div>
                 <button
-                  onClick={() => { setEntries([]); setFileName(''); setFileType(null); }}
+                  onClick={() => {
+                    setEntries([]);
+                    setFileName('');
+                    setFileType(null);
+                  }}
                   className="text-xs text-gray-400 hover:text-gray-600"
                 >
                   Choose different file
@@ -217,7 +193,9 @@ export default function FileUploadModal({ onClose }: Props) {
                 <div className="mt-3">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
                     <span>Importing...</span>
-                    <span>{progress} / {entries.length}</span>
+                    <span>
+                      {progress} / {entries.length}
+                    </span>
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
                     <div
@@ -232,13 +210,13 @@ export default function FileUploadModal({ onClose }: Props) {
         </div>
 
         <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4 dark:border-gray-700">
-          <button onClick={onClose} className="btn-secondary text-sm">Cancel</button>
-          <button
-            onClick={handleImport}
-            disabled={importing || entries.length === 0}
-            className="btn-primary text-sm"
-          >
-            {importing ? `Importing ${progress}/${entries.length}...` : `Import ${entries.length > 0 ? entries.length : ''} Transcript${entries.length !== 1 ? 's' : ''}`}
+          <button onClick={onClose} className="btn-secondary text-sm">
+            Cancel
+          </button>
+          <button onClick={handleImport} disabled={importing || entries.length === 0} className="btn-primary text-sm">
+            {importing
+              ? `Importing ${progress}/${entries.length}...`
+              : `Import ${entries.length > 0 ? entries.length : ''} Transcript${entries.length !== 1 ? 's' : ''}`}
           </button>
         </div>
       </div>

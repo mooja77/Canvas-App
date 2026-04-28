@@ -4,21 +4,44 @@ import * as fs from 'fs';
 const AUTH_FILE = 'e2e/.auth/user.json';
 
 setup('authenticate', async ({ page }) => {
-  await page.goto('/login');
+  setup.setTimeout(60000);
+  await page.addInitScript(() => {
+    localStorage.setItem('jms_cookie_consent', 'rejected');
+    const existing = localStorage.getItem('qualcanvas-ui');
+    const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
+    state.state = { ...state.state, onboardingComplete: true, setupWizardComplete: true };
+    localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
+  });
+
+  await expect
+    .poll(
+      async () => {
+        const res = await page.request.get('http://localhost:3007/ready').catch(() => null);
+        return res?.ok() ?? false;
+      },
+      { timeout: 30000, message: 'backend ready endpoint should be healthy before login' },
+    )
+    .toBe(true);
+
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
   // Expand the "Sign In with Code" disclosure section
   await page.getByText('Sign In with Code').first().click();
-  const codeInput = page.locator('input').last();
+  const codeInput = page.getByPlaceholder('Enter your access code');
   await codeInput.waitFor({ state: 'visible' });
   await codeInput.fill('CANVAS-DEMO2025');
 
   // Click the submit button (type="submit") inside the code form
-  const signInBtn = page.locator('button[type="submit"]').filter({ hasText: /Sign In with Code/i });
+  const signInBtn = page
+    .locator('form')
+    .filter({ has: codeInput })
+    .getByRole('button', { name: /Sign In with Code/i });
   await expect(signInBtn).toBeEnabled({ timeout: 5000 });
-  await signInBtn.click();
-
-  // Wait for navigation
-  await page.waitForURL('**/canvas**', { timeout: 20000 });
-  await expect(page.getByText('Coding Canvases')).toBeVisible({ timeout: 5000 });
+  await Promise.all([page.waitForURL('**/canvas**', { timeout: 20000 }), signInBtn.click()]);
+  const skipSetup = page.getByRole('button', { name: /Skip setup/i });
+  if (await skipSetup.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await skipSetup.click();
+  }
+  await expect(page.locator('[data-tour="canvas-list"]')).toBeVisible({ timeout: 10000 });
 
   // Mark onboarding tour as complete so it doesn't block E2E tests.
   // The uiStore uses Zustand persist with key 'qualcanvas-ui'.
@@ -28,6 +51,19 @@ setup('authenticate', async ({ page }) => {
     state.state = { ...state.state, onboardingComplete: true, setupWizardComplete: true };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
   });
+
+  // Browser UI auth uses an httpOnly cookie, but many legacy E2E helpers still
+  // seed data through Authorization headers. Mirror the cookie token into the
+  // persisted auth store only for E2E runs.
+  const jwtCookie = (await page.context().cookies('http://localhost:5174')).find((cookie) => cookie.name === 'jwt');
+  if (jwtCookie?.value) {
+    await page.evaluate((token) => {
+      const existing = localStorage.getItem('qualcanvas-auth');
+      const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
+      state.state = { ...state.state, jwt: token };
+      localStorage.setItem('qualcanvas-auth', JSON.stringify(state));
+    }, jwtCookie.value);
+  }
 
   // ─── Seed test data so E2E tests that require nodes don't skip ───
 
@@ -42,7 +78,7 @@ setup('authenticate', async ({ page }) => {
   if (jwt) {
     const baseUrl = 'http://localhost:3007/api';
     const headers = {
-      'Authorization': `Bearer ${jwt}`,
+      Authorization: `Bearer ${jwt}`,
       'Content-Type': 'application/json',
     };
 
@@ -114,7 +150,8 @@ setup('authenticate', async ({ page }) => {
               questionId: code1Id,
               startOffset: 0,
               endOffset: 91,
-              codedText: 'The research methodology involved conducting semi-structured interviews with fifteen participants',
+              codedText:
+                'The research methodology involved conducting semi-structured interviews with fifteen participants',
             },
           });
         }
@@ -122,7 +159,7 @@ setup('authenticate', async ({ page }) => {
     }
 
     // Reload so the seeded data is picked up by the canvas page state
-    await page.goto('/canvas');
+    await page.goto('/canvas', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
   }
 

@@ -64,24 +64,24 @@ const deKeys = collectKeys(de as NestedObj);
 
 describe('i18n — Translation key parity', () => {
   it('all en.json keys exist in es.json', () => {
-    const missing = enKeys.filter(k => !esKeys.includes(k));
+    const missing = enKeys.filter((k) => !esKeys.includes(k));
     expect(missing).toEqual([]);
   });
 
   it('all en.json keys exist in fr.json', () => {
-    const missing = enKeys.filter(k => !frKeys.includes(k));
+    const missing = enKeys.filter((k) => !frKeys.includes(k));
     expect(missing).toEqual([]);
   });
 
   it('all en.json keys exist in de.json', () => {
-    const missing = enKeys.filter(k => !deKeys.includes(k));
+    const missing = enKeys.filter((k) => !deKeys.includes(k));
     expect(missing).toEqual([]);
   });
 });
 
 describe('i18n — No empty translation values', () => {
   it('no empty values in es.json', () => {
-    const empties = esKeys.filter(k => {
+    const empties = esKeys.filter((k) => {
       const v = getAtPath(es as NestedObj, k);
       return typeof v === 'string' && v.trim() === '';
     });
@@ -89,7 +89,7 @@ describe('i18n — No empty translation values', () => {
   });
 
   it('no empty values in fr.json', () => {
-    const empties = frKeys.filter(k => {
+    const empties = frKeys.filter((k) => {
       const v = getAtPath(fr as NestedObj, k);
       return typeof v === 'string' && v.trim() === '';
     });
@@ -97,7 +97,7 @@ describe('i18n — No empty translation values', () => {
   });
 
   it('no empty values in de.json', () => {
-    const empties = deKeys.filter(k => {
+    const empties = deKeys.filter((k) => {
       const v = getAtPath(de as NestedObj, k);
       return typeof v === 'string' && v.trim() === '';
     });
@@ -171,7 +171,6 @@ describe('i18n — Canvas toolbar terms translate', () => {
     const toolbarKeys = Object.keys((en as NestedObj).toolbar as NestedObj);
 
     for (const key of toolbarKeys) {
-      const enVal = getAtPath(en, `toolbar.${key}`);
       const esVal = getAtPath(es as NestedObj, `toolbar.${key}`);
       const frVal = getAtPath(fr as NestedObj, `toolbar.${key}`);
       const deVal = getAtPath(de as NestedObj, `toolbar.${key}`);
@@ -212,17 +211,17 @@ describe('i18n — No duplicate keys', () => {
 
 describe('i18n — No extra keys in translations', () => {
   it('es.json has no keys missing from en.json', () => {
-    const extra = esKeys.filter(k => !enKeys.includes(k));
+    const extra = esKeys.filter((k) => !enKeys.includes(k));
     expect(extra).toEqual([]);
   });
 
   it('fr.json has no keys missing from en.json', () => {
-    const extra = frKeys.filter(k => !enKeys.includes(k));
+    const extra = frKeys.filter((k) => !enKeys.includes(k));
     expect(extra).toEqual([]);
   });
 
   it('de.json has no keys missing from en.json', () => {
-    const extra = deKeys.filter(k => !enKeys.includes(k));
+    const extra = deKeys.filter((k) => !enKeys.includes(k));
     expect(extra).toEqual([]);
   });
 });

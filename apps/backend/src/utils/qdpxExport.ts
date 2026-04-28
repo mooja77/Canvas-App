@@ -37,26 +37,26 @@ export async function exportQdpx(canvasId: string): Promise<Buffer> {
   // Build codebook XML (questions = codes)
   const codesXml = canvas.questions
     .map(
-      (q: any) =>
-        `    <Code guid="${escapeXml(q.id)}" name="${escapeXml(q.text)}" color="${escapeXml(q.color)}" isCodable="true" />`
+      (q) =>
+        `    <Code guid="${escapeXml(q.id)}" name="${escapeXml(q.text)}" color="${escapeXml(q.color)}" isCodable="true" />`,
     )
     .join('\n');
 
   // Build sources XML (transcripts = text sources)
   const sourcesXml = canvas.transcripts
     .map(
-      (t: any) =>
-        `    <TextSource guid="${escapeXml(t.id)}" name="${escapeXml(t.title)}" plainTextContent="${escapeXml(t.content)}" creationDateTime="${formatDate(t.createdAt)}" />`
+      (t) =>
+        `    <TextSource guid="${escapeXml(t.id)}" name="${escapeXml(t.title)}" plainTextContent="${escapeXml(t.content)}" creationDateTime="${formatDate(t.createdAt)}" />`,
     )
     .join('\n');
 
   // Build codings (selections)
   const codingsXml = canvas.codings
     .map(
-      (c: any) =>
+      (c) =>
         `    <Coding guid="${escapeXml(c.id)}" codeGUID="${escapeXml(c.questionId)}">
       <TextSelection guid="${escapeXml(c.id)}-sel" sourceGUID="${escapeXml(c.transcriptId)}" startPosition="${c.startOffset}" endPosition="${c.endOffset}" />
-    </Coding>`
+    </Coding>`,
     )
     .join('\n');
 

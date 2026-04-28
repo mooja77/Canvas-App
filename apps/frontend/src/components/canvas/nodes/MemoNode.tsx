@@ -195,7 +195,7 @@ function MemoNode({ data, id, selected }: NodeProps) {
       />
 
       {/* Drag handle */}
-      <div className="drag-handle flex items-center justify-between px-3 py-1.5 cursor-grab active:cursor-grabbing">
+      <div className="drag-handle relative z-20 flex items-center justify-between px-3 py-1.5 cursor-grab active:cursor-grabbing">
         <div className="flex items-center gap-1.5 min-w-0">
           <svg
             className="h-3.5 w-3.5 shrink-0 text-gray-600/50"
@@ -398,9 +398,9 @@ function MemoNode({ data, id, selected }: NodeProps) {
           <ConfirmDialog
             title="Delete Memo"
             message="Delete this memo?"
-            onConfirm={() => {
+            onConfirm={async () => {
+              await deleteMemo(nodeData.memoId);
               setShowDeleteConfirm(false);
-              deleteMemo(nodeData.memoId);
             }}
             onCancel={() => setShowDeleteConfirm(false)}
           />,

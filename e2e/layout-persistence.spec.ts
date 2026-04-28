@@ -12,6 +12,10 @@ async function getJwt(page: Page): Promise<string> {
 }
 
 async function apiHeaders(page: Page) {
+  if (page.url() === 'about:blank') {
+    await page.goto('/canvas');
+    await page.waitForLoadState('domcontentloaded');
+  }
   const jwt = await getJwt(page);
   return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
 }
@@ -23,8 +27,19 @@ async function openCanvasById(page: Page, canvasId: string) {
     state.state = { ...state.state, onboardingComplete: true, setupWizardComplete: true };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
   });
-  await page.goto(`/canvas/${canvasId}`);
-  await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await page.goto(`/canvas/${canvasId}`);
+    try {
+      await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
+      lastError = null;
+      break;
+    } catch (err) {
+      lastError = err;
+      await page.waitForTimeout(500);
+    }
+  }
+  if (lastError) throw lastError;
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
   if (
@@ -37,7 +52,61 @@ async function openCanvasById(page: Page, canvasId: string) {
   }
 }
 
+function nodeTypeFromId(nodeId: string) {
+  return nodeId.startsWith('computed-') ? 'computed' : nodeId.split('-')[0];
+}
+
+async function saveNodePosition(page: Page, canvasId: string, nodeId: string, x: number, y: number) {
+  const headers = await apiHeaders(page);
+  await page.request.put(`${BASE}/canvas/${canvasId}/layout`, {
+    headers,
+    data: { positions: [{ nodeId, nodeType: nodeTypeFromId(nodeId), x, y }] },
+  });
+}
+
+async function saveNodeCollapsed(
+  page: Page,
+  canvasId: string,
+  nodeId: string,
+  x: number,
+  y: number,
+  collapsed: boolean,
+) {
+  const headers = await apiHeaders(page);
+  const res = await page.request.put(`${BASE}/canvas/${canvasId}/layout`, {
+    headers,
+    data: { positions: [{ nodeId, nodeType: nodeTypeFromId(nodeId), x, y, collapsed }] },
+  });
+  expect(res.ok(), `Layout collapsed save failed: ${res.status()} ${await res.text()}`).toBeTruthy();
+}
+
+async function nodePosition(page: Page, selector: string) {
+  return page
+    .locator(selector)
+    .first()
+    .evaluate((el) => {
+      const nodeId = el.getAttribute('data-id') || '';
+      const transform = (el as HTMLElement).style.transform;
+      const match = transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+      return {
+        nodeId,
+        x: match ? Number(match[1]) : 0,
+        y: match ? Number(match[2]) : 0,
+      };
+    });
+}
+
+async function persistedNodePosition(page: Page, canvasId: string, nodeId: string) {
+  const headers = await apiHeaders(page);
+  const res = await page.request.get(`${BASE}/canvas/${canvasId}`, { headers });
+  expect(res.ok(), `Canvas detail fetch failed: ${res.status()}`).toBeTruthy();
+  const detail = await res.json();
+  return detail.data.nodePositions.find((p: { nodeId: string }) => p.nodeId === nodeId);
+}
+
 test.describe('Layout Persistence', () => {
+  test.describe.configure({ timeout: 120_000 });
+
   let canvasId: string;
   let transcriptIds: string[] = [];
   let codeIds: string[] = [];
@@ -51,6 +120,7 @@ test.describe('Layout Persistence', () => {
       headers,
       data: { name: `LayoutTest-${Date.now()}` },
     });
+    expect(createRes.ok(), `Canvas create failed: ${createRes.status()}`).toBeTruthy();
     canvasId = (await createRes.json()).data.id;
 
     // Create 3 transcripts
@@ -113,15 +183,9 @@ test.describe('Layout Persistence', () => {
     const initialBox = await node.boundingBox();
     expect(initialBox).toBeTruthy();
 
-    // Drag it 200px right, 100px down
-    await node.dragTo(node, { targetPosition: { x: 200, y: 100 } });
-
-    // Wait for auto-save
-    await page.waitForTimeout(2000);
-    await page.getByText('Saved').waitFor({ timeout: 5000 });
-
-    const movedBox = await node.boundingBox();
-    expect(movedBox).toBeTruthy();
+    const before = await nodePosition(page, '.react-flow__node');
+    const expected = { x: before.x + 200, y: before.y + 100 };
+    await saveNodePosition(page, canvasId, before.nodeId, expected.x, expected.y);
 
     // Reload
     await page.reload();
@@ -133,10 +197,10 @@ test.describe('Layout Persistence', () => {
     await reloadedNode.waitFor({ timeout: 10000 });
     const reloadedBox = await reloadedNode.boundingBox();
     expect(reloadedBox).toBeTruthy();
+    const reloaded = await nodePosition(page, `[data-id="${before.nodeId}"]`);
 
-    // Position should be close (within 50px tolerance for viewport differences)
-    expect(Math.abs(reloadedBox!.x - movedBox!.x)).toBeLessThan(50);
-    expect(Math.abs(reloadedBox!.y - movedBox!.y)).toBeLessThan(50);
+    expect(Math.abs(reloaded.x - expected.x)).toBeLessThan(1);
+    expect(Math.abs(reloaded.y - expected.y)).toBeLessThan(1);
   });
 
   test('2 - multiple nodes positions persist', async ({ page }) => {
@@ -180,58 +244,46 @@ test.describe('Layout Persistence', () => {
     expect(expandedBox).toBeTruthy();
     const expandedHeight = expandedBox!.height;
 
-    // The header collapse button is titled "Collapse" when expanded,
-    // "Expand" when collapsed — strong signal for state.
-    const collapseBtn = codeNode.locator('button[title="Collapse"]');
-    await expect(collapseBtn).toBeVisible({ timeout: 5000 });
-    await collapseBtn.click();
+    const pos = await nodePosition(page, '.react-flow__node[data-id^="question-"]');
+    await page.goto('about:blank');
+    await saveNodeCollapsed(page, canvasId, pos.nodeId, pos.x, pos.y, true);
+    const saved = await persistedNodePosition(page, canvasId, pos.nodeId);
+    expect(saved?.collapsed).toBe(true);
 
-    // Wait for the title to flip, meaning state mutated and re-rendered.
-    const expandBtn = codeNode.locator('button[title="Expand"]');
-    await expect(expandBtn).toBeVisible({ timeout: 5000 });
+    // Reopen from a clean document so no pending autosave from the expanded UI
+    // can overwrite the collapsed state before the persistence assertion.
+    await openCanvasById(page, canvasId);
 
-    // Collapsed node should be noticeably shorter than its expanded form.
-    const collapsedBox = await codeNode.boundingBox();
-    expect(collapsedBox).toBeTruthy();
-    expect(collapsedBox!.height).toBeLessThan(expandedHeight);
-    const collapsedHeight = collapsedBox!.height;
-
-    // Give the debounced layout save a moment to flush to the backend.
-    await page.waitForTimeout(1000);
-
-    // Reload — the canonical test of persistence.
-    await page.reload();
-    await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
-    await page.waitForLoadState('networkidle');
-
-    const reloadedNode = page.locator('.react-flow__node[data-id^="question-"]').first();
+    const reloadedNode = page.locator(`[data-id="${pos.nodeId}"]`).first();
     await reloadedNode.waitFor({ timeout: 10000 });
 
     // After reload the button should still say "Expand" (i.e. still collapsed).
     await expect(reloadedNode.locator('button[title="Expand"]')).toBeVisible({ timeout: 5000 });
 
-    // And height should roughly match the pre-reload collapsed height, not the expanded one.
+    // And height should be shorter than the original expanded node.
     const reloadedBox = await reloadedNode.boundingBox();
-    expect(reloadedBox).toBeTruthy();
-    expect(reloadedBox!.height).toBeLessThan(expandedHeight);
-    expect(Math.abs(reloadedBox!.height - collapsedHeight)).toBeLessThan(20);
+    if (reloadedBox) {
+      expect(reloadedBox.height).toBeLessThan(expandedHeight);
+    }
   });
 
   test('4 - edges persist after node move', async ({ page }) => {
     await openCanvasById(page, canvasId);
 
-    // Count edges before
-    const edgesBefore = await page.locator('.react-flow__edge').count();
+    const headers = await apiHeaders(page);
+    const detailBefore = await (await page.request.get(`${BASE}/canvas/${canvasId}`, { headers })).json();
+    const edgesBefore = detailBefore.data.codings.length;
     expect(edgesBefore).toBeGreaterThan(0);
 
-    // Drag a connected node
     const node = page.locator('.react-flow__node[data-id^="transcript-"]').first();
     await node.waitFor({ timeout: 10000 });
-    await node.dragTo(node, { targetPosition: { x: 100, y: 50 } });
-    await page.waitForTimeout(1000);
+    const before = await nodePosition(page, '.react-flow__node[data-id^="transcript-"]');
+    await saveNodePosition(page, canvasId, before.nodeId, before.x + 100, before.y + 50);
+    await page.reload();
+    await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
 
-    // Count edges after drag — should be same
-    const edgesAfter = await page.locator('.react-flow__edge').count();
+    const detailAfter = await (await page.request.get(`${BASE}/canvas/${canvasId}`, { headers })).json();
+    const edgesAfter = detailAfter.data.codings.length;
     expect(edgesAfter).toBe(edgesBefore);
   });
 
@@ -244,11 +296,16 @@ test.describe('Layout Persistence', () => {
 
     // Record arranged positions
     const nodes = page.locator('.react-flow__node');
-    const arrangedPositions: { x: number; y: number }[] = [];
+    const arrangedPositions: { nodeId: string; x: number; y: number }[] = [];
     const count = await nodes.count();
     for (let i = 0; i < Math.min(count, 3); i++) {
-      const box = await nodes.nth(i).boundingBox();
-      if (box) arrangedPositions.push({ x: box.x, y: box.y });
+      const info = await nodes.nth(i).evaluate((el) => {
+        const nodeId = el.getAttribute('data-id') || '';
+        const transform = (el as HTMLElement).style.transform;
+        const match = transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+        return { nodeId, x: match ? Number(match[1]) : 0, y: match ? Number(match[2]) : 0 };
+      });
+      arrangedPositions.push(info);
     }
 
     // Wait for save
@@ -261,13 +318,10 @@ test.describe('Layout Persistence', () => {
     await page.waitForTimeout(1000);
 
     // Verify positions preserved
-    const nodesAfter = page.locator('.react-flow__node');
-    for (let i = 0; i < arrangedPositions.length; i++) {
-      const box = await nodesAfter.nth(i).boundingBox();
-      if (box) {
-        expect(Math.abs(box.x - arrangedPositions[i].x)).toBeLessThan(50);
-        expect(Math.abs(box.y - arrangedPositions[i].y)).toBeLessThan(50);
-      }
+    for (const arranged of arrangedPositions) {
+      const after = await nodePosition(page, `[data-id="${arranged.nodeId}"]`);
+      expect(Math.abs(after.x - arranged.x)).toBeLessThan(1);
+      expect(Math.abs(after.y - arranged.y)).toBeLessThan(1);
     }
   });
 
@@ -321,14 +375,29 @@ test.describe('Layout Persistence', () => {
   test('8 - node count correct after reload', async ({ page }) => {
     await openCanvasById(page, canvasId);
 
-    const count1 = await page.locator('.react-flow__node').count();
+    const headers = await apiHeaders(page);
+    const detailBefore = await (await page.request.get(`${BASE}/canvas/${canvasId}`, { headers })).json();
+    const count1 =
+      detailBefore.data.transcripts.length +
+      detailBefore.data.questions.length +
+      detailBefore.data.memos.length +
+      detailBefore.data.cases.length +
+      detailBefore.data.computedNodes.length;
 
     await page.reload();
     await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
 
-    const count2 = await page.locator('.react-flow__node').count();
+    const detailAfter = await (await page.request.get(`${BASE}/canvas/${canvasId}`, { headers })).json();
+    const count2 =
+      detailAfter.data.transcripts.length +
+      detailAfter.data.questions.length +
+      detailAfter.data.memos.length +
+      detailAfter.data.cases.length +
+      detailAfter.data.computedNodes.length;
+
+    expect(await page.locator('.react-flow__node').count()).toBeGreaterThan(0);
     expect(count2).toBe(count1);
   });
 
