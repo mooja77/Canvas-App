@@ -42,11 +42,17 @@ export default defineConfig({
     // original source (including inline comments and business logic) from
     // the minified bundle. Keep them during local dev for debugging.
     sourcemap: false,
+    // The canvas route intentionally carries a large interaction surface.
+    // Keep the warning threshold aligned with the current audited route/vendor
+    // split so real regressions still stand out.
+    chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'viz-vendor': ['@xyflow/react', 'dagre', 'recharts'],
+          'flow-vendor': ['@xyflow/react'],
+          'chart-vendor': ['recharts'],
+          'layout-vendor': ['dagre'],
           'visx-vendor': ['@visx/wordcloud', '@visx/text'],
         },
       },

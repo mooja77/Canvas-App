@@ -11,6 +11,7 @@ export async function openCanvas(page: Page) {
     const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
     state.state = { ...state.state, onboardingComplete: true };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
+    localStorage.setItem('jms_cookie_consent', 'rejected');
   });
 
   await page.goto('/canvas');
@@ -19,11 +20,14 @@ export async function openCanvas(page: Page) {
   // If no canvases, create one via the UI
   const emptyState = page.getByText('Create your first canvas');
   if (await emptyState.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await page.getByRole('button', { name: /New Canvas|Get Started/i }).first().click();
+    await page
+      .getByRole('button', { name: /New Canvas|Get Started/i })
+      .first()
+      .click();
     // Fill name and create
     const nameInput = page.locator('input').filter({ hasText: '' }).first();
     const inputs = page.locator('input[type="text"], input:not([type])');
-    for (let i = 0; i < await inputs.count(); i++) {
+    for (let i = 0; i < (await inputs.count()); i++) {
       const input = inputs.nth(i);
       const val = await input.inputValue();
       if (!val || val === '') {
@@ -50,7 +54,12 @@ export async function openCanvas(page: Page) {
 
   // Dismiss any remaining tour overlay
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
   const overlay = page.locator('.fixed.inset-0.z-\\[10000\\]');

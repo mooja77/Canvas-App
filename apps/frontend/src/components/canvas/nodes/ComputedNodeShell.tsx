@@ -30,7 +30,8 @@ function ComputedNodeShell({
   zoomLevel: zoomLevelProp,
   onConfigure,
 }: ComputedNodeShellProps) {
-  const { runComputedNode, deleteComputedNode } = useCanvasStore();
+  const runComputedNode = useCanvasStore((s) => s.runComputedNode);
+  const deleteComputedNode = useCanvasStore((s) => s.deleteComputedNode);
   const runningNodeId = useRunningNodeId();
   const [running, setRunning] = useState(false);
   const isRunningGlobal = runningNodeId === computedNodeId;
@@ -179,9 +180,9 @@ function ComputedNodeShell({
           <ConfirmDialog
             title={`Delete ${label}`}
             message={`Delete the "${label}" analysis node? This cannot be undone.`}
-            onConfirm={() => {
+            onConfirm={async () => {
+              await deleteComputedNode(computedNodeId);
               setShowDeleteConfirm(false);
-              deleteComputedNode(computedNodeId);
             }}
             onCancel={() => setShowDeleteConfirm(false)}
           />,

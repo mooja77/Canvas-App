@@ -1,6 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
+const mockState = vi.hoisted(() => ({
+  activeCanvas: null as null | {
+    transcripts: { id: string; title: string; content: string }[];
+    questions: { id: string; text: string; color: string }[];
+    memos: { id: string; title?: string; content: string }[];
+    computedNodes: { id: string; label: string; nodeType: string }[];
+  },
+}));
+
 // Mock canvasStore
 vi.mock('../../../stores/canvasStore', () => ({
   useCanvasStore: vi.fn((selector: (s: Record<string, unknown>) => unknown) =>
@@ -8,9 +17,9 @@ vi.mock('../../../stores/canvasStore', () => ({
       addQuestion: vi.fn(),
       addMemo: vi.fn(),
       toggleCodingStripes: vi.fn(),
-    })
+    }),
   ),
-  useActiveCanvas: () => null,
+  useActiveCanvas: () => mockState.activeCanvas,
 }));
 
 // Mock uiStore
@@ -37,6 +46,7 @@ const defaultProps = {
 describe('CommandPalette', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockState.activeCanvas = null;
   });
 
   it('renders when open', () => {
@@ -98,6 +108,26 @@ describe('CommandPalette', () => {
 
     expect(defaultProps.onFitView).toHaveBeenCalled();
     expect(defaultProps.onClose).toHaveBeenCalled();
+  });
+
+  it('Enter key executes the rendered item order, not raw filtered order', () => {
+    const onFocusNode = vi.fn();
+    const onAddComputedNode = vi.fn().mockResolvedValue(undefined);
+    mockState.activeCanvas = {
+      transcripts: [{ id: 't1', title: 'Interview A', content: 'content' }],
+      questions: [],
+      memos: [],
+      computedNodes: [],
+    };
+
+    render(<CommandPalette {...defaultProps} onFocusNode={onFocusNode} onAddComputedNode={onAddComputedNode} />);
+    const input = screen.getByPlaceholderText('Search actions, codes, transcripts...');
+
+    fireEvent.mouseEnter(screen.getByText('Interview A'));
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(onFocusNode).toHaveBeenCalledWith('transcript-t1');
+    expect(onAddComputedNode).not.toHaveBeenCalled();
   });
 
   it('empty search shows all actions', () => {

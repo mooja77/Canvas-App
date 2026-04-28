@@ -398,9 +398,9 @@ function MemoNode({ data, id, selected }: NodeProps) {
           <ConfirmDialog
             title="Delete Memo"
             message="Delete this memo?"
-            onConfirm={() => {
+            onConfirm={async () => {
+              await deleteMemo(nodeData.memoId);
               setShowDeleteConfirm(false);
-              deleteMemo(nodeData.memoId);
             }}
             onCancel={() => setShowDeleteConfirm(false)}
           />,

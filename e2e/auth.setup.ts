@@ -4,21 +4,36 @@ import * as fs from 'fs';
 const AUTH_FILE = 'e2e/.auth/user.json';
 
 setup('authenticate', async ({ page }) => {
-  await page.goto('/login');
+  setup.setTimeout(60000);
+  await page.addInitScript(() => {
+    localStorage.setItem('jms_cookie_consent', 'rejected');
+  });
+
+  await expect
+    .poll(
+      async () => {
+        const res = await page.request.get('http://localhost:3007/health').catch(() => null);
+        return res?.ok() ?? false;
+      },
+      { timeout: 30000, message: 'backend health endpoint should be ready before login' },
+    )
+    .toBe(true);
+
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
   // Expand the "Sign In with Code" disclosure section
   await page.getByText('Sign In with Code').first().click();
-  const codeInput = page.locator('input').last();
+  const codeInput = page.getByPlaceholder('Enter your access code');
   await codeInput.waitFor({ state: 'visible' });
   await codeInput.fill('CANVAS-DEMO2025');
 
   // Click the submit button (type="submit") inside the code form
-  const signInBtn = page.locator('button[type="submit"]').filter({ hasText: /Sign In with Code/i });
+  const signInBtn = page
+    .locator('form')
+    .filter({ has: codeInput })
+    .getByRole('button', { name: /Sign In with Code/i });
   await expect(signInBtn).toBeEnabled({ timeout: 5000 });
-  await signInBtn.click();
-
-  // Wait for navigation
-  await page.waitForURL('**/canvas**', { timeout: 20000 });
-  await expect(page.getByText('Coding Canvases')).toBeVisible({ timeout: 5000 });
+  await Promise.all([page.waitForURL('**/canvas**', { timeout: 20000 }), signInBtn.click()]);
+  await expect(page.locator('[data-tour="canvas-list"]')).toBeVisible({ timeout: 10000 });
 
   // Mark onboarding tour as complete so it doesn't block E2E tests.
   // The uiStore uses Zustand persist with key 'qualcanvas-ui'.
@@ -42,7 +57,7 @@ setup('authenticate', async ({ page }) => {
   if (jwt) {
     const baseUrl = 'http://localhost:3007/api';
     const headers = {
-      'Authorization': `Bearer ${jwt}`,
+      Authorization: `Bearer ${jwt}`,
       'Content-Type': 'application/json',
     };
 
@@ -114,7 +129,8 @@ setup('authenticate', async ({ page }) => {
               questionId: code1Id,
               startOffset: 0,
               endOffset: 91,
-              codedText: 'The research methodology involved conducting semi-structured interviews with fifteen participants',
+              codedText:
+                'The research methodology involved conducting semi-structured interviews with fifteen participants',
             },
           });
         }
@@ -122,7 +138,7 @@ setup('authenticate', async ({ page }) => {
     }
 
     // Reload so the seeded data is picked up by the canvas page state
-    await page.goto('/canvas');
+    await page.goto('/canvas', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
   }
 

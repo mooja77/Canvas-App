@@ -277,9 +277,9 @@ function QuestionNode({ data, id, selected }: NodeProps) {
           <ConfirmDialog
             title="Delete Question"
             message="Delete this question and all its codings?"
-            onConfirm={() => {
+            onConfirm={async () => {
+              await deleteQuestion(nodeData.questionId);
               setShowDeleteConfirm(false);
-              deleteQuestion(nodeData.questionId);
             }}
             onCancel={() => setShowDeleteConfirm(false)}
           />,

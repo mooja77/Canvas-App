@@ -2,23 +2,18 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCanvasStore } from '../stores/canvasStore';
 
-// URL is the source of truth for the active canvas. We only navigate here —
-// CodingCanvas's route effect picks up the URL change and calls store.openCanvas.
-// This keeps the store and URL in sync without duplicate API calls, and lets
-// browser back/forward/refresh/deep links all flow through the same code path.
-//
-// Returns an async function that resolves once the store's openCanvas settles,
-// so callers that chain (e.g. SetupWizard creating starter questions) can await.
+// Opens the store first, then mirrors the selected canvas into the URL.
+// Direct URL/back-forward/refresh still flow through CodingCanvas's route effect.
+// Ordering it this way prevents a click from firing two concurrent openCanvas
+// calls: one from this hook and one from the route effect before activeCanvasId
+// has updated.
 export function useOpenCanvas() {
   const navigate = useNavigate();
   const openCanvas = useCanvasStore((s) => s.openCanvas);
   return useCallback(
     async (canvasId: string) => {
-      navigate(`/canvas/${canvasId}`);
-      // Await the store open for callers that need activeCanvasId set before
-      // follow-up actions. CodingCanvas's route effect short-circuits when
-      // activeCanvasId already matches urlCanvasId, so this isn't duplicated.
       await openCanvas(canvasId);
+      navigate(`/canvas/${canvasId}`);
     },
     [navigate, openCanvas],
   );

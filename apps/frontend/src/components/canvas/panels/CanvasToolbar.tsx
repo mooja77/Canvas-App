@@ -1,33 +1,35 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCanvasStore, useActiveCanvas, useShowCodingStripes } from '../../../stores/canvasStore';
 import { useUIStore, type EdgeStyleType } from '../../../stores/uiStore';
+import { useCloseCanvas } from '../../../hooks/useOpenCanvas';
 import TranscriptSourceMenu from './TranscriptSourceMenu';
-import AutoCodeModal from './AutoCodeModal';
-import CaseManagerPanel from './CaseManagerPanel';
-import HierarchyPanel from './HierarchyPanel';
 import AddComputedNodeMenu from './AddComputedNodeMenu';
-import CodebookExportModal from './CodebookExportModal';
-import ExcerptBrowserModal from './ExcerptBrowserModal';
-import RichExportModal from './RichExportModal';
-import ShareCanvasModal from './ShareCanvasModal';
-import KeyboardShortcutsModal from './KeyboardShortcutsModal';
-import ProjectDashboard from './ProjectDashboard';
-import EthicsCompliancePanel from './EthicsCompliancePanel';
-import IntercoderReliabilityModal from './IntercoderReliabilityModal';
-import IntercoderPanel from './IntercoderPanel';
-import CodeWeightingPanel from './CodeWeightingPanel';
-import CrossCaseAnalysisModal from './CrossCaseAnalysisModal';
-import ResearchAssistantPanel from './ResearchAssistantPanel';
-import SummaryPanel from './SummaryPanel';
 import CanvasSwitcher from './CanvasSwitcher';
-import SurveyImportModal from './SurveyImportModal';
 import QdpxExportButton from './QdpxExportButton';
-import QdpxImportModal from './QdpxImportModal';
-import CalendarPanel from './CalendarPanel';
 import toast from 'react-hot-toast';
 import { canvasApi } from '../../../services/api';
 import FeatureTooltip from '../../FeatureTooltip';
+
+const AutoCodeModal = lazy(() => import('./AutoCodeModal'));
+const CaseManagerPanel = lazy(() => import('./CaseManagerPanel'));
+const HierarchyPanel = lazy(() => import('./HierarchyPanel'));
+const CodebookExportModal = lazy(() => import('./CodebookExportModal'));
+const ExcerptBrowserModal = lazy(() => import('./ExcerptBrowserModal'));
+const RichExportModal = lazy(() => import('./RichExportModal'));
+const ShareCanvasModal = lazy(() => import('./ShareCanvasModal'));
+const KeyboardShortcutsModal = lazy(() => import('./KeyboardShortcutsModal'));
+const ProjectDashboard = lazy(() => import('./ProjectDashboard'));
+const EthicsCompliancePanel = lazy(() => import('./EthicsCompliancePanel'));
+const IntercoderReliabilityModal = lazy(() => import('./IntercoderReliabilityModal'));
+const IntercoderPanel = lazy(() => import('./IntercoderPanel'));
+const CodeWeightingPanel = lazy(() => import('./CodeWeightingPanel'));
+const CrossCaseAnalysisModal = lazy(() => import('./CrossCaseAnalysisModal'));
+const ResearchAssistantPanel = lazy(() => import('./ResearchAssistantPanel'));
+const SummaryPanel = lazy(() => import('./SummaryPanel'));
+const SurveyImportModal = lazy(() => import('./SurveyImportModal'));
+const QdpxImportModal = lazy(() => import('./QdpxImportModal'));
+const CalendarPanel = lazy(() => import('./CalendarPanel'));
 
 /* ── Dropdown helpers ─────────────────────────────────────────────── */
 
@@ -48,7 +50,11 @@ function ToolbarDropdown({
   return (
     <div className="relative" data-tour={dataTour}>
       <button
+        type="button"
         onClick={() => setOpen(!open)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={label ? `${label} menu` : 'More canvas actions'}
         className={
           className ||
           'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors'
@@ -63,7 +69,10 @@ function ToolbarDropdown({
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 sm:right-0 top-full mt-1 z-40 w-56 max-w-[calc(100vw-16px)] rounded-xl bg-white dark:bg-gray-800 shadow-xl ring-1 ring-gray-200 dark:ring-gray-700 py-1.5">
+          <div
+            role="menu"
+            className="absolute right-0 sm:right-0 top-full mt-1 z-40 w-56 max-w-[calc(100vw-16px)] rounded-xl bg-white dark:bg-gray-800 shadow-xl ring-1 ring-gray-200 dark:ring-gray-700 py-1.5"
+          >
             <div onClick={() => setOpen(false)}>{children}</div>
           </div>
         </>
@@ -78,17 +87,21 @@ function DropdownItem({
   onClick,
   active,
   disabled,
+  ...buttonProps
 }: {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
   active?: boolean;
   disabled?: boolean;
-}) {
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'onClick' | 'disabled'>) {
   return (
     <button
+      type="button"
+      role="menuitem"
       onClick={onClick}
       disabled={disabled}
+      {...buttonProps}
       className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${active ? 'bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       {icon}
@@ -129,7 +142,7 @@ export default function CanvasToolbar({
   const { t } = useTranslation();
   const activeCanvas = useActiveCanvas();
   const showCodingStripes = useShowCodingStripes();
-  const closeCanvas = useCanvasStore((s) => s.closeCanvas);
+  const closeCanvas = useCloseCanvas();
   const addQuestion = useCanvasStore((s) => s.addQuestion);
   const addMemo = useCanvasStore((s) => s.addMemo);
   const addTranscript = useCanvasStore((s) => s.addTranscript);
@@ -229,6 +242,7 @@ export default function CanvasToolbar({
           {/* Navigator toggle */}
           {onToggleNavigator && (
             <button
+              type="button"
               onClick={onToggleNavigator}
               className={`shrink-0 rounded-lg p-1.5 transition-colors ${
                 showNavigator
@@ -244,6 +258,7 @@ export default function CanvasToolbar({
           )}
 
           <button
+            type="button"
             onClick={closeCanvas}
             className="shrink-0 flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors"
             title="Back to canvas list"
@@ -973,46 +988,48 @@ export default function CanvasToolbar({
         </div>
       </div>
 
-      {showAutoCode && <AutoCodeModal onClose={() => setShowAutoCode(false)} />}
-      {showCaseManager && <CaseManagerPanel onClose={() => setShowCaseManager(false)} />}
-      {showHierarchy && <HierarchyPanel onClose={() => setShowHierarchy(false)} />}
-      {showCodebook && <CodebookExportModal onClose={() => setShowCodebook(false)} />}
-      {showExcerpts && <ExcerptBrowserModal onClose={() => setShowExcerpts(false)} />}
-      {showRichExport && <RichExportModal onClose={() => setShowRichExport(false)} />}
-      {showShare && <ShareCanvasModal onClose={() => setShowShare(false)} />}
-      {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
-      {showDashboard && <ProjectDashboard onClose={() => setShowDashboard(false)} />}
-      {showEthics && <EthicsCompliancePanel onClose={() => setShowEthics(false)} />}
-      {showIntercoder && <IntercoderReliabilityModal onClose={() => setShowIntercoder(false)} />}
-      {showIntercoderPanel && <IntercoderPanel onClose={() => setShowIntercoderPanel(false)} />}
-      {showWeighting && <CodeWeightingPanel onClose={() => setShowWeighting(false)} />}
-      {showCrossCase && <CrossCaseAnalysisModal onClose={() => setShowCrossCase(false)} />}
-      {showResearchAssistant && <ResearchAssistantPanel onClose={() => setShowResearchAssistant(false)} />}
-      {showSummary && <SummaryPanel onClose={() => setShowSummary(false)} />}
-      {showSurveyImport && (
-        <SurveyImportModal
-          isOpen={showSurveyImport}
-          onClose={() => setShowSurveyImport(false)}
-          onImport={async (rows) => {
-            for (const row of rows) {
-              await addTranscript(row.title, row.content);
-            }
-            toast.success(`Imported ${rows.length} survey response(s)`);
-            setShowSurveyImport(false);
-          }}
-        />
-      )}
-      {showQdpxImport && (
-        <QdpxImportModal
-          canvasId={activeCanvas.id}
-          onClose={() => setShowQdpxImport(false)}
-          onImported={() => {
-            refreshCanvas();
-            setShowQdpxImport(false);
-          }}
-        />
-      )}
-      {showCalendar && <CalendarPanel onClose={() => setShowCalendar(false)} />}
+      <Suspense fallback={null}>
+        {showAutoCode && <AutoCodeModal onClose={() => setShowAutoCode(false)} />}
+        {showCaseManager && <CaseManagerPanel onClose={() => setShowCaseManager(false)} />}
+        {showHierarchy && <HierarchyPanel onClose={() => setShowHierarchy(false)} />}
+        {showCodebook && <CodebookExportModal onClose={() => setShowCodebook(false)} />}
+        {showExcerpts && <ExcerptBrowserModal onClose={() => setShowExcerpts(false)} />}
+        {showRichExport && <RichExportModal onClose={() => setShowRichExport(false)} />}
+        {showShare && <ShareCanvasModal onClose={() => setShowShare(false)} />}
+        {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
+        {showDashboard && <ProjectDashboard onClose={() => setShowDashboard(false)} />}
+        {showEthics && <EthicsCompliancePanel onClose={() => setShowEthics(false)} />}
+        {showIntercoder && <IntercoderReliabilityModal onClose={() => setShowIntercoder(false)} />}
+        {showIntercoderPanel && <IntercoderPanel onClose={() => setShowIntercoderPanel(false)} />}
+        {showWeighting && <CodeWeightingPanel onClose={() => setShowWeighting(false)} />}
+        {showCrossCase && <CrossCaseAnalysisModal onClose={() => setShowCrossCase(false)} />}
+        {showResearchAssistant && <ResearchAssistantPanel onClose={() => setShowResearchAssistant(false)} />}
+        {showSummary && <SummaryPanel onClose={() => setShowSummary(false)} />}
+        {showSurveyImport && (
+          <SurveyImportModal
+            isOpen={showSurveyImport}
+            onClose={() => setShowSurveyImport(false)}
+            onImport={async (rows) => {
+              for (const row of rows) {
+                await addTranscript(row.title, row.content);
+              }
+              toast.success(`Imported ${rows.length} survey response(s)`);
+              setShowSurveyImport(false);
+            }}
+          />
+        )}
+        {showQdpxImport && (
+          <QdpxImportModal
+            canvasId={activeCanvas.id}
+            onClose={() => setShowQdpxImport(false)}
+            onImported={() => {
+              refreshCanvas();
+              setShowQdpxImport(false);
+            }}
+          />
+        )}
+        {showCalendar && <CalendarPanel onClose={() => setShowCalendar(false)} />}
+      </Suspense>
     </>
   );
 }

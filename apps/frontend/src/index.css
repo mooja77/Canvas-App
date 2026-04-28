@@ -77,14 +77,13 @@
    always render. */
 .react-flow__node {
   visibility: visible !important;
-  transition: box-shadow 200ms ease, transform 200ms cubic-bezier(0.34,1.56,0.64,1);
+  transition: box-shadow 200ms ease;
 }
 
 /* Better hover — subtle lift */
 .react-flow__node:hover {
   z-index: 10 !important;
   box-shadow: 0 8px 24px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);
-  transform: translateY(-1px);
 }
 
 /* Selection glow */

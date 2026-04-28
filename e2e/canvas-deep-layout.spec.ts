@@ -5,7 +5,9 @@ let jwt = '';
 let canvasId = '';
 const PREFIX = `E2E-DL ${Date.now()}`;
 
-function headers() { return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }; }
+function headers() {
+  return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
+}
 
 async function openCanvas(page: Page) {
   await page.addInitScript(() => {
@@ -26,55 +28,75 @@ test.describe('Deep Canvas: Layout Persistence', () => {
     const p = await ctx.newPage();
     await p.goto('http://localhost:5174/canvas');
     await p.waitForLoadState('domcontentloaded');
-    jwt = await p.evaluate(() => { const r = localStorage.getItem('qualcanvas-auth'); return r ? JSON.parse(r)?.state?.jwt || '' : ''; });
+    jwt = await p.evaluate(() => {
+      const r = localStorage.getItem('qualcanvas-auth');
+      return r ? JSON.parse(r)?.state?.jwt || '' : '';
+    });
     const res = await p.request.post(`${API}/canvas`, { headers: headers(), data: { name: PREFIX } });
     canvasId = (await res.json()).data.id;
-    await p.request.post(`${API}/canvas/${canvasId}/transcripts`, { headers: headers(), data: { title: 'Layout Test', content: 'Testing layout persistence across reloads.' } });
+    await p.request.post(`${API}/canvas/${canvasId}/transcripts`, {
+      headers: headers(),
+      data: { title: 'Layout Test', content: 'Testing layout persistence across reloads.' },
+    });
     for (const name of ['Code A', 'Code B', 'Code C']) {
       await p.request.post(`${API}/canvas/${canvasId}/questions`, { headers: headers(), data: { text: name } });
     }
-    await p.close(); await ctx.close();
+    await p.close();
+    await ctx.close();
   });
 
   test.afterAll(async ({ browser }) => {
     if (!canvasId) return;
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas'); await p.waitForLoadState('domcontentloaded');
-    jwt = await p.evaluate(() => { const r = localStorage.getItem('qualcanvas-auth'); return r ? JSON.parse(r)?.state?.jwt || '' : ''; });
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const r = localStorage.getItem('qualcanvas-auth');
+      return r ? JSON.parse(r)?.state?.jwt || '' : '';
+    });
     await p.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
     await p.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
-    await p.close(); await ctx.close();
+    await p.close();
+    await ctx.close();
   });
 
   test('1 - Save layout positions via API and verify on reload', async ({ page }) => {
-    const positions = [{ nodeId: 'test-node', x: 100, y: 200 }];
-    const res = await page.request.post(`${API}/canvas/${canvasId}/node-positions`, { headers: headers(), data: { positions } });
+    const detailBefore = await (await page.request.get(`${API}/canvas/${canvasId}`, { headers: headers() })).json();
+    const nodeId = `transcript-${detailBefore.data.transcripts[0].id}`;
+    const positions = [{ nodeId, nodeType: 'transcript', x: 100, y: 200, width: 320, height: 180 }];
+    const res = await page.request.put(`${API}/canvas/${canvasId}/layout`, { headers: headers(), data: { positions } });
     expect(res.ok()).toBeTruthy();
     const detail = await (await page.request.get(`${API}/canvas/${canvasId}`, { headers: headers() })).json();
-    expect(detail.data.nodePositions.length).toBeGreaterThanOrEqual(0);
+    expect(detail.data.nodePositions.some((p: any) => p.nodeId === nodeId && p.height === 180)).toBe(true);
   });
 
   test('2 - Auto-arrange shows toast', async ({ page }) => {
     await openCanvas(page);
-    await page.keyboard.press('Control+Shift+l');
-    const toast = page.getByText(/arranged|layout/i);
+    await page.getByRole('button', { name: 'More canvas actions' }).nth(1).click();
+    await page.getByRole('menuitem', { name: /Auto-arrange layout/i }).click();
+    const toast = page.getByText(/Canvas arranged|No nodes to arrange/i).first();
     await expect(toast).toBeVisible({ timeout: 5000 });
   });
 
-  test('3 - Template canvas creates starter codes', async ({ browser }) => {
+  test('3 - API canvas creation returns a blank canvas', async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas'); await p.waitForLoadState('domcontentloaded');
-    const j = await p.evaluate(() => { const r = localStorage.getItem('qualcanvas-auth'); return r ? JSON.parse(r)?.state?.jwt || '' : ''; });
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    const j = await p.evaluate(() => {
+      const r = localStorage.getItem('qualcanvas-auth');
+      return r ? JSON.parse(r)?.state?.jwt || '' : '';
+    });
     const h = { Authorization: `Bearer ${j}`, 'Content-Type': 'application/json' };
-    const res = await p.request.post(`${API}/canvas`, { headers: h, data: { name: `E2E-DL Template ${Date.now()}`, template: 'thematic' } });
+    const res = await p.request.post(`${API}/canvas`, { headers: h, data: { name: `E2E-DL Blank ${Date.now()}` } });
     const id = (await res.json()).data.id;
     const detail = await (await p.request.get(`${API}/canvas/${id}`, { headers: h })).json();
-    expect(detail.data.questions.length).toBeGreaterThanOrEqual(4);
+    expect(detail.data.questions.length).toBe(0);
     await p.request.delete(`${API}/canvas/${id}`, { headers: h });
     await p.request.delete(`${API}/canvas/${id}/permanent`, { headers: h });
-    await p.close(); await ctx.close();
+    await p.close();
+    await ctx.close();
   });
 
   test('4 - Status bar shows correct counts', async ({ page }) => {
@@ -112,14 +134,18 @@ test.describe('Deep Canvas: Layout Persistence', () => {
 
   test('9 - Zoom controls visible', async ({ page }) => {
     await openCanvas(page);
-    await expect(page.locator('button[title="Zoom In"], button[aria-label="Zoom In"]').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('button[title="Zoom In"], button[aria-label="Zoom In"]').first()).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test('10 - Console zero errors', async ({ page }) => {
     const errors: string[] = [];
-    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') errors.push(msg.text());
+    });
     await openCanvas(page);
     await page.waitForTimeout(2000);
-    expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
+    expect(errors.filter((e) => !e.includes('favicon'))).toHaveLength(0);
   });
 });

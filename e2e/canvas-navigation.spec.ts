@@ -81,8 +81,9 @@ test.describe('Canvas Navigation Features', () => {
   test('dark mode toggle adds and removes dark class', async ({ page }) => {
     // Find the dark mode toggle button in the header
     const darkModeBtn = page.locator('button[aria-label*="dark mode"], button[aria-label*="light mode"]');
-    if (!await darkModeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      test.skip(); return;
+    if (!(await darkModeBtn.isVisible({ timeout: 2000 }).catch(() => false))) {
+      test.skip();
+      return;
     }
 
     // Check current dark mode state
@@ -95,7 +96,7 @@ test.describe('Canvas Navigation Features', () => {
     await page.waitForFunction(
       (wasDark) => document.documentElement.classList.contains('dark') !== wasDark,
       isDarkBefore,
-      { timeout: 2000 }
+      { timeout: 2000 },
     );
     const isDarkAfter = await page.evaluate(() => document.documentElement.classList.contains('dark'));
     expect(isDarkAfter).toBe(!isDarkBefore);
@@ -108,20 +109,15 @@ test.describe('Canvas Navigation Features', () => {
     await page.waitForFunction(
       (wasDark) => document.documentElement.classList.contains('dark') === wasDark,
       isDarkBefore,
-      { timeout: 2000 }
+      { timeout: 2000 },
     );
     const isDarkFinal = await page.evaluate(() => document.documentElement.classList.contains('dark'));
     expect(isDarkFinal).toBe(isDarkBefore);
   });
 
   test('auto-arrange shows canvas arranged toast', async ({ page }) => {
-    // Find the Arrange button in the toolbar
-    const arrangeBtn = page.getByRole('button', { name: /Arrange/i });
-    if (!await arrangeBtn.first().isVisible({ timeout: 2000 }).catch(() => false)) {
-      test.skip(); return;
-    }
-
-    await arrangeBtn.first().click();
+    await page.getByRole('button', { name: 'More canvas actions' }).nth(1).click();
+    await page.getByRole('menuitem', { name: /Auto-arrange layout/i }).click();
 
     // Check for either "Canvas arranged" success toast or "No nodes to arrange" info toast
     const successToast = page.getByText('Canvas arranged');
@@ -143,7 +139,8 @@ test.describe('Canvas Navigation Features', () => {
 
     if (!isNavigatorVisible && !isNavigatorHidden) {
       // Neither button found — skip
-      test.skip(); return;
+      test.skip();
+      return;
     }
 
     if (isNavigatorVisible) {

@@ -14,11 +14,26 @@ interface RelationEdgeData {
 
 // Map semantic relation labels to category colors
 const RELATION_COLORS: Record<string, string> = {
-  causes: '#EF4444', 'leads to': '#EF4444', 'results in': '#EF4444', triggers: '#EF4444',
-  supports: '#3B82F6', contradicts: '#3B82F6', explains: '#3B82F6', justifies: '#3B82F6',
-  'is part of': '#8B5CF6', contains: '#8B5CF6', 'is type of': '#8B5CF6', 'is property of': '#8B5CF6',
-  'is associated with': '#10B981', 'co-occurs with': '#10B981', 'is similar to': '#10B981', 'contrasts with': '#10B981',
-  precedes: '#F59E0B', follows: '#F59E0B', 'co-occurs during': '#F59E0B', 'evolves into': '#F59E0B',
+  causes: '#EF4444',
+  'leads to': '#EF4444',
+  'results in': '#EF4444',
+  triggers: '#EF4444',
+  supports: '#3B82F6',
+  contradicts: '#3B82F6',
+  explains: '#3B82F6',
+  justifies: '#3B82F6',
+  'is part of': '#8B5CF6',
+  contains: '#8B5CF6',
+  'is type of': '#8B5CF6',
+  'is property of': '#8B5CF6',
+  'is associated with': '#10B981',
+  'co-occurs with': '#10B981',
+  'is similar to': '#10B981',
+  'contrasts with': '#10B981',
+  precedes: '#F59E0B',
+  follows: '#F59E0B',
+  'co-occurs during': '#F59E0B',
+  'evolves into': '#F59E0B',
 };
 
 function getRelationColor(label: string): string {
@@ -41,16 +56,18 @@ export default function RelationEdge({
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const savingRef = useRef(false);
 
-  const edgeStyle = useUIStore(s => s.edgeStyle);
+  const edgeStyle = useUIStore((s) => s.edgeStyle);
   const pathParams = { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition };
-  const [edgePath, labelX, labelY] = edgeStyle === 'straight'
-    ? getStraightPath(pathParams)
-    : edgeStyle === 'step'
-      ? getSmoothStepPath({ ...pathParams, borderRadius: 0 })
-      : edgeStyle === 'smoothstep'
-        ? getSmoothStepPath(pathParams)
-        : getBezierPath(pathParams);
+  const [edgePath, labelX, labelY] =
+    edgeStyle === 'straight'
+      ? getStraightPath(pathParams)
+      : edgeStyle === 'step'
+        ? getSmoothStepPath({ ...pathParams, borderRadius: 0 })
+        : edgeStyle === 'smoothstep'
+          ? getSmoothStepPath(pathParams)
+          : getBezierPath(pathParams);
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
@@ -62,20 +79,27 @@ export default function RelationEdge({
   };
 
   const handleSave = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     const trimmed = editValue.trim();
     if (!trimmed || !edgeData?.relationId) {
       setEditing(false);
+      savingRef.current = false;
       return;
     }
-    if (trimmed !== edgeData.label) {
-      try {
+    try {
+      if (trimmed !== edgeData.label) {
         await updateRelation(edgeData.relationId, trimmed);
         toast.success('Label updated');
-      } catch {
-        toast.error('Failed to update label');
       }
+    } catch {
+      toast.error('Failed to update label');
+    } finally {
+      setEditing(false);
+      setTimeout(() => {
+        savingRef.current = false;
+      }, 0);
     }
-    setEditing(false);
   };
 
   const edgeColor = getRelationColor(edgeData?.label || '');
@@ -101,22 +125,19 @@ export default function RelationEdge({
         path={edgePath}
         style={{ stroke: edgeColor, strokeWidth: 1.5, strokeDasharray: '6 3', markerEnd: `url(#arrow-${id})` }}
       />
-      <foreignObject
-        width={160}
-        height={28}
-        x={labelX - 80}
-        y={labelY - 14}
-        className="pointer-events-auto"
-      >
+      <foreignObject width={160} height={28} x={labelX - 80} y={labelY - 14} className="pointer-events-auto">
         <div className="flex items-center justify-center gap-1">
           {editing ? (
             <input
               ref={inputRef}
               type="text"
               value={editValue}
-              onChange={e => setEditValue(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') handleSave();
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void handleSave();
+                }
                 if (e.key === 'Escape') setEditing(false);
               }}
               onBlur={handleSave}
@@ -150,16 +171,21 @@ export default function RelationEdge({
         </div>
       </foreignObject>
 
-      {showDeleteConfirm && edgeData?.relationId && createPortal(
-        <ConfirmDialog
-          title="Delete Relation"
-          message="Remove this relation between nodes?"
-          confirmLabel="Remove"
-          onConfirm={() => { deleteRelation(edgeData.relationId); setShowDeleteConfirm(false); }}
-          onCancel={() => setShowDeleteConfirm(false)}
-        />,
-        document.body,
-      )}
+      {showDeleteConfirm &&
+        edgeData?.relationId &&
+        createPortal(
+          <ConfirmDialog
+            title="Delete Relation"
+            message="Remove this relation between nodes?"
+            confirmLabel="Remove"
+            onConfirm={async () => {
+              await deleteRelation(edgeData.relationId);
+              setShowDeleteConfirm(false);
+            }}
+            onCancel={() => setShowDeleteConfirm(false)}
+          />,
+          document.body,
+        )}
     </>
   );
 }

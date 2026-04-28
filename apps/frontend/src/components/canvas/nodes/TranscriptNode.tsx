@@ -548,9 +548,9 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
           <ConfirmDialog
             title="Delete Transcript"
             message="Delete this transcript and all its coded segments?"
-            onConfirm={() => {
+            onConfirm={async () => {
+              await deleteTranscript(nodeData.transcriptId);
               setShowDeleteConfirm(false);
-              deleteTranscript(nodeData.transcriptId);
             }}
             onCancel={() => setShowDeleteConfirm(false)}
           />,

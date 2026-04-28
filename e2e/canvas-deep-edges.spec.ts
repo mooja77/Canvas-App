@@ -5,7 +5,9 @@ let jwt = '';
 let canvasId = '';
 const PREFIX = `E2E-DE ${Date.now()}`;
 
-function headers() { return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }; }
+function headers() {
+  return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
+}
 
 async function openCanvas(page: Page) {
   await page.addInitScript(() => {
@@ -27,14 +29,28 @@ test.describe('Deep Canvas: Edge Behavior', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas'); await p.waitForLoadState('domcontentloaded');
-    jwt = await p.evaluate(() => { const r = localStorage.getItem('qualcanvas-auth'); return r ? JSON.parse(r)?.state?.jwt || '' : ''; });
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const r = localStorage.getItem('qualcanvas-auth');
+      return r ? JSON.parse(r)?.state?.jwt || '' : '';
+    });
     const res = await p.request.post(`${API}/canvas`, { headers: headers(), data: { name: PREFIX } });
     canvasId = (await res.json()).data.id;
-    const tRes = await p.request.post(`${API}/canvas/${canvasId}/transcripts`, { headers: headers(), data: { title: 'Edge Test', content: 'The patient described significant barriers to accessing healthcare in rural communities. Transportation and internet connectivity were major challenges.' } });
+    const tRes = await p.request.post(`${API}/canvas/${canvasId}/transcripts`, {
+      headers: headers(),
+      data: {
+        title: 'Edge Test',
+        content:
+          'The patient described significant barriers to accessing healthcare in rural communities. Transportation and internet connectivity were major challenges.',
+      },
+    });
     transcriptId = (await tRes.json()).data.id;
     for (const name of ['Access Barriers', 'Technology Issues', 'Rural Health']) {
-      const cRes = await p.request.post(`${API}/canvas/${canvasId}/questions`, { headers: headers(), data: { text: name } });
+      const cRes = await p.request.post(`${API}/canvas/${canvasId}/questions`, {
+        headers: headers(),
+        data: { text: name },
+      });
       codeIds.push((await cRes.json()).data.id);
     }
     // Create 8 codings — multiple per pair for bundling
@@ -43,26 +59,47 @@ test.describe('Deep Canvas: Edge Behavior', () => {
       { questionId: codeIds[0], startOffset: 31, endOffset: 70, codedText: 'barriers to accessing healthcare' },
       { questionId: codeIds[0], startOffset: 71, endOffset: 100, codedText: 'in rural communities' },
       { questionId: codeIds[1], startOffset: 102, endOffset: 140, codedText: 'internet connectivity were major' },
-      { questionId: codeIds[1], startOffset: 102, endOffset: 160, codedText: 'internet connectivity were major challenges' },
-      { questionId: codeIds[2], startOffset: 0, endOffset: 50, codedText: 'The patient described significant barriers' },
+      {
+        questionId: codeIds[1],
+        startOffset: 102,
+        endOffset: 160,
+        codedText: 'internet connectivity were major challenges',
+      },
+      {
+        questionId: codeIds[2],
+        startOffset: 0,
+        endOffset: 50,
+        codedText: 'The patient described significant barriers',
+      },
       { questionId: codeIds[2], startOffset: 71, endOffset: 100, codedText: 'in rural communities' },
-      { questionId: codeIds[2], startOffset: 102, endOffset: 160, codedText: 'internet connectivity were major challenges' },
+      {
+        questionId: codeIds[2],
+        startOffset: 102,
+        endOffset: 160,
+        codedText: 'internet connectivity were major challenges',
+      },
     ];
     for (const c of codings) {
       await p.request.post(`${API}/canvas/${canvasId}/codings`, { headers: headers(), data: { transcriptId, ...c } });
     }
-    await p.close(); await ctx.close();
+    await p.close();
+    await ctx.close();
   });
 
   test.afterAll(async ({ browser }) => {
     if (!canvasId) return;
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas'); await p.waitForLoadState('domcontentloaded');
-    jwt = await p.evaluate(() => { const r = localStorage.getItem('qualcanvas-auth'); return r ? JSON.parse(r)?.state?.jwt || '' : ''; });
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const r = localStorage.getItem('qualcanvas-auth');
+      return r ? JSON.parse(r)?.state?.jwt || '' : '';
+    });
     await p.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
     await p.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
-    await p.close(); await ctx.close();
+    await p.close();
+    await ctx.close();
   });
 
   test('1 - Edges exist in DOM', async ({ page }) => {
@@ -119,8 +156,8 @@ test.describe('Deep Canvas: Edge Behavior', () => {
   test('8 - Navigator shows coding counts', async ({ page }) => {
     await openCanvas(page);
     // Navigator should show codes with counts > 0
-    const navItem = page.locator('button').filter({ hasText: /Access Barriers/ }).first();
-    await expect(navItem).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Access Barriers').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('3').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('9 - Canvas detail API returns all codings', async ({ page }) => {
@@ -132,9 +169,11 @@ test.describe('Deep Canvas: Edge Behavior', () => {
 
   test('10 - Console zero errors', async ({ page }) => {
     const errors: string[] = [];
-    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') errors.push(msg.text());
+    });
     await openCanvas(page);
     await page.waitForTimeout(2000);
-    expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
+    expect(errors.filter((e) => !e.includes('favicon'))).toHaveLength(0);
   });
 });

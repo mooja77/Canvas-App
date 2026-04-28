@@ -47,7 +47,6 @@ import CodeNavigator from './panels/CodeNavigator';
 import CanvasToolbar from './panels/CanvasToolbar';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import CodingDetailPanel from './panels/CodingDetailPanel';
-import KeyboardShortcutsModal from './panels/KeyboardShortcutsModal';
 import CanvasSearchOverlay from './panels/CanvasSearchOverlay';
 import CommandPalette from './panels/CommandPalette';
 import OnboardingTour from './panels/OnboardingTour';
@@ -59,6 +58,7 @@ import QuickAddMenu from './panels/QuickAddMenu';
 import CanvasTabBar from './panels/CanvasTabBar';
 import AiSuggestPanel from './panels/AiSuggestPanel';
 import AiSetupGuide from './panels/AiSetupGuide';
+import { getCodingIdsFromEdgeData } from './canvasEdgeUtils';
 
 // Lazy-load heavy modals/panels (only loaded when opened)
 const ExcerptBrowserModal = React.lazy(() => import('./panels/ExcerptBrowserModal'));
@@ -69,6 +69,7 @@ const CodeWeightingPanel = React.lazy(() => import('./panels/CodeWeightingPanel'
 const CrossCaseAnalysisModal = React.lazy(() => import('./panels/CrossCaseAnalysisModal'));
 const PresentationMode = React.lazy(() => import('./panels/PresentationMode'));
 const AiAutoCodeModal = React.lazy(() => import('./panels/AiAutoCodeModal'));
+const KeyboardShortcutsModal = React.lazy(() => import('./panels/KeyboardShortcutsModal'));
 import PresenceAvatars from './panels/PresenceAvatars';
 import NotificationBell from '../NotificationBell';
 import CollabCursors from './CollabCursors';
@@ -90,6 +91,7 @@ import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 import { useAlignmentGuides, type GuideLine } from '../../hooks/useAlignmentGuides';
 import { useAiConfigStore } from '../../stores/aiConfigStore';
 import { useUIStore } from '../../stores/uiStore';
+import { parseCsvRecords } from '../../utils/csv';
 import type {
   CanvasTranscript,
   CanvasQuestion,
@@ -164,9 +166,19 @@ const SNAP_GRID: [number, number] = [20, 20];
 const FIT_VIEW_OPTIONS = { padding: 0.2, minZoom: 0.5, maxZoom: 0.85 };
 const PRO_OPTIONS = { hideAttribution: true };
 
+function numericValue(value: unknown): number | undefined {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
 /** SVG overlay that renders alignment guide lines in flow coordinate space */
 function AlignmentGuideOverlay({ guideLines }: { guideLines: GuideLine[] }) {
   const { x, y, zoom } = useViewport();
+
   return (
     <svg
       style={{
@@ -203,37 +215,35 @@ export default function CanvasWorkspace() {
   const activeCanvas = useActiveCanvas();
   const pendingSelection = usePendingSelection();
   const selectedQuestionId = useSelectedQuestionId();
-  const scrollMode = useUIStore((s) => s.scrollMode);
-  const setScrollMode = useUIStore((s) => s.setScrollMode);
-  const darkMode = useUIStore((s) => s.darkMode);
+  const [scrollMode, setScrollModeState] = useState(() => useUIStore.getState().scrollMode);
+  const [darkMode, setDarkModeState] = useState(() => useUIStore.getState().darkMode);
+  const setScrollMode = useUIStore.getState().setScrollMode;
 
   const openCanvas = useOpenCanvas();
   const closeCanvas = useCloseCanvas();
 
-  // Individual action selectors
-  const {
-    canvases,
-    setPendingSelection,
-    createCoding,
-    saveLayout,
-    savingLayout,
-    setSelectedQuestionId,
-    addRelation,
-    mergeQuestions,
-    addMemo,
-    addQuestion,
-    addTranscript,
-    addComputedNode,
-    deleteTranscript,
-    deleteQuestion,
-    deleteMemo,
-    deleteCase,
-    deleteComputedNode,
-    deleteCoding,
-    deleteRelation,
-    reassignCoding,
-    refreshCanvas,
-  } = useCanvasStore();
+  // Store actions are stable; read them non-reactively to avoid render-phase
+  // notifications from unrelated canvas store writes during workspace mount.
+  const setPendingSelection = useCanvasStore.getState().setPendingSelection;
+  const createCoding = useCanvasStore.getState().createCoding;
+  const saveLayout = useCanvasStore.getState().saveLayout;
+  const [savingLayout, setSavingLayoutState] = useState(() => useCanvasStore.getState().savingLayout);
+  const setSelectedQuestionId = useCanvasStore.getState().setSelectedQuestionId;
+  const addRelation = useCanvasStore.getState().addRelation;
+  const mergeQuestions = useCanvasStore.getState().mergeQuestions;
+  const addMemo = useCanvasStore.getState().addMemo;
+  const addQuestion = useCanvasStore.getState().addQuestion;
+  const addTranscript = useCanvasStore.getState().addTranscript;
+  const addComputedNode = useCanvasStore.getState().addComputedNode;
+  const deleteTranscript = useCanvasStore.getState().deleteTranscript;
+  const deleteQuestion = useCanvasStore.getState().deleteQuestion;
+  const deleteMemo = useCanvasStore.getState().deleteMemo;
+  const deleteCase = useCanvasStore.getState().deleteCase;
+  const deleteComputedNode = useCanvasStore.getState().deleteComputedNode;
+  const deleteCoding = useCanvasStore.getState().deleteCoding;
+  const deleteRelation = useCanvasStore.getState().deleteRelation;
+  const reassignCoding = useCanvasStore.getState().reassignCoding;
+  const refreshCanvas = useCanvasStore.getState().refreshCanvas;
 
   const _isMobile = useMobile();
 
@@ -249,24 +259,39 @@ export default function CanvasWorkspace() {
   // Alignment guides (snap lines)
   const { guideLines, onNodeDrag: alignmentOnNodeDrag, onNodeDragStop: alignmentOnNodeDragStop } = useAlignmentGuides();
   const [showAiSetupGuide, setShowAiSetupGuide] = useState<string | null>(null);
-  const { configured: aiConfigured, fetchConfig: fetchAiConfig } = useAiConfigStore();
 
   // Fetch AI config on mount
   useEffect(() => {
-    fetchAiConfig();
-  }, [fetchAiConfig]);
+    useAiConfigStore.getState().fetchConfig();
+  }, []);
+
+  useEffect(() => {
+    return useUIStore.subscribe((state, previous) => {
+      if (state.scrollMode !== previous.scrollMode) {
+        setScrollModeState(state.scrollMode);
+      }
+      if (state.darkMode !== previous.darkMode) {
+        setDarkModeState(state.darkMode);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    return useCanvasStore.subscribe((state, previous) => {
+      if (state.savingLayout !== previous.savingLayout) {
+        setSavingLayoutState(state.savingLayout);
+      }
+    });
+  }, []);
 
   // Guard function: show setup guide if AI not configured
-  const requireAiConfig = useCallback(
-    (featureName: string, callback: () => void) => {
-      if (aiConfigured) {
-        callback();
-      } else {
-        setShowAiSetupGuide(featureName);
-      }
-    },
-    [aiConfigured],
-  );
+  const requireAiConfig = useCallback((featureName: string, callback: () => void) => {
+    if (useAiConfigStore.getState().configured) {
+      callback();
+    } else {
+      setShowAiSetupGuide(featureName);
+    }
+  }, []);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -319,11 +344,13 @@ export default function CanvasWorkspace() {
     label?: string;
   } | null>(null);
   const [quickAddMenu, setQuickAddMenu] = useState<{ x: number; y: number; flowX: number; flowY: number } | null>(null);
-  const [_smartLinkSource, setSmartLinkSource] = useState<{ nodeId: string; nodeType: string } | null>(null);
+  const [smartLinkSource, setSmartLinkSource] = useState<{ nodeId: string; nodeType: string } | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
+  const [viewportState, setViewportState] = useState({ x: 0, y: 0, zoom: 1 });
+  const viewportUpdateFrameRef = useRef<number | null>(null);
   const zoomLevelRef = useRef(zoomLevel);
   zoomLevelRef.current = zoomLevel;
-  const { setZoomTier } = useUIStore();
+  const setZoomTier = useUIStore.getState().setZoomTier;
   const [deleteConfirm, setDeleteConfirm] = useState<{ nodeId: string; label: string; type: string } | null>(null);
   const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
 
@@ -382,6 +409,34 @@ export default function CanvasWorkspace() {
     });
   }, [setNodes, setEdges, pushHistory]);
 
+  const scheduleViewportSync = useCallback(
+    (viewport: { x: number; y: number; zoom: number }, syncZoomTier = false) => {
+      if (viewportUpdateFrameRef.current !== null) {
+        cancelAnimationFrame(viewportUpdateFrameRef.current);
+      }
+      viewportUpdateFrameRef.current = requestAnimationFrame(() => {
+        viewportUpdateFrameRef.current = null;
+        setViewportState(viewport);
+
+        if (syncZoomTier) {
+          const pct = Math.round(viewport.zoom * 100);
+          setZoomLevel(pct);
+          const newTier = pct >= 35 ? 'full' : pct >= 18 ? 'reduced' : 'minimal';
+          setZoomTier(newTier);
+        }
+      });
+    },
+    [setZoomTier],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (viewportUpdateFrameRef.current !== null) {
+        cancelAnimationFrame(viewportUpdateFrameRef.current);
+      }
+    };
+  }, []);
+
   // Custom node colors (persisted in localStorage)
   const { colorMap: nodeColorMap, setNodeColor, getNodeColor: _getNodeColor } = useNodeColors();
 
@@ -426,6 +481,7 @@ export default function CanvasWorkspace() {
 
   // Clean stale tabs — remove IDs for canvases that no longer exist
   useEffect(() => {
+    const canvases = useCanvasStore.getState().canvases;
     if (!canvases.length) return;
     const validIds = new Set(canvases.map((c: { id: string }) => c.id));
     setOpenTabs((prev) => {
@@ -438,7 +494,7 @@ export default function CanvasWorkspace() {
       }
       return prev;
     });
-  }, [canvases]);
+  }, [activeCanvas?.id]);
 
   // Build position map with dimensions and collapsed state
   const nodePositions = activeCanvas?.nodePositions;
@@ -464,7 +520,7 @@ export default function CanvasWorkspace() {
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
       if (dimmed) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
-      if (posData?.height) style.minHeight = posData.height;
+      if (posData?.height && !posData.collapsed) style.height = posData.height;
       result.push({
         id: nodeId,
         type: 'transcript',
@@ -477,6 +533,8 @@ export default function CanvasWorkspace() {
           content: t.content,
           caseId: t.caseId,
           collapsed: posData?.collapsed ?? false,
+          expandedWidth: posData?.width,
+          expandedHeight: posData?.height,
           customColor: nodeColorMap.get(nodeId),
           onAiSuggest: (tId: string, text: string, start: number, end: number) => {
             requireAiConfig('AI Code Suggestions', () => aiSuggestions.suggestCodes(tId, text, start, end));
@@ -493,7 +551,7 @@ export default function CanvasWorkspace() {
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
       if (dimmed) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
-      if (posData?.height) style.minHeight = posData.height;
+      if (posData?.height && !posData.collapsed) style.height = posData.height;
       result.push({
         id: nodeId,
         type: 'question',
@@ -505,6 +563,8 @@ export default function CanvasWorkspace() {
           text: q.text,
           color: q.color,
           collapsed: posData?.collapsed ?? false,
+          expandedWidth: posData?.width,
+          expandedHeight: posData?.height,
         },
       });
     });
@@ -517,7 +577,7 @@ export default function CanvasWorkspace() {
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
       if (dimmed) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
-      if (posData?.height) style.minHeight = posData.height;
+      if (posData?.height && !posData.collapsed) style.height = posData.height;
       result.push({
         id: nodeId,
         type: 'memo',
@@ -530,6 +590,8 @@ export default function CanvasWorkspace() {
           content: m.content,
           color: m.color,
           collapsed: posData?.collapsed ?? false,
+          expandedWidth: posData?.width,
+          expandedHeight: posData?.height,
         },
       });
     });
@@ -542,7 +604,7 @@ export default function CanvasWorkspace() {
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
       if (isSearching) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
-      if (posData?.height) style.minHeight = posData.height;
+      if (posData?.height && !posData.collapsed) style.height = posData.height;
       result.push({
         id: nodeId,
         type: 'case',
@@ -552,6 +614,8 @@ export default function CanvasWorkspace() {
         data: {
           caseId: c.id,
           collapsed: posData?.collapsed ?? false,
+          expandedWidth: posData?.width,
+          expandedHeight: posData?.height,
           customColor: nodeColorMap.get(nodeId),
         },
       });
@@ -567,7 +631,7 @@ export default function CanvasWorkspace() {
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
       if (isSearching) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
-      if (posData?.height) style.height = posData.height;
+      if (posData?.height && !posData.collapsed) style.height = posData.height;
       result.push({
         id: nodeId,
         type: cn.nodeType,
@@ -577,6 +641,8 @@ export default function CanvasWorkspace() {
         data: {
           computedNodeId: cn.id,
           collapsed: posData?.collapsed ?? false,
+          expandedWidth: posData?.width,
+          expandedHeight: posData?.height,
         },
       });
     });
@@ -859,12 +925,14 @@ export default function CanvasWorkspace() {
 
       // If it's a coding edge being reconnected to a different question
       const edgeData = oldEdge.data as Record<string, unknown> | undefined;
-      if (oldEdge.type === 'coding' && edgeData?.codingId) {
+      if (oldEdge.type === 'coding' && edgeData) {
         const newTarget = newConnection.target;
         if (newTarget?.startsWith('question-')) {
           const newQuestionId = newTarget.replace('question-', '');
-          reassignCoding(edgeData.codingId as string, newQuestionId)
-            .then(() => toast.success('Coding reassigned'))
+          const codingIds = getCodingIdsFromEdgeData(edgeData);
+
+          Promise.all(codingIds.map((codingId) => reassignCoding(codingId, newQuestionId)))
+            .then(() => toast.success(codingIds.length > 1 ? 'Codings reassigned' : 'Coding reassigned'))
             .catch(() => toast.error('Failed to reassign coding'));
         }
       }
@@ -898,9 +966,9 @@ export default function CanvasWorkspace() {
     if (sourceInfo.nodeType === 'transcript') {
       allowedItems = ['question'];
     } else if (sourceInfo.nodeType === 'question') {
-      allowedItems = ['question', 'memo'];
+      allowedItems = ['question'];
     } else if (sourceInfo.nodeType === 'case') {
-      allowedItems = ['question', 'memo'];
+      allowedItems = ['question'];
     }
 
     setSmartLinkSource(sourceInfo);
@@ -1132,7 +1200,7 @@ export default function CanvasWorkspace() {
 
   // Selection toolbar position
   const selectionToolbarPos = useMemo(() => {
-    if (selectedNodes.length < 2 || !rfInstanceRef.current) return { x: 0, y: 0 };
+    if (selectedNodes.length < 2) return { x: 0, y: 0 };
     let minX = Infinity,
       minY = Infinity,
       maxX = -Infinity;
@@ -1143,12 +1211,11 @@ export default function CanvasWorkspace() {
     }
     const centerX = (minX + maxX) / 2;
     // Convert flow coordinates to screen coordinates
-    const viewport = rfInstanceRef.current.getViewport();
     return {
-      x: centerX * viewport.zoom + viewport.x,
-      y: minY * viewport.zoom + viewport.y,
+      x: centerX * viewportState.zoom + viewportState.x,
+      y: minY * viewportState.zoom + viewportState.y,
     };
-  }, [selectedNodes]);
+  }, [selectedNodes, viewportState.x, viewportState.y, viewportState.zoom]);
 
   // Alignment functions
   const handleAlignLeft = useCallback(() => {
@@ -1204,17 +1271,35 @@ export default function CanvasWorkspace() {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       setNodes((currentNodes: Node[]) => {
-        const positions = currentNodes.map((n: Node) => ({
-          id: '',
-          canvasId: '',
-          nodeId: n.id,
-          nodeType: n.type || 'unknown',
-          x: n.position.x,
-          y: n.position.y,
-          width: (n.style?.width as number) || n.measured?.width || undefined,
-          height: (n.style?.height as number) || n.measured?.height || undefined,
-          collapsed: (n.data as Record<string, unknown>)?.collapsed as boolean | undefined,
-        }));
+        const positions = currentNodes.map((n: Node) => {
+          const data = (n.data ?? {}) as Record<string, unknown>;
+          const style = (n.style ?? {}) as Record<string, unknown>;
+          const collapsed = data.collapsed as boolean | undefined;
+          const width = numericValue(style.width) ?? numericValue(data.expandedWidth) ?? n.measured?.width ?? undefined;
+          const height = collapsed
+            ? (numericValue(data.expandedHeight) ??
+              numericValue(style.height) ??
+              numericValue(style.minHeight) ??
+              n.measured?.height ??
+              undefined)
+            : (numericValue(style.height) ??
+              numericValue(style.minHeight) ??
+              numericValue(data.expandedHeight) ??
+              n.measured?.height ??
+              undefined);
+
+          return {
+            id: '',
+            canvasId: '',
+            nodeId: n.id,
+            nodeType: n.type || 'unknown',
+            x: n.position.x,
+            y: n.position.y,
+            width,
+            height,
+            collapsed,
+          };
+        });
         saveLayout(positions);
         return currentNodes;
       });
@@ -1342,7 +1427,11 @@ export default function CanvasWorkspace() {
       if (contextMenu) setContextMenu(null);
       if (nodeContextMenu) setNodeContextMenu(null);
       if (edgeContextMenu) setEdgeContextMenu(null);
-      if (quickAddMenu) setQuickAddMenu(null);
+      if (quickAddMenu) {
+        setQuickAddMenu(null);
+        setSmartLinkSource(null);
+        smartLinkAllowedRef.current = null;
+      }
 
       // Detect double-click via timestamp (React Flow doesn't propagate dblclick)
       const now = Date.now();
@@ -1462,17 +1551,22 @@ export default function CanvasWorkspace() {
     if (!edgeContextMenu) return;
     try {
       if (edgeContextMenu.edgeType === 'coding') {
-        const codingId = edgeContextMenu.edgeId.replace('coding-', '');
-        await deleteCoding(codingId);
+        const edge = edges.find((e) => e.id === edgeContextMenu.edgeId);
+        const edgeData = edge?.data as Record<string, unknown> | undefined;
+        const codingIds = getCodingIdsFromEdgeData(edgeData);
+        await Promise.all(codingIds.map((codingId) => deleteCoding(codingId)));
       } else if (edgeContextMenu.edgeType === 'relation') {
-        const relId = edgeContextMenu.edgeId.replace('relation-', '');
+        const edge = edges.find((e) => e.id === edgeContextMenu.edgeId);
+        const edgeData = edge?.data as Record<string, unknown> | undefined;
+        const relId = (edgeData?.relationId as string | undefined) ?? edgeContextMenu.edgeId.replace('relation-', '');
         await deleteRelation(relId);
       }
+      setEdgeContextMenu(null);
       toast.success('Deleted');
     } catch {
       toast.error('Failed to delete');
     }
-  }, [edgeContextMenu, deleteCoding, deleteRelation]);
+  }, [edgeContextMenu, edges, deleteCoding, deleteRelation]);
 
   // Collapse all / Expand all for selection
   const handleCollapseAll = useCallback(() => {
@@ -1508,13 +1602,50 @@ export default function CanvasWorkspace() {
             },
           ]);
         }
+        if (smartLinkSource?.nodeType === 'transcript') {
+          const transcriptId = smartLinkSource.nodeId.replace('transcript-', '');
+          if (!pendingSelection) {
+            toast.error('Select text in the transcript first, then drag to create a linked question');
+          } else if (pendingSelection.transcriptId !== transcriptId) {
+            toast.error('Selection is from a different transcript');
+            setPendingSelection(null);
+          } else {
+            await createCoding(
+              transcriptId,
+              question.id,
+              pendingSelection.startOffset,
+              pendingSelection.endOffset,
+              pendingSelection.codedText,
+            );
+            window.getSelection()?.removeAllRanges();
+            toast.success('Question added and text coded');
+            setTimeout(() => pushHistorySnapshot(), 300);
+            return;
+          }
+        } else if (smartLinkSource?.nodeType === 'question' || smartLinkSource?.nodeType === 'case') {
+          const fromType = smartLinkSource.nodeType as 'question' | 'case';
+          const fromId = smartLinkSource.nodeId.replace(/^(question|case)-/, '');
+          await addRelation(fromType, fromId, 'question', question.id, 'relates to');
+          toast.success('Question added and linked');
+          setTimeout(() => pushHistorySnapshot(), 300);
+          return;
+        }
         toast.success('Question added');
         setTimeout(() => pushHistorySnapshot(), 300);
       } catch {
         toast.error('Failed to add question');
       }
     },
-    [addQuestion, saveLayout, pushHistorySnapshot],
+    [
+      addQuestion,
+      saveLayout,
+      smartLinkSource,
+      pendingSelection,
+      setPendingSelection,
+      createCoding,
+      addRelation,
+      pushHistorySnapshot,
+    ],
   );
 
   const handleQuickAddMemo = useCallback(
@@ -1861,32 +1992,7 @@ export default function CanvasWorkspace() {
           const text = await file.text();
           if (file.name.endsWith('.csv')) {
             // Parse CSV: each row becomes a transcript
-            const lines = text
-              .replace(/\r\n/g, '\n')
-              .split('\n')
-              .filter((l) => l.trim());
-            for (const line of lines) {
-              const fields: string[] = [];
-              let current = '';
-              let inQuotes = false;
-              for (let i = 0; i < line.length; i++) {
-                const ch = line[i];
-                if (inQuotes) {
-                  if (ch === '"') {
-                    if (i + 1 < line.length && line[i + 1] === '"') {
-                      current += '"';
-                      i++;
-                    } else inQuotes = false;
-                  } else current += ch;
-                } else {
-                  if (ch === '"') inQuotes = true;
-                  else if (ch === ',') {
-                    fields.push(current.trim());
-                    current = '';
-                  } else current += ch;
-                }
-              }
-              fields.push(current.trim());
+            for (const fields of parseCsvRecords(text)) {
               const title = fields[0] || `Row ${imported + 1}`;
               const content = fields.length >= 2 ? fields[1] : fields[0] || '';
               if (content) {
@@ -1913,6 +2019,8 @@ export default function CanvasWorkspace() {
     [addTranscript, refreshCanvas],
   );
 
+  const tabCanvases = useCanvasStore.getState().canvases;
+
   return (
     <div ref={workspaceRef} className="flex h-full">
       {/* Code Navigator Sidebar — animated collapse */}
@@ -1928,7 +2036,7 @@ export default function CanvasWorkspace() {
         {openTabs.length > 1 && !focusMode && (
           <CanvasTabBar
             tabs={openTabs.map((id) => {
-              const canvas = canvases.find((c) => c.id === id);
+              const canvas = tabCanvases.find((c) => c.id === id);
               return {
                 id,
                 name: canvas?.name || (activeCanvas?.id === id ? activeCanvas?.name || 'Canvas' : 'Canvas'),
@@ -2007,12 +2115,13 @@ export default function CanvasWorkspace() {
               onConnectEnd={onConnectEnd}
               onInit={(instance) => {
                 rfInstanceRef.current = instance;
+                scheduleViewportSync(instance.getViewport());
+              }}
+              onMove={(_event, viewport) => {
+                scheduleViewportSync(viewport);
               }}
               onMoveEnd={(_event, viewport) => {
-                const pct = Math.round(viewport.zoom * 100);
-                setZoomLevel(pct);
-                const newTier = pct >= 35 ? 'full' : pct >= 18 ? 'reduced' : 'minimal';
-                setZoomTier(newTier);
+                scheduleViewportSync(viewport, true);
               }}
               onPaneContextMenu={handlePaneContextMenu}
               onNodeContextMenu={handleNodeContextMenu}
@@ -2146,7 +2255,11 @@ export default function CanvasWorkspace() {
 
             {/* Canvas-wide search overlay */}
             {showSearch && (
-              <CanvasSearchOverlay onClose={() => setShowSearch(false)} onResults={setHighlightedNodeIds} />
+              <CanvasSearchOverlay
+                onClose={() => setShowSearch(false)}
+                onResults={setHighlightedNodeIds}
+                onFocusNode={handleFocusNode}
+              />
             )}
 
             {/* Pane context menu */}
@@ -2545,7 +2658,11 @@ export default function CanvasWorkspace() {
       </div>
 
       {/* Keyboard shortcuts modal */}
-      {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
+      {showShortcuts && (
+        <React.Suspense fallback={null}>
+          <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />
+        </React.Suspense>
+      )}
 
       {/* Command palette (Ctrl+K) */}
       {showCommandPalette && (

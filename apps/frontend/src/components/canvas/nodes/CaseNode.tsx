@@ -157,9 +157,9 @@ function CaseNode({ data, id, selected }: NodeProps) {
           <ConfirmDialog
             title="Delete Case"
             message="Delete this case? Transcripts will be unlinked and relations removed."
-            onConfirm={() => {
+            onConfirm={async () => {
+              await deleteCase(nodeData.caseId);
               setShowDeleteConfirm(false);
-              deleteCase(nodeData.caseId);
             }}
             onCancel={() => setShowDeleteConfirm(false)}
           />,

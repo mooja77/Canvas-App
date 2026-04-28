@@ -13,6 +13,7 @@ const mockCloseCanvas = vi.fn();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockCanvasStoreState: Record<string, any> = {
   activeCanvasId: null,
+  activeCanvas: null,
   openCanvas: mockOpenCanvas,
   closeCanvas: mockCloseCanvas,
 };
@@ -22,6 +23,7 @@ vi.mock('../../stores/canvasStore', () => ({
     if (typeof selector === 'function') return selector(mockCanvasStoreState);
     return mockCanvasStoreState;
   },
+  useActiveCanvas: () => mockCanvasStoreState.activeCanvas,
   useActiveCanvasId: () => mockCanvasStoreState.activeCanvasId,
 }));
 
@@ -39,6 +41,7 @@ describe('CodingCanvas', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCanvasStoreState.activeCanvasId = null;
+    mockCanvasStoreState.activeCanvas = null;
     mockCanvasStoreState.openCanvas = mockOpenCanvas;
     mockCanvasStoreState.closeCanvas = mockCloseCanvas;
     mockUseParams.mockReturnValue({});
@@ -52,6 +55,7 @@ describe('CodingCanvas', () => {
 
   it('renders CanvasWorkspace when activeCanvasId is set and URL matches', () => {
     mockCanvasStoreState.activeCanvasId = 'canvas-123';
+    mockCanvasStoreState.activeCanvas = { id: 'canvas-123' };
     mockUseParams.mockReturnValue({ canvasId: 'canvas-123' });
     render(<CodingCanvas />);
     expect(screen.getByTestId('canvas-workspace')).toBeInTheDocument();
