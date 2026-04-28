@@ -89,10 +89,10 @@ const initialEdges: Edge[] = [];
 
 // Stable references for ReactFlow props (avoids re-renders from inline objects)
 const SNAP_GRID: [number, number] = [20, 20];
-// minZoom floor here prevents fitView from zooming out so far that nodes
-// become unreadable (the global ReactFlow minZoom is 0.15, but we want
-// initial framing to stay legible — 0.5 is the readable threshold).
-const FIT_VIEW_OPTIONS = { padding: 0.2, minZoom: 0.5, maxZoom: 0.85 };
+// Initial framing stays legible, while explicit user-triggered Fit View must
+// be able to zoom out to React Flow's global floor so large canvases fit.
+const INITIAL_FIT_VIEW_OPTIONS = { padding: 0.2, minZoom: 0.5, maxZoom: 0.85 };
+const MANUAL_FIT_VIEW_OPTIONS = { padding: 0.2, minZoom: 0.15, maxZoom: 0.85 };
 const PRO_OPTIONS = { hideAttribution: true };
 
 export default function CanvasWorkspace() {
@@ -698,7 +698,7 @@ export default function CanvasWorkspace() {
         loadedCanvasIdRef.current = canvasId;
         if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
         fitViewTimeoutRef.current = setTimeout(() => {
-          rfInstanceRef.current?.fitView(FIT_VIEW_OPTIONS);
+          rfInstanceRef.current?.fitView(INITIAL_FIT_VIEW_OPTIONS);
         }, 200);
       }
     } else {
@@ -2030,7 +2030,7 @@ export default function CanvasWorkspace() {
               zoomOnDoubleClick={false}
               panActivationKeyCode="Space"
               fitView
-              fitViewOptions={FIT_VIEW_OPTIONS}
+              fitViewOptions={INITIAL_FIT_VIEW_OPTIONS}
               minZoom={0.15}
               maxZoom={2}
               className="bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-[#0f1117] dark:via-[#131620] dark:to-[#0f1117]"
@@ -2056,7 +2056,8 @@ export default function CanvasWorkspace() {
               )}
               {!focusMode && (
                 <Controls
-                  fitViewOptions={FIT_VIEW_OPTIONS}
+                  fitViewOptions={MANUAL_FIT_VIEW_OPTIONS}
+                  onFitView={() => rfInstanceRef.current?.fitView(MANUAL_FIT_VIEW_OPTIONS)}
                   className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700"
                 />
               )}
@@ -2164,7 +2165,7 @@ export default function CanvasWorkspace() {
                 }}
                 onAddMemo={handleContextAddMemo}
                 onAddComputedNode={handleQuickAddComputed}
-                onFitView={() => rfInstanceRef.current?.fitView(FIT_VIEW_OPTIONS)}
+                onFitView={() => rfInstanceRef.current?.fitView(MANUAL_FIT_VIEW_OPTIONS)}
                 onShowShortcuts={() => setShowShortcuts(true)}
                 onSelectAll={handleSelectAll}
                 onToggleSnapGrid={() => setSnapToGrid((s) => !s)}
@@ -2558,7 +2559,7 @@ export default function CanvasWorkspace() {
         <CommandPalette
           onClose={() => setShowCommandPalette(false)}
           onFocusNode={handleFocusNode}
-          onFitView={() => rfInstanceRef.current?.fitView(FIT_VIEW_OPTIONS)}
+          onFitView={() => rfInstanceRef.current?.fitView(MANUAL_FIT_VIEW_OPTIONS)}
           onToggleGrid={() => setSnapToGrid((s) => !s)}
           onToggleNavigator={() => {
             manualNavToggleRef.current = true;

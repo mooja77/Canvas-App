@@ -23,7 +23,9 @@ export function useCloseCanvas() {
   const navigate = useNavigate();
   const closeCanvas = useCanvasStore((s) => s.closeCanvas);
   return useCallback(() => {
-    navigate('/canvas');
+    // Commit the URL change before clearing the store. Otherwise the old
+    // /canvas/:id route effect can observe activeCanvasId=null and reopen it.
+    navigate('/canvas', { flushSync: true });
     closeCanvas();
   }, [navigate, closeCanvas]);
 }

@@ -360,7 +360,7 @@ test.describe('Canvas Lifecycle Full', () => {
     await page.waitForLoadState('networkidle');
 
     // Click the back button in the toolbar
-    const backBtn = page.locator('button[title="Back to canvas list"]');
+    const backBtn = page.locator('[title="Back to canvas list"]');
     await backBtn.waitFor({ state: 'visible', timeout: 5000 });
     await backBtn.click();
 
@@ -414,14 +414,11 @@ test.describe('Canvas Lifecycle Full', () => {
     await signOutBtn.waitFor({ state: 'visible', timeout: 5000 });
     await signOutBtn.click();
 
-    // Should redirect to landing or login
-    await page.waitForURL(/\/(login)?$/, { timeout: 10000 });
-    // JWT should be cleared
-    const jwt = await page.evaluate(() => {
-      const raw = localStorage.getItem('qualcanvas-auth');
-      if (!raw) return null;
-      return JSON.parse(raw)?.state?.jwt || null;
-    });
-    expect(jwt).toBeFalsy();
+    // Should redirect to a logged-out authentication surface.
+    await expect(page.getByRole('button', { name: /Sign In with Code/i })).toBeVisible({ timeout: 10000 });
+    // Browser auth is controlled by the httpOnly cookie. E2E may keep a
+    // mirrored localStorage token for legacy API helpers.
+    const jwtCookie = (await page.context().cookies()).find((cookie) => cookie.name === 'jwt');
+    expect(jwtCookie).toBeUndefined();
   });
 });

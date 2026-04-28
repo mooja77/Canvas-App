@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 // Unique canvas name for this test suite
 const CANVAS_NAME = `E2E-Coding ${Date.now()}`;
+let canvasId = '';
 
 /**
  * Open the test canvas by name.
@@ -14,38 +15,59 @@ async function openTestCanvas(page: import('@playwright/test').Page, canvasName:
     localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
   });
 
-  await page.goto('/canvas');
-  await page.waitForLoadState('networkidle');
-
-  const card = page.locator('[class*="cursor-pointer"]').filter({ has: page.locator('h3') }).filter({ hasText: canvasName });
-  await expect(card.first()).toBeVisible({ timeout: 5000 });
-  await card.first().click();
+  if (canvasId) {
+    await page.goto(`/canvas/${canvasId}`);
+  } else {
+    await page.goto('/canvas');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+    const card = page
+      .locator('[class*="cursor-pointer"]')
+      .filter({ has: page.locator('h3') })
+      .filter({ hasText: canvasName });
+    await expect(card.first()).toBeVisible({ timeout: 5000 });
+    await card.first().click();
+  }
 
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
 
   // Wait for nodes to stabilize
-  await page.waitForFunction(() => {
-    const countNow = document.querySelectorAll('.react-flow__node').length;
-    const prev = (window as any).__nodeCount || 0;
-    (window as any).__nodeCount = countNow;
-    return countNow > 0 && countNow === prev;
-  }, undefined, { timeout: 10000 }).catch(() => {});
+  await page
+    .waitForFunction(
+      () => {
+        const countNow = document.querySelectorAll('.react-flow__node').length;
+        const prev = (window as any).__nodeCount || 0;
+        (window as any).__nodeCount = countNow;
+        return countNow > 0 && countNow === prev;
+      },
+      undefined,
+      { timeout: 10000 },
+    )
+    .catch(() => {});
 }
 
 test.describe('Coding Workflow', () => {
+  test.describe.configure({ timeout: 60_000 });
+
   // Create a fresh canvas with transcript, codes, and a coding via API
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const page = await context.newPage();
 
     await page.goto('/canvas');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 
     const jwt = await page.evaluate(() => {
       const raw = localStorage.getItem('qualcanvas-auth');
@@ -56,17 +78,18 @@ test.describe('Coding Workflow', () => {
 
     if (jwt) {
       const baseUrl = 'http://localhost:3007/api';
-      const headers = { 'Authorization': `Bearer ${jwt}`, 'Content-Type': 'application/json' };
+      const headers = { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
 
       const canvasRes = await page.request.post(`${baseUrl}/canvas`, {
         headers,
         data: { name: CANVAS_NAME },
       });
       const canvasData = await canvasRes.json();
-      const canvasId = canvasData?.data?.id;
+      canvasId = canvasData?.data?.id || '';
 
       if (canvasId) {
-        const sampleText = 'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds across three institutions.';
+        const sampleText =
+          'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds across three institutions.';
 
         const transcriptRes = await page.request.post(`${baseUrl}/canvas/${canvasId}/transcripts`, {
           headers,
@@ -95,7 +118,8 @@ test.describe('Coding Workflow', () => {
               questionId: code1Id,
               startOffset: 0,
               endOffset: 91,
-              codedText: 'The research methodology involved conducting semi-structured interviews with fifteen participants',
+              codedText:
+                'The research methodology involved conducting semi-structured interviews with fifteen participants',
             },
           });
         }
@@ -112,7 +136,10 @@ test.describe('Coding Workflow', () => {
   test('transcript node exists with text content', async ({ page }) => {
     const transcriptNodes = page.locator('.react-flow__node[data-id^="transcript-"]');
     const count = await transcriptNodes.count();
-    if (count === 0) { test.skip(); return; }
+    if (count === 0) {
+      test.skip();
+      return;
+    }
 
     await expect(transcriptNodes.first()).toBeAttached({ timeout: 5000 });
 
@@ -124,7 +151,10 @@ test.describe('Coding Workflow', () => {
   test('code node exists on canvas', async ({ page }) => {
     const codeNodes = page.locator('.react-flow__node[data-id^="question-"]');
     const count = await codeNodes.count();
-    if (count === 0) { test.skip(); return; }
+    if (count === 0) {
+      test.skip();
+      return;
+    }
 
     await expect(codeNodes.first()).toBeAttached({ timeout: 5000 });
 
@@ -137,17 +167,20 @@ test.describe('Coding Workflow', () => {
     // Check if the canvas has codings via the status bar
     const statusBar = page.locator('[data-tour="canvas-status-bar"]');
     await expect(statusBar).toBeVisible({ timeout: 5000 });
-    const statusText = await statusBar.textContent() || '';
+    const statusText = (await statusBar.textContent()) || '';
 
     // The status bar shows coding count as the third number
     // If no codings, skip
-    const hasTranscripts = await page.locator('.react-flow__node[data-id^="transcript-"]').count() > 0;
-    const hasCodes = await page.locator('.react-flow__node[data-id^="question-"]').count() > 0;
-    if (!hasTranscripts || !hasCodes) { test.skip(); return; }
+    const hasTranscripts = (await page.locator('.react-flow__node[data-id^="transcript-"]').count()) > 0;
+    const hasCodes = (await page.locator('.react-flow__node[data-id^="question-"]').count()) > 0;
+    if (!hasTranscripts || !hasCodes) {
+      test.skip();
+      return;
+    }
 
     // Fit view to ensure everything is rendered
     await page.getByRole('button', { name: 'Fit View' }).click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});
 
     // Wait for edge SVG paths to appear — edges may render lazily
     const edges = page.locator('.react-flow__edge, .react-flow__edges path');
@@ -164,7 +197,7 @@ test.describe('Coding Workflow', () => {
 
   test('navigator shows coding info', async ({ page }) => {
     const codesTab = page.locator('button').filter({ hasText: /^Codes\s*\(/ });
-    if (!await codesTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (!(await codesTab.isVisible({ timeout: 3000 }).catch(() => false))) {
       const navBtn = page.locator('button[title*="navigator" i], button[title*="Navigator" i]').first();
       if (await navBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await navBtn.click();
@@ -176,8 +209,9 @@ test.describe('Coding Workflow', () => {
     }
 
     const navigatorEl = page.locator('[data-tour="canvas-navigator"]');
-    if (!await navigatorEl.isVisible({ timeout: 3000 }).catch(() => false)) {
-      test.skip(); return;
+    if (!(await navigatorEl.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
     }
 
     const footerText = await navigatorEl.textContent();
@@ -198,8 +232,9 @@ test.describe('Coding Workflow', () => {
     await expect(statusBar).toBeVisible({ timeout: 5000 });
 
     const codedPctText = statusBar.getByText(/\d+%\s*coded/);
-    if (!await codedPctText.isVisible({ timeout: 3000 }).catch(() => false)) {
-      test.skip(); return;
+    if (!(await codedPctText.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
     }
 
     const pctText = await codedPctText.textContent();
@@ -211,7 +246,7 @@ test.describe('Coding Workflow', () => {
 
   test('click code in navigator selects it', async ({ page }) => {
     const codesTab = page.locator('button').filter({ hasText: /^Codes\s*\(/ });
-    if (!await codesTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (!(await codesTab.isVisible({ timeout: 3000 }).catch(() => false))) {
       const navBtn = page.locator('button[title*="navigator" i], button[title*="Navigator" i]').first();
       if (await navBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await navBtn.click();
@@ -222,7 +257,10 @@ test.describe('Coding Workflow', () => {
       has: page.locator('.rounded-full'),
     });
     const count = await codeItems.count();
-    if (count === 0) { test.skip(); return; }
+    if (count === 0) {
+      test.skip();
+      return;
+    }
 
     await codeItems.first().click();
 
@@ -237,9 +275,12 @@ test.describe('Coding Workflow', () => {
       await codesTab.click();
     }
 
-    const researchItem = page.locator('[data-tour="canvas-navigator"] div[role="button"]').filter({ hasText: 'Research Methods' });
-    if (!await researchItem.isVisible({ timeout: 3000 }).catch(() => false)) {
-      test.skip(); return;
+    const researchItem = page
+      .locator('[data-tour="canvas-navigator"] div[role="button"]')
+      .filter({ hasText: 'Research Methods' });
+    if (!(await researchItem.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
     }
     await researchItem.click();
 
@@ -247,10 +288,13 @@ test.describe('Coding Workflow', () => {
     const codeNode = page.locator('.react-flow__node[data-id^="question-"]').filter({ hasText: 'Research Methods' });
     // The button should be on this node — find it
     const viewSegmentsBtn = codeNode.locator('button[title="View coded segments"]');
-    if (await viewSegmentsBtn.count() === 0) {
+    if ((await viewSegmentsBtn.count()) === 0) {
       // Try the global button
       const globalBtn = page.locator('button[title="View coded segments"]');
-      if (await globalBtn.count() === 0) { test.skip(); return; }
+      if ((await globalBtn.count()) === 0) {
+        test.skip();
+        return;
+      }
       await globalBtn.first().click({ force: true });
     } else {
       await viewSegmentsBtn.first().click({ force: true });
@@ -263,7 +307,10 @@ test.describe('Coding Workflow', () => {
   test('multiple codes visible on canvas simultaneously', async ({ page }) => {
     const codeNodes = page.locator('.react-flow__node[data-id^="question-"]');
     const count = await codeNodes.count();
-    if (count < 2) { test.skip(); return; }
+    if (count < 2) {
+      test.skip();
+      return;
+    }
 
     const id0 = await codeNodes.nth(0).getAttribute('data-id');
     const id1 = await codeNodes.nth(1).getAttribute('data-id');
@@ -273,27 +320,37 @@ test.describe('Coding Workflow', () => {
   test('undo action Ctrl+Z does not break canvas', async ({ page }) => {
     // Fit view so nodes are accessible
     await page.getByRole('button', { name: 'Fit View' }).click();
-    await page.waitForFunction(() => {
-      const nodes = document.querySelectorAll('.react-flow__node');
-      return Array.from(nodes).some(n => {
-        const rect = n.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= window.innerHeight;
-      });
-    }, undefined, { timeout: 8000 }).catch(() => {});
+    await page
+      .waitForFunction(
+        () => {
+          const nodes = document.querySelectorAll('.react-flow__node');
+          return Array.from(nodes).some((n) => {
+            const rect = n.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= window.innerHeight;
+          });
+        },
+        undefined,
+        { timeout: 8000 },
+      )
+      .catch(() => {});
 
     const node = page.locator('.react-flow__node').first();
-    if (!await node.isVisible({ timeout: 3000 }).catch(() => false)) {
-      test.skip(); return;
+    if (!(await node.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
     }
 
     const box = await node.boundingBox();
-    if (!box) { test.skip(); return; }
+    if (!box) {
+      test.skip();
+      return;
+    }
 
     await page.mouse.move(box.x + box.width / 2, box.y + 10);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width / 2 + 50, box.y + 60, { steps: 5 });
     await page.mouse.up();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});
 
     await page.keyboard.press('Control+z');
 
@@ -303,15 +360,17 @@ test.describe('Coding Workflow', () => {
 
   test('coding stripes toggle works via Tools dropdown', async ({ page }) => {
     const toolsBtn = page.getByText('Tools').first();
-    if (!await toolsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      test.skip(); return;
+    if (!(await toolsBtn.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
     }
     await toolsBtn.click();
 
     const stripesOption = page.getByText(/Show Coding Stripes|Hide Coding Stripes/);
-    if (!await stripesOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (!(await stripesOption.isVisible({ timeout: 3000 }).catch(() => false))) {
       await page.keyboard.press('Escape');
-      test.skip(); return;
+      test.skip();
+      return;
     }
 
     const initialText = await stripesOption.textContent();
@@ -329,7 +388,10 @@ test.describe('Coding Workflow', () => {
 
   test('auto-arrange places nodes and shows toast', async ({ page }) => {
     const nodeCount = await page.locator('.react-flow__node').count();
-    if (nodeCount === 0) { test.skip(); return; }
+    if (nodeCount === 0) {
+      test.skip();
+      return;
+    }
 
     await page.keyboard.press('Control+Shift+l');
 

@@ -25,7 +25,7 @@ async function goToCanvasList(page: Page) {
   });
   await page.goto('/canvas');
   await page.waitForSelector('[data-tour="canvas-list"], h2', { timeout: 10000 });
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 }
 
 async function createCanvasViaApi(page: Page, name: string): Promise<string> {
@@ -51,9 +51,14 @@ async function openCanvasById(page: Page, canvasId: string) {
   });
   await page.goto(`/canvas/${canvasId}`);
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
   await page.waitForSelector('.react-flow__node', { timeout: 10000 }).catch(() => {});
@@ -80,27 +85,32 @@ test.describe('Canvas Workspace Full', () => {
       'of professional development, workplace culture, and personal motivation.',
     ].join(' ');
     const tRes = await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers, data: { title: 'Workspace Test Interview', content: sampleText },
+      headers,
+      data: { title: 'Workspace Test Interview', content: sampleText },
     });
     const transcriptId = (await tRes.json()).data.id;
 
     const cRes = await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers, data: { text: 'Professional Development', color: '#4F46E5' },
+      headers,
+      data: { text: 'Professional Development', color: '#4F46E5' },
     });
     const codeId = (await cRes.json()).data.id;
 
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers, data: { text: 'Workplace Culture', color: '#059669' },
+      headers,
+      data: { text: 'Workplace Culture', color: '#059669' },
     });
 
     if (transcriptId && codeId) {
       await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/codings`, {
-        headers, data: {
+        headers,
+        data: {
           transcriptId,
           questionId: codeId,
           startOffset: 0,
           endOffset: 91,
-          codedText: 'The research methodology involved conducting semi-structured interviews with fifteen participants',
+          codedText:
+            'The research methodology involved conducting semi-structured interviews with fifteen participants',
         },
       });
     }
@@ -110,7 +120,7 @@ test.describe('Canvas Workspace Full', () => {
   test.afterAll(async ({ browser }) => {
     const page = await browser.newPage({ storageState: 'e2e/.auth/user.json' });
     await page.goto('/canvas');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
     if (canvasId) await deleteCanvasViaApi(page, canvasId);
     await page.close();
   });
@@ -130,7 +140,7 @@ test.describe('Canvas Workspace Full', () => {
         return match && parseFloat(match[1]) > prevScale;
       },
       before!.scale,
-      { timeout: 3000 }
+      { timeout: 3000 },
     );
 
     const after = await getViewportTransform(page);
@@ -157,7 +167,7 @@ test.describe('Canvas Workspace Full', () => {
         return match && parseFloat(match[1]) > prevScale;
       },
       initial!.scale,
-      { timeout: 5000 }
+      { timeout: 5000 },
     );
 
     const before = await getViewportTransform(page);
@@ -172,7 +182,7 @@ test.describe('Canvas Workspace Full', () => {
         return match && parseFloat(match[1]) < prevScale;
       },
       before!.scale,
-      { timeout: 5000 }
+      { timeout: 5000 },
     );
 
     const after = await getViewportTransform(page);
@@ -203,19 +213,23 @@ test.describe('Canvas Workspace Full', () => {
     await fitViewBtn.click();
 
     // Wait briefly for animation
-    await page.waitForFunction(
-      ({ prevX, prevY }) => {
-        const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
-        if (!vp) return false;
-        const match = vp.style.transform.match(/translate\((.+?)px,\s*(.+?)px\)\s*scale\((.+?)\)/);
-        if (!match) return false;
-        const x = parseFloat(match[1]);
-        const y = parseFloat(match[2]);
-        return Math.abs(x - prevX) > 0.5 || Math.abs(y - prevY) > 0.5;
-      },
-      { prevX: before!.x, prevY: before!.y },
-      { timeout: 5000 }
-    ).catch(() => { /* viewport may already be fitted */ });
+    await page
+      .waitForFunction(
+        ({ prevX, prevY }) => {
+          const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
+          if (!vp) return false;
+          const match = vp.style.transform.match(/translate\((.+?)px,\s*(.+?)px\)\s*scale\((.+?)\)/);
+          if (!match) return false;
+          const x = parseFloat(match[1]);
+          const y = parseFloat(match[2]);
+          return Math.abs(x - prevX) > 0.5 || Math.abs(y - prevY) > 0.5;
+        },
+        { prevX: before!.x, prevY: before!.y },
+        { timeout: 5000 },
+      )
+      .catch(() => {
+        /* viewport may already be fitted */
+      });
 
     // Viewport should have a valid transform — this confirms Fit View ran without error
     const after = await getViewportTransform(page);
@@ -231,7 +245,8 @@ test.describe('Canvas Workspace Full', () => {
     await page.keyboard.press('Control+k');
 
     // Command palette should appear with a search input
-    const searchInput = page.locator('input[placeholder*="Search"]')
+    const searchInput = page
+      .locator('input[placeholder*="Search"]')
       .or(page.locator('input[placeholder*="command"]'))
       .or(page.locator('input[placeholder*="Type"]'));
     await expect(searchInput.first()).toBeVisible({ timeout: 3000 });
@@ -247,7 +262,8 @@ test.describe('Canvas Workspace Full', () => {
     await page.locator('.react-flow__pane').click();
     await page.keyboard.press('Control+k');
 
-    const searchInput = page.locator('input[placeholder*="Search"]')
+    const searchInput = page
+      .locator('input[placeholder*="Search"]')
       .or(page.locator('input[placeholder*="command"]'))
       .or(page.locator('input[placeholder*="Type"]'));
     await expect(searchInput.first()).toBeVisible({ timeout: 3000 });
@@ -271,7 +287,8 @@ test.describe('Canvas Workspace Full', () => {
 
     await page.keyboard.press('Control+k');
 
-    const searchInput = page.locator('input[placeholder*="Search"]')
+    const searchInput = page
+      .locator('input[placeholder*="Search"]')
       .or(page.locator('input[placeholder*="command"]'))
       .or(page.locator('input[placeholder*="Type"]'));
     await expect(searchInput.first()).toBeVisible({ timeout: 3000 });
@@ -292,24 +309,35 @@ test.describe('Canvas Workspace Full', () => {
     const lightModeBtn = page.locator('button[aria-label="Switch to light mode"]');
     const btn = darkModeBtn.or(lightModeBtn);
 
-    if (!await btn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
-      test.skip(); return;
+    if (
+      !(await btn
+        .first()
+        .isVisible({ timeout: 3000 })
+        .catch(() => false))
+    ) {
+      test.skip();
+      return;
     }
 
     await btn.first().click();
 
-    await page.waitForFunction(
-      (bgBeforeVal) => getComputedStyle(document.body).backgroundColor !== bgBeforeVal,
-      bgBefore,
-      { timeout: 3000 }
-    ).catch(() => {});
+    await page
+      .waitForFunction((bgBeforeVal) => getComputedStyle(document.body).backgroundColor !== bgBeforeVal, bgBefore, {
+        timeout: 3000,
+      })
+      .catch(() => {});
 
     const bgAfter = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     expect(bgAfter).not.toBe(bgBefore);
 
     // Restore by clicking again
     const restoreBtn = darkModeBtn.or(lightModeBtn);
-    if (await restoreBtn.first().isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (
+      await restoreBtn
+        .first()
+        .isVisible({ timeout: 1000 })
+        .catch(() => false)
+    ) {
       await restoreBtn.first().click();
     }
   });
@@ -358,8 +386,9 @@ test.describe('Canvas Workspace Full', () => {
     await openCanvasById(page, canvasId);
 
     const scrollBtn = page.getByRole('button', { name: /Scroll: Zoom/i });
-    if (!await scrollBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      test.skip(); return;
+    if (!(await scrollBtn.isVisible({ timeout: 2000 }).catch(() => false))) {
+      test.skip();
+      return;
     }
 
     await scrollBtn.click();
@@ -375,11 +404,19 @@ test.describe('Canvas Workspace Full', () => {
       if (msg.type() === 'error') {
         const text = msg.text();
         // Ignore known non-critical errors
-        if (text.includes('WebSocket') || text.includes('Socket') ||
-            text.includes('favicon') || text.includes('.map') ||
-            text.includes('DevTools') || text.includes('net::ERR') ||
-            text.includes('Failed to load resource') || text.includes('404') ||
-            text.includes('Stripe') || text.includes('Google')) return;
+        if (
+          text.includes('WebSocket') ||
+          text.includes('Socket') ||
+          text.includes('favicon') ||
+          text.includes('.map') ||
+          text.includes('DevTools') ||
+          text.includes('net::ERR') ||
+          text.includes('Failed to load resource') ||
+          text.includes('404') ||
+          text.includes('Stripe') ||
+          text.includes('Google')
+        )
+          return;
         errors.push(text);
       }
     });
@@ -394,11 +431,9 @@ test.describe('Canvas Workspace Full', () => {
     await page.keyboard.press('Control+k');
     await page.keyboard.press('Escape');
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});
 
-    const criticalErrors = errors.filter(e =>
-      !e.includes('ResizeObserver') && !e.includes('Non-Error')
-    );
+    const criticalErrors = errors.filter((e) => !e.includes('ResizeObserver') && !e.includes('Non-Error'));
     expect(criticalErrors).toEqual([]);
   });
 });

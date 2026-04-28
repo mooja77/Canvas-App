@@ -25,11 +25,17 @@ function determineActorType(req: Request): { actorType: string; actorId: string 
 function determineAction(method: string, path: string): string {
   if (path.includes('/export')) return 'export';
   switch (method) {
-    case 'GET': return 'read';
-    case 'POST': return 'write';
-    case 'PUT': case 'PATCH': return 'update';
-    case 'DELETE': return 'delete';
-    default: return 'read';
+    case 'GET':
+      return 'read';
+    case 'POST':
+      return 'write';
+    case 'PUT':
+    case 'PATCH':
+      return 'update';
+    case 'DELETE':
+      return 'delete';
+    default:
+      return 'read';
   }
 }
 
@@ -67,6 +73,14 @@ export async function logAudit(entry: AuditEntry): Promise<void> {
  * Express middleware that logs request/response to the AuditLog table.
  */
 export function auditLog(req: Request, res: Response, next: NextFunction): void {
+  // E2E browser suites generate hundreds of polling/navigation requests. Keep
+  // route-level audit events, but skip generic request logging to avoid pool
+  // saturation in the local test database.
+  if (process.env.E2E_TEST === 'true') {
+    next();
+    return;
+  }
+
   const originalEnd = res.end;
   const startPath = req.originalUrl || req.path;
 
@@ -90,7 +104,7 @@ export function auditLog(req: Request, res: Response, next: NextFunction): void 
     });
 
     return (originalEnd as (...a: unknown[]) => unknown).apply(res, args);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 
   next();

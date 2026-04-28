@@ -41,10 +41,53 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://qualcanvas:qualcanvas@localhost:55432/qualcanvas_e2e?schema=public
+      JWT_SECRET: test-secret-for-ci-pipeline-only
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qualcanvas
+          POSTGRES_PASSWORD: qualcanvas
+          POSTGRES_DB: qualcanvas_e2e
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U qualcanvas -d qualcanvas_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma
+      - run: npm run build
+      - run: npm run build:budget
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
-    needs: typecheck
+    needs: [typecheck, lint]
     env:
       JWT_SECRET: test-secret-for-ci-pipeline-only
       ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
@@ -59,7 +102,43 @@ jobs:
       - run: npx prisma generate --schema=apps/backend/prisma/schema.prisma
       - run: npm test
 
-  # E2E tests require a running dev server with PostgreSQL.
-  # They run locally via `npm run test:e2e` but are skipped in CI
-  # because the schema uses provider="postgresql" and CI only has SQLite.
-  # To enable: add a PostgreSQL service container and update DATABASE_URL.
+  e2e-chromium:
+    name: E2E Chromium
+    runs-on: ubuntu-latest
+    needs: [build, unit-tests]
+    timeout-minutes: 45
+    env:
+      DATABASE_URL: postgresql://qualcanvas:qualcanvas@localhost:55432/qualcanvas_e2e?schema=public
+      JWT_SECRET: test-secret-for-ci-pipeline-only
+      E2E_TEST: true
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qualcanvas
+          POSTGRES_PASSWORD: qualcanvas
+          POSTGRES_DB: qualcanvas_e2e
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U qualcanvas -d qualcanvas_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/

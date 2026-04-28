@@ -53,7 +53,12 @@ async function openCanvasById(page: Page, canvasId: string) {
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
   await page.waitForSelector('.react-flow__node', { timeout: 10000 }).catch(() => {});
@@ -72,7 +77,8 @@ test.describe('Canvas Sharing', () => {
     canvasId = await createCanvasViaApi(page, `E2E Share ${Date.now()}`);
     const headers = await apiHeaders(page);
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers, data: { title: 'Share Test Transcript', content: 'Content for sharing test.' },
+      headers,
+      data: { title: 'Share Test Transcript', content: 'Content for sharing test.' },
     });
     await page.close();
   });
@@ -109,7 +115,7 @@ test.describe('Canvas Sharing', () => {
     await page.locator('[role="dialog"][aria-label="Share Canvas"]').waitFor({ state: 'visible', timeout: 5000 });
     // Should show at least one share code (created in test 2 or generate a new one)
     const codeEl = page.locator('code');
-    if (await codeEl.count() === 0) {
+    if ((await codeEl.count()) === 0) {
       await page.getByRole('button', { name: /Generate Share Code/i }).click();
       await page.waitForLoadState('networkidle');
     }
@@ -124,7 +130,7 @@ test.describe('Canvas Sharing', () => {
     await page.locator('button[title="Share canvas"]').click();
     await page.locator('[role="dialog"][aria-label="Share Canvas"]').waitFor({ state: 'visible', timeout: 5000 });
     const codeEl = page.locator('code');
-    if (await codeEl.count() === 0) {
+    if ((await codeEl.count()) === 0) {
       await page.getByRole('button', { name: /Generate Share Code/i }).click();
       await page.waitForLoadState('networkidle');
     }
@@ -133,8 +139,14 @@ test.describe('Canvas Sharing', () => {
     const copyBtn = page.locator('button[title="Copy to clipboard"]').first();
     await copyBtn.click();
     // Should show toast or not crash
-    const copied = await page.getByText('Copied to clipboard').isVisible({ timeout: 3000 }).catch(() => false);
-    const failed = await page.getByText('Failed to copy').isVisible({ timeout: 1000 }).catch(() => false);
+    const copied = await page
+      .getByText('Copied to clipboard')
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
+    const failed = await page
+      .getByText('Failed to copy')
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
     // Either toast is acceptable — the button worked
     expect(copied || failed || true).toBe(true);
   });
@@ -145,7 +157,7 @@ test.describe('Canvas Sharing', () => {
     await page.locator('[role="dialog"][aria-label="Share Canvas"]').waitFor({ state: 'visible', timeout: 5000 });
     // Ensure a code exists
     const codeEl = page.locator('code');
-    if (await codeEl.count() === 0) {
+    if ((await codeEl.count()) === 0) {
       await page.getByRole('button', { name: /Generate Share Code/i }).click();
       await page.waitForLoadState('networkidle');
     }
@@ -208,7 +220,8 @@ test.describe('Canvas Sharing', () => {
     const cloneBtn = page.getByRole('button', { name: /Clone|Import/i });
     await cloneBtn.first().click();
     // Should show error toast
-    const err = await page.getByText(/not found|invalid|failed/i).first().isVisible({ timeout: 5000 }).catch(() => false);
-    expect(err).toBe(true);
+    await expect(page.locator('[role="status"]').filter({ hasText: /not found|invalid|failed/i })).toBeVisible({
+      timeout: 5000,
+    });
   });
 });

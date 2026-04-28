@@ -2,7 +2,6 @@ import { lazy, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCanvasStore, useActiveCanvas, useShowCodingStripes } from '../../../stores/canvasStore';
 import { useUIStore, type EdgeStyleType } from '../../../stores/uiStore';
-import { useCloseCanvas } from '../../../hooks/useOpenCanvas';
 import TranscriptSourceMenu from './TranscriptSourceMenu';
 import AddComputedNodeMenu from './AddComputedNodeMenu';
 import CanvasSwitcher from './CanvasSwitcher';
@@ -142,7 +141,7 @@ export default function CanvasToolbar({
   const { t } = useTranslation();
   const activeCanvas = useActiveCanvas();
   const showCodingStripes = useShowCodingStripes();
-  const closeCanvas = useCloseCanvas();
+  const closeCanvas = useCanvasStore((s) => s.closeCanvas);
   const addQuestion = useCanvasStore((s) => s.addQuestion);
   const addMemo = useCanvasStore((s) => s.addMemo);
   const addTranscript = useCanvasStore((s) => s.addTranscript);
@@ -257,8 +256,8 @@ export default function CanvasToolbar({
             </button>
           )}
 
-          <button
-            type="button"
+          <a
+            href="/canvas"
             onClick={closeCanvas}
             className="shrink-0 flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors"
             title="Back to canvas list"
@@ -267,7 +266,7 @@ export default function CanvasToolbar({
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
             </svg>
             <span className="hidden sm:inline text-xs">Back</span>
-          </button>
+          </a>
 
           {/* Divider */}
           <div className="shrink-0 h-5 w-px bg-gray-200/80 dark:bg-gray-700/80" />

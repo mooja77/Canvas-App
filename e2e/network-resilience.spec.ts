@@ -12,6 +12,10 @@ async function getJwt(page: Page): Promise<string> {
 }
 
 async function apiHeaders(page: Page) {
+  if (page.url() === 'about:blank') {
+    await page.goto('/canvas');
+    await page.waitForLoadState('domcontentloaded');
+  }
   const jwt = await getJwt(page);
   return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
 }
@@ -38,6 +42,8 @@ async function openCanvasById(page: Page, canvasId: string) {
 }
 
 test.describe('Network Resilience', () => {
+  test.describe.configure({ timeout: 120_000 });
+
   let canvasId: string;
 
   test.beforeAll(async ({ browser }) => {

@@ -15,14 +15,14 @@ async function openCanvas(page: Page) {
     s.state = { ...s.state, onboardingComplete: true, setupWizardComplete: true };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(s));
   });
-  await page.goto('/canvas');
-  await page.waitForLoadState('networkidle');
-  const card = page.getByText(PREFIX).first();
-  if (await card.isVisible({ timeout: 3000 }).catch(() => false)) await card.click();
+  await page.goto(canvasId ? `/canvas/${canvasId}` : '/canvas');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('.react-flow__pane', { timeout: 10000 });
 }
 
 test.describe('Deep Canvas: Edge Behavior', () => {
+  test.describe.configure({ timeout: 60_000 });
+
   let transcriptId = '';
   const codeIds: string[] = [];
 

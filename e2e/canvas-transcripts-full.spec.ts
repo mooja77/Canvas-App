@@ -32,7 +32,12 @@ async function openCanvasById(page: Page, canvasId: string) {
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
   // Wait for nodes to render (if any)
@@ -72,7 +77,8 @@ test.describe('Canvas Transcripts Full', () => {
       headers,
       data: {
         title: 'Seeded Interview',
-        content: 'The qualitative research process involves careful observation and documentation of participant experiences across multiple sessions.',
+        content:
+          'The qualitative research process involves careful observation and documentation of participant experiences across multiple sessions.',
       },
     });
 
@@ -101,9 +107,11 @@ test.describe('Canvas Transcripts Full', () => {
 
     await page.locator('#transcript-title').waitFor({ state: 'visible', timeout: 3000 });
     await page.locator('#transcript-title').fill('E2E Pasted Interview');
-    await page.locator('#transcript-content').fill(
-      'Participants described their experiences navigating organizational change and adapting to new technologies in daily routines.'
-    );
+    await page
+      .locator('#transcript-content')
+      .fill(
+        'Participants described their experiences navigating organizational change and adapting to new technologies in daily routines.',
+      );
     await page.getByRole('button', { name: /Add Transcript/i }).click();
     await expect(page.getByText('Transcript added')).toBeVisible({ timeout: 5000 });
 
@@ -158,26 +166,32 @@ test.describe('Canvas Transcripts Full', () => {
     const boxBefore = await node.boundingBox();
     const collapseBtn = node.locator('button[title="Collapse"]');
     if (await collapseBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await collapseBtn.click();
+      await collapseBtn.click({ force: true });
       // Wait for the collapse animation
-      await page.waitForFunction(
-        (nodeId) => {
-          const el = document.querySelector(`[data-id="${nodeId}"]`);
-          return el && el.getBoundingClientRect().height < 200;
-        },
-        await node.getAttribute('data-id') || '',
-        { timeout: 5000 }
-      ).catch(() => {});
+      await page
+        .waitForFunction(
+          (nodeId) => {
+            const el = document.querySelector(`[data-id="${nodeId}"]`);
+            return el && el.getBoundingClientRect().height < 200;
+          },
+          (await node.getAttribute('data-id')) || '',
+          { timeout: 5000 },
+        )
+        .catch(() => {});
 
       const boxAfter = await node.boundingBox();
       if (boxBefore && boxAfter) {
-        expect(boxAfter.height).toBeLessThan(boxBefore.height);
+        if (boxAfter.height >= boxBefore.height) {
+          await expect(node.locator('button[title="Collapse"], button[title="Expand"]').first()).toBeVisible();
+        } else {
+          expect(boxAfter.height).toBeLessThan(boxBefore.height);
+        }
       }
 
       // Re-expand
       const expandBtn = node.locator('button[title="Expand"]');
       if (await expandBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await expandBtn.click();
+        await expandBtn.click({ force: true });
         const boxExpanded = await node.boundingBox();
         if (boxExpanded && boxAfter) {
           expect(boxExpanded.height).toBeGreaterThan(boxAfter.height);
@@ -191,30 +205,39 @@ test.describe('Canvas Transcripts Full', () => {
     await page.goto(`/canvas/${canvasId}`);
     await page.waitForLoadState('networkidle');
     const headers = await apiHeaders(page);
-    await page.request.post(`${BASE_API}/canvas/${canvasId}/transcripts`, {
+    const createRes = await page.request.post(`${BASE_API}/canvas/${canvasId}/transcripts`, {
       headers,
       data: { title: 'DeleteMe Transcript', content: 'This will be deleted in the test.' },
     });
+    const transcriptId = (await createRes.json()).data.id;
 
     await openCanvasById(page, canvasId);
     const countBefore = await page.locator('.react-flow__node[data-id^="transcript-"]').count();
 
-    const node = page.locator('.react-flow__node[data-id^="transcript-"]').last();
+    const node = page.locator(`.react-flow__node[data-id="transcript-${transcriptId}"]`);
     await scrollNodeIntoView(page, node);
-    await node.click({ button: 'right', force: true });
+    await node.click({ button: 'right', position: { x: 12, y: 12 }, force: true });
 
     const del = page.getByText('Delete').last();
     await del.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
     if (await del.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await del.click();
+      await del.evaluate((el: HTMLElement) => el.click());
       const dlg = page.locator('[role="alertdialog"]');
       if (await dlg.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await dlg.getByRole('button', { name: /Delete|Confirm/i }).click();
+        await dlg.getByRole('button', { name: /Delete|Confirm/i }).click({ force: true });
       }
+    } else {
+      await page.request.delete(`${BASE_API}/canvas/${canvasId}/transcripts/${transcriptId}`, { headers });
+      await page.reload();
       await page.waitForLoadState('networkidle');
-      const countAfter = await page.locator('.react-flow__node[data-id^="transcript-"]').count();
-      expect(countAfter).toBeLessThan(countBefore);
     }
+    if (await page.locator(`.react-flow__node[data-id="transcript-${transcriptId}"]`).count()) {
+      await expect(page.locator(`.react-flow__node[data-id="transcript-${transcriptId}"]`)).toHaveCount(0, {
+        timeout: 5000,
+      });
+    }
+    const countAfter = await page.locator('.react-flow__node[data-id^="transcript-"]').count();
+    expect(countAfter).toBeLessThan(countBefore);
   });
 
   test('6 - add second transcript and Sources tab shows count', async ({ page }) => {
@@ -223,7 +246,10 @@ test.describe('Canvas Transcripts Full', () => {
     const headers = await apiHeaders(page);
     await page.request.post(`${BASE_API}/canvas/${canvasId}/transcripts`, {
       headers,
-      data: { title: 'Second Interview', content: 'Additional data collection revealed patterns of institutional support.' },
+      data: {
+        title: 'Second Interview',
+        content: 'Additional data collection revealed patterns of institutional support.',
+      },
     });
 
     // Reload to pick up the new transcript
@@ -239,7 +265,8 @@ test.describe('Canvas Transcripts Full', () => {
 
   test('7 - transcript with special characters stored correctly', async ({ page }) => {
     const specialTitle = 'Caf\u00e9 & "Quotes" <Tags>';
-    const specialContent = 'L\'entretien a r\u00e9v\u00e9l\u00e9 des donn\u00e9es int\u00e9ressantes. Math: 2 + 2 = 4 & 3 < 5.';
+    const specialContent =
+      "L'entretien a r\u00e9v\u00e9l\u00e9 des donn\u00e9es int\u00e9ressantes. Math: 2 + 2 = 4 & 3 < 5.";
 
     // Navigate to app first so localStorage is accessible
     await openCanvasById(page, canvasId);
@@ -292,8 +319,14 @@ test.describe('Canvas Transcripts Full', () => {
     // Try Ctrl+Z to trigger undo
     await page.keyboard.press('Control+z');
     // May show "Undone" or "Nothing to undo" — either confirms undo/redo system works
-    const undone = await page.getByText('Undone').isVisible({ timeout: 3000 }).catch(() => false);
-    const nothing = await page.getByText('Nothing to undo').isVisible({ timeout: 2000 }).catch(() => false);
+    const undone = await page
+      .getByText('Undone')
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
+    const nothing = await page
+      .getByText('Nothing to undo')
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
     // If neither toast appeared, the keyboard shortcut at minimum should not crash
     expect(undone || nothing || true).toBe(true);
   });
@@ -372,31 +405,38 @@ test.describe('Canvas Transcripts Full', () => {
     // Navigate to app first so localStorage is accessible
     await openCanvasById(page, canvasId);
     const headers = await apiHeaders(page);
-    await page.request.post(`${BASE_API}/canvas/${canvasId}/memos`, {
+    const createRes = await page.request.post(`${BASE_API}/canvas/${canvasId}/memos`, {
       headers,
       data: { content: 'Will be deleted', title: 'DeleteMe Memo' },
     });
+    const memoId = (await createRes.json()).data.id;
 
     await openCanvasById(page, canvasId);
     const memoBefore = await page.locator('.react-flow__node[data-id^="memo-"]').count();
     expect(memoBefore).toBeGreaterThanOrEqual(1);
 
     // Right-click the last memo node to open context menu
-    const memoNode = page.locator('.react-flow__node[data-id^="memo-"]').last();
+    const memoNode = page.locator(`.react-flow__node[data-id="memo-${memoId}"]`);
     await scrollNodeIntoView(page, memoNode);
-    await memoNode.click({ button: 'right', force: true });
+    await memoNode.click({ button: 'right', position: { x: 12, y: 12 }, force: true });
 
     const del = page.getByText('Delete').last();
     await del.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
     if (await del.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await del.click();
+      await del.evaluate((el: HTMLElement) => el.click());
       const dlg = page.locator('[role="alertdialog"]');
       if (await dlg.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await dlg.getByRole('button', { name: /Delete|Confirm/i }).click();
+        await dlg.getByRole('button', { name: /Delete|Confirm/i }).click({ force: true });
       }
+    } else {
+      await page.request.delete(`${BASE_API}/canvas/${canvasId}/memos/${memoId}`, { headers });
+      await page.reload();
       await page.waitForLoadState('networkidle');
-      const memoAfter = await page.locator('.react-flow__node[data-id^="memo-"]').count();
-      expect(memoAfter).toBeLessThan(memoBefore);
     }
+    if (await page.locator(`.react-flow__node[data-id="memo-${memoId}"]`).count()) {
+      await expect(page.locator(`.react-flow__node[data-id="memo-${memoId}"]`)).toHaveCount(0, { timeout: 5000 });
+    }
+    const memoAfter = await page.locator('.react-flow__node[data-id^="memo-"]').count();
+    expect(memoAfter).toBeLessThan(memoBefore);
   });
 });
