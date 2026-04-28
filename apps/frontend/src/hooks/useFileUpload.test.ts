@@ -113,18 +113,23 @@ describe('useFileUpload', () => {
   });
 
   it('calls progress callback during upload', async () => {
-    mockUploadFileDirect.mockImplementation(((_canvasId: string, _formData: FormData, onProgress?: (pct: number) => void) => {
-      // Simulate progress callbacks
-      if (onProgress) {
-        onProgress(25);
-        onProgress(50);
-        onProgress(75);
-      }
-      return Promise.resolve({
-        data: { data: { id: 'upload-1', name: 'file.txt' } },
-        status: 200, statusText: 'OK', headers: {}, config: {},
-      });
-    }) as any);
+    mockUploadFileDirect.mockImplementation(
+      (_canvasId: string, _formData: FormData, onProgress?: (pct: number) => void) => {
+        // Simulate progress callbacks
+        if (onProgress) {
+          onProgress(25);
+          onProgress(50);
+          onProgress(75);
+        }
+        return Promise.resolve({
+          data: { data: { id: 'upload-1', name: 'file.txt' } },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {},
+        } as unknown as Awaited<ReturnType<typeof canvasApi.uploadFileDirect>>);
+      },
+    );
 
     const { result } = renderHook(() => useFileUpload());
     const file = new File(['content'], 'file.txt', { type: 'text/plain' });
@@ -139,7 +144,9 @@ describe('useFileUpload', () => {
 
   it('sets uploading=true while upload is in progress', async () => {
     let resolveUpload: (v: unknown) => void;
-    const pending = new Promise((resolve) => { resolveUpload = resolve; });
+    const pending = new Promise((resolve) => {
+      resolveUpload = resolve;
+    });
     mockUploadFileDirect.mockReturnValue(pending as never);
 
     const { result } = renderHook(() => useFileUpload());
@@ -195,11 +202,7 @@ describe('useFileUpload', () => {
       await result.current.uploadFile(file);
     });
 
-    expect(mockUploadFileDirect).toHaveBeenCalledWith(
-      'canvas-1',
-      expect.any(FormData),
-      expect.any(Function),
-    );
+    expect(mockUploadFileDirect).toHaveBeenCalledWith('canvas-1', expect.any(FormData), expect.any(Function));
 
     const formData = mockUploadFileDirect.mock.calls[0][1] as FormData;
     expect(formData.get('file')).toBeInstanceOf(File);

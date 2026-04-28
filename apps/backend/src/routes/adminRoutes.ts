@@ -286,15 +286,15 @@ adminRoutes.get('/users', async (req: Request, res: Response) => {
       }),
     ]);
 
-    const lastLoginMap = new Map(lastLogins.map((l: any) => [l.actorId, l.timestamp]));
-    const lastActiveMap = new Map(lastActions.map((l: any) => [l.actorId, l.timestamp]));
-    const actionCountMap = new Map(actionCounts.map((a: any) => [a.actorId, a._count.id]));
-    const sessionCountMap = new Map(sessionCounts.map((s: any) => [s.actorId, s._count.id]));
+    const lastLoginMap = new Map(lastLogins.map((l) => [l.actorId, l.timestamp]));
+    const lastActiveMap = new Map(lastActions.map((l) => [l.actorId, l.timestamp]));
+    const actionCountMap = new Map(actionCounts.map((a) => [a.actorId, a._count.id]));
+    const sessionCountMap = new Map(sessionCounts.map((s) => [s.actorId, s._count.id]));
 
     // Build top features per user (top 3 most-used computed node types)
     const featuresByUser = new Map<string, Map<string, number>>();
     for (const node of userFeatures) {
-      const uid = (node as any).canvas?.userId;
+      const uid = node.canvas?.userId;
       if (!uid) continue;
       if (!featuresByUser.has(uid)) featuresByUser.set(uid, new Map());
       const fm = featuresByUser.get(uid)!;
@@ -304,18 +304,18 @@ adminRoutes.get('/users', async (req: Request, res: Response) => {
     // Build per-user usage object (aggregate across canvases)
     const usageByUser = new Map<string, { transcripts: number; codings: number; codes: number }>();
     for (const c of userCanvasData) {
-      const uid = (c as any).userId;
+      const uid = c.userId;
       if (!uid) continue;
       if (!usageByUser.has(uid)) usageByUser.set(uid, { transcripts: 0, codings: 0, codes: 0 });
       const u = usageByUser.get(uid)!;
-      u.transcripts += (c as any)._count.transcripts;
-      u.codings += (c as any)._count.codings;
-      u.codes += (c as any)._count.questions;
+      u.transcripts += c._count.transcripts;
+      u.codings += c._count.codings;
+      u.codes += c._count.questions;
     }
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    const data = users.map((u: any) => {
+    const data = users.map((u) => {
       const lastLogin = lastLoginMap.get(u.id) || null;
       const lastActive = lastActiveMap.get(u.id) || lastLogin || null;
 
@@ -353,8 +353,8 @@ adminRoutes.get('/users', async (req: Request, res: Response) => {
       };
     });
 
-    const realUsersCount = data.filter((u: any) => !u.isTest).length;
-    const testUsersCount = data.filter((u: any) => u.isTest).length;
+    const realUsersCount = data.filter((u) => !u.isTest).length;
+    const testUsersCount = data.filter((u) => u.isTest).length;
 
     res.json({
       success: true,
@@ -423,7 +423,7 @@ adminRoutes.get('/users/:id', async (req: Request, res: Response) => {
       data: {
         ...safeUser,
         recentActivity,
-        aiUsageStats: aiUsageStats.map((a: any) => ({
+        aiUsageStats: aiUsageStats.map((a) => ({
           feature: a.feature,
           count: a._count.id,
           totalInputTokens: a._sum.inputTokens || 0,
@@ -463,7 +463,7 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
     ]);
 
     // Filter to real (non-test) active subscriptions only
-    const realActiveSubs = allSubs.filter((s: any) => s.status === 'active' && !isTestEmail(s.user.email));
+    const realActiveSubs = allSubs.filter((s) => s.status === 'active' && !isTestEmail(s.user.email));
     let mrr = 0;
     const planCounts: Record<string, { count: number; revenue: number }> = {};
 
@@ -478,7 +478,7 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
     }
 
     const totalPaying = realActiveSubs.length;
-    const realSubs = allSubs.filter((s: any) => !isTestEmail(s.user.email));
+    const realSubs = allSubs.filter((s) => !isTestEmail(s.user.email));
     const totalSubsForChurn = realSubs.length || 1;
     const churnRate30d = parseFloat((canceledRecent / totalSubsForChurn).toFixed(4));
 
@@ -497,7 +497,7 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
         totalFree,
         churnRate30d,
         planBreakdown,
-        recentTransactions: recentTransactions.map((t: any) => ({
+        recentTransactions: recentTransactions.map((t) => ({
           id: t.id,
           userId: t.userId,
           userEmail: t.user.email,
@@ -579,7 +579,7 @@ adminRoutes.get('/activity', async (req: Request, res: Response) => {
     ]);
 
     // Look up user emails for entries with actorId
-    const actorIds = [...new Set(entries.map((e: any) => e.actorId).filter(Boolean))] as string[];
+    const actorIds = [...new Set(entries.map((e) => e.actorId).filter(Boolean))] as string[];
     const users = actorIds.length
       ? await prisma.user.findMany({
           where: { id: { in: actorIds } },
@@ -588,7 +588,7 @@ adminRoutes.get('/activity', async (req: Request, res: Response) => {
       : [];
     const emailMap = new Map(users.map((u: { id: string; email: string }) => [u.id, u.email]));
 
-    const data = entries.map((e: any) => ({
+    const data = entries.map((e) => ({
       ...e,
       userEmail: e.actorId ? emailMap.get(e.actorId) || null : null,
     }));
@@ -679,30 +679,30 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
     ]);
 
     // Filter active users to exclude test accounts
-    const activeIds = activeCanvasUsers.map((c: any) => c.userId!).filter(Boolean);
+    const activeIds = activeCanvasUsers.map((c) => c.userId).filter((id): id is string => Boolean(id));
     const activeEmails = activeIds.length
       ? await prisma.user.findMany({ where: { id: { in: activeIds } }, select: { email: true } })
       : [];
-    const activeUsers = activeEmails.filter((u: any) => !isTestEmail(u.email)).length;
+    const activeUsers = activeEmails.filter((u) => !isTestEmail(u.email)).length;
 
     // Build daily signup trend
     const signupTrend: Record<string, number> = {};
     for (const u of signupsByDay) {
-      const day = (u as any).createdAt.toISOString().slice(0, 10);
+      const day = u.createdAt.toISOString().slice(0, 10);
       signupTrend[day] = (signupTrend[day] || 0) + 1;
     }
 
     // Resolve top user emails
-    const topUserIds = topUsers.map((t: any) => t.actorId).filter(Boolean) as string[];
+    const topUserIds = topUsers.map((t) => t.actorId).filter((id): id is string => Boolean(id));
     const topUserEmails = topUserIds.length
       ? await prisma.user.findMany({ where: { id: { in: topUserIds } }, select: { id: true, email: true, name: true } })
       : [];
-    const topUserMap = new Map(topUserEmails.map((u: any) => [u.id, { email: u.email, name: u.name }]));
+    const topUserMap = new Map(topUserEmails.map((u) => [u.id, { email: u.email, name: u.name }]));
 
     // Action breakdown
     const actionBreakdown = actionsByDay
-      .map((a: any) => ({ action: a.action, count: a._count.id }))
-      .sort((a: any, b: any) => b.count - a.count);
+      .map((a) => ({ action: a.action, count: a._count.id }))
+      .sort((a, b) => b.count - a.count);
 
     res.json({
       success: true,
@@ -722,17 +722,17 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
         },
         features: {
           computedNodes: computedByType
-            .map((n: any) => ({ type: n.nodeType, count: n._count.id }))
-            .sort((a: any, b: any) => b.count - a.count),
+            .map((n) => ({ type: n.nodeType, count: n._count.id }))
+            .sort((a, b) => b.count - a.count),
           aiUsage: aiByFeature
-            .map((a: any) => ({
+            .map((a) => ({
               feature: a.feature,
               count: a._count.id,
               inputTokens: a._sum.inputTokens || 0,
               outputTokens: a._sum.outputTokens || 0,
               costCents: a._sum.costCents || 0,
             }))
-            .sort((a: any, b: any) => b.count - a.count),
+            .sort((a, b) => b.count - a.count),
         },
         ai: {
           totalCostCents: aiCostTotal._sum.costCents || 0,
@@ -740,12 +740,13 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
           totalOutputTokens: aiCostTotal._sum.outputTokens || 0,
         },
         actionBreakdown,
-        topUsers: topUsers.map((t: any) => {
-          const info: { email: string; name: string } = (topUserMap.get(t.actorId) as
+        topUsers: topUsers.map((t) => {
+          const actorId = t.actorId || '';
+          const info: { email: string; name: string } = (topUserMap.get(actorId) as
             | { email: string; name: string }
             | undefined) || { email: 'unknown', name: 'unknown' };
           return {
-            userId: t.actorId,
+            userId: actorId,
             email: info.email,
             name: info.name,
             actionCount: t._count.id,
@@ -776,7 +777,7 @@ adminRoutes.get('/features', async (_req: Request, res: Response) => {
 
     // For computed nodes, also count unique canvases
     const computedCanvasCounts = await Promise.all(
-      computedNodes.map(async (n: any) => {
+      computedNodes.map(async (n) => {
         const uniqueCanvases = await prisma.canvasComputedNode.findMany({
           where: { nodeType: n.nodeType },
           select: { canvasId: true },
@@ -785,11 +786,11 @@ adminRoutes.get('/features', async (_req: Request, res: Response) => {
         return { nodeType: n.nodeType, uniqueCanvases: uniqueCanvases.length };
       }),
     );
-    const canvasCountMap = new Map(computedCanvasCounts.map((c: any) => [c.nodeType, c.uniqueCanvases]));
+    const canvasCountMap = new Map(computedCanvasCounts.map((c) => [c.nodeType, c.uniqueCanvases]));
 
     // For AI usage, also count unique users
     const aiUserCounts = await Promise.all(
-      aiUsage.map(async (a: any) => {
+      aiUsage.map(async (a) => {
         const uniqueUsers = await prisma.aiUsage.findMany({
           where: { feature: a.feature, userId: { not: null } },
           select: { userId: true },
@@ -798,24 +799,24 @@ adminRoutes.get('/features', async (_req: Request, res: Response) => {
         return { feature: a.feature, uniqueUsers: uniqueUsers.length };
       }),
     );
-    const userCountMap = new Map(aiUserCounts.map((c: any) => [c.feature, c.uniqueUsers]));
+    const userCountMap = new Map(aiUserCounts.map((c) => [c.feature, c.uniqueUsers]));
 
     const features = [
-      ...computedNodes.map((n: any) => ({
+      ...computedNodes.map((n) => ({
         name: n.nodeType,
         source: 'computed_node' as const,
         totalUsage: n._count.id,
         uniqueCanvases: canvasCountMap.get(n.nodeType) || 0,
         uniqueUsers: 0,
       })),
-      ...aiUsage.map((a: any) => ({
+      ...aiUsage.map((a) => ({
         name: a.feature,
         source: 'ai_usage' as const,
         totalUsage: a._count.id,
         uniqueCanvases: 0,
         uniqueUsers: userCountMap.get(a.feature) || 0,
       })),
-    ].sort((a: any, b: any) => b.totalUsage - a.totalUsage);
+    ].sort((a, b) => b.totalUsage - a.totalUsage);
 
     res.json({ success: true, data: features });
   } catch (err) {

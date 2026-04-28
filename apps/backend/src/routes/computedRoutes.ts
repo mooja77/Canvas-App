@@ -165,10 +165,9 @@ computedRoutes.post(
         prisma.canvasTextCoding.count({ where: { canvasId: req.params.id } }),
       ]);
       const truncated = totalTranscripts > transcripts.length || totalCodings > codings.length;
-      const cases = rawCases.map((c: any) => ({ ...c, attributes: safeJsonParse(c.attributes) }));
+      const cases = rawCases.map((c) => ({ ...c, attributes: safeJsonParse(c.attributes) }));
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let result: any = {};
+      let result: unknown = {};
 
       switch (node.nodeType) {
         case 'search':
@@ -178,14 +177,7 @@ computedRoutes.post(
           result = computeCooccurrence(codings, config.questionIds || [], config.minOverlap);
           break;
         case 'matrix':
-          result = buildFrameworkMatrix(
-            transcripts,
-            questions,
-            codings,
-            cases.map((c: any) => ({ ...c, attributes: safeJsonParse(c.attributes) })),
-            config.questionIds,
-            config.caseIds,
-          );
+          result = buildFrameworkMatrix(transcripts, questions, codings, cases, config.questionIds, config.caseIds);
           break;
         case 'stats':
           result = computeStats(codings, questions, transcripts, config.groupBy || 'question', config.questionIds);
@@ -208,7 +200,7 @@ computedRoutes.post(
         case 'treemap':
           result = computeTreemap(
             codings,
-            questions.map((q: any) => ({ ...q, parentQuestionId: q.parentQuestionId })),
+            questions.map((q) => ({ ...q, parentQuestionId: q.parentQuestionId })),
             config.metric || 'count',
             config.questionIds,
           );
@@ -230,7 +222,7 @@ computedRoutes.post(
             where: { canvasId: req.params.id, deletedAt: null },
           });
           result = {
-            points: geoTranscripts.map((t: any) => ({
+            points: geoTranscripts.map((t) => ({
               transcriptId: t.id,
               title: t.title,
               latitude: t.latitude!,

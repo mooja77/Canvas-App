@@ -166,7 +166,9 @@ describe('useCanvasHistory performance', () => {
     while (true) {
       const prev = result.current.canUndo;
       if (!prev) break;
-      act(() => { result.current.undo(); });
+      act(() => {
+        result.current.undo();
+      });
       undoCount++;
       if (undoCount > MAX_HISTORY) break; // safety
     }
@@ -215,11 +217,15 @@ describe('useCanvasHistory performance', () => {
     // Two pushes within DEBOUNCE_MS (300ms) — second should replace first
     const now = 10000;
     vi.spyOn(Date, 'now').mockReturnValue(now);
-    act(() => { result.current.pushState(nodes, edges); });
+    act(() => {
+      result.current.pushState(nodes, edges);
+    });
 
     vi.spyOn(Date, 'now').mockReturnValue(now + 100); // within 300ms
     const updatedNodes = [{ ...makeNode(0), position: { x: 999, y: 999 } }];
-    act(() => { result.current.pushState(updatedNodes, edges); });
+    act(() => {
+      result.current.pushState(updatedNodes, edges);
+    });
 
     // Only one entry should exist (debounced)
     expect(result.current.canUndo).toBe(false); // only 1 entry, can't undo from it
@@ -231,7 +237,7 @@ describe('useCanvasHistory performance', () => {
 describe('Large canvas render', () => {
   it('100 nodes can be set without throwing', () => {
     const nodes = Array.from({ length: 100 }, (_, i) => makeNode(i));
-    const positions = nodes.map(n => ({
+    const positions = nodes.map((n) => ({
       id: `pos-${n.id}`,
       canvasId: 'c1',
       nodeType: 'transcript',
@@ -258,7 +264,8 @@ describe('Large canvas render', () => {
       });
     }).not.toThrow();
 
-    expect((useCanvasStore.getState().activeCanvas as any)?.positions).toHaveLength(100);
+    const activeCanvas = useCanvasStore.getState().activeCanvas as { positions?: unknown[] } | null;
+    expect(activeCanvas?.positions).toHaveLength(100);
   });
 });
 
@@ -284,7 +291,7 @@ describe('Collaboration throttling', () => {
       off: vi.fn(),
       disconnect: vi.fn(),
       _trigger(event: string, ...args: unknown[]) {
-        listeners.get(event)?.forEach(fn => fn(...args));
+        listeners.get(event)?.forEach((fn) => fn(...args));
       },
     };
 
@@ -312,7 +319,9 @@ describe('Collaboration throttling', () => {
     const { useCollaboration } = await import('../hooks/useCollaboration');
     renderHook(() => useCollaboration({ canvasId: 'c1' }));
 
-    act(() => { mockSocket._trigger('connect'); });
+    act(() => {
+      mockSocket._trigger('connect');
+    });
 
     // Rapidly fire 30 mousemove events
     for (let i = 0; i < 30; i++) {
@@ -321,9 +330,7 @@ describe('Collaboration throttling', () => {
       });
     }
 
-    const cursorEmits = mockSocket.emit.mock.calls.filter(
-      (c: unknown[]) => c[0] === 'cursor:move',
-    );
+    const cursorEmits = mockSocket.emit.mock.calls.filter((c: unknown[]) => c[0] === 'cursor:move');
     // With 50ms throttle, at most 1 should fire synchronously (all within same tick)
     expect(cursorEmits.length).toBeLessThanOrEqual(20);
   });
@@ -332,16 +339,18 @@ describe('Collaboration throttling', () => {
     const { useCollaboration } = await import('../hooks/useCollaboration');
     const { result } = renderHook(() => useCollaboration({ canvasId: 'c1' }));
 
-    act(() => { mockSocket._trigger('connect'); });
+    act(() => {
+      mockSocket._trigger('connect');
+    });
 
     // Rapidly call emitNodeMove 20 times
     for (let i = 0; i < 20; i++) {
-      act(() => { result.current.emitNodeMove(`n${i}`, i * 10, i * 10); });
+      act(() => {
+        result.current.emitNodeMove(`n${i}`, i * 10, i * 10);
+      });
     }
 
-    const nodeMoveEmits = mockSocket.emit.mock.calls.filter(
-      (c: unknown[]) => c[0] === 'node:move',
-    );
+    const nodeMoveEmits = mockSocket.emit.mock.calls.filter((c: unknown[]) => c[0] === 'node:move');
     // With 100ms throttle, only some should be emitted in a sync burst
     expect(nodeMoveEmits.length).toBeLessThanOrEqual(20);
   });

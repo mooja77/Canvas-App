@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
 import { authApi } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { trackEvent } from '../utils/analytics';
 import toast from 'react-hot-toast';
 
 declare global {
@@ -82,7 +83,7 @@ export default function LoginPage() {
           plan: user.plan,
           emailVerified: user.emailVerified,
         });
-        (window as any).gtag?.('event', 'login', { method: 'google', app_name: 'QualCanvas' });
+        trackEvent('login', { method: 'google', app_name: 'QualCanvas' });
         toast.success(`Welcome, ${user.name}!`);
         navigate('/canvas');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -157,7 +158,7 @@ export default function LoginPage() {
         plan: user.plan,
         emailVerified: user.emailVerified,
       });
-      (window as any).gtag?.('event', 'login', { method: 'email', app_name: 'QualCanvas' });
+      trackEvent('login', { method: 'email', app_name: 'QualCanvas' });
       toast.success(`Welcome back, ${user.name}!`);
       navigate('/canvas');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -188,7 +189,7 @@ export default function LoginPage() {
         plan: user.plan,
         emailVerified: user.emailVerified,
       });
-      (window as any).gtag?.('event', 'sign_up', { method: 'email', app_name: 'QualCanvas' });
+      trackEvent('sign_up', { method: 'email', app_name: 'QualCanvas' });
       toast.success(`Welcome, ${user.name}!`);
       navigate('/canvas');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

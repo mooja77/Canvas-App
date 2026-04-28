@@ -53,7 +53,7 @@ async function cleanupE2ECanvases(page: Page) {
   const headers = { Authorization: `Bearer ${jwt}` };
   const res = await page.request.get(`${BASE_API}/canvas`, { headers });
   if (!res.ok()) return;
-  for (const c of ((await res.json())?.data || [])) {
+  for (const c of (await res.json())?.data || []) {
     if (c.name?.startsWith('E2E-LC ')) {
       await page.request.delete(`${BASE_API}/canvas/${c.id}`, { headers });
       await page.request.delete(`${BASE_API}/canvas/${c.id}/permanent`, { headers });
@@ -61,7 +61,7 @@ async function cleanupE2ECanvases(page: Page) {
   }
   const trashRes = await page.request.get(`${BASE_API}/canvas/trash`, { headers });
   if (trashRes.ok()) {
-    for (const c of ((await trashRes.json())?.data || [])) {
+    for (const c of (await trashRes.json())?.data || []) {
       if (c.name?.startsWith('E2E-LC ')) {
         await page.request.delete(`${BASE_API}/canvas/${c.id}/permanent`, { headers });
       }
@@ -75,7 +75,12 @@ async function openCanvasById(page: Page, canvasId: string) {
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
 }
@@ -85,7 +90,6 @@ async function openCanvasById(page: Page, canvasId: string) {
 // ═══════════════════════════════════════════════════════════════════
 
 test.describe('Canvas Lifecycle Full', () => {
-
   test('1 - login lands on canvas list (no setup wizard for existing user)', async ({ page }) => {
     await goToCanvasList(page);
     await expect(page.getByText('Coding Canvases')).toBeVisible({ timeout: 5000 });
@@ -362,9 +366,7 @@ test.describe('Canvas Lifecycle Full', () => {
 
     // Wait for the canvas list to appear
     await page.waitForLoadState('networkidle');
-    const listVisible = await page.getByText('Coding Canvases').isVisible({ timeout: 10000 }).catch(() => false);
-    const listSelector = await page.locator('[data-tour="canvas-list"]').isVisible({ timeout: 5000 }).catch(() => false);
-    expect(listVisible || listSelector).toBe(true);
+    await expect(page.locator('[data-tour="canvas-list"]')).toBeVisible({ timeout: 10000 });
 
     await deleteCanvasViaApi(page, id);
   });

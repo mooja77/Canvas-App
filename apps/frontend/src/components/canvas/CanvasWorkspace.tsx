@@ -15,34 +15,10 @@ import {
   type OnSelectionChangeParams,
   BackgroundVariant,
   reconnectEdge,
-  useViewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import TranscriptNode from './nodes/TranscriptNode';
-import QuestionNode from './nodes/QuestionNode';
-import MemoNode from './nodes/MemoNode';
-import CaseNode from './nodes/CaseNode';
-import GroupNode from './nodes/GroupNode';
-import StickyNoteNode from './nodes/StickyNoteNode';
-import RerouteNode from './nodes/RerouteNode';
-import SearchResultNode from './nodes/SearchResultNode';
-import CooccurrenceNode from './nodes/CooccurrenceNode';
-import MatrixNode from './nodes/MatrixNode';
-import StatsNode from './nodes/StatsNode';
-import ComparisonNode from './nodes/ComparisonNode';
-import WordCloudNode from './nodes/WordCloudNode';
-import ClusterNode from './nodes/ClusterNode';
-import CodingQueryNode from './nodes/CodingQueryNode';
-import SentimentNode from './nodes/SentimentNode';
-import TreemapNode from './nodes/TreemapNode';
-import TimelineNode from './nodes/TimelineNode';
-import GeoMapNode from './nodes/GeoMapNode';
-import DocumentNode from './nodes/DocumentNode';
-import DocumentPortraitNode from './nodes/DocumentPortraitNode';
 import ConnectionLine from './edges/ConnectionLine';
-import CodingEdge from './edges/CodingEdge';
-import RelationEdge from './edges/RelationEdge';
 import CodeNavigator from './panels/CodeNavigator';
 import CanvasToolbar from './panels/CanvasToolbar';
 import { useContainerSize } from '../../hooks/useContainerSize';
@@ -59,6 +35,9 @@ import CanvasTabBar from './panels/CanvasTabBar';
 import AiSuggestPanel from './panels/AiSuggestPanel';
 import AiSetupGuide from './panels/AiSetupGuide';
 import { getCodingIdsFromEdgeData } from './canvasEdgeUtils';
+import { numericValue } from './canvasGeometry';
+import { edgeTypes, nodeTypes } from './canvasFlowTypes';
+import AlignmentGuideOverlay from './AlignmentGuideOverlay';
 
 // Lazy-load heavy modals/panels (only loaded when opened)
 const ExcerptBrowserModal = React.lazy(() => import('./panels/ExcerptBrowserModal'));
@@ -88,7 +67,7 @@ import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import { useMobile } from '../../hooks/useMobile';
 import { useCollaboration } from '../../hooks/useCollaboration';
 import { useAiSuggestions } from '../../hooks/useAiSuggestions';
-import { useAlignmentGuides, type GuideLine } from '../../hooks/useAlignmentGuides';
+import { useAlignmentGuides } from '../../hooks/useAlignmentGuides';
 import { useAiConfigStore } from '../../stores/aiConfigStore';
 import { useUIStore } from '../../stores/uiStore';
 import { parseCsvRecords } from '../../utils/csv';
@@ -105,56 +84,6 @@ import type {
 } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
-// Wrap a node component with error boundary so computed node errors
-// don't crash the entire canvas
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic node wrapper needs any for props forwarding
-function withErrorBoundary(NodeComponent: React.ComponentType<any>) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic node wrapper needs any for props forwarding
-  const WrappedNode = function WrappedNode(props: any) {
-    return (
-      <ErrorBoundary>
-        <NodeComponent {...props} />
-      </ErrorBoundary>
-    );
-  };
-  WrappedNode.displayName = `WithErrorBoundary(${NodeComponent.displayName || NodeComponent.name || 'Component'})`;
-  return WrappedNode;
-}
-
-const nodeTypes = {
-  // Base node types — no error boundary wrapping
-  transcript: TranscriptNode,
-  question: QuestionNode,
-  memo: MemoNode,
-  case: CaseNode,
-  // Visual grouping node
-  group: GroupNode,
-  // Sticky notes
-  sticky: StickyNoteNode,
-  // Reroute waypoint nodes
-  reroute: RerouteNode,
-  // Computed node types — wrapped with error boundary
-  search: withErrorBoundary(SearchResultNode),
-  cooccurrence: withErrorBoundary(CooccurrenceNode),
-  matrix: withErrorBoundary(MatrixNode),
-  stats: withErrorBoundary(StatsNode),
-  comparison: withErrorBoundary(ComparisonNode),
-  wordcloud: withErrorBoundary(WordCloudNode),
-  cluster: withErrorBoundary(ClusterNode),
-  codingquery: withErrorBoundary(CodingQueryNode),
-  sentiment: withErrorBoundary(SentimentNode),
-  treemap: withErrorBoundary(TreemapNode),
-  timeline: withErrorBoundary(TimelineNode),
-  geomap: withErrorBoundary(GeoMapNode),
-  document: withErrorBoundary(DocumentNode),
-  documentportrait: withErrorBoundary(DocumentPortraitNode),
-};
-
-const edgeTypes = {
-  coding: CodingEdge,
-  relation: RelationEdge,
-};
-
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
 
@@ -165,50 +94,6 @@ const SNAP_GRID: [number, number] = [20, 20];
 // initial framing to stay legible — 0.5 is the readable threshold).
 const FIT_VIEW_OPTIONS = { padding: 0.2, minZoom: 0.5, maxZoom: 0.85 };
 const PRO_OPTIONS = { hideAttribution: true };
-
-function numericValue(value: unknown): number | undefined {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
-    const parsed = Number.parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }
-  return undefined;
-}
-
-/** SVG overlay that renders alignment guide lines in flow coordinate space */
-function AlignmentGuideOverlay({ guideLines }: { guideLines: GuideLine[] }) {
-  const { x, y, zoom } = useViewport();
-
-  return (
-    <svg
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'none',
-        zIndex: 1000,
-      }}
-    >
-      <g transform={`translate(${x}, ${y}) scale(${zoom})`}>
-        {guideLines.map((line, i) => (
-          <line
-            key={i}
-            x1={line.x1}
-            y1={line.y1}
-            x2={line.x2}
-            y2={line.y2}
-            stroke="#3B82F6"
-            strokeWidth={1 / zoom}
-            strokeDasharray={`${4 / zoom} ${3 / zoom}`}
-            opacity={0.7}
-          />
-        ))}
-      </g>
-    </svg>
-  );
-}
 
 export default function CanvasWorkspace() {
   // Granular selector hooks for read-only data

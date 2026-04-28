@@ -140,7 +140,7 @@ describe('Team extended integration tests', () => {
   // ─── 1. POST /teams rejects duplicate name (Prisma unique constraint) ───
   it('POST /api/teams rejects duplicate team name', async () => {
     const prismaError = new Error('Unique constraint failed on the fields: (`name`)');
-    (prismaError as any).code = 'P2002';
+    (prismaError as Error & { code?: string }).code = 'P2002';
     mockPrisma.team.create.mockRejectedValue(prismaError);
 
     const res = await request(app)

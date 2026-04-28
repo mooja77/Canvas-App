@@ -6,6 +6,7 @@ import { billingApi } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 import SiteHeader from '../components/SiteHeader';
 import SiteFooter from '../components/SiteFooter';
+import { trackEvent } from '../utils/analytics';
 import toast from 'react-hot-toast';
 
 const PRICE_IDS = {
@@ -102,7 +103,7 @@ export default function PricingPage() {
   );
 
   useEffect(() => {
-    (window as any).gtag?.('event', 'pricing_viewed', { app_name: 'QualCanvas' });
+    trackEvent('pricing_viewed', { app_name: 'QualCanvas' });
   }, []);
 
   const handleUpgrade = async (tier: 'pro' | 'team') => {

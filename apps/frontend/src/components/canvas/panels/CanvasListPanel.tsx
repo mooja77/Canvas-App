@@ -169,7 +169,6 @@ export default function CanvasListPanel() {
   const createCanvas = useCanvasStore((s) => s.createCanvas);
   const deleteCanvas = useCanvasStore((s) => s.deleteCanvas);
   const openCanvas = useOpenCanvas();
-  const addQuestion = useCanvasStore((s) => s.addQuestion);
   const trashedCanvases = useTrashedCanvases();
   const trashLoading = useTrashLoading();
   const fetchTrash = useCanvasStore((s) => s.fetchTrash);
@@ -231,14 +230,10 @@ export default function CanvasListPanel() {
 
       // If template has predefined questions, add them
       if (template && template.questions.length > 0) {
-        await openCanvas(canvas.id);
         for (const qText of template.questions) {
-          try {
-            await addQuestion(qText);
-          } catch {
-            /* ignore individual failures */
-          }
+          await canvasApi.addQuestion(canvas.id, { text: qText });
         }
+        await openCanvas(canvas.id);
         toast.success(`Canvas created with ${template.questions.length} starter codes`);
       } else {
         openCanvas(canvas.id);
@@ -776,14 +771,8 @@ export default function CanvasListPanel() {
         ))}
       </div>
 
-      {/* Trash section — only renders when there's actually trash (or while
-          loading, to avoid a flash of nothing on first load). Previously it
-          took a full row even when empty. */}
-      <div
-        className={`mt-6 border-t border-gray-200 dark:border-gray-700 pt-4 ${
-          trashedCanvases.length === 0 && !trashLoading && !showTrash ? 'hidden' : ''
-        }`}
-      >
+      {/* Trash section */}
+      <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
         <button
           onClick={handleToggleTrash}
           className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"

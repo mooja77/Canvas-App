@@ -1,6 +1,23 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+const originalConsoleError = console.error;
+console.error = (...args: unknown[]) => {
+  const first = args[0];
+  const message = first instanceof Error ? first.message : String(first);
+
+  if (
+    message.includes('not wrapped in act') ||
+    ['Test render error', 'Test explosion', 'Specific failure', 'callback test', 'Boom'].some((expected) =>
+      message.includes(expected),
+    )
+  ) {
+    return;
+  }
+
+  originalConsoleError(...args);
+};
+
 // Mock window.matchMedia (needed for dark mode / responsive checks)
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

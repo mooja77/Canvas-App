@@ -278,7 +278,7 @@ describe('Canvas CRUD extended tests', () => {
   it('PUT /canvas/:canvasId returns 409 on duplicate name', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
     const prismaError = new Error('Unique constraint failed');
-    (prismaError as any).code = 'P2002';
+    (prismaError as Error & { code?: string }).code = 'P2002';
     mockPrisma.codingCanvas.update.mockRejectedValue(prismaError);
 
     const res = await request(app)
@@ -481,7 +481,7 @@ describe('Canvas CRUD extended tests', () => {
 
   it('POST /canvas returns 409 on duplicate name', async () => {
     const prismaError = new Error('Unique constraint failed');
-    (prismaError as any).code = 'P2002';
+    (prismaError as Error & { code?: string }).code = 'P2002';
     mockPrisma.codingCanvas.create.mockRejectedValue(prismaError);
 
     const res = await request(app)

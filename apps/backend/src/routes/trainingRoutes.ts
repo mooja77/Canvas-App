@@ -46,7 +46,9 @@ trainingRoutes.post('/canvas/:id/training', validateParams(canvasIdParam), async
       success: true,
       data: { ...doc, goldCodings: safeJsonParse(doc.goldCodings, []) },
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /canvas/:id/training — list training documents
@@ -63,12 +65,14 @@ trainingRoutes.get('/canvas/:id/training', validateParams(canvasIdParam), async 
 
     res.json({
       success: true,
-      data: docs.map((d: any) => ({
+      data: docs.map((d) => ({
         ...d,
         goldCodings: safeJsonParse(d.goldCodings, []),
       })),
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /canvas/:id/training/:docId — get training document detail
@@ -92,13 +96,15 @@ trainingRoutes.get('/canvas/:id/training/:docId', validateParams(canvasIdDocIdPa
       data: {
         ...doc,
         goldCodings: safeJsonParse(doc.goldCodings, []),
-        attempts: doc.attempts.map((a: any) => ({
+        attempts: doc.attempts.map((a) => ({
           ...a,
           codings: safeJsonParse(a.codings, []),
         })),
       },
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // DELETE /canvas/:id/training/:docId — delete training document
@@ -114,86 +120,100 @@ trainingRoutes.delete('/canvas/:id/training/:docId', validateParams(canvasIdDocI
 
     await prisma.trainingDocument.delete({ where: { id: req.params.docId } });
     res.json({ success: true });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ─── Training Attempts ───
 
 // POST /canvas/:id/training/:docId/attempt — submit a training attempt
-trainingRoutes.post('/canvas/:id/training/:docId/attempt', validateParams(canvasIdDocIdParams), async (req, res, next) => {
-  try {
-    const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
-    const userId = getAuthUserId(req) || dashboardAccessId;
+trainingRoutes.post(
+  '/canvas/:id/training/:docId/attempt',
+  validateParams(canvasIdDocIdParams),
+  async (req, res, next) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+      const userId = getAuthUserId(req) || dashboardAccessId;
 
-    const doc = await prisma.trainingDocument.findUnique({ where: { id: req.params.docId } });
-    if (!doc || doc.canvasId !== req.params.id) {
-      return next(new AppError('Training document not found', 404));
+      const doc = await prisma.trainingDocument.findUnique({ where: { id: req.params.docId } });
+      if (!doc || doc.canvasId !== req.params.id) {
+        return next(new AppError('Training document not found', 404));
+      }
+
+      const { codings } = req.body;
+      if (!codings || !Array.isArray(codings)) {
+        return next(new AppError('codings must be an array', 400));
+      }
+
+      // Get transcript length for Kappa computation
+      const transcript = await prisma.canvasTranscript.findUnique({
+        where: { id: doc.transcriptId },
+        select: { content: true },
+      });
+      if (!transcript) {
+        return next(new AppError('Associated transcript not found', 404));
+      }
+
+      const goldCodings = safeJsonParse(doc.goldCodings, []);
+      const transcriptLength = transcript.content.length;
+
+      // Compute Cohen's Kappa
+      const kappaScore = computeKappa(goldCodings, codings, transcriptLength);
+      const passed = kappaScore >= doc.passThreshold;
+
+      const attempt = await prisma.trainingAttempt.create({
+        data: {
+          trainingDocumentId: doc.id,
+          userId,
+          codings: JSON.stringify(codings),
+          kappaScore,
+          passed,
+        },
+      });
+
+      res.status(201).json({
+        success: true,
+        data: {
+          ...attempt,
+          codings: safeJsonParse(attempt.codings, []),
+        },
+      });
+    } catch (err) {
+      next(err);
     }
-
-    const { codings } = req.body;
-    if (!codings || !Array.isArray(codings)) {
-      return next(new AppError('codings must be an array', 400));
-    }
-
-    // Get transcript length for Kappa computation
-    const transcript = await prisma.canvasTranscript.findUnique({
-      where: { id: doc.transcriptId },
-      select: { content: true },
-    });
-    if (!transcript) {
-      return next(new AppError('Associated transcript not found', 404));
-    }
-
-    const goldCodings = safeJsonParse(doc.goldCodings, []);
-    const transcriptLength = transcript.content.length;
-
-    // Compute Cohen's Kappa
-    const kappaScore = computeKappa(goldCodings, codings, transcriptLength);
-    const passed = kappaScore >= doc.passThreshold;
-
-    const attempt = await prisma.trainingAttempt.create({
-      data: {
-        trainingDocumentId: doc.id,
-        userId,
-        codings: JSON.stringify(codings),
-        kappaScore,
-        passed,
-      },
-    });
-
-    res.status(201).json({
-      success: true,
-      data: {
-        ...attempt,
-        codings: safeJsonParse(attempt.codings, []),
-      },
-    });
-  } catch (err) { next(err); }
-});
+  },
+);
 
 // GET /canvas/:id/training/:docId/attempts — list attempts for a training document
-trainingRoutes.get('/canvas/:id/training/:docId/attempts', validateParams(canvasIdDocIdParams), async (req, res, next) => {
-  try {
-    const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+trainingRoutes.get(
+  '/canvas/:id/training/:docId/attempts',
+  validateParams(canvasIdDocIdParams),
+  async (req, res, next) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
 
-    const doc = await prisma.trainingDocument.findUnique({ where: { id: req.params.docId } });
-    if (!doc || doc.canvasId !== req.params.id) {
-      return next(new AppError('Training document not found', 404));
+      const doc = await prisma.trainingDocument.findUnique({ where: { id: req.params.docId } });
+      if (!doc || doc.canvasId !== req.params.id) {
+        return next(new AppError('Training document not found', 404));
+      }
+
+      const attempts = await prisma.trainingAttempt.findMany({
+        where: { trainingDocumentId: req.params.docId },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.json({
+        success: true,
+        data: attempts.map((a) => ({
+          ...a,
+          codings: safeJsonParse(a.codings, []),
+        })),
+      });
+    } catch (err) {
+      next(err);
     }
-
-    const attempts = await prisma.trainingAttempt.findMany({
-      where: { trainingDocumentId: req.params.docId },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    res.json({
-      success: true,
-      data: attempts.map((a: any) => ({
-        ...a,
-        codings: safeJsonParse(a.codings, []),
-      })),
-    });
-  } catch (err) { next(err); }
-});
+  },
+);

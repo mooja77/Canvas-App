@@ -26,7 +26,9 @@ summaryRoutes.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.llmProvider) {
-        return res.status(400).json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+        return res
+          .status(400)
+          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
       }
 
       const dashboardAccessId = getAuthId(req);
@@ -67,7 +69,7 @@ summaryRoutes.post(
           where: { questionId: sourceId, canvasId: canvas.id },
           include: { transcript: { select: { title: true } } },
         });
-        sourceText = `[Code: ${question.text}]\n\n${codings.map((c: any) => `From "${c.transcript.title}": ${c.codedText}`).join('\n\n')}`;
+        sourceText = `[Code: ${question.text}]\n\n${codings.map((c) => `From "${c.transcript.title}": ${c.codedText}`).join('\n\n')}`;
       } else if (sourceType === 'canvas') {
         // Summarize entire canvas
         const transcripts = await prisma.canvasTranscript.findMany({
@@ -85,7 +87,7 @@ summaryRoutes.post(
 
         const parts: string[] = [];
         if (questions.length > 0) {
-          parts.push(`Research codes: ${questions.map((q: any) => q.text).join(', ')}`);
+          parts.push(`Research codes: ${questions.map((q) => q.text).join(', ')}`);
         }
         for (const t of transcripts.slice(0, 10)) {
           // Truncate to fit context
@@ -171,43 +173,40 @@ summaryRoutes.post(
 );
 
 // ─── GET /canvas/:id/summaries — List summaries ───
-summaryRoutes.get(
-  '/canvas/:id/summaries',
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const dashboardAccessId = getAuthId(req);
-      const userId = getAuthUserId(req);
-      await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+summaryRoutes.get('/canvas/:id/summaries', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    const userId = getAuthUserId(req);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
 
-      const sourceType = req.query.sourceType as string | undefined;
-      const sourceId = req.query.sourceId as string | undefined;
+    const sourceType = req.query.sourceType as string | undefined;
+    const sourceId = req.query.sourceId as string | undefined;
 
-      const where: Record<string, unknown> = { canvasId: req.params.id };
-      if (sourceType) where.sourceType = sourceType;
-      if (sourceId) where.sourceId = sourceId;
+    const where: Record<string, unknown> = { canvasId: req.params.id };
+    if (sourceType) where.sourceType = sourceType;
+    if (sourceId) where.sourceId = sourceId;
 
-      const summaries = await prisma.summary.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-      });
+    const summaries = await prisma.summary.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
 
-      const formatted = summaries.map((s: any) => ({
-        id: s.id,
-        canvasId: s.canvasId,
-        sourceType: s.sourceType,
-        sourceId: s.sourceId,
-        summaryText: s.summaryText,
-        summaryType: s.summaryType,
-        createdAt: s.createdAt.toISOString(),
-        updatedAt: s.updatedAt.toISOString(),
-      }));
+    const formatted = summaries.map((s) => ({
+      id: s.id,
+      canvasId: s.canvasId,
+      sourceType: s.sourceType,
+      sourceId: s.sourceId,
+      summaryText: s.summaryText,
+      summaryType: s.summaryType,
+      createdAt: s.createdAt.toISOString(),
+      updatedAt: s.updatedAt.toISOString(),
+    }));
 
-      res.json({ success: true, data: formatted });
-    } catch (err) {
-      next(err);
-    }
-  },
-);
+    res.json({ success: true, data: formatted });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ─── PUT /canvas/:id/summaries/:sid — Edit summary ───
 summaryRoutes.put(

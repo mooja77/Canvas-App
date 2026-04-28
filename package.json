@@ -2,6 +2,7 @@
   "name": "qualcanvas",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Standalone Qualitative Coding Canvas",
   "workspaces": [
     "shared",
@@ -13,6 +14,7 @@
     "dev:frontend": "npm run dev -w apps/frontend",
     "dev:backend": "npm run dev -w apps/backend",
     "build": "npm run build -w shared && npm run build -w apps/backend && npm run build -w apps/frontend",
+    "build:budget": "node scripts/check-bundle-size.mjs",
     "start": "cd apps/backend && npm start",
     "db:migrate": "npm run db:migrate -w apps/backend",
     "db:seed": "npm run db:seed -w apps/backend",
