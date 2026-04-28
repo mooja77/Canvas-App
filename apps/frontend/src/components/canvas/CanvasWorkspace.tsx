@@ -180,6 +180,8 @@ export default function CanvasWorkspace() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const nodesRef = useRef<Node[]>(initialNodes);
+  const edgesRef = useRef<Edge[]>(initialEdges);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fitViewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track collapsed state so header/keyboard/context-menu toggles persist.
@@ -283,16 +285,18 @@ export default function CanvasWorkspace() {
     clearHistory,
   } = useCanvasHistory();
 
-  // Snapshot current nodes/edges into undo history (reads state via updater without mutating)
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
+
+  // Snapshot current nodes/edges into undo history without nesting state updates.
   const pushHistorySnapshot = useCallback(() => {
-    setNodes((currentNodes: Node[]) => {
-      setEdges((currentEdges: Edge[]) => {
-        pushHistory(currentNodes, currentEdges);
-        return currentEdges;
-      });
-      return currentNodes;
-    });
-  }, [setNodes, setEdges, pushHistory]);
+    pushHistory(nodesRef.current, edgesRef.current);
+  }, [pushHistory]);
 
   const scheduleViewportSync = useCallback(
     (viewport: { x: number; y: number; zoom: number }, syncZoomTier = false) => {
@@ -2513,7 +2517,7 @@ export default function CanvasWorkspace() {
                   onClick={() => setScrollMode(scrollMode === 'zoom' ? 'pan' : 'zoom')}
                   className="flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
                   title={`Mouse wheel ${scrollMode === 'zoom' ? 'zooms the canvas' : 'pans the canvas'} — click to switch`}
-                  aria-label="Toggle mouse-wheel mode between zoom and pan"
+                  aria-label={`Scroll: ${scrollMode === 'zoom' ? 'Zoom' : 'Pan'}`}
                 >
                   <svg
                     className="h-2.5 w-2.5"

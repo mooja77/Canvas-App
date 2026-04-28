@@ -12,10 +12,10 @@ setup('authenticate', async ({ page }) => {
   await expect
     .poll(
       async () => {
-        const res = await page.request.get('http://localhost:3007/health').catch(() => null);
+        const res = await page.request.get('http://localhost:3007/ready').catch(() => null);
         return res?.ok() ?? false;
       },
-      { timeout: 30000, message: 'backend health endpoint should be ready before login' },
+      { timeout: 30000, message: 'backend ready endpoint should be healthy before login' },
     )
     .toBe(true);
 
@@ -43,6 +43,19 @@ setup('authenticate', async ({ page }) => {
     state.state = { ...state.state, onboardingComplete: true, setupWizardComplete: true };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
   });
+
+  // Browser UI auth uses an httpOnly cookie, but many legacy E2E helpers still
+  // seed data through Authorization headers. Mirror the cookie token into the
+  // persisted auth store only for E2E runs.
+  const jwtCookie = (await page.context().cookies('http://localhost:5174')).find((cookie) => cookie.name === 'jwt');
+  if (jwtCookie?.value) {
+    await page.evaluate((token) => {
+      const existing = localStorage.getItem('qualcanvas-auth');
+      const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
+      state.state = { ...state.state, jwt: token };
+      localStorage.setItem('qualcanvas-auth', JSON.stringify(state));
+    }, jwtCookie.value);
+  }
 
   // ─── Seed test data so E2E tests that require nodes don't skip ───
 

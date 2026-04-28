@@ -33,7 +33,7 @@ function StickyNoteNode({ data, selected }: NodeProps) {
       textareaRef.current.focus();
       textareaRef.current.setSelectionRange(text.length, text.length);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- we only want to focus when editing toggles on, not when text.length changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- we only want to focus when editing toggles on, not when text.length changes
   }, [editing]);
 
   const handleBlur = useCallback(() => {
@@ -43,12 +43,15 @@ function StickyNoteNode({ data, selected }: NodeProps) {
     }
   }, [text, nodeData]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setText(nodeData.text || '');
-      setEditing(false);
-    }
-  }, [nodeData.text]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setText(nodeData.text || '');
+        setEditing(false);
+      }
+    },
+    [nodeData.text],
+  );
 
   // Subtle rotation for post-it feel
   const rotation = ((nodeData.noteId || '').charCodeAt(0) % 5) - 2;
@@ -73,7 +76,7 @@ function StickyNoteNode({ data, selected }: NodeProps) {
 
       {/* Drag handle strip at top */}
       <div
-        className="drag-handle h-5 w-full cursor-grab active:cursor-grabbing rounded-t-lg flex items-center justify-end px-1.5"
+        className="drag-handle relative z-20 h-5 w-full cursor-grab active:cursor-grabbing rounded-t-lg flex items-center justify-end px-1.5"
         style={{ backgroundColor: `${color}` }}
       >
         {/* Delete button - visible on select */}

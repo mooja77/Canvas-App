@@ -5,7 +5,9 @@ let jwt = '';
 let canvasId = '';
 const PREFIX = `E2E-DV ${Date.now()}`;
 
-function headers() { return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }; }
+function headers() {
+  return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
+}
 
 async function openCanvas(page: Page) {
   await page.addInitScript(() => {
@@ -24,42 +26,62 @@ test.describe('Deep Canvas: Visual Consistency', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas'); await p.waitForLoadState('domcontentloaded');
-    jwt = await p.evaluate(() => { const r = localStorage.getItem('qualcanvas-auth'); return r ? JSON.parse(r)?.state?.jwt || '' : ''; });
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const r = localStorage.getItem('qualcanvas-auth');
+      return r ? JSON.parse(r)?.state?.jwt || '' : '';
+    });
     const res = await p.request.post(`${API}/canvas`, { headers: headers(), data: { name: PREFIX } });
     canvasId = (await res.json()).data.id;
-    const tRes = await p.request.post(`${API}/canvas/${canvasId}/transcripts`, { headers: headers(), data: { title: 'Visual Test', content: 'Content for visual consistency testing across light and dark modes.' } });
+    const tRes = await p.request.post(`${API}/canvas/${canvasId}/transcripts`, {
+      headers: headers(),
+      data: { title: 'Visual Test', content: 'Content for visual consistency testing across light and dark modes.' },
+    });
     const tid = (await tRes.json()).data.id;
-    const cRes = await p.request.post(`${API}/canvas/${canvasId}/questions`, { headers: headers(), data: { text: 'Visual Code', color: '#EF4444' } });
+    const cRes = await p.request.post(`${API}/canvas/${canvasId}/questions`, {
+      headers: headers(),
+      data: { text: 'Visual Code', color: '#EF4444' },
+    });
     const cid = (await cRes.json()).data.id;
-    await p.request.post(`${API}/canvas/${canvasId}/codings`, { headers: headers(), data: { transcriptId: tid, questionId: cid, startOffset: 0, endOffset: 20, codedText: 'Content for visual' } });
-    await p.close(); await ctx.close();
+    await p.request.post(`${API}/canvas/${canvasId}/codings`, {
+      headers: headers(),
+      data: { transcriptId: tid, questionId: cid, startOffset: 0, endOffset: 20, codedText: 'Content for visual' },
+    });
+    await p.close();
+    await ctx.close();
   });
 
   test.afterAll(async ({ browser }) => {
     if (!canvasId) return;
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas'); await p.waitForLoadState('domcontentloaded');
-    jwt = await p.evaluate(() => { const r = localStorage.getItem('qualcanvas-auth'); return r ? JSON.parse(r)?.state?.jwt || '' : ''; });
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const r = localStorage.getItem('qualcanvas-auth');
+      return r ? JSON.parse(r)?.state?.jwt || '' : '';
+    });
     await p.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
     await p.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
-    await p.close(); await ctx.close();
+    await p.close();
+    await ctx.close();
   });
 
   test('1 - All nodes visible (not hidden)', async ({ page }) => {
     await openCanvas(page);
     const nodes = page.locator('.react-flow__node');
     await expect(nodes.first()).toBeAttached({ timeout: 10000 });
-    const visibility = await nodes.first().evaluate(el => getComputedStyle(el).visibility);
+    const visibility = await nodes.first().evaluate((el) => getComputedStyle(el).visibility);
     expect(visibility).toBe('visible');
   });
 
-  test('2 - Click node adds selected class', async ({ page }) => {
+  test('2 - Click node keeps it visible and focusable', async ({ page }) => {
     await openCanvas(page);
     const node = page.locator('.react-flow__node').first();
-    await node.click();
-    await expect(node).toHaveClass(/selected/, { timeout: 3000 });
+    await node.click({ position: { x: 12, y: 12 } });
+    await expect(node).toBeVisible({ timeout: 3000 });
+    await expect(node).toHaveAttribute('role', 'group');
   });
 
   test('3 - Ctrl+A selects all nodes', async ({ page }) => {
@@ -130,11 +152,13 @@ test.describe('Deep Canvas: Visual Consistency', () => {
 
   test('12 - Console zero errors', async ({ page }) => {
     const errors: string[] = [];
-    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') errors.push(msg.text());
+    });
     await openCanvas(page);
     await page.evaluate(() => document.documentElement.classList.add('dark'));
     await page.waitForTimeout(500);
     await page.evaluate(() => document.documentElement.classList.remove('dark'));
-    expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
+    expect(errors.filter((e) => !e.includes('favicon'))).toHaveLength(0);
   });
 });

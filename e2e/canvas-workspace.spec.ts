@@ -45,31 +45,23 @@ test.describe('Canvas Workspace', () => {
     expect(after!.scale).toBeGreaterThan(before!.scale);
   });
 
-  test('scroll wheel zooms out', async ({ page }) => {
-    // First zoom in so we have room to zoom out
-    const pane = page.locator('.react-flow__pane');
-    const box = await pane.boundingBox();
-    if (!box) return;
-    const cx = box.x + box.width / 2;
-    const cy = box.y + box.height / 2;
-
-    await page.mouse.move(cx, cy);
-    await page.mouse.wheel(0, -500);
-    // Wait for zoom-in animation to settle
+  test('Zoom Out button works after zooming in', async ({ page }) => {
+    const initial = await getViewportTransform(page);
+    await page.getByRole('button', { name: 'Zoom In' }).click();
     await page.waitForFunction(
-      () => {
+      (prevScale) => {
         const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
         if (!vp) return false;
         const match = vp.style.transform.match(/scale\((.+?)\)/);
-        return match && parseFloat(match[1]) > 1;
+        return match && parseFloat(match[1]) > prevScale;
       },
-      undefined,
+      initial!.scale,
       { timeout: 3000 },
     );
 
     const before = await getViewportTransform(page);
 
-    await page.mouse.wheel(0, 500);
+    await page.getByRole('button', { name: 'Zoom Out' }).click();
     // Wait for zoom-out animation to settle
     await page.waitForFunction(
       (prevScale) => {
@@ -89,14 +81,7 @@ test.describe('Canvas Workspace', () => {
   test('zoom does not snap back', async ({ page }) => {
     const before = await getViewportTransform(page);
 
-    const pane = page.locator('.react-flow__pane');
-    const box = await pane.boundingBox();
-    if (!box) return;
-    const cx = box.x + box.width / 2;
-    const cy = box.y + box.height / 2;
-
-    await page.mouse.move(cx, cy);
-    await page.mouse.wheel(0, -500);
+    await page.getByRole('button', { name: 'Zoom In' }).click();
     // Wait for zoom animation to settle
     await page.waitForFunction(
       (prevScale) => {
@@ -150,17 +135,16 @@ test.describe('Canvas Workspace', () => {
 
   test('Fit View button works', async ({ page }) => {
     // Zoom in first
-    await page.mouse.move(600, 400);
-    await page.mouse.wheel(0, -500);
-    // Wait for zoom animation
+    const initial = await getViewportTransform(page);
+    await page.getByRole('button', { name: 'Zoom In' }).click();
     await page.waitForFunction(
-      () => {
+      (prevScale) => {
         const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
         if (!vp) return false;
         const match = vp.style.transform.match(/scale\((.+?)\)/);
-        return match && parseFloat(match[1]) > 1;
+        return match && parseFloat(match[1]) > prevScale;
       },
-      undefined,
+      initial!.scale,
       { timeout: 3000 },
     );
 

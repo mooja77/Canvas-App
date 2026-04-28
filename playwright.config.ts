@@ -1,5 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const defaultE2eDatabaseUrl = 'postgresql://qualcanvas:qualcanvas@localhost:55432/qualcanvas_e2e?schema=public';
+const e2eDatabaseUrl = process.env.DATABASE_URL?.startsWith('postgres')
+  ? process.env.DATABASE_URL
+  : defaultE2eDatabaseUrl;
+const e2eJwtSecret = process.env.JWT_SECRET ?? 'qualcanvas-e2e-secret';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -63,13 +69,27 @@ export default defineConfig({
       dependencies: ['setup'],
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5174',
-    reuseExistingServer: true,
-    timeout: 30000,
-    env: {
-      E2E_TEST: 'true',
+  webServer: [
+    {
+      command: 'npm run build -w shared && npm run dev:backend',
+      url: 'http://localhost:3007/ready',
+      reuseExistingServer: true,
+      timeout: 60000,
+      env: {
+        DATABASE_URL: e2eDatabaseUrl,
+        E2E_TEST: 'true',
+        JWT_SECRET: e2eJwtSecret,
+        PORT: process.env.PORT ?? '3007',
+      },
     },
-  },
+    {
+      command: 'npm run dev:frontend',
+      url: 'http://localhost:5174',
+      reuseExistingServer: true,
+      timeout: 60000,
+      env: {
+        VITE_E2E: 'true',
+      },
+    },
+  ],
 });

@@ -90,7 +90,7 @@ function GroupNode({ data, id, selected }: NodeProps) {
 
       {/* Title bar - serves as drag handle */}
       <div
-        className="drag-handle flex items-center justify-between rounded-t-2xl px-3 py-2 cursor-grab active:cursor-grabbing"
+        className="drag-handle relative z-20 flex items-center justify-between rounded-t-2xl px-3 py-2 cursor-grab active:cursor-grabbing"
         style={{ backgroundColor: `${color}26`, pointerEvents: 'auto' }}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">

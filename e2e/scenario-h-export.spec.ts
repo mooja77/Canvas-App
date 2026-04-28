@@ -80,7 +80,12 @@ async function openCanvasById(page: Page, id: string) {
   await page.waitForSelector('.react-flow__pane', { timeout: 20000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
   await page.waitForTimeout(800);
@@ -114,7 +119,9 @@ test.describe.serial('Scenario H: Export & Interoperability', () => {
         await page.request.delete(`${BASE}/canvas/${id}`, { headers: headers() });
         await page.request.delete(`${BASE}/canvas/${id}/permanent`, { headers: headers() });
       }
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
     await page.close();
     await ctx.close();
   });
@@ -220,7 +227,10 @@ test.describe.serial('Scenario H: Export & Interoperability', () => {
 
     // Add 2 memos
     const memos = [
-      { title: 'Analytical Memo — Community Patterns', content: '## Emerging theme\n\nCommunity building occurs organically when shared spaces are created.' },
+      {
+        title: 'Analytical Memo — Community Patterns',
+        content: '## Emerging theme\n\nCommunity building occurs organically when shared spaces are created.',
+      },
       { title: 'Method Note', content: 'Semi-structured interviews, thematic analysis approach.' },
     ];
     for (const m of memos) {
@@ -249,7 +259,9 @@ test.describe.serial('Scenario H: Export & Interoperability', () => {
   test('H.4 Export Excel — correct content-type and valid buffer', async ({ page }) => {
     const res = await page.request.get(`${BASE}/canvas/${canvasId}/export/excel`, { headers: headers() });
     expect(res.status()).toBe(200);
-    expect(res.headers()['content-type']).toContain('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    expect(res.headers()['content-type']).toContain(
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
     expect(res.headers()['content-disposition']).toContain('.xlsx');
     const body = await res.body();
     expect(body.length).toBeGreaterThan(5000);
@@ -309,7 +321,7 @@ test.describe.serial('Scenario H: Export & Interoperability', () => {
     await page.request.delete(`${BASE}/canvas/${secondCanvasId}/permanent`, { headers: headers() });
   });
 
-  test('H.10 QDPX export for empty canvas returns 200', async ({ page }) => {
+  test('H.10 QDPX export for empty canvas returns 400 with helpful error', async ({ page }) => {
     const createRes = await page.request.post(`${BASE}/canvas`, {
       headers: headers(),
       data: { name: `EmptyExport-${Date.now()}` },
@@ -318,7 +330,9 @@ test.describe.serial('Scenario H: Export & Interoperability', () => {
     emptyCanvasId = (await createRes.json()).data.id;
 
     const res = await page.request.get(`${BASE}/canvas/${emptyCanvasId}/export/qdpx`, { headers: headers() });
-    expect(res.status()).toBe(200);
+    expect(res.status()).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('EMPTY_CANVAS');
   });
 
   // ─── Phase 4: UI Export Controls ───
@@ -332,9 +346,19 @@ test.describe.serial('Scenario H: Export & Interoperability', () => {
     const fallbackBtns = page.locator('button').filter({
       has: page.locator('svg path[d*="16.5v2.25"]'),
     });
-    if (await exportBtns.first().isVisible({ timeout: 5000 }).catch(() => false)) {
+    if (
+      await exportBtns
+        .first()
+        .isVisible({ timeout: 5000 })
+        .catch(() => false)
+    ) {
       await exportBtns.first().click();
-    } else if (await fallbackBtns.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+    } else if (
+      await fallbackBtns
+        .first()
+        .isVisible({ timeout: 3000 })
+        .catch(() => false)
+    ) {
       await fallbackBtns.first().click();
     }
     // Verify all export options are visible

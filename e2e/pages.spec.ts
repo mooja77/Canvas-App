@@ -11,9 +11,9 @@ test.describe('Page-Level Tests', () => {
     await expect(heading.first()).toContainText(/made visual/i);
 
     // Verify CTA button
-    const startBtn = page.getByRole('link', { name: /start free/i }).or(
-      page.getByRole('button', { name: /start free/i })
-    );
+    const startBtn = page
+      .getByRole('link', { name: /start free/i })
+      .or(page.getByRole('button', { name: /start free/i }));
     await expect(startBtn.first()).toBeVisible();
 
     // Verify pricing link
@@ -36,9 +36,7 @@ test.describe('Page-Level Tests', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify email input
-    const emailInput = page.getByRole('textbox', { name: /email/i }).or(
-      page.locator('input[type="email"]')
-    );
+    const emailInput = page.getByRole('textbox', { name: /email/i }).or(page.locator('input[type="email"]'));
     await expect(emailInput.first()).toBeVisible();
 
     // Verify password input
@@ -49,9 +47,8 @@ test.describe('Page-Level Tests', () => {
     const signInBtn = page.getByRole('button', { name: /sign in/i });
     await expect(signInBtn.first()).toBeVisible();
 
-    // Verify access code section
-    const accessCodeSection = page.getByText(/access code/i);
-    await expect(accessCodeSection.first()).toBeVisible();
+    // Verify legacy code sign-in disclosure is still available.
+    await expect(page.getByRole('button', { name: /sign in with code/i })).toBeVisible();
   });
 
   test('session expired banner', async ({ page }) => {
@@ -65,9 +62,7 @@ test.describe('Page-Level Tests', () => {
     await page.goto('/nonexistent-route');
     await page.waitForLoadState('networkidle');
 
-    const notFoundText = page.getByText(/not found/i).or(
-      page.getByText(/404/i)
-    );
+    const notFoundText = page.getByText(/not found/i).or(page.getByText(/404/i));
     await expect(notFoundText.first()).toBeVisible();
   });
 

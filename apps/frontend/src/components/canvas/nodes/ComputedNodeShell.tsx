@@ -82,7 +82,7 @@ function ComputedNodeShell({
 
       {/* Header */}
       <div
-        className="drag-handle flex items-center justify-between rounded-t-lg px-3 py-2.5 cursor-grab active:cursor-grabbing"
+        className="drag-handle relative z-20 flex items-center justify-between rounded-t-lg px-3 py-2.5 cursor-grab active:cursor-grabbing"
         style={{ background: `linear-gradient(135deg, ${color}12, ${color}08)` }}
       >
         <div className="flex items-center gap-2 min-w-0">

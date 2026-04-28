@@ -5,7 +5,13 @@ let jwt = '';
 let canvasId = '';
 const PREFIX = `E2E-DCM ${Date.now()}`;
 
-function headers() { return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }; }
+function headers() {
+  return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
+}
+
+function contextMenuButton(page: Page, name: string | RegExp) {
+  return page.locator('.context-menu-enter button').filter({ hasText: name }).first();
+}
 
 async function openCanvas(page: Page) {
   await page.addInitScript(() => {
@@ -26,26 +32,39 @@ test.describe('Deep Canvas: Context Menus', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas'); await p.waitForLoadState('domcontentloaded');
-    jwt = await p.evaluate(() => { const r = localStorage.getItem('qualcanvas-auth'); return r ? JSON.parse(r)?.state?.jwt || '' : ''; });
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const r = localStorage.getItem('qualcanvas-auth');
+      return r ? JSON.parse(r)?.state?.jwt || '' : '';
+    });
     const res = await p.request.post(`${API}/canvas`, { headers: headers(), data: { name: PREFIX } });
     canvasId = (await res.json()).data.id;
-    await p.request.post(`${API}/canvas/${canvasId}/transcripts`, { headers: headers(), data: { title: 'Context Menu Test', content: 'Text for testing context menu interactions on the canvas.' } });
+    await p.request.post(`${API}/canvas/${canvasId}/transcripts`, {
+      headers: headers(),
+      data: { title: 'Context Menu Test', content: 'Text for testing context menu interactions on the canvas.' },
+    });
     for (const name of ['Menu Code 1', 'Menu Code 2']) {
       await p.request.post(`${API}/canvas/${canvasId}/questions`, { headers: headers(), data: { text: name } });
     }
-    await p.close(); await ctx.close();
+    await p.close();
+    await ctx.close();
   });
 
   test.afterAll(async ({ browser }) => {
     if (!canvasId) return;
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas'); await p.waitForLoadState('domcontentloaded');
-    jwt = await p.evaluate(() => { const r = localStorage.getItem('qualcanvas-auth'); return r ? JSON.parse(r)?.state?.jwt || '' : ''; });
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const r = localStorage.getItem('qualcanvas-auth');
+      return r ? JSON.parse(r)?.state?.jwt || '' : '';
+    });
     await p.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
     await p.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
-    await p.close(); await ctx.close();
+    await p.close();
+    await ctx.close();
   });
 
   test('1 - Right-click empty canvas shows context menu', async ({ page }) => {
@@ -83,16 +102,17 @@ test.describe('Deep Canvas: Context Menus', () => {
     await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 400, y: 300 } });
     await expect(page.getByText('Add Transcript').first()).toBeVisible({ timeout: 3000 });
     await page.keyboard.press('Escape');
-    await expect(page.getByText('Add Transcript').first()).not.toBeVisible({ timeout: 2000 }).catch(() => {});
+    await expect(page.getByText('Add Transcript').first())
+      .not.toBeVisible({ timeout: 2000 })
+      .catch(() => {});
   });
 
   test('7 - Right-click transcript node shows menu', async ({ page }) => {
     await openCanvas(page);
     const node = page.locator('.react-flow__node[data-id^="transcript-"]').first();
     if (await node.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await node.click({ button: 'right' });
-      const menu = page.getByText(/Collapse|Delete|Change Color/i).first();
-      await expect(menu).toBeVisible({ timeout: 3000 });
+      await node.click({ button: 'right', position: { x: 12, y: 12 } });
+      await expect(contextMenuButton(page, /Collapse|Delete|View Coverage/i)).toBeVisible({ timeout: 3000 });
     }
   });
 
@@ -100,8 +120,8 @@ test.describe('Deep Canvas: Context Menus', () => {
     await openCanvas(page);
     const node = page.locator('.react-flow__node[data-id^="question-"]').first();
     if (await node.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await node.click({ button: 'right' });
-      await expect(page.getByText('Change Color').first()).toBeVisible({ timeout: 3000 });
+      await node.click({ button: 'right', position: { x: 12, y: 12 } });
+      await expect(contextMenuButton(page, 'Change Color')).toBeVisible({ timeout: 3000 });
     }
   });
 
@@ -109,8 +129,8 @@ test.describe('Deep Canvas: Context Menus', () => {
     await openCanvas(page);
     const node = page.locator('.react-flow__node[data-id^="question-"]').first();
     if (await node.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await node.click({ button: 'right' });
-      await expect(page.getByText('Rename').first()).toBeVisible({ timeout: 3000 });
+      await node.click({ button: 'right', position: { x: 12, y: 12 } });
+      await expect(contextMenuButton(page, 'Rename')).toBeVisible({ timeout: 3000 });
     }
   });
 
@@ -118,8 +138,8 @@ test.describe('Deep Canvas: Context Menus', () => {
     await openCanvas(page);
     const node = page.locator('.react-flow__node[data-id^="question-"]').first();
     if (await node.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await node.click({ button: 'right' });
-      await expect(page.getByText('Duplicate').first()).toBeVisible({ timeout: 3000 });
+      await node.click({ button: 'right', position: { x: 12, y: 12 } });
+      await expect(contextMenuButton(page, 'Duplicate')).toBeVisible({ timeout: 3000 });
     }
   });
 
@@ -127,8 +147,8 @@ test.describe('Deep Canvas: Context Menus', () => {
     await openCanvas(page);
     const node = page.locator('.react-flow__node[data-id^="question-"]').first();
     if (await node.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await node.click({ button: 'right' });
-      await expect(page.getByText('Delete').first()).toBeVisible({ timeout: 3000 });
+      await node.click({ button: 'right', position: { x: 12, y: 12 } });
+      await expect(contextMenuButton(page, /Delete/)).toBeVisible({ timeout: 3000 });
     }
   });
 
@@ -136,8 +156,8 @@ test.describe('Deep Canvas: Context Menus', () => {
     await openCanvas(page);
     const node = page.locator('.react-flow__node[data-id^="question-"]').first();
     if (await node.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await node.click({ button: 'right' });
-      await expect(page.getByText(/Collapse|Expand/i).first()).toBeVisible({ timeout: 3000 });
+      await node.click({ button: 'right', position: { x: 12, y: 12 } });
+      await expect(contextMenuButton(page, /Collapse|Expand/i)).toBeVisible({ timeout: 3000 });
     }
   });
 
@@ -161,10 +181,12 @@ test.describe('Deep Canvas: Context Menus', () => {
 
   test('15 - Console zero errors', async ({ page }) => {
     const errors: string[] = [];
-    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') errors.push(msg.text());
+    });
     await openCanvas(page);
     await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 400, y: 300 } });
     await page.keyboard.press('Escape');
-    expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
+    expect(errors.filter((e) => !e.includes('favicon'))).toHaveLength(0);
   });
 });

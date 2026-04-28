@@ -9,7 +9,12 @@ export async function openCanvas(page: Page) {
   await page.addInitScript(() => {
     const existing = localStorage.getItem('qualcanvas-ui');
     const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
-    state.state = { ...state.state, onboardingComplete: true };
+    state.state = {
+      ...state.state,
+      onboardingComplete: true,
+      setupWizardComplete: true,
+      scrollMode: 'zoom',
+    };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
     localStorage.setItem('jms_cookie_consent', 'rejected');
   });
