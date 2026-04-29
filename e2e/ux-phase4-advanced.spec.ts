@@ -50,7 +50,7 @@ async function openCanvasById(page: Page, canvasId: string) {
   });
   await page.goto(`/canvas/${canvasId}`);
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
   if (
     await skipBtn
@@ -297,7 +297,7 @@ test.describe('UX Phase 4 — Advanced Features', () => {
     await page.keyboard.press('Escape');
   });
 
-  test('5 - Paste preserves data (copy node then paste creates new node)', async ({ page }) => {
+  test('5 - Paste preserves data (copy selected nodes then paste creates new nodes)', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await page.getByRole('button', { name: 'Fit View' }).click();
     await page.waitForLoadState('networkidle');
@@ -309,44 +309,56 @@ test.describe('UX Phase 4 — Advanced Features', () => {
     // First, add a memo to have something easily copyable
     const memoBtn = page.locator('[data-tour="canvas-btn-memo"]');
     if (await memoBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const countBeforeMemo = await page.locator('.react-flow__node').count();
       await memoBtn.click();
-      await page.waitForTimeout(1000);
+      await expect
+        .poll(async () => page.locator('.react-flow__node').count(), {
+          timeout: 5000,
+          message: 'memo node should appear before copy/paste begins',
+        })
+        .toBeGreaterThan(countBeforeMemo);
     }
 
     // Fit view again to bring new memo into view
     await page.getByRole('button', { name: 'Fit View' }).click();
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 
     const beforePasteCount = await page.locator('.react-flow__node').count();
 
-    // Select a memo node if available, otherwise any node
-    const memoNode = page.locator('.react-flow__node[data-id^="memo-"]').first();
-    const targetNode = (await memoNode.isVisible({ timeout: 2000 }).catch(() => false))
-      ? memoNode
-      : page.locator('.react-flow__node').first();
+    await page.locator('.react-flow__pane').click({ position: { x: 20, y: 20 }, force: true });
+    await page.evaluate(() => {
+      document.body.tabIndex = -1;
+      document.body.focus();
+    });
+    await page.keyboard.press('Control+a');
 
-    await targetNode.click();
+    await expect
+      .poll(async () => page.locator('.react-flow__node.selected').count(), {
+        timeout: 3000,
+        message: 'Ctrl+A should select at least one canvas node before copy',
+      })
+      .toBeGreaterThan(0);
 
     // Copy then paste
     await page.keyboard.press('Control+c');
-    await page.waitForTimeout(500);
+    await expect(page.locator('[role="status"]').filter({ hasText: /Copied \d+ node/i })).toBeVisible({
+      timeout: 5000,
+    });
     await page.keyboard.press('Control+v');
 
-    // Wait for paste result — toast or node count change
-    const toast = page.locator('[role="status"]').filter({ hasText: /Pasted|pasted|node/i });
-    const toastVisible = await toast.isVisible({ timeout: 5000 }).catch(() => false);
+    await expect(page.locator('[role="status"]').filter({ hasText: /Pasted \d+ node/i })).toBeVisible({
+      timeout: 5000,
+    });
+    await page.getByRole('button', { name: 'Fit View' }).click();
 
     // Canvas should still be functional
     await expect(page.locator('.react-flow')).toBeAttached();
-
-    if (toastVisible) {
-      // Node count should have increased
-      const afterPasteCount = await page.locator('.react-flow__node').count();
-      expect(afterPasteCount).toBeGreaterThan(beforePasteCount);
-    } else {
-      // Even without toast, verify canvas didn't crash
-      expect(await page.locator('.react-flow__node').count()).toBeGreaterThan(0);
-    }
+    await expect
+      .poll(async () => page.locator('.react-flow__node').count(), {
+        timeout: 5000,
+        message: 'pasting a copied node should add a visible node',
+      })
+      .toBeGreaterThan(beforePasteCount);
   });
 
   test('6 - Computed node shows shimmer while running (add Statistics then Run)', async ({ page }) => {
