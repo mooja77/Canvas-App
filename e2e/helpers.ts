@@ -11,6 +11,23 @@ async function apiHeaders(page: Page) {
   return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
 }
 
+export async function getE2eAuthType(page: Page): Promise<'email' | 'legacy' | null> {
+  return page.evaluate(() => {
+    const raw = localStorage.getItem('qualcanvas-auth');
+    if (!raw) return null;
+    try {
+      const authType = JSON.parse(raw)?.state?.authType;
+      return authType === 'email' || authType === 'legacy' ? authType : null;
+    } catch {
+      return null;
+    }
+  });
+}
+
+export async function isLegacyE2eAuth(page: Page): Promise<boolean> {
+  return (await getE2eAuthType(page)) === 'legacy';
+}
+
 async function createSeededCanvas(page: Page): Promise<string | null> {
   const headers = await apiHeaders(page);
   if (!headers.Authorization.endsWith(' ')) {

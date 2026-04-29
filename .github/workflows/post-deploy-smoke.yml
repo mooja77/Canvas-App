@@ -1,0 +1,38 @@
+name: Post-deploy smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      frontend_urls:
+        description: 'Comma-separated frontend URLs to smoke test'
+        required: false
+        default: 'https://qualcanvas.pages.dev'
+      backend_url:
+        description: 'Backend base URL'
+        required: false
+        default: 'https://canvas-app-production.up.railway.app'
+  workflow_run:
+    workflows: ['Deploy frontend to Cloudflare Pages']
+    types: [completed]
+
+concurrency:
+  group: post-deploy-smoke-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Smoke live deployment
+        run: npm run smoke:postdeploy
+        env:
+          SMOKE_FRONTEND_URLS: ${{ inputs.frontend_urls || 'https://qualcanvas.pages.dev' }}
+          SMOKE_BACKEND_URL: ${{ inputs.backend_url || 'https://canvas-app-production.up.railway.app' }}

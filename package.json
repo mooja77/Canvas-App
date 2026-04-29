@@ -30,6 +30,7 @@
     "test:e2e:mobile": "npx playwright test --project=setup --project=mobile-chrome --project=mobile-safari",
     "typecheck": "tsc -b apps/backend apps/frontend",
     "smoke-test": "bash scripts/smoke-test.sh",
+    "smoke:postdeploy": "node scripts/post-deploy-smoke.mjs",
     "prepare": "husky"
   },
   "devDependencies": {

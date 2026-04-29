@@ -706,9 +706,10 @@ export default function CanvasWorkspace() {
       const freshNodes = buildNodes();
       setNodes((currentNodes: Node[]) => {
         const currentPosMap = new Map(currentNodes.map((n) => [n.id, n.position]));
+        const selectedIds = new Set(currentNodes.filter((n) => n.selected).map((n) => n.id));
         return freshNodes.map((n) => {
           const localPos = currentPosMap.get(n.id);
-          return localPos ? { ...n, position: localPos } : n;
+          return { ...n, position: localPos ?? n.position, selected: selectedIds.has(n.id) };
         });
       });
       setEdges(buildEdges());
@@ -1079,7 +1080,11 @@ export default function CanvasWorkspace() {
 
   // Select all
   const handleSelectAll = useCallback(() => {
-    setNodes((nds) => nds.map((n) => ({ ...n, selected: true })));
+    setNodes((nds) => {
+      const next = nds.map((n) => ({ ...n, selected: true }));
+      setSelectedNodes(next);
+      return next;
+    });
   }, [setNodes]);
 
   // Selection change tracking

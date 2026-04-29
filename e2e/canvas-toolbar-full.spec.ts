@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { isLegacyE2eAuth } from './helpers';
 
 // ─── Helpers ───
 
@@ -278,6 +279,10 @@ test.describe('Canvas Toolbar Full', () => {
   test('10 - Research Calendar in Tools opens calendar panel', async ({ page }) => {
     const loaded = await openCanvasById(page, canvasId);
     expect(loaded).toBe(true);
+    test.skip(
+      await isLegacyE2eAuth(page),
+      'Research Calendar requires email auth; the default setup project uses legacy access-code auth.',
+    );
 
     await openToolsDropdown(page);
 
