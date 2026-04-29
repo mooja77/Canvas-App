@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCanvasStore, useActiveCanvas, useShowCodingStripes } from '../../../stores/canvasStore';
 import { useUIStore, type EdgeStyleType } from '../../../stores/uiStore';
@@ -46,6 +46,17 @@ function ToolbarDropdown({
   'data-tour'?: string;
 }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open]);
+
   return (
     <div className="relative" data-tour={dataTour}>
       <button
