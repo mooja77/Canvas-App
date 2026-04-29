@@ -64,6 +64,39 @@ describe('csrfProtection', () => {
     expect(next).toHaveBeenCalled();
   });
 
+  it('allows POST from canonical Cloudflare Pages origin', () => {
+    process.env.ALLOWED_ORIGINS = 'https://qualcanvas.pages.dev';
+    const req = mockReq({
+      method: 'POST',
+      headers: { origin: 'https://qualcanvas.pages.dev' },
+    });
+    const res = mockRes();
+    csrfProtection(req, res, next);
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('allows POST from Cloudflare Pages preview deployments', () => {
+    process.env.ALLOWED_ORIGINS = 'https://qualcanvas.pages.dev';
+    const req = mockReq({
+      method: 'POST',
+      headers: { origin: 'https://85df13c9.qualcanvas.pages.dev' },
+    });
+    const res = mockRes();
+    csrfProtection(req, res, next);
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('rejects non-HTTPS lookalike Cloudflare Pages origins', () => {
+    process.env.ALLOWED_ORIGINS = 'https://qualcanvas.pages.dev';
+    const req = mockReq({
+      method: 'POST',
+      headers: { origin: 'http://85df13c9.qualcanvas.pages.dev' },
+    });
+    const res = mockRes();
+    csrfProtection(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
   it('rejects POST with non-matching origin header', () => {
     process.env.ALLOWED_ORIGINS = 'https://app.example.com';
     const req = mockReq({

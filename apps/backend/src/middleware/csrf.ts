@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { getAllowedOrigins, isAllowedOrigin } from '../utils/origins.js';
 
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -22,7 +23,7 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
 
   // If Origin header is present, validate it against allowed origins
   if (origin) {
-    if (allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       return next();
     }
     return res.status(403).json({
@@ -42,7 +43,7 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
   if (referer && typeof referer === 'string') {
     try {
       const refererOrigin = new URL(referer).origin;
-      if (allowedOrigins.includes(refererOrigin)) {
+      if (isAllowedOrigin(refererOrigin)) {
         return next();
       }
     } catch {
@@ -55,22 +56,4 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
     success: false,
     error: 'CSRF validation failed: unable to verify request origin',
   });
-}
-
-function getAllowedOrigins(): string[] {
-  const origins: string[] = [];
-
-  if (process.env.ALLOWED_ORIGINS) {
-    origins.push(...process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()));
-  }
-
-  if (process.env.CORS_ORIGIN) {
-    origins.push(process.env.CORS_ORIGIN);
-  }
-
-  if (process.env.FRONTEND_URL) {
-    origins.push(process.env.FRONTEND_URL);
-  }
-
-  return origins;
 }

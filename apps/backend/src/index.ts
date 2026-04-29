@@ -97,6 +97,7 @@ import { adminRoutes } from './routes/adminRoutes.js';
 import { prisma } from './lib/prisma.js';
 import { initSocketServer } from './lib/socket.js';
 import { startReportScheduler, stopReportScheduler } from './jobs/reportScheduler.js';
+import { corsOrigin } from './utils/origins.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -136,12 +137,7 @@ app.use(
 // CORS
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === 'production'
-        ? process.env.ALLOWED_ORIGINS
-          ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
-          : false
-        : ['http://localhost:5174', 'http://localhost:3007'],
+    origin: corsOrigin,
     credentials: true,
   }),
 );
