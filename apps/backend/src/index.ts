@@ -94,9 +94,11 @@ import { exportRoutes } from './routes/exportRoutes.js';
 import { notificationRoutes } from './routes/notificationRoutes.js';
 import { reportRoutes } from './routes/reportRoutes.js';
 import { adminRoutes } from './routes/adminRoutes.js';
+import { lifecycleEmailRoutes, publicLifecycleEmailRoutes } from './routes/lifecycleEmailRoutes.js';
 import { prisma } from './lib/prisma.js';
 import { initSocketServer } from './lib/socket.js';
 import { startReportScheduler, stopReportScheduler } from './jobs/reportScheduler.js';
+import { startLifecycleEmailScheduler, stopLifecycleEmailScheduler } from './jobs/lifecycleEmailScheduler.js';
 import { corsOrigin } from './utils/origins.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -357,6 +359,12 @@ v1Router.use(auth, auditLog, exportRoutes);
 // so /api/admin/* doesn't get caught by /api/* prefix
 app.use('/api/admin', adminRoutes);
 
+// Public lifecycle email routes, e.g. unsubscribe links from email footers.
+app.use('/api/email', publicLifecycleEmailRoutes);
+
+// Protected lifecycle email preferences
+v1Router.use(auth, auditLog, lifecycleEmailRoutes);
+
 // Mount under /api/v1 (versioned) and /api (backwards compat)
 app.use('/api/v1', v1Router);
 app.use('/api', v1Router);
@@ -381,6 +389,7 @@ const server = httpServer.listen(PORT, () => {
   // Start report scheduler in non-test environments
   if (process.env.NODE_ENV !== 'test') {
     startReportScheduler();
+    startLifecycleEmailScheduler();
   }
 });
 
@@ -388,6 +397,7 @@ const server = httpServer.listen(PORT, () => {
 function shutdown(signal: string) {
   console.log(`${signal} received — shutting down gracefully`);
   stopReportScheduler();
+  stopLifecycleEmailScheduler();
   server.close(async () => {
     await prisma.$disconnect();
     console.log('Server closed');
