@@ -3,6 +3,7 @@ import { Server, Socket } from 'socket.io';
 import { verifyToken, isUserPayload } from '../utils/jwt.js';
 import { join, leave, leaveAll, getPresence, updateCursor } from './presence.js';
 import { prisma } from './prisma.js';
+import { corsOrigin } from '../utils/origins.js';
 
 // Check that the user owns the canvas or is an explicit collaborator.
 // Share codes grant clone access, not live-coding access, so they don't count here.
@@ -29,12 +30,7 @@ export function getIO(): Server | null {
 export function initSocketServer(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
     cors: {
-      origin:
-        process.env.NODE_ENV === 'production'
-          ? process.env.ALLOWED_ORIGINS
-            ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
-            : false
-          : ['http://localhost:5174', 'http://localhost:3007'],
+      origin: corsOrigin,
       credentials: true,
     },
     transports: ['websocket', 'polling'],
