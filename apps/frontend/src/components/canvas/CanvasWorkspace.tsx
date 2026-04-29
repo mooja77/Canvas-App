@@ -1080,7 +1080,11 @@ export default function CanvasWorkspace() {
 
   // Select all
   const handleSelectAll = useCallback(() => {
-    setNodes((nds) => nds.map((n) => ({ ...n, selected: true })));
+    setNodes((nds) => {
+      const next = nds.map((n) => ({ ...n, selected: true }));
+      setSelectedNodes(next);
+      return next;
+    });
   }, [setNodes]);
 
   // Selection change tracking
