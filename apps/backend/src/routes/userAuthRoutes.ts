@@ -13,6 +13,7 @@ import { sha256 } from '../utils/hashing.js';
 import { nanoid } from 'nanoid';
 import { AppError } from '../middleware/errorHandler.js';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
+import { lifecycleTemplate, sendLifecycleEmail } from '../lib/lifecycleEmail.js';
 
 const BCRYPT_ROUNDS = 12;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -100,6 +101,7 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
     const appUrl = process.env.APP_URL || 'http://localhost:5174';
     const verifyUrl = `${appUrl}/verify-email#token=${verifyToken}&email=${encodeURIComponent(normalizedEmail)}`;
     await sendVerificationEmail(normalizedEmail, verifyUrl);
+    await sendLifecycleEmail(result, lifecycleTemplate('welcome', result));
 
     const jwt = signUserToken(result.id, result.role, result.plan);
 
@@ -253,6 +255,7 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
     const hashedIp = sha256(rawIp);
 
     let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    let createdGoogleUser = false;
 
     if (!user) {
       // Create new user via Google OAuth
@@ -286,6 +289,7 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
 
         return newUser;
       });
+      createdGoogleUser = true;
 
       logAudit({
         action: 'auth.signup',
@@ -312,6 +316,9 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
 
     // user is guaranteed non-null (either found or created in transaction above)
     user = user!;
+    if (createdGoogleUser) {
+      await sendLifecycleEmail(user, lifecycleTemplate('welcome', user));
+    }
 
     // Refresh plan from subscription status
     const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
@@ -691,6 +698,8 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
 
       return newUser;
     });
+
+    await sendLifecycleEmail(user, lifecycleTemplate('welcome', user));
 
     const jwt = signUserToken(user.id, user.role, user.plan);
 

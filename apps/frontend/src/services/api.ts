@@ -507,6 +507,22 @@ export const reportApi = {
   generateReport: (canvasId?: string) => canvasClient.post('/reports/generate', { canvasId }),
 };
 
+// ─── Email Preferences ───
+
+export interface EmailPreferences {
+  lifecycle: boolean;
+  productUpdates: boolean;
+  trainingTips: boolean;
+  inactivityNudges: boolean;
+  unsubscribedAt: string | null;
+}
+
+export const emailApi = {
+  getPreferences: () => canvasClient.get('/email/preferences'),
+  updatePreferences: (data: Partial<Omit<EmailPreferences, 'unsubscribedAt'>>) =>
+    canvasClient.put('/email/preferences', data),
+};
+
 // ─── WISEShift Bridge Client (for importing narratives from WISEShift) ───
 
 export function createWiseShiftBridge(baseUrl: string, dashboardCode: string) {
@@ -552,4 +568,24 @@ export const adminApi = {
     canvasClient.get('/admin/activity', { ...adminHeaders(adminKey), params }),
 
   getFeatures: (adminKey: string) => canvasClient.get('/admin/features', adminHeaders(adminKey)),
+
+  getEmailStats: (adminKey: string) => canvasClient.get('/admin/email/stats', adminHeaders(adminKey)),
+
+  getEmailCampaigns: (adminKey: string) => canvasClient.get('/admin/email/campaigns', adminHeaders(adminKey)),
+
+  createEmailCampaign: (
+    adminKey: string,
+    data: {
+      title: string;
+      subject: string;
+      previewText?: string;
+      bodyHtml: string;
+      ctaLabel?: string;
+      ctaUrl?: string;
+      audience?: string;
+    },
+  ) => canvasClient.post('/admin/email/campaigns', data, adminHeaders(adminKey)),
+
+  sendEmailCampaign: (adminKey: string, id: string) =>
+    canvasClient.post(`/admin/email/campaigns/${id}/send`, {}, adminHeaders(adminKey)),
 };

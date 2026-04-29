@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { timingSafeEqual } from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { prisma } from '../lib/prisma.js';
+import { createEmailCampaign, getEmailStats, listEmailCampaigns, sendCampaign } from '../lib/lifecycleEmail.js';
 
 export const adminRoutes = Router();
 
@@ -99,6 +100,48 @@ function adminAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 adminRoutes.use(adminAuth);
+
+// ─── Email Campaigns & Lifecycle Stats ───
+adminRoutes.get('/email/stats', async (_req: Request, res: Response) => {
+  try {
+    const data = await getEmailStats();
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, error: (err as Error).message || 'Failed to load email stats' });
+  }
+});
+
+adminRoutes.get('/email/campaigns', async (_req: Request, res: Response) => {
+  try {
+    const data = await listEmailCampaigns();
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, error: (err as Error).message || 'Failed to load campaigns' });
+  }
+});
+
+adminRoutes.post('/email/campaigns', async (req: Request, res: Response) => {
+  try {
+    const { title, subject, previewText, bodyHtml, ctaLabel, ctaUrl, audience } = req.body || {};
+    if (!title || !subject || !bodyHtml) {
+      return res.status(400).json({ success: false, error: 'title, subject, and bodyHtml are required' });
+    }
+    const campaign = await createEmailCampaign({ title, subject, previewText, bodyHtml, ctaLabel, ctaUrl, audience });
+    res.status(201).json({ success: true, data: campaign });
+  } catch (err) {
+    res.status(500).json({ success: false, error: (err as Error).message || 'Failed to create campaign' });
+  }
+});
+
+adminRoutes.post('/email/campaigns/:id/send', async (req: Request, res: Response) => {
+  try {
+    const result = await sendCampaign(req.params.id);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    const message = (err as Error).message || 'Failed to send campaign';
+    res.status(message.includes('not found') ? 404 : 400).json({ success: false, error: message });
+  }
+});
 
 // ─── GET /dashboard — Aggregate metrics ───
 adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {

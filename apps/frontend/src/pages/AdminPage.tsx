@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { adminApi } from '../services/api';
-import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, Legend,
-} from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 // ─── Types ───
 
@@ -65,7 +62,26 @@ interface FeatureEntry {
   lastUsed: string;
 }
 
-type TabId = 'dashboard' | 'users' | 'billing' | 'health' | 'activity' | 'features';
+interface EmailStats {
+  campaigns: number;
+  sent: number;
+  failed: number;
+  skipped: number;
+  unsubscribed: number;
+}
+
+interface EmailCampaign {
+  id: string;
+  title: string;
+  subject: string;
+  audience: string;
+  status: string;
+  createdAt: string;
+  sentAt: string | null;
+  _count?: { deliveries: number };
+}
+
+type TabId = 'dashboard' | 'users' | 'billing' | 'health' | 'activity' | 'features' | 'emails';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -74,6 +90,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'health', label: 'Health' },
   { id: 'activity', label: 'Activity' },
   { id: 'features', label: 'Features' },
+  { id: 'emails', label: 'Emails' },
 ];
 
 const PIE_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
@@ -93,7 +110,7 @@ function AdminKeyGate({ onAuthenticated }: { onAuthenticated: (key: string) => v
     if (stored) {
       verifyKey(stored);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const verifyKey = async (apiKey: string) => {
@@ -125,7 +142,7 @@ function AdminKeyGate({ onAuthenticated }: { onAuthenticated: (key: string) => v
           <input
             type="password"
             value={key}
-            onChange={e => setKey(e.target.value)}
+            onChange={(e) => setKey(e.target.value)}
             placeholder="Admin API Key"
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none mb-3"
             autoFocus
@@ -158,8 +175,18 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 
 // ─── Pagination ───
 
-function Pagination({ page, totalPages, total, onPrev, onNext }: {
-  page: number; totalPages: number; total: number; onPrev: () => void; onNext: () => void;
+function Pagination({
+  page,
+  totalPages,
+  total,
+  onPrev,
+  onNext,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  onPrev: () => void;
+  onNext: () => void;
 }) {
   return (
     <div className="flex items-center justify-between mt-4">
@@ -167,12 +194,18 @@ function Pagination({ page, totalPages, total, onPrev, onNext }: {
         Page {page} of {totalPages} ({total} total)
       </span>
       <div className="flex gap-2">
-        <button onClick={onPrev} disabled={page <= 1}
-          className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+        <button
+          onClick={onPrev}
+          disabled={page <= 1}
+          className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+        >
           Prev
         </button>
-        <button onClick={onNext} disabled={page >= totalPages}
-          className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+        <button
+          onClick={onNext}
+          disabled={page >= totalPages}
+          className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+        >
           Next
         </button>
       </div>
@@ -190,11 +223,18 @@ function DashboardTab({ adminKey }: { adminKey: string }) {
     try {
       const res = await adminApi.getDashboard(adminKey);
       setData(res.data.data);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
   }, [adminKey]);
 
-  useEffect(() => { load(); const t = setInterval(load, AUTO_REFRESH_MS); return () => clearInterval(t); }, [load]);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, AUTO_REFRESH_MS);
+    return () => clearInterval(t);
+  }, [load]);
 
   if (loading) return <LoadingSpinner />;
   if (!data) return <ErrorMessage message="Failed to load dashboard data." />;
@@ -205,8 +245,11 @@ function DashboardTab({ adminKey }: { adminKey: string }) {
         <StatCard label="Total Users" value={data.totalUsers.toLocaleString()} />
         <StatCard label="Active Users (30d)" value={data.activeUsers30d.toLocaleString()} />
         <StatCard label="New Signups (7d)" value={data.newSignups7d.toLocaleString()} />
-        <StatCard label="MRR" value={`$${data.mrr.toLocaleString()}`}
-          sub={data.errorCount > 0 ? `${data.errorCount} errors` : undefined} />
+        <StatCard
+          label="MRR"
+          value={`$${data.mrr.toLocaleString()}`}
+          sub={data.errorCount > 0 ? `${data.errorCount} errors` : undefined}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -215,8 +258,15 @@ function DashboardTab({ adminKey }: { adminKey: string }) {
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Plan Distribution</h3>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
-              <Pie data={data.planDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%"
-                outerRadius={90} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+              <Pie
+                data={data.planDistribution}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={90}
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              >
                 {data.planDistribution.map((_entry, i) => (
                   <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                 ))}
@@ -246,7 +296,9 @@ function DashboardTab({ adminKey }: { adminKey: string }) {
           <span className="inline-flex items-center justify-center w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full">
             {data.errorCount}
           </span>
-          <span className="text-red-700 dark:text-red-300 text-sm">Recent errors detected. Check Health tab for details.</span>
+          <span className="text-red-700 dark:text-red-300 text-sm">
+            Recent errors detected. Check Health tab for details.
+          </span>
         </div>
       )}
     </div>
@@ -273,48 +325,71 @@ function UsersTab({ adminKey }: { adminKey: string }) {
       const res = await adminApi.getUsers(adminKey, { page, perPage, search, sortField, sortDir });
       setUsers(res.data.data.users);
       setTotal(res.data.data.total);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
   }, [adminKey, page, search, sortField, sortDir]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   const handleSort = (field: typeof sortField) => {
-    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortField(field); setSortDir('asc'); }
+    if (sortField === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else {
+      setSortField(field);
+      setSortDir('asc');
+    }
   };
 
   const toggleExpand = async (id: string) => {
-    if (expandedId === id) { setExpandedId(null); setUserDetail(null); return; }
+    if (expandedId === id) {
+      setExpandedId(null);
+      setUserDetail(null);
+      return;
+    }
     setExpandedId(id);
     try {
       const res = await adminApi.getUserDetail(adminKey, id);
       setUserDetail(res.data.data);
-    } catch { setUserDetail(null); }
+    } catch {
+      setUserDetail(null);
+    }
   };
 
-  const SortArrow = ({ field }: { field: typeof sortField }) => (
-    sortField === field ? <span className="ml-1">{sortDir === 'asc' ? '\u25B2' : '\u25BC'}</span> : null
-  );
+  const SortArrow = ({ field }: { field: typeof sortField }) =>
+    sortField === field ? <span className="ml-1">{sortDir === 'asc' ? '\u25B2' : '\u25BC'}</span> : null;
 
   return (
     <div className="space-y-4">
       <input
-        type="text" placeholder="Search by email or name..."
-        value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+        type="text"
+        placeholder="Search by email or name..."
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setPage(1);
+        }}
         className="w-full max-w-md px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
       />
 
-      {loading ? <LoadingSpinner /> : (
+      {loading ? (
+        <LoadingSpinner />
+      ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
-                {(['email', 'name', 'plan', 'signupDate', 'status'] as const).map(f => (
-                  <th key={f} onClick={() => handleSort(f)}
-                    className="py-2 px-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none">
+                {(['email', 'name', 'plan', 'signupDate', 'status'] as const).map((f) => (
+                  <th
+                    key={f}
+                    onClick={() => handleSort(f)}
+                    className="py-2 px-3 font-medium cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 select-none"
+                  >
                     {f === 'signupDate' ? 'Signed Up' : f.charAt(0).toUpperCase() + f.slice(1)}
                     <SortArrow field={f} />
                   </th>
@@ -322,28 +397,48 @@ function UsersTab({ adminKey }: { adminKey: string }) {
               </tr>
             </thead>
             <tbody>
-              {users.map(u => (
-                <UserRow key={u.id} user={u} expanded={expandedId === u.id}
+              {users.map((u) => (
+                <UserRow
+                  key={u.id}
+                  user={u}
+                  expanded={expandedId === u.id}
                   detail={expandedId === u.id ? userDetail : null}
-                  onClick={() => toggleExpand(u.id)} />
+                  onClick={() => toggleExpand(u.id)}
+                />
               ))}
               {users.length === 0 && (
-                <tr><td colSpan={5} className="py-8 text-center text-gray-400">No users found.</td></tr>
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-gray-400">
+                    No users found.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
         </div>
       )}
 
-      <Pagination page={page} totalPages={totalPages} total={total}
-        onPrev={() => setPage(p => Math.max(1, p - 1))}
-        onNext={() => setPage(p => Math.min(totalPages, p + 1))} />
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        onPrev={() => setPage((p) => Math.max(1, p - 1))}
+        onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+      />
     </div>
   );
 }
 
-function UserRow({ user, expanded, detail, onClick }: {
-  user: AdminUser; expanded: boolean; detail: UserDetail | null; onClick: () => void;
+function UserRow({
+  user,
+  expanded,
+  detail,
+  onClick,
+}: {
+  user: AdminUser;
+  expanded: boolean;
+  detail: UserDetail | null;
+  onClick: () => void;
 }) {
   const planBadge = (plan: string) => {
     const colors: Record<string, string> = {
@@ -356,18 +451,20 @@ function UserRow({ user, expanded, detail, onClick }: {
 
   return (
     <>
-      <tr onClick={onClick}
-        className="border-b border-gray-100 dark:border-gray-700/50 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+      <tr
+        onClick={onClick}
+        className="border-b border-gray-100 dark:border-gray-700/50 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+      >
         <td className="py-2 px-3 text-gray-900 dark:text-white">{user.email}</td>
         <td className="py-2 px-3 text-gray-700 dark:text-gray-300">{user.name}</td>
         <td className="py-2 px-3">
-          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${planBadge(user.plan)}`}>
-            {user.plan}
-          </span>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${planBadge(user.plan)}`}>{user.plan}</span>
         </td>
         <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{new Date(user.signupDate).toLocaleDateString()}</td>
         <td className="py-2 px-3">
-          <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${user.status === 'active' ? 'bg-green-500' : 'bg-gray-400'}`} />
+          <span
+            className={`inline-block w-2 h-2 rounded-full mr-1.5 ${user.status === 'active' ? 'bg-green-500' : 'bg-gray-400'}`}
+          />
           <span className="text-gray-600 dark:text-gray-400">{user.status}</span>
         </td>
       </tr>
@@ -376,10 +473,24 @@ function UserRow({ user, expanded, detail, onClick }: {
           <td colSpan={5} className="py-3 px-6">
             {detail ? (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                <div><span className="text-gray-500 dark:text-gray-400">Auth:</span> <span className="text-gray-900 dark:text-white">{detail.authType || 'N/A'}</span></div>
-                <div><span className="text-gray-500 dark:text-gray-400">Last Login:</span> <span className="text-gray-900 dark:text-white">{detail.lastLogin ? new Date(detail.lastLogin).toLocaleString() : 'Never'}</span></div>
-                <div><span className="text-gray-500 dark:text-gray-400">Canvases:</span> <span className="text-gray-900 dark:text-white">{detail.canvasCount ?? 0}</span></div>
-                <div><span className="text-gray-500 dark:text-gray-400">Transcripts:</span> <span className="text-gray-900 dark:text-white">{detail.transcriptCount ?? 0}</span></div>
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Auth:</span>{' '}
+                  <span className="text-gray-900 dark:text-white">{detail.authType || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Last Login:</span>{' '}
+                  <span className="text-gray-900 dark:text-white">
+                    {detail.lastLogin ? new Date(detail.lastLogin).toLocaleString() : 'Never'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Canvases:</span>{' '}
+                  <span className="text-gray-900 dark:text-white">{detail.canvasCount ?? 0}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Transcripts:</span>{' '}
+                  <span className="text-gray-900 dark:text-white">{detail.transcriptCount ?? 0}</span>
+                </div>
               </div>
             ) : (
               <span className="text-gray-400 text-sm">Loading details...</span>
@@ -401,11 +512,18 @@ function BillingTab({ adminKey }: { adminKey: string }) {
     try {
       const res = await adminApi.getBilling(adminKey);
       setData(res.data.data);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
   }, [adminKey]);
 
-  useEffect(() => { load(); const t = setInterval(load, AUTO_REFRESH_MS); return () => clearInterval(t); }, [load]);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, AUTO_REFRESH_MS);
+    return () => clearInterval(t);
+  }, [load]);
 
   if (loading) return <LoadingSpinner />;
   if (!data) return <ErrorMessage message="Failed to load billing data." />;
@@ -415,8 +533,11 @@ function BillingTab({ adminKey }: { adminKey: string }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="MRR" value={`$${data.mrr.toLocaleString()}`} />
         <StatCard label="ARR" value={`$${data.arr.toLocaleString()}`} />
-        <StatCard label="Churn Rate" value={`${data.churnRate.toFixed(1)}%`}
-          sub={data.churnRate > 5 ? 'Above target' : 'On track'} />
+        <StatCard
+          label="Churn Rate"
+          value={`${data.churnRate.toFixed(1)}%`}
+          sub={data.churnRate > 5 ? 'Above target' : 'On track'}
+        />
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-5">
@@ -430,7 +551,7 @@ function BillingTab({ adminKey }: { adminKey: string }) {
             </tr>
           </thead>
           <tbody>
-            {data.planBreakdown.map(p => (
+            {data.planBreakdown.map((p) => (
               <tr key={p.plan} className="border-b border-gray-100 dark:border-gray-700/50">
                 <td className="py-2 px-3 text-gray-900 dark:text-white font-medium">{p.plan}</td>
                 <td className="py-2 px-3 text-gray-700 dark:text-gray-300">{p.count}</td>
@@ -453,7 +574,7 @@ function BillingTab({ adminKey }: { adminKey: string }) {
             </tr>
           </thead>
           <tbody>
-            {data.recentTransactions.map(tx => (
+            {data.recentTransactions.map((tx) => (
               <tr key={tx.id} className="border-b border-gray-100 dark:border-gray-700/50">
                 <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{new Date(tx.date).toLocaleDateString()}</td>
                 <td className="py-2 px-3 text-gray-900 dark:text-white">{tx.email}</td>
@@ -462,7 +583,11 @@ function BillingTab({ adminKey }: { adminKey: string }) {
               </tr>
             ))}
             {data.recentTransactions.length === 0 && (
-              <tr><td colSpan={4} className="py-6 text-center text-gray-400">No recent transactions.</td></tr>
+              <tr>
+                <td colSpan={4} className="py-6 text-center text-gray-400">
+                  No recent transactions.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -481,11 +606,18 @@ function HealthTab({ adminKey }: { adminKey: string }) {
     try {
       const res = await adminApi.getHealth(adminKey);
       setData(res.data.data);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
   }, [adminKey]);
 
-  useEffect(() => { load(); const t = setInterval(load, AUTO_REFRESH_MS); return () => clearInterval(t); }, [load]);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, AUTO_REFRESH_MS);
+    return () => clearInterval(t);
+  }, [load]);
 
   if (loading) return <LoadingSpinner />;
   if (!data) return <ErrorMessage message="Failed to load health data." />;
@@ -506,10 +638,16 @@ function HealthTab({ adminKey }: { adminKey: string }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Uptime" value={data.uptime} />
-        <StatCard label="DB Response Time" value={`${data.dbResponseTime}ms`}
-          sub={data.dbResponseTime > 200 ? 'Elevated' : 'Normal'} />
-        <StatCard label="Memory Usage" value={`${memPct}%`}
-          sub={`${(data.memoryUsage.used / 1024 / 1024).toFixed(0)} / ${(data.memoryUsage.total / 1024 / 1024).toFixed(0)} MB`} />
+        <StatCard
+          label="DB Response Time"
+          value={`${data.dbResponseTime}ms`}
+          sub={data.dbResponseTime > 200 ? 'Elevated' : 'Normal'}
+        />
+        <StatCard
+          label="Memory Usage"
+          value={`${memPct}%`}
+          sub={`${(data.memoryUsage.used / 1024 / 1024).toFixed(0)} / ${(data.memoryUsage.total / 1024 / 1024).toFixed(0)} MB`}
+        />
         <StatCard label="Version" value={data.version} />
       </div>
     </div>
@@ -532,31 +670,48 @@ function ActivityTab({ adminKey }: { adminKey: string }) {
       const res = await adminApi.getActivity(adminKey, { page, perPage, action: actionFilter || undefined });
       setEntries(res.data.data.entries);
       setTotal(res.data.data.total);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
   }, [adminKey, page, actionFilter]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   // Derive unique action types from the first load
   const actionTypes = useMemo(() => {
-    const set = new Set(entries.map(e => e.action));
+    const set = new Set(entries.map((e) => e.action));
     return Array.from(set).sort();
   }, [entries]);
 
   return (
     <div className="space-y-4">
       <div className="flex gap-3 items-center">
-        <select value={actionFilter} onChange={e => { setActionFilter(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+        <select
+          value={actionFilter}
+          onChange={(e) => {
+            setActionFilter(e.target.value);
+            setPage(1);
+          }}
+          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+        >
           <option value="">All actions</option>
-          {actionTypes.map(a => <option key={a} value={a}>{a}</option>)}
+          {actionTypes.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
         </select>
       </div>
 
-      {loading ? <LoadingSpinner /> : (
+      {loading ? (
+        <LoadingSpinner />
+      ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead>
@@ -568,9 +723,11 @@ function ActivityTab({ adminKey }: { adminKey: string }) {
               </tr>
             </thead>
             <tbody>
-              {entries.map(e => (
+              {entries.map((e) => (
                 <tr key={e.id} className="border-b border-gray-100 dark:border-gray-700/50">
-                  <td className="py-2 px-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{new Date(e.timestamp).toLocaleString()}</td>
+                  <td className="py-2 px-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    {new Date(e.timestamp).toLocaleString()}
+                  </td>
                   <td className="py-2 px-3 text-gray-900 dark:text-white">{e.user}</td>
                   <td className="py-2 px-3">
                     <span className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-medium">
@@ -581,16 +738,24 @@ function ActivityTab({ adminKey }: { adminKey: string }) {
                 </tr>
               ))}
               {entries.length === 0 && (
-                <tr><td colSpan={4} className="py-8 text-center text-gray-400">No activity logged.</td></tr>
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-gray-400">
+                    No activity logged.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
         </div>
       )}
 
-      <Pagination page={page} totalPages={totalPages} total={total}
-        onPrev={() => setPage(p => Math.max(1, p - 1))}
-        onNext={() => setPage(p => Math.min(totalPages, p + 1))} />
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        onPrev={() => setPage((p) => Math.max(1, p - 1))}
+        onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+      />
     </div>
   );
 }
@@ -605,11 +770,18 @@ function FeaturesTab({ adminKey }: { adminKey: string }) {
     try {
       const res = await adminApi.getFeatures(adminKey);
       setFeatures(res.data.data);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
   }, [adminKey]);
 
-  useEffect(() => { load(); const t = setInterval(load, AUTO_REFRESH_MS); return () => clearInterval(t); }, [load]);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, AUTO_REFRESH_MS);
+    return () => clearInterval(t);
+  }, [load]);
 
   if (loading) return <LoadingSpinner />;
   if (features.length === 0) return <ErrorMessage message="No feature usage data available." />;
@@ -643,17 +815,214 @@ function FeaturesTab({ adminKey }: { adminKey: string }) {
               </tr>
             </thead>
             <tbody>
-              {features.map(f => (
+              {features.map((f) => (
                 <tr key={f.name} className="border-b border-gray-100 dark:border-gray-700/50">
                   <td className="py-2 px-3 text-gray-900 dark:text-white font-medium">{f.name}</td>
                   <td className="py-2 px-3 text-gray-700 dark:text-gray-300">{f.totalUses.toLocaleString()}</td>
                   <td className="py-2 px-3 text-gray-700 dark:text-gray-300">{f.uniqueUsers.toLocaleString()}</td>
-                  <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{new Date(f.lastUsed).toLocaleDateString()}</td>
+                  <td className="py-2 px-3 text-gray-500 dark:text-gray-400">
+                    {new Date(f.lastUsed).toLocaleDateString()}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function EmailsTab({ adminKey }: { adminKey: string }) {
+  const [stats, setStats] = useState<EmailStats | null>(null);
+  const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({
+    title: '',
+    subject: '',
+    previewText: '',
+    bodyHtml: '',
+    ctaLabel: '',
+    ctaUrl: '',
+    audience: 'all',
+  });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [statsRes, campaignsRes] = await Promise.all([
+        adminApi.getEmailStats(adminKey),
+        adminApi.getEmailCampaigns(adminKey),
+      ]);
+      setStats(statsRes.data.data);
+      setCampaigns(campaignsRes.data.data);
+    } catch {
+      setError('Failed to load email system data');
+    } finally {
+      setLoading(false);
+    }
+  }, [adminKey]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const createCampaign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    try {
+      await adminApi.createEmailCampaign(adminKey, {
+        ...form,
+        ctaLabel: form.ctaLabel || undefined,
+        ctaUrl: form.ctaUrl || undefined,
+        previewText: form.previewText || undefined,
+      });
+      setForm({ title: '', subject: '', previewText: '', bodyHtml: '', ctaLabel: '', ctaUrl: '', audience: 'all' });
+      await load();
+    } catch {
+      setError('Failed to create campaign');
+    }
+  };
+
+  const sendNow = async (id: string) => {
+    if (!window.confirm('Send this campaign now? This cannot be undone.')) return;
+    setSendingId(id);
+    setError('');
+    try {
+      await adminApi.sendEmailCampaign(adminKey, id);
+      await load();
+    } catch {
+      setError('Failed to send campaign');
+    } finally {
+      setSendingId(null);
+    }
+  };
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message={error} />;
+
+  return (
+    <div className="space-y-6">
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[
+            ['Campaigns', stats.campaigns],
+            ['Sent', stats.sent],
+            ['Failed', stats.failed],
+            ['Skipped', stats.skipped],
+            ['Unsubscribed', stats.unsubscribed],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              className="bg-white dark:bg-gray-800 rounded-xl p-4 ring-1 ring-gray-200 dark:ring-gray-700"
+            >
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <form
+        onSubmit={createCampaign}
+        className="bg-white dark:bg-gray-800 rounded-xl p-5 ring-1 ring-gray-200 dark:ring-gray-700 space-y-4"
+      >
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Create Product Update</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Draft a one-off announcement. It sends only when you click Send and respects product-update opt-outs.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-2 gap-3">
+          <input
+            className="px-3 py-2 rounded-lg border dark:bg-gray-900 dark:border-gray-700"
+            placeholder="Campaign title"
+            value={form.title}
+            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            required
+          />
+          <input
+            className="px-3 py-2 rounded-lg border dark:bg-gray-900 dark:border-gray-700"
+            placeholder="Email subject"
+            value={form.subject}
+            onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
+            required
+          />
+          <input
+            className="px-3 py-2 rounded-lg border dark:bg-gray-900 dark:border-gray-700"
+            placeholder="Preview text"
+            value={form.previewText}
+            onChange={(e) => setForm((f) => ({ ...f, previewText: e.target.value }))}
+          />
+          <select
+            className="px-3 py-2 rounded-lg border dark:bg-gray-900 dark:border-gray-700"
+            value={form.audience}
+            onChange={(e) => setForm((f) => ({ ...f, audience: e.target.value }))}
+          >
+            <option value="all">All verified users</option>
+            <option value="free">Free users</option>
+            <option value="pro">Pro users</option>
+            <option value="team">Team users</option>
+            <option value="inactive_14d">Inactive 14 days</option>
+            <option value="inactive_30d">Inactive 30 days</option>
+          </select>
+          <input
+            className="px-3 py-2 rounded-lg border dark:bg-gray-900 dark:border-gray-700"
+            placeholder="CTA label"
+            value={form.ctaLabel}
+            onChange={(e) => setForm((f) => ({ ...f, ctaLabel: e.target.value }))}
+          />
+          <input
+            className="px-3 py-2 rounded-lg border dark:bg-gray-900 dark:border-gray-700"
+            placeholder="CTA URL"
+            value={form.ctaUrl}
+            onChange={(e) => setForm((f) => ({ ...f, ctaUrl: e.target.value }))}
+          />
+        </div>
+        <textarea
+          className="w-full min-h-36 px-3 py-2 rounded-lg border dark:bg-gray-900 dark:border-gray-700"
+          placeholder="<p>Write the email body in simple HTML...</p>"
+          value={form.bodyHtml}
+          onChange={(e) => setForm((f) => ({ ...f, bodyHtml: e.target.value }))}
+          required
+        />
+        <button className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">
+          Save Draft
+        </button>
+      </form>
+
+      <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Campaigns</h2>
+        </div>
+        {campaigns.length === 0 ? (
+          <p className="p-5 text-sm text-gray-500 dark:text-gray-400">No campaigns yet.</p>
+        ) : (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {campaigns.map((campaign) => (
+              <div key={campaign.id} className="p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">{campaign.title}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{campaign.subject}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Audience: {campaign.audience} · Status: {campaign.status} · Deliveries:{' '}
+                    {campaign._count?.deliveries ?? 0}
+                  </p>
+                </div>
+                <button
+                  onClick={() => sendNow(campaign.id)}
+                  disabled={campaign.status === 'sent' || sendingId === campaign.id}
+                  className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {sendingId === campaign.id ? 'Sending...' : campaign.status === 'sent' ? 'Sent' : 'Send'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -670,9 +1039,7 @@ function LoadingSpinner() {
 }
 
 function ErrorMessage({ message }: { message: string }) {
-  return (
-    <div className="text-center py-12 text-gray-500 dark:text-gray-400">{message}</div>
-  );
+  return <div className="text-center py-12 text-gray-500 dark:text-gray-400">{message}</div>;
 }
 
 // ─── Main Admin Page ───
@@ -694,7 +1061,10 @@ export default function AdminPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">QualCanvas Admin</h1>
           <button
-            onClick={() => { sessionStorage.removeItem('admin-api-key'); setAdminKey(null); }}
+            onClick={() => {
+              sessionStorage.removeItem('admin-api-key');
+              setAdminKey(null);
+            }}
             className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
           >
             Sign Out
@@ -705,7 +1075,7 @@ export default function AdminPage() {
       {/* Tabs */}
       <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 overflow-x-auto">
         <div className="max-w-7xl mx-auto flex gap-0">
-          {TABS.map(tab => (
+          {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -729,6 +1099,7 @@ export default function AdminPage() {
         {activeTab === 'health' && <HealthTab adminKey={adminKey} />}
         {activeTab === 'activity' && <ActivityTab adminKey={adminKey} />}
         {activeTab === 'features' && <FeaturesTab adminKey={adminKey} />}
+        {activeTab === 'emails' && <EmailsTab adminKey={adminKey} />}
       </main>
     </div>
   );

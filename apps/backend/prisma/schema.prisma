@@ -16,18 +16,18 @@ datasource db {
 }
 
 model User {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  emailVerified    Boolean   @default(false)
-  passwordHash     String
-  name             String
-  role             String    @default("researcher")
-  plan             String    @default("free")
-  stripeCustomerId String?   @unique
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  resetTokenHash   String?
-  resetTokenExpiry DateTime?
+  id                String    @id @default(cuid())
+  email             String    @unique
+  emailVerified     Boolean   @default(false)
+  passwordHash      String
+  name              String
+  role              String    @default("researcher")
+  plan              String    @default("free")
+  stripeCustomerId  String?   @unique
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  resetTokenHash    String?
+  resetTokenExpiry  DateTime?
   // Any JWT issued before this timestamp is rejected by the auth middleware.
   // Set on password reset, password change, and email change so stolen or
   // shared tokens don't outlive the credential change.
@@ -40,17 +40,19 @@ model User {
   // existed (legacy / pre-2026 signups stay free unless they pay).
   trialEndsAt DateTime?
 
-  subscription     Subscription?
-  codingCanvases   CodingCanvas[]
-  dashboardAccess  DashboardAccess?
-  repositories     ResearchRepository[]
-  integrations     Integration[]
-  aiConfig         UserAiConfig?
-  ownedTeams       Team[]         @relation("TeamOwner")
-  teamMemberships  TeamMember[]
-  notifications    Notification[]
-  reportSchedules  ReportSchedule[]
-  calendarEvents   CalendarEvent[]
+  subscription    Subscription?
+  codingCanvases  CodingCanvas[]
+  dashboardAccess DashboardAccess?
+  repositories    ResearchRepository[]
+  integrations    Integration[]
+  aiConfig        UserAiConfig?
+  ownedTeams      Team[]               @relation("TeamOwner")
+  teamMemberships TeamMember[]
+  notifications   Notification[]
+  reportSchedules ReportSchedule[]
+  calendarEvents  CalendarEvent[]
+  emailPreference EmailPreference?
+  emailDeliveries EmailDelivery[]
 
   @@index([email])
   @@index([stripeCustomerId])
@@ -75,7 +77,7 @@ model Subscription {
   userId               String   @unique
   stripeSubscriptionId String   @unique
   stripePriceId        String
-  status               String   // active | past_due | canceled | trialing
+  status               String // active | past_due | canceled | trialing
   currentPeriodStart   DateTime
   currentPeriodEnd     DateTime
   cancelAtPeriodEnd    Boolean  @default(false)
@@ -101,37 +103,37 @@ model DashboardAccess {
 // ─── Coding Canvas ───
 
 model CodingCanvas {
-  id                 String               @id @default(cuid())
-  dashboardAccessId  String
-  userId             String?
-  name               String
-  description        String?
-  ethicsApprovalId   String?
-  ethicsStatus       String               @default("pending")
-  dataRetentionDate  DateTime?
-  deletedAt          DateTime?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  dashboardAccess    DashboardAccess      @relation(fields: [dashboardAccessId], references: [id], onDelete: Cascade)
-  user               User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transcripts        CanvasTranscript[]
-  questions          CanvasQuestion[]
-  memos              CanvasMemo[]
-  codings            CanvasTextCoding[]
-  nodePositions      CanvasNodePosition[]
-  cases              CanvasCase[]
-  relations          CanvasRelation[]
-  computedNodes      CanvasComputedNode[]
-  shares             CanvasShare[]
-  consentRecords     ConsentRecord[]
-  aiSuggestions      AiSuggestion[]
-  fileUploads        FileUpload[]
-  textEmbeddings     TextEmbedding[]
-  chatMessages       ChatMessage[]
-  summaries          Summary[]
-  collaborators      CanvasCollaborator[]
-  documents          CanvasDocument[]
-  trainingDocuments  TrainingDocument[]
+  id                String               @id @default(cuid())
+  dashboardAccessId String
+  userId            String?
+  name              String
+  description       String?
+  ethicsApprovalId  String?
+  ethicsStatus      String               @default("pending")
+  dataRetentionDate DateTime?
+  deletedAt         DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  dashboardAccess   DashboardAccess      @relation(fields: [dashboardAccessId], references: [id], onDelete: Cascade)
+  user              User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transcripts       CanvasTranscript[]
+  questions         CanvasQuestion[]
+  memos             CanvasMemo[]
+  codings           CanvasTextCoding[]
+  nodePositions     CanvasNodePosition[]
+  cases             CanvasCase[]
+  relations         CanvasRelation[]
+  computedNodes     CanvasComputedNode[]
+  shares            CanvasShare[]
+  consentRecords    ConsentRecord[]
+  aiSuggestions     AiSuggestion[]
+  fileUploads       FileUpload[]
+  textEmbeddings    TextEmbedding[]
+  chatMessages      ChatMessage[]
+  summaries         Summary[]
+  collaborators     CanvasCollaborator[]
+  documents         CanvasDocument[]
+  trainingDocuments TrainingDocument[]
 
   @@unique([dashboardAccessId, name])
   @@index([dashboardAccessId])
@@ -166,7 +168,7 @@ model CanvasTranscript {
   isAnonymized  Boolean            @default(false)
   participantId String?
   fileUploadId  String?
-  timestamps    String?            // JSON: [{start, end, text}]
+  timestamps    String? // JSON: [{start, end, text}]
   eventDate     DateTime?
   latitude      Float?
   longitude     Float?
@@ -294,21 +296,21 @@ model CanvasComputedNode {
 // ─── Ethics & Audit ───
 
 model ConsentRecord {
-  id              String       @id @default(cuid())
-  canvasId        String
-  participantId   String
-  consentType     String       @default("informed")
-  consentStatus   String       @default("active")
-  consentDate     DateTime     @default(now())
-  withdrawalDate  DateTime?
-  ethicsProtocol  String?
-  notes           String?
-  createdAt       DateTime     @default(now())
-  canvas          CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  canvasId       String
+  participantId  String
+  consentType    String       @default("informed")
+  consentStatus  String       @default("active")
+  consentDate    DateTime     @default(now())
+  withdrawalDate DateTime?
+  ethicsProtocol String?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  canvas         CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
 
+  @@unique([canvasId, participantId])
   @@index([canvasId])
   @@index([participantId])
-  @@unique([canvasId, participantId])
 }
 
 model AuditLog {
@@ -355,16 +357,17 @@ model CanvasCollaborator {
 // ─── Documents & Region Coding ───
 
 model CanvasDocument {
-  id            String                @id @default(cuid())
+  id            String                 @id @default(cuid())
   canvasId      String
   fileUploadId  String
   title         String
-  docType       String                // image | pdf
-  pageCount     Int                   @default(1)
-  metadata      String                @default("{}")
-  createdAt     DateTime              @default(now())
-  canvas        CodingCanvas          @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  docType       String // image | pdf
+  pageCount     Int                    @default(1)
+  metadata      String                 @default("{}")
+  createdAt     DateTime               @default(now())
+  canvas        CodingCanvas           @relation(fields: [canvasId], references: [id], onDelete: Cascade)
   regionCodings DocumentRegionCoding[]
+
   @@index([canvasId])
 }
 
@@ -373,29 +376,31 @@ model DocumentRegionCoding {
   documentId String
   questionId String
   pageNumber Int            @default(1)
-  x          Float          // percentage 0-100
+  x          Float // percentage 0-100
   y          Float
   width      Float
   height     Float
   note       String?
   createdAt  DateTime       @default(now())
   document   CanvasDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
   @@index([documentId])
 }
 
 // ─── Training Center ───
 
 model TrainingDocument {
-  id             String            @id @default(cuid())
-  canvasId       String
-  transcriptId   String
-  name           String
-  instructions   String?
-  goldCodings    String            // JSON: [{questionId, startOffset, endOffset, codedText}]
-  passThreshold  Float             @default(0.7)
-  createdAt      DateTime          @default(now())
-  canvas         CodingCanvas      @relation(fields: [canvasId], references: [id], onDelete: Cascade)
-  attempts       TrainingAttempt[]
+  id            String            @id @default(cuid())
+  canvasId      String
+  transcriptId  String
+  name          String
+  instructions  String?
+  goldCodings   String // JSON: [{questionId, startOffset, endOffset, codedText}]
+  passThreshold Float             @default(0.7)
+  createdAt     DateTime          @default(now())
+  canvas        CodingCanvas      @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  attempts      TrainingAttempt[]
+
   @@index([canvasId])
 }
 
@@ -403,29 +408,30 @@ model TrainingAttempt {
   id                 String           @id @default(cuid())
   trainingDocumentId String
   userId             String
-  codings            String           // JSON
+  codings            String // JSON
   kappaScore         Float?
   passed             Boolean          @default(false)
   createdAt          DateTime         @default(now())
   trainingDocument   TrainingDocument @relation(fields: [trainingDocumentId], references: [id], onDelete: Cascade)
+
   @@index([trainingDocumentId])
 }
 
 // ─── File Upload & Transcription ───
 
 model FileUpload {
-  id                String              @id @default(cuid())
+  id                String             @id @default(cuid())
   canvasId          String?
   userId            String?
-  storageKey        String              @unique
+  storageKey        String             @unique
   originalName      String
   mimeType          String
   sizeBytes         Int
-  status            String              @default("uploaded") // uploaded | processing | ready | error
-  metadata          String              @default("{}")
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  canvas            CodingCanvas?       @relation(fields: [canvasId], references: [id], onDelete: SetNull)
+  status            String             @default("uploaded") // uploaded | processing | ready | error
+  metadata          String             @default("{}")
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  canvas            CodingCanvas?      @relation(fields: [canvasId], references: [id], onDelete: SetNull)
   transcriptionJobs TranscriptionJob[]
 
   @@index([canvasId])
@@ -439,7 +445,7 @@ model TranscriptionJob {
   status         String     @default("queued") // queued | processing | completed | failed
   progress       Float      @default(0)
   resultText     String?
-  resultSegments String?    // JSON: [{start, end, text}]
+  resultSegments String? // JSON: [{start, end, text}]
   errorMessage   String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
@@ -454,13 +460,14 @@ model TranscriptionJob {
 model TextEmbedding {
   id         String       @id @default(cuid())
   canvasId   String
-  sourceType String       // transcript_chunk | coding | memo
+  sourceType String // transcript_chunk | coding | memo
   sourceId   String
   chunkIndex Int          @default(0)
   chunkText  String
-  embedding  String       // JSON float array
+  embedding  String // JSON float array
   createdAt  DateTime     @default(now())
   canvas     CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
   @@unique([sourceType, sourceId, chunkIndex])
   @@index([canvasId])
 }
@@ -469,24 +476,26 @@ model ChatMessage {
   id        String       @id @default(cuid())
   canvasId  String
   userId    String?
-  role      String       // user | assistant
+  role      String // user | assistant
   content   String
   citations String       @default("[]") // JSON: [{sourceType, sourceId, text}]
   createdAt DateTime     @default(now())
   canvas    CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
   @@index([canvasId, createdAt])
 }
 
 model Summary {
   id          String       @id @default(cuid())
   canvasId    String
-  sourceType  String       // transcript | coding | question | canvas
+  sourceType  String // transcript | coding | question | canvas
   sourceId    String?
   summaryText String
   summaryType String       @default("paraphrase") // paraphrase | abstract | thematic
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   canvas      CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
   @@index([canvasId])
   @@index([sourceType, sourceId])
 }
@@ -517,8 +526,8 @@ model AiUsage {
   id           String   @id @default(cuid())
   userId       String?
   canvasId     String?
-  feature      String   // suggest_codes | auto_code | summarize | chat | transcribe
-  provider     String   // openai | anthropic
+  feature      String // suggest_codes | auto_code | summarize | chat | transcribe
+  provider     String // openai | anthropic
   model        String
   inputTokens  Int      @default(0)
   outputTokens Int      @default(0)
@@ -539,6 +548,7 @@ model ResearchRepository {
   createdAt   DateTime            @default(now())
   user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   insights    RepositoryInsight[]
+
   @@unique([userId, name])
 }
 
@@ -553,6 +563,7 @@ model RepositoryInsight {
   sourceId     String?
   createdAt    DateTime           @default(now())
   repository   ResearchRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
   @@index([repositoryId])
 }
 
@@ -561,7 +572,7 @@ model RepositoryInsight {
 model Integration {
   id              String    @id @default(cuid())
   userId          String
-  provider        String    // zoom | slack | qualtrics
+  provider        String // zoom | slack | qualtrics
   // Tokens are AES-256-GCM encrypted (see utils/encryption.ts).
   // accessToken / refreshToken hold the base64 ciphertext; the matching
   // Iv / Tag fields are required to decrypt.
@@ -575,6 +586,7 @@ model Integration {
   expiresAt       DateTime?
   createdAt       DateTime  @default(now())
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, provider])
 }
 
@@ -583,11 +595,11 @@ model Integration {
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  type      String   // coding_added, canvas_shared, team_invite, comment, mention
+  type      String // coding_added, canvas_shared, team_invite, comment, mention
   title     String
   message   String
   read      Boolean  @default(false)
-  metadata  String   @default("{}")  // JSON: canvasId, actorName, etc.
+  metadata  String   @default("{}") // JSON: canvasId, actorName, etc.
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -603,7 +615,7 @@ model ReportSchedule {
   canvasId  String?
   teamId    String?
   frequency String    @default("weekly") // daily, weekly, monthly
-  dayOfWeek Int?      @default(1)        // 0=Sun, 1=Mon, etc.
+  dayOfWeek Int?      @default(1) // 0=Sun, 1=Mon, etc.
   lastSent  DateTime?
   enabled   Boolean   @default(true)
   createdAt DateTime  @default(now())
@@ -611,6 +623,66 @@ model ReportSchedule {
 
   @@index([userId])
   @@index([enabled, lastSent])
+}
+
+// ─── Lifecycle Email & Engagement ───
+
+model EmailPreference {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  lifecycle        Boolean   @default(true)
+  productUpdates   Boolean   @default(true)
+  trainingTips     Boolean   @default(true)
+  inactivityNudges Boolean   @default(true)
+  unsubscribeToken String    @unique
+  unsubscribedAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([unsubscribeToken])
+}
+
+model EmailCampaign {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  title       String
+  subject     String
+  previewText String?
+  bodyHtml    String
+  ctaLabel    String?
+  ctaUrl      String?
+  audience    String          @default("all") // all, free, pro, team, inactive_14d, inactive_30d
+  status      String          @default("draft") // draft, sent
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  sentAt      DateTime?
+  deliveries  EmailDelivery[]
+
+  @@index([status])
+  @@index([audience])
+}
+
+model EmailDelivery {
+  id         String         @id @default(cuid())
+  userId     String
+  campaignId String?
+  type       String // welcome, onboarding_7d, inactivity_14d, product_update, training_tip
+  eventKey   String
+  subject    String
+  status     String         @default("pending") // pending, sent, skipped, failed
+  error      String?
+  metadata   String         @default("{}")
+  createdAt  DateTime       @default(now())
+  sentAt     DateTime?
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign   EmailCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, eventKey])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([type])
+  @@index([campaignId])
 }
 
 // ─── Teams ───
@@ -644,7 +716,7 @@ model TeamMember {
 // ─── Calendar Events ───
 
 model CalendarEvent {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
   canvasId    String?
   teamId      String?
@@ -652,13 +724,13 @@ model CalendarEvent {
   description String?
   startDate   DateTime
   endDate     DateTime?
-  allDay      Boolean  @default(false)
-  type        String   @default("milestone") // milestone, deadline, session, review
+  allDay      Boolean   @default(false)
+  type        String    @default("milestone") // milestone, deadline, session, review
   color       String?
-  reminder    Int?     // minutes before event
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reminder    Int? // minutes before event
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, startDate])
   @@index([canvasId])

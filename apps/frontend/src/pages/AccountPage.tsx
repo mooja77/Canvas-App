@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
-import { authApi, billingApi, aiSettingsApi, reportApi } from '../services/api';
+import { authApi, billingApi, aiSettingsApi, reportApi, emailApi, type EmailPreferences } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 import toast from 'react-hot-toast';
 
@@ -77,6 +77,10 @@ export default function AccountPage() {
   const [reportSaving, setReportSaving] = useState(false);
   const [reportGenerating, setReportGenerating] = useState(false);
 
+  // Engagement email preferences
+  const [emailPreferences, setEmailPreferences] = useState<EmailPreferences | null>(null);
+  const [emailSaving, setEmailSaving] = useState(false);
+
   // Post-upgrade welcome state
   const [searchParams, setSearchParams] = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
@@ -98,8 +102,9 @@ export default function AccountPage() {
       navigate('/login');
       return;
     }
-    authApi.getMe()
-      .then(res => {
+    authApi
+      .getMe()
+      .then((res) => {
         const data = res.data.data;
         setProfile(data);
         setEditName(data.user.name);
@@ -109,8 +114,9 @@ export default function AccountPage() {
       .finally(() => setLoading(false));
 
     // Load AI settings
-    aiSettingsApi.getSettings()
-      .then(res => {
+    aiSettingsApi
+      .getSettings()
+      .then((res) => {
         const data = res.data.data;
         if (data) {
           setAiProvider(data.provider || 'openai');
@@ -118,14 +124,28 @@ export default function AccountPage() {
           setAiHasKey(data.hasApiKey || false);
         }
       })
-      .catch(() => { /* no AI config yet */ });
+      .catch(() => {
+        /* no AI config yet */
+      });
 
     // Load report schedules
-    reportApi.getSchedules()
-      .then(res => {
+    reportApi
+      .getSchedules()
+      .then((res) => {
         setReportSchedules(res.data.data || []);
       })
-      .catch(() => { /* no schedules yet */ });
+      .catch(() => {
+        /* no schedules yet */
+      });
+
+    emailApi
+      .getPreferences()
+      .then((res) => {
+        setEmailPreferences(res.data.data);
+      })
+      .catch(() => {
+        /* legacy access-code users do not have email preferences */
+      });
   }, [authenticated, navigate]);
 
   const handleManageBilling = async () => {
@@ -150,9 +170,9 @@ export default function AccountPage() {
         return;
       }
       const res = await authApi.updateProfile(data);
-      setProfile(prev => prev ? { ...prev, user: { ...prev.user, ...res.data.data } } : prev);
+      setProfile((prev) => (prev ? { ...prev, user: { ...prev.user, ...res.data.data } } : prev));
       toast.success('Profile updated');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to update profile');
     } finally {
@@ -177,7 +197,7 @@ export default function AccountPage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to change password');
     } finally {
@@ -193,7 +213,7 @@ export default function AccountPage() {
       toast.success('Account deleted');
       logout();
       navigate('/');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to delete account');
     } finally {
@@ -205,7 +225,7 @@ export default function AccountPage() {
     setReportSaving(true);
     try {
       const res = await reportApi.createSchedule({ frequency: reportFrequency });
-      setReportSchedules(prev => [res.data.data, ...prev]);
+      setReportSchedules((prev) => [res.data.data, ...prev]);
       toast.success('Report schedule created');
     } catch {
       toast.error('Failed to create report schedule');
@@ -217,7 +237,7 @@ export default function AccountPage() {
   const handleToggleSchedule = async (id: string, enabled: boolean) => {
     try {
       await reportApi.updateSchedule(id, { enabled });
-      setReportSchedules(prev => prev.map(s => s.id === id ? { ...s, enabled } : s));
+      setReportSchedules((prev) => prev.map((s) => (s.id === id ? { ...s, enabled } : s)));
     } catch {
       toast.error('Failed to update schedule');
     }
@@ -226,7 +246,7 @@ export default function AccountPage() {
   const handleDeleteSchedule = async (id: string) => {
     try {
       await reportApi.deleteSchedule(id);
-      setReportSchedules(prev => prev.filter(s => s.id !== id));
+      setReportSchedules((prev) => prev.filter((s) => s.id !== id));
       toast.success('Schedule removed');
     } catch {
       toast.error('Failed to delete schedule');
@@ -255,6 +275,23 @@ export default function AccountPage() {
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleEmailPreferenceChange = async (key: keyof Omit<EmailPreferences, 'unsubscribedAt'>, value: boolean) => {
+    if (!emailPreferences) return;
+    const next = { ...emailPreferences, [key]: value };
+    setEmailPreferences(next);
+    setEmailSaving(true);
+    try {
+      const res = await emailApi.updatePreferences({ [key]: value });
+      setEmailPreferences(res.data.data);
+      toast.success('Email preferences updated');
+    } catch {
+      setEmailPreferences(emailPreferences);
+      toast.error('Failed to update email preferences');
+    } finally {
+      setEmailSaving(false);
+    }
   };
 
   if (loading) {
@@ -286,8 +323,18 @@ export default function AccountPage() {
             onClick={() => setShowWelcome(false)}
             role="status"
           >
-            <svg className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.745 3.745 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+            <svg
+              className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.745 3.745 0 011.043 3.296A3.745 3.745 0 0121 12z"
+              />
             </svg>
             <div>
               <p className="font-semibold text-green-800 dark:text-green-200">Welcome to Pro!</p>
@@ -300,15 +347,19 @@ export default function AccountPage() {
 
         {/* Edit Profile */}
         <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
-          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{t('account.profile')}</h2>
+          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+            {t('account.profile')}
+          </h2>
           {isEmailAuth ? (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('account.name')}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t('account.name')}
+                </label>
                 <input
                   type="text"
                   value={editName}
-                  onChange={e => setEditName(e.target.value)}
+                  onChange={(e) => setEditName(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm"
                 />
               </div>
@@ -317,7 +368,9 @@ export default function AccountPage() {
                   Email
                   {profile.user.emailVerified !== undefined && (
                     <>
-                      <span className={`ml-2 text-xs font-normal ${profile.user.emailVerified ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                      <span
+                        className={`ml-2 text-xs font-normal ${profile.user.emailVerified ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}
+                      >
                         {profile.user.emailVerified ? 'Verified' : 'Unverified'}
                       </span>
                       {!profile.user.emailVerified && (
@@ -342,7 +395,7 @@ export default function AccountPage() {
                 <input
                   type="email"
                   value={editEmail}
-                  onChange={e => setEditEmail(e.target.value)}
+                  onChange={(e) => setEditEmail(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm"
                 />
               </div>
@@ -375,13 +428,17 @@ export default function AccountPage() {
 
         {/* Plan & Subscription */}
         <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
-          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{t('account.planSection')}</h2>
+          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+            {t('account.planSection')}
+          </h2>
           <div className="flex items-center justify-between mb-4">
-            <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${
-              profile.user.plan === 'free'
-                ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                : 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300'
-            }`}>
+            <span
+              className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${
+                profile.user.plan === 'free'
+                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  : 'bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300'
+              }`}
+            >
               {planLabel}
             </span>
             {profile.user.plan === 'free' && (
@@ -394,9 +451,13 @@ export default function AccountPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">Status</span>
-                <span className={`font-medium ${
-                  profile.subscription.status === 'active' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'
-                }`}>
+                <span
+                  className={`font-medium ${
+                    profile.subscription.status === 'active'
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-amber-600 dark:text-amber-400'
+                  }`}
+                >
                   {profile.subscription.status}
                 </span>
               </div>
@@ -407,9 +468,7 @@ export default function AccountPage() {
                 </span>
               </div>
               {profile.subscription.cancelAtPeriodEnd && (
-                <p className="text-amber-600 dark:text-amber-400 text-xs">
-                  Cancels at end of billing period
-                </p>
+                <p className="text-amber-600 dark:text-amber-400 text-xs">Cancels at end of billing period</p>
               )}
               <button
                 onClick={handleManageBilling}
@@ -424,19 +483,20 @@ export default function AccountPage() {
         {/* Usage */}
         {profile.usage && (
           <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
-            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{t('account.usageSection')}</h2>
+            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+              {t('account.usageSection')}
+            </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {(() => {
-                const limits = profile.user.plan === 'free'
-                  ? { canvases: 1, transcripts: 2, codes: 5, shares: 0 }
-                  : null;
+                const limits =
+                  profile.user.plan === 'free' ? { canvases: 1, transcripts: 2, codes: 5, shares: 0 } : null;
                 const items = [
                   { label: 'Canvases', value: profile.usage.canvasCount, max: limits?.canvases },
                   { label: 'Transcripts', value: profile.usage.totalTranscripts, max: limits?.transcripts },
                   { label: 'Codes', value: profile.usage.totalCodes, max: limits?.codes },
                   { label: 'Share codes', value: profile.usage.totalShares, max: limits?.shares },
                 ];
-                return items.map(item => (
+                return items.map((item) => (
                   <div key={item.label} className="text-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
                       {item.max !== undefined ? `${item.value}/${item.max}` : item.value}
@@ -446,8 +506,11 @@ export default function AccountPage() {
                       <div className="mt-2 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all ${
-                            item.value / item.max >= 0.8 ? 'bg-red-500' :
-                            item.value / item.max >= 0.5 ? 'bg-amber-500' : 'bg-green-500'
+                            item.value / item.max >= 0.8
+                              ? 'bg-red-500'
+                              : item.value / item.max >= 0.5
+                                ? 'bg-amber-500'
+                                : 'bg-green-500'
                           }`}
                           style={{ width: `${Math.min(100, (item.value / item.max) * 100)}%` }}
                         />
@@ -464,13 +527,26 @@ export default function AccountPage() {
         {isEmailAuth && (
           <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
             <div className="flex items-center gap-2 mb-4">
-              <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+              <svg
+                className="h-4 w-4 text-purple-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
+                />
               </svg>
-              <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">AI Settings</h2>
+              <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                AI Settings
+              </h2>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-              Connect your own AI provider API key to use AI-powered features like coding suggestions, research assistant, and transcription. Your key is encrypted and never shared.
+              Connect your own AI provider API key to use AI-powered features like coding suggestions, research
+              assistant, and transcription. Your key is encrypted and never shared.
             </p>
 
             <div className="space-y-3">
@@ -479,7 +555,10 @@ export default function AccountPage() {
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Provider</label>
                 <select
                   value={aiProvider}
-                  onChange={e => { setAiProvider(e.target.value); setAiApiKey(''); }}
+                  onChange={(e) => {
+                    setAiProvider(e.target.value);
+                    setAiApiKey('');
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                 >
                   <option value="openai">OpenAI (GPT-4o, Whisper transcription)</option>
@@ -496,9 +575,17 @@ export default function AccountPage() {
                 <div className="relative">
                   <input
                     type={showAiKey ? 'text' : 'password'}
-                    placeholder={aiHasKey ? 'Enter new key to change...' : aiProvider === 'openai' ? 'sk-...' : aiProvider === 'anthropic' ? 'sk-ant-...' : 'AI...'}
+                    placeholder={
+                      aiHasKey
+                        ? 'Enter new key to change...'
+                        : aiProvider === 'openai'
+                          ? 'sk-...'
+                          : aiProvider === 'anthropic'
+                            ? 'sk-ant-...'
+                            : 'AI...'
+                    }
                     value={aiApiKey}
-                    onChange={e => setAiApiKey(e.target.value)}
+                    onChange={(e) => setAiApiKey(e.target.value)}
                     autoComplete="off"
                     className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                   />
@@ -509,9 +596,17 @@ export default function AccountPage() {
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                       {showAiKey ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
+                        />
                       ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                        />
                       )}
                     </svg>
                   </button>
@@ -520,12 +615,20 @@ export default function AccountPage() {
 
               {/* Model (optional) */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Model (optional)</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Model (optional)
+                </label>
                 <input
                   type="text"
-                  placeholder={aiProvider === 'openai' ? 'gpt-4o-mini' : aiProvider === 'anthropic' ? 'claude-sonnet-4-20250514' : 'gemini-2.0-flash'}
+                  placeholder={
+                    aiProvider === 'openai'
+                      ? 'gpt-4o-mini'
+                      : aiProvider === 'anthropic'
+                        ? 'claude-sonnet-4-20250514'
+                        : 'gemini-2.0-flash'
+                  }
                   value={aiModel}
-                  onChange={e => setAiModel(e.target.value)}
+                  onChange={(e) => setAiModel(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                 />
               </div>
@@ -533,9 +636,12 @@ export default function AccountPage() {
               {/* Provider-specific note */}
               <div className="rounded-lg bg-gray-50 dark:bg-gray-700/50 px-3 py-2">
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                  {aiProvider === 'openai' && 'OpenAI supports all AI features: coding suggestions, chat, summaries, embeddings, and audio transcription.'}
-                  {aiProvider === 'anthropic' && 'Anthropic supports coding suggestions, chat, and summaries. Transcription and embeddings (RAG indexing) require an OpenAI key.'}
-                  {aiProvider === 'google' && 'Google supports coding suggestions, chat, summaries, and embeddings. Transcription requires an OpenAI key.'}
+                  {aiProvider === 'openai' &&
+                    'OpenAI supports all AI features: coding suggestions, chat, summaries, embeddings, and audio transcription.'}
+                  {aiProvider === 'anthropic' &&
+                    'Anthropic supports coding suggestions, chat, and summaries. Transcription and embeddings (RAG indexing) require an OpenAI key.'}
+                  {aiProvider === 'google' &&
+                    'Google supports coding suggestions, chat, summaries, and embeddings. Transcription requires an OpenAI key.'}
                 </p>
               </div>
 
@@ -543,8 +649,14 @@ export default function AccountPage() {
               <div className="flex items-center gap-2 pt-1">
                 <button
                   onClick={async () => {
-                    if (!aiApiKey && !aiHasKey) { toast.error('Enter an API key'); return; }
-                    if (!aiApiKey && aiHasKey) { toast('No changes — key already configured'); return; }
+                    if (!aiApiKey && !aiHasKey) {
+                      toast.error('Enter an API key');
+                      return;
+                    }
+                    if (!aiApiKey && aiHasKey) {
+                      toast('No changes — key already configured');
+                      return;
+                    }
                     setAiSaving(true);
                     try {
                       await aiSettingsApi.updateSettings({
@@ -555,8 +667,8 @@ export default function AccountPage() {
                       setAiHasKey(true);
                       setAiApiKey('');
                       toast.success('AI settings saved and key verified');
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    } catch (err: any) {
                       toast.error(err.response?.data?.error || 'Failed to save AI settings');
                     } finally {
                       setAiSaving(false);
@@ -593,13 +705,15 @@ export default function AccountPage() {
         {/* Change Password */}
         {isEmailAuth && (
           <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
-            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{t('account.changePassword')}</h2>
+            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
+              {t('account.changePassword')}
+            </h2>
             <form onSubmit={handleChangePassword} className="space-y-3">
               <input
                 type="password"
                 placeholder="Current password"
                 value={currentPassword}
-                onChange={e => setCurrentPassword(e.target.value)}
+                onChange={(e) => setCurrentPassword(e.target.value)}
                 autoComplete="current-password"
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
@@ -607,7 +721,7 @@ export default function AccountPage() {
                 type="password"
                 placeholder="New password (min 8 characters)"
                 value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
+                onChange={(e) => setNewPassword(e.target.value)}
                 autoComplete="new-password"
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
@@ -615,7 +729,7 @@ export default function AccountPage() {
                 type="password"
                 placeholder="Confirm new password"
                 value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
@@ -633,21 +747,29 @@ export default function AccountPage() {
         {/* Scheduled Reports */}
         {isEmailAuth && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">Scheduled Reports</h2>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
+              Scheduled Reports
+            </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Receive periodic email reports summarizing your coding activity, code frequencies, and collaborator updates.
+              Receive periodic email reports summarizing your coding activity, code frequencies, and collaborator
+              updates.
             </p>
 
             {reportSchedules.length > 0 ? (
               <div className="space-y-3 mb-4">
-                {reportSchedules.map(schedule => (
-                  <div key={schedule.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-750 rounded-lg">
+                {reportSchedules.map((schedule) => (
+                  <div
+                    key={schedule.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-750 rounded-lg"
+                  >
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => handleToggleSchedule(schedule.id, !schedule.enabled)}
                         className={`relative w-10 h-5 rounded-full transition-colors ${schedule.enabled ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-600'}`}
                       >
-                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${schedule.enabled ? 'left-5' : 'left-0.5'}`} />
+                        <span
+                          className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${schedule.enabled ? 'left-5' : 'left-0.5'}`}
+                        />
                       </button>
                       <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">
                         {schedule.frequency} report
@@ -664,7 +786,12 @@ export default function AccountPage() {
                       title="Remove schedule"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -677,7 +804,7 @@ export default function AccountPage() {
             <div className="flex items-center gap-3">
               <select
                 value={reportFrequency}
-                onChange={e => setReportFrequency(e.target.value)}
+                onChange={(e) => setReportFrequency(e.target.value)}
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               >
                 <option value="daily">Daily</option>
@@ -702,6 +829,78 @@ export default function AccountPage() {
           </div>
         )}
 
+        {/* Email Preferences */}
+        {isEmailAuth && emailPreferences && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
+                  Email Preferences
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  Choose which engagement emails QualCanvas can send. Critical account emails like password resets are
+                  not affected.
+                </p>
+              </div>
+              {emailSaving && <span className="text-xs text-gray-400">Saving...</span>}
+            </div>
+
+            <div className="space-y-3">
+              {[
+                {
+                  key: 'lifecycle' as const,
+                  title: 'Lifecycle onboarding',
+                  description: 'Welcome messages and timed getting-started guidance after signup.',
+                },
+                {
+                  key: 'trainingTips' as const,
+                  title: 'Training and course tips',
+                  description: 'Help with training documents, coding quality, methods, and practical workflows.',
+                },
+                {
+                  key: 'inactivityNudges' as const,
+                  title: 'Inactivity reminders',
+                  description: 'Gentle prompts when a project has gone quiet for a while.',
+                },
+                {
+                  key: 'productUpdates' as const,
+                  title: 'Product updates',
+                  description: 'New features, improvements, and relevant announcements.',
+                },
+              ].map((item) => (
+                <div
+                  key={item.key}
+                  className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 dark:bg-gray-750 px-3 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{item.title}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.description}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleEmailPreferenceChange(item.key, !emailPreferences[item.key])}
+                    disabled={emailSaving}
+                    className={`relative h-6 w-11 rounded-full transition-colors disabled:opacity-60 ${emailPreferences[item.key] ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-600'}`}
+                    aria-pressed={emailPreferences[item.key]}
+                    aria-label={`Toggle ${item.title}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${emailPreferences[item.key] ? 'left-5' : 'left-0.5'}`}
+                    />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {emailPreferences.unsubscribedAt && (
+              <p className="mt-4 text-xs text-amber-700 dark:text-amber-300">
+                You are currently unsubscribed from all engagement emails. Re-enable any category above to subscribe
+                again.
+              </p>
+            )}
+          </div>
+        )}
+
         <button
           onClick={handleLogout}
           className="w-full py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 font-medium text-sm transition-colors mb-6"
@@ -712,7 +911,9 @@ export default function AccountPage() {
         {/* Danger Zone */}
         {isEmailAuth && (
           <div className="bg-white dark:bg-gray-800 rounded-xl ring-2 ring-red-200 dark:ring-red-900/50 p-6">
-            <h2 className="text-sm font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">{t('account.dangerZone')}</h2>
+            <h2 className="text-sm font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">
+              {t('account.dangerZone')}
+            </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Permanently delete your account and all associated data. This action cannot be undone.
             </p>
@@ -732,12 +933,15 @@ export default function AccountPage() {
                   type="password"
                   placeholder="Your password"
                   value={deletePassword}
-                  onChange={e => setDeletePassword(e.target.value)}
+                  onChange={(e) => setDeletePassword(e.target.value)}
                   className="w-full px-3 py-2 border border-red-300 dark:border-red-700 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
                 <div className="flex gap-3">
                   <button
-                    onClick={() => { setShowDeleteConfirm(false); setDeletePassword(''); }}
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setDeletePassword('');
+                    }}
                     className="flex-1 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
                     Cancel

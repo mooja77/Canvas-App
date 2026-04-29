@@ -9,7 +9,9 @@ vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
   useSearchParams: () => [mockSearchParams, mockSetSearchParams],
   Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
+    <a href={to} {...props}>
+      {children}
+    </a>
   ),
 }));
 
@@ -45,6 +47,7 @@ vi.mock('../stores/authStore', () => ({
 // Mock APIs
 const mockGetMe = vi.fn();
 const mockGetSettings = vi.fn();
+const mockGetPreferences = vi.fn();
 vi.mock('../services/api', () => ({
   authApi: {
     getMe: (...args: unknown[]) => mockGetMe(...args),
@@ -64,8 +67,13 @@ vi.mock('../services/api', () => ({
     getSchedules: vi.fn().mockResolvedValue({ data: { data: [] } }),
     listSchedules: vi.fn().mockResolvedValue({ data: { data: [] } }),
     createSchedule: vi.fn(),
+    updateSchedule: vi.fn(),
     deleteSchedule: vi.fn(),
-    generateNow: vi.fn(),
+    generateReport: vi.fn(),
+  },
+  emailApi: {
+    getPreferences: (...args: unknown[]) => mockGetPreferences(...args),
+    updatePreferences: vi.fn(),
   },
 }));
 
@@ -106,6 +114,17 @@ describe('AccountPage', () => {
     mockSearchParams.delete('session_id');
     mockGetMe.mockResolvedValue({ data: { data: mockProfile } });
     mockGetSettings.mockResolvedValue({ data: { data: null } });
+    mockGetPreferences.mockResolvedValue({
+      data: {
+        data: {
+          lifecycle: true,
+          productUpdates: true,
+          trainingTips: true,
+          inactivityNudges: true,
+          unsubscribedAt: null,
+        },
+      },
+    });
   });
 
   it('renders user profile section', async () => {
