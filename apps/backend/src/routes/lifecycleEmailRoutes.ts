@@ -54,7 +54,19 @@ publicLifecycleEmailRoutes.get('/unsubscribe/:token', async (req, res, next) => 
 // ─── GET /api/email/preferences ───
 lifecycleEmailRoutes.get('/email/preferences', async (req, res, next) => {
   try {
-    const userId = requireUserId(req);
+    const userId = getAuthUserId(req);
+    if (!userId) {
+      return res.json({
+        success: true,
+        data: {
+          lifecycle: false,
+          productUpdates: false,
+          trainingTips: false,
+          inactivityNudges: false,
+          unsubscribedAt: null,
+        },
+      });
+    }
     const data = await getEmailPreferencePayload(userId);
     res.json({ success: true, data });
   } catch (err) {
