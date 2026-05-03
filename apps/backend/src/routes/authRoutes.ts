@@ -5,6 +5,7 @@ import { signResearcherToken } from '../utils/jwt.js';
 import { setAuthCookie } from '../utils/authCookie.js';
 import { logAudit } from '../middleware/auditLog.js';
 import { authLimiter } from '../middleware/authLimiter.js';
+import { trackJmsEvent } from '../lib/jms-events.js';
 import { nanoid } from 'nanoid';
 
 export const authRoutes = Router();
@@ -146,6 +147,18 @@ authRoutes.post('/auth/register', authLimiter, async (req, res, next) => {
     const jwt = signResearcherToken(access.id, access.role);
 
     setAuthCookie(res, jwt);
+
+    // Mirror to JMS admin-portal so the Command Centre can see real
+    // QualCanvas signups in ingest_events. Best-effort, no await wait.
+    void trackJmsEvent({
+      name: 'sign_up',
+      properties: {
+        method: 'access_code',
+        role: access.role,
+        dashboard_access_id: access.id,
+      },
+    });
+
     res.status(201).json({
       success: true,
       data: {

@@ -13,6 +13,7 @@ import {
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import { checkCanvasLimit } from '../middleware/planLimits.js';
 import { getPlanLimits } from '../config/plans.js';
+import { trackJmsEvent } from '../lib/jms-events.js';
 
 // Sub-routers
 import { transcriptRoutes } from './transcriptRoutes.js';
@@ -129,6 +130,22 @@ canvasRoutes.post('/canvas', validate(createCanvasSchema), checkCanvasLimit(), a
           upgrade: true,
         });
       }
+    }
+
+    // First-value tracker: if this is the dashboard's first canvas, fire
+    // a 'first_canvas_created' event into the JMS admin-portal so
+    // ingest_events shows real activation rates.
+    const canvasCount = await prisma.codingCanvas.count({
+      where: { dashboardAccessId },
+    });
+    if (canvasCount === 1) {
+      void trackJmsEvent({
+        name: 'first_canvas_created',
+        properties: {
+          canvas_id: canvas.id,
+          dashboard_access_id: dashboardAccessId,
+        },
+      });
     }
 
     res.status(201).json({ success: true, data: canvas });
