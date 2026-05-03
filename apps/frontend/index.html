@@ -39,7 +39,30 @@
 
     <!-- Cookie Consent (must load BEFORE GTM) -->
     <link rel="stylesheet" href="/cookie-consent.css" />
-    <script src="/cookie-consent.js"></script>
+    <script src="/cookie-consent.js" defer></script>
+
+    <!-- Prerender marketing content styles. Inline so first paint
+         renders without waiting for the React bundle. Removed
+         alongside #marketing-root once React mounts. -->
+    <style id="prerender-styles">
+      #marketing-root { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #111827; max-width: 880px; margin: 0 auto; padding: 64px 24px 96px; line-height: 1.6; }
+      #marketing-root .qc-eyebrow { color: #4f46e5; font-weight: 600; font-size: 14px; letter-spacing: 0.04em; text-transform: uppercase; }
+      #marketing-root h1 { font-size: 40px; line-height: 1.15; margin: 12px 0 16px; font-weight: 800; }
+      #marketing-root h1 .accent { color: #4f46e5; }
+      #marketing-root .lede { font-size: 19px; color: #374151; margin: 0 0 32px; max-width: 640px; }
+      #marketing-root h2 { font-size: 24px; margin: 40px 0 12px; font-weight: 700; }
+      #marketing-root .features { display: grid; grid-template-columns: 1fr; gap: 16px; padding: 0; list-style: none; margin: 0 0 24px; }
+      @media (min-width: 720px) { #marketing-root .features { grid-template-columns: 1fr 1fr; } }
+      #marketing-root .features li { padding: 16px; border-radius: 12px; background: #ffffff; border: 1px solid #e5e7eb; }
+      #marketing-root .features strong { display: block; margin-bottom: 4px; font-weight: 700; }
+      #marketing-root .pricing { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0 0 32px; padding: 0; list-style: none; }
+      #marketing-root .pricing li { padding: 16px; border-radius: 12px; background: #ffffff; border: 1px solid #e5e7eb; text-align: center; }
+      #marketing-root .price { font-size: 28px; font-weight: 800; }
+      #marketing-root .cta { display: inline-block; background: #4f46e5; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 600; text-decoration: none; }
+      #marketing-root .cta:hover { background: #4338ca; }
+      #marketing-root .footer-links { color: #6b7280; font-size: 14px; margin-top: 48px; }
+      #marketing-root .footer-links a { color: #4f46e5; text-decoration: none; margin-right: 16px; }
+    </style>
 
     <!-- Chat widget visibility rules. The third-party chat script
          renders its own container; we hide it on narrow viewports
@@ -71,6 +94,41 @@
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NPTXDRDH"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
+    <!-- Prerendered marketing content. Visible to crawlers, AI search
+         agents, and any visitor before the React bundle arrives.
+         Removed by main.tsx once React mounts at #root. -->
+    <main id="marketing-root">
+      <div class="qc-eyebrow">For qualitative researchers</div>
+      <h1>Code transcripts on a <span class="accent">visual canvas</span> — not in spreadsheets</h1>
+      <p class="lede">QualCanvas is a drag-and-drop workspace for coding interview transcripts, discovering patterns, and building theory across multiple sessions. Built for academics, UX researchers, and qualitative analysts.</p>
+      <a href="/signup" class="cta">Try it free</a>
+
+      <h2>What it does</h2>
+      <ul class="features">
+        <li><strong>Visual coding canvas</strong>Drag transcript fragments into themes. See your codebook take shape spatially.</li>
+        <li><strong>Cross-session pattern discovery</strong>Link codes across multiple interviews; find what repeats and what doesn't.</li>
+        <li><strong>Transcript-first workflow</strong>Import .txt, .docx, or .vtt. Inline coding without leaving the page.</li>
+        <li><strong>Export for write-up</strong>Codebook, theme summaries, and source quotes ready for your paper.</li>
+      </ul>
+
+      <h2>Pricing</h2>
+      <ul class="pricing">
+        <li><strong>Free</strong><div class="price">$0</div>1 project · basic export</li>
+        <li><strong>Pro</strong><div class="price">$12<small>/mo</small></div>Unlimited projects</li>
+        <li><strong>Team</strong><div class="price">$29<small>/mo</small></div>Collaboration · 5 seats</li>
+      </ul>
+
+      <h2>Built by JMS Dev Lab</h2>
+      <p>QualCanvas is one of several research and small-business tools from <a href="https://jmsdevlab.com">JMS Dev Lab</a>. We build practical software for niches the big platforms ignore.</p>
+
+      <p class="footer-links">
+        <a href="/signup">Sign up</a>
+        <a href="/login">Log in</a>
+        <a href="https://jmsdevlab.com/contact">Get help</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+      </p>
+    </main>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script type="module">
