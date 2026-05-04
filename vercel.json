@@ -4,6 +4,7 @@
   "outputDirectory": "apps/frontend/dist",
   "installCommand": "npm install",
   "framework": "vite",
+  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/api/:path*",
@@ -14,7 +15,7 @@
       "destination": "https://canvas-app-production.up.railway.app/health"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!features|use-cases/|integrations).*)",
       "destination": "/index.html"
     }
   ]
