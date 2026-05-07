@@ -112,6 +112,7 @@ import request from 'supertest';
 import express from 'express';
 import { auth } from '../../middleware/auth.js';
 import { canvasRoutes } from '../../routes/canvasRoutes.js';
+import { aiSettingsRoutes } from '../../routes/aiSettingsRoutes.js';
 import { errorHandler } from '../../middleware/errorHandler.js';
 import { signUserToken } from '../../utils/jwt.js';
 
@@ -383,13 +384,9 @@ describe('Auth security — JWT and access control', () => {
 
   // ─── AI CONFIG NEVER RETURNS API KEYS ───
 
-  it('AI settings endpoint never returns the actual API key', { timeout: 15000 }, async () => {
-    // Build a separate app that includes ai-settings routes
+  it('AI settings endpoint never returns the actual API key', async () => {
     const aiApp = express();
     aiApp.use(express.json());
-
-    // Import and mount the AI settings routes
-    const { aiSettingsRoutes } = await import('../../routes/aiSettingsRoutes.js');
     aiApp.use('/api', auth, aiSettingsRoutes);
     aiApp.use(errorHandler);
 
