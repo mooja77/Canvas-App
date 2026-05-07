@@ -17,20 +17,63 @@
     <meta name="twitter:image" content="https://qualcanvas.com/og-image.png" />
     <link rel="canonical" href="https://qualcanvas.com/" />
     <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
     {
-      "@context": "https://schema.org",
       "@type": "SoftwareApplication",
+      "@id": "https://qualcanvas.com/#software",
       "name": "QualCanvas",
-      "applicationCategory": "EducationApplication",
+      "url": "https://qualcanvas.com",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Research / Qualitative Analysis",
       "operatingSystem": "Web",
-      "offers": [
-        { "@type": "Offer", "price": "0", "priceCurrency": "USD", "name": "Free" },
-        { "@type": "Offer", "price": "12", "priceCurrency": "USD", "name": "Pro" },
-        { "@type": "Offer", "price": "29", "priceCurrency": "USD", "name": "Team" }
+      "description": "Visual qualitative research analysis software with a spatial canvas. Code interview transcripts, link evidence to themes, real-time multi-coder collaboration with inter-rater reliability built in.",
+      "featureList": [
+        "Visual canvas coding",
+        "Theme nesting",
+        "Inline transcript coding",
+        "Real-time collaboration",
+        "Inter-rater reliability reports",
+        "IRB-compliant audit trail",
+        "Otter/Rev/Descript imports"
       ],
-      "description": "Visual workspace for qualitative research. Code, organize, and analyze interview transcripts with an intuitive drag-and-drop canvas interface.",
-      "url": "https://qualcanvas.com/"
+      "offers": {
+        "@type": "AggregateOffer",
+        "lowPrice": "0",
+        "highPrice": "99",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@id": "https://jmsdevlab.com/#organization"
+      },
+      "publisher": {
+        "@id": "https://jmsdevlab.com/#organization"
+      }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://jmsdevlab.com/#organization",
+      "name": "JMS Dev Lab",
+      "url": "https://jmsdevlab.com",
+      "logo": "https://jmsdevlab.com/logo.svg",
+      "sameAs": [
+        "https://www.f6s.com/jms-dev-lab",
+        "https://github.com/mooja77"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://qualcanvas.com/#website",
+      "url": "https://qualcanvas.com",
+      "name": "QualCanvas",
+      "description": "Visual qualitative research analysis software with a spatial canvas. Code interview transcripts, link evidence to themes, real-time multi-coder collaboration with inter-rater reliability built in.",
+      "publisher": {
+        "@id": "https://jmsdevlab.com/#organization"
+      }
     }
+  ]
+}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -119,7 +162,7 @@
       </ul>
 
       <h2>Built by JMS Dev Lab</h2>
-      <p>QualCanvas is one of several research and small-business tools from <a href="https://jmsdevlab.com">JMS Dev Lab</a>. We build practical software for niches the big platforms ignore. Other tools you might like: <a href="https://pitchsideapp.net">Pitch Side</a> (grassroots football coaching), <a href="https://jmsdevlab.com/apps">all apps</a>.</p>
+      <p>QualCanvas is one of several research and small-business tools from <a href="https://jmsdevlab.com">JMS Dev Lab</a>. We build practical software for niches the big platforms ignore. Other tools you might like: <a href="https://repairdeskapp.net">Repair Desk</a> (workshop CRM), <a href="https://staffhubapp.com">StaffHub</a> (team scheduling), <a href="https://pitchsideapp.net">Pitch Side</a> (grassroots football coaching), or see <a href="https://jmsdevlab.com/apps">all apps</a>.</p>
 
       <p class="footer-links">
         <a href="/signup">Sign up</a>
