@@ -25,22 +25,37 @@ const frontendUrls = splitUrls(
 const backendUrl = (readArg('backend-url') || process.env.SMOKE_BACKEND_URL || DEFAULT_BACKEND_URL).replace(/\/+$/, '');
 const accessCode = readArg('access-code') || process.env.SMOKE_ACCESS_CODE || DEFAULT_ACCESS_CODE;
 
-async function checkBackendReady() {
-  const response = await fetch(`${backendUrl}/ready`);
-  if (!response.ok) {
-    throw new Error(`Backend /ready returned ${response.status}`);
+async function checkBackendReady(maxAttempts = 6, baseDelayMs = 5000) {
+  let lastError;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) {
+      const delay = Math.min(baseDelayMs * 2 ** (attempt - 1), 60000) * (1 + Math.random() * 0.3);
+      console.error(`Backend not ready (attempt ${attempt}/${maxAttempts - 1}), retrying in ${Math.round(delay / 1000)}s...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    try {
+      const response = await fetch(`${backendUrl}/ready`);
+      if (!response.ok) {
+        lastError = new Error(`Backend /ready returned ${response.status}`);
+        continue;
+      }
+
+      const body = await response.json();
+      const failedChecks = Object.entries(body.checks || {})
+        .filter(([, value]) => value !== 'ok')
+        .map(([key, value]) => `${key}:${value}`);
+
+      if (failedChecks.length) {
+        lastError = new Error(`Backend /ready failed checks: ${failedChecks.join(', ')}`);
+        continue;
+      }
+
+      return body;
+    } catch (err) {
+      lastError = err;
+    }
   }
-
-  const body = await response.json();
-  const failedChecks = Object.entries(body.checks || {})
-    .filter(([, value]) => value !== 'ok')
-    .map(([key, value]) => `${key}:${value}`);
-
-  if (failedChecks.length) {
-    throw new Error(`Backend /ready failed checks: ${failedChecks.join(', ')}`);
-  }
-
-  return body;
+  throw lastError;
 }
 
 async function smokeFrontend(browser, frontendUrl) {
