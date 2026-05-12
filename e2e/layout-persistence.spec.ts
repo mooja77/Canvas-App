@@ -132,7 +132,10 @@ test.describe('Layout Persistence', () => {
           content: `This is transcript ${i + 1} with enough content to test layout persistence. It contains several sentences about research methodology and qualitative analysis techniques.`,
         },
       });
-      transcriptIds.push((await res.json()).data.id);
+      expect(res.ok(), `Transcript ${i + 1} create failed: ${res.status()} ${await res.text()}`).toBeTruthy();
+      const id = (await res.json())?.data?.id;
+      expect(id, `Transcript ${i + 1} response missing data.id`).toBeTruthy();
+      transcriptIds.push(id);
     }
 
     // Create 5 codes
@@ -142,12 +145,15 @@ test.describe('Layout Persistence', () => {
         headers,
         data: { text: `Code ${i + 1}`, color: colors[i] },
       });
-      codeIds.push((await res.json()).data.id);
+      expect(res.ok(), `Code ${i + 1} create failed: ${res.status()} ${await res.text()}`).toBeTruthy();
+      const id = (await res.json())?.data?.id;
+      expect(id, `Code ${i + 1} response missing data.id`).toBeTruthy();
+      codeIds.push(id);
     }
 
     // Create 5 codings (connects transcripts to codes with edges)
     for (let i = 0; i < 5; i++) {
-      await page.request.post(`${BASE}/canvas/${canvasId}/codings`, {
+      const res = await page.request.post(`${BASE}/canvas/${canvasId}/codings`, {
         headers,
         data: {
           transcriptId: transcriptIds[i % 3],
@@ -157,6 +163,7 @@ test.describe('Layout Persistence', () => {
           codedText: `This is transcript ${(i % 3) + 1}`,
         },
       });
+      expect(res.ok(), `Coding ${i + 1} create failed: ${res.status()} ${await res.text()}`).toBeTruthy();
     }
 
     await page.close();
@@ -327,21 +334,32 @@ test.describe('Layout Persistence', () => {
 
   test('6 - delete node, reload, removed', async ({ page }) => {
     await openCanvasById(page, canvasId);
+    const headers = await apiHeaders(page);
 
-    const nodesBefore = await page.locator('.react-flow__node').count();
+    // Capture API truth (codes count) before delete — DOM-counting via
+    // .react-flow__node is fragile because earlier tests in this describe
+    // may have left the React Flow viewport scrolled/transformed in a way
+    // that hides some nodes from layout, even though they exist in the
+    // store. Trust the API.
+    const beforeRes = await page.request.get(`${BASE}/canvas/${canvasId}`, { headers });
+    expect(beforeRes.ok(), `Canvas detail before delete: ${beforeRes.status()}`).toBeTruthy();
+    const beforeQuestions = (await beforeRes.json()).data.questions.length;
 
     // Delete last code node via API (cleaner than right-click menu)
-    const headers = await apiHeaders(page);
     const lastCodeId = codeIds[codeIds.length - 1];
-    await page.request.delete(`${BASE}/canvas/${canvasId}/questions/${lastCodeId}`, { headers });
+    expect(lastCodeId, 'lastCodeId must be defined from beforeAll seed').toBeTruthy();
+    const deleteRes = await page.request.delete(`${BASE}/canvas/${canvasId}/questions/${lastCodeId}`, { headers });
+    expect(deleteRes.ok(), `DELETE /questions/${lastCodeId}: ${deleteRes.status()}`).toBeTruthy();
 
     // Reload
     await page.reload();
     await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
     await page.waitForLoadState('networkidle');
 
-    const nodesAfter = await page.locator('.react-flow__node').count();
-    expect(nodesAfter).toBeLessThan(nodesBefore);
+    const afterRes = await page.request.get(`${BASE}/canvas/${canvasId}`, { headers });
+    expect(afterRes.ok(), `Canvas detail after delete: ${afterRes.status()}`).toBeTruthy();
+    const afterQuestions = (await afterRes.json()).data.questions.length;
+    expect(afterQuestions, 'After deleting one code, questions count must drop by 1').toBe(beforeQuestions - 1);
   });
 
   test('7 - viewport bookmark save and recall', async ({ page }) => {

@@ -32,6 +32,7 @@ jobs:
           VITE_STRIPE_PRO_ANNUAL_PRICE_ID: ${{ secrets.VITE_STRIPE_PRO_ANNUAL_PRICE_ID }}
           VITE_STRIPE_TEAM_MONTHLY_PRICE_ID: ${{ secrets.VITE_STRIPE_TEAM_MONTHLY_PRICE_ID }}
           VITE_STRIPE_TEAM_ANNUAL_PRICE_ID: ${{ secrets.VITE_STRIPE_TEAM_ANNUAL_PRICE_ID }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
       - name: Publish to Cloudflare Pages
         run: npx wrangler@4 pages deploy apps/frontend/dist --project-name=qualcanvas --branch=main
         env:
