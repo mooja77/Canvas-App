@@ -31,7 +31,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
     <Toaster
-      position="bottom-right"
+      position="top-right"
       toastOptions={{
         className: 'dark:bg-gray-800 dark:text-white',
         style: { borderRadius: '10px', padding: '12px 16px' },

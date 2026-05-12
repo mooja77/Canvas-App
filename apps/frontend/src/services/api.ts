@@ -68,11 +68,20 @@ canvasClient.interceptors.response.use(
 
 let isRedirecting = false;
 
+// A 401 from a login/signup attempt means "bad credentials", not "your session
+// ended" — let the caller's catch block toast a relevant message. Without this
+// guard a user with stale localStorage who fails fresh login gets redirected
+// to /login?expired=true, which is confusing and looks like a bug.
+const AUTH_ATTEMPT_URL =
+  /\/auth(\/(email-login|google|signup|register|access-code|link-account|verify-email|reset-password|forgot-password|logout|resend-verification))?$/;
+
 // 401 interceptor — expired JWT redirect
 canvasClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && error.response?.data?.code !== 'PLAN_LIMIT_EXCEEDED') {
+    const url: string = error.config?.url || '';
+    const isAuthAttempt = AUTH_ATTEMPT_URL.test(url);
+    if (error.response?.status === 401 && error.response?.data?.code !== 'PLAN_LIMIT_EXCEEDED' && !isAuthAttempt) {
       if (!isRedirecting && useAuthStore.getState().authenticated) {
         isRedirecting = true;
         useAuthStore.getState().logout();
