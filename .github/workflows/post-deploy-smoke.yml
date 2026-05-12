@@ -6,7 +6,7 @@ on:
       frontend_urls:
         description: 'Comma-separated frontend URLs to smoke test'
         required: false
-        default: 'https://qualcanvas.pages.dev'
+        default: 'https://qualcanvas.com'
       backend_url:
         description: 'Backend base URL'
         required: false
@@ -34,5 +34,5 @@ jobs:
       - name: Smoke live deployment
         run: npm run smoke:postdeploy
         env:
-          SMOKE_FRONTEND_URLS: ${{ inputs.frontend_urls || 'https://qualcanvas.pages.dev' }}
+          SMOKE_FRONTEND_URLS: ${{ inputs.frontend_urls || 'https://qualcanvas.com' }}
           SMOKE_BACKEND_URL: ${{ inputs.backend_url || 'https://canvas-app-production.up.railway.app' }}

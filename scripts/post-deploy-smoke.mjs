@@ -1,6 +1,10 @@
 import { chromium, expect } from '@playwright/test';
 
-const DEFAULT_FRONTEND_URL = 'https://qualcanvas.pages.dev';
+// Use the canonical custom domain so Google OAuth (origin-whitelisted to
+// qualcanvas.com only) doesn't 403 in the smoke. The Cloudflare default URL
+// https://qualcanvas.pages.dev serves the same bundle but isn't in the GCP
+// authorized JS origins — users never visit it either.
+const DEFAULT_FRONTEND_URL = 'https://qualcanvas.com';
 const DEFAULT_BACKEND_URL = 'https://canvas-app-production.up.railway.app';
 const DEFAULT_ACCESS_CODE = 'CANVAS-DEMO2025';
 const IGNORED_BROWSER_EVENT = /google|googlesyndication|doubleclick|analytics|clarity|sentry/i;
