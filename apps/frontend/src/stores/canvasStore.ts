@@ -1,4 +1,10 @@
-import { create } from 'zustand';
+// React Flow perf fix #2: switch to createWithEqualityFn(..., shallow) so
+// multi-field selectors don't return a fresh object reference on every
+// store mutation, defeating React.memo on consumers. Individual-field
+// selectors are unaffected (primitive equality already works). The store
+// definition body itself is unchanged.
+import { createWithEqualityFn } from 'zustand/traditional';
+import { shallow } from 'zustand/shallow';
 import type {
   CodingCanvas,
   CanvasDetail,
@@ -154,500 +160,473 @@ interface CanvasState {
   toggleCodingStripes: () => void;
 }
 
-export const useCanvasStore = create<CanvasState>()((set, get) => ({
-  canvases: [],
-  loading: false,
-  error: null,
-  trashedCanvases: [],
-  trashLoading: false,
-  activeCanvasId: null,
-  activeCanvas: null,
-  pendingSelection: null,
-  selectedQuestionId: null,
-  showCodingStripes: false,
-  savingLayout: false,
-  runningNodeId: null,
+export const useCanvasStore = createWithEqualityFn<CanvasState>(
+  (set, get) => ({
+    canvases: [],
+    loading: false,
+    error: null,
+    trashedCanvases: [],
+    trashLoading: false,
+    activeCanvasId: null,
+    activeCanvas: null,
+    pendingSelection: null,
+    selectedQuestionId: null,
+    showCodingStripes: false,
+    savingLayout: false,
+    runningNodeId: null,
 
-  fetchCanvases: async () => {
-    set({ loading: true, error: null });
-    try {
-      const res = await canvasApi.getCanvases();
-      set({ canvases: res.data.data, loading: false });
-    } catch {
-      set({ error: 'Failed to load canvases', loading: false });
-    }
-  },
-
-  createCanvas: async (name, description) => {
-    const res = await canvasApi.createCanvas({ name, description });
-    const canvas = res.data.data;
-    set((s) => ({ canvases: [canvas, ...s.canvases] }));
-    return canvas;
-  },
-
-  deleteCanvas: async (id) => {
-    await canvasApi.deleteCanvas(id);
-    set((s) => ({
-      canvases: s.canvases.filter((c) => c.id !== id),
-      activeCanvasId: s.activeCanvasId === id ? null : s.activeCanvasId,
-      activeCanvas: s.activeCanvasId === id ? null : s.activeCanvas,
-    }));
-  },
-
-  openCanvas: async (id) => {
-    set({ loading: true, error: null });
-    try {
-      const res = await canvasApi.getCanvas(id);
-      set({ activeCanvasId: id, activeCanvas: res.data.data, loading: false, pendingSelection: null });
-      // Cache for offline use
-      cacheCanvas(res.data.data).catch(() => {});
-    } catch {
-      // Try offline fallback
-      const cached = await getCachedCanvas(id).catch(() => null);
-      if (cached) {
-        set({ activeCanvasId: id, activeCanvas: cached, loading: false, pendingSelection: null });
-        toast('Loaded from offline cache', { icon: '\u{1F4F1}' });
-      } else {
-        set({ error: 'Failed to open canvas', loading: false });
-        toast.error('Failed to load canvas');
-      }
-    }
-  },
-
-  closeCanvas: () => {
-    set({ activeCanvasId: null, activeCanvas: null, pendingSelection: null, selectedQuestionId: null });
-  },
-
-  refreshCanvas: async () => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    try {
-      const res = await canvasApi.getCanvas(activeCanvasId);
-      set({ activeCanvas: res.data.data });
-    } catch (err) {
-      console.error('[canvasStore] refreshCanvas failed:', err);
-      // Don't clear activeCanvas — keep stale data rather than blank screen
-    }
-  },
-
-  fetchTrash: async () => {
-    set({ trashLoading: true });
-    try {
-      const res = await canvasApi.getTrash();
-      set({ trashedCanvases: res.data.data, trashLoading: false });
-    } catch {
-      set({ trashLoading: false });
-    }
-  },
-
-  restoreCanvas: async (id) => {
-    await canvasApi.restoreCanvas(id);
-    set((s) => ({
-      trashedCanvases: s.trashedCanvases.filter((c) => c.id !== id),
-    }));
-    // Refresh the main list so it shows up
-    get().fetchCanvases();
-  },
-
-  permanentDeleteCanvas: async (id) => {
-    await canvasApi.permanentDeleteCanvas(id);
-    set((s) => ({
-      trashedCanvases: s.trashedCanvases.filter((c) => c.id !== id),
-    }));
-  },
-
-  addTranscript: async (title, content) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) throw new Error('No canvas open');
-    const res = await canvasApi.addTranscript(activeCanvasId, { title, content });
-    const transcript = res.data.data;
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, transcripts: [...s.activeCanvas.transcripts, transcript] }
-        : null,
-    }));
-    emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'transcript', id: transcript.id } });
-    return transcript;
-  },
-
-  updateTranscript: async (tid, data) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    const res = await canvasApi.updateTranscript(activeCanvasId, tid, data);
-    const updated = res.data.data;
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? {
-            ...s.activeCanvas,
-            transcripts: s.activeCanvas.transcripts.map((t: CanvasTranscript) =>
-              t.id === tid ? { ...t, ...updated } : t,
-            ),
-          }
-        : null,
-    }));
-    emitSocketEvent('canvas:transcript-updated', { canvasId: activeCanvasId, data: { transcriptId: tid } });
-  },
-
-  deleteTranscript: async (tid) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    await canvasApi.deleteTranscript(activeCanvasId, tid);
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? {
-            ...s.activeCanvas,
-            transcripts: s.activeCanvas.transcripts.filter((t: CanvasTranscript) => t.id !== tid),
-            codings: s.activeCanvas.codings.filter((c: CanvasTextCoding) => c.transcriptId !== tid),
-          }
-        : null,
-    }));
-    emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId: tid, nodeType: 'transcript' } });
-  },
-
-  addQuestion: async (text, color) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) throw new Error('No canvas open');
-    const res = await canvasApi.addQuestion(activeCanvasId, { text, color });
-    const question = res.data.data;
-    set((s) => ({
-      activeCanvas: s.activeCanvas ? { ...s.activeCanvas, questions: [...s.activeCanvas.questions, question] } : null,
-    }));
-    emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'question', id: question.id } });
-    return question;
-  },
-
-  updateQuestion: async (qid, data) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    const res = await canvasApi.updateQuestion(activeCanvasId, qid, data);
-    const updated = res.data.data;
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? {
-            ...s.activeCanvas,
-            questions: s.activeCanvas.questions.map((q: CanvasQuestion) => (q.id === qid ? { ...q, ...updated } : q)),
-          }
-        : null,
-    }));
-  },
-
-  deleteQuestion: async (qid) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    await canvasApi.deleteQuestion(activeCanvasId, qid);
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? {
-            ...s.activeCanvas,
-            questions: s.activeCanvas.questions
-              .filter((q: CanvasQuestion) => q.id !== qid)
-              .map((q: CanvasQuestion) => (q.parentQuestionId === qid ? { ...q, parentQuestionId: null } : q)),
-            codings: s.activeCanvas.codings.filter((c: CanvasTextCoding) => c.questionId !== qid),
-          }
-        : null,
-    }));
-    emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId: qid, nodeType: 'question' } });
-  },
-
-  addMemo: async (content, title, color) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) throw new Error('No canvas open');
-    const res = await canvasApi.addMemo(activeCanvasId, { content, title, color });
-    const memo = res.data.data;
-    set((s) => ({
-      activeCanvas: s.activeCanvas ? { ...s.activeCanvas, memos: [...s.activeCanvas.memos, memo] } : null,
-    }));
-    emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'memo', id: memo.id } });
-    return memo;
-  },
-
-  updateMemo: async (mid, data) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    const res = await canvasApi.updateMemo(activeCanvasId, mid, data);
-    const updated = res.data.data;
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? {
-            ...s.activeCanvas,
-            memos: s.activeCanvas.memos.map((m: CanvasMemo) => (m.id === mid ? { ...m, ...updated } : m)),
-          }
-        : null,
-    }));
-  },
-
-  deleteMemo: async (mid) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    await canvasApi.deleteMemo(activeCanvasId, mid);
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, memos: s.activeCanvas.memos.filter((m: CanvasMemo) => m.id !== mid) }
-        : null,
-    }));
-    emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId: mid, nodeType: 'memo' } });
-  },
-
-  setPendingSelection: (selection) => set({ pendingSelection: selection }),
-
-  createCoding: async (transcriptId, questionId, startOffset, endOffset, codedText) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) throw new Error('No canvas open');
-    try {
-      const res = await canvasApi.createCoding(activeCanvasId, {
-        transcriptId,
-        questionId,
-        startOffset,
-        endOffset,
-        codedText,
-      });
-      const coding = res.data.data;
-      set((s) => ({
-        activeCanvas: s.activeCanvas ? { ...s.activeCanvas, codings: [...s.activeCanvas.codings, coding] } : null,
-        pendingSelection: null,
-      }));
-      emitSocketEvent('canvas:coding-added', {
-        canvasId: activeCanvasId,
-        data: { id: coding.id, transcriptId, questionId },
-      });
-
-      // Sprint F: first-value moment. localStorage flag is per-browser, which
-      // over-fires for users on a new device — accepted trade-off vs the
-      // alternative (server round-trip on every coding to check uniqueness).
+    fetchCanvases: async () => {
+      set({ loading: true, error: null });
       try {
-        if (!localStorage.getItem(FIRST_CODING_FLAG)) {
-          localStorage.setItem(FIRST_CODING_FLAG, new Date().toISOString());
-          trackEvent('first_excerpt_coded', {
-            canvas_id: activeCanvasId,
-            code_text: codedText.slice(0, 80),
-          });
-          window.dispatchEvent(new CustomEvent('qualcanvas:first-excerpt-coded', { detail: { coding } }));
-        }
+        const res = await canvasApi.getCanvases();
+        set({ canvases: res.data.data, loading: false });
       } catch {
-        // localStorage may be unavailable (e.g. Safari private mode); ignore.
+        set({ error: 'Failed to load canvases', loading: false });
       }
+    },
 
-      return coding;
-    } catch (err) {
-      console.error('[canvasStore] createCoding failed:', err);
-      set({ pendingSelection: null }); // Clear even on error
-      throw err;
-    }
-  },
+    createCanvas: async (name, description) => {
+      const res = await canvasApi.createCanvas({ name, description });
+      const canvas = res.data.data;
+      set((s) => ({ canvases: [canvas, ...s.canvases] }));
+      return canvas;
+    },
 
-  deleteCoding: async (codingId) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    await canvasApi.deleteCoding(activeCanvasId, codingId);
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, codings: s.activeCanvas.codings.filter((c: CanvasTextCoding) => c.id !== codingId) }
-        : null,
-    }));
-    emitSocketEvent('canvas:coding-deleted', { canvasId: activeCanvasId, data: { codingId } });
-  },
+    deleteCanvas: async (id) => {
+      await canvasApi.deleteCanvas(id);
+      set((s) => ({
+        canvases: s.canvases.filter((c) => c.id !== id),
+        activeCanvasId: s.activeCanvasId === id ? null : s.activeCanvasId,
+        activeCanvas: s.activeCanvasId === id ? null : s.activeCanvas,
+      }));
+    },
 
-  updateCodingAnnotation: async (codingId, annotation) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    const res = await canvasApi.updateCoding(activeCanvasId, codingId, { annotation: annotation ?? undefined });
-    const updated = res.data.data;
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? {
-            ...s.activeCanvas,
-            codings: s.activeCanvas.codings.map((c: CanvasTextCoding) =>
-              c.id === codingId ? { ...c, ...updated } : c,
-            ),
-          }
-        : null,
-    }));
-  },
+    openCanvas: async (id) => {
+      set({ loading: true, error: null });
+      try {
+        const res = await canvasApi.getCanvas(id);
+        set({ activeCanvasId: id, activeCanvas: res.data.data, loading: false, pendingSelection: null });
+        // Cache for offline use
+        cacheCanvas(res.data.data).catch(() => {});
+      } catch {
+        // Try offline fallback
+        const cached = await getCachedCanvas(id).catch(() => null);
+        if (cached) {
+          set({ activeCanvasId: id, activeCanvas: cached, loading: false, pendingSelection: null });
+          toast('Loaded from offline cache', { icon: '\u{1F4F1}' });
+        } else {
+          set({ error: 'Failed to open canvas', loading: false });
+          toast.error('Failed to load canvas');
+        }
+      }
+    },
 
-  reassignCoding: async (codingId, newQuestionId) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    await canvasApi.reassignCoding(activeCanvasId, codingId, newQuestionId);
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? {
-            ...s.activeCanvas,
-            codings: s.activeCanvas.codings.map((c: CanvasTextCoding) =>
-              c.id === codingId ? { ...c, questionId: newQuestionId } : c,
-            ),
-          }
-        : null,
-    }));
-  },
+    closeCanvas: () => {
+      set({ activeCanvasId: null, activeCanvas: null, pendingSelection: null, selectedQuestionId: null });
+    },
 
-  saveLayout: async (positions) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    set({ savingLayout: true });
-    try {
-      await canvasApi.saveLayout(activeCanvasId, {
-        positions: positions.map((p) => ({
-          nodeId: p.nodeId,
-          nodeType: p.nodeType,
-          x: p.x,
-          y: p.y,
-          width: p.width,
-          height: p.height,
-          collapsed: p.collapsed,
-        })),
+    refreshCanvas: async () => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      try {
+        const res = await canvasApi.getCanvas(activeCanvasId);
+        set({ activeCanvas: res.data.data });
+      } catch (err) {
+        console.error('[canvasStore] refreshCanvas failed:', err);
+        // Don't clear activeCanvas — keep stale data rather than blank screen
+      }
+    },
+
+    fetchTrash: async () => {
+      set({ trashLoading: true });
+      try {
+        const res = await canvasApi.getTrash();
+        set({ trashedCanvases: res.data.data, trashLoading: false });
+      } catch {
+        set({ trashLoading: false });
+      }
+    },
+
+    restoreCanvas: async (id) => {
+      await canvasApi.restoreCanvas(id);
+      set((s) => ({
+        trashedCanvases: s.trashedCanvases.filter((c) => c.id !== id),
+      }));
+      // Refresh the main list so it shows up
+      get().fetchCanvases();
+    },
+
+    permanentDeleteCanvas: async (id) => {
+      await canvasApi.permanentDeleteCanvas(id);
+      set((s) => ({
+        trashedCanvases: s.trashedCanvases.filter((c) => c.id !== id),
+      }));
+    },
+
+    addTranscript: async (title, content) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) throw new Error('No canvas open');
+      const res = await canvasApi.addTranscript(activeCanvasId, { title, content });
+      const transcript = res.data.data;
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? { ...s.activeCanvas, transcripts: [...s.activeCanvas.transcripts, transcript] }
+          : null,
+      }));
+      emitSocketEvent('canvas:node-added', {
+        canvasId: activeCanvasId,
+        data: { type: 'transcript', id: transcript.id },
       });
-    } catch {
-      toast.error('Layout save failed');
-    } finally {
-      set({ savingLayout: false });
-    }
-  },
+      return transcript;
+    },
 
-  setSelectedQuestionId: (id) => set({ selectedQuestionId: id }),
+    updateTranscript: async (tid, data) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      const res = await canvasApi.updateTranscript(activeCanvasId, tid, data);
+      const updated = res.data.data;
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? {
+              ...s.activeCanvas,
+              transcripts: s.activeCanvas.transcripts.map((t: CanvasTranscript) =>
+                t.id === tid ? { ...t, ...updated } : t,
+              ),
+            }
+          : null,
+      }));
+      emitSocketEvent('canvas:transcript-updated', { canvasId: activeCanvasId, data: { transcriptId: tid } });
+    },
 
-  // ─── Cases ───
+    deleteTranscript: async (tid) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      await canvasApi.deleteTranscript(activeCanvasId, tid);
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? {
+              ...s.activeCanvas,
+              transcripts: s.activeCanvas.transcripts.filter((t: CanvasTranscript) => t.id !== tid),
+              codings: s.activeCanvas.codings.filter((c: CanvasTextCoding) => c.transcriptId !== tid),
+            }
+          : null,
+      }));
+      emitSocketEvent('canvas:node-deleted', {
+        canvasId: activeCanvasId,
+        data: { nodeId: tid, nodeType: 'transcript' },
+      });
+    },
 
-  addCase: async (name, attributes) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) throw new Error('No canvas open');
-    const res = await canvasApi.createCase(activeCanvasId, { name, attributes });
-    const caseRecord = res.data.data;
-    set((s) => ({
-      activeCanvas: s.activeCanvas ? { ...s.activeCanvas, cases: [...s.activeCanvas.cases, caseRecord] } : null,
-    }));
-    emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'case', id: caseRecord.id } });
-    return caseRecord;
-  },
+    addQuestion: async (text, color) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) throw new Error('No canvas open');
+      const res = await canvasApi.addQuestion(activeCanvasId, { text, color });
+      const question = res.data.data;
+      set((s) => ({
+        activeCanvas: s.activeCanvas ? { ...s.activeCanvas, questions: [...s.activeCanvas.questions, question] } : null,
+      }));
+      emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'question', id: question.id } });
+      return question;
+    },
 
-  updateCase: async (caseId, data) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    const res = await canvasApi.updateCase(activeCanvasId, caseId, data);
-    const updated = res.data.data;
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? {
-            ...s.activeCanvas,
-            cases: s.activeCanvas.cases.map((c: CanvasCase) => (c.id === caseId ? { ...c, ...updated } : c)),
+    updateQuestion: async (qid, data) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      const res = await canvasApi.updateQuestion(activeCanvasId, qid, data);
+      const updated = res.data.data;
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? {
+              ...s.activeCanvas,
+              questions: s.activeCanvas.questions.map((q: CanvasQuestion) => (q.id === qid ? { ...q, ...updated } : q)),
+            }
+          : null,
+      }));
+    },
+
+    deleteQuestion: async (qid) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      await canvasApi.deleteQuestion(activeCanvasId, qid);
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? {
+              ...s.activeCanvas,
+              questions: s.activeCanvas.questions
+                .filter((q: CanvasQuestion) => q.id !== qid)
+                .map((q: CanvasQuestion) => (q.parentQuestionId === qid ? { ...q, parentQuestionId: null } : q)),
+              codings: s.activeCanvas.codings.filter((c: CanvasTextCoding) => c.questionId !== qid),
+            }
+          : null,
+      }));
+      emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId: qid, nodeType: 'question' } });
+    },
+
+    addMemo: async (content, title, color) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) throw new Error('No canvas open');
+      const res = await canvasApi.addMemo(activeCanvasId, { content, title, color });
+      const memo = res.data.data;
+      set((s) => ({
+        activeCanvas: s.activeCanvas ? { ...s.activeCanvas, memos: [...s.activeCanvas.memos, memo] } : null,
+      }));
+      emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'memo', id: memo.id } });
+      return memo;
+    },
+
+    updateMemo: async (mid, data) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      const res = await canvasApi.updateMemo(activeCanvasId, mid, data);
+      const updated = res.data.data;
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? {
+              ...s.activeCanvas,
+              memos: s.activeCanvas.memos.map((m: CanvasMemo) => (m.id === mid ? { ...m, ...updated } : m)),
+            }
+          : null,
+      }));
+    },
+
+    deleteMemo: async (mid) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      await canvasApi.deleteMemo(activeCanvasId, mid);
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? { ...s.activeCanvas, memos: s.activeCanvas.memos.filter((m: CanvasMemo) => m.id !== mid) }
+          : null,
+      }));
+      emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId: mid, nodeType: 'memo' } });
+    },
+
+    setPendingSelection: (selection) => set({ pendingSelection: selection }),
+
+    createCoding: async (transcriptId, questionId, startOffset, endOffset, codedText) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) throw new Error('No canvas open');
+      try {
+        const res = await canvasApi.createCoding(activeCanvasId, {
+          transcriptId,
+          questionId,
+          startOffset,
+          endOffset,
+          codedText,
+        });
+        const coding = res.data.data;
+        set((s) => ({
+          activeCanvas: s.activeCanvas ? { ...s.activeCanvas, codings: [...s.activeCanvas.codings, coding] } : null,
+          pendingSelection: null,
+        }));
+        emitSocketEvent('canvas:coding-added', {
+          canvasId: activeCanvasId,
+          data: { id: coding.id, transcriptId, questionId },
+        });
+
+        // Sprint F: first-value moment. localStorage flag is per-browser, which
+        // over-fires for users on a new device — accepted trade-off vs the
+        // alternative (server round-trip on every coding to check uniqueness).
+        try {
+          if (!localStorage.getItem(FIRST_CODING_FLAG)) {
+            localStorage.setItem(FIRST_CODING_FLAG, new Date().toISOString());
+            trackEvent('first_excerpt_coded', {
+              canvas_id: activeCanvasId,
+              code_text: codedText.slice(0, 80),
+            });
+            window.dispatchEvent(new CustomEvent('qualcanvas:first-excerpt-coded', { detail: { coding } }));
           }
-        : null,
-    }));
-  },
+        } catch {
+          // localStorage may be unavailable (e.g. Safari private mode); ignore.
+        }
 
-  deleteCase: async (caseId) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    await canvasApi.deleteCase(activeCanvasId, caseId);
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? {
-            ...s.activeCanvas,
-            cases: s.activeCanvas.cases.filter((c: CanvasCase) => c.id !== caseId),
-            transcripts: s.activeCanvas.transcripts.map((t: CanvasTranscript) =>
-              t.caseId === caseId ? { ...t, caseId: null } : t,
-            ),
-            relations: s.activeCanvas.relations.filter(
-              (r: CanvasRelation) =>
-                !(r.fromType === 'case' && r.fromId === caseId) && !(r.toType === 'case' && r.toId === caseId),
-            ),
-          }
-        : null,
-    }));
-    emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId: caseId, nodeType: 'case' } });
-  },
+        return coding;
+      } catch (err) {
+        console.error('[canvasStore] createCoding failed:', err);
+        set({ pendingSelection: null }); // Clear even on error
+        throw err;
+      }
+    },
 
-  // ─── Relations ───
+    deleteCoding: async (codingId) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      await canvasApi.deleteCoding(activeCanvasId, codingId);
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? { ...s.activeCanvas, codings: s.activeCanvas.codings.filter((c: CanvasTextCoding) => c.id !== codingId) }
+          : null,
+      }));
+      emitSocketEvent('canvas:coding-deleted', { canvasId: activeCanvasId, data: { codingId } });
+    },
 
-  addRelation: async (fromType, fromId, toType, toId, label) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) throw new Error('No canvas open');
-    const res = await canvasApi.createRelation(activeCanvasId, { fromType, fromId, toType, toId, label });
-    const relation = res.data.data;
-    set((s) => ({
-      activeCanvas: s.activeCanvas ? { ...s.activeCanvas, relations: [...s.activeCanvas.relations, relation] } : null,
-    }));
-    return relation;
-  },
+    updateCodingAnnotation: async (codingId, annotation) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      const res = await canvasApi.updateCoding(activeCanvasId, codingId, { annotation: annotation ?? undefined });
+      const updated = res.data.data;
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? {
+              ...s.activeCanvas,
+              codings: s.activeCanvas.codings.map((c: CanvasTextCoding) =>
+                c.id === codingId ? { ...c, ...updated } : c,
+              ),
+            }
+          : null,
+      }));
+    },
 
-  updateRelation: async (relId, label) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    await canvasApi.updateRelation(activeCanvasId, relId, { label });
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? {
-            ...s.activeCanvas,
-            relations: s.activeCanvas.relations.map((r: CanvasRelation) => (r.id === relId ? { ...r, label } : r)),
-          }
-        : null,
-    }));
-  },
+    reassignCoding: async (codingId, newQuestionId) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      await canvasApi.reassignCoding(activeCanvasId, codingId, newQuestionId);
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? {
+              ...s.activeCanvas,
+              codings: s.activeCanvas.codings.map((c: CanvasTextCoding) =>
+                c.id === codingId ? { ...c, questionId: newQuestionId } : c,
+              ),
+            }
+          : null,
+      }));
+    },
 
-  deleteRelation: async (relId) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    await canvasApi.deleteRelation(activeCanvasId, relId);
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, relations: s.activeCanvas.relations.filter((r: CanvasRelation) => r.id !== relId) }
-        : null,
-    }));
-  },
+    saveLayout: async (positions) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      set({ savingLayout: true });
+      try {
+        await canvasApi.saveLayout(activeCanvasId, {
+          positions: positions.map((p) => ({
+            nodeId: p.nodeId,
+            nodeType: p.nodeType,
+            x: p.x,
+            y: p.y,
+            width: p.width,
+            height: p.height,
+            collapsed: p.collapsed,
+          })),
+        });
+      } catch {
+        toast.error('Layout save failed');
+      } finally {
+        set({ savingLayout: false });
+      }
+    },
 
-  // ─── Computed Nodes ───
+    setSelectedQuestionId: (id) => set({ selectedQuestionId: id }),
 
-  addComputedNode: async (nodeType, label, config) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) throw new Error('No canvas open');
-    const res = await canvasApi.createComputedNode(activeCanvasId, { nodeType, label, config });
-    const node = res.data.data;
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, computedNodes: [...s.activeCanvas.computedNodes, node] }
-        : null,
-    }));
-    emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'computed', id: node.id } });
-    return node;
-  },
+    // ─── Cases ───
 
-  updateComputedNode: async (nodeId, data) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    const res = await canvasApi.updateComputedNode(activeCanvasId, nodeId, data);
-    const updated = res.data.data;
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? {
-            ...s.activeCanvas,
-            computedNodes: s.activeCanvas.computedNodes.map((n: CanvasComputedNode) =>
-              n.id === nodeId ? { ...n, ...updated } : n,
-            ),
-          }
-        : null,
-    }));
-  },
+    addCase: async (name, attributes) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) throw new Error('No canvas open');
+      const res = await canvasApi.createCase(activeCanvasId, { name, attributes });
+      const caseRecord = res.data.data;
+      set((s) => ({
+        activeCanvas: s.activeCanvas ? { ...s.activeCanvas, cases: [...s.activeCanvas.cases, caseRecord] } : null,
+      }));
+      emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'case', id: caseRecord.id } });
+      return caseRecord;
+    },
 
-  deleteComputedNode: async (nodeId) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) return;
-    await canvasApi.deleteComputedNode(activeCanvasId, nodeId);
-    set((s) => ({
-      activeCanvas: s.activeCanvas
-        ? {
-            ...s.activeCanvas,
-            computedNodes: s.activeCanvas.computedNodes.filter((n: CanvasComputedNode) => n.id !== nodeId),
-          }
-        : null,
-    }));
-    emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId, nodeType: 'computed' } });
-  },
+    updateCase: async (caseId, data) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      const res = await canvasApi.updateCase(activeCanvasId, caseId, data);
+      const updated = res.data.data;
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? {
+              ...s.activeCanvas,
+              cases: s.activeCanvas.cases.map((c: CanvasCase) => (c.id === caseId ? { ...c, ...updated } : c)),
+            }
+          : null,
+      }));
+    },
 
-  runComputedNode: async (nodeId) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) throw new Error('No canvas open');
-    set({ runningNodeId: nodeId });
-    try {
-      const res = await canvasApi.runComputedNode(activeCanvasId, nodeId);
+    deleteCase: async (caseId) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      await canvasApi.deleteCase(activeCanvasId, caseId);
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? {
+              ...s.activeCanvas,
+              cases: s.activeCanvas.cases.filter((c: CanvasCase) => c.id !== caseId),
+              transcripts: s.activeCanvas.transcripts.map((t: CanvasTranscript) =>
+                t.caseId === caseId ? { ...t, caseId: null } : t,
+              ),
+              relations: s.activeCanvas.relations.filter(
+                (r: CanvasRelation) =>
+                  !(r.fromType === 'case' && r.fromId === caseId) && !(r.toType === 'case' && r.toId === caseId),
+              ),
+            }
+          : null,
+      }));
+      emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId: caseId, nodeType: 'case' } });
+    },
+
+    // ─── Relations ───
+
+    addRelation: async (fromType, fromId, toType, toId, label) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) throw new Error('No canvas open');
+      const res = await canvasApi.createRelation(activeCanvasId, { fromType, fromId, toType, toId, label });
+      const relation = res.data.data;
+      set((s) => ({
+        activeCanvas: s.activeCanvas ? { ...s.activeCanvas, relations: [...s.activeCanvas.relations, relation] } : null,
+      }));
+      return relation;
+    },
+
+    updateRelation: async (relId, label) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      await canvasApi.updateRelation(activeCanvasId, relId, { label });
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? {
+              ...s.activeCanvas,
+              relations: s.activeCanvas.relations.map((r: CanvasRelation) => (r.id === relId ? { ...r, label } : r)),
+            }
+          : null,
+      }));
+    },
+
+    deleteRelation: async (relId) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      await canvasApi.deleteRelation(activeCanvasId, relId);
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? { ...s.activeCanvas, relations: s.activeCanvas.relations.filter((r: CanvasRelation) => r.id !== relId) }
+          : null,
+      }));
+    },
+
+    // ─── Computed Nodes ───
+
+    addComputedNode: async (nodeType, label, config) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) throw new Error('No canvas open');
+      const res = await canvasApi.createComputedNode(activeCanvasId, { nodeType, label, config });
+      const node = res.data.data;
+      set((s) => ({
+        activeCanvas: s.activeCanvas
+          ? { ...s.activeCanvas, computedNodes: [...s.activeCanvas.computedNodes, node] }
+          : null,
+      }));
+      emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'computed', id: node.id } });
+      return node;
+    },
+
+    updateComputedNode: async (nodeId, data) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      const res = await canvasApi.updateComputedNode(activeCanvasId, nodeId, data);
       const updated = res.data.data;
       set((s) => ({
         activeCanvas: s.activeCanvas
@@ -659,91 +638,127 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
             }
           : null,
       }));
-      return updated;
-    } finally {
-      set({ runningNodeId: null });
-    }
-  },
+    },
 
-  // ─── Auto-Code ───
-
-  autoCode: async (questionId, pattern, mode, transcriptIds) => {
-    const { activeCanvasId } = get();
-    if (!activeCanvasId) throw new Error('No canvas open');
-    const res = await canvasApi.autoCode(activeCanvasId, { questionId, pattern, mode, transcriptIds });
-    const { created, codings } = res.data.data;
-    if (codings?.length) {
+    deleteComputedNode: async (nodeId) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      await canvasApi.deleteComputedNode(activeCanvasId, nodeId);
       set((s) => ({
-        activeCanvas: s.activeCanvas ? { ...s.activeCanvas, codings: [...s.activeCanvas.codings, ...codings] } : null,
+        activeCanvas: s.activeCanvas
+          ? {
+              ...s.activeCanvas,
+              computedNodes: s.activeCanvas.computedNodes.filter((n: CanvasComputedNode) => n.id !== nodeId),
+            }
+          : null,
       }));
-      emitSocketEvent('canvas:coding-added', {
-        canvasId: activeCanvasId,
-        data: { id: 'bulk', transcriptId: 'bulk', questionId },
-      });
-    }
-    return { created };
-  },
+      emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId, nodeType: 'computed' } });
+    },
 
-  // ─── In-Vivo Coding ───
+    runComputedNode: async (nodeId) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) throw new Error('No canvas open');
+      set({ runningNodeId: nodeId });
+      try {
+        const res = await canvasApi.runComputedNode(activeCanvasId, nodeId);
+        const updated = res.data.data;
+        set((s) => ({
+          activeCanvas: s.activeCanvas
+            ? {
+                ...s.activeCanvas,
+                computedNodes: s.activeCanvas.computedNodes.map((n: CanvasComputedNode) =>
+                  n.id === nodeId ? { ...n, ...updated } : n,
+                ),
+              }
+            : null,
+        }));
+        return updated;
+      } finally {
+        set({ runningNodeId: null });
+      }
+    },
 
-  codeInVivo: async (transcriptId, startOffset, endOffset, codedText) => {
-    const question = await get().addQuestion(codedText);
-    await get().createCoding(transcriptId, question.id, startOffset, endOffset, codedText);
-    return question;
-  },
+    // ─── Auto-Code ───
 
-  // ─── Spread to Paragraph ───
+    autoCode: async (questionId, pattern, mode, transcriptIds) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) throw new Error('No canvas open');
+      const res = await canvasApi.autoCode(activeCanvasId, { questionId, pattern, mode, transcriptIds });
+      const { created, codings } = res.data.data;
+      if (codings?.length) {
+        set((s) => ({
+          activeCanvas: s.activeCanvas ? { ...s.activeCanvas, codings: [...s.activeCanvas.codings, ...codings] } : null,
+        }));
+        emitSocketEvent('canvas:coding-added', {
+          canvasId: activeCanvasId,
+          data: { id: 'bulk', transcriptId: 'bulk', questionId },
+        });
+      }
+      return { created };
+    },
 
-  spreadToParagraph: async (transcriptId, startOffset, endOffset, codedText) => {
-    const { activeCanvas, addQuestion, createCoding } = get();
-    if (!activeCanvas) throw new Error('No canvas open');
-    const transcript = activeCanvas.transcripts.find((t) => t.id === transcriptId);
-    if (!transcript) throw new Error('Transcript not found');
+    // ─── In-Vivo Coding ───
 
-    const content = transcript.content;
+    codeInVivo: async (transcriptId, startOffset, endOffset, codedText) => {
+      const question = await get().addQuestion(codedText);
+      await get().createCoding(transcriptId, question.id, startOffset, endOffset, codedText);
+      return question;
+    },
 
-    let paraStart = content.lastIndexOf('\n\n', startOffset);
-    paraStart = paraStart === -1 ? 0 : paraStart + 2;
+    // ─── Spread to Paragraph ───
 
-    let paraEnd = content.indexOf('\n\n', endOffset);
-    paraEnd = paraEnd === -1 ? content.length : paraEnd;
+    spreadToParagraph: async (transcriptId, startOffset, endOffset, codedText) => {
+      const { activeCanvas, addQuestion, createCoding } = get();
+      if (!activeCanvas) throw new Error('No canvas open');
+      const transcript = activeCanvas.transcripts.find((t) => t.id === transcriptId);
+      if (!transcript) throw new Error('Transcript not found');
 
-    const paragraphText = content.slice(paraStart, paraEnd).trim();
-    if (!paragraphText) return;
+      const content = transcript.content;
 
-    const question = await addQuestion(codedText);
-    await createCoding(transcriptId, question.id, paraStart, paraEnd, paragraphText);
-  },
+      let paraStart = content.lastIndexOf('\n\n', startOffset);
+      paraStart = paraStart === -1 ? 0 : paraStart + 2;
 
-  // ─── Merge Questions ───
+      let paraEnd = content.indexOf('\n\n', endOffset);
+      paraEnd = paraEnd === -1 ? content.length : paraEnd;
 
-  mergeQuestions: async (sourceId, targetId) => {
-    const { activeCanvasId, refreshCanvas } = get();
-    if (!activeCanvasId) throw new Error('No canvas open');
-    await canvasApi.mergeQuestions(activeCanvasId, sourceId, targetId);
-    await refreshCanvas();
-  },
+      const paragraphText = content.slice(paraStart, paraEnd).trim();
+      if (!paragraphText) return;
 
-  // ─── Import ───
+      const question = await addQuestion(codedText);
+      await createCoding(transcriptId, question.id, paraStart, paraEnd, paragraphText);
+    },
 
-  importNarratives: async (narratives) => {
-    const { activeCanvasId, refreshCanvas } = get();
-    if (!activeCanvasId) throw new Error('No canvas open');
-    await canvasApi.importNarratives(activeCanvasId, { narratives });
-    await refreshCanvas();
-  },
+    // ─── Merge Questions ───
 
-  importFromCanvas: async (sourceCanvasId, transcriptIds) => {
-    const { activeCanvasId, refreshCanvas } = get();
-    if (!activeCanvasId) throw new Error('No canvas open');
-    await canvasApi.importFromCanvas(activeCanvasId, { sourceCanvasId, transcriptIds });
-    await refreshCanvas();
-  },
+    mergeQuestions: async (sourceId, targetId) => {
+      const { activeCanvasId, refreshCanvas } = get();
+      if (!activeCanvasId) throw new Error('No canvas open');
+      await canvasApi.mergeQuestions(activeCanvasId, sourceId, targetId);
+      await refreshCanvas();
+    },
 
-  // ─── UI toggles ───
+    // ─── Import ───
 
-  toggleCodingStripes: () => set((s) => ({ showCodingStripes: !s.showCodingStripes })),
-}));
+    importNarratives: async (narratives) => {
+      const { activeCanvasId, refreshCanvas } = get();
+      if (!activeCanvasId) throw new Error('No canvas open');
+      await canvasApi.importNarratives(activeCanvasId, { narratives });
+      await refreshCanvas();
+    },
+
+    importFromCanvas: async (sourceCanvasId, transcriptIds) => {
+      const { activeCanvasId, refreshCanvas } = get();
+      if (!activeCanvasId) throw new Error('No canvas open');
+      await canvasApi.importFromCanvas(activeCanvasId, { sourceCanvasId, transcriptIds });
+      await refreshCanvas();
+    },
+
+    // ─── UI toggles ───
+
+    toggleCodingStripes: () => set((s) => ({ showCodingStripes: !s.showCodingStripes })),
+  }),
+  shallow,
+);
 
 // ─── Granular selector hooks (prevent unnecessary re-renders) ───
 

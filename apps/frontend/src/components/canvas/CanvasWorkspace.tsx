@@ -339,6 +339,29 @@ export default function CanvasWorkspace() {
     };
   }, []);
 
+  // React Flow perf fix #3 — stabilize the onInit/onMove/onMoveEnd refs so
+  // ReactFlow doesn't see prop identity flip every render (which causes it
+  // to re-register internal listeners).
+  const handleRfInit = useCallback(
+    (instance: ReactFlowInstance) => {
+      rfInstanceRef.current = instance;
+      scheduleViewportSync(instance.getViewport());
+    },
+    [scheduleViewportSync],
+  );
+  const handleRfMove = useCallback(
+    (_event: unknown, viewport: { x: number; y: number; zoom: number }) => {
+      scheduleViewportSync(viewport);
+    },
+    [scheduleViewportSync],
+  );
+  const handleRfMoveEnd = useCallback(
+    (_event: unknown, viewport: { x: number; y: number; zoom: number }) => {
+      scheduleViewportSync(viewport, true);
+    },
+    [scheduleViewportSync],
+  );
+
   // Custom node colors (persisted in localStorage)
   const { colorMap: nodeColorMap, setNodeColor, getNodeColor: _getNodeColor } = useNodeColors();
 
@@ -2033,16 +2056,9 @@ export default function CanvasWorkspace() {
               onReconnect={onReconnect}
               onConnectStart={onConnectStart}
               onConnectEnd={onConnectEnd}
-              onInit={(instance) => {
-                rfInstanceRef.current = instance;
-                scheduleViewportSync(instance.getViewport());
-              }}
-              onMove={(_event, viewport) => {
-                scheduleViewportSync(viewport);
-              }}
-              onMoveEnd={(_event, viewport) => {
-                scheduleViewportSync(viewport, true);
-              }}
+              onInit={handleRfInit}
+              onMove={handleRfMove}
+              onMoveEnd={handleRfMoveEnd}
               onPaneContextMenu={handlePaneContextMenu}
               onNodeContextMenu={handleNodeContextMenu}
               onEdgeContextMenu={handleEdgeContextMenu}
