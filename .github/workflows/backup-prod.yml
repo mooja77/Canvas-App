@@ -43,16 +43,15 @@ jobs:
     env:
       PG_DUMP_FILE: backup-${{ github.run_id }}.dump
     steps:
-      - name: Install Postgres 16 client
-        # The runner's bundled psql is older than the prod DB (which uses
-        # pg16). pg_dump version must match-or-exceed the server's major
-        # version or it errors. Pull the official APT repo.
+      - name: Install Postgres 18 client
+        # Railway's Postgres is pinned to 18.x; pg_dump's major version must
+        # match-or-exceed the server's. Bump this if Railway upgrades again.
         run: |
           sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg
           sudo sh -c 'echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
           sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql-client-16
+          sudo apt-get install -y -qq postgresql-client-18
 
       - name: pg_dump prod
         env:
