@@ -415,13 +415,13 @@ model TrainingDocument {
 model TrainingAttempt {
   id                 String           @id @default(cuid())
   trainingDocumentId String
-  userId             String
+  userId             String?
   codings            String // JSON
   kappaScore         Float?
   passed             Boolean          @default(false)
   createdAt          DateTime         @default(now())
   trainingDocument   TrainingDocument @relation(fields: [trainingDocumentId], references: [id], onDelete: Cascade)
-  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([trainingDocumentId])
   @@index([userId])

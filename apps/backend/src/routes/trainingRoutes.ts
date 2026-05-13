@@ -135,7 +135,10 @@ trainingRoutes.post(
     try {
       const dashboardAccessId = getAuthId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
-      const userId = getAuthUserId(req) || dashboardAccessId;
+      // Legacy access-code sessions have no User row, so leave userId null
+      // (FK requires a real User.id after migration 0019). The attempt still
+      // belongs to the canvas via trainingDocumentId.
+      const userId = getAuthUserId(req) ?? null;
 
       const doc = await prisma.trainingDocument.findUnique({ where: { id: req.params.docId } });
       if (!doc || doc.canvasId !== req.params.id) {
