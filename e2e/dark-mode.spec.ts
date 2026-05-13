@@ -208,7 +208,7 @@ test.describe('Dark Mode', () => {
     // Public pages do not auto-apply system preference; explicit persisted
     // dark mode is covered above. This guards against preference-specific
     // rendering regressions.
-    await expect(page.getByRole('heading', { name: /code transcripts/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /code transcripts/i }).first()).toBeVisible();
 
     await darkContext.close();
   });
