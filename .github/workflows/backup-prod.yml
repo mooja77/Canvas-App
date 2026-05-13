@@ -1,0 +1,96 @@
+name: Backup prod Postgres to R2
+
+# Reliability fix #4 — weekly pg_dump of the prod DB, uploaded to the
+# qualcanvas-backups R2 bucket. Single biggest catastrophic-risk mitigation:
+# without this, a Railway data-loss event would have no offsite recovery
+# path (Railway snapshots are unverified and same-provider).
+#
+# Required GitHub repo secrets (Settings → Secrets and variables → Actions):
+#   - DATABASE_PUBLIC_URL          The publicly-resolvable Postgres URL from
+#                                  Railway → Variables on the postgres
+#                                  service (DATABASE_PUBLIC_URL, NOT the
+#                                  private DATABASE_URL the app uses).
+#   - CLOUDFLARE_ACCOUNT_ID        fe8383fe03ab5000c8fc4b13e4e2f0a8 (already
+#                                  in memory; safe to hardcode if preferred).
+#   - R2_ACCESS_KEY_ID             Cloudflare R2 → Manage R2 API tokens →
+#   - R2_SECRET_ACCESS_KEY         Create API token with "Object Read & Write"
+#                                  on the qualcanvas-backups bucket only.
+#
+# Monthly restore drill: spin up a Postgres on staging, `aws s3 cp` the
+# latest dump down, `pg_restore`, verify a known canvas exists.
+
+on:
+  schedule:
+    # Sunday 03:00 UTC = Saturday 23:00 EDT / 22:00 EST. Off-hours for
+    # both QualCanvas (NA-leaning users) and the GHA runner pool.
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual backup (e.g. pre-migration)'
+        required: false
+        default: 'manual'
+
+concurrency:
+  group: backup-prod
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Dump + upload to R2
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PG_DUMP_FILE: backup-${{ github.run_id }}.dump
+    steps:
+      - name: Install Postgres 16 client
+        # The runner's bundled psql is older than the prod DB (which uses
+        # pg16). pg_dump version must match-or-exceed the server's major
+        # version or it errors. Pull the official APT repo.
+        run: |
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg
+          sudo sh -c 'echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-16
+
+      - name: pg_dump prod
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_PUBLIC_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_PUBLIC_URL secret is not set" >&2
+            exit 1
+          fi
+          # --format=custom is compressed + supports parallel restore.
+          # --no-owner / --no-privileges so the dump can restore into any
+          # Postgres role (the prod role won't exist in the restore env).
+          pg_dump "$DATABASE_URL" \
+            --no-owner --no-privileges --format=custom \
+            --file="$PG_DUMP_FILE"
+          ls -lh "$PG_DUMP_FILE"
+
+      - name: Upload to R2 via aws-cli (S3-compatible)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::R2 credentials (R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / CLOUDFLARE_ACCOUNT_ID) not all set" >&2
+            exit 1
+          fi
+          DATESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          OBJECT_KEY="prod/qualcanvas-$DATESTAMP-$GITHUB_RUN_ID.dump"
+          aws s3 cp "$PG_DUMP_FILE" "s3://qualcanvas-backups/$OBJECT_KEY" \
+            --endpoint-url "https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com"
+          echo "Uploaded to R2: $OBJECT_KEY ($(stat -c%s "$PG_DUMP_FILE") bytes)"
+          # Surface the key in the GHA summary for easy retrieval.
+          echo "### Backup uploaded" >> "$GITHUB_STEP_SUMMARY"
+          echo "Object: \`$OBJECT_KEY\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Size: \`$(stat -c%s "$PG_DUMP_FILE") bytes\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Always cleanup dump file
+        if: always()
+        run: rm -f "$PG_DUMP_FILE"
