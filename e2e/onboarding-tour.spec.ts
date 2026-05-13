@@ -55,7 +55,17 @@ test.describe('Onboarding Tour', () => {
     await page.addInitScript(() => {
       const existing = localStorage.getItem('qualcanvas-ui');
       const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
-      state.state = { ...state.state, onboardingComplete: false, setupWizardComplete: true };
+      // Sprint F: the legacy 22-step tour no longer auto-fires on
+      // onboardingComplete=false. It's now opened via the Full Product Tour
+      // affordance, gated by showFullProductTour. Set both so this test
+      // works regardless of which gate the component reads.
+      state.state = {
+        ...state.state,
+        onboardingComplete: false,
+        showFullProductTour: true,
+        setupWizardComplete: true,
+        onboardingV2Complete: true,
+      };
       localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
     });
 
@@ -72,7 +82,17 @@ test.describe('Onboarding Tour', () => {
     await page.addInitScript(() => {
       const existing = localStorage.getItem('qualcanvas-ui');
       const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
-      state.state = { ...state.state, onboardingComplete: false, setupWizardComplete: true };
+      // Sprint F: the legacy 22-step tour no longer auto-fires on
+      // onboardingComplete=false. It's now opened via the Full Product Tour
+      // affordance, gated by showFullProductTour. Set both so this test
+      // works regardless of which gate the component reads.
+      state.state = {
+        ...state.state,
+        onboardingComplete: false,
+        showFullProductTour: true,
+        setupWizardComplete: true,
+        onboardingV2Complete: true,
+      };
       localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
     });
 
@@ -117,7 +137,17 @@ test.describe('Onboarding Tour', () => {
     await page.addInitScript(() => {
       const existing = localStorage.getItem('qualcanvas-ui');
       const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
-      state.state = { ...state.state, onboardingComplete: false, setupWizardComplete: true };
+      // Sprint F: the legacy 22-step tour no longer auto-fires on
+      // onboardingComplete=false. It's now opened via the Full Product Tour
+      // affordance, gated by showFullProductTour. Set both so this test
+      // works regardless of which gate the component reads.
+      state.state = {
+        ...state.state,
+        onboardingComplete: false,
+        showFullProductTour: true,
+        setupWizardComplete: true,
+        onboardingV2Complete: true,
+      };
       localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
     });
 
