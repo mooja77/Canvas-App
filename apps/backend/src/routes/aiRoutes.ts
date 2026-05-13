@@ -13,8 +13,22 @@ import {
 import { buildSuggestCodesPrompt, buildAutoCodeTranscriptPrompt } from '../utils/aiPrompts.js';
 import { resolveAiConfig } from '../middleware/aiConfig.js';
 import { calculateCostCents } from '../utils/aiCost.js';
+import { aiCacheGet, aiCacheSet, aiCacheKey } from '../utils/aiCache.js';
 
 export const aiRoutes = Router();
+
+// Default-fallback colors for newly-suggested codes (the LLM doesn't know
+// what's pleasing on the canvas — give it a curated palette to draw from).
+const NEW_CODE_COLORS = ['#3B82F6', '#8B5CF6', '#EF4444', '#F59E0B', '#10B981', '#EC4899'];
+
+interface InlineSuggestion {
+  id: string; // existing code id, or `new-${index}` for to-be-created codes
+  label: string;
+  color: string;
+  confidence: number;
+  reasoning: string;
+  isNew: boolean;
+}
 
 // ─── POST /canvas/:id/ai/suggest-codes ───
 aiRoutes.post(
@@ -385,6 +399,117 @@ aiRoutes.post(
       });
 
       res.json({ success: true, data: { updated: suggestionIds.length } });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ─── POST /canvas/:id/ai/suggest-codes-inline (Sprint H) ───
+// Returns ready-to-apply suggestions for the inline popover. Unlike the
+// suggest-codes endpoint above, this one doesn't persist to AiSuggestion —
+// suggestions are ephemeral, the user clicks-to-apply (which goes through
+// the normal coding create flow) or dismisses. LRU-cached by (canvasId,
+// transcriptId, selection hash) for 1hr so re-highlighting the same text
+// is instant.
+aiRoutes.post(
+  '/canvas/:id/ai/suggest-codes-inline',
+  checkAiAccess(),
+  resolveAiConfig(),
+  validate(suggestCodesSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      const userId = getAuthUserId(req);
+      const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+
+      const { transcriptId, codedText, startOffset, endOffset } = req.body;
+
+      const transcript = await prisma.canvasTranscript.findFirst({
+        where: { id: transcriptId, canvasId: canvas.id },
+      });
+      if (!transcript) {
+        return res.status(404).json({ success: false, error: 'Transcript not found' });
+      }
+
+      const existingCodes = await prisma.canvasQuestion.findMany({
+        where: { canvasId: canvas.id },
+        select: { id: true, text: true, color: true },
+      });
+
+      const cacheKey = aiCacheKey([canvas.id, transcriptId, codedText]);
+      const cached = aiCacheGet<InlineSuggestion[]>(cacheKey);
+      if (cached) {
+        return res.json({ success: true, data: { suggestions: cached, cacheHit: true } });
+      }
+
+      // Context window of 500 chars on each side, mirroring the spec.
+      const contextStart = Math.max(0, startOffset - 500);
+      const contextEnd = Math.min(transcript.content.length, endOffset + 500);
+      const transcriptContext = transcript.content.slice(contextStart, contextEnd);
+
+      const messages = buildSuggestCodesPrompt({
+        codedText,
+        transcriptTitle: transcript.title,
+        transcriptContext,
+        existingCodes,
+      });
+
+      if (!req.llmProvider) {
+        return res
+          .status(400)
+          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+      }
+
+      const result = await req.llmProvider.complete({
+        messages,
+        responseFormat: 'json',
+        temperature: 0.3,
+        maxTokens: 1024,
+      });
+
+      await prisma.aiUsage.create({
+        data: {
+          userId,
+          canvasId: canvas.id,
+          feature: 'suggest_codes_inline',
+          provider: req.llmProvider.name,
+          model: result.model,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          costCents: calculateCostCents(result.model, result.inputTokens, result.outputTokens),
+        },
+      });
+
+      let raw: Array<{
+        questionId: string | null;
+        suggestedText: string;
+        confidence: number;
+        reasoning?: string;
+      }> = [];
+      try {
+        const parsed = JSON.parse(result.content);
+        raw = parsed.suggestions || [];
+      } catch {
+        return res.status(500).json({ success: false, error: 'Failed to parse AI response' });
+      }
+
+      // Cap at 3 — inline UX shows 3 cards max so the popover stays compact.
+      const enriched: InlineSuggestion[] = raw.slice(0, 3).map((s, i) => {
+        const existing = s.questionId ? existingCodes.find((c) => c.id === s.questionId) : null;
+        return {
+          id: existing ? existing.id : `new-${i}`,
+          label: (existing?.text ?? s.suggestedText ?? 'Untitled').slice(0, 80),
+          color: existing?.color ?? NEW_CODE_COLORS[i % NEW_CODE_COLORS.length],
+          confidence: typeof s.confidence === 'number' ? Math.max(0, Math.min(1, s.confidence)) : 0,
+          reasoning: (s.reasoning ?? '').slice(0, 400),
+          isNew: !existing,
+        };
+      });
+
+      aiCacheSet(cacheKey, enriched);
+
+      res.json({ success: true, data: { suggestions: enriched, cacheHit: false } });
     } catch (err) {
       next(err);
     }

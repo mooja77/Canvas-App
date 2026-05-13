@@ -216,6 +216,24 @@ export const canvasApi = {
   aiSuggestCodes: (canvasId: string, data: SuggestCodesInput) =>
     canvasClient.post(`/canvas/${canvasId}/ai/suggest-codes`, data),
 
+  // Sprint H — inline AI suggester. Returns ready-to-apply suggestions,
+  // not the persisted-to-AiSuggestion-table batch used by the side panel.
+  aiSuggestCodesInline: (canvasId: string, data: SuggestCodesInput) =>
+    canvasClient.post<{
+      success: true;
+      data: {
+        suggestions: {
+          id: string;
+          label: string;
+          color: string;
+          confidence: number;
+          reasoning: string;
+          isNew: boolean;
+        }[];
+        cacheHit: boolean;
+      };
+    }>(`/canvas/${canvasId}/ai/suggest-codes-inline`, data),
+
   aiAutoCodeTranscript: (canvasId: string, data: AutoCodeTranscriptInput) =>
     canvasClient.post(`/canvas/${canvasId}/ai/auto-code-transcript`, data),
 

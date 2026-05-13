@@ -11,7 +11,13 @@ interface QuickCodePopoverProps {
   codedText: string;
   anchorRect: { x: number; y: number };
   onClose: () => void;
-  onAiSuggest?: (transcriptId: string, codedText: string, startOffset: number, endOffset: number) => void;
+  onAiSuggest?: (
+    transcriptId: string,
+    codedText: string,
+    startOffset: number,
+    endOffset: number,
+    anchor: { x: number; y: number },
+  ) => void;
 }
 
 export default function QuickCodePopover({
@@ -327,7 +333,7 @@ export default function QuickCodePopover({
           {onAiSuggest && (
             <button
               onClick={() => {
-                onAiSuggest(transcriptId, codedText, startOffset, endOffset);
+                onAiSuggest(transcriptId, codedText, startOffset, endOffset, anchorRect);
                 onClose();
               }}
               className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/30 transition-colors"

@@ -67,6 +67,8 @@ import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import { useMobile } from '../../hooks/useMobile';
 import { useCollaboration } from '../../hooks/useCollaboration';
 import { useAiSuggestions } from '../../hooks/useAiSuggestions';
+import { useFeatureFlag } from '../../stores/featureFlagsStore';
+import InlineCodeSuggester from '../transcript/InlineCodeSuggester';
 import { useAlignmentGuides } from '../../hooks/useAlignmentGuides';
 import { useAiConfigStore } from '../../stores/aiConfigStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -140,6 +142,17 @@ export default function CanvasWorkspace() {
   // AI coding assistant
   const aiSuggestions = useAiSuggestions();
   const [showAiAutoCode, setShowAiAutoCode] = useState(false);
+  // Sprint H — inline AI suggester anchor. When the inline_ai_suggester
+  // flag is on, the QuickCodePopover "AI" button opens this instead of
+  // firing the legacy panel-based suggest flow.
+  const [inlineSuggester, setInlineSuggester] = useState<{
+    transcriptId: string;
+    startOffset: number;
+    endOffset: number;
+    codedText: string;
+    anchorRect: { x: number; y: number };
+  } | null>(null);
+  const inlineAiSuggesterEnabled = useFeatureFlag('inline_ai_suggester');
 
   // Alignment guides (snap lines)
   const { guideLines, onNodeDrag: alignmentOnNodeDrag, onNodeDragStop: alignmentOnNodeDragStop } = useAlignmentGuides();
@@ -425,8 +438,20 @@ export default function CanvasWorkspace() {
           expandedWidth: posData?.width,
           expandedHeight: posData?.height,
           customColor: nodeColorMap.get(nodeId),
-          onAiSuggest: (tId: string, text: string, start: number, end: number) => {
-            requireAiConfig('AI Code Suggestions', () => aiSuggestions.suggestCodes(tId, text, start, end));
+          onAiSuggest: (tId: string, text: string, start: number, end: number, anchor: { x: number; y: number }) => {
+            if (inlineAiSuggesterEnabled) {
+              requireAiConfig('AI Code Suggestions', () => {
+                setInlineSuggester({
+                  transcriptId: tId,
+                  startOffset: start,
+                  endOffset: end,
+                  codedText: text,
+                  anchorRect: anchor,
+                });
+              });
+            } else {
+              requireAiConfig('AI Code Suggestions', () => aiSuggestions.suggestCodes(tId, text, start, end));
+            }
           },
         },
       });
@@ -624,6 +649,7 @@ export default function CanvasWorkspace() {
     aiSuggestions,
     requireAiConfig,
     mutedNodeIds,
+    inlineAiSuggesterEnabled,
   ]);
 
   // Build edges from codings and relations
@@ -2653,6 +2679,19 @@ export default function CanvasWorkspace() {
 
       {/* Full product tour — opens on demand from Help menu only (Sprint F) */}
       <FullProductTour />
+
+      {/* Sprint H — inline AI code suggester popover */}
+      {inlineSuggester && activeCanvas && (
+        <InlineCodeSuggester
+          canvasId={activeCanvas.id}
+          transcriptId={inlineSuggester.transcriptId}
+          startOffset={inlineSuggester.startOffset}
+          endOffset={inlineSuggester.endOffset}
+          codedText={inlineSuggester.codedText}
+          anchorRect={inlineSuggester.anchorRect}
+          onClose={() => setInlineSuggester(null)}
+        />
+      )}
 
       {/* Delete node confirmation */}
       {deleteConfirm && (

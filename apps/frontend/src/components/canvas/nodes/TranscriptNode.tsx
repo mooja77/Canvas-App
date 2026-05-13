@@ -32,7 +32,13 @@ export interface TranscriptNodeData {
   zoomLevel?: number;
   zoomTier?: 'full' | 'reduced' | 'minimal';
   customColor?: string;
-  onAiSuggest?: (transcriptId: string, codedText: string, startOffset: number, endOffset: number) => void;
+  onAiSuggest?: (
+    transcriptId: string,
+    codedText: string,
+    startOffset: number,
+    endOffset: number,
+    anchor: { x: number; y: number },
+  ) => void;
   [key: string]: unknown;
 }
 

@@ -39,6 +39,7 @@ export type AnalyticsEvent =
   | 'inline_ai_accepted'
   | 'inline_ai_rejected'
   | 'inline_ai_new_code'
+  | 'inline_ai_cache_hit'
   // Onboarding
   | 'onboarding_started'
   | 'onboarding_step_completed'

@@ -144,9 +144,7 @@ vi.mock('../../utils/aiPrompts.js', () => ({
 }));
 
 vi.mock('../../utils/embeddings.js', () => ({
-  chunkText: vi.fn().mockImplementation((text: string) => [
-    { index: 0, text: text.slice(0, 200) },
-  ]),
+  chunkText: vi.fn().mockImplementation((text: string) => [{ index: 0, text: text.slice(0, 200) }]),
 }));
 
 vi.mock('../../utils/rag.js', () => ({
@@ -234,14 +232,17 @@ describe('AI features integration tests', () => {
   // ─── 1. POST /canvas/:id/ai/suggest-codes — returns code suggestions with confidence scores ───
   it('POST /canvas/:id/ai/suggest-codes returns code suggestions with confidence scores', async () => {
     mockPrisma.canvasTranscript.findFirst.mockResolvedValue({ ...mockTranscript });
-    mockPrisma.canvasQuestion.findMany.mockResolvedValue([
-      { id: 'q-1', text: 'Resilience', color: '#FF0000' },
-    ]);
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([{ id: 'q-1', text: 'Resilience', color: '#FF0000' }]);
 
     mockLlmProvider.complete.mockResolvedValue({
       content: JSON.stringify({
         suggestions: [
-          { questionId: 'q-1', suggestedText: 'Resilience', confidence: 0.92, reasoning: 'Direct mention of resilience' },
+          {
+            questionId: 'q-1',
+            suggestedText: 'Resilience',
+            confidence: 0.92,
+            reasoning: 'Direct mention of resilience',
+          },
           { questionId: null, suggestedText: 'Coping', confidence: 0.78, reasoning: 'Coping strategies discussed' },
         ],
       }),
@@ -331,9 +332,7 @@ describe('AI features integration tests', () => {
   // ─── 4. POST /canvas/:id/ai/auto-code-transcript — applies AI-based codes ───
   it('POST /canvas/:id/ai/auto-code-transcript applies AI-based codes', async () => {
     mockPrisma.canvasTranscript.findFirst.mockResolvedValue({ ...mockTranscript });
-    mockPrisma.canvasQuestion.findMany.mockResolvedValue([
-      { id: 'q-1', text: 'Resilience' },
-    ]);
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([{ id: 'q-1', text: 'Resilience' }]);
 
     mockLlmProvider.complete.mockResolvedValue({
       content: JSON.stringify({
@@ -499,9 +498,7 @@ describe('AI features integration tests', () => {
       { id: 'sug-2', suggestedText: 'Theme B', status: 'pending', confidence: 0.7 },
     ]);
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}/ai/suggestions`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}/ai/suggestions`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -511,7 +508,17 @@ describe('AI features integration tests', () => {
   // ─── 11. POST /canvas/:id/ai/suggestions/bulk-action — bulk accept ───
   it('POST /canvas/:id/ai/suggestions/bulk-action accepts multiple suggestions', async () => {
     mockPrisma.aiSuggestion.findMany.mockResolvedValue([
-      { id: 'sug-b1', canvasId, transcriptId, questionId: 'q-1', suggestedText: 'Theme', startOffset: 0, endOffset: 10, codedText: 'some text', status: 'pending' },
+      {
+        id: 'sug-b1',
+        canvasId,
+        transcriptId,
+        questionId: 'q-1',
+        suggestedText: 'Theme',
+        startOffset: 0,
+        endOffset: 10,
+        codedText: 'some text',
+        status: 'pending',
+      },
     ]);
     mockPrisma.canvasTextCoding.create.mockResolvedValue({ id: 'coding-b1' });
     mockPrisma.aiSuggestion.updateMany.mockResolvedValue({ count: 1 });
@@ -570,16 +577,12 @@ describe('AI features integration tests', () => {
     mockPrisma.canvasMemo.findMany.mockResolvedValue([]);
     mockPrisma.textEmbedding.deleteMany.mockResolvedValue({ count: 0 });
 
-    mockLlmProvider.embedBatch.mockResolvedValue([
-      { embedding: [0.1, 0.2, 0.3], inputTokens: 15 },
-    ]);
+    mockLlmProvider.embedBatch.mockResolvedValue([{ embedding: [0.1, 0.2, 0.3], inputTokens: 15 }]);
 
     mockPrisma.textEmbedding.createMany.mockResolvedValue({ count: 1 });
     mockPrisma.aiUsage.create.mockResolvedValue({});
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/ai/embed`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post(`/api/canvas/${canvasId}/ai/embed`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -594,9 +597,7 @@ describe('AI features integration tests', () => {
       { id: 'msg-2', canvasId, userId: null, role: 'assistant', content: 'Hi there', citations: '[]', createdAt: now },
     ]);
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}/ai/chat/history`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}/ai/chat/history`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -678,13 +679,29 @@ describe('AI features integration tests', () => {
   it('GET /canvas/:id/summaries returns summaries list', async () => {
     const now = new Date();
     mockPrisma.summary.findMany.mockResolvedValue([
-      { id: 'sum-1', canvasId, sourceType: 'transcript', sourceId: transcriptId, summaryText: 'Summary 1', summaryType: 'paraphrase', createdAt: now, updatedAt: now },
-      { id: 'sum-2', canvasId, sourceType: 'transcript', sourceId: transcriptId, summaryText: 'Summary 2', summaryType: 'thematic', createdAt: now, updatedAt: now },
+      {
+        id: 'sum-1',
+        canvasId,
+        sourceType: 'transcript',
+        sourceId: transcriptId,
+        summaryText: 'Summary 1',
+        summaryType: 'paraphrase',
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: 'sum-2',
+        canvasId,
+        sourceType: 'transcript',
+        sourceId: transcriptId,
+        summaryText: 'Summary 2',
+        summaryType: 'thematic',
+        createdAt: now,
+        updatedAt: now,
+      },
     ]);
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}/summaries`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}/summaries`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -734,5 +751,164 @@ describe('AI features integration tests', () => {
 
     expect(res.status).toBe(404);
     expect(res.body.success).toBe(false);
+  });
+
+  // ─── Sprint H — inline suggester ───
+  describe('POST /canvas/:id/ai/suggest-codes-inline (Sprint H)', () => {
+    beforeEach(async () => {
+      const { _clearAiCache } = await import('../../utils/aiCache.js');
+      _clearAiCache();
+    });
+
+    it('returns enriched suggestions with existing code id + color + confidence', async () => {
+      mockPrisma.canvasTranscript.findFirst.mockResolvedValue({ ...mockTranscript });
+      mockPrisma.canvasQuestion.findMany.mockResolvedValue([
+        { id: 'q-resilience', text: 'Resilience', color: '#FF0000' },
+      ]);
+
+      mockLlmProvider.complete.mockResolvedValue({
+        content: JSON.stringify({
+          suggestions: [
+            {
+              questionId: 'q-resilience',
+              suggestedText: 'Resilience',
+              confidence: 0.91,
+              reasoning: 'Direct mention',
+            },
+            {
+              questionId: null,
+              suggestedText: 'Coping Strategy',
+              confidence: 0.74,
+              reasoning: 'Coping discussed',
+            },
+          ],
+        }),
+        model: 'gpt-4',
+        inputTokens: 200,
+        outputTokens: 50,
+      });
+
+      const res = await request(app)
+        .post(`/api/canvas/${canvasId}/ai/suggest-codes-inline`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({
+          transcriptId,
+          codedText: 'resilience in the face of adversity',
+          startOffset: 30,
+          endOffset: 65,
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.cacheHit).toBe(false);
+      expect(res.body.data.suggestions).toHaveLength(2);
+      expect(res.body.data.suggestions[0]).toMatchObject({
+        id: 'q-resilience',
+        label: 'Resilience',
+        color: '#FF0000',
+        isNew: false,
+      });
+      expect(res.body.data.suggestions[1]).toMatchObject({
+        label: 'Coping Strategy',
+        isNew: true,
+      });
+      // New-code color should come from the curated palette, not be empty.
+      expect(res.body.data.suggestions[1].color).toMatch(/^#/);
+    });
+
+    it('returns cached suggestions on second call with same selection (no LLM hit)', async () => {
+      mockPrisma.canvasTranscript.findFirst.mockResolvedValue({ ...mockTranscript });
+      mockPrisma.canvasQuestion.findMany.mockResolvedValue([]);
+      mockLlmProvider.complete.mockResolvedValue({
+        content: JSON.stringify({
+          suggestions: [{ questionId: null, suggestedText: 'X', confidence: 0.8, reasoning: 'r' }],
+        }),
+        model: 'gpt-4',
+        inputTokens: 100,
+        outputTokens: 30,
+      });
+
+      const payload = {
+        transcriptId,
+        codedText: 'identical selection text for cache test',
+        startOffset: 0,
+        endOffset: 40,
+      };
+
+      const first = await request(app)
+        .post(`/api/canvas/${canvasId}/ai/suggest-codes-inline`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send(payload);
+      expect(first.body.data.cacheHit).toBe(false);
+
+      const second = await request(app)
+        .post(`/api/canvas/${canvasId}/ai/suggest-codes-inline`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send(payload);
+      expect(second.body.data.cacheHit).toBe(true);
+      // LLM should be hit exactly once across both requests.
+      expect(mockLlmProvider.complete).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns 404 when transcript not found', async () => {
+      mockPrisma.canvasTranscript.findFirst.mockResolvedValue(null);
+
+      const res = await request(app)
+        .post(`/api/canvas/${canvasId}/ai/suggest-codes-inline`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ transcriptId: 'nope', codedText: 'x', startOffset: 0, endOffset: 1 });
+
+      expect(res.status).toBe(404);
+    });
+
+    it('caps suggestions at 3 so the popover stays compact', async () => {
+      mockPrisma.canvasTranscript.findFirst.mockResolvedValue({ ...mockTranscript });
+      mockPrisma.canvasQuestion.findMany.mockResolvedValue([]);
+      mockLlmProvider.complete.mockResolvedValue({
+        content: JSON.stringify({
+          suggestions: [
+            { questionId: null, suggestedText: 'A', confidence: 0.9, reasoning: 'r' },
+            { questionId: null, suggestedText: 'B', confidence: 0.8, reasoning: 'r' },
+            { questionId: null, suggestedText: 'C', confidence: 0.7, reasoning: 'r' },
+            { questionId: null, suggestedText: 'D', confidence: 0.6, reasoning: 'r' },
+            { questionId: null, suggestedText: 'E', confidence: 0.5, reasoning: 'r' },
+          ],
+        }),
+        model: 'gpt-4',
+        inputTokens: 100,
+        outputTokens: 30,
+      });
+
+      const res = await request(app)
+        .post(`/api/canvas/${canvasId}/ai/suggest-codes-inline`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ transcriptId, codedText: 'cap test', startOffset: 0, endOffset: 8 });
+
+      expect(res.body.data.suggestions).toHaveLength(3);
+    });
+
+    it('clamps malformed confidence values into [0,1]', async () => {
+      mockPrisma.canvasTranscript.findFirst.mockResolvedValue({ ...mockTranscript });
+      mockPrisma.canvasQuestion.findMany.mockResolvedValue([]);
+      mockLlmProvider.complete.mockResolvedValue({
+        content: JSON.stringify({
+          suggestions: [
+            { questionId: null, suggestedText: 'High', confidence: 1.5, reasoning: '' },
+            { questionId: null, suggestedText: 'Low', confidence: -0.2, reasoning: '' },
+          ],
+        }),
+        model: 'gpt-4',
+        inputTokens: 100,
+        outputTokens: 30,
+      });
+
+      const res = await request(app)
+        .post(`/api/canvas/${canvasId}/ai/suggest-codes-inline`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ transcriptId, codedText: 'clamp test', startOffset: 0, endOffset: 10 });
+
+      expect(res.body.data.suggestions[0].confidence).toBe(1);
+      expect(res.body.data.suggestions[1].confidence).toBe(0);
+    });
   });
 });
