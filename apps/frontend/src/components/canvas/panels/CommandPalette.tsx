@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import { useUIStore } from '../../../stores/uiStore';
+import { trackEvent } from '../../../utils/analytics';
 import type {
   CanvasTranscript,
   CanvasQuestion,
@@ -316,6 +317,113 @@ export default function CommandPalette({
       });
     }
 
+    // ── Sprint G slice — modals lazy-loaded inside CanvasToolbar ──
+    // Cmd+K can't open these directly (their state is scoped to the toolbar),
+    // so we dispatch a window event that CanvasToolbar listens for. Falls
+    // back to no-op if the toolbar isn't mounted (e.g. on the canvas list).
+    const openModal = (modal: string) => () => {
+      window.dispatchEvent(new CustomEvent('qualcanvas:open-canvas-modal', { detail: { modal } }));
+      onClose();
+    };
+    items.push(
+      {
+        id: 'modal-auto-code',
+        category: 'action',
+        icon: <IconAnalysis />,
+        label: 'Run AI Auto-Code on a transcript',
+        description: 'Have the LLM suggest codes across an entire transcript',
+        action: openModal('auto-code'),
+      },
+      {
+        id: 'modal-summary',
+        category: 'action',
+        icon: <IconReport />,
+        label: 'Summarize canvas with AI',
+        description: 'Paraphrase / abstract / thematic summary of the canvas',
+        action: openModal('summary'),
+      },
+      {
+        id: 'modal-research-assistant',
+        category: 'action',
+        icon: <IconAnalysis />,
+        label: 'Open AI research assistant (chat)',
+        description: 'Ask questions about your transcripts and codings',
+        action: openModal('research-assistant'),
+      },
+      {
+        id: 'modal-codebook',
+        category: 'action',
+        icon: <IconExport />,
+        label: 'Open codebook',
+        description: 'Code list, frequencies, hierarchy',
+        action: openModal('codebook'),
+      },
+      {
+        id: 'modal-hierarchy',
+        category: 'action',
+        icon: <IconExport />,
+        label: 'View code hierarchy',
+        description: 'Parent / child code tree',
+        action: openModal('hierarchy'),
+      },
+      {
+        id: 'modal-case-manager',
+        category: 'action',
+        icon: <IconExport />,
+        label: 'Open cases (participants / sites)',
+        description: 'Manage cases and attributes',
+        action: openModal('case-manager'),
+      },
+      {
+        id: 'modal-dashboard',
+        category: 'action',
+        icon: <IconReport />,
+        label: 'Open canvas dashboard',
+        description: 'Activity feed, coding velocity, codings-by-coder',
+        action: openModal('dashboard'),
+      },
+      {
+        id: 'modal-ethics',
+        category: 'action',
+        icon: <IconReport />,
+        label: 'Open ethics & consent panel',
+        description: 'Track informed consent and IRB protocols',
+        action: openModal('ethics'),
+      },
+      {
+        id: 'modal-share',
+        category: 'action',
+        icon: <IconExport />,
+        label: 'Share canvas (generate share code)',
+        description: 'Let a collaborator clone this canvas',
+        action: openModal('share'),
+      },
+      {
+        id: 'modal-calendar',
+        category: 'action',
+        icon: <IconReport />,
+        label: 'Open research calendar',
+        description: 'Milestones, deadlines, sessions',
+        action: openModal('calendar'),
+      },
+      {
+        id: 'modal-survey-import',
+        category: 'action',
+        icon: <IconExport />,
+        label: 'Import open-ended survey responses',
+        description: 'Bulk-import a CSV of survey answers as transcripts',
+        action: openModal('survey-import'),
+      },
+      {
+        id: 'modal-qdpx-import',
+        category: 'action',
+        icon: <IconExport />,
+        label: 'Import QDPX project (Atlas.ti / NVivo)',
+        description: 'Open the QDPX (.qdpx) standard import dialog',
+        action: openModal('qdpx-import'),
+      },
+    );
+
     // ── Analysis nodes ──
     const analysisNodes: { type: ComputedNodeType; label: string; description: string }[] = [
       { type: 'search', label: 'Text Search', description: 'Find patterns across transcripts' },
@@ -445,6 +553,18 @@ export default function CommandPalette({
     setSelectedIndex(0);
   }, [query]);
 
+  // Sprint G slice: cmdk_search_no_results telemetry. Fires 500ms after the
+  // user stops typing, only when (a) they've typed something and (b) the
+  // current filter returns zero results. Logged so we can see which queries
+  // are gaps in Cmd+K coverage and prioritize the next registry expansion.
+  useEffect(() => {
+    if (!query.trim() || filteredItems.length > 0) return;
+    const timeout = setTimeout(() => {
+      trackEvent('cmdk_search_no_results', { query: query.slice(0, 80) });
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [query, filteredItems.length]);
+
   // Group items by category
   const groupedItems = useMemo(() => {
     const groups: { key: string; label: string; items: (CommandItem & { globalIndex: number })[] }[] = [];
@@ -476,6 +596,21 @@ export default function CommandPalette({
     el?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
 
+  // Sprint G slice: log every executed Cmd+K command. Goal metric per spec
+  // is "30%+ of feature interactions originate from Cmd+K within 60 days".
+  const fireCmdkQueryTelemetry = useCallback(
+    (item: CommandItem) => {
+      if (!query.trim() && item.category === 'navigate') return; // empty-query nav doesn't count as discovery
+      trackEvent('cmdk_search_query', {
+        query: query.slice(0, 80),
+        result_count: filteredItems.length,
+        selected_id: item.id,
+        category: item.category,
+      });
+    },
+    [query, filteredItems.length],
+  );
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
@@ -486,10 +621,14 @@ export default function CommandPalette({
         setSelectedIndex((i) => Math.max(i - 1, 0));
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        orderedItems[selectedIndex]?.action();
+        const item = orderedItems[selectedIndex];
+        if (item) {
+          fireCmdkQueryTelemetry(item);
+          item.action();
+        }
       }
     },
-    [orderedItems, selectedIndex],
+    [orderedItems, selectedIndex, fireCmdkQueryTelemetry],
   );
 
   return (
@@ -547,7 +686,10 @@ export default function CommandPalette({
                   <button
                     key={item.id}
                     data-index={item.globalIndex}
-                    onClick={item.action}
+                    onClick={() => {
+                      fireCmdkQueryTelemetry(item);
+                      item.action();
+                    }}
                     onMouseEnter={() => setSelectedIndex(item.globalIndex)}
                     className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors duration-75 ${
                       item.globalIndex === selectedIndex

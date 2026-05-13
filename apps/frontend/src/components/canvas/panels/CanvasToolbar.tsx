@@ -186,6 +186,64 @@ export default function CanvasToolbar({
   const [addingMemo, setAddingMemo] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
 
+  // Sprint G slice — accept open-modal requests from Cmd+K (the palette
+  // doesn't have access to this toolbar's local state for the dozen+
+  // lazy-loaded modals, so we use a generic event bus to bridge). Falls
+  // back to no-op if the requested modal isn't recognized.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ modal: string }>).detail;
+      if (!detail?.modal) return;
+      switch (detail.modal) {
+        case 'auto-code':
+          if (requireAiConfig) requireAiConfig('AI Auto-Code', () => setShowAutoCode(true));
+          else setShowAutoCode(true);
+          break;
+        case 'case-manager':
+          setShowCaseManager(true);
+          break;
+        case 'hierarchy':
+          setShowHierarchy(true);
+          break;
+        case 'codebook':
+          setShowCodebook(true);
+          break;
+        case 'share':
+          setShowShare(true);
+          break;
+        case 'dashboard':
+          setShowDashboard(true);
+          break;
+        case 'ethics':
+          setShowEthics(true);
+          break;
+        case 'research-assistant':
+          if (requireAiConfig) requireAiConfig('AI Research Assistant', () => setShowResearchAssistant(true));
+          else setShowResearchAssistant(true);
+          break;
+        case 'summary':
+          if (requireAiConfig) requireAiConfig('AI Summarization', () => setShowSummary(true));
+          else setShowSummary(true);
+          break;
+        case 'survey-import':
+          setShowSurveyImport(true);
+          break;
+        case 'qdpx-import':
+          setShowQdpxImport(true);
+          break;
+        case 'calendar':
+          setShowCalendar(true);
+          break;
+        default:
+          // Unknown modal — silently ignore so the palette can ship new
+          // entries before the toolbar wires up their handlers.
+          break;
+      }
+    };
+    window.addEventListener('qualcanvas:open-canvas-modal', handler);
+    return () => window.removeEventListener('qualcanvas:open-canvas-modal', handler);
+  }, [requireAiConfig]);
+
   const handleExportExcel = async () => {
     if (!activeCanvas) return;
     setExportingExcel(true);

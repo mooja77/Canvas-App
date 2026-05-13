@@ -12,6 +12,7 @@ import AiSetupBanner from '../components/AiSetupBanner';
 import TrialBanner from '../components/TrialBanner';
 import OnboardingFlow from '../components/onboarding/OnboardingFlow';
 import OnboardingChecklist from '../components/onboarding/OnboardingChecklist';
+import StatusBar from '../components/canvas/StatusBar';
 import { useFeatureFlag } from '../stores/featureFlagsStore';
 import { SunIcon, MoonIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
@@ -241,10 +242,13 @@ export default function CanvasPage() {
         />
       ) : (
         /* Full-screen canvas workspace */
-        <main id="canvas-main" className="flex-1 overflow-hidden" aria-label="Canvas workspace">
-          <CodingCanvas />
-          {onboardingV2Enabled && onboardingV2Complete && <OnboardingChecklist />}
-        </main>
+        <>
+          <main id="canvas-main" className="flex-1 overflow-hidden" aria-label="Canvas workspace">
+            <CodingCanvas />
+            {onboardingV2Enabled && onboardingV2Complete && <OnboardingChecklist />}
+          </main>
+          <StatusBar />
+        </>
       )}
 
       {/* Sprint F onboarding v2 — gated by feature flag, fires once per user */}
