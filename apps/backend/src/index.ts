@@ -95,6 +95,7 @@ import { notificationRoutes } from './routes/notificationRoutes.js';
 import { reportRoutes } from './routes/reportRoutes.js';
 import { adminRoutes } from './routes/adminRoutes.js';
 import { lifecycleEmailRoutes, publicLifecycleEmailRoutes } from './routes/lifecycleEmailRoutes.js';
+import { eventsRoutes } from './routes/eventsRoutes.js';
 import { prisma } from './lib/prisma.js';
 import { initSocketServer } from './lib/socket.js';
 import { startReportScheduler, stopReportScheduler } from './jobs/reportScheduler.js';
@@ -364,6 +365,10 @@ app.use('/api/email', publicLifecycleEmailRoutes);
 
 // Protected lifecycle email preferences
 v1Router.use(auth, auditLog, lifecycleEmailRoutes);
+
+// Public telemetry events sink — accepts anonymous + authenticated calls,
+// no auth wall (auth is optional for events like pricing_viewed).
+v1Router.use(eventsRoutes);
 
 // Mount under /api/v1 (versioned) and /api (backwards compat)
 app.use('/api/v1', v1Router);

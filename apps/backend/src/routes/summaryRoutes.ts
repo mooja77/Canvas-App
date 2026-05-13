@@ -5,6 +5,7 @@ import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.
 import { checkAiAccess } from '../middleware/planLimits.js';
 import { validate, generateSummarySchema, updateSummarySchema } from '../middleware/validation.js';
 import { resolveAiConfig } from '../middleware/aiConfig.js';
+import { calculateCostCents } from '../utils/aiCost.js';
 
 export const summaryRoutes = Router();
 
@@ -150,6 +151,7 @@ summaryRoutes.post(
           model: result.model,
           inputTokens: result.inputTokens,
           outputTokens: result.outputTokens,
+          costCents: calculateCostCents(result.model, result.inputTokens, result.outputTokens),
         },
       });
 

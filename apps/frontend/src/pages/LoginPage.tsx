@@ -163,7 +163,9 @@ export default function LoginPage() {
       navigate('/canvas');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Invalid email or password');
+      toast.error(
+        err.response?.data?.error || "That email and password don't match. Try again, or reset your password.",
+      );
     } finally {
       setLoading(false);
     }

@@ -12,6 +12,7 @@ import {
 } from '../middleware/validation.js';
 import { buildSuggestCodesPrompt, buildAutoCodeTranscriptPrompt } from '../utils/aiPrompts.js';
 import { resolveAiConfig } from '../middleware/aiConfig.js';
+import { calculateCostCents } from '../utils/aiCost.js';
 
 export const aiRoutes = Router();
 
@@ -57,7 +58,9 @@ aiRoutes.post(
       });
 
       if (!req.llmProvider) {
-        return res.status(400).json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+        return res
+          .status(400)
+          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
       }
 
       const result = await req.llmProvider.complete({
@@ -66,7 +69,7 @@ aiRoutes.post(
         temperature: 0.3,
       });
 
-      // Track usage
+      // Track usage with cost calculation
       await prisma.aiUsage.create({
         data: {
           userId,
@@ -76,6 +79,7 @@ aiRoutes.post(
           model: result.model,
           inputTokens: result.inputTokens,
           outputTokens: result.outputTokens,
+          costCents: calculateCostCents(result.model, result.inputTokens, result.outputTokens),
         },
       });
 
@@ -148,9 +152,10 @@ aiRoutes.post(
 
       // Truncate very long transcripts for the LLM context window
       const maxChars = 30000;
-      const content = transcript.content.length > maxChars
-        ? transcript.content.slice(0, maxChars) + '\n\n[...transcript truncated...]'
-        : transcript.content;
+      const content =
+        transcript.content.length > maxChars
+          ? transcript.content.slice(0, maxChars) + '\n\n[...transcript truncated...]'
+          : transcript.content;
 
       const messages = buildAutoCodeTranscriptPrompt({
         transcriptTitle: transcript.title,
@@ -160,7 +165,9 @@ aiRoutes.post(
       });
 
       if (!req.llmProvider) {
-        return res.status(400).json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+        return res
+          .status(400)
+          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
       }
 
       const result = await req.llmProvider.complete({
@@ -170,7 +177,7 @@ aiRoutes.post(
         maxTokens: 4096,
       });
 
-      // Track usage
+      // Track usage with cost calculation
       await prisma.aiUsage.create({
         data: {
           userId,
@@ -180,6 +187,7 @@ aiRoutes.post(
           model: result.model,
           inputTokens: result.inputTokens,
           outputTokens: result.outputTokens,
+          costCents: calculateCostCents(result.model, result.inputTokens, result.outputTokens),
         },
       });
 
@@ -226,7 +234,10 @@ aiRoutes.post(
         ),
       );
 
-      res.json({ success: true, data: { total: codings.length, valid: savedSuggestions.length, suggestions: savedSuggestions } });
+      res.json({
+        success: true,
+        data: { total: codings.length, valid: savedSuggestions.length, suggestions: savedSuggestions },
+      });
     } catch (err) {
       next(err);
     }
@@ -234,31 +245,28 @@ aiRoutes.post(
 );
 
 // ─── GET /canvas/:id/ai/suggestions ───
-aiRoutes.get(
-  '/canvas/:id/ai/suggestions',
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const dashboardAccessId = getAuthId(req);
-      const userId = getAuthUserId(req);
-      await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+aiRoutes.get('/canvas/:id/ai/suggestions', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    const userId = getAuthUserId(req);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
 
-      const status = (req.query.status as string) || 'pending';
-      const transcriptId = req.query.transcriptId as string | undefined;
+    const status = (req.query.status as string) || 'pending';
+    const transcriptId = req.query.transcriptId as string | undefined;
 
-      const where: Record<string, unknown> = { canvasId: req.params.id, status };
-      if (transcriptId) where.transcriptId = transcriptId;
+    const where: Record<string, unknown> = { canvasId: req.params.id, status };
+    if (transcriptId) where.transcriptId = transcriptId;
 
-      const suggestions = await prisma.aiSuggestion.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-      });
+    const suggestions = await prisma.aiSuggestion.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
 
-      res.json({ success: true, data: suggestions });
-    } catch (err) {
-      next(err);
-    }
-  },
-);
+    res.json({ success: true, data: suggestions });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ─── PUT /canvas/:id/ai/suggestions/:sid ───
 aiRoutes.put(

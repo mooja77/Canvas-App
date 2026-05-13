@@ -805,7 +805,9 @@ export default function CanvasListPanel() {
           <div className="mt-3 space-y-2">
             {trashLoading && <div className="py-4 text-center text-sm text-gray-400">Loading trash...</div>}
             {!trashLoading && trashedCanvases.length === 0 && (
-              <div className="py-4 text-center text-sm text-gray-400 dark:text-gray-500">Trash is empty</div>
+              <div className="py-4 text-center text-sm text-gray-400 dark:text-gray-500">
+                Nothing in the bin. Deleted canvases live here for 30 days.
+              </div>
             )}
             {trashedCanvases.map((canvas) => (
               <div key={canvas.id} className="card flex items-center justify-between p-3 opacity-75">

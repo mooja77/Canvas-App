@@ -7,6 +7,7 @@ import { validate, chatQuerySchema } from '../middleware/validation.js';
 import { chunkText } from '../utils/embeddings.js';
 import { ragQuery } from '../utils/rag.js';
 import { resolveAiConfig } from '../middleware/aiConfig.js';
+import { calculateCostCents } from '../utils/aiCost.js';
 
 export const chatRoutes = Router();
 
@@ -130,6 +131,7 @@ chatRoutes.post(
           model: 'text-embedding-3-small',
           inputTokens: totalInputTokens,
           outputTokens: 0,
+          costCents: calculateCostCents('text-embedding-3-small', totalInputTokens, 0),
         },
       });
 
@@ -193,6 +195,7 @@ chatRoutes.post(
           model: result.model,
           inputTokens: result.inputTokens,
           outputTokens: result.outputTokens,
+          costCents: calculateCostCents(result.model, result.inputTokens, result.outputTokens),
         },
       });
 

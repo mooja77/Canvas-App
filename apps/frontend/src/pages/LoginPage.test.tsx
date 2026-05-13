@@ -8,7 +8,9 @@ vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
   useSearchParams: () => [mockSearchParams],
   Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
+    <a href={to} {...props}>
+      {children}
+    </a>
   ),
 }));
 
@@ -129,7 +131,7 @@ describe('LoginPage', () => {
 
   it('shows error toast on failed login', async () => {
     (authApi.emailLogin as ReturnType<typeof vi.fn>).mockRejectedValue({
-      response: { data: { error: 'Invalid email or password' } },
+      response: { data: { error: "That email and password don't match. Try again, or reset your password." } },
     });
 
     render(<LoginPage />);
@@ -138,13 +140,20 @@ describe('LoginPage', () => {
     fireEvent.submit(screen.getByRole('button', { name: 'Sign In' }));
 
     await waitFor(() => {
-      expect((toast as unknown as { error: ReturnType<typeof vi.fn> }).error).toHaveBeenCalledWith('Invalid email or password');
+      expect((toast as unknown as { error: ReturnType<typeof vi.fn> }).error).toHaveBeenCalledWith(
+        "That email and password don't match. Try again, or reset your password.",
+      );
     });
   });
 
   it('navigates to /canvas on successful login', async () => {
     (authApi.emailLogin as ReturnType<typeof vi.fn>).mockResolvedValue({
-      data: { data: { jwt: 'tok', user: { id: 'u1', email: 'a@b.com', name: 'Alice', role: 'user', plan: 'free', emailVerified: true } } },
+      data: {
+        data: {
+          jwt: 'tok',
+          user: { id: 'u1', email: 'a@b.com', name: 'Alice', role: 'user', plan: 'free', emailVerified: true },
+        },
+      },
     });
 
     render(<LoginPage />);
