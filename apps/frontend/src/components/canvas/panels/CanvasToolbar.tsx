@@ -29,6 +29,7 @@ const SummaryPanel = lazy(() => import('./SummaryPanel'));
 const SurveyImportModal = lazy(() => import('./SurveyImportModal'));
 const QdpxImportModal = lazy(() => import('./QdpxImportModal'));
 const CalendarPanel = lazy(() => import('./CalendarPanel'));
+const MethodsStatementModal = lazy(() => import('./MethodsStatementModal'));
 
 /* ── Dropdown helpers ─────────────────────────────────────────────── */
 
@@ -182,6 +183,7 @@ export default function CanvasToolbar({
   const [showSurveyImport, setShowSurveyImport] = useState(false);
   const [showQdpxImport, setShowQdpxImport] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showMethodsStatement, setShowMethodsStatement] = useState(false);
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [addingMemo, setAddingMemo] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -233,6 +235,10 @@ export default function CanvasToolbar({
           break;
         case 'calendar':
           setShowCalendar(true);
+          break;
+        case 'methods-statement':
+          if (requireAiConfig) requireAiConfig('Methods Statement', () => setShowMethodsStatement(true));
+          else setShowMethodsStatement(true);
           break;
         default:
           // Unknown modal — silently ignore so the palette can ship new
@@ -1097,6 +1103,7 @@ export default function CanvasToolbar({
           />
         )}
         {showCalendar && <CalendarPanel onClose={() => setShowCalendar(false)} />}
+        {showMethodsStatement && <MethodsStatementModal onClose={() => setShowMethodsStatement(false)} />}
       </Suspense>
     </>
   );

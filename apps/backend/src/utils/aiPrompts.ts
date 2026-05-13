@@ -201,3 +201,70 @@ Analyze the transcript and identify substantive segments that should be coded. F
     },
   ];
 }
+
+/**
+ * Spec 11 — Methods Statement export.
+ *
+ * Builds prompts that ask the LLM to write a publishable methods-section
+ * paragraph (formal third-person prose, ~150 words) summarising the
+ * qualitative analysis. Discloses AI use granularly per Jones (2025)'s
+ * heuristic so the paragraph is citable in submitted manuscripts at SAGE,
+ * Elsevier, T&F. Cached system prompt — only the per-canvas user message
+ * varies across calls.
+ */
+export function buildMethodsStatementPrompt(params: {
+  canvasName: string;
+  transcriptCount: number;
+  totalCodings: number;
+  totalCodes: number;
+  intercoderResult?: { method: string; score: number; nCoders: number };
+  aiUsage: { feature: string; count: number; provider: string; model: string }[];
+  acceptanceLog?: { accepted: number; rejected: number; modified: number };
+}): LlmMessage[] {
+  const aiLines = params.aiUsage.length
+    ? params.aiUsage
+        .map((u) => `- ${u.feature} (used ${u.count} time${u.count === 1 ? '' : 's'}) via ${u.provider}/${u.model}`)
+        .join('\n')
+    : '- No AI tools were used during analysis.';
+
+  const intercoderLine = params.intercoderResult
+    ? `Intercoder reliability: ${params.intercoderResult.method} = ${params.intercoderResult.score.toFixed(3)} across ${params.intercoderResult.nCoders} coder${params.intercoderResult.nCoders === 1 ? '' : 's'}.`
+    : 'No intercoder reliability analysis was performed.';
+
+  const acceptanceLine = params.acceptanceLog
+    ? `AI suggestion acceptance: ${params.acceptanceLog.accepted} accepted, ${params.acceptanceLog.rejected} rejected, ${params.acceptanceLog.modified} modified before acceptance.`
+    : '';
+
+  return [
+    {
+      role: 'system',
+      content: `You generate methods-section paragraphs for academic qualitative-research manuscripts. Output is plain prose suitable for direct submission to SAGE, Elsevier, or Taylor & Francis journals.
+
+# Rules
+- Formal academic register, third person. No first-person ("we", "our") unless the user explicitly asks.
+- 120–180 words, single paragraph. No subheadings, no markdown, no bullet points in the output.
+- Cite tools by name with version where provided. Where a version isn't given, omit it rather than guessing.
+- Disclose AI use granularly: which feature, how many times, which provider+model. Match Jones (2025) heuristic for transparent AI disclosure in qualitative research.
+- Report intercoder reliability with the method name (Cohen's κ, Fleiss' κ, Krippendorff's α) AND the score AND the number of coders. If no intercoder analysis was performed, state that explicitly rather than omitting it.
+- Don't invent details. If the user doesn't provide a piece of information, omit it. Don't infer methodology (e.g. "thematic" vs "framework") that wasn't given.
+- Output plain text only. No Markdown formatting, no fences.`,
+      cache_control: { type: 'ephemeral' },
+    },
+    {
+      role: 'user',
+      content: `Generate a methods-section paragraph for this qualitative analysis.
+
+Project: "${params.canvasName}"
+Transcripts analyzed: ${params.transcriptCount}
+Total codings: ${params.totalCodings}
+Distinct code categories: ${params.totalCodes}
+${intercoderLine}
+${acceptanceLine}
+
+AI assistance used (QualCanvas v1, https://qualcanvas.com):
+${aiLines}
+
+Write the methods paragraph now.`,
+    },
+  ];
+}

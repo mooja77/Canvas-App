@@ -40,6 +40,8 @@ export type AnalyticsEvent =
   | 'inline_ai_rejected'
   | 'inline_ai_new_code'
   | 'inline_ai_cache_hit'
+  | 'methods_statement_generated'
+  | 'methods_statement_copied'
   // Reliability
   | 'service_worker_update_available'
   // Onboarding

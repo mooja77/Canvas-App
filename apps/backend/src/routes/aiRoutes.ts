@@ -10,7 +10,11 @@ import {
   updateAiSuggestionSchema,
   bulkActionSuggestionsSchema,
 } from '../middleware/validation.js';
-import { buildSuggestCodesPrompt, buildAutoCodeTranscriptPrompt } from '../utils/aiPrompts.js';
+import {
+  buildSuggestCodesPrompt,
+  buildAutoCodeTranscriptPrompt,
+  buildMethodsStatementPrompt,
+} from '../utils/aiPrompts.js';
 import { resolveAiConfig } from '../middleware/aiConfig.js';
 import { calculateCostCents } from '../utils/aiCost.js';
 import { aiCacheGet, aiCacheSet, aiCacheKey } from '../utils/aiCache.js';
@@ -535,6 +539,124 @@ aiRoutes.post(
       aiCacheSet(cacheKey, enriched);
 
       res.json({ success: true, data: { suggestions: enriched, cacheHit: false } });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ─── POST /canvas/:id/ai/methods-statement (Spec 11) ───
+// Aggregates the canvas's coding metadata + AI usage history + intercoder
+// reliability (if a TrainingAttempt exists) and asks the LLM to write a
+// publishable methods-section paragraph. Caller can paste the response
+// directly into their manuscript. Optional `intercoder` field in the
+// request body lets the frontend pass the result of an ad-hoc Krippendorff
+// α / Cohen κ computation that isn't persisted to TrainingAttempt.
+aiRoutes.post(
+  '/canvas/:id/ai/methods-statement',
+  checkAiAccess(),
+  resolveAiConfig(),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      const userId = getAuthUserId(req);
+      const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+
+      const overrideIntercoder = req.body?.intercoder as { method: string; score: number; nCoders: number } | undefined;
+
+      const [transcriptCount, totalCodings, totalCodes, aiUsageRows, latestAttempt, suggestionStats] =
+        await Promise.all([
+          prisma.canvasTranscript.count({ where: { canvasId: canvas.id, deletedAt: null } }),
+          prisma.canvasTextCoding.count({ where: { canvasId: canvas.id } }),
+          prisma.canvasQuestion.count({ where: { canvasId: canvas.id } }),
+          prisma.aiUsage.groupBy({
+            by: ['feature', 'provider', 'model'],
+            where: { canvasId: canvas.id },
+            _count: { feature: true },
+          }),
+          prisma.trainingAttempt.findFirst({
+            where: { trainingDocument: { canvasId: canvas.id }, kappaScore: { not: null } },
+            orderBy: { createdAt: 'desc' },
+            select: { kappaScore: true },
+          }),
+          prisma.aiSuggestion.groupBy({
+            by: ['status'],
+            where: { canvasId: canvas.id },
+            _count: { status: true },
+          }),
+        ]);
+
+      const aiUsage = aiUsageRows.map((r) => ({
+        feature: r.feature,
+        count: r._count.feature,
+        provider: r.provider,
+        model: r.model,
+      }));
+
+      // Prefer the caller-supplied intercoder result (covers ad-hoc Krippendorff
+      // α + Fleiss κ runs that aren't stored on TrainingAttempt). Fall back to
+      // the most recent training-document Cohen κ score for legacy data.
+      const intercoderResult =
+        overrideIntercoder ??
+        (latestAttempt?.kappaScore != null
+          ? { method: "Cohen's κ", score: latestAttempt.kappaScore, nCoders: 2 }
+          : undefined);
+
+      const accepted = suggestionStats.find((s) => s.status === 'accepted')?._count.status ?? 0;
+      const rejected = suggestionStats.find((s) => s.status === 'rejected')?._count.status ?? 0;
+      const modified = suggestionStats.find((s) => s.status === 'modified')?._count.status ?? 0;
+      const acceptanceLog = accepted + rejected + modified > 0 ? { accepted, rejected, modified } : undefined;
+
+      const messages = buildMethodsStatementPrompt({
+        canvasName: canvas.name,
+        transcriptCount,
+        totalCodings,
+        totalCodes,
+        intercoderResult,
+        aiUsage,
+        acceptanceLog,
+      });
+
+      if (!req.llmProvider) {
+        return res
+          .status(400)
+          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+      }
+
+      const result = await req.llmProvider.complete({
+        messages,
+        temperature: 0.4,
+        maxTokens: 1024,
+      });
+
+      await prisma.aiUsage.create({
+        data: {
+          userId,
+          canvasId: canvas.id,
+          feature: 'methods_statement',
+          provider: req.llmProvider.name,
+          model: result.model,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          costCents: calculateCostCents(result.model, result.inputTokens, result.outputTokens),
+        },
+      });
+
+      res.json({
+        success: true,
+        data: {
+          paragraph: result.content.trim(),
+          metadata: {
+            canvasName: canvas.name,
+            transcriptCount,
+            totalCodings,
+            totalCodes,
+            intercoder: intercoderResult ?? null,
+            aiUsage,
+            acceptanceLog: acceptanceLog ?? null,
+          },
+        },
+      });
     } catch (err) {
       next(err);
     }

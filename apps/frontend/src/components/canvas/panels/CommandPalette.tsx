@@ -422,6 +422,14 @@ export default function CommandPalette({
         description: 'Open the QDPX (.qdpx) standard import dialog',
         action: openModal('qdpx-import'),
       },
+      {
+        id: 'modal-methods-statement',
+        category: 'action',
+        icon: <IconReport />,
+        label: 'Generate methods statement (for publication)',
+        description: 'AI writes a publishable methods paragraph from your codings + intercoder + AI usage',
+        action: openModal('methods-statement'),
+      },
     );
 
     // ── Analysis nodes ──
