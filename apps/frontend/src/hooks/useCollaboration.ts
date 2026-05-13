@@ -59,6 +59,11 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
     const handleConnect = () => {
       setIsConnected(true);
       socket.emit('canvas:join', { canvasId });
+      // Reliability fix: on reconnect, pull the latest canvas state from the
+      // server so any edits made by other collaborators during the disconnect
+      // window are reconciled. Without this, the local store can silently
+      // diverge until the next local mutation triggers a refresh.
+      useCanvasStore.getState().refreshCanvas();
     };
 
     const handleDisconnect = () => {

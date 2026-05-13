@@ -79,18 +79,27 @@ export const updateCanvasSchema = z.object({
 
 export const createTranscriptSchema = z.object({
   title: z.string().min(1, 'Transcript title is required').max(200),
-  content: z.string().min(1, 'Transcript content is required'),
+  // 2 million chars ≈ 400K words. Caps the resource-exhaustion vector that
+  // would otherwise let a single transcript blow the LLM context window AND
+  // the storage budget. Plan-limit middleware also enforces per-plan word
+  // count; this is a hard ceiling.
+  content: z.string().min(1, 'Transcript content is required').max(2_000_000),
   sourceType: z.string().max(50).optional(),
   sourceId: z.string().max(200).optional(),
 });
 
 export const importNarrativesSchema = z.object({
-  narratives: z.array(z.object({
-    title: z.string().min(1).max(200),
-    content: z.string().min(1),
-    sourceType: z.string().max(50).optional(),
-    sourceId: z.string().max(200).optional(),
-  })).min(1).max(100),
+  narratives: z
+    .array(
+      z.object({
+        title: z.string().min(1).max(200),
+        content: z.string().min(1),
+        sourceType: z.string().max(50).optional(),
+        sourceId: z.string().max(200).optional(),
+      }),
+    )
+    .min(1)
+    .max(100),
 });
 
 export const importFromCanvasSchema = z.object({
@@ -106,25 +115,37 @@ export const updateTranscriptSchema = z.object({
 
 export const createCanvasQuestionSchema = z.object({
   text: z.string().min(1, 'Question text is required').max(1000),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
 });
 
 export const updateCanvasQuestionSchema = z.object({
   text: z.string().min(1).max(1000).optional(),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
   parentQuestionId: z.string().nullable().optional(),
 });
 
 export const createCanvasMemoSchema = z.object({
   title: z.string().max(200).optional(),
   content: z.string().min(1, 'Memo content is required').max(5000),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
 });
 
 export const updateCanvasMemoSchema = z.object({
   title: z.string().max(200).optional(),
   content: z.string().min(1).max(5000).optional(),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
 });
 
 export const createCodingSchema = z.object({
@@ -132,20 +153,26 @@ export const createCodingSchema = z.object({
   questionId: z.string().min(1),
   startOffset: z.number().int().min(0),
   endOffset: z.number().int().min(1),
-  codedText: z.string().min(1),
+  // Cap codedText at 50K chars. A typical coding is a sentence or paragraph
+  // (~50-500 chars). 50K is a safety ceiling against pathological inputs;
+  // anything larger probably indicates "the user selected the whole transcript"
+  // and we'd rather show that as an error than store 10MB of redundant text.
+  codedText: z.string().min(1).max(50_000),
   note: z.string().max(2000).optional(),
 });
 
 export const saveLayoutSchema = z.object({
-  positions: z.array(z.object({
-    nodeId: z.string().min(1),
-    nodeType: z.string().min(1),
-    x: z.number(),
-    y: z.number(),
-    width: z.number().optional(),
-    height: z.number().optional(),
-    collapsed: z.boolean().optional(),
-  })),
+  positions: z.array(
+    z.object({
+      nodeId: z.string().min(1),
+      nodeType: z.string().min(1),
+      x: z.number(),
+      y: z.number(),
+      width: z.number().optional(),
+      height: z.number().optional(),
+      collapsed: z.boolean().optional(),
+    }),
+  ),
 });
 
 export const reassignCodingSchema = z.object({
@@ -179,7 +206,21 @@ export const updateRelationSchema = z.object({
 });
 
 export const createComputedNodeSchema = z.object({
-  nodeType: z.enum(['search', 'cooccurrence', 'matrix', 'stats', 'comparison', 'wordcloud', 'cluster', 'codingquery', 'sentiment', 'treemap', 'documentportrait', 'timeline', 'geomap']),
+  nodeType: z.enum([
+    'search',
+    'cooccurrence',
+    'matrix',
+    'stats',
+    'comparison',
+    'wordcloud',
+    'cluster',
+    'codingquery',
+    'sentiment',
+    'treemap',
+    'documentportrait',
+    'timeline',
+    'geomap',
+  ]),
   label: z.string().min(1).max(200),
   config: z.record(z.string(), z.unknown()).optional(),
 });
