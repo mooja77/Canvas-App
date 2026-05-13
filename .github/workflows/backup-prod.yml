@@ -64,7 +64,10 @@ jobs:
           # --format=custom is compressed + supports parallel restore.
           # --no-owner / --no-privileges so the dump can restore into any
           # Postgres role (the prod role won't exist in the restore env).
-          pg_dump "$DATABASE_URL" \
+          # GHA runners ship both pg 16 (default) and the version we just
+          # installed (18). Call pg_dump via the explicit major-version path
+          # so we don't fall back to 16 (which errors on a pg18 server).
+          /usr/lib/postgresql/18/bin/pg_dump "$DATABASE_URL" \
             --no-owner --no-privileges --format=custom \
             --file="$PG_DUMP_FILE"
           ls -lh "$PG_DUMP_FILE"
