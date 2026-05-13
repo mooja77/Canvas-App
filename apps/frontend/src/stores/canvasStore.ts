@@ -15,7 +15,10 @@ import type {
 import { canvasApi } from '../services/api';
 import { emitSocketEvent } from '../lib/socket';
 import { cacheCanvas, getCachedCanvas } from '../lib/offlineStorage';
+import { trackEvent } from '../utils/analytics';
 import toast from 'react-hot-toast';
+
+const FIRST_CODING_FLAG = 'qualcanvas-first-coding-fired';
 
 interface PendingSelection {
   transcriptId: string;
@@ -68,7 +71,10 @@ interface CanvasState {
   deleteTranscript: (tid: string) => Promise<void>;
 
   addQuestion: (text: string, color?: string) => Promise<CanvasQuestion>;
-  updateQuestion: (qid: string, data: { text?: string; color?: string; parentQuestionId?: string | null }) => Promise<void>;
+  updateQuestion: (
+    qid: string,
+    data: { text?: string; color?: string; parentQuestionId?: string | null },
+  ) => Promise<void>;
   deleteQuestion: (qid: string) => Promise<void>;
 
   addMemo: (content: string, title?: string, color?: string) => Promise<CanvasMemo>;
@@ -77,7 +83,13 @@ interface CanvasState {
 
   // Coding
   setPendingSelection: (selection: PendingSelection | null) => void;
-  createCoding: (transcriptId: string, questionId: string, startOffset: number, endOffset: number, codedText: string) => Promise<CanvasTextCoding>;
+  createCoding: (
+    transcriptId: string,
+    questionId: string,
+    startOffset: number,
+    endOffset: number,
+    codedText: string,
+  ) => Promise<CanvasTextCoding>;
   deleteCoding: (codingId: string) => Promise<void>;
   updateCodingAnnotation: (codingId: string, annotation: string | null) => Promise<void>;
   reassignCoding: (codingId: string, newQuestionId: string) => Promise<void>;
@@ -94,26 +106,48 @@ interface CanvasState {
   deleteCase: (caseId: string) => Promise<void>;
 
   // Relations
-  addRelation: (fromType: 'case' | 'question', fromId: string, toType: 'case' | 'question', toId: string, label: string) => Promise<CanvasRelation>;
+  addRelation: (
+    fromType: 'case' | 'question',
+    fromId: string,
+    toType: 'case' | 'question',
+    toId: string,
+    label: string,
+  ) => Promise<CanvasRelation>;
   updateRelation: (relId: string, label: string) => Promise<void>;
   deleteRelation: (relId: string) => Promise<void>;
 
   // Computed Nodes
-  addComputedNode: (nodeType: ComputedNodeType, label: string, config?: Record<string, unknown>) => Promise<CanvasComputedNode>;
+  addComputedNode: (
+    nodeType: ComputedNodeType,
+    label: string,
+    config?: Record<string, unknown>,
+  ) => Promise<CanvasComputedNode>;
   updateComputedNode: (nodeId: string, data: { label?: string; config?: Record<string, unknown> }) => Promise<void>;
   deleteComputedNode: (nodeId: string) => Promise<void>;
   runComputedNode: (nodeId: string) => Promise<CanvasComputedNode>;
 
   // Auto-Code
-  autoCode: (questionId: string, pattern: string, mode: 'keyword' | 'regex', transcriptIds?: string[]) => Promise<{ created: number }>;
+  autoCode: (
+    questionId: string,
+    pattern: string,
+    mode: 'keyword' | 'regex',
+    transcriptIds?: string[],
+  ) => Promise<{ created: number }>;
 
   // In-Vivo / Spread / Merge
-  codeInVivo: (transcriptId: string, startOffset: number, endOffset: number, codedText: string) => Promise<CanvasQuestion>;
+  codeInVivo: (
+    transcriptId: string,
+    startOffset: number,
+    endOffset: number,
+    codedText: string,
+  ) => Promise<CanvasQuestion>;
   spreadToParagraph: (transcriptId: string, startOffset: number, endOffset: number, codedText: string) => Promise<void>;
   mergeQuestions: (sourceId: string, targetId: string) => Promise<void>;
 
   // Import
-  importNarratives: (narratives: { title: string; content: string; sourceType?: string; sourceId?: string }[]) => Promise<void>;
+  importNarratives: (
+    narratives: { title: string; content: string; sourceType?: string; sourceId?: string }[],
+  ) => Promise<void>;
   importFromCanvas: (sourceCanvasId: string, transcriptIds: string[]) => Promise<void>;
 
   // UI toggles
@@ -147,14 +181,14 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
   createCanvas: async (name, description) => {
     const res = await canvasApi.createCanvas({ name, description });
     const canvas = res.data.data;
-    set(s => ({ canvases: [canvas, ...s.canvases] }));
+    set((s) => ({ canvases: [canvas, ...s.canvases] }));
     return canvas;
   },
 
   deleteCanvas: async (id) => {
     await canvasApi.deleteCanvas(id);
-    set(s => ({
-      canvases: s.canvases.filter(c => c.id !== id),
+    set((s) => ({
+      canvases: s.canvases.filter((c) => c.id !== id),
       activeCanvasId: s.activeCanvasId === id ? null : s.activeCanvasId,
       activeCanvas: s.activeCanvasId === id ? null : s.activeCanvas,
     }));
@@ -208,8 +242,8 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
 
   restoreCanvas: async (id) => {
     await canvasApi.restoreCanvas(id);
-    set(s => ({
-      trashedCanvases: s.trashedCanvases.filter(c => c.id !== id),
+    set((s) => ({
+      trashedCanvases: s.trashedCanvases.filter((c) => c.id !== id),
     }));
     // Refresh the main list so it shows up
     get().fetchCanvases();
@@ -217,8 +251,8 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
 
   permanentDeleteCanvas: async (id) => {
     await canvasApi.permanentDeleteCanvas(id);
-    set(s => ({
-      trashedCanvases: s.trashedCanvases.filter(c => c.id !== id),
+    set((s) => ({
+      trashedCanvases: s.trashedCanvases.filter((c) => c.id !== id),
     }));
   },
 
@@ -227,7 +261,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     if (!activeCanvasId) throw new Error('No canvas open');
     const res = await canvasApi.addTranscript(activeCanvasId, { title, content });
     const transcript = res.data.data;
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
         ? { ...s.activeCanvas, transcripts: [...s.activeCanvas.transcripts, transcript] }
         : null,
@@ -241,9 +275,14 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     if (!activeCanvasId) return;
     const res = await canvasApi.updateTranscript(activeCanvasId, tid, data);
     const updated = res.data.data;
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, transcripts: s.activeCanvas.transcripts.map((t: CanvasTranscript) => t.id === tid ? { ...t, ...updated } : t) }
+        ? {
+            ...s.activeCanvas,
+            transcripts: s.activeCanvas.transcripts.map((t: CanvasTranscript) =>
+              t.id === tid ? { ...t, ...updated } : t,
+            ),
+          }
         : null,
     }));
     emitSocketEvent('canvas:transcript-updated', { canvasId: activeCanvasId, data: { transcriptId: tid } });
@@ -253,7 +292,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     const { activeCanvasId } = get();
     if (!activeCanvasId) return;
     await canvasApi.deleteTranscript(activeCanvasId, tid);
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
         ? {
             ...s.activeCanvas,
@@ -270,10 +309,8 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     if (!activeCanvasId) throw new Error('No canvas open');
     const res = await canvasApi.addQuestion(activeCanvasId, { text, color });
     const question = res.data.data;
-    set(s => ({
-      activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, questions: [...s.activeCanvas.questions, question] }
-        : null,
+    set((s) => ({
+      activeCanvas: s.activeCanvas ? { ...s.activeCanvas, questions: [...s.activeCanvas.questions, question] } : null,
     }));
     emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'question', id: question.id } });
     return question;
@@ -284,9 +321,12 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     if (!activeCanvasId) return;
     const res = await canvasApi.updateQuestion(activeCanvasId, qid, data);
     const updated = res.data.data;
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, questions: s.activeCanvas.questions.map((q: CanvasQuestion) => q.id === qid ? { ...q, ...updated } : q) }
+        ? {
+            ...s.activeCanvas,
+            questions: s.activeCanvas.questions.map((q: CanvasQuestion) => (q.id === qid ? { ...q, ...updated } : q)),
+          }
         : null,
     }));
   },
@@ -295,13 +335,13 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     const { activeCanvasId } = get();
     if (!activeCanvasId) return;
     await canvasApi.deleteQuestion(activeCanvasId, qid);
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
         ? {
             ...s.activeCanvas,
             questions: s.activeCanvas.questions
               .filter((q: CanvasQuestion) => q.id !== qid)
-              .map((q: CanvasQuestion) => q.parentQuestionId === qid ? { ...q, parentQuestionId: null } : q),
+              .map((q: CanvasQuestion) => (q.parentQuestionId === qid ? { ...q, parentQuestionId: null } : q)),
             codings: s.activeCanvas.codings.filter((c: CanvasTextCoding) => c.questionId !== qid),
           }
         : null,
@@ -314,10 +354,8 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     if (!activeCanvasId) throw new Error('No canvas open');
     const res = await canvasApi.addMemo(activeCanvasId, { content, title, color });
     const memo = res.data.data;
-    set(s => ({
-      activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, memos: [...s.activeCanvas.memos, memo] }
-        : null,
+    set((s) => ({
+      activeCanvas: s.activeCanvas ? { ...s.activeCanvas, memos: [...s.activeCanvas.memos, memo] } : null,
     }));
     emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'memo', id: memo.id } });
     return memo;
@@ -328,9 +366,12 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     if (!activeCanvasId) return;
     const res = await canvasApi.updateMemo(activeCanvasId, mid, data);
     const updated = res.data.data;
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, memos: s.activeCanvas.memos.map((m: CanvasMemo) => m.id === mid ? { ...m, ...updated } : m) }
+        ? {
+            ...s.activeCanvas,
+            memos: s.activeCanvas.memos.map((m: CanvasMemo) => (m.id === mid ? { ...m, ...updated } : m)),
+          }
         : null,
     }));
   },
@@ -339,7 +380,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     const { activeCanvasId } = get();
     if (!activeCanvasId) return;
     await canvasApi.deleteMemo(activeCanvasId, mid);
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
         ? { ...s.activeCanvas, memos: s.activeCanvas.memos.filter((m: CanvasMemo) => m.id !== mid) }
         : null,
@@ -354,16 +395,38 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     if (!activeCanvasId) throw new Error('No canvas open');
     try {
       const res = await canvasApi.createCoding(activeCanvasId, {
-        transcriptId, questionId, startOffset, endOffset, codedText,
+        transcriptId,
+        questionId,
+        startOffset,
+        endOffset,
+        codedText,
       });
       const coding = res.data.data;
-      set(s => ({
-        activeCanvas: s.activeCanvas
-          ? { ...s.activeCanvas, codings: [...s.activeCanvas.codings, coding] }
-          : null,
+      set((s) => ({
+        activeCanvas: s.activeCanvas ? { ...s.activeCanvas, codings: [...s.activeCanvas.codings, coding] } : null,
         pendingSelection: null,
       }));
-      emitSocketEvent('canvas:coding-added', { canvasId: activeCanvasId, data: { id: coding.id, transcriptId, questionId } });
+      emitSocketEvent('canvas:coding-added', {
+        canvasId: activeCanvasId,
+        data: { id: coding.id, transcriptId, questionId },
+      });
+
+      // Sprint F: first-value moment. localStorage flag is per-browser, which
+      // over-fires for users on a new device — accepted trade-off vs the
+      // alternative (server round-trip on every coding to check uniqueness).
+      try {
+        if (!localStorage.getItem(FIRST_CODING_FLAG)) {
+          localStorage.setItem(FIRST_CODING_FLAG, new Date().toISOString());
+          trackEvent('first_excerpt_coded', {
+            canvas_id: activeCanvasId,
+            code_text: codedText.slice(0, 80),
+          });
+          window.dispatchEvent(new CustomEvent('qualcanvas:first-excerpt-coded', { detail: { coding } }));
+        }
+      } catch {
+        // localStorage may be unavailable (e.g. Safari private mode); ignore.
+      }
+
       return coding;
     } catch (err) {
       console.error('[canvasStore] createCoding failed:', err);
@@ -376,7 +439,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     const { activeCanvasId } = get();
     if (!activeCanvasId) return;
     await canvasApi.deleteCoding(activeCanvasId, codingId);
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
         ? { ...s.activeCanvas, codings: s.activeCanvas.codings.filter((c: CanvasTextCoding) => c.id !== codingId) }
         : null,
@@ -389,9 +452,14 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     if (!activeCanvasId) return;
     const res = await canvasApi.updateCoding(activeCanvasId, codingId, { annotation: annotation ?? undefined });
     const updated = res.data.data;
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, codings: s.activeCanvas.codings.map((c: CanvasTextCoding) => c.id === codingId ? { ...c, ...updated } : c) }
+        ? {
+            ...s.activeCanvas,
+            codings: s.activeCanvas.codings.map((c: CanvasTextCoding) =>
+              c.id === codingId ? { ...c, ...updated } : c,
+            ),
+          }
         : null,
     }));
   },
@@ -400,9 +468,14 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     const { activeCanvasId } = get();
     if (!activeCanvasId) return;
     await canvasApi.reassignCoding(activeCanvasId, codingId, newQuestionId);
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, codings: s.activeCanvas.codings.map((c: CanvasTextCoding) => c.id === codingId ? { ...c, questionId: newQuestionId } : c) }
+        ? {
+            ...s.activeCanvas,
+            codings: s.activeCanvas.codings.map((c: CanvasTextCoding) =>
+              c.id === codingId ? { ...c, questionId: newQuestionId } : c,
+            ),
+          }
         : null,
     }));
   },
@@ -413,7 +486,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     set({ savingLayout: true });
     try {
       await canvasApi.saveLayout(activeCanvasId, {
-        positions: positions.map(p => ({
+        positions: positions.map((p) => ({
           nodeId: p.nodeId,
           nodeType: p.nodeType,
           x: p.x,
@@ -439,10 +512,8 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     if (!activeCanvasId) throw new Error('No canvas open');
     const res = await canvasApi.createCase(activeCanvasId, { name, attributes });
     const caseRecord = res.data.data;
-    set(s => ({
-      activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, cases: [...s.activeCanvas.cases, caseRecord] }
-        : null,
+    set((s) => ({
+      activeCanvas: s.activeCanvas ? { ...s.activeCanvas, cases: [...s.activeCanvas.cases, caseRecord] } : null,
     }));
     emitSocketEvent('canvas:node-added', { canvasId: activeCanvasId, data: { type: 'case', id: caseRecord.id } });
     return caseRecord;
@@ -453,9 +524,12 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     if (!activeCanvasId) return;
     const res = await canvasApi.updateCase(activeCanvasId, caseId, data);
     const updated = res.data.data;
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, cases: s.activeCanvas.cases.map((c: CanvasCase) => c.id === caseId ? { ...c, ...updated } : c) }
+        ? {
+            ...s.activeCanvas,
+            cases: s.activeCanvas.cases.map((c: CanvasCase) => (c.id === caseId ? { ...c, ...updated } : c)),
+          }
         : null,
     }));
   },
@@ -464,17 +538,17 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     const { activeCanvasId } = get();
     if (!activeCanvasId) return;
     await canvasApi.deleteCase(activeCanvasId, caseId);
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
         ? {
             ...s.activeCanvas,
             cases: s.activeCanvas.cases.filter((c: CanvasCase) => c.id !== caseId),
             transcripts: s.activeCanvas.transcripts.map((t: CanvasTranscript) =>
-              t.caseId === caseId ? { ...t, caseId: null } : t
+              t.caseId === caseId ? { ...t, caseId: null } : t,
             ),
-            relations: s.activeCanvas.relations.filter((r: CanvasRelation) =>
-              !(r.fromType === 'case' && r.fromId === caseId) &&
-              !(r.toType === 'case' && r.toId === caseId)
+            relations: s.activeCanvas.relations.filter(
+              (r: CanvasRelation) =>
+                !(r.fromType === 'case' && r.fromId === caseId) && !(r.toType === 'case' && r.toId === caseId),
             ),
           }
         : null,
@@ -489,10 +563,8 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     if (!activeCanvasId) throw new Error('No canvas open');
     const res = await canvasApi.createRelation(activeCanvasId, { fromType, fromId, toType, toId, label });
     const relation = res.data.data;
-    set(s => ({
-      activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, relations: [...s.activeCanvas.relations, relation] }
-        : null,
+    set((s) => ({
+      activeCanvas: s.activeCanvas ? { ...s.activeCanvas, relations: [...s.activeCanvas.relations, relation] } : null,
     }));
     return relation;
   },
@@ -501,9 +573,12 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     const { activeCanvasId } = get();
     if (!activeCanvasId) return;
     await canvasApi.updateRelation(activeCanvasId, relId, { label });
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, relations: s.activeCanvas.relations.map((r: CanvasRelation) => r.id === relId ? { ...r, label } : r) }
+        ? {
+            ...s.activeCanvas,
+            relations: s.activeCanvas.relations.map((r: CanvasRelation) => (r.id === relId ? { ...r, label } : r)),
+          }
         : null,
     }));
   },
@@ -512,7 +587,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     const { activeCanvasId } = get();
     if (!activeCanvasId) return;
     await canvasApi.deleteRelation(activeCanvasId, relId);
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
         ? { ...s.activeCanvas, relations: s.activeCanvas.relations.filter((r: CanvasRelation) => r.id !== relId) }
         : null,
@@ -526,7 +601,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     if (!activeCanvasId) throw new Error('No canvas open');
     const res = await canvasApi.createComputedNode(activeCanvasId, { nodeType, label, config });
     const node = res.data.data;
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
         ? { ...s.activeCanvas, computedNodes: [...s.activeCanvas.computedNodes, node] }
         : null,
@@ -540,9 +615,14 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     if (!activeCanvasId) return;
     const res = await canvasApi.updateComputedNode(activeCanvasId, nodeId, data);
     const updated = res.data.data;
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, computedNodes: s.activeCanvas.computedNodes.map((n: CanvasComputedNode) => n.id === nodeId ? { ...n, ...updated } : n) }
+        ? {
+            ...s.activeCanvas,
+            computedNodes: s.activeCanvas.computedNodes.map((n: CanvasComputedNode) =>
+              n.id === nodeId ? { ...n, ...updated } : n,
+            ),
+          }
         : null,
     }));
   },
@@ -551,9 +631,12 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     const { activeCanvasId } = get();
     if (!activeCanvasId) return;
     await canvasApi.deleteComputedNode(activeCanvasId, nodeId);
-    set(s => ({
+    set((s) => ({
       activeCanvas: s.activeCanvas
-        ? { ...s.activeCanvas, computedNodes: s.activeCanvas.computedNodes.filter((n: CanvasComputedNode) => n.id !== nodeId) }
+        ? {
+            ...s.activeCanvas,
+            computedNodes: s.activeCanvas.computedNodes.filter((n: CanvasComputedNode) => n.id !== nodeId),
+          }
         : null,
     }));
     emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId, nodeType: 'computed' } });
@@ -566,9 +649,14 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     try {
       const res = await canvasApi.runComputedNode(activeCanvasId, nodeId);
       const updated = res.data.data;
-      set(s => ({
+      set((s) => ({
         activeCanvas: s.activeCanvas
-          ? { ...s.activeCanvas, computedNodes: s.activeCanvas.computedNodes.map((n: CanvasComputedNode) => n.id === nodeId ? { ...n, ...updated } : n) }
+          ? {
+              ...s.activeCanvas,
+              computedNodes: s.activeCanvas.computedNodes.map((n: CanvasComputedNode) =>
+                n.id === nodeId ? { ...n, ...updated } : n,
+              ),
+            }
           : null,
       }));
       return updated;
@@ -585,12 +673,13 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     const res = await canvasApi.autoCode(activeCanvasId, { questionId, pattern, mode, transcriptIds });
     const { created, codings } = res.data.data;
     if (codings?.length) {
-      set(s => ({
-        activeCanvas: s.activeCanvas
-          ? { ...s.activeCanvas, codings: [...s.activeCanvas.codings, ...codings] }
-          : null,
+      set((s) => ({
+        activeCanvas: s.activeCanvas ? { ...s.activeCanvas, codings: [...s.activeCanvas.codings, ...codings] } : null,
       }));
-      emitSocketEvent('canvas:coding-added', { canvasId: activeCanvasId, data: { id: 'bulk', transcriptId: 'bulk', questionId } });
+      emitSocketEvent('canvas:coding-added', {
+        canvasId: activeCanvasId,
+        data: { id: 'bulk', transcriptId: 'bulk', questionId },
+      });
     }
     return { created };
   },
@@ -608,7 +697,7 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
   spreadToParagraph: async (transcriptId, startOffset, endOffset, codedText) => {
     const { activeCanvas, addQuestion, createCoding } = get();
     if (!activeCanvas) throw new Error('No canvas open');
-    const transcript = activeCanvas.transcripts.find(t => t.id === transcriptId);
+    const transcript = activeCanvas.transcripts.find((t) => t.id === transcriptId);
     if (!transcript) throw new Error('Transcript not found');
 
     const content = transcript.content;
@@ -653,26 +742,26 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
 
   // ─── UI toggles ───
 
-  toggleCodingStripes: () => set(s => ({ showCodingStripes: !s.showCodingStripes })),
+  toggleCodingStripes: () => set((s) => ({ showCodingStripes: !s.showCodingStripes })),
 }));
 
 // ─── Granular selector hooks (prevent unnecessary re-renders) ───
 
-export const useActiveCanvas = () => useCanvasStore(s => s.activeCanvas);
-export const useActiveCanvasId = () => useCanvasStore(s => s.activeCanvasId);
-export const useCanvasTranscripts = () => useCanvasStore(s => s.activeCanvas?.transcripts ?? []);
-export const useCanvasQuestions = () => useCanvasStore(s => s.activeCanvas?.questions ?? []);
-export const useCanvasCodings = () => useCanvasStore(s => s.activeCanvas?.codings ?? []);
-export const useCanvasMemos = () => useCanvasStore(s => s.activeCanvas?.memos ?? []);
-export const useCanvasCases = () => useCanvasStore(s => s.activeCanvas?.cases ?? []);
-export const useCanvasRelations = () => useCanvasStore(s => s.activeCanvas?.relations ?? []);
-export const useCanvasComputedNodes = () => useCanvasStore(s => s.activeCanvas?.computedNodes ?? []);
-export const useCanvasNodePositions = () => useCanvasStore(s => s.activeCanvas?.nodePositions ?? []);
-export const useSelectedQuestionId = () => useCanvasStore(s => s.selectedQuestionId);
-export const usePendingSelection = () => useCanvasStore(s => s.pendingSelection);
-export const useCanvasLoading = () => useCanvasStore(s => s.loading);
-export const useCanvasError = () => useCanvasStore(s => s.error);
-export const useShowCodingStripes = () => useCanvasStore(s => s.showCodingStripes);
-export const useRunningNodeId = () => useCanvasStore(s => s.runningNodeId);
-export const useTrashedCanvases = () => useCanvasStore(s => s.trashedCanvases);
-export const useTrashLoading = () => useCanvasStore(s => s.trashLoading);
+export const useActiveCanvas = () => useCanvasStore((s) => s.activeCanvas);
+export const useActiveCanvasId = () => useCanvasStore((s) => s.activeCanvasId);
+export const useCanvasTranscripts = () => useCanvasStore((s) => s.activeCanvas?.transcripts ?? []);
+export const useCanvasQuestions = () => useCanvasStore((s) => s.activeCanvas?.questions ?? []);
+export const useCanvasCodings = () => useCanvasStore((s) => s.activeCanvas?.codings ?? []);
+export const useCanvasMemos = () => useCanvasStore((s) => s.activeCanvas?.memos ?? []);
+export const useCanvasCases = () => useCanvasStore((s) => s.activeCanvas?.cases ?? []);
+export const useCanvasRelations = () => useCanvasStore((s) => s.activeCanvas?.relations ?? []);
+export const useCanvasComputedNodes = () => useCanvasStore((s) => s.activeCanvas?.computedNodes ?? []);
+export const useCanvasNodePositions = () => useCanvasStore((s) => s.activeCanvas?.nodePositions ?? []);
+export const useSelectedQuestionId = () => useCanvasStore((s) => s.selectedQuestionId);
+export const usePendingSelection = () => useCanvasStore((s) => s.pendingSelection);
+export const useCanvasLoading = () => useCanvasStore((s) => s.loading);
+export const useCanvasError = () => useCanvasStore((s) => s.error);
+export const useShowCodingStripes = () => useCanvasStore((s) => s.showCodingStripes);
+export const useRunningNodeId = () => useCanvasStore((s) => s.runningNodeId);
+export const useTrashedCanvases = () => useCanvasStore((s) => s.trashedCanvases);
+export const useTrashLoading = () => useCanvasStore((s) => s.trashLoading);

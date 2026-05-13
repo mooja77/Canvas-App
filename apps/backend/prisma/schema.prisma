@@ -47,6 +47,12 @@ model User {
   // middleware to gate Researcher Pro upsell visibility.
   legacyPricing Boolean @default(false)
 
+  // Sprint F onboarding-v2 state. JSON: { currentStep, dismissedTooltips: [],
+  // checklistComplete: [], startedAt }. Persisted server-side so the user
+  // sees a coherent flow across devices. Null until first onboarding event.
+  onboardingState       String?   @default("{}")
+  onboardingCompletedAt DateTime?
+
   subscription     Subscription?
   codingCanvases   CodingCanvas[]
   dashboardAccess  DashboardAccess?
@@ -61,9 +67,30 @@ model User {
   emailPreference  EmailPreference?
   emailDeliveries  EmailDelivery[]
   trainingAttempts TrainingAttempt[]
+  canvasTemplates  CanvasTemplate[]
 
   @@index([email])
   @@index([stripeCustomerId])
+}
+
+model CanvasTemplate {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  category         String   @default("methodology")
+  // 'interviews' | 'focus_groups' | 'field_notes' | 'open_ended_survey'
+  method           String?
+  sampleQuestions  String // JSON: [{text, color}]
+  sampleTranscript String
+  sampleMemos      String? // JSON: [{title, content}]
+  isPublic         Boolean  @default(true)
+  createdBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  creator          User?    @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@unique([name, createdBy])
+  @@index([isPublic, category])
 }
 
 model UserAiConfig {

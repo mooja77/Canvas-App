@@ -43,6 +43,19 @@ interface UIState {
   // trial nears expiry, but not spammed multiple times the same day.
   lastTrialBannerDismissalDate: string | null;
 
+  // Sprint F onboarding v2 — has the user finished the 2-screen flow?
+  onboardingV2Complete: boolean;
+  // Whether the user has dismissed the post-onboarding checklist widget.
+  // Once dismissed, it stays gone (it's nagware otherwise).
+  onboardingChecklistDismissed: boolean;
+  // Per-tooltip dismissal set for the JustInTimeTooltip primitive. Keyed by
+  // tooltipId; absence means the tooltip can still fire.
+  dismissedJitTooltips: string[];
+  // Whether the original 22-step tour (now "Full product tour") is open.
+  // Default false; only opens when the user explicitly picks it from the
+  // Help menu. Sprint F replaced auto-firing with on-demand surfacing.
+  showFullProductTour: boolean;
+
   toggleDarkMode: () => void;
   completeOnboarding: () => void;
   resetOnboarding: () => void;
@@ -55,6 +68,12 @@ interface UIState {
   setUserProfile: (profile: UserProfile) => void;
   markFeatureSeen: (feature: keyof FeatureDiscovery) => void;
   dismissTrialBannerToday: () => void;
+  completeOnboardingV2: () => void;
+  resetOnboardingV2: () => void;
+  dismissOnboardingChecklist: () => void;
+  dismissJitTooltip: (id: string) => void;
+  openFullProductTour: () => void;
+  closeFullProductTour: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -70,6 +89,10 @@ export const useUIStore = create<UIState>()(
       userProfile: null as UserProfile,
       featureDiscovery: { ...DEFAULT_FEATURE_DISCOVERY },
       lastTrialBannerDismissalDate: null,
+      onboardingV2Complete: false,
+      onboardingChecklistDismissed: false,
+      dismissedJitTooltips: [],
+      showFullProductTour: false,
 
       toggleDarkMode: () =>
         set((s) => {
@@ -96,6 +119,22 @@ export const useUIStore = create<UIState>()(
           featureDiscovery: { ...s.featureDiscovery, [feature]: true },
         })),
       dismissTrialBannerToday: () => set({ lastTrialBannerDismissalDate: new Date().toISOString().slice(0, 10) }),
+      completeOnboardingV2: () => set({ onboardingV2Complete: true }),
+      resetOnboardingV2: () =>
+        set({
+          onboardingV2Complete: false,
+          onboardingChecklistDismissed: false,
+          dismissedJitTooltips: [],
+        }),
+      dismissOnboardingChecklist: () => set({ onboardingChecklistDismissed: true }),
+      dismissJitTooltip: (id) =>
+        set((s) => ({
+          dismissedJitTooltips: s.dismissedJitTooltips.includes(id)
+            ? s.dismissedJitTooltips
+            : [...s.dismissedJitTooltips, id],
+        })),
+      openFullProductTour: () => set({ showFullProductTour: true, onboardingComplete: false }),
+      closeFullProductTour: () => set({ showFullProductTour: false, onboardingComplete: true }),
     }),
     {
       name: 'qualcanvas-ui',

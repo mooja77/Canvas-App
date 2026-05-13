@@ -25,7 +25,7 @@ import { useContainerSize } from '../../hooks/useContainerSize';
 import CodingDetailPanel from './panels/CodingDetailPanel';
 import CanvasSearchOverlay from './panels/CanvasSearchOverlay';
 import CommandPalette from './panels/CommandPalette';
-import OnboardingTour from './panels/OnboardingTour';
+import FullProductTour from '../help/FullProductTour';
 import CanvasContextMenu from './panels/CanvasContextMenu';
 import NodeContextMenu from './panels/NodeContextMenu';
 import EdgeContextMenu from './panels/EdgeContextMenu';
@@ -2651,8 +2651,8 @@ export default function CanvasWorkspace() {
       {/* AI Setup Guide */}
       {showAiSetupGuide && <AiSetupGuide trigger={showAiSetupGuide} onClose={() => setShowAiSetupGuide(null)} />}
 
-      {/* Onboarding tour for first-time users */}
-      <OnboardingTour />
+      {/* Full product tour — opens on demand from Help menu only (Sprint F) */}
+      <FullProductTour />
 
       {/* Delete node confirmation */}
       {deleteConfirm && (

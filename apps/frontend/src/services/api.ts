@@ -598,3 +598,40 @@ export const adminApi = {
   sendEmailCampaign: (adminKey: string, id: string) =>
     canvasClient.post(`/admin/email/campaigns/${id}/send`, {}, adminHeaders(adminKey)),
 };
+
+export interface CanvasTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  method: string | null;
+  sampleQuestions: { text: string; color: string }[];
+  sampleTranscript: string;
+  sampleMemos: { title: string; content: string }[] | null;
+  isPublic: boolean;
+}
+
+export const templateApi = {
+  list: () => canvasClient.get<{ success: true; data: CanvasTemplate[] }>('/canvas/templates'),
+
+  instantiate: (templateId: string, body: { canvasName?: string; includeSampleData?: boolean } = {}) =>
+    canvasClient.post<{ success: true; data: { id: string; name: string } }>(
+      `/canvas/templates/${templateId}/instantiate`,
+      body,
+    ),
+};
+
+export interface OnboardingState {
+  state: Record<string, unknown> | null;
+  completedAt: string | null;
+  legacy: boolean;
+}
+
+export const onboardingApi = {
+  get: () => canvasClient.get<{ success: true; data: OnboardingState }>('/user/onboarding'),
+
+  patch: (state: Record<string, unknown>) =>
+    canvasClient.patch<{ success: true; data: { state: Record<string, unknown> } }>('/user/onboarding', { state }),
+
+  complete: () => canvasClient.post<{ success: true }>('/user/onboarding/complete'),
+};

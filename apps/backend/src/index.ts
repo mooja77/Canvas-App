@@ -84,6 +84,7 @@ import { uploadRoutes } from './routes/uploadRoutes.js';
 import { collaborationRoutes } from './routes/collaborationRoutes.js';
 import { documentRoutes } from './routes/documentRoutes.js';
 import { trainingRoutes } from './routes/trainingRoutes.js';
+import { templateRoutes } from './routes/templateRoutes.js';
 import { qdpxRoutes } from './routes/qdpxRoutes.js';
 import { repositoryRoutes } from './routes/repositoryRoutes.js';
 import { integrationRoutes } from './routes/integrationRoutes.js';
@@ -328,6 +329,9 @@ v1Router.use(auth, auditLog, documentRoutes);
 
 // Protected training center routes
 v1Router.use(auth, auditLog, trainingRoutes);
+
+// Protected template + onboarding routes
+v1Router.use(auth, auditLog, templateRoutes);
 
 // Protected QDPX export/import routes
 v1Router.use(auth, auditLog, qdpxRoutes);

@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { createHash } from 'crypto';
 import bcrypt from 'bcryptjs';
+import { TEMPLATES } from './templates.js';
 
 const prisma = new PrismaClient();
 
@@ -26,11 +27,39 @@ async function main() {
     },
   });
 
-  console.log('Seed complete. Demo code: CANVAS-DEMO2025');
+  // Seed Sprint F onboarding templates. The composite unique index
+  // (name, createdBy) lets us upsert public templates where createdBy is
+  // NULL — Prisma represents that as a null-safe composite key match.
+  for (const tmpl of TEMPLATES) {
+    const data = {
+      name: tmpl.name,
+      description: tmpl.description,
+      category: tmpl.category,
+      method: tmpl.method,
+      sampleQuestions: JSON.stringify(tmpl.sampleQuestions),
+      sampleTranscript: tmpl.sampleTranscript,
+      sampleMemos: tmpl.sampleMemos ? JSON.stringify(tmpl.sampleMemos) : null,
+      isPublic: true,
+    };
+
+    // findFirst + create-or-update because Prisma can't express a composite
+    // unique upsert when one side is nullable (createdBy: null). This is
+    // idempotent: re-running the seed updates content but doesn't dupe.
+    const existing = await prisma.canvasTemplate.findFirst({
+      where: { name: tmpl.name, createdBy: null },
+    });
+    if (existing) {
+      await prisma.canvasTemplate.update({ where: { id: existing.id }, data });
+    } else {
+      await prisma.canvasTemplate.create({ data });
+    }
+  }
+
+  console.log(`Seed complete. Demo code: CANVAS-DEMO2025 (+ ${TEMPLATES.length} onboarding templates)`);
 }
 
 main()
-  .catch(e => {
+  .catch((e) => {
     console.error(e);
     process.exit(1);
   })

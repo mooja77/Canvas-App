@@ -60,7 +60,7 @@ export default function CommandPalette({
   const addQuestion = useCanvasStore((s) => s.addQuestion);
   const addMemo = useCanvasStore((s) => s.addMemo);
   const toggleCodingStripes = useCanvasStore((s) => s.toggleCodingStripes);
-  const { toggleDarkMode, darkMode, resetOnboarding } = useUIStore();
+  const { toggleDarkMode, darkMode, openFullProductTour } = useUIStore();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -182,7 +182,7 @@ export default function CommandPalette({
         label: 'Take a Tour',
         description: 'Restart the guided onboarding tour',
         action: () => {
-          resetOnboarding();
+          openFullProductTour();
           onClose();
         },
       },
@@ -412,7 +412,7 @@ export default function CommandPalette({
     toggleCodingStripes,
     toggleDarkMode,
     darkMode,
-    resetOnboarding,
+    openFullProductTour,
     onClose,
     onFocusNode,
     onFitView,

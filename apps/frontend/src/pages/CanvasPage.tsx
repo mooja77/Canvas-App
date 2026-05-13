@@ -10,13 +10,19 @@ import SetupWizard from '../components/SetupWizard';
 import PlanWelcome from '../components/PlanWelcome';
 import AiSetupBanner from '../components/AiSetupBanner';
 import TrialBanner from '../components/TrialBanner';
+import OnboardingFlow from '../components/onboarding/OnboardingFlow';
+import OnboardingChecklist from '../components/onboarding/OnboardingChecklist';
+import { useFeatureFlag } from '../stores/featureFlagsStore';
 import { SunIcon, MoonIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
 export default function CanvasPage() {
   const { authenticated, name, logout, authType, emailVerified } = useAuthStore();
   const setTrialState = useAuthStore((s) => s.setTrialState);
-  const { darkMode, toggleDarkMode, setupWizardComplete, completeSetupWizard, resetOnboarding } = useUIStore();
+  const { darkMode, toggleDarkMode, setupWizardComplete, completeSetupWizard, openFullProductTour } = useUIStore();
+  const onboardingV2Complete = useUIStore((s) => s.onboardingV2Complete);
+  const completeOnboardingV2 = useUIStore((s) => s.completeOnboardingV2);
+  const onboardingV2Enabled = useFeatureFlag('onboarding_v2');
   const planWelcomeSeen = useUIStore((s) => s.featureDiscovery.planWelcomeSeen);
   const [showPlanWelcome, setShowPlanWelcome] = useState(false);
   const canvases = useCanvasStore((s) => s.canvases);
@@ -78,9 +84,9 @@ export default function CanvasPage() {
   // Demo mode: ?demo=true triggers the guided tour
   useEffect(() => {
     if (searchParams.get('demo') === 'true' && authenticated) {
-      resetOnboarding();
+      openFullProductTour();
     }
-  }, [searchParams, authenticated, resetOnboarding]);
+  }, [searchParams, authenticated, openFullProductTour]);
 
   const handleResendVerification = async () => {
     if (resending) return;
@@ -237,7 +243,13 @@ export default function CanvasPage() {
         /* Full-screen canvas workspace */
         <main id="canvas-main" className="flex-1 overflow-hidden" aria-label="Canvas workspace">
           <CodingCanvas />
+          {onboardingV2Enabled && onboardingV2Complete && <OnboardingChecklist />}
         </main>
+      )}
+
+      {/* Sprint F onboarding v2 — gated by feature flag, fires once per user */}
+      {onboardingV2Enabled && !onboardingV2Complete && canvasesLoaded && canvases.length === 0 && !showWizard && (
+        <OnboardingFlow onClose={completeOnboardingV2} />
       )}
     </div>
   );

@@ -160,7 +160,7 @@ export default function CanvasToolbar({
   const toggleCodingStripes = useCanvasStore((s) => s.toggleCodingStripes);
   const edgeStyle = useUIStore((s) => s.edgeStyle);
   const setEdgeStyle = useUIStore((s) => s.setEdgeStyle);
-  const resetOnboarding = useUIStore((s) => s.resetOnboarding);
+  const openFullProductTour = useUIStore((s) => s.openFullProductTour);
   const [showQuestionInput, setShowQuestionInput] = useState(false);
   const [questionText, setQuestionText] = useState('');
   const [showAutoCode, setShowAutoCode] = useState(false);
@@ -972,8 +972,8 @@ export default function CanvasToolbar({
                   />
                 </svg>
               }
-              label="Replay guided tour"
-              onClick={resetOnboarding}
+              label="Take the full product tour"
+              onClick={openFullProductTour}
             />
             <DropdownItem
               icon={

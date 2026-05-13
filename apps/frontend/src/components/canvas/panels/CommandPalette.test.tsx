@@ -28,6 +28,8 @@ vi.mock('../../../stores/uiStore', () => ({
     toggleDarkMode: vi.fn(),
     darkMode: false,
     resetOnboarding: vi.fn(),
+    openFullProductTour: vi.fn(),
+    closeFullProductTour: vi.fn(),
   }),
 }));
 
