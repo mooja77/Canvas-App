@@ -47,12 +47,18 @@ interface FeatureFlagsState {
   isEnabled: (flag: FeatureFlag) => boolean;
 }
 
+// Sprint F + H rollout — flags flipped on for new signups once their
+// respective sprints landed CI green (Sprint F: dc68c28 / 68907b2,
+// Sprint H: 70d3f8a). Persisted overrides in localStorage still win, so
+// existing users who already saw the old flow won't see a sudden change.
+// Sprint D (Krippendorff α) also flips on — the surface is gated by
+// Team plan check inside the component, so it's safe to default-enable.
 const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   activity_bar_v2: false,
-  onboarding_v2: false,
-  inline_ai_suggester: false,
+  onboarding_v2: true,
+  inline_ai_suggester: true,
   pricing_v2: false,
-  krippendorff_alpha: false,
+  krippendorff_alpha: true,
   trust_page: false,
   ink_ochre_palette: false,
   fraunces_display: false,
