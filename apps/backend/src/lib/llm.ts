@@ -8,6 +8,13 @@
 export interface LlmMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
+  /**
+   * Anthropic prompt-caching hint. When set on a system message, the
+   * Anthropic provider lifts this onto the API call so the cached portion
+   * of the prompt costs 10% of normal input price for ~5 min. Other
+   * providers ignore this field.
+   */
+  cache_control?: { type: 'ephemeral' };
 }
 
 export interface LlmCompletionOptions {
@@ -89,9 +96,7 @@ export function getDefaultProvider(): LlmProvider {
   const providerName = process.env.AI_PROVIDER || 'openai';
   const provider = providers.get(providerName);
   if (!provider) {
-    throw new Error(
-      `LLM provider "${providerName}" not registered. Available: ${[...providers.keys()].join(', ')}`,
-    );
+    throw new Error(`LLM provider "${providerName}" not registered. Available: ${[...providers.keys()].join(', ')}`);
   }
   defaultProvider = provider;
   return provider;
