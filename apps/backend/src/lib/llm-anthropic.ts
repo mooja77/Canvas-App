@@ -19,6 +19,23 @@ import { withLlmRetry } from './llm-retry.js';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 
+// Build the Anthropic SDK's `system` parameter from our prompt builders.
+// If the prompt-author asked for ephemeral caching (the `cache_control` hint
+// on the system message), emit the structured-block form so the Anthropic
+// API actually caches the system prompt. Otherwise fall back to the plain
+// string form — keeps the call shape minimal when caching wasn't requested.
+function buildSystemParam(systemText: string, cacheHint: { type: 'ephemeral' } | undefined) {
+  if (!systemText) return undefined;
+  if (!cacheHint) return systemText;
+  return [
+    {
+      type: 'text' as const,
+      text: systemText,
+      cache_control: cacheHint,
+    },
+  ];
+}
+
 function createAnthropicProvider(client: Anthropic, defaultModel: string): LlmProvider {
   return {
     name: 'anthropic',
@@ -36,13 +53,14 @@ function createAnthropicProvider(client: Anthropic, defaultModel: string): LlmPr
       if (options.responseFormat === 'json') {
         system += '\n\nIMPORTANT: Respond with valid JSON only. No markdown, no explanation.';
       }
+      const systemParam = buildSystemParam(system, systemMsg?.cache_control);
 
       const response = await withLlmRetry(() =>
         client.messages.create({
           model,
           max_tokens: options.maxTokens ?? 2048,
           temperature: options.temperature ?? 0.3,
-          ...(system ? { system } : {}),
+          ...(systemParam ? { system: systemParam } : {}),
           messages: userMessages,
         }),
       );
@@ -75,12 +93,13 @@ function createAnthropicProvider(client: Anthropic, defaultModel: string): LlmPr
       if (options.responseFormat === 'json') {
         system += '\n\nIMPORTANT: Respond with valid JSON only. No markdown, no explanation.';
       }
+      const systemParam = buildSystemParam(system, systemMsg?.cache_control);
 
       const stream = client.messages.stream({
         model,
         max_tokens: options.maxTokens ?? 2048,
         temperature: options.temperature ?? 0.3,
-        ...(system ? { system } : {}),
+        ...(systemParam ? { system: systemParam } : {}),
         messages: userMessages,
       });
 

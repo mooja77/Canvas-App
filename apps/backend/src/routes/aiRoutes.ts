@@ -14,6 +14,7 @@ import { buildSuggestCodesPrompt, buildAutoCodeTranscriptPrompt } from '../utils
 import { resolveAiConfig } from '../middleware/aiConfig.js';
 import { calculateCostCents } from '../utils/aiCost.js';
 import { aiCacheGet, aiCacheSet, aiCacheKey } from '../utils/aiCache.js';
+import { findCoding } from '../utils/findCoding.js';
 
 export const aiRoutes = Router();
 
@@ -205,13 +206,16 @@ aiRoutes.post(
         },
       });
 
-      // Parse response
+      // Parse response — the prompt instructs the model to emit text-anchored
+      // codings (`codedText` + `anchorBefore`) per spec 11. We accept the old
+      // offset-style fields too for backwards compat with cached responses.
       let codings: Array<{
         questionId: string | null;
         suggestedText: string;
-        startOffset: number;
-        endOffset: number;
+        startOffset?: number;
+        endOffset?: number;
         codedText: string;
+        anchorBefore?: string;
         confidence: number;
       }>;
       try {
@@ -221,14 +225,30 @@ aiRoutes.post(
         return res.status(500).json({ success: false, error: 'Failed to parse AI response' });
       }
 
-      // Validate and save as suggestions
-      const validCodings = codings.filter(
-        (c) =>
-          c.startOffset >= 0 &&
-          c.endOffset > c.startOffset &&
-          c.endOffset <= transcript.content.length &&
-          c.codedText.length > 0,
-      );
+      // Resolve offsets via text-anchored matching. LLM-emitted offsets are
+      // unreliable; we instead trust the substring + anchor and look it up
+      // in the actual transcript text. Codings whose substring isn't found
+      // are dropped + logged as hallucinations.
+      let hallucinated = 0;
+      const validCodings = codings
+        .map((c) => {
+          if (!c.codedText || c.codedText.length === 0) return null;
+          const span = findCoding(transcript.content, c.codedText, c.anchorBefore ?? null);
+          if (!span) {
+            hallucinated++;
+            console.warn(`[ai] dropping hallucinated coding "${c.codedText.slice(0, 60)}…" in canvas ${canvas.id}`);
+            return null;
+          }
+          return {
+            questionId: c.questionId ?? null,
+            suggestedText: c.suggestedText,
+            startOffset: span.start,
+            endOffset: span.end,
+            codedText: c.codedText,
+            confidence: c.confidence ?? 0,
+          };
+        })
+        .filter((c): c is NonNullable<typeof c> => c !== null);
 
       const savedSuggestions = await Promise.all(
         validCodings.map((c) =>
@@ -250,7 +270,12 @@ aiRoutes.post(
 
       res.json({
         success: true,
-        data: { total: codings.length, valid: savedSuggestions.length, suggestions: savedSuggestions },
+        data: {
+          total: codings.length,
+          valid: savedSuggestions.length,
+          hallucinated,
+          suggestions: savedSuggestions,
+        },
       });
     } catch (err) {
       next(err);
