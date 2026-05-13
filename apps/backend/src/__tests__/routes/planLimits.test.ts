@@ -91,7 +91,7 @@ describe('Plan limits — canvas creation', () => {
     expect(res.body.success).toBe(true);
   });
 
-  it('blocks a free user from creating a 2nd canvas', async () => {
+  it('blocks a free user from creating a 3rd canvas (limit: 2 after Sprint C)', async () => {
     const jwt = signUserToken('user-1', 'researcher', 'free');
 
     mockPrisma.user.findUnique.mockResolvedValue({
@@ -101,20 +101,20 @@ describe('Plan limits — canvas creation', () => {
       dashboardAccess: null,
     });
 
-    // User already has 1 canvas
-    mockPrisma.codingCanvas.count.mockResolvedValue(1);
+    // User already has 2 canvases (at free cap)
+    mockPrisma.codingCanvas.count.mockResolvedValue(2);
 
     const res = await request(app)
       .post('/api/canvas')
       .set('Authorization', `Bearer ${jwt}`)
-      .send({ name: 'Second Canvas' });
+      .send({ name: 'Third Canvas' });
 
     expect(res.status).toBe(403);
     expect(res.body.success).toBe(false);
     expect(res.body.code).toBe('PLAN_LIMIT_EXCEEDED');
     expect(res.body.limit).toBe('maxCanvases');
-    expect(res.body.current).toBe(1);
-    expect(res.body.max).toBe(1);
+    expect(res.body.current).toBe(2);
+    expect(res.body.max).toBe(2);
     expect(res.body.upgrade).toBe(true);
   });
 
@@ -128,7 +128,7 @@ describe('Plan limits — canvas creation', () => {
       dashboardAccess: null,
     });
 
-    mockPrisma.codingCanvas.count.mockResolvedValue(1);
+    mockPrisma.codingCanvas.count.mockResolvedValue(2);
 
     const res = await request(app)
       .post('/api/canvas')

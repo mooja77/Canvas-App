@@ -94,12 +94,12 @@ describe('Plan enforcement — comprehensive limits', () => {
     vi.clearAllMocks();
   });
 
-  // ─── FREE PLAN: Canvas limit (max 1) ───
+  // ─── FREE PLAN: Canvas limit (max 2 after Sprint C expansion) ───
 
-  it('Free plan user cannot create a 2nd canvas (limit: 1)', async () => {
+  it('Free plan user cannot create a 3rd canvas (limit: 2)', async () => {
     const jwt = signUserToken('u1', 'researcher', 'free');
     mockPrisma.user.findUnique.mockResolvedValue(mockUser('u1', 'free'));
-    mockPrisma.codingCanvas.count.mockResolvedValue(1);
+    mockPrisma.codingCanvas.count.mockResolvedValue(2);
 
     const app = createApp('post', '/api/canvas', checkCanvasLimit());
     const res = await request(app).post('/api/canvas').set('Authorization', `Bearer ${jwt}`).send({});
@@ -107,15 +107,15 @@ describe('Plan enforcement — comprehensive limits', () => {
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('PLAN_LIMIT_EXCEEDED');
     expect(res.body.limit).toBe('maxCanvases');
-    expect(res.body.max).toBe(1);
+    expect(res.body.max).toBe(2);
   });
 
-  // ─── FREE PLAN: Transcript limit (max 2 per canvas) ───
+  // ─── FREE PLAN: Transcript limit (max 5 per canvas after Sprint C) ───
 
-  it('Free plan user cannot add a 3rd transcript (limit: 2)', async () => {
+  it('Free plan user cannot add a 6th transcript (limit: 5)', async () => {
     const jwt = signUserToken('u1', 'researcher', 'free');
     mockPrisma.user.findUnique.mockResolvedValue(mockUser('u1', 'free'));
-    mockPrisma.canvasTranscript.count.mockResolvedValue(2);
+    mockPrisma.canvasTranscript.count.mockResolvedValue(5);
 
     const app = createApp('post', '/api/canvas/:id/transcripts', checkTranscriptLimit());
     const res = await request(app)
@@ -126,15 +126,15 @@ describe('Plan enforcement — comprehensive limits', () => {
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('PLAN_LIMIT_EXCEEDED');
     expect(res.body.limit).toBe('maxTranscriptsPerCanvas');
-    expect(res.body.max).toBe(2);
+    expect(res.body.max).toBe(5);
   });
 
-  // ─── FREE PLAN: Code limit (max 5) ───
+  // ─── FREE PLAN: Code limit (max 10 after Sprint C expansion) ───
 
-  it('Free plan user cannot add a 6th code (limit: 5)', async () => {
+  it('Free plan user cannot add an 11th code (limit: 10)', async () => {
     const jwt = signUserToken('u1', 'researcher', 'free');
     mockPrisma.user.findUnique.mockResolvedValue(mockUser('u1', 'free'));
-    mockPrisma.canvasQuestion.count.mockResolvedValue(5);
+    mockPrisma.canvasQuestion.count.mockResolvedValue(10);
 
     const app = createApp('post', '/api/canvas/:id/questions', checkCodeLimit());
     const res = await request(app)
@@ -145,7 +145,7 @@ describe('Plan enforcement — comprehensive limits', () => {
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('PLAN_LIMIT_EXCEEDED');
     expect(res.body.limit).toBe('maxCodes');
-    expect(res.body.max).toBe(5);
+    expect(res.body.max).toBe(10);
   });
 
   // ─── FREE PLAN: Share limit (max 0) ───
@@ -212,7 +212,8 @@ describe('Plan enforcement — comprehensive limits', () => {
     expect(res.body.limit).toBe('allowedAnalysisTypes');
   });
 
-  it('Free plan user cannot create sentiment analysis node', async () => {
+  it('Free plan user cannot create cluster analysis node (Pro-only)', async () => {
+    // sentiment + search were added to free tier in Sprint C; cluster stays Pro-only
     const jwt = signUserToken('u1', 'researcher', 'free');
     mockPrisma.user.findUnique.mockResolvedValue(mockUser('u1', 'free'));
 
@@ -220,7 +221,7 @@ describe('Plan enforcement — comprehensive limits', () => {
     const res = await request(app)
       .post('/api/canvas/canvas-1/computed')
       .set('Authorization', `Bearer ${jwt}`)
-      .send({ nodeType: 'sentiment', label: 'Sentiment' });
+      .send({ nodeType: 'cluster', label: 'Cluster' });
 
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('PLAN_LIMIT_EXCEEDED');
@@ -319,9 +320,9 @@ describe('Plan enforcement — comprehensive limits', () => {
     // so upgrading the plan in the DB takes effect immediately.
     const jwt = signUserToken('u1', 'researcher', 'free');
 
-    // First request: user is free, has 1 canvas → blocked
+    // First request: user is free, has 2 canvases (at free cap) → blocked
     mockPrisma.user.findUnique.mockResolvedValue(mockUser('u1', 'free'));
-    mockPrisma.codingCanvas.count.mockResolvedValue(1);
+    mockPrisma.codingCanvas.count.mockResolvedValue(2);
 
     const app = createApp('post', '/api/canvas', checkCanvasLimit());
     const res1 = await request(app).post('/api/canvas').set('Authorization', `Bearer ${jwt}`).send({});
@@ -330,7 +331,7 @@ describe('Plan enforcement — comprehensive limits', () => {
 
     // Simulate plan upgrade in DB — now user is pro
     mockPrisma.user.findUnique.mockResolvedValue(mockUser('u1', 'pro'));
-    mockPrisma.codingCanvas.count.mockResolvedValue(1);
+    mockPrisma.codingCanvas.count.mockResolvedValue(2);
 
     const res2 = await request(app).post('/api/canvas').set('Authorization', `Bearer ${jwt}`).send({});
 

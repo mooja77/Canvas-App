@@ -40,19 +40,27 @@ model User {
   // existed (legacy / pre-2026 signups stay free unless they pay).
   trialEndsAt DateTime?
 
-  subscription    Subscription?
-  codingCanvases  CodingCanvas[]
-  dashboardAccess DashboardAccess?
-  repositories    ResearchRepository[]
-  integrations    Integration[]
-  aiConfig        UserAiConfig?
-  ownedTeams      Team[]               @relation("TeamOwner")
-  teamMemberships TeamMember[]
-  notifications   Notification[]
-  reportSchedules ReportSchedule[]
-  calendarEvents  CalendarEvent[]
-  emailPreference EmailPreference?
-  emailDeliveries EmailDelivery[]
+  // Pricing v2 grandfather flag. Users created before 2026-05-13 keep their
+  // original $12/mo Pro tier billing — Stripe subscription continues at the
+  // grandfathered Price ID. When false, new users land on the v2 ladder
+  // (Pro $17, Researcher Pro $39, Team $49). This is read by the auth
+  // middleware to gate Researcher Pro upsell visibility.
+  legacyPricing Boolean @default(false)
+
+  subscription     Subscription?
+  codingCanvases   CodingCanvas[]
+  dashboardAccess  DashboardAccess?
+  repositories     ResearchRepository[]
+  integrations     Integration[]
+  aiConfig         UserAiConfig?
+  ownedTeams       Team[]               @relation("TeamOwner")
+  teamMemberships  TeamMember[]
+  notifications    Notification[]
+  reportSchedules  ReportSchedule[]
+  calendarEvents   CalendarEvent[]
+  emailPreference  EmailPreference?
+  emailDeliveries  EmailDelivery[]
+  trainingAttempts TrainingAttempt[]
 
   @@index([email])
   @@index([stripeCustomerId])
@@ -413,8 +421,10 @@ model TrainingAttempt {
   passed             Boolean          @default(false)
   createdAt          DateTime         @default(now())
   trainingDocument   TrainingDocument @relation(fields: [trainingDocumentId], references: [id], onDelete: Cascade)
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([trainingDocumentId])
+  @@index([userId])
 }
 
 // ─── File Upload & Transcription ───
@@ -620,8 +630,10 @@ model ReportSchedule {
   enabled   Boolean   @default(true)
   createdAt DateTime  @default(now())
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([teamId])
   @@index([enabled, lastSent])
 }
 
@@ -688,13 +700,14 @@ model EmailDelivery {
 // ─── Teams ───
 
 model Team {
-  id        String       @id @default(cuid())
-  name      String
-  ownerId   String
-  owner     User         @relation("TeamOwner", fields: [ownerId], references: [id])
-  members   TeamMember[]
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id              String           @id @default(cuid())
+  name            String
+  ownerId         String
+  owner           User             @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members         TeamMember[]
+  reportSchedules ReportSchedule[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([ownerId])
 }
