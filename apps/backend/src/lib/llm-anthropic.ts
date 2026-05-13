@@ -15,6 +15,7 @@ import type {
   LlmEmbeddingResult,
 } from './llm.js';
 import { registerProviderFactory } from './llm.js';
+import { withLlmRetry } from './llm-retry.js';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 
@@ -36,13 +37,15 @@ function createAnthropicProvider(client: Anthropic, defaultModel: string): LlmPr
         system += '\n\nIMPORTANT: Respond with valid JSON only. No markdown, no explanation.';
       }
 
-      const response = await client.messages.create({
-        model,
-        max_tokens: options.maxTokens ?? 2048,
-        temperature: options.temperature ?? 0.3,
-        ...(system ? { system } : {}),
-        messages: userMessages,
-      });
+      const response = await withLlmRetry(() =>
+        client.messages.create({
+          model,
+          max_tokens: options.maxTokens ?? 2048,
+          temperature: options.temperature ?? 0.3,
+          ...(system ? { system } : {}),
+          messages: userMessages,
+        }),
+      );
 
       const content = response.content
         .filter((b) => b.type === 'text')
@@ -110,14 +113,14 @@ function createAnthropicProvider(client: Anthropic, defaultModel: string): LlmPr
     async embedText(_text: string): Promise<LlmEmbeddingResult> {
       throw new Error(
         'Anthropic does not support embeddings. For RAG chat and data indexing, ' +
-        'please configure an OpenAI or Google API key.',
+          'please configure an OpenAI or Google API key.',
       );
     },
 
     async embedBatch(_texts: string[]): Promise<LlmEmbeddingResult[]> {
       throw new Error(
         'Anthropic does not support embeddings. For RAG chat and data indexing, ' +
-        'please configure an OpenAI or Google API key.',
+          'please configure an OpenAI or Google API key.',
       );
     },
   };

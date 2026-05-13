@@ -101,6 +101,7 @@ import { prisma } from './lib/prisma.js';
 import { initSocketServer } from './lib/socket.js';
 import { startReportScheduler, stopReportScheduler } from './jobs/reportScheduler.js';
 import { startLifecycleEmailScheduler, stopLifecycleEmailScheduler } from './jobs/lifecycleEmailScheduler.js';
+import { startStripeReconciliationScheduler, stopStripeReconciliationScheduler } from './jobs/stripeReconciliation.js';
 import { corsOrigin } from './utils/origins.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -399,6 +400,7 @@ const server = httpServer.listen(PORT, () => {
   if (process.env.NODE_ENV !== 'test') {
     startReportScheduler();
     startLifecycleEmailScheduler();
+    startStripeReconciliationScheduler();
   }
 });
 
@@ -407,6 +409,7 @@ function shutdown(signal: string) {
   console.log(`${signal} received — shutting down gracefully`);
   stopReportScheduler();
   stopLifecycleEmailScheduler();
+  stopStripeReconciliationScheduler();
   server.close(async () => {
     await prisma.$disconnect();
     console.log('Server closed');

@@ -14,6 +14,7 @@ import type {
   LlmEmbeddingResult,
 } from './llm.js';
 import { registerProvider, registerProviderFactory } from './llm.js';
+import { withLlmRetry } from './llm-retry.js';
 
 const DEFAULT_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
 const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small';
@@ -25,13 +26,15 @@ function createOpenAIProvider(client: OpenAI, defaultModel: string): LlmProvider
 
     async complete(options: LlmCompletionOptions): Promise<LlmCompletionResult> {
       const model = options.model || defaultModel;
-      const response = await client.chat.completions.create({
-        model,
-        messages: options.messages,
-        temperature: options.temperature ?? 0.3,
-        max_tokens: options.maxTokens ?? 2048,
-        ...(options.responseFormat === 'json' ? { response_format: { type: 'json_object' } } : {}),
-      });
+      const response = await withLlmRetry(() =>
+        client.chat.completions.create({
+          model,
+          messages: options.messages,
+          temperature: options.temperature ?? 0.3,
+          max_tokens: options.maxTokens ?? 2048,
+          ...(options.responseFormat === 'json' ? { response_format: { type: 'json_object' } } : {}),
+        }),
+      );
 
       const choice = response.choices[0];
       return {

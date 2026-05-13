@@ -7,7 +7,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // Switched from 'autoUpdate' to 'prompt' (Reliability fix #10) so we
+      // can show the user a "Reload to update" toast instead of silently
+      // activating new bundles. Silent updates strand users on stale
+      // frontends that talk to a freshly-deployed backend, surfacing as
+      // mysterious type errors at runtime. main.tsx wires the toast.
+      registerType: 'prompt',
       manifest: {
         name: 'QualCanvas - Qualitative Coding',
         short_name: 'QualCanvas',

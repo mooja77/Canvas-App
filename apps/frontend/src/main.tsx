@@ -2,8 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import * as Sentry from '@sentry/react';
 import App from './App';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
+import { registerSW } from 'virtual:pwa-register';
 import { useUIStore } from './stores/uiStore';
+import { trackEvent } from './utils/analytics';
 import './i18n';
 import './index.css';
 
@@ -20,6 +22,44 @@ const darkMode = useUIStore.getState().darkMode;
 if (darkMode) {
   document.documentElement.classList.add('dark');
 }
+
+// Reliability fix #10 — surface SW updates with an actionable toast instead
+// of letting the next nav silently activate a possibly-incompatible bundle.
+// The toast persists (duration: Infinity) until the user clicks Reload.
+const updateSW = registerSW({
+  onNeedRefresh() {
+    trackEvent('service_worker_update_available');
+    toast(
+      (t) =>
+        React.createElement(
+          'div',
+          { className: 'flex items-center gap-3' },
+          React.createElement(
+            'div',
+            null,
+            React.createElement('div', { className: 'text-sm font-medium' }, 'New version available'),
+            React.createElement(
+              'div',
+              { className: 'text-xs text-gray-500 dark:text-gray-400' },
+              'Reload to get the latest features and fixes.',
+            ),
+          ),
+          React.createElement(
+            'button',
+            {
+              onClick: () => {
+                toast.dismiss(t.id);
+                void updateSW(true);
+              },
+              className: 'rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700',
+            },
+            'Reload',
+          ),
+        ),
+      { duration: Infinity, id: 'sw-update' },
+    );
+  },
+});
 
 // Remove the prerendered marketing block + its inline styles so React owns
 // the page from here on. The block only exists for first-paint visibility

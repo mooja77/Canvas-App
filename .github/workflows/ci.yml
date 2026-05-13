@@ -86,6 +86,48 @@ jobs:
       - run: npx prisma generate --schema=apps/backend/prisma/schema.prisma
       - run: npm test
 
+  schema-drift:
+    # Reliability fix #1 — catch the "model in schema.prisma without a
+    # matching migration" class of bug that's bitten us 3+ times. We boot
+    # a clean Postgres, apply the migration history with `migrate deploy`,
+    # then ask Prisma whether the deployed DB matches the schema.prisma
+    # datamodel. Exit code 2 from `migrate diff --exit-code` means drift
+    # detected → fail CI.
+    name: Schema Drift Check
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://qualcanvas:qualcanvas@localhost:55432/qualcanvas_drift?schema=public
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qualcanvas
+          POSTGRES_PASSWORD: qualcanvas
+          POSTGRES_DB: qualcanvas_drift
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U qualcanvas -d qualcanvas_drift"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate --schema=apps/backend/prisma/schema.prisma
+      - name: Apply migration history to clean Postgres
+        run: npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma
+      - name: Diff deployed DB vs schema.prisma (fails on drift)
+        run: |
+          npx prisma migrate diff \
+            --from-url "$DATABASE_URL" \
+            --to-schema-datamodel apps/backend/prisma/schema.prisma \
+            --exit-code
+
   e2e-chromium:
     name: E2E Chromium
     runs-on: ubuntu-latest

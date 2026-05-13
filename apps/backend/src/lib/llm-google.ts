@@ -12,6 +12,7 @@ import type {
   LlmEmbeddingResult,
 } from './llm.js';
 import { registerProviderFactory } from './llm.js';
+import { withLlmRetry } from './llm-retry.js';
 
 const DEFAULT_MODEL = 'gemini-2.0-flash';
 const DEFAULT_EMBEDDING_MODEL = 'text-embedding-004';
@@ -27,7 +28,7 @@ function createGoogleProvider(genAI: GoogleGenerativeAI, defaultModel: string): 
       const chatMessages = options.messages
         .filter((m) => m.role !== 'system')
         .map((m) => ({
-          role: m.role === 'assistant' ? 'model' as const : 'user' as const,
+          role: m.role === 'assistant' ? ('model' as const) : ('user' as const),
           parts: [{ text: m.content }],
         }));
 
@@ -46,7 +47,7 @@ function createGoogleProvider(genAI: GoogleGenerativeAI, defaultModel: string): 
       const lastMessage = chatMessages[chatMessages.length - 1];
 
       const chat = model.startChat({ history });
-      const result = await chat.sendMessage(lastMessage.parts);
+      const result = await withLlmRetry(() => chat.sendMessage(lastMessage.parts));
 
       const text = result.response.text();
       const usage = result.response.usageMetadata;
@@ -69,7 +70,7 @@ function createGoogleProvider(genAI: GoogleGenerativeAI, defaultModel: string): 
       const chatMessages = options.messages
         .filter((m) => m.role !== 'system')
         .map((m) => ({
-          role: m.role === 'assistant' ? 'model' as const : 'user' as const,
+          role: m.role === 'assistant' ? ('model' as const) : ('user' as const),
           parts: [{ text: m.content }],
         }));
 
