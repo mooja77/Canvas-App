@@ -19,15 +19,18 @@ const { mockPrisma } = vi.hoisted(() => {
     canvasTranscript: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
+      count: vi.fn(),
     },
     canvasQuestion: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
       create: vi.fn(),
+      count: vi.fn(),
     },
     canvasTextCoding: {
       findMany: vi.fn(),
       create: vi.fn(),
+      count: vi.fn(),
     },
     canvasMemo: {
       findMany: vi.fn(),
@@ -39,9 +42,11 @@ const { mockPrisma } = vi.hoisted(() => {
       update: vi.fn(),
       updateMany: vi.fn(),
       delete: vi.fn(),
+      groupBy: vi.fn(),
     },
     aiUsage: {
       create: vi.fn(),
+      groupBy: vi.fn(),
     },
     userAiConfig: {
       findUnique: vi.fn(),
@@ -62,6 +67,9 @@ const { mockPrisma } = vi.hoisted(() => {
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+    },
+    trainingAttempt: {
+      findFirst: vi.fn(),
     },
     $transaction: vi.fn(),
     $disconnect: vi.fn(),
@@ -140,6 +148,10 @@ vi.mock('../../utils/aiPrompts.js', () => ({
   buildAutoCodeTranscriptPrompt: vi.fn().mockReturnValue([
     { role: 'system', content: 'You are a coding assistant.' },
     { role: 'user', content: 'Auto-code this transcript.' },
+  ]),
+  buildMethodsStatementPrompt: vi.fn().mockReturnValue([
+    { role: 'system', content: 'You write academic methods paragraphs.' },
+    { role: 'user', content: 'Generate the methods paragraph now.' },
   ]),
 }));
 
@@ -909,6 +921,103 @@ describe('AI features integration tests', () => {
 
       expect(res.body.data.suggestions[0].confidence).toBe(1);
       expect(res.body.data.suggestions[1].confidence).toBe(0);
+    });
+  });
+
+  // ─── Methods Statement export (spec 11) ───
+  describe('POST /canvas/:id/ai/methods-statement', () => {
+    beforeEach(() => {
+      // Default empty/zero state — individual tests override.
+      mockPrisma.canvasTranscript.count.mockResolvedValue(0);
+      mockPrisma.canvasTextCoding.count.mockResolvedValue(0);
+      mockPrisma.canvasQuestion.count.mockResolvedValue(0);
+      mockPrisma.aiUsage.groupBy.mockResolvedValue([]);
+      mockPrisma.aiSuggestion.groupBy.mockResolvedValue([]);
+      mockPrisma.trainingAttempt.findFirst.mockResolvedValue(null);
+    });
+
+    it('returns a paragraph + metadata aggregated from the canvas', async () => {
+      mockPrisma.canvasTranscript.count.mockResolvedValue(12);
+      mockPrisma.canvasTextCoding.count.mockResolvedValue(184);
+      mockPrisma.canvasQuestion.count.mockResolvedValue(23);
+      mockPrisma.aiUsage.groupBy.mockResolvedValue([
+        { feature: 'suggest_codes', provider: 'anthropic', model: 'claude-sonnet-4', _count: { feature: 14 } },
+        { feature: 'auto_code', provider: 'openai', model: 'gpt-4o-mini', _count: { feature: 3 } },
+      ]);
+      mockPrisma.aiSuggestion.groupBy.mockResolvedValue([
+        { status: 'accepted', _count: { status: 41 } },
+        { status: 'rejected', _count: { status: 12 } },
+      ]);
+      mockPrisma.trainingAttempt.findFirst.mockResolvedValue({ kappaScore: 0.842 });
+
+      mockLlmProvider.complete.mockResolvedValue({
+        content:
+          "Twelve semi-structured interviews were analyzed using QualCanvas (qualcanvas.com). A total of 184 codings were generated across 23 distinct code categories. AI assistance was used for code suggestions (14 invocations of suggest_codes via anthropic/claude-sonnet-4) and auto-coding (3 invocations of auto_code via openai/gpt-4o-mini). Of the AI suggestions returned, 41 were accepted and 12 rejected by the human coder. Intercoder reliability was assessed via Cohen's κ = 0.842 between two coders, indicating substantial agreement.",
+        model: 'claude-sonnet-4',
+        inputTokens: 320,
+        outputTokens: 140,
+      });
+
+      const res = await request(app)
+        .post(`/api/canvas/${canvasId}/ai/methods-statement`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({});
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.paragraph).toContain('Twelve semi-structured interviews');
+      expect(res.body.data.metadata).toMatchObject({
+        canvasName: 'AI Test Canvas',
+        transcriptCount: 12,
+        totalCodings: 184,
+        totalCodes: 23,
+        intercoder: { method: "Cohen's κ", score: 0.842, nCoders: 2 },
+        acceptanceLog: { accepted: 41, rejected: 12, modified: 0 },
+      });
+      expect(res.body.data.metadata.aiUsage).toHaveLength(2);
+      // Methods statement should be written to AiUsage as its own feature row.
+      expect(mockPrisma.aiUsage.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ feature: 'methods_statement' }),
+        }),
+      );
+    });
+
+    it('accepts a caller-supplied intercoder override (e.g. Krippendorff α)', async () => {
+      mockLlmProvider.complete.mockResolvedValue({
+        content: 'Generated paragraph.',
+        model: 'claude-sonnet-4',
+        inputTokens: 200,
+        outputTokens: 100,
+      });
+
+      const res = await request(app)
+        .post(`/api/canvas/${canvasId}/ai/methods-statement`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ intercoder: { method: "Krippendorff's α", score: 0.78, nCoders: 4 } });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.metadata.intercoder).toEqual({
+        method: "Krippendorff's α",
+        score: 0.78,
+        nCoders: 4,
+      });
+    });
+
+    it('omits intercoder when no training attempts exist and no override given', async () => {
+      mockLlmProvider.complete.mockResolvedValue({
+        content: 'Generated paragraph.',
+        model: 'claude-sonnet-4',
+        inputTokens: 200,
+        outputTokens: 100,
+      });
+
+      const res = await request(app)
+        .post(`/api/canvas/${canvasId}/ai/methods-statement`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({});
+
+      expect(res.body.data.metadata.intercoder).toBeNull();
     });
   });
 });
