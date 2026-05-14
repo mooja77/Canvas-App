@@ -70,7 +70,11 @@ export type AnalyticsEvent =
   | 'signup_started'
   | 'pricing_toggle_changed'
   | 'comparison_row_expanded'
-  | 'citation_copied';
+  | 'citation_copied'
+  // Phase 4 — InteractiveDemo on the landing page.
+  | 'interactive_demo_started'
+  | 'interactive_demo_code_applied'
+  | 'interactive_demo_completed';
 
 export function trackEvent(eventName: AnalyticsEvent, params?: Record<string, unknown>) {
   // GTM / GA4 via gtag
