@@ -19,7 +19,7 @@ export default function TrustPage() {
   );
 
   useEffect(() => {
-    trackEvent('trust_page_viewed' as never);
+    trackEvent('trust_page_viewed');
   }, []);
 
   return (

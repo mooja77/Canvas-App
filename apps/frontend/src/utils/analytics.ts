@@ -42,6 +42,10 @@ export type AnalyticsEvent =
   | 'inline_ai_cache_hit'
   | 'methods_statement_generated'
   | 'methods_statement_copied'
+  // Sprint E compliance
+  | 'trust_page_viewed'
+  | 'dpa_downloaded'
+  | 'audit_trail_viewed'
   // Reliability
   | 'service_worker_update_available'
   // Onboarding
