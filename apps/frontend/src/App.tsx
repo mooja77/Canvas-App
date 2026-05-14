@@ -17,6 +17,12 @@ import TrustPage from './pages/TrustPage';
 import CookiePolicyPage from './pages/CookiePolicyPage';
 import GuidePage from './pages/GuidePage';
 import CitePage from './pages/CitePage';
+import ColophonPage from './pages/ColophonPage';
+import AccessibilityStatementPage from './pages/AccessibilityStatementPage';
+import PressPage from './pages/PressPage';
+import TrustAIPage from './pages/TrustAIPage';
+import ForTeamsPage from './pages/ForTeamsPage';
+import ForInstitutionsPage from './pages/ForInstitutionsPage';
 import { useAuthStore } from './stores/authStore';
 
 const CanvasPage = lazy(() => import('./pages/CanvasPage'));
@@ -42,6 +48,12 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/cite" element={<CitePage />} />
+          <Route path="/colophon" element={<ColophonPage />} />
+          <Route path="/accessibility-statement" element={<AccessibilityStatementPage />} />
+          <Route path="/press" element={<PressPage />} />
+          <Route path="/trust/ai" element={<TrustAIPage />} />
+          <Route path="/for-teams" element={<ForTeamsPage />} />
+          <Route path="/for-institutions" element={<ForInstitutionsPage />} />
           <Route
             path="/account"
             element={
