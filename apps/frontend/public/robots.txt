@@ -2,7 +2,11 @@ User-agent: *
 Allow: /
 Disallow: /canvas
 Disallow: /account
+Disallow: /admin
 Disallow: /api/
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
 
 # AI bots — block training-only crawlers, allow citation/AI-search
 # crawlers (ClaudeBot, Google-Extended, Applebot-Extended) so JMS
