@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+// Page-level smoke tests for public marketing routes. After the marketing
+// refresh (PR #7) these assertions were updated to match the shipped copy.
 test.describe('Page-Level Tests', () => {
   test('landing page renders', async ({ page }) => {
     await page.goto('/');
