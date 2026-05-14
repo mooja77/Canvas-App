@@ -12,7 +12,12 @@
  * tailwind.config.js so any component that doesn't opt in is unaffected.
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
+/* Fraunces — self-hosted via @fontsource-variable/fraunces. Loads the full
+ * variable font with all four axes (opsz, wght, soft, wonk) and unicode-range
+ * subsetting (vietnamese / latin-ext / latin). font-family becomes "Fraunces
+ * Variable". font-display: swap, font-weight 100-900. Metric overrides for
+ * zero-CLS are pending — to be added during Phase 1 contrast pass. */
+@import '@fontsource-variable/fraunces/full.css';
 
 html.brand-v2 {
   /* Re-map the brand-* scale to ink-* via custom properties. Components
@@ -83,7 +88,7 @@ html.brand-v2-display h1,
 html.brand-v2-display h2,
 html.brand-v2-display h3,
 html.brand-v2-display .font-display {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: 'Fraunces Variable', 'Fraunces', Georgia, serif;
   font-feature-settings: 'ss01', 'ss02';
   letter-spacing: -0.005em;
 }
