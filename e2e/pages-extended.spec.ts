@@ -25,7 +25,11 @@ test.describe('Pricing Page', () => {
     // Click annual
     await annualBtn.click();
     // Should show annual pricing (e.g., "Save 25%")
-    const saveText = await page.getByText(/Save.*%/i).first().isVisible({ timeout: 3000 }).catch(() => false);
+    const saveText = await page
+      .getByText(/Save.*%/i)
+      .first()
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
 
     // Click monthly back
     await monthlyBtn.click();
@@ -46,7 +50,11 @@ test.describe('Account Page', () => {
     await page.goto('/account');
     await page.waitForLoadState('networkidle');
     // Should show account page content (not redirect to login)
-    const hasAccountContent = await page.getByText(/Account|Profile|Plan|Usage/i).first().isVisible({ timeout: 5000 }).catch(() => false);
+    const hasAccountContent = await page
+      .getByText(/Account|Profile|Plan|Usage/i)
+      .first()
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
     expect(hasAccountContent).toBe(true);
   });
 
@@ -60,8 +68,16 @@ test.describe('Account Page', () => {
     await page.goto('/account');
     await page.waitForLoadState('networkidle');
     // Should show plan info or usage stats
-    const hasPlan = await page.getByText(/Free|Pro|Team|plan/i).first().isVisible({ timeout: 5000 }).catch(() => false);
-    const hasUsage = await page.getByText(/canvas|transcript|code/i).first().isVisible({ timeout: 3000 }).catch(() => false);
+    const hasPlan = await page
+      .getByText(/Free|Pro|Team|plan/i)
+      .first()
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
+    const hasUsage = await page
+      .getByText(/canvas|transcript|code/i)
+      .first()
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
     expect(hasPlan || hasUsage).toBe(true);
   });
 });
@@ -86,10 +102,13 @@ test.describe('Guide Page', () => {
     await page.goto('/guide');
     await page.waitForLoadState('domcontentloaded');
     // Click a sidebar nav link to scroll to a section
-    const sidebarLink = page.getByRole('link', { name: 'Analysis Tools' }).or(
-      page.locator('a[href="#analysis"]')
-    );
-    if (await sidebarLink.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+    const sidebarLink = page.getByRole('link', { name: 'Analysis Tools' }).or(page.locator('a[href="#analysis"]'));
+    if (
+      await sidebarLink
+        .first()
+        .isVisible({ timeout: 3000 })
+        .catch(() => false)
+    ) {
       await sidebarLink.first().click();
       // The section should be in view
       const section = page.locator('#analysis');
@@ -119,7 +138,9 @@ test.describe('Privacy Page', () => {
     await page.goto('/privacy');
     await page.waitForLoadState('domcontentloaded');
     await expect(page.getByText('Privacy Policy')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Information We Collect')).toBeVisible({ timeout: 5000 });
+    // The refreshed privacy page uses GDPR-aligned headings; "What we collect"
+    // is the new section title for what was previously "Information We Collect".
+    await expect(page.getByRole('heading', { name: /what we collect/i })).toBeVisible({ timeout: 5000 });
     // Should have the back link
     await expect(page.getByText('Back to home')).toBeVisible({ timeout: 3000 });
   });

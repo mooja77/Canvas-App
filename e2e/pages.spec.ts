@@ -7,8 +7,8 @@ test.describe('Page-Level Tests', () => {
 
     // Verify main heading
     const heading = page.locator('h1');
-    await expect(heading.first()).toContainText(/code transcripts/i);
-    await expect(heading.first()).toContainText(/not in spreadsheets/i);
+    await expect(heading.first()).toContainText(/code interviews/i);
+    await expect(heading.first()).toContainText(/visually/i);
 
     // Verify CTA button
     const startBtn = page
