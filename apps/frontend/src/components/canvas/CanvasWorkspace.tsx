@@ -226,6 +226,36 @@ export default function CanvasWorkspace() {
   const [showWeighting, setShowWeighting] = useState(false);
   const [showCrossCase, setShowCrossCase] = useState(false);
   const [highlightedNodeIds, setHighlightedNodeIds] = useState<Set<string>>(new Set());
+
+  // Sprint G — listen for modal-open events from the new activity-bar
+  // Quality panel. The shared CanvasToolbar listener handles auto-code /
+  // ethics / share / etc., but intercoder + weighting modals live on
+  // CanvasWorkspace state, so we need a parallel listener here.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ modal: string }>).detail;
+      if (!detail?.modal) return;
+      switch (detail.modal) {
+        case 'intercoder':
+          setShowIntercoder(true);
+          break;
+        case 'intercoder-panel':
+          setShowIntercoderPanel(true);
+          break;
+        case 'weighting':
+          setShowWeighting(true);
+          break;
+        case 'cross-case':
+          setShowCrossCase(true);
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener('qualcanvas:open-canvas-modal', handler);
+    return () => window.removeEventListener('qualcanvas:open-canvas-modal', handler);
+  }, []);
+
   const [contextMenu, setContextMenu] = useState<{ show: boolean; x: number; y: number } | null>(null);
   const [nodeContextMenu, setNodeContextMenu] = useState<{
     show: boolean;

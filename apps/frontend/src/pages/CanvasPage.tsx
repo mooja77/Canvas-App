@@ -13,6 +13,8 @@ import TrialBanner from '../components/TrialBanner';
 import OnboardingFlow from '../components/onboarding/OnboardingFlow';
 import OnboardingChecklist from '../components/onboarding/OnboardingChecklist';
 import StatusBar from '../components/canvas/StatusBar';
+import ActivityBar, { type ActivityId } from '../components/canvas/ActivityBar';
+import ActivitySidebar from '../components/canvas/ActivitySidebar';
 import { useFeatureFlag } from '../stores/featureFlagsStore';
 import { SunIcon, MoonIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
@@ -24,6 +26,8 @@ export default function CanvasPage() {
   const onboardingV2Complete = useUIStore((s) => s.onboardingV2Complete);
   const completeOnboardingV2 = useUIStore((s) => s.completeOnboardingV2);
   const onboardingV2Enabled = useFeatureFlag('onboarding_v2');
+  const activityBarV2Enabled = useFeatureFlag('activity_bar_v2');
+  const [activeActivity, setActiveActivity] = useState<ActivityId | null>(null);
   const planWelcomeSeen = useUIStore((s) => s.featureDiscovery.planWelcomeSeen);
   const [showPlanWelcome, setShowPlanWelcome] = useState(false);
   const canvases = useCanvasStore((s) => s.canvases);
@@ -243,10 +247,21 @@ export default function CanvasPage() {
       ) : (
         /* Full-screen canvas workspace */
         <>
-          <main id="canvas-main" className="flex-1 overflow-hidden" aria-label="Canvas workspace">
-            <CodingCanvas />
-            {onboardingV2Enabled && onboardingV2Complete && <OnboardingChecklist />}
-          </main>
+          <div id="canvas-main" className="flex-1 overflow-hidden flex" aria-label="Canvas workspace">
+            {activityBarV2Enabled && (
+              <>
+                <ActivityBar
+                  activeActivity={activeActivity}
+                  onSelectActivity={(id) => setActiveActivity((prev) => (prev === id ? null : id))}
+                />
+                <ActivitySidebar activity={activeActivity} onClose={() => setActiveActivity(null)} />
+              </>
+            )}
+            <main className="flex-1 overflow-hidden relative">
+              <CodingCanvas />
+              {onboardingV2Enabled && onboardingV2Complete && <OnboardingChecklist />}
+            </main>
+          </div>
           <StatusBar />
         </>
       )}
