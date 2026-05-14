@@ -75,9 +75,8 @@
   ]
 }
     </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- Inter is now self-hosted via @fontsource-variable/inter, loaded from
+         src/index.css. No Google Fonts <link> needed. -->
     <title>QualCanvas — Visual Coding for Interview Research</title>
 
     <!-- Cookie Consent (must load BEFORE GTM) -->
@@ -88,23 +87,27 @@
          renders without waiting for the React bundle. Removed
          alongside #marketing-root once React mounts. -->
     <style id="prerender-styles">
-      #marketing-root { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #111827; max-width: 880px; margin: 0 auto; padding: 64px 24px 96px; line-height: 1.6; }
-      #marketing-root .qc-eyebrow { color: #4f46e5; font-weight: 600; font-size: 14px; letter-spacing: 0.04em; text-transform: uppercase; }
-      #marketing-root h1 { font-size: 40px; line-height: 1.15; margin: 12px 0 16px; font-weight: 800; }
-      #marketing-root h1 .accent { color: #4f46e5; }
-      #marketing-root .lede { font-size: 19px; color: #374151; margin: 0 0 32px; max-width: 640px; }
-      #marketing-root h2 { font-size: 24px; margin: 40px 0 12px; font-weight: 700; }
-      #marketing-root .features { display: grid; grid-template-columns: 1fr; gap: 16px; padding: 0; list-style: none; margin: 0 0 24px; }
+      /* Tier 2 prerender — Ink + Ochre. Renders before React mounts so
+         crawlers, AI agents, and first-paint visitors see real content
+         that matches the live React hero. Updated when Tier 2 brand
+         tokens change. */
+      #marketing-root { font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif; color: #0B1530; background: #F4F6F8; max-width: 880px; margin: 0 auto; padding: 64px 24px 96px; line-height: 1.6; }
+      #marketing-root .qc-rule { width: 48px; height: 2px; background: #B7841F; margin-bottom: 16px; }
+      #marketing-root .qc-eyebrow { color: #475569; font-weight: 600; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+      #marketing-root h1 { font-family: Georgia, serif; font-size: 56px; line-height: 1.05; margin: 16px 0 20px; font-weight: 600; letter-spacing: -0.01em; color: #0B1530; }
+      #marketing-root .lede { font-size: 19px; color: #22304A; margin: 0 0 32px; max-width: 640px; line-height: 1.6; }
+      #marketing-root h2 { font-family: Georgia, serif; font-size: 28px; margin: 48px 0 12px; font-weight: 600; color: #0B1530; }
+      #marketing-root .features { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 0; list-style: none; margin: 0 0 24px; }
       @media (min-width: 720px) { #marketing-root .features { grid-template-columns: 1fr 1fr; } }
-      #marketing-root .features li { padding: 16px; border-radius: 12px; background: #ffffff; border: 1px solid #e5e7eb; }
-      #marketing-root .features strong { display: block; margin-bottom: 4px; font-weight: 700; }
+      #marketing-root .features li { padding: 16px; border-radius: 8px; background: #ffffff; border: 1px solid #E5E9EF; }
+      #marketing-root .features strong { display: block; margin-bottom: 4px; font-weight: 600; color: #0B1530; }
       #marketing-root .pricing { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0 0 32px; padding: 0; list-style: none; }
-      #marketing-root .pricing li { padding: 16px; border-radius: 12px; background: #ffffff; border: 1px solid #e5e7eb; text-align: center; }
-      #marketing-root .price { font-size: 28px; font-weight: 800; }
-      #marketing-root .cta { display: inline-block; background: #4f46e5; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 600; text-decoration: none; }
-      #marketing-root .cta:hover { background: #4338ca; }
-      #marketing-root .footer-links { color: #6b7280; font-size: 14px; margin-top: 48px; }
-      #marketing-root .footer-links a { color: #4f46e5; text-decoration: none; margin-right: 16px; }
+      #marketing-root .pricing li { padding: 20px 16px; border-radius: 8px; background: #ffffff; border: 1px solid #E5E9EF; text-align: center; }
+      #marketing-root .price { font-family: Georgia, serif; font-size: 32px; font-weight: 600; color: #0B1530; }
+      #marketing-root .cta { display: inline-block; background: #B7841F; color: #0B1530; padding: 14px 28px; border-radius: 8px; font-weight: 600; text-decoration: none; }
+      #marketing-root .cta:hover { background: #956914; }
+      #marketing-root .footer-links { color: #6A7891; font-size: 14px; margin-top: 48px; }
+      #marketing-root .footer-links a { color: #B7841F; text-decoration: none; margin-right: 16px; }
     </style>
 
     <!-- Chat widget visibility rules. The third-party chat script
@@ -141,35 +144,43 @@
          agents, and any visitor before the React bundle arrives.
          Removed by main.tsx once React mounts at #root. -->
     <main id="marketing-root">
-      <div class="qc-eyebrow">For qualitative researchers</div>
-      <h1>Code transcripts on a <span class="accent">visual canvas</span> — not in spreadsheets</h1>
-      <p class="lede">QualCanvas is a drag-and-drop workspace for coding interview transcripts, discovering patterns, and building theory across multiple sessions. Built for academics, UX researchers, and qualitative analysts.</p>
-      <a href="/signup" class="cta">Try it free</a>
+      <div class="qc-rule"></div>
+      <div class="qc-eyebrow">A qualitative workspace</div>
+      <h1>Code interviews like you think. Visually.</h1>
+      <p class="lede">QualCanvas is a visual workspace for coding transcripts, finding themes, and writing memos you can defend in front of a committee.</p>
+      <a href="/login" class="cta">Start free</a>
 
       <h2>What it does</h2>
       <ul class="features">
-        <li><strong>Visual coding canvas</strong>Drag transcript fragments into themes. See your codebook take shape spatially.</li>
-        <li><strong>Cross-session pattern discovery</strong>Link codes across multiple interviews; find what repeats and what doesn't.</li>
-        <li><strong>Transcript-first workflow</strong>Import .txt, .docx, or .vtt. Inline coding without leaving the page.</li>
-        <li><strong>Export for write-up</strong>Codebook, theme summaries, and source quotes ready for your paper.</li>
+        <li><strong>Visual coding canvas</strong>Highlight a span, name a code. Move it. Merge it. Split it. The way real coding actually goes.</li>
+        <li><strong>Intercoder reliability live</strong>Cohen's κ and Krippendorff's α calculated as your team codes. Methods-paper-ready CSV export.</li>
+        <li><strong>Ethics & consent built in</strong>Track consent, anonymize fields, set retention windows. The audit trail your IRB will ask for is already running.</li>
+        <li><strong>QDPX in and out</strong>Import from NVivo or ATLAS.ti. Export back any time. No lock-in by design.</li>
       </ul>
 
       <h2>Pricing</h2>
       <ul class="pricing">
-        <li><strong>Free</strong><div class="price">$0</div>1 project · basic export</li>
-        <li><strong>Pro</strong><div class="price">$12<small>/mo</small></div>Unlimited projects</li>
-        <li><strong>Team</strong><div class="price">$29<small>/mo</small></div>Collaboration · 5 seats</li>
+        <li><strong>Free</strong><div class="price">$0</div>1 canvas · 5 codes</li>
+        <li><strong>Pro</strong><div class="price">$12<small>/mo</small></div>Unlimited · all 12 tools</li>
+        <li><strong>Team</strong><div class="price">$29<small>/mo</small></div>Intercoder κ · per seat</li>
       </ul>
 
-      <h2>Built by JMS Dev Lab</h2>
-      <p>QualCanvas is one of several research and small-business tools from <a href="https://jmsdevlab.com">JMS Dev Lab</a>. We build practical software for niches the big platforms ignore. Other tools you might like: <a href="https://repairdeskapp.net">Repair Desk</a> (workshop CRM), <a href="https://staffhubapp.com">StaffHub</a> (team scheduling), <a href="https://pitchsideapp.net">Pitch Side</a> (grassroots football coaching), or see <a href="https://jmsdevlab.com/apps">all apps</a>.</p>
+      <p class="lede" style="margin-top: 16px; font-size: 16px;"><strong>40% off Pro and Team with a .edu email</strong> — applied automatically at checkout.</p>
+
+      <h2>The method, not just the tool</h2>
+      <p>Six numbered chapters at <a href="/methodology">qualcanvas.com/methodology</a>: foundations of qualitative coding, thematic analysis (Braun &amp; Clarke), grounded theory (Charmaz), interpretative phenomenological analysis, intercoder reliability, and ethics in practice. Cite us in your paper from <a href="/cite">qualcanvas.com/cite</a> — BibTeX, APA, Chicago, RIS.</p>
 
       <p class="footer-links">
-        <a href="/signup">Sign up</a>
-        <a href="/login">Log in</a>
-        <a href="https://jmsdevlab.com/contact">Get help</a>
+        <a href="/login">Start free</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/methodology">Methodology</a>
+        <a href="/trust">Trust &amp; security</a>
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>
+      </p>
+
+      <p class="footer-links" style="margin-top: 16px;">
+        Built by <a href="https://www.jmsdevlab.com/apps.html#qualcanvas">JMS Dev Lab</a> in Ireland.
       </p>
     </main>
     <div id="root"></div>

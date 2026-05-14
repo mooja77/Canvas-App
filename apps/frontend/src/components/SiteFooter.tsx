@@ -1,13 +1,23 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
+import StudioCredit from './marketing/StudioCredit';
+import StatusIndicator from './marketing/StatusIndicator';
+import ThemeToggle from './marketing/ThemeToggle';
 
 /**
  * Shared footer used across the marketing surface.
  *
- * Four navigational sections plus a copyright row. No social links until
- * we have real URLs to point at — a broken or placeholder social icon
- * would be worse than none.
+ * Layout (post-refresh):
+ *  - 4-col link grid (Product / Account / Legal / Company)
+ *  - Copyright row
+ *  - Bottom rail: Built by JMS Dev Lab → · Colophon · Status · ThemeToggle
+ *  - Newsletter line (monthly methodology cadence, see open-decision #14)
+ *
+ * Spec: docs/refresh/06-pages/14-site-footer.md
+ *
+ * The duplicate "JMS Dev Lab" link in the Company column has moved to the
+ * bottom rail (StudioCredit) so the credit reads as confidence, not promotion.
  */
 export default function SiteFooter() {
   const { t } = useTranslation();
@@ -32,6 +42,14 @@ export default function SiteFooter() {
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
               >
                 {t('pricing.title')}
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/changelog"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                Changelog
               </Link>
             </li>
           </ul>
@@ -100,6 +118,11 @@ export default function SiteFooter() {
                 Privacy Policy
               </Link>
             </li>
+            <li>
+              <Link to="/trust" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                Trust &amp; Security
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -109,14 +132,17 @@ export default function SiteFooter() {
           </h3>
           <ul className="space-y-2 text-sm">
             <li>
-              <a
-                href="https://www.jmsdevlab.com/"
-                target="_blank"
-                rel="noopener"
+              <Link to="/cite" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                How to cite
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/colophon"
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
               >
-                JMS Dev Lab
-              </a>
+                Colophon
+              </Link>
             </li>
           </ul>
         </div>
@@ -125,6 +151,25 @@ export default function SiteFooter() {
       <div className="flex items-center justify-between pt-6 border-t border-gray-200/70 dark:border-gray-800/70 text-xs text-gray-500 dark:text-gray-500">
         <span>&copy; {new Date().getFullYear()} QualCanvas. All rights reserved.</span>
         <span>Built for qualitative researchers</span>
+      </div>
+
+      {/* Bottom rail — studio credit, status, theme toggle. The discreet
+          JMS Dev Lab attribution lives here, replacing the buried link
+          that was in the Company column pre-refresh. */}
+      <div className="mt-6 pt-6 border-t border-gray-200/40 dark:border-gray-800/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <StudioCredit location="footer" />
+          <StatusIndicator />
+        </div>
+        <div className="flex items-center gap-3">
+          <a
+            href="/subscribe"
+            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          >
+            Get the methodology field guide by email — one chapter a month
+          </a>
+          <ThemeToggle />
+        </div>
       </div>
     </footer>
   );

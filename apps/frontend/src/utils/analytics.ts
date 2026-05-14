@@ -59,7 +59,11 @@ export type AnalyticsEvent =
   | 'cmdk_search_no_results'
   | 'activity_panel_opened'
   | 'feature_flag_exposed'
-  | 'feature_flag_changed';
+  | 'feature_flag_changed'
+  // Marketing refresh (docs/refresh/15-analytics-events-schema.md). Added per-event
+  // through Phases 1–4 as the surfaces ship. Phase 1: studio credit + theme toggle.
+  | 'studio_credit_clicked'
+  | 'theme_preference_changed';
 
 export function trackEvent(eventName: AnalyticsEvent, params?: Record<string, unknown>) {
   // GTM / GA4 via gtag

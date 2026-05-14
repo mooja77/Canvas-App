@@ -4,8 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
 import { billingApi } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
-import SiteHeader from '../components/SiteHeader';
-import SiteFooter from '../components/SiteFooter';
+import PageShell from '../components/marketing/PageShell';
 import { trackEvent } from '../utils/analytics';
 import toast from 'react-hot-toast';
 
@@ -138,8 +137,7 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <SiteHeader />
+    <PageShell>
       <div className="max-w-5xl mx-auto px-4 py-16 pt-10">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">{t('pricing.pageTitle')}</h1>
@@ -599,7 +597,6 @@ export default function PricingPage() {
           </div>
         )}
       </div>
-      <SiteFooter />
-    </div>
+    </PageShell>
   );
 }

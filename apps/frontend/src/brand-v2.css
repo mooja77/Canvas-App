@@ -34,6 +34,23 @@ html.brand-v2 {
   --bv2-accent-hover: theme('colors.ochre.600');
   --bv2-ring: theme('colors.ochre.400');
 
+  /* ─── Semantic role tokens (Phase 1) — bound to ink/ochre stops per
+     docs/refresh/04 §4.1. These are the names new marketing components
+     should consume directly (e.g. `color: var(--fg-primary)`) so a future
+     palette swap only edits this file. */
+  --fg-primary: theme('colors.ink.900');
+  --fg-secondary: theme('colors.ink.700');
+  --fg-muted: theme('colors.ink.500');
+  --fg-subtle: theme('colors.ink.400');
+  --bg-page: theme('colors.ink.50');
+  --bg-card: #ffffff;
+  --bg-inset: theme('colors.ink.100');
+  --rule-hairline: rgba(199, 206, 217, 0.5);
+  --accent: theme('colors.ochre.500');
+  --accent-hover: theme('colors.ochre.600');
+  --accent-muted: theme('colors.ochre.100');
+  --focus-ring: theme('colors.ochre.400');
+
   color: var(--bv2-fg);
   background-color: var(--bv2-bg);
 }
@@ -46,6 +63,20 @@ html.brand-v2.dark {
   --bv2-accent: theme('colors.ochre.300');
   --bv2-accent-hover: theme('colors.ochre.200');
   --bv2-ring: theme('colors.ochre.400');
+
+  /* Semantic role tokens, designed (not inverted) for dark mode. */
+  --fg-primary: theme('colors.ink.100');
+  --fg-secondary: theme('colors.ink.200');
+  --fg-muted: theme('colors.ink.300');
+  --fg-subtle: theme('colors.ink.400');
+  --bg-page: theme('colors.ink.950');
+  --bg-card: theme('colors.ink.900');
+  --bg-inset: theme('colors.ink.800');
+  --rule-hairline: theme('colors.ink.700');
+  --accent: theme('colors.ochre.300');
+  --accent-hover: theme('colors.ochre.200');
+  --accent-muted: rgba(54, 36, 12, 0.4);
+  --focus-ring: theme('colors.ochre.400');
 
   color: var(--bv2-fg);
   background-color: var(--bv2-bg);

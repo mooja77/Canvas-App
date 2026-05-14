@@ -1,3 +1,8 @@
+/* Inter — self-hosted via @fontsource-variable/inter. Replaces the Google
+ * Fonts <link> that previously lived in index.html. Provides 'Inter Variable'
+ * family (variable weight 100-900) with font-display: swap. */
+@import '@fontsource-variable/inter';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

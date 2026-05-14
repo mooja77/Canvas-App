@@ -1,8 +1,7 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { usePageMeta } from '../hooks/usePageMeta';
-import SiteHeader from '../components/SiteHeader';
-import SiteFooter from '../components/SiteFooter';
+import PageShell from '../components/marketing/PageShell';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -13,10 +12,8 @@ export default function LandingPage() {
   );
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
-      <SiteHeader />
-
-      <main>
+    <PageShell>
+      <div>
         {/* Hero */}
         <section className="max-w-4xl mx-auto px-4 pt-20 pb-8 text-center">
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white leading-tight mb-6">
@@ -284,8 +281,7 @@ export default function LandingPage() {
             ))}
           </div>
         </section>
-      </main>
-      <SiteFooter />
-    </div>
+      </div>
+    </PageShell>
   );
 }
