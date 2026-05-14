@@ -16,6 +16,7 @@ import PrivacyPage from './pages/PrivacyPage';
 import TrustPage from './pages/TrustPage';
 import CookiePolicyPage from './pages/CookiePolicyPage';
 import GuidePage from './pages/GuidePage';
+import CitePage from './pages/CitePage';
 import { useAuthStore } from './stores/authStore';
 
 const CanvasPage = lazy(() => import('./pages/CanvasPage'));
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/cite" element={<CitePage />} />
           <Route
             path="/account"
             element={

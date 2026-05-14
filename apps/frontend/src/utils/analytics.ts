@@ -63,7 +63,14 @@ export type AnalyticsEvent =
   // Marketing refresh (docs/refresh/15-analytics-events-schema.md). Added per-event
   // through Phases 1–4 as the surfaces ship. Phase 1: studio credit + theme toggle.
   | 'studio_credit_clicked'
-  | 'theme_preference_changed';
+  | 'theme_preference_changed'
+  // Phase 2 — conversion path. Instrument every new CTA on / and /pricing.
+  | 'marketing_page_viewed'
+  | 'cta_clicked'
+  | 'signup_started'
+  | 'pricing_toggle_changed'
+  | 'comparison_row_expanded'
+  | 'citation_copied';
 
 export function trackEvent(eventName: AnalyticsEvent, params?: Record<string, unknown>) {
   // GTM / GA4 via gtag
