@@ -22,7 +22,7 @@ export default function StatusIndicator() {
         rounded
         transition-colors duration-150
       "
-      aria-label="System status — opens status.qualcanvas.com in a new tab"
+      aria-label="All systems operational — opens status.qualcanvas.com in a new tab"
     >
       <span aria-hidden="true" className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
       <span className="hidden sm:inline">All systems operational</span>

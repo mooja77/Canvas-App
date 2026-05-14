@@ -67,7 +67,7 @@ export default function PricingPage() {
     });
     if (!authenticated) {
       trackEvent('signup_started', { source_page: '/pricing', plan: tier });
-      navigate('/login');
+      navigate('/login?mode=register');
       return;
     }
     if (authType === 'legacy') {
@@ -107,7 +107,7 @@ export default function PricingPage() {
         target_route: authenticated ? '/canvas' : '/login',
       });
       trackEvent('signup_started', { source_page: '/pricing', plan: 'free' });
-      navigate(authenticated ? '/canvas' : '/login');
+      navigate(authenticated ? '/canvas' : '/login?mode=register');
     }
   };
 

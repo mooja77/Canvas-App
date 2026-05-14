@@ -49,14 +49,18 @@ function getPasswordStrength(pw: string): { label: string; color: string; width:
 }
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [searchParams] = useSearchParams();
+  // Default to the register tab when arriving from a signup-intent CTA
+  // (e.g. /login?mode=register from "Start free" on / or /pricing).
+  const [mode, setMode] = useState<'login' | 'register'>(
+    searchParams.get('mode') === 'register' ? 'register' : 'login',
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showAccessCode, setShowAccessCode] = useState(false);
   const [code, setCode] = useState('');
-  const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
 
   const { t } = useTranslation();

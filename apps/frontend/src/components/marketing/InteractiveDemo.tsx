@@ -513,7 +513,9 @@ export default function InteractiveDemo() {
           </div>
 
           {/* ── Codebook pane ── */}
-          <aside className="p-6 sm:p-8 bg-gray-50 dark:bg-gray-800/40" aria-label="Codebook">
+          {/* role="region" carries the accessible name without nesting a
+              complementary landmark inside the section landmark above. */}
+          <div className="p-6 sm:p-8 bg-gray-50 dark:bg-gray-800/40" role="region" aria-label="Codebook">
             <div className="flex items-center justify-between mb-4">
               <div className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">
                 Codebook
@@ -538,14 +540,18 @@ export default function InteractiveDemo() {
 
             <ul className="space-y-3 text-sm">
               {codebookEntries.map(({ code, count, applied: isApplied }) => (
-                <li key={code.id} className={`flex items-center gap-3 ${isApplied ? '' : 'opacity-50'}`}>
+                // Visual hierarchy (applied = bold/colored swatch, unapplied =
+                // muted) carries the state. We dropped the `opacity-50` wrapper
+                // because compositing the dark-mode greys at 50% pushed
+                // contrast below 4.5:1.
+                <li key={code.id} className="flex items-center gap-3">
                   <span
                     aria-hidden="true"
                     className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{ backgroundColor: isApplied ? code.swatch : '#9CA7B9' }}
                   />
                   <span
-                    className={`flex-1 ${isApplied ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-600 dark:text-gray-400'}`}
+                    className={`flex-1 ${isApplied ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-600 dark:text-gray-300'}`}
                   >
                     {code.label}
                   </span>
@@ -578,7 +584,7 @@ export default function InteractiveDemo() {
                 </a>
               )}
             </div>
-          </aside>
+          </div>
         </div>
       </div>
 
