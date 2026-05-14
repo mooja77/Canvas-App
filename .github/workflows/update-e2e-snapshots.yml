@@ -1,0 +1,80 @@
+name: Update E2E Snapshots
+
+# Manually-triggered job to regenerate Playwright visual-regression baselines
+# in the chromium-linux env that CI uses. Run after intentional UI changes that
+# make the existing baselines obsolete (marketing refresh, brand changes, etc.).
+#
+# Trigger: Actions tab → Update E2E Snapshots → Run workflow → pick the branch.
+# The job re-runs the e2e suite with --update-snapshots and pushes the changed
+# PNGs back to the branch with a [skip ci] commit so we don't loop.
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_filter:
+        description: 'Optional --grep filter (e.g. "Visual Regression")'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  update-snapshots:
+    name: Update Snapshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DATABASE_URL: postgresql://qualcanvas:qualcanvas@localhost:55432/qualcanvas_e2e?schema=public
+      JWT_SECRET: test-secret-for-ci-pipeline-only
+      E2E_TEST: true
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qualcanvas
+          POSTGRES_PASSWORD: qualcanvas
+          POSTGRES_DB: qualcanvas_e2e
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U qualcanvas -d qualcanvas_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx prisma generate --schema=apps/backend/prisma/schema.prisma
+      - run: npx prisma db push --schema=apps/backend/prisma/schema.prisma --skip-generate
+      - run: npm run db:seed -w apps/backend
+
+      - name: Run e2e with --update-snapshots
+        # The first run after the marketing refresh will rewrite every stale
+        # baseline. Subsequent runs only touch what changed.
+        run: |
+          if [ -n "${{ inputs.test_filter }}" ]; then
+            npm run test:e2e -- --update-snapshots --grep "${{ inputs.test_filter }}"
+          else
+            npm run test:e2e -- --update-snapshots
+          fi
+
+      - name: Commit + push updated baselines
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- 'e2e/**/*.png'; then
+            echo "No snapshot changes — nothing to commit."
+            exit 0
+          fi
+          git add 'e2e/**/*.png'
+          git commit -m "chore(e2e): regenerate visual-regression baselines [skip ci]"
+          git push origin HEAD:${{ github.ref_name }}
