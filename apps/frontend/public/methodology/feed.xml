@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>QualCanvas — Methodology field guide</title>
+  <subtitle>A short field guide for qualitative researchers. One chapter a month.</subtitle>
+  <link href="https://qualcanvas.com/methodology/feed.xml" rel="self"/>
+  <link href="https://qualcanvas.com/methodology"/>
+  <updated>2026-05-14T00:00:00Z</updated>
+  <id>https://qualcanvas.com/methodology/</id>
+  <author>
+    <name>QualCanvas</name>
+    <email>methodology@qualcanvas.com</email>
+  </author>
+  <generator uri="https://qualcanvas.com">QualCanvas marketing pipeline</generator>
+  <!--
+    Placeholder feed. Chapter entries land here as drafts complete peer review.
+    The build-time generator (Phase 3 follow-on per docs/refresh/09 §9.6) will
+    populate this file automatically from MDX frontmatter in
+    apps/frontend/src/content/methodology/.
+  -->
+</feed>

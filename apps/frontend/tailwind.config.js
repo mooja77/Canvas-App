@@ -52,10 +52,13 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Inter Variable', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
         // Brand Tier 2 display serif — Fraunces. Used by .brand-v2 headings
         // when the fraunces_display flag is on.
-        display: ['Fraunces', 'Georgia', 'serif'],
+        // 'Fraunces Variable' is the family name from @fontsource-variable/fraunces;
+        // 'Fraunces' kept as fallback in case any inline style still references the
+        // pre-self-host name.
+        display: ['Fraunces Variable', 'Fraunces', 'Georgia', 'serif'],
       },
       animation: {
         'fade-in': 'fadeIn 200ms ease-out',

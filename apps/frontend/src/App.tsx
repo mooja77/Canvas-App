@@ -16,6 +16,18 @@ import PrivacyPage from './pages/PrivacyPage';
 import TrustPage from './pages/TrustPage';
 import CookiePolicyPage from './pages/CookiePolicyPage';
 import GuidePage from './pages/GuidePage';
+import CitePage from './pages/CitePage';
+import ColophonPage from './pages/ColophonPage';
+import AccessibilityStatementPage from './pages/AccessibilityStatementPage';
+import PressPage from './pages/PressPage';
+import TrustAIPage from './pages/TrustAIPage';
+import ForTeamsPage from './pages/ForTeamsPage';
+import ForInstitutionsPage from './pages/ForInstitutionsPage';
+import MethodologyIndexPage from './pages/MethodologyIndexPage';
+import CustomersIndexPage from './pages/CustomersIndexPage';
+import ChangelogPage from './pages/ChangelogPage';
+import VsIndexPage from './pages/VsIndexPage';
+import SubscribePage from './pages/SubscribePage';
 import { useAuthStore } from './stores/authStore';
 
 const CanvasPage = lazy(() => import('./pages/CanvasPage'));
@@ -40,6 +52,18 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/cite" element={<CitePage />} />
+          <Route path="/colophon" element={<ColophonPage />} />
+          <Route path="/accessibility-statement" element={<AccessibilityStatementPage />} />
+          <Route path="/press" element={<PressPage />} />
+          <Route path="/trust/ai" element={<TrustAIPage />} />
+          <Route path="/for-teams" element={<ForTeamsPage />} />
+          <Route path="/for-institutions" element={<ForInstitutionsPage />} />
+          <Route path="/methodology" element={<MethodologyIndexPage />} />
+          <Route path="/customers" element={<CustomersIndexPage />} />
+          <Route path="/changelog" element={<ChangelogPage />} />
+          <Route path="/vs" element={<VsIndexPage />} />
+          <Route path="/subscribe" element={<SubscribePage />} />
           <Route
             path="/account"
             element={

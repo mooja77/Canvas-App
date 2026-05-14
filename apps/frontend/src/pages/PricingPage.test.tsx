@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
-  // SiteHeader + SiteFooter (rendered by PricingPage) use Link; stub as an anchor
-  // so the test environment doesn't need a full router.
+  // PageShell's SiteHeader + SiteFooter use Link; stub as anchor so tests
+  // don't need a full router.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Link: ({ to, children, ...rest }: any) => (
     <a href={typeof to === 'string' ? to : '#'} {...rest}>
@@ -16,40 +16,13 @@ vi.mock('react-router-dom', () => ({
   ),
 }));
 
-// Mock i18next
+// Mock i18next (SiteHeader/Footer still use t() for some labels)
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'pricing.pageTitle': 'Simple, transparent pricing',
-        'pricing.pageSubtitle': 'Start free. Upgrade when your research grows.',
-        'pricing.monthly': 'Monthly',
-        'pricing.annual': 'Annual',
-        'pricing.free': 'Free',
-        'pricing.pro': 'Pro',
-        'pricing.team': 'Team',
-        'pricing.getStarted': 'Get Started',
-        'pricing.upgradeToPro': 'Upgrade to Pro',
-        'pricing.upgradeToTeam': 'Upgrade to Team',
-        'pricing.featureComparison': 'Full Feature Comparison',
-        'pricing.faq': 'Frequently Asked Questions',
-        'pricing.moneyBack': '30-day money-back guarantee',
-        'pricing.unlimitedCanvases': 'Unlimited canvases & transcripts',
-        'pricing.allAnalysisTools': 'All 10 analysis tools',
-        'pricing.eduDiscount': '40% off for .edu emails',
-        'pricing.intercoderReliability': 'Intercoder reliability (Kappa)',
-        'pricing.teamManagement': 'Team management',
-        'pricing.prioritySupport': 'Priority support',
-        'pricing.perSeatPricing': 'Per-seat pricing',
-        'pricing.unlimitedShares': 'Unlimited share codes',
-        'common.loading': 'Loading...',
-      };
-      return translations[key] || key;
-    },
+    t: (key: string) => key,
   }),
 }));
 
-// Mock authStore
 vi.mock('../stores/authStore', () => ({
   useAuthStore: () => ({
     authenticated: false,
@@ -58,93 +31,102 @@ vi.mock('../stores/authStore', () => ({
   }),
 }));
 
-// Mock billingApi
 vi.mock('../services/api', () => ({
   billingApi: {
     createCheckout: vi.fn(),
   },
 }));
 
-// Mock react-hot-toast
 vi.mock('react-hot-toast', () => ({
   default: { success: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock('../utils/analytics', () => ({
+  trackEvent: vi.fn(),
+}));
+
+vi.mock('../hooks/usePageMeta', () => ({
+  usePageMeta: vi.fn(),
+}));
+
 import PricingPage from './PricingPage';
 
-describe('PricingPage', () => {
+describe('PricingPage (refresh)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders three plan cards (Free, Pro, Team)', () => {
+  it('renders the four tier headings (Free, Pro, Team, Institutions)', () => {
     render(<PricingPage />);
-    expect(screen.getByText('Simple, transparent pricing')).toBeInTheDocument();
-    // Plan names appear as h3 headings in TierCard
-    expect(screen.getAllByText('Free').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Pro').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Team').length).toBeGreaterThanOrEqual(1);
+    // Each tier is an h3 inside TierCardV2
+    expect(screen.getByRole('heading', { name: 'Free', level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Pro', level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Team', level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Institutions', level: 3 })).toBeInTheDocument();
   });
 
-  it('shows correct prices ($12/mo Pro, $29/mo Team)', () => {
+  it('defaults to annual billing and shows discounted prices', () => {
     render(<PricingPage />);
-    expect(screen.getByText('$12')).toBeInTheDocument();
-    expect(screen.getByText('$29')).toBeInTheDocument();
-  });
-
-  it('Monthly/Annual toggle switches prices', () => {
-    render(<PricingPage />);
-    // Default is monthly, prices should be $12 and $29
-    expect(screen.getByText('$12')).toBeInTheDocument();
-    expect(screen.getByText('$29')).toBeInTheDocument();
-
-    // Switch to annual
-    fireEvent.click(screen.getByText('Annual'));
-
-    // Annual prices: $9 and $22
+    // Annual is the default in the refresh — Pro $9, Team $22.
     expect(screen.getByText('$9')).toBeInTheDocument();
     expect(screen.getByText('$22')).toBeInTheDocument();
   });
 
-  it('annual shows 25% savings', () => {
+  it('Monthly toggle switches to higher prices', () => {
     render(<PricingPage />);
-    fireEvent.click(screen.getByText('Annual'));
-
-    // The "Save 25% with annual billing" text should appear on TierCards
-    const savingsText = screen.getAllByText('Save 25% with annual billing');
-    expect(savingsText.length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(screen.getByRole('button', { name: /^Monthly$/ }));
+    expect(screen.getByText('$12')).toBeInTheDocument();
+    expect(screen.getByText('$29')).toBeInTheDocument();
   });
 
-  it('upgrade buttons present for Pro and Team', () => {
+  it('shows the "Save 25%" annual savings affordance', () => {
     render(<PricingPage />);
-    expect(screen.getByText('Upgrade to Pro')).toBeInTheDocument();
-    expect(screen.getByText('Upgrade to Team')).toBeInTheDocument();
+    // The annual toggle button has "Save 25%" inline
+    const annualButton = screen.getByRole('button', { name: /Annual/ });
+    expect(within(annualButton).getByText(/Save 25%/)).toBeInTheDocument();
   });
 
-  it('academic discount mentioned (.edu)', () => {
+  it('Free / Pro / Team / Institutions each have a CTA', () => {
     render(<PricingPage />);
-    // The .edu discount should be listed as a feature
-    const eduTexts = screen.getAllByText('40% off for .edu emails');
-    expect(eduTexts.length).toBeGreaterThanOrEqual(1);
+    // "Start free" appears twice — once in the Free tier card, once in the
+    // closing CTAStripe — so use getAllByRole.
+    expect(screen.getAllByRole('button', { name: 'Start free' }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('button', { name: 'Start Pro' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start Team' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Book a call' })).toBeInTheDocument();
   });
 
-  it('feature comparison table renders with expected columns', () => {
+  it('mentions the .edu academic discount inline', () => {
     render(<PricingPage />);
-    expect(screen.getByText('Full Feature Comparison')).toBeInTheDocument();
-    // Table column headers (desktop)
-    expect(screen.getByText('Feature')).toBeInTheDocument();
+    expect(screen.getByText(/40% off Pro and Team with a \.edu email/i)).toBeInTheDocument();
   });
 
-  it('FAQ section renders with questions', () => {
+  it('renders the categorical comparison table with all four tier columns', () => {
     render(<PricingPage />);
-    expect(screen.getByText('Frequently Asked Questions')).toBeInTheDocument();
-    expect(screen.getByText('Can I try before I buy?')).toBeInTheDocument();
-    expect(screen.getByText('Do you offer academic discounts?')).toBeInTheDocument();
-    expect(screen.getByText('Can I cancel anytime?')).toBeInTheDocument();
+    const tableRoot = screen.getByText('Feature').closest('table');
+    expect(tableRoot).not.toBeNull();
+    expect(within(tableRoot!).getByText('Feature')).toBeInTheDocument();
+    expect(within(tableRoot!).getAllByText('Pro').length).toBeGreaterThanOrEqual(1);
+    expect(within(tableRoot!).getAllByText('Team').length).toBeGreaterThanOrEqual(1);
+    expect(within(tableRoot!).getAllByText('Institutions').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('money-back guarantee badge is shown', () => {
+  it('FAQ surfaces the academic-discount, cancellation, and downgrade questions', () => {
     render(<PricingPage />);
-    expect(screen.getByText('30-day money-back guarantee')).toBeInTheDocument();
+    expect(screen.getByText(/Can I try before I buy/i)).toBeInTheDocument();
+    expect(screen.getByText(/Can I cancel anytime/i)).toBeInTheDocument();
+    expect(screen.getByText(/How does the academic discount work/i)).toBeInTheDocument();
+  });
+
+  it('money-back guarantee text appears on the page', () => {
+    render(<PricingPage />);
+    expect(screen.getByText(/30-day money-back guarantee/i)).toBeInTheDocument();
+  });
+
+  it('CompetitorRow strip surfaces NVivo, ATLAS.ti, and Dedoose comparisons', () => {
+    render(<PricingPage />);
+    expect(screen.getByText('NVivo')).toBeInTheDocument();
+    expect(screen.getByText('ATLAS.ti')).toBeInTheDocument();
+    expect(screen.getByText('Dedoose')).toBeInTheDocument();
   });
 });
