@@ -16,8 +16,10 @@ test.describe('Page-Level Tests', () => {
       .or(page.getByRole('button', { name: /start free/i }));
     await expect(startBtn.first()).toBeVisible();
 
-    // Verify pricing link
-    const pricingLink = page.getByRole('link', { name: /pricing/i });
+    // Verify a link to /pricing exists. The refreshed landing page links via
+    // copy like "Choose your plan" / "Compare all features →" rather than the
+    // literal word "Pricing", so we assert by href to stay copy-agnostic.
+    const pricingLink = page.locator('a[href="/pricing"]');
     await expect(pricingLink.first()).toBeVisible();
   });
 
