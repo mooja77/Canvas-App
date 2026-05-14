@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { trackEvent } from '../utils/analytics';
@@ -10,6 +10,11 @@ import { Bento, BentoCell } from '../components/marketing/Bento';
 import StatBlock from '../components/marketing/StatBlock';
 import FAQ from '../components/marketing/FAQ';
 import CTAStripe from '../components/marketing/CTAStripe';
+
+// Lazy — the real interactive demo (with IndexedDB + idb-keyval) loads after
+// first paint so it doesn't bloat the initial bundle. SSR / no-JS visitors get
+// the static placeholder rendered as the Suspense fallback below.
+const InteractiveDemo = lazy(() => import('../components/marketing/InteractiveDemo'));
 
 /**
  * Landing page — refresh per docs/refresh/06-pages/01-landing.md.
@@ -100,73 +105,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── 2. Interactive coding micro-demo (Phase 2 placeholder) ─── */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-20" aria-label="Interactive coding demo (preview)">
-        <div className="relative rounded-2xl overflow-hidden ring-1 ring-gray-200 dark:ring-gray-700 bg-white dark:bg-gray-900 shadow-2xl shadow-ink-900/5">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px]">
-            <div className="p-6 sm:p-10 border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-800">
-              <div className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400 mb-3">
-                Maya, 27 — on returning to graduate school after caregiving
-              </div>
-              <blockquote
-                className="text-base sm:text-lg leading-relaxed text-gray-800 dark:text-gray-200"
-                style={{ fontVariationSettings: "'wght' 400" }}
-              >
-                Coming back to school felt like reaching for a self I'd put somewhere I couldn't quite find. The first
-                week, I sat in seminar and listened to people use words I used to use, and I thought: I'm going to have
-                to learn this language again. But it wasn't the language — the language was easy. It was that I'd been{' '}
-                <span className="relative inline animate-pulse-highlight bg-ochre-200/60 dark:bg-ochre-900/40 px-1 py-0.5 rounded">
-                  someone else for three years
-                </span>
-                . Someone who got up at four in the morning to give my mother her medications.
-              </blockquote>
-              <div className="mt-6 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-ochre-100 dark:bg-ochre-900/30 text-ochre-800 dark:text-ochre-300">
-                  + identity-as-resistance
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-                  + caregiving
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-                  + transition / return
-                </span>
-              </div>
-            </div>
-            <aside className="p-6 sm:p-8 bg-gray-50 dark:bg-gray-800/40" aria-label="Codebook preview">
-              <div className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400 mb-4">
-                Codebook
-              </div>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-center gap-3">
-                  <span aria-hidden="true" className="w-2 h-2 rounded-full bg-ochre-500" />
-                  <span className="flex-1 text-gray-900 dark:text-gray-100 font-medium">identity-as-resistance</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">1 span</span>
-                </li>
-                <li className="flex items-center gap-3 opacity-60">
-                  <span aria-hidden="true" className="w-2 h-2 rounded-full bg-gray-400" />
-                  <span className="flex-1 text-gray-700 dark:text-gray-300">caregiving</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">2 spans</span>
-                </li>
-                <li className="flex items-center gap-3 opacity-60">
-                  <span aria-hidden="true" className="w-2 h-2 rounded-full bg-gray-400" />
-                  <span className="flex-1 text-gray-700 dark:text-gray-300">transition / return</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">1 span</span>
-                </li>
-              </ul>
-              <p className="mt-6 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                Try it yourself —{' '}
-                <button
-                  onClick={handleStartFree}
-                  className="text-ochre-700 dark:text-ochre-400 hover:underline decoration-ochre-500 underline-offset-2 font-medium"
-                >
-                  start free →
-                </button>
-              </p>
-            </aside>
-          </div>
-        </div>
+      {/* ─── 2. Interactive coding micro-demo ─── */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-20" aria-label="Interactive coding demo">
+        <Suspense fallback={<DemoPlaceholder onStart={handleStartFree} />}>
+          <InteractiveDemo />
+        </Suspense>
         <p className="text-xs text-center mt-3 text-gray-400 dark:text-gray-500">
-          Real interactive demo arrives in the next release. Preview shown.
+          Highlight any span to apply a code. Your work persists for 30 days.
         </p>
       </section>
 
@@ -510,5 +455,69 @@ function FeatureContent({ title, body }: { title: string; body: string }) {
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
       <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">{body}</p>
     </>
+  );
+}
+
+/**
+ * Static fallback shown while the real InteractiveDemo lazy-loads, AND served
+ * as the no-JS / SSR rendering. Matches the visual shell of the real demo so
+ * the swap-in is seamless. Includes a `Start free` link in the codebook
+ * footer so even pure no-JS visitors have a route forward.
+ */
+function DemoPlaceholder({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="relative rounded-2xl overflow-hidden ring-1 ring-gray-200 dark:ring-gray-700 bg-white dark:bg-gray-900 shadow-2xl shadow-ink-900/5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px]">
+        <div className="p-6 sm:p-10 border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-800">
+          <div className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400 mb-3">
+            Maya, 27 — on returning to graduate school after caregiving
+          </div>
+          <blockquote
+            className="text-base sm:text-lg leading-relaxed text-gray-800 dark:text-gray-200"
+            style={{ fontVariationSettings: "'wght' 400" }}
+          >
+            Coming back to school felt like reaching for a self I'd put somewhere I couldn't quite find. The first week,
+            I sat in seminar and listened to people use words I used to use, and I thought: I'm going to have to learn
+            this language again. But it wasn't the language — the language was easy. It was that I'd been{' '}
+            <span className="bg-ochre-200/60 dark:bg-ochre-900/40 px-1 py-0.5 rounded">
+              someone else for three years
+            </span>
+            . Someone who got up at four in the morning to give my mother her medications.
+          </blockquote>
+          <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">Loading the interactive coder…</p>
+        </div>
+        <aside className="p-6 sm:p-8 bg-gray-50 dark:bg-gray-800/40" aria-label="Codebook preview">
+          <div className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400 mb-4">
+            Codebook
+          </div>
+          <ul className="space-y-3 text-sm">
+            <li className="flex items-center gap-3">
+              <span aria-hidden="true" className="w-2 h-2 rounded-full bg-ochre-500" />
+              <span className="flex-1 text-gray-900 dark:text-gray-100 font-medium">identity-as-resistance</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">1 span</span>
+            </li>
+            <li className="flex items-center gap-3 opacity-60">
+              <span aria-hidden="true" className="w-2 h-2 rounded-full bg-gray-400" />
+              <span className="flex-1 text-gray-700 dark:text-gray-300">caregiving</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">2 spans</span>
+            </li>
+            <li className="flex items-center gap-3 opacity-60">
+              <span aria-hidden="true" className="w-2 h-2 rounded-full bg-gray-400" />
+              <span className="flex-1 text-gray-700 dark:text-gray-300">transition / return</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">1 span</span>
+            </li>
+          </ul>
+          <p className="mt-6 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+            Try it yourself —{' '}
+            <button
+              onClick={onStart}
+              className="text-ochre-700 dark:text-ochre-400 hover:underline decoration-ochre-500 underline-offset-2 font-medium"
+            >
+              start free →
+            </button>
+          </p>
+        </aside>
+      </div>
+    </div>
   );
 }
