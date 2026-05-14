@@ -50,7 +50,7 @@ export default function ColophonPage() {
           <p>
             Built with React, Vite, and Tailwind. Deployed on Cloudflare Pages. Designed and built by{' '}
             <a
-              href="https://www.jmsdevlab.com/apps.html#qualcanvas"
+              href="https://www.jmsdevlab.com/apps#qualcanvas"
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => trackEvent('studio_credit_clicked', { location: 'colophon' })}

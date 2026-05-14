@@ -57,7 +57,7 @@ export default function PressPage() {
               QualCanvas was built by{' '}
               <a
                 className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
-                href="https://www.jmsdevlab.com/apps.html#qualcanvas"
+                href="https://www.jmsdevlab.com/apps#qualcanvas"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -103,19 +103,22 @@ export default function PressPage() {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <AssetCard
-              title="Brand kit (.zip)"
-              description="Logo SVG light + dark, wordmark, color values, screenshot set"
-              href="/press/qualcanvas-brand-kit.zip"
-            />
-            <AssetCard
               title="Hero screenshot"
               description="1200×630 PNG, ready for OG and social-card use"
               href="/og-image.png"
+              available
+            />
+            <AssetCard
+              title="Brand kit (.zip)"
+              description="Logo SVG light + dark, wordmark, color values, screenshot set. Email press@ — kit lands by reply."
+              href="mailto:press@qualcanvas.com?subject=Brand%20kit%20request"
+              email
             />
             <AssetCard
               title="Brand do / don't"
-              description="One-page reference on using the marks correctly"
-              href="/press/brand-do-dont.pdf"
+              description="One-page guide on using the marks correctly. Email press@ — PDF by reply."
+              href="mailto:press@qualcanvas.com?subject=Brand%20do%2Fdon%27t%20PDF%20request"
+              email
             />
           </div>
         </section>
@@ -179,7 +182,20 @@ function FactRow({ term, value }: { term: string; value: string }) {
   );
 }
 
-function AssetCard({ title, description, href }: { title: string; description: string; href: string }) {
+function AssetCard({
+  title,
+  description,
+  href,
+  available,
+  email,
+}: {
+  title: string;
+  description: string;
+  href: string;
+  available?: boolean;
+  email?: boolean;
+}) {
+  const cta = available ? 'Download →' : email ? 'Email for asset →' : 'Open →';
   return (
     <a
       href={href}
@@ -194,7 +210,7 @@ function AssetCard({ title, description, href }: { title: string; description: s
     >
       <div className="text-sm font-semibold text-gray-900 dark:text-white mb-1">{title}</div>
       <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">{description}</div>
-      <div className="text-xs font-medium text-ochre-700 dark:text-ochre-400">Download →</div>
+      <div className="text-xs font-medium text-ochre-700 dark:text-ochre-400">{cta}</div>
     </a>
   );
 }

@@ -531,6 +531,17 @@ input[type="checkbox"]:checked {
   font-variant-numeric: tabular-nums;
 }
 
+/* ─── Marketing demo: highlighted-span pulse ─── */
+/* Used in LandingPage interactive-demo placeholder to suggest the
+   span-selection affordance without shipping the real demo (Phase 4). */
+@keyframes pulseHighlight {
+  0%, 100% { background-color: rgba(244, 217, 149, 0.6); }
+  50%      { background-color: rgba(244, 217, 149, 0.85); }
+}
+.animate-pulse-highlight {
+  animation: pulseHighlight 3s ease-in-out infinite;
+}
+
 /* ─── Reduced Motion ─── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

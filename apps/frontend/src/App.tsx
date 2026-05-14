@@ -27,6 +27,7 @@ import MethodologyIndexPage from './pages/MethodologyIndexPage';
 import CustomersIndexPage from './pages/CustomersIndexPage';
 import ChangelogPage from './pages/ChangelogPage';
 import VsIndexPage from './pages/VsIndexPage';
+import SubscribePage from './pages/SubscribePage';
 import { useAuthStore } from './stores/authStore';
 
 const CanvasPage = lazy(() => import('./pages/CanvasPage'));
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="/customers" element={<CustomersIndexPage />} />
           <Route path="/changelog" element={<ChangelogPage />} />
           <Route path="/vs" element={<VsIndexPage />} />
+          <Route path="/subscribe" element={<SubscribePage />} />
           <Route
             path="/account"
             element={

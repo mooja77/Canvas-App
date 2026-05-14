@@ -11,7 +11,7 @@ import { trackEvent } from '../../utils/analytics';
 export default function StudioCredit({ location = 'footer' }: { location?: 'footer' | 'colophon' }) {
   return (
     <a
-      href="https://www.jmsdevlab.com/apps.html#qualcanvas"
+      href="https://www.jmsdevlab.com/apps#qualcanvas"
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => trackEvent('studio_credit_clicked', { location })}
