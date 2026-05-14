@@ -5,9 +5,11 @@ import App from './App';
 import toast, { Toaster } from 'react-hot-toast';
 import { registerSW } from 'virtual:pwa-register';
 import { useUIStore } from './stores/uiStore';
+import { useFeatureFlagsStore, applyUrlFlagOverrides } from './stores/featureFlagsStore';
 import { trackEvent } from './utils/analytics';
 import './i18n';
 import './index.css';
+import './brand-v2.css';
 
 // Initialize Sentry error tracking in production
 if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
@@ -22,6 +24,21 @@ const darkMode = useUIStore.getState().darkMode;
 if (darkMode) {
   document.documentElement.classList.add('dark');
 }
+
+// Apply ?flags=... overrides before reading flag state for brand v2 paint.
+applyUrlFlagOverrides();
+const flagState = useFeatureFlagsStore.getState();
+if (flagState.isEnabled('ink_ochre_palette')) {
+  document.documentElement.classList.add('brand-v2');
+}
+if (flagState.isEnabled('fraunces_display')) {
+  document.documentElement.classList.add('brand-v2-display');
+}
+// Stay reactive — flipping flags via devtools updates the page live.
+useFeatureFlagsStore.subscribe((s) => {
+  document.documentElement.classList.toggle('brand-v2', s.isEnabled('ink_ochre_palette'));
+  document.documentElement.classList.toggle('brand-v2-display', s.isEnabled('fraunces_display'));
+});
 
 // Reliability fix #10 — surface SW updates with an actionable toast instead
 // of letting the next nav silently activate a possibly-incompatible bundle.

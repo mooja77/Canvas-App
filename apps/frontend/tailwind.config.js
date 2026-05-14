@@ -21,9 +21,41 @@ export default {
           900: '#312E81',
           950: '#1E1B4B',
         },
+        // Brand Tier 2 — "Ink + Ochre" palette. Used only by the brand-v2 CSS
+        // layer + components that explicitly opt in; Tier 1 (brand-*) is the
+        // default until ink_ochre_palette flips on for all users.
+        ink: {
+          50: '#F4F6F8',
+          100: '#E5E9EF',
+          200: '#C7CED9',
+          300: '#9CA7B9',
+          400: '#6A7891',
+          500: '#475569',
+          600: '#334155',
+          700: '#22304A',
+          800: '#16213D',
+          900: '#0B1530',
+          950: '#050B1F',
+        },
+        ochre: {
+          50: '#FBF6EC',
+          100: '#F5E9CC',
+          200: '#EBD295',
+          300: '#DDB761',
+          400: '#CC9C3A',
+          500: '#B7841F',
+          600: '#956914',
+          700: '#724F10',
+          800: '#523810',
+          900: '#36240C',
+          950: '#1F1505',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        // Brand Tier 2 display serif — Fraunces. Used by .brand-v2 headings
+        // when the fraunces_display flag is on.
+        display: ['Fraunces', 'Georgia', 'serif'],
       },
       animation: {
         'fade-in': 'fadeIn 200ms ease-out',

@@ -174,14 +174,24 @@ export default function TrustPage() {
           see our <Link to="/privacy">Privacy Policy</Link>.
         </p>
 
-        <h2>Data processing agreement</h2>
+        <h2 id="dpa">Data processing agreement</h2>
         <p>
-          Institutional customers can request our standard DPA covering GDPR Art. 28, SCCs, sub-processor change
-          notification, and breach notification (72h). Email{' '}
+          Our standard DPA covers GDPR Art. 28, SCCs (Module 2, 2021/914) + UK Addendum, sub-processor change
+          notification (30 days), and breach notification (72 hours). The current draft is available at{' '}
+          <a
+            href="/legal/dpa.md"
+            target="_blank"
+            rel="noreferrer"
+            className="text-brand-600 hover:underline"
+            onClick={() => trackEvent('dpa_downloaded')}
+          >
+            /legal/dpa.md
+          </a>{' '}
+          for review; institutional buyers should email{' '}
           <a href="mailto:legal@qualcanvas.com" className="text-brand-600 hover:underline">
             legal@qualcanvas.com
           </a>{' '}
-          to start the review.
+          to counter-sign the executed copy.
         </p>
 
         <h2>Vulnerability disclosure</h2>

@@ -1,0 +1,95 @@
+/*
+ * Brand Tier 2 — "Ink + Ochre" theme overlay.
+ *
+ * Loaded unconditionally so Fraunces is in the bundle, but the rules below
+ * only fire when <html> carries the .brand-v2 class (palette) or
+ * .brand-v2-display class (display serif). useBrandV2() in main.tsx wires
+ * those classes onto <html> from the feature-flag store at startup.
+ *
+ * The palette flips Tier 1 indigo (brand-*) to ink (charcoal-blue), with
+ * ochre reserved for emphasis: primary buttons, links, focus rings, and
+ * the marketing pages' accent strokes. Tier 1 tokens stay defined in
+ * tailwind.config.js so any component that doesn't opt in is unaffected.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
+
+html.brand-v2 {
+  /* Re-map the brand-* scale to ink-* via custom properties. Components
+     that consume `text-brand-600 / bg-brand-50 / border-brand-500`
+     pick up the new values without touching markup, because Tailwind's
+     JIT compiles to literal hex; we override via CSS variables on a few
+     hand-picked surfaces below. The full token swap happens at build
+     time once the flag is GA. */
+  --bv2-fg: theme('colors.ink.900');
+  --bv2-fg-muted: theme('colors.ink.500');
+  --bv2-bg: theme('colors.ink.50');
+  --bv2-bg-card: #ffffff;
+  --bv2-accent: theme('colors.ochre.500');
+  --bv2-accent-hover: theme('colors.ochre.600');
+  --bv2-ring: theme('colors.ochre.400');
+
+  color: var(--bv2-fg);
+  background-color: var(--bv2-bg);
+}
+
+html.brand-v2.dark {
+  --bv2-fg: theme('colors.ink.100');
+  --bv2-fg-muted: theme('colors.ink.300');
+  --bv2-bg: theme('colors.ink.950');
+  --bv2-bg-card: theme('colors.ink.900');
+  --bv2-accent: theme('colors.ochre.300');
+  --bv2-accent-hover: theme('colors.ochre.200');
+  --bv2-ring: theme('colors.ochre.400');
+
+  color: var(--bv2-fg);
+  background-color: var(--bv2-bg);
+}
+
+/* Primary CTAs (.btn-primary class) get ochre + ink stroke when v2 is on. */
+html.brand-v2 .btn-primary {
+  background-color: var(--bv2-accent);
+  color: theme('colors.ink.950');
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+html.brand-v2 .btn-primary:hover {
+  background-color: var(--bv2-accent-hover);
+}
+html.brand-v2 .btn-primary:focus-visible {
+  outline: 2px solid var(--bv2-ring);
+  outline-offset: 2px;
+}
+
+/* Brand anchor color — used by landing-page links + Trust nav. */
+html.brand-v2 a.text-brand-600,
+html.brand-v2 .text-brand-600,
+html.brand-v2 .text-brand-700 {
+  color: var(--bv2-accent);
+}
+html.brand-v2 a.text-brand-600:hover,
+html.brand-v2 .text-brand-600:hover {
+  color: var(--bv2-accent-hover);
+}
+
+/* Focus rings — swap the indigo halo for ochre. */
+html.brand-v2 *:focus-visible {
+  outline-color: var(--bv2-ring);
+}
+
+/* Display serif for headings when fraunces_display is on. Scoped to
+   .brand-v2-display so a researcher who wants the palette without the
+   serif can opt to just the first flag. */
+html.brand-v2-display h1,
+html.brand-v2-display h2,
+html.brand-v2-display h3,
+html.brand-v2-display .font-display {
+  font-family: 'Fraunces', Georgia, serif;
+  font-feature-settings: 'ss01', 'ss02';
+  letter-spacing: -0.005em;
+}
+
+/* Marketing pages — give Hero h1s a touch more optical sizing. */
+html.brand-v2-display .landing-hero h1 {
+  font-variation-settings: 'opsz' 144;
+  font-weight: 600;
+}
