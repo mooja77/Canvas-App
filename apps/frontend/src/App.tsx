@@ -23,6 +23,10 @@ import PressPage from './pages/PressPage';
 import TrustAIPage from './pages/TrustAIPage';
 import ForTeamsPage from './pages/ForTeamsPage';
 import ForInstitutionsPage from './pages/ForInstitutionsPage';
+import MethodologyIndexPage from './pages/MethodologyIndexPage';
+import CustomersIndexPage from './pages/CustomersIndexPage';
+import ChangelogPage from './pages/ChangelogPage';
+import VsIndexPage from './pages/VsIndexPage';
 import { useAuthStore } from './stores/authStore';
 
 const CanvasPage = lazy(() => import('./pages/CanvasPage'));
@@ -54,6 +58,10 @@ export default function App() {
           <Route path="/trust/ai" element={<TrustAIPage />} />
           <Route path="/for-teams" element={<ForTeamsPage />} />
           <Route path="/for-institutions" element={<ForInstitutionsPage />} />
+          <Route path="/methodology" element={<MethodologyIndexPage />} />
+          <Route path="/customers" element={<CustomersIndexPage />} />
+          <Route path="/changelog" element={<ChangelogPage />} />
+          <Route path="/vs" element={<VsIndexPage />} />
           <Route
             path="/account"
             element={
