@@ -85,6 +85,7 @@ import { collaborationRoutes } from './routes/collaborationRoutes.js';
 import { documentRoutes } from './routes/documentRoutes.js';
 import { trainingRoutes } from './routes/trainingRoutes.js';
 import { templateRoutes } from './routes/templateRoutes.js';
+import { auditRoutes } from './routes/auditRoutes.js';
 import { qdpxRoutes } from './routes/qdpxRoutes.js';
 import { repositoryRoutes } from './routes/repositoryRoutes.js';
 import { integrationRoutes } from './routes/integrationRoutes.js';
@@ -333,6 +334,9 @@ v1Router.use(auth, auditLog, trainingRoutes);
 
 // Protected template + onboarding routes
 v1Router.use(auth, auditLog, templateRoutes);
+
+// Protected audit-trail routes (Sprint E user-facing endpoint)
+v1Router.use(auth, auditLog, auditRoutes);
 
 // Protected QDPX export/import routes
 v1Router.use(auth, auditLog, qdpxRoutes);

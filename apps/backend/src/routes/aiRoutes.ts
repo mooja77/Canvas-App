@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
+import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import { checkAiAccess } from '../middleware/planLimits.js';
 import { validate } from '../middleware/validation.js';
 import {
@@ -156,12 +156,64 @@ aiRoutes.post(
 
       const { transcriptId, instructions } = req.body;
 
+      // Reliability #8 — if the client provides an idempotency key and a
+      // completed AiJob with that key exists, return its cached result so
+      // tab-close mid-run + reopen doesn't re-run a 30-second LLM call.
+      // Pending / running jobs return 409 so the client knows to keep polling
+      // rather than double-charging the user.
+      const idempotencyKey = (req.header('x-idempotency-key') ||
+        req.header('idempotency-key') ||
+        req.body?.idempotencyKey) as string | undefined;
+      if (idempotencyKey) {
+        const existing = await prisma.aiJob.findUnique({ where: { idempotencyKey } });
+        if (existing) {
+          if (existing.status === 'completed') {
+            return res.json({
+              success: true,
+              data: existing.result ? safeJsonParse(existing.result, {}) : {},
+              cached: true,
+              jobId: existing.id,
+            });
+          }
+          if (existing.status === 'failed') {
+            return res.status(500).json({
+              success: false,
+              error: existing.error || 'Previous attempt failed',
+              jobId: existing.id,
+            });
+          }
+          // pending / running — tell the client to poll, don't double-spend
+          return res.status(409).json({
+            success: false,
+            error: 'Job already in progress for this idempotency key',
+            jobId: existing.id,
+            status: existing.status,
+          });
+        }
+      }
+
       const transcript = await prisma.canvasTranscript.findFirst({
         where: { id: transcriptId, canvasId: canvas.id },
       });
       if (!transcript) {
         return res.status(404).json({ success: false, error: 'Transcript not found' });
       }
+
+      // Persist a pending AiJob row before the LLM call so a server crash
+      // mid-call leaves an audit-visible "failed" or "stuck" record rather
+      // than silent loss. updateOnEnd updates it to completed/failed at
+      // the end of the request.
+      const job = idempotencyKey
+        ? await prisma.aiJob.create({
+            data: {
+              idempotencyKey,
+              userId,
+              canvasId: canvas.id,
+              type: 'auto_code',
+              status: 'running',
+            },
+          })
+        : null;
 
       // Get existing codes
       const existingCodes = await prisma.canvasQuestion.findMany({
@@ -272,20 +324,80 @@ aiRoutes.post(
         ),
       );
 
+      const responseData = {
+        total: codings.length,
+        valid: savedSuggestions.length,
+        hallucinated,
+        suggestions: savedSuggestions,
+      };
+
+      // Finalize the AiJob row so subsequent retries with the same
+      // idempotency key replay the cached result instead of re-running.
+      if (job) {
+        await prisma.aiJob.update({
+          where: { id: job.id },
+          data: {
+            status: 'completed',
+            result: JSON.stringify(responseData),
+            inputTokens: result.inputTokens,
+            outputTokens: result.outputTokens,
+            costCents: calculateCostCents(result.model, result.inputTokens, result.outputTokens),
+          },
+        });
+      }
+
       res.json({
         success: true,
-        data: {
-          total: codings.length,
-          valid: savedSuggestions.length,
-          hallucinated,
-          suggestions: savedSuggestions,
-        },
+        data: responseData,
+        ...(job ? { jobId: job.id, cached: false } : {}),
       });
     } catch (err) {
+      // Mark the AiJob row failed so retries surface the error rather than
+      // hanging in 'running' forever. We don't have `job` in scope inside
+      // this catch (declared inside try), so re-derive via idempotencyKey.
+      const idempotencyKey = (req.header('x-idempotency-key') ||
+        req.header('idempotency-key') ||
+        req.body?.idempotencyKey) as string | undefined;
+      if (idempotencyKey) {
+        await prisma.aiJob
+          .updateMany({
+            where: { idempotencyKey, status: { in: ['pending', 'running'] } },
+            data: { status: 'failed', error: (err as Error).message?.slice(0, 500) ?? 'unknown' },
+          })
+          .catch(() => {});
+      }
       next(err);
     }
   },
 );
+
+// ─── GET /canvas/:id/ai/jobs/:jobId — poll AiJob status (reliability #8) ───
+aiRoutes.get('/canvas/:id/ai/jobs/:jobId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    const userId = getAuthUserId(req);
+    const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+
+    const job = await prisma.aiJob.findUnique({ where: { id: req.params.jobId } });
+    if (!job || job.canvasId !== canvas.id) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+    res.json({
+      success: true,
+      data: {
+        id: job.id,
+        type: job.type,
+        status: job.status,
+        result: job.result ? safeJsonParse(job.result, {}) : null,
+        error: job.error,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ─── GET /canvas/:id/ai/suggestions ───
 aiRoutes.get('/canvas/:id/ai/suggestions', async (req: Request, res: Response, next: NextFunction) => {

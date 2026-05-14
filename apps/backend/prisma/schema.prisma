@@ -365,6 +365,10 @@ model AuditLog {
   @@index([action])
   @@index([timestamp])
   @@index([actorId])
+  // Sprint E: support the user-facing GET /canvas/:id/audit endpoint
+  // (lookup by resourceId DESC) and quality-panel filters by category.
+  @@index([resourceId])
+  @@index([resource, action])
 }
 
 model WebhookEvent {
@@ -557,6 +561,32 @@ model AiSuggestion {
   @@index([canvasId])
   @@index([transcriptId])
   @@index([status])
+}
+
+// Reliability fix #8 — durable record of AI feature invocations so that if
+// the user closes a tab mid-Auto-Code (30-second LLM call) and reopens it,
+// they can re-fetch the result by idempotency key rather than re-running
+// (and re-paying for) the LLM call. Single-process semantics: the server
+// runs the work in-process and writes status updates here. A future worker
+// queue (Bull / Sidekiq) can subscribe to status='pending' rows.
+model AiJob {
+  id             String   @id @default(cuid())
+  idempotencyKey String   @unique
+  userId         String?
+  canvasId       String?
+  type           String // 'auto_code' | 'methods_statement' | 'suggest_codes_inline'
+  status         String   @default("pending") // 'pending' | 'running' | 'completed' | 'failed'
+  result         String? // JSON-serialized response payload
+  error          String?
+  inputTokens    Int      @default(0)
+  outputTokens  Int       @default(0)
+  costCents     Float     @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([canvasId, type])
+  @@index([status, createdAt])
 }
 
 model AiUsage {

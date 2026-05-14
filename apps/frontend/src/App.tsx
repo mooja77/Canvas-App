@@ -13,6 +13,8 @@ import LoginPage from './pages/LoginPage';
 import PricingPage from './pages/PricingPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
+import TrustPage from './pages/TrustPage';
+import CookiePolicyPage from './pages/CookiePolicyPage';
 import GuidePage from './pages/GuidePage';
 import { useAuthStore } from './stores/authStore';
 
@@ -23,7 +25,7 @@ const TeamPage = lazy(() => import('./pages/TeamPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const authenticated = useAuthStore(s => s.authenticated);
+  const authenticated = useAuthStore((s) => s.authenticated);
   if (!authenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
@@ -31,70 +33,72 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <ErrorBoundary>
-    <BrowserRouter>
-      <OfflineBanner />
-      <UpgradePrompt />
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/pricing" element={<PricingPage />} />
-        <Route
-          path="/account"
-          element={
-            <ProtectedRoute>
+      <BrowserRouter>
+        <OfflineBanner />
+        <UpgradePrompt />
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<PageSkeleton />}>
+                  <AccountPage />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/canvas/:canvasId?"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<PageSkeleton />}>
+                  <CanvasPage />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/repository"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<PageSkeleton />}>
+                  <RepositoryPage />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/team"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<PageSkeleton />}>
+                  <TeamPage />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/trust" element={<TrustPage />} />
+          <Route path="/cookies" element={<CookiePolicyPage />} />
+          <Route path="/guide" element={<GuidePage />} />
+          <Route
+            path="/admin"
+            element={
               <Suspense fallback={<PageSkeleton />}>
-                <AccountPage />
+                <AdminPage />
               </Suspense>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/canvas/:canvasId?"
-          element={
-            <ProtectedRoute>
-              <Suspense fallback={<PageSkeleton />}>
-                <CanvasPage />
-              </Suspense>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/repository"
-          element={
-            <ProtectedRoute>
-              <Suspense fallback={<PageSkeleton />}>
-                <RepositoryPage />
-              </Suspense>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/team"
-          element={
-            <ProtectedRoute>
-              <Suspense fallback={<PageSkeleton />}>
-                <TeamPage />
-              </Suspense>
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route path="/terms" element={<TermsPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/guide" element={<GuidePage />} />
-        <Route
-          path="/admin"
-          element={
-            <Suspense fallback={<PageSkeleton />}>
-              <AdminPage />
-            </Suspense>
-          }
-        />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </BrowserRouter>
+            }
+          />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }
