@@ -76,6 +76,11 @@ export type AnalyticsEvent =
   | 'interactive_demo_code_applied'
   | 'interactive_demo_completed';
 
+// Backend lives on a different origin in prod (Railway) than the marketing
+// site (Cloudflare Pages). Mirror the convention used by services/api.ts so
+// the POST hits the API rather than the static host (which returned 405).
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
 export function trackEvent(eventName: AnalyticsEvent, params?: Record<string, unknown>) {
   // GTM / GA4 via gtag
   window.gtag?.('event', eventName, params);
@@ -84,7 +89,7 @@ export function trackEvent(eventName: AnalyticsEvent, params?: Record<string, un
   // We don't await this — it's fire-and-forget. The backend will write to
   // AuditLog and forward to the JMS portal where applicable.
   if (typeof fetch !== 'undefined') {
-    fetch('/api/v1/events/track', {
+    fetch(`${API_BASE}/v1/events/track`, {
       method: 'POST',
       body: JSON.stringify({ event: eventName, params: params || {} }),
       headers: { 'Content-Type': 'application/json' },

@@ -81,7 +81,7 @@ export default function SiteFooter() {
                 </li>
                 <li>
                   <Link
-                    to="/login"
+                    to="/login?mode=register"
                     className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                   >
                     {t('pricing.getStarted')}

@@ -67,7 +67,7 @@ export default function SiteHeader({ hideAuthCtas = false }: SiteHeaderProps) {
                   {t('auth.signIn')}
                 </Link>
                 <button
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/login?mode=register')}
                   className="text-sm bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                 >
                   {t('pricing.getStarted')}
@@ -128,7 +128,7 @@ export default function SiteHeader({ hideAuthCtas = false }: SiteHeaderProps) {
                 </Link>
                 <button
                   onClick={() => {
-                    navigate('/login');
+                    navigate('/login?mode=register');
                     setMobileMenuOpen(false);
                   }}
                   className="w-full text-sm bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"

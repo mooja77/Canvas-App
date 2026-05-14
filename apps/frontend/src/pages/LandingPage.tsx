@@ -47,7 +47,7 @@ export default function LandingPage() {
   const handleStartFree = () => {
     trackEvent('cta_clicked', { cta_label: 'Start free', location: 'landing_hero', target_route: '/login' });
     trackEvent('signup_started', { source_page: '/', plan: 'free' });
-    navigate('/login');
+    navigate('/login?mode=register');
   };
 
   return (
