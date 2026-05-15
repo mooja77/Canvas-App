@@ -75,6 +75,23 @@ const ZOOM_ENVELOPE: Record<Breakpoint, ZoomEnvelope> = {
   desktop: { padding: 0.2, minZoom: 0.15, maxZoom: 1.0 },
 };
 
+/**
+ * Resolves the React Flow `fitViewOptions` for a given viewport + intent.
+ * The production wiring calls `rfInstance.fitView(fitOptionsFor(...))` so
+ * we get React Flow's battle-tested node-visibility culling AND our
+ * breakpoint-aware envelope. The pure `computeFit` below stays exported
+ * for unit-test coverage of the math.
+ */
+export function fitOptionsFor(
+  viewport: Viewport,
+  breakpoint: Breakpoint,
+): { padding: number; minZoom: number; maxZoom: number } {
+  if (viewport.w <= 0 || viewport.h <= 0) {
+    return { padding: 0.2, minZoom: 0.05, maxZoom: 1.0 };
+  }
+  return ZOOM_ENVELOPE[breakpoint];
+}
+
 /** Stage-2 overview-fallback floor used when even minZoom won't fit. */
 const OVERVIEW_FLOOR = 0.05;
 

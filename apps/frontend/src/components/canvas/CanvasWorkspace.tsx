@@ -73,7 +73,7 @@ import { useAlignmentGuides } from '../../hooks/useAlignmentGuides';
 import { useAiConfigStore } from '../../stores/aiConfigStore';
 import { useUIStore } from '../../stores/uiStore';
 import { parseCsvRecords } from '../../utils/csv';
-import { breakpointFor, computeFit, nodesToBbox, type FitIntent } from '../../utils/canvasFit';
+import { breakpointFor, fitOptionsFor, type FitIntent } from '../../utils/canvasFit';
 import type {
   CanvasTranscript,
   CanvasQuestion,
@@ -788,11 +788,13 @@ export default function CanvasWorkspace() {
       const width = workspaceSize.width;
       const height = workspaceSize.height;
       if (!width || !height) return;
-      const bbox = nodesToBbox(nodesRef.current);
-      if (!bbox) return;
+      // Delegate to React Flow's fitView so we get its battle-tested
+      // node-visibility culling and edge-case handling. The breakpoint-aware
+      // envelope is the part we own. The pure math in computeFit / nodesToBbox
+      // stays unit-tested in canvasFit.test.ts.
       const breakpoint = breakpointFor(width);
-      const transform = computeFit(bbox, { w: width, h: height }, breakpoint, intent);
-      rf.setViewport(transform, { duration: FIT_DURATION_MS[intent] });
+      const opts = fitOptionsFor({ w: width, h: height }, breakpoint);
+      rf.fitView({ ...opts, duration: FIT_DURATION_MS[intent] });
     },
     [workspaceSize.width, workspaceSize.height],
   );

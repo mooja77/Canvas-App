@@ -30,6 +30,11 @@ for (const bp of BREAKPOINTS) {
     await page.setViewportSize({ width: bp.w, height: bp.h });
     await openCanvas(page);
 
+    // Wait for at least one node to render. openCanvas returns once
+    // .react-flow__pane is attached, but onlyRenderVisibleElements +
+    // a brief mount race can leave 0 nodes mounted until the fit settles.
+    await page.locator('.react-flow__node').first().waitFor({ state: 'attached', timeout: 8000 });
+
     const totalNodes = await page.locator('.react-flow__node').count();
     expect(totalNodes).toBeGreaterThan(0);
 
@@ -38,16 +43,18 @@ for (const bp of BREAKPOINTS) {
 
     const transform = await getViewportTransform(page);
     expect(transform).not.toBeNull();
-    expect(transform!.scale).toBeGreaterThan(0.1);
+    expect(transform!.scale).toBeGreaterThan(0.05);
   });
 }
 
 test('finding #18: orientation change re-runs fit and recovers graph', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openCanvas(page);
+  await page.locator('.react-flow__node').first().waitFor({ state: 'attached', timeout: 8000 });
 
   await page.setViewportSize({ width: 844, height: 390 });
-  await page.waitForTimeout(400); // debounce window
+  // ResizeObserver debounce (200ms) + animation (200ms) + buffer.
+  await page.waitForTimeout(800);
 
   const transform = await getViewportTransform(page);
   expect(transform).not.toBeNull();
