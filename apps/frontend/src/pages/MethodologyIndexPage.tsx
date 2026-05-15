@@ -41,7 +41,7 @@ const CHAPTERS: Chapter[] = [
     summary: "Braun & Clarke's six phases. Building a codebook. Intercoder agreement (and when it matters).",
     slug: 'thematic-analysis',
     readMin: 12,
-    status: 'draft',
+    status: 'published',
   },
   {
     number: '3.0',
@@ -65,15 +65,15 @@ const CHAPTERS: Chapter[] = [
     summary: "Cohen's κ. Krippendorff's α. When each fits. The recurring debate, and a pragmatic position.",
     slug: 'intercoder-reliability',
     readMin: 6,
-    status: 'draft',
+    status: 'published',
   },
   {
     number: '6.0',
     title: 'Ethics in practice',
     summary: 'Consent as ongoing. Anonymization. Retention windows. When AI assistance becomes an ethics question.',
     slug: 'ethics-in-practice',
-    readMin: 8,
-    status: 'draft',
+    readMin: 9,
+    status: 'published',
   },
 ];
 

@@ -4,17 +4,42 @@
   <subtitle>A short field guide for qualitative researchers. One chapter a month.</subtitle>
   <link href="https://qualcanvas.com/methodology/feed.xml" rel="self"/>
   <link href="https://qualcanvas.com/methodology"/>
-  <updated>2026-05-14T00:00:00Z</updated>
+  <updated>2026-05-15T00:00:00Z</updated>
   <id>https://qualcanvas.com/methodology/</id>
   <author>
     <name>QualCanvas</name>
     <email>methodology@qualcanvas.com</email>
   </author>
   <generator uri="https://qualcanvas.com">QualCanvas marketing pipeline</generator>
+
+  <entry>
+    <title>2.0 — Thematic analysis</title>
+    <link href="https://qualcanvas.com/methodology/thematic-analysis"/>
+    <id>https://qualcanvas.com/methodology/thematic-analysis</id>
+    <updated>2026-05-15T00:00:00Z</updated>
+    <summary>Braun &amp; Clarke's six phases as they're actually practised: codebook drift, reviewer-2 anxiety, and the decisions you defend on the way to a finding. Reflexive vs codebook TA, and when intercoder agreement matters.</summary>
+  </entry>
+
+  <entry>
+    <title>5.0 — Intercoder reliability</title>
+    <link href="https://qualcanvas.com/methodology/intercoder-reliability"/>
+    <id>https://qualcanvas.com/methodology/intercoder-reliability</id>
+    <updated>2026-05-15T00:00:00Z</updated>
+    <summary>Cohen's κ, Krippendorff's α, the recurring qual-vs-quant debate, and a defensible pragmatic position on when to report agreement statistics.</summary>
+  </entry>
+
+  <entry>
+    <title>6.0 — Ethics in practice</title>
+    <link href="https://qualcanvas.com/methodology/ethics-in-practice"/>
+    <id>https://qualcanvas.com/methodology/ethics-in-practice</id>
+    <updated>2026-05-15T00:00:00Z</updated>
+    <summary>Consent as ongoing, the anonymisation/pseudonymisation distinction, retention windows, and the AI-assistance ethics question that 2010s qualitative methods textbooks don't yet address.</summary>
+  </entry>
+
   <!--
-    Placeholder feed. Chapter entries land here as drafts complete peer review.
+    Chapter entries land here as drafts complete peer review.
     The build-time generator (Phase 3 follow-on per docs/refresh/09 §9.6) will
-    populate this file automatically from MDX frontmatter in
+    eventually populate this file automatically from frontmatter in
     apps/frontend/src/content/methodology/.
   -->
 </feed>
