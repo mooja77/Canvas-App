@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+// Page-level smoke tests for public marketing routes. After the marketing
+// refresh (PR #7) these assertions were updated to match the shipped copy.
 test.describe('Page-Level Tests', () => {
   test('landing page renders', async ({ page }) => {
     await page.goto('/');
@@ -7,8 +9,8 @@ test.describe('Page-Level Tests', () => {
 
     // Verify main heading
     const heading = page.locator('h1');
-    await expect(heading.first()).toContainText(/code transcripts/i);
-    await expect(heading.first()).toContainText(/not in spreadsheets/i);
+    await expect(heading.first()).toContainText(/code interviews/i);
+    await expect(heading.first()).toContainText(/visually/i);
 
     // Verify CTA button
     const startBtn = page
@@ -16,8 +18,10 @@ test.describe('Page-Level Tests', () => {
       .or(page.getByRole('button', { name: /start free/i }));
     await expect(startBtn.first()).toBeVisible();
 
-    // Verify pricing link
-    const pricingLink = page.getByRole('link', { name: /pricing/i });
+    // Verify a link to /pricing exists. The refreshed landing page links via
+    // copy like "Choose your plan" / "Compare all features →" rather than the
+    // literal word "Pricing", so we assert by href to stay copy-agnostic.
+    const pricingLink = page.locator('a[href="/pricing"]');
     await expect(pricingLink.first()).toBeVisible();
   });
 
