@@ -1,5 +1,11 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useActiveCanvas, useActiveCanvasId, useCanvasQuestions, useCanvasCodings, useCanvasTranscripts } from '../../../stores/canvasStore';
+import {
+  useActiveCanvas,
+  useActiveCanvasId,
+  useCanvasQuestions,
+  useCanvasCodings,
+  useCanvasTranscripts,
+} from '../../../stores/canvasStore';
 import type { CanvasQuestion } from '@qualcanvas/shared';
 
 interface CodeWeightingPanelProps {
@@ -11,26 +17,38 @@ function getWeights(canvasId: string): Record<string, number> {
   try {
     const raw = localStorage.getItem(`canvas-weights-${canvasId}`);
     return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
+  } catch {
+    return {};
+  }
 }
 
 function saveWeights(canvasId: string, weights: Record<string, number>) {
   localStorage.setItem(`canvas-weights-${canvasId}`, JSON.stringify(weights));
 }
 
-function StarRating({ value, onChange, size = 'sm' }: { value: number; onChange: (v: number) => void; size?: 'sm' | 'md' }) {
+function StarRating({
+  value,
+  onChange,
+  size = 'sm',
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  size?: 'sm' | 'md';
+}) {
   const [hover, setHover] = useState(0);
   const s = size === 'md' ? 'h-4 w-4' : 'h-3 w-3';
 
   return (
     <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map(star => (
+      {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
           onClick={() => onChange(star === value ? 0 : star)}
           onMouseEnter={() => setHover(star)}
           onMouseLeave={() => setHover(0)}
           className="p-0 transition-colors"
+          aria-label={star === value ? 'Clear rating' : `Rate ${star} star${star === 1 ? '' : 's'}`}
+          aria-pressed={value >= star}
           title={star === value ? 'Clear rating' : `Rate ${star}/5`}
         >
           <svg
@@ -40,7 +58,11 @@ function StarRating({ value, onChange, size = 'sm' }: { value: number; onChange:
             strokeWidth={1.5}
             stroke="currentColor"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"
+            />
           </svg>
         </button>
       ))}
@@ -65,23 +87,26 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
     }
   }, [activeCanvasId]);
 
-  const setWeight = useCallback((codingId: string, weight: number) => {
-    if (!activeCanvasId) return;
-    setWeightsState(prev => {
-      const next = { ...prev };
-      if (weight === 0) delete next[codingId];
-      else next[codingId] = weight;
-      saveWeights(activeCanvasId, next);
-      return next;
-    });
-  }, [activeCanvasId]);
+  const setWeight = useCallback(
+    (codingId: string, weight: number) => {
+      if (!activeCanvasId) return;
+      setWeightsState((prev) => {
+        const next = { ...prev };
+        if (weight === 0) delete next[codingId];
+        else next[codingId] = weight;
+        saveWeights(activeCanvasId, next);
+        return next;
+      });
+    },
+    [activeCanvasId],
+  );
 
   // Build enriched codings list
   const enrichedCodings = useMemo(() => {
-    const qMap = new Map(questions.map(q => [q.id, q]));
-    const tMap = new Map(transcripts.map(t => [t.id, t]));
+    const qMap = new Map(questions.map((q) => [q.id, q]));
+    const tMap = new Map(transcripts.map((t) => [t.id, t]));
 
-    return codings.map(c => ({
+    return codings.map((c) => ({
       ...c,
       question: qMap.get(c.questionId),
       transcript: tMap.get(c.transcriptId),
@@ -93,7 +118,7 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
   const displayCodings = useMemo(() => {
     let result = enrichedCodings;
     if (filterCode) {
-      result = result.filter(c => c.questionId === filterCode);
+      result = result.filter((c) => c.questionId === filterCode);
     }
     result.sort((a, b) => {
       if (sortBy === 'weight') return (b.weight || 0) - (a.weight || 0);
@@ -105,7 +130,7 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
 
   // Weight stats
   const stats = useMemo(() => {
-    const weighted = enrichedCodings.filter(c => c.weight > 0);
+    const weighted = enrichedCodings.filter((c) => c.weight > 0);
     const avgWeight = weighted.length > 0 ? weighted.reduce((s, c) => s + c.weight, 0) / weighted.length : 0;
     const perCode = new Map<string, { total: number; count: number; name: string; color: string }>();
     for (const c of enrichedCodings) {
@@ -119,13 +144,15 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
       totalCodings: enrichedCodings.length,
       weightedCount: weighted.length,
       avgWeight,
-      perCode: Array.from(perCode.entries()).map(([id, v]) => ({
-        id,
-        name: v.name,
-        color: v.color,
-        avgWeight: v.count > 0 ? v.total / v.count : 0,
-        count: v.count,
-      })).sort((a, b) => b.avgWeight - a.avgWeight),
+      perCode: Array.from(perCode.entries())
+        .map(([id, v]) => ({
+          id,
+          name: v.name,
+          color: v.color,
+          avgWeight: v.count > 0 ? v.total / v.count : 0,
+          count: v.count,
+        }))
+        .sort((a, b) => b.avgWeight - a.avgWeight),
     };
   }, [enrichedCodings]);
 
@@ -138,13 +165,16 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
       `Average Weight: ${stats.avgWeight.toFixed(2)}`,
       '',
       'Per-Code Average Weight:',
-      ...stats.perCode.map(c => `  ${c.name}: ${c.avgWeight.toFixed(2)} avg (${c.count} codings)`),
+      ...stats.perCode.map((c) => `  ${c.name}: ${c.avgWeight.toFixed(2)} avg (${c.count} codings)`),
       '',
       'All Weighted Codings:',
       ...enrichedCodings
-        .filter(c => c.weight > 0)
+        .filter((c) => c.weight > 0)
         .sort((a, b) => b.weight - a.weight)
-        .map(c => `  [${c.weight}/5] ${c.question?.text ?? '?'} | "${c.codedText.slice(0, 80)}" (${c.transcript?.title ?? '?'})`),
+        .map(
+          (c) =>
+            `  [${c.weight}/5] ${c.question?.text ?? '?'} | "${c.codedText.slice(0, 80)}" (${c.transcript?.title ?? '?'})`,
+        ),
     ];
     const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -156,18 +186,32 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
   };
 
   return (
-    <div className="modal-backdrop fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="modal-backdrop fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
         className="modal-content w-full max-w-3xl rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10 max-h-[85vh] flex flex-col"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="code-weighting-title"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-5 py-3">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Code Weighting</h3>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400">Rate importance/intensity of coded segments (1-5 stars)</p>
+            <h3 id="code-weighting-title" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              Code Weighting
+            </h3>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">
+              Rate importance/intensity of coded segments (1-5 stars)
+            </p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-lg p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>
@@ -183,17 +227,19 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
           <div className="flex items-center gap-2">
             <select
               value={filterCode}
-              onChange={e => setFilterCode(e.target.value)}
+              onChange={(e) => setFilterCode(e.target.value)}
               className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
             >
               <option value="">All codes</option>
               {questions.map((q: CanvasQuestion) => (
-                <option key={q.id} value={q.id}>{q.text}</option>
+                <option key={q.id} value={q.id}>
+                  {q.text}
+                </option>
               ))}
             </select>
             <select
               value={sortBy}
-              onChange={e => setSortBy(e.target.value as 'source' | 'code' | 'weight')}
+              onChange={(e) => setSortBy(e.target.value as 'source' | 'code' | 'weight')}
               className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
             >
               <option value="source">Sort by source</option>
@@ -204,23 +250,26 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
         </div>
 
         {/* Top codes by weight */}
-        {stats.perCode.some(c => c.avgWeight > 0) && (
+        {stats.perCode.some((c) => c.avgWeight > 0) && (
           <div className="border-b border-gray-100 dark:border-gray-700/50 px-5 py-2">
             <div className="flex items-center gap-2 overflow-x-auto">
               <span className="text-[10px] text-gray-400 dark:text-gray-500 shrink-0">Top:</span>
-              {stats.perCode.filter(c => c.avgWeight > 0).slice(0, 8).map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => setFilterCode(filterCode === c.id ? '' : c.id)}
-                  className={`shrink-0 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] transition-colors ${
-                    filterCode === c.id ? 'ring-2 ring-indigo-400' : ''
-                  }`}
-                  style={{ backgroundColor: c.color + '15', color: c.color }}
-                >
-                  <span className="font-medium">{c.name.slice(0, 15)}</span>
-                  <span className="text-amber-500">{c.avgWeight.toFixed(1)}</span>
-                </button>
-              ))}
+              {stats.perCode
+                .filter((c) => c.avgWeight > 0)
+                .slice(0, 8)
+                .map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setFilterCode(filterCode === c.id ? '' : c.id)}
+                    className={`shrink-0 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] transition-colors ${
+                      filterCode === c.id ? 'ring-2 ring-indigo-400' : ''
+                    }`}
+                    style={{ backgroundColor: c.color + '15', color: c.color }}
+                  >
+                    <span className="font-medium">{c.name.slice(0, 15)}</span>
+                    <span className="text-amber-500">{c.avgWeight.toFixed(1)}</span>
+                  </button>
+                ))}
             </div>
           </div>
         )}
@@ -233,7 +282,7 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
             </div>
           ) : (
             <div className="space-y-1">
-              {displayCodings.map(c => (
+              {displayCodings.map((c) => (
                 <div
                   key={c.id}
                   className="flex items-start gap-3 rounded-lg bg-gray-50 dark:bg-gray-700/30 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
@@ -251,15 +300,10 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
                         in {c.transcript?.title ?? 'Unknown'}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2">
-                      "{c.codedText}"
-                    </p>
+                    <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2">"{c.codedText}"</p>
                   </div>
                   <div className="shrink-0 pt-1">
-                    <StarRating
-                      value={c.weight}
-                      onChange={v => setWeight(c.id, v)}
-                    />
+                    <StarRating value={c.weight} onChange={(v) => setWeight(c.id, v)} />
                   </div>
                 </div>
               ))}

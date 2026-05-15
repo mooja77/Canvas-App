@@ -1,57 +1,140 @@
-import { expect, test } from '@playwright/test';
-import { openCanvas } from './helpers';
+import { test, expect, type Page } from '@playwright/test';
 
 /**
- * Sprint 0 scaffold — Horizon 1C (modal accessibility hygiene).
+ * Sprint 1C — modal accessibility verification (live QA finding #5).
  *
- * Tests are skipped until every modal close icon has aria-label="Close",
- * dialogs are wrapped in role="dialog" + aria-modal="true", and rating
- * controls have accessible names (Rate 1 star, Rate 2 stars, ...).
- * Maps to finding #5 (modals are icon-only and mostly unnamed).
+ * Every canvas modal must expose role="dialog" + aria-modal="true" +
+ * aria-labelledby, and have a Close control reachable by accessible name.
+ * Code Weighting's star-rating buttons must have "Rate N stars" labels.
  *
- * Flip `test.skip(...)` → `test(...)` as each finding gets a verified fix.
+ * Coverage: the four modals reachable through the Tools dropdown
+ * (Weights, Dashboard, Ethics, Excerpts). RichExportModal received the
+ * identical markup change but lives in the Export dropdown; ShareCanvas
+ * already had dialog semantics pre-Sprint-1C.
  */
 
-const MODALS = [
-  { name: 'Project Overview', trigger: /Project Overview|Overview/i },
-  { name: 'Excerpt Browser', trigger: /Excerpt Browser|Excerpts/i },
-  { name: 'Rich Export Report', trigger: /Rich Export|Export Report/i },
-  { name: 'Ethics Compliance', trigger: /Ethics/i },
-  { name: 'Code Weighting', trigger: /Code Weighting|Weighting/i },
-  { name: 'Research Calendar', trigger: /Research Calendar|Calendar/i },
-  { name: 'Share Canvas', trigger: /Share/i },
-] as const;
+const API = 'http://localhost:3007/api/v1';
+const PREFIX = `E2E-MA ${Date.now()}`;
+let jwt = '';
+let canvasId = '';
 
-for (const modal of MODALS) {
-  test.skip(`finding #5: ${modal.name} modal exposes role=dialog with aria-modal=true`, async ({ page }) => {
-    await openCanvas(page);
-
-    await page.getByRole('button', { name: modal.trigger }).first().click();
-    const dialog = page.getByRole('dialog').first();
-    await expect(dialog).toBeVisible();
-    await expect(dialog).toHaveAttribute('aria-modal', 'true');
-  });
-
-  test.skip(`finding #5: ${modal.name} modal has a named Close control`, async ({ page }) => {
-    await openCanvas(page);
-
-    await page.getByRole('button', { name: modal.trigger }).first().click();
-    const closeBtn = page.getByRole('button', { name: /^Close$/i }).first();
-    await expect(closeBtn).toBeVisible();
-    await closeBtn.click();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-  });
+function headers() {
+  return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
 }
 
-test.skip('finding #5: Code Weighting rating controls have accessible names (Rate N stars)', async ({ page }) => {
-  await openCanvas(page);
+async function gotoSeededCanvas(page: Page) {
+  await page.addInitScript(() => {
+    const s = JSON.parse(localStorage.getItem('qualcanvas-ui') || '{"state":{},"version":0}');
+    s.state = { ...s.state, onboardingComplete: true, setupWizardComplete: true };
+    localStorage.setItem('qualcanvas-ui', JSON.stringify(s));
+    localStorage.setItem('jms_cookie_consent', 'rejected');
+  });
+  await page.goto(`/canvas/${canvasId}`);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
+}
 
-  await page
-    .getByRole('button', { name: /Code Weighting|Weighting/i })
-    .first()
-    .click();
-  for (let stars = 1; stars <= 5; stars++) {
-    const button = page.getByRole('button', { name: new RegExp(`Rate ${stars} star`, 'i') });
-    await expect(button.first()).toBeVisible();
+async function openToolsItem(page: Page, itemLabel: string | RegExp) {
+  await page.getByRole('button', { name: 'Tools menu' }).first().click();
+  const menu = page.getByRole('menu').first();
+  await expect(menu).toBeVisible();
+  await menu.getByText(itemLabel).first().click();
+}
+
+test.describe('Canvas modal accessibility', () => {
+  test.beforeAll(async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
+    const p = await ctx.newPage();
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const raw = localStorage.getItem('qualcanvas-auth');
+      return raw ? JSON.parse(raw)?.state?.jwt || '' : '';
+    });
+    const res = await p.request.post(`${API}/canvas`, { headers: headers(), data: { name: PREFIX } });
+    canvasId = (await res.json()).data.id;
+    const tRes = await p.request.post(`${API}/canvas/${canvasId}/transcripts`, {
+      headers: headers(),
+      data: {
+        title: 'Modal A11y Interview',
+        content:
+          'The research methodology involved semi-structured interviews exploring workplace culture and professional development across multiple institutions.',
+      },
+    });
+    const transcriptId = (await tRes.json()).data.id;
+    const qRes = await p.request.post(`${API}/canvas/${canvasId}/questions`, {
+      headers: headers(),
+      data: { text: 'Methodology', color: '#4F46E5' },
+    });
+    const questionId = (await qRes.json()).data.id;
+    // A coding so Code Weighting has a row with star-rating controls.
+    await p.request.post(`${API}/canvas/${canvasId}/codings`, {
+      headers: headers(),
+      data: {
+        transcriptId,
+        questionId,
+        startOffset: 0,
+        endOffset: 31,
+        codedText: 'The research methodology involved',
+      },
+    });
+    await p.close();
+    await ctx.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    if (!canvasId) return;
+    const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
+    const p = await ctx.newPage();
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const raw = localStorage.getItem('qualcanvas-auth');
+      return raw ? JSON.parse(raw)?.state?.jwt || '' : '';
+    });
+    await p.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
+    await p.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
+    await p.close();
+    await ctx.close();
+  });
+
+  const MODALS = [
+    { name: 'Code Weighting', toolsItem: /^Weights$/ },
+    { name: 'Project Overview', toolsItem: /^Dashboard$/ },
+    { name: 'Ethics & Compliance', toolsItem: /^Ethics$/ },
+    { name: 'Excerpt Browser', toolsItem: /^Excerpts$/ },
+  ] as const;
+
+  for (const modal of MODALS) {
+    test(`finding #5: ${modal.name} modal exposes dialog semantics + named Close`, async ({ page }) => {
+      await gotoSeededCanvas(page);
+      await openToolsItem(page, modal.toolsItem);
+
+      const dialog = page.getByRole('dialog').first();
+      await expect(dialog).toBeVisible({ timeout: 10000 });
+      await expect(dialog).toHaveAttribute('aria-modal', 'true');
+      // aria-labelledby must point at an element that exists.
+      const labelledBy = await dialog.getAttribute('aria-labelledby');
+      expect(labelledBy).toBeTruthy();
+      await expect(page.locator(`#${labelledBy}`)).toHaveCount(1);
+
+      // Close reachable by accessible name.
+      const closeBtn = page.getByRole('button', { name: /^Close$/i }).first();
+      await expect(closeBtn).toBeVisible();
+      await closeBtn.click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+    });
   }
+
+  test('finding #5: Code Weighting star buttons have Rate N stars labels', async ({ page }) => {
+    await gotoSeededCanvas(page);
+    await openToolsItem(page, /^Weights$/);
+    await expect(page.getByRole('dialog').first()).toBeVisible({ timeout: 10000 });
+
+    // Each star control 1-5 must be reachable by an accessible name.
+    for (let stars = 1; stars <= 5; stars++) {
+      const label = new RegExp(`Rate ${stars} star${stars === 1 ? '' : 's'}`, 'i');
+      await expect(page.getByRole('button', { name: label }).first()).toBeVisible();
+    }
+  });
 });
