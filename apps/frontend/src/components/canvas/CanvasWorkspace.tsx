@@ -94,6 +94,16 @@ const initialEdges: Edge[] = [];
 const SNAP_GRID: [number, number] = [20, 20];
 const PRO_OPTIONS = { hideAttribution: true };
 
+// ReactFlow's built-in fitView prop handles the first-mount fit before
+// our 200ms setTimeout-driven runFit('initial') can run. Without it, the
+// onlyRenderVisibleElements optimization unmounts nodes that the default
+// {x:0, y:0, zoom:1} viewport leaves offscreen — breaking clicks in tests
+// that expect to interact with nodes immediately after openCanvas().
+// We give RF a generous floor (0.05, the same overview floor used by
+// our computeFit Stage 2) so the mount fit never clips dense graphs.
+// The breakpoint-aware refinement still runs 200ms later via runFit.
+const INITIAL_RF_FIT_OPTIONS = { padding: 0.2, minZoom: 0.05, maxZoom: 1.0 };
+
 // Per-intent animation durations for fit transitions. Resize/initial are
 // snappier so the user doesn't notice; manual + post-layout animate so the
 // change of viewport reads as intentional.
@@ -2183,6 +2193,8 @@ export default function CanvasWorkspace() {
               panOnScroll={scrollMode === 'pan'}
               zoomOnDoubleClick={false}
               panActivationKeyCode="Space"
+              fitView
+              fitViewOptions={INITIAL_RF_FIT_OPTIONS}
               minZoom={0.05}
               maxZoom={2}
               className="bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-[#0f1117] dark:via-[#131620] dark:to-[#0f1117]"
