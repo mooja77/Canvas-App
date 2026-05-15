@@ -1,54 +1,108 @@
-import { expect, test } from '@playwright/test';
-import { isLegacyE2eAuth, openCanvas } from './helpers';
+import { test, expect, type Page } from '@playwright/test';
+import { isLegacyE2eAuth } from './helpers';
 
 /**
- * Sprint 0 scaffold — Horizon 1C (auth-gated tool states).
+ * Sprint 1C — auth-gated tool states (live QA finding #6).
  *
- * Tests are skipped until features that require email auth show an explicit
- * email-auth-required state instead of an indefinite spinner / silent 401.
- * Maps to finding #6 (Research Calendar behaves poorly on legacy access-code
- * auth).
+ * Research Calendar requires an email-linked account. On legacy
+ * access-code auth it previously showed an indefinite spinner + a silent
+ * 401 from /api/calendar/events. It must now show an explicit
+ * email-auth-required panel instead.
  *
- * Flip `test.skip(...)` → `test(...)` as each finding gets a verified fix.
+ * The default E2E setup project authenticates with the demo access code
+ * (CANVAS-DEMO2025), i.e. legacy auth — so these tests exercise the gated
+ * path directly.
  */
 
-test.skip('finding #6: legacy auth opening Research Calendar shows email-auth-required state', async ({ page }) => {
-  await openCanvas(page);
+const API = 'http://localhost:3007/api/v1';
+const PREFIX = `E2E-AG ${Date.now()}`;
+let jwt = '';
+let canvasId = '';
 
-  const onLegacy = await isLegacyE2eAuth(page);
-  test.skip(!onLegacy, 'Test requires legacy access-code auth');
+function headers() {
+  return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
+}
 
-  await page
-    .getByRole('button', { name: /Research Calendar|Calendar/i })
+async function gotoSeededCanvas(page: Page) {
+  await page.addInitScript(() => {
+    const s = JSON.parse(localStorage.getItem('qualcanvas-ui') || '{"state":{},"version":0}');
+    s.state = { ...s.state, onboardingComplete: true, setupWizardComplete: true };
+    localStorage.setItem('qualcanvas-ui', JSON.stringify(s));
+    localStorage.setItem('jms_cookie_consent', 'rejected');
+  });
+  await page.goto(`/canvas/${canvasId}`);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
+}
+
+async function openResearchCalendar(page: Page) {
+  await page.getByRole('button', { name: 'Tools menu' }).first().click();
+  const menu = page.getByRole('menu').first();
+  await expect(menu).toBeVisible();
+  await menu
+    .getByText(/Research Calendar|Calendar/i)
     .first()
     .click();
+}
 
-  // Acceptable: visible disabled state OR an explicit message that the user
-  // must link an email account. NOT acceptable: indefinite spinner + console
-  // 401 from /api/calendar/events.
-  const explainer = page.getByText(/email|link your account|sign in/i).first();
-  await expect(explainer).toBeVisible({ timeout: 3000 });
+test.describe('Canvas auth-gated tools', () => {
+  test.beforeAll(async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
+    const p = await ctx.newPage();
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const raw = localStorage.getItem('qualcanvas-auth');
+      return raw ? JSON.parse(raw)?.state?.jwt || '' : '';
+    });
+    const res = await p.request.post(`${API}/canvas`, { headers: headers(), data: { name: PREFIX } });
+    canvasId = (await res.json()).data.id;
+    await p.close();
+    await ctx.close();
+  });
 
-  const spinner = page.locator('[role="progressbar"], .animate-spin');
-  // If a spinner appears at all, it must resolve to the explainer within 3s
-  // (no indefinite loading).
-  await expect(spinner).toHaveCount(0, { timeout: 5000 });
-});
+  test.afterAll(async ({ browser }) => {
+    if (!canvasId) return;
+    const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
+    const p = await ctx.newPage();
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const raw = localStorage.getItem('qualcanvas-auth');
+      return raw ? JSON.parse(raw)?.state?.jwt || '' : '';
+    });
+    await p.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
+    await p.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
+    await p.close();
+    await ctx.close();
+  });
 
-test.skip('finding #6: legacy auth either hides Research Calendar OR labels it as email-only', async ({ page }) => {
-  await openCanvas(page);
+  test('finding #6: legacy auth opening Research Calendar shows email-auth-required state', async ({ page }) => {
+    await gotoSeededCanvas(page);
+    test.skip(!(await isLegacyE2eAuth(page)), 'Test requires legacy access-code auth');
 
-  const onLegacy = await isLegacyE2eAuth(page);
-  test.skip(!onLegacy, 'Test requires legacy access-code auth');
+    await openResearchCalendar(page);
 
-  const calendarButton = page.getByRole('button', { name: /Research Calendar|Calendar/i }).first();
+    const dialog = page.getByRole('dialog').first();
+    await expect(dialog).toBeVisible({ timeout: 10000 });
 
-  // The button should either be hidden, disabled, or visibly annotated as
-  // "Email required" — not silently navigable into a broken modal.
-  const visible = await calendarButton.isVisible({ timeout: 1000 }).catch(() => false);
-  if (visible) {
-    const isDisabled = await calendarButton.isDisabled();
-    const label = (await calendarButton.textContent()) || '';
-    expect(isDisabled || /email|link/i.test(label)).toBeTruthy();
-  }
+    // The explicit email-auth-required panel must be visible.
+    await expect(dialog.getByText(/email account required/i)).toBeVisible({ timeout: 3000 });
+    await expect(dialog.getByRole('link', { name: /link your email account/i })).toBeVisible();
+
+    // No indefinite spinner — the gated panel resolves immediately.
+    await expect(dialog.locator('.animate-spin')).toHaveCount(0);
+  });
+
+  test('finding #6: Research Calendar gate links to the account page', async ({ page }) => {
+    await gotoSeededCanvas(page);
+    test.skip(!(await isLegacyE2eAuth(page)), 'Test requires legacy access-code auth');
+
+    await openResearchCalendar(page);
+    const dialog = page.getByRole('dialog').first();
+    await expect(dialog).toBeVisible({ timeout: 10000 });
+
+    const accountLink = dialog.getByRole('link', { name: /link your email account/i });
+    await expect(accountLink).toHaveAttribute('href', '/account');
+  });
 });

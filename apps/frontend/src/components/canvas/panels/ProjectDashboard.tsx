@@ -18,16 +18,21 @@ export default function ProjectDashboard({ onClose }: Props) {
     const codedChars = new Set<string>();
     transcripts.forEach((t: CanvasTranscript) => {
       totalChars += t.content.length;
-      codings.filter((c: CanvasTextCoding) => c.transcriptId === t.id).forEach((c: CanvasTextCoding) => {
-        for (let i = c.startOffset; i < Math.min(c.endOffset, t.content.length); i++) {
-          codedChars.add(`${t.id}-${i}`);
-        }
-      });
+      codings
+        .filter((c: CanvasTextCoding) => c.transcriptId === t.id)
+        .forEach((c: CanvasTextCoding) => {
+          for (let i = c.startOffset; i < Math.min(c.endOffset, t.content.length); i++) {
+            codedChars.add(`${t.id}-${i}`);
+          }
+        });
     });
     const coveragePct = totalChars > 0 ? Math.round((codedChars.size / totalChars) * 100) : 0;
 
     // Total words
-    const totalWords = transcripts.reduce((sum: number, t: CanvasTranscript) => sum + t.content.split(/\s+/).filter(Boolean).length, 0);
+    const totalWords = transcripts.reduce(
+      (sum: number, t: CanvasTranscript) => sum + t.content.split(/\s+/).filter(Boolean).length,
+      0,
+    );
 
     // Per-code stats (top 10)
     const questionMap = new Map<string, CanvasQuestion>();
@@ -40,7 +45,7 @@ export default function ProjectDashboard({ onClose }: Props) {
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-    const maxFreq = Math.max(1, ...codeFreqs.map(f => f.count));
+    const maxFreq = Math.max(1, ...codeFreqs.map((f) => f.count));
 
     // Per-transcript coverage
     const transcriptCoverage = transcripts.map((t: CanvasTranscript) => {
@@ -91,18 +96,30 @@ export default function ProjectDashboard({ onClose }: Props) {
   if (!stats) return null;
 
   return (
-    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
         className="modal-content w-[800px] max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="project-overview-title"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
           <div>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Project Overview</h3>
+            <h3 id="project-overview-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              Project Overview
+            </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{activeCanvas?.name}</p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
+          >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>
@@ -118,14 +135,31 @@ export default function ProjectDashboard({ onClose }: Props) {
               value={stats.transcriptCount}
               sublabel={`${stats.totalWords.toLocaleString()} words`}
               color="blue"
-              icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>}
+              icon={
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                  />
+                </svg>
+              }
             />
             <MetricCard
               label="Codes"
               value={stats.codeCount}
               sublabel={`${stats.codingCount} codings`}
               color="purple"
-              icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" /></svg>}
+              icon={
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"
+                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" />
+                </svg>
+              }
             />
             <MetricCard
               label="Coverage"
@@ -133,14 +167,27 @@ export default function ProjectDashboard({ onClose }: Props) {
               valueSuffix="%"
               sublabel="of text coded"
               color="emerald"
-              icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" /></svg>}
+              icon={
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+                </svg>
+              }
             />
             <MetricCard
               label="Memos"
               value={stats.memoCount}
               sublabel={stats.caseCount > 0 ? `${stats.caseCount} cases` : 'analytical notes'}
               color="amber"
-              icon={<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>}
+              icon={
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+                  />
+                </svg>
+              }
             />
           </div>
 
@@ -156,14 +203,18 @@ export default function ProjectDashboard({ onClose }: Props) {
                   {stats.codeFreqs.map((cf, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: cf.color }} />
-                      <span className="text-[11px] text-gray-600 dark:text-gray-400 truncate flex-1 min-w-0">{cf.name}</span>
+                      <span className="text-[11px] text-gray-600 dark:text-gray-400 truncate flex-1 min-w-0">
+                        {cf.name}
+                      </span>
                       <div className="w-24 h-1.5 rounded-full bg-gray-200 dark:bg-gray-600 overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-700"
                           style={{ width: `${(cf.count / stats.maxFreq) * 100}%`, backgroundColor: cf.color }}
                         />
                       </div>
-                      <span className="text-[10px] tabular-nums text-gray-500 dark:text-gray-400 w-6 text-right">{cf.count}</span>
+                      <span className="text-[10px] tabular-nums text-gray-500 dark:text-gray-400 w-6 text-right">
+                        {cf.count}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -179,7 +230,9 @@ export default function ProjectDashboard({ onClose }: Props) {
                 <div className="space-y-2">
                   {stats.transcriptCoverage.map((tc, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <span className="text-[11px] text-gray-600 dark:text-gray-400 truncate flex-1 min-w-0">{tc.title}</span>
+                      <span className="text-[11px] text-gray-600 dark:text-gray-400 truncate flex-1 min-w-0">
+                        {tc.title}
+                      </span>
                       <div className="w-20 h-1.5 rounded-full bg-gray-200 dark:bg-gray-600 overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-700"
@@ -189,7 +242,9 @@ export default function ProjectDashboard({ onClose }: Props) {
                           }}
                         />
                       </div>
-                      <span className="text-[10px] tabular-nums text-gray-500 dark:text-gray-400 w-8 text-right">{tc.coverage}%</span>
+                      <span className="text-[10px] tabular-nums text-gray-500 dark:text-gray-400 w-8 text-right">
+                        {tc.coverage}%
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -207,11 +262,15 @@ export default function ProjectDashboard({ onClose }: Props) {
                     <div className="mt-0.5 h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: rc.codeColor }} />
                     <div className="min-w-0 flex-1">
                       <span className="text-[11px] text-gray-700 dark:text-gray-300">
-                        <span className="font-medium" style={{ color: rc.codeColor }}>{rc.codeName}</span>
+                        <span className="font-medium" style={{ color: rc.codeColor }}>
+                          {rc.codeName}
+                        </span>
                         <span className="mx-1 text-gray-300 dark:text-gray-600">&middot;</span>
                         <span className="text-gray-500 dark:text-gray-400">{rc.transcriptTitle}</span>
                       </span>
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate italic">&ldquo;{rc.codedText}&rdquo;</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate italic">
+                        &ldquo;{rc.codedText}&rdquo;
+                      </p>
                     </div>
                     <span className="text-[9px] text-gray-400 shrink-0">{rc.date}</span>
                   </div>
@@ -226,7 +285,14 @@ export default function ProjectDashboard({ onClose }: Props) {
 }
 
 // Metric card sub-component
-function MetricCard({ label, value, valueSuffix, sublabel, color, icon }: {
+function MetricCard({
+  label,
+  value,
+  valueSuffix,
+  sublabel,
+  color,
+  icon,
+}: {
   label: string;
   value: number;
   valueSuffix?: string;
@@ -250,11 +316,14 @@ function MetricCard({ label, value, valueSuffix, sublabel, color, icon }: {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</span>
+        <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          {label}
+        </span>
         <div className={`rounded-lg p-1.5 ${colorMap[color]}`}>{icon}</div>
       </div>
       <p className={`text-2xl font-bold tabular-nums ${valueColor[color]}`}>
-        {value.toLocaleString()}{valueSuffix || ''}
+        {value.toLocaleString()}
+        {valueSuffix || ''}
       </p>
       <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{sublabel}</p>
     </div>
