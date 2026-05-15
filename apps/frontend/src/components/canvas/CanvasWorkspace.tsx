@@ -389,10 +389,15 @@ export default function CanvasWorkspace() {
   // React Flow perf fix #3 — stabilize the onInit/onMove/onMoveEnd refs so
   // ReactFlow doesn't see prop identity flip every render (which causes it
   // to re-register internal listeners).
+  const [minimapReady, setMinimapReady] = useState(false);
   const handleRfInit = useCallback(
     (instance: ReactFlowInstance) => {
       rfInstanceRef.current = instance;
       scheduleViewportSync(instance.getViewport());
+      // Defer minimap reveal until after RF has populated its internal
+      // viewport state. Without this the minimap paints blank for a few
+      // frames (live QA finding #4 — perceived flicker).
+      setTimeout(() => setMinimapReady(true), 120);
     },
     [scheduleViewportSync],
   );
@@ -2199,7 +2204,10 @@ export default function CanvasWorkspace() {
               fitViewOptions={INITIAL_RF_FIT_OPTIONS}
               minZoom={0.05}
               maxZoom={2}
-              className="bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-[#0f1117] dark:via-[#131620] dark:to-[#0f1117]"
+              className={
+                'bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-[#0f1117] dark:via-[#131620] dark:to-[#0f1117]' +
+                (viewportState.zoom < 0.4 && selectedNodes.length > 20 ? ' canvas-low-zoom-bulk' : '')
+              }
               connectionLineComponent={ConnectionLine}
               onlyRenderVisibleElements
               proOptions={PRO_OPTIONS}
@@ -2232,6 +2240,11 @@ export default function CanvasWorkspace() {
                   maskColor={darkMode ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.06)'}
                   pannable
                   zoomable
+                  style={{
+                    opacity: minimapReady ? 1 : 0,
+                    transition: 'opacity 200ms ease-out',
+                    pointerEvents: minimapReady ? 'auto' : 'none',
+                  }}
                   className="!bg-white/90 !backdrop-blur-sm !rounded-xl !shadow-node dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700 !w-[160px] !h-[110px]"
                 />
               )}

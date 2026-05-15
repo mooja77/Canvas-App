@@ -52,7 +52,12 @@ async function openCanvasById(page: Page, canvasId: string) {
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
   await page.waitForSelector('.react-flow__node', { timeout: 10000 }).catch(() => {});
@@ -84,10 +89,12 @@ test.describe('Canvas Analysis', () => {
       'of professional development, workplace culture, and personal motivation.',
     ].join(' ');
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers, data: { title: 'Analysis Test Interview', content: sampleText },
+      headers,
+      data: { title: 'Analysis Test Interview', content: sampleText },
     });
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers, data: { text: 'Methodology', color: '#4F46E5' },
+      headers,
+      data: { text: 'Methodology', color: '#4F46E5' },
     });
     await page.close();
   });
@@ -133,8 +140,12 @@ test.describe('Canvas Analysis', () => {
   test('5 - Add Comparison node', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await openAnalyzeMenu(page);
-    // Click the button that contains a <p> with exact text "Comparison" (not the category "Frameworks & Comparison")
-    const comparisonBtn = page.locator('[data-tour="canvas-btn-query"] button').filter({ has: page.locator('p', { hasText: /^Comparison$/ }) });
+    // Click the button whose <p> has exact text "Comparison" (not the
+    // category "Frameworks & Comparison"). The menu is now portal-rendered
+    // by CollisionPopover (Sprint 1B) so the data-tour wrapper is no
+    // longer an ancestor — use role + text scoping instead.
+    const menu = page.getByRole('menu').first();
+    const comparisonBtn = menu.locator('button').filter({ has: page.locator('p', { hasText: /^Comparison$/ }) });
     await comparisonBtn.first().click();
     await expect(page.getByText('Comparison node added')).toBeVisible({ timeout: 5000 });
   });
@@ -169,13 +180,20 @@ test.describe('Canvas Analysis', () => {
 
   test('10 - Run Statistics computation shows results or toast', async ({ page }) => {
     await openCanvasById(page, canvasId);
-    // Ensure a stats node exists
+    // Ensure a stats node exists. Scope the click to the menu role — by
+    // this test a Statistics node already exists on the canvas (added in
+    // test 2), and the CollisionPopover menu is portal-rendered to the end
+    // of document.body, so getByText('Statistics').first() would otherwise
+    // resolve to the canvas node label rather than the menu item.
     await openAnalyzeMenu(page);
-    await page.getByText('Statistics').first().click();
+    await page.getByRole('menu').first().getByText('Statistics').first().click();
     await page.waitForLoadState('networkidle');
     // The stats node should render — look for it in the DOM
     const statsNode = page.locator('.react-flow__node').filter({ hasText: /Statistics|Coding frequency/i });
-    const found = await statsNode.first().isVisible({ timeout: 5000 }).catch(() => false);
+    const found = await statsNode
+      .first()
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
     // Whether the node computed or showed "no data", it should be present
     if (found) {
       const text = await statsNode.first().textContent();

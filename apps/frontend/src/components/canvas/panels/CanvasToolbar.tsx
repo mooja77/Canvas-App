@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCanvasStore, useActiveCanvas, useShowCodingStripes } from '../../../stores/canvasStore';
 import { useUIStore, type EdgeStyleType } from '../../../stores/uiStore';
@@ -9,6 +9,7 @@ import QdpxExportButton from './QdpxExportButton';
 import toast from 'react-hot-toast';
 import { canvasApi } from '../../../services/api';
 import FeatureTooltip from '../../FeatureTooltip';
+import { CollisionPopover } from '../primitives/CollisionPopover';
 
 const AutoCodeModal = lazy(() => import('./AutoCodeModal'));
 const CaseManagerPanel = lazy(() => import('./CaseManagerPanel'));
@@ -47,22 +48,14 @@ function ToolbarDropdown({
   'data-tour'?: string;
 }) {
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open]);
+  const anchorRef = useRef<HTMLButtonElement | null>(null);
 
   return (
     <div className="relative" data-tour={dataTour}>
       <button
+        ref={anchorRef}
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen((prev) => !prev)}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={label ? `${label} menu` : 'More canvas actions'}
@@ -77,17 +70,9 @@ function ToolbarDropdown({
           <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
         </svg>
       </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div
-            role="menu"
-            className="absolute right-0 sm:right-0 top-full mt-1 z-40 w-56 max-w-[calc(100vw-16px)] rounded-xl bg-white dark:bg-gray-800 shadow-xl ring-1 ring-gray-200 dark:ring-gray-700 py-1.5"
-          >
-            <div onClick={() => setOpen(false)}>{children}</div>
-          </div>
-        </>
-      )}
+      <CollisionPopover open={open} onClose={() => setOpen(false)} anchorRef={anchorRef}>
+        <div onClick={() => setOpen(false)}>{children}</div>
+      </CollisionPopover>
     </div>
   );
 }
