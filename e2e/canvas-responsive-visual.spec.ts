@@ -1,18 +1,42 @@
-import { expect, test } from '@playwright/test';
-import { getViewportTransform, openCanvas } from './helpers';
+import { expect, test, type Page } from '@playwright/test';
+import { getViewportTransform } from './helpers';
 
 /**
  * Sprint 0 scaffold — Horizon 1A (fit, framing, auto-layout math).
  *
- * Tests are skipped until the dynamic fit/framing fix lands. Each test maps
- * to a numbered finding in `test-results/ui-ux-review-2026-05-14-deep-live-report.md`.
- *
- * Flip `test.skip(...)` → `test(...)` as each finding gets a verified fix.
+ * Tests map to numbered findings in
+ * `test-results/ui-ux-review-2026-05-14-deep-live-report.md`. Each fit fix
+ * lands an unskipped assertion here.
  *
  * Goal: first load at each breakpoint shows meaningful graph content
  * (visible nodes >= ceil(0.7 * totalNodes), zero offscreen-clipped, fit
  * controls clickable) — not a blank shell.
+ *
+ * Test isolation: seed a uniquely-prefixed canvas in beforeAll and
+ * navigate directly to it by id. Avoids relying on global canvas-list
+ * ordering which other tests mutate.
  */
+
+const API = 'http://localhost:3007/api/v1';
+const PREFIX = `E2E-RV ${Date.now()}`;
+let jwt = '';
+let canvasId = '';
+
+function headers() {
+  return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
+}
+
+async function gotoSeededCanvas(page: Page) {
+  await page.addInitScript(() => {
+    const s = JSON.parse(localStorage.getItem('qualcanvas-ui') || '{"state":{},"version":0}');
+    s.state = { ...s.state, onboardingComplete: true, setupWizardComplete: true };
+    localStorage.setItem('qualcanvas-ui', JSON.stringify(s));
+    localStorage.setItem('jms_cookie_consent', 'rejected');
+  });
+  await page.goto(`/canvas/${canvasId}`);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
+}
 
 const BREAKPOINTS = [
   { name: 'mobile-portrait', w: 390, h: 844, minVisibleRatio: 0.7 },
@@ -23,50 +47,99 @@ const BREAKPOINTS = [
   { name: 'desktop-narrow', w: 1024, h: 640, minVisibleRatio: 0.9 },
 ] as const;
 
-for (const bp of BREAKPOINTS) {
-  test(`finding #1, #2, #17, #18: initial fit renders ${bp.minVisibleRatio * 100}%+ of nodes at ${bp.name}`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: bp.w, height: bp.h });
-    await openCanvas(page);
+test.describe('Canvas responsive visual fit', () => {
+  test.beforeAll(async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
+    const p = await ctx.newPage();
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const raw = localStorage.getItem('qualcanvas-auth');
+      return raw ? JSON.parse(raw)?.state?.jwt || '' : '';
+    });
+    const res = await p.request.post(`${API}/canvas`, {
+      headers: headers(),
+      data: { name: PREFIX },
+    });
+    canvasId = (await res.json()).data.id;
+    await p.request.post(`${API}/canvas/${canvasId}/transcripts`, {
+      headers: headers(),
+      data: {
+        title: 'Responsive Visual Test',
+        content:
+          'The research methodology involved conducting semi-structured interviews with participants from diverse backgrounds across three institutions.',
+      },
+    });
+    for (const name of ['Methodology', 'Demographics', 'Findings']) {
+      await p.request.post(`${API}/canvas/${canvasId}/questions`, {
+        headers: headers(),
+        data: { text: name, color: '#4F46E5' },
+      });
+    }
+    await p.close();
+    await ctx.close();
+  });
 
-    // Wait for at least one node to render. openCanvas returns once
-    // .react-flow__pane is attached, but onlyRenderVisibleElements +
-    // a brief mount race can leave 0 nodes mounted until the fit settles.
+  test.afterAll(async ({ browser }) => {
+    if (!canvasId) return;
+    const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
+    const p = await ctx.newPage();
+    await p.goto('http://localhost:5174/canvas');
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const raw = localStorage.getItem('qualcanvas-auth');
+      return raw ? JSON.parse(raw)?.state?.jwt || '' : '';
+    });
+    await p.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
+    await p.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
+    await p.close();
+    await ctx.close();
+  });
+
+  for (const bp of BREAKPOINTS) {
+    test(`finding #1, #2, #17, #18: initial fit renders ${bp.minVisibleRatio * 100}%+ of nodes at ${bp.name}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: bp.w, height: bp.h });
+      await gotoSeededCanvas(page);
+
+      // Wait for at least one node to render. onlyRenderVisibleElements +
+      // a brief mount race can leave 0 nodes mounted until the fit settles.
+      await page.locator('.react-flow__node').first().waitFor({ state: 'attached', timeout: 8000 });
+
+      const totalNodes = await page.locator('.react-flow__node').count();
+      expect(totalNodes).toBeGreaterThan(0);
+
+      const visible = await page.locator('.react-flow__node:visible').count();
+      expect(visible / totalNodes).toBeGreaterThanOrEqual(bp.minVisibleRatio);
+
+      const transform = await getViewportTransform(page);
+      expect(transform).not.toBeNull();
+      expect(transform!.scale).toBeGreaterThan(0.05);
+    });
+  }
+
+  test('finding #18: orientation change re-runs fit and recovers graph', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoSeededCanvas(page);
     await page.locator('.react-flow__node').first().waitFor({ state: 'attached', timeout: 8000 });
 
-    const totalNodes = await page.locator('.react-flow__node').count();
-    expect(totalNodes).toBeGreaterThan(0);
-
-    const visible = await page.locator('.react-flow__node:visible').count();
-    expect(visible / totalNodes).toBeGreaterThanOrEqual(bp.minVisibleRatio);
+    await page.setViewportSize({ width: 844, height: 390 });
+    // ResizeObserver debounce (200ms) + animation (200ms) + buffer.
+    await page.waitForTimeout(800);
 
     const transform = await getViewportTransform(page);
     expect(transform).not.toBeNull();
-    expect(transform!.scale).toBeGreaterThan(0.05);
+    const visible = await page.locator('.react-flow__node:visible').count();
+    expect(visible).toBeGreaterThan(0);
   });
-}
 
-test('finding #18: orientation change re-runs fit and recovers graph', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await openCanvas(page);
-  await page.locator('.react-flow__node').first().waitFor({ state: 'attached', timeout: 8000 });
+  test('finding #3: Fit View control is not intercepted by minimap/status at tablet', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await gotoSeededCanvas(page);
 
-  await page.setViewportSize({ width: 844, height: 390 });
-  // ResizeObserver debounce (200ms) + animation (200ms) + buffer.
-  await page.waitForTimeout(800);
-
-  const transform = await getViewportTransform(page);
-  expect(transform).not.toBeNull();
-  const visible = await page.locator('.react-flow__node:visible').count();
-  expect(visible).toBeGreaterThan(0);
-});
-
-test('finding #3: Fit View control is not intercepted by minimap/status at tablet', async ({ page }) => {
-  await page.setViewportSize({ width: 768, height: 1024 });
-  await openCanvas(page);
-
-  const fitView = page.locator('.react-flow__controls-fitview');
-  await expect(fitView).toBeVisible();
-  await fitView.click(); // should not throw "intercepted by SVG/status bar"
+    const fitView = page.locator('.react-flow__controls-fitview');
+    await expect(fitView).toBeVisible();
+    await fitView.click();
+  });
 });
