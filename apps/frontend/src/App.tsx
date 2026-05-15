@@ -30,6 +30,7 @@ import VsIndexPage from './pages/VsIndexPage';
 import SubscribePage from './pages/SubscribePage';
 import { useAuthStore } from './stores/authStore';
 
+const MethodologyChapterPage = lazy(() => import('./pages/MethodologyChapterPage'));
 const CanvasPage = lazy(() => import('./pages/CanvasPage'));
 const AccountPage = lazy(() => import('./pages/AccountPage'));
 const RepositoryPage = lazy(() => import('./pages/RepositoryPage'));
@@ -60,6 +61,14 @@ export default function App() {
           <Route path="/for-teams" element={<ForTeamsPage />} />
           <Route path="/for-institutions" element={<ForInstitutionsPage />} />
           <Route path="/methodology" element={<MethodologyIndexPage />} />
+          <Route
+            path="/methodology/:slug"
+            element={
+              <Suspense fallback={<PageSkeleton />}>
+                <MethodologyChapterPage />
+              </Suspense>
+            }
+          />
           <Route path="/customers" element={<CustomersIndexPage />} />
           <Route path="/changelog" element={<ChangelogPage />} />
           <Route path="/vs" element={<VsIndexPage />} />
