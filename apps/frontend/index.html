@@ -83,6 +83,26 @@
     <link rel="stylesheet" href="/cookie-consent.css" />
     <script src="/cookie-consent.js" defer></script>
 
+    <!-- Plausible Analytics — privacy-friendly, cookieless, GDPR-compliant.
+         data-domain matches the site registered at plausible.io/qualcanvas.com.
+         exclusions cover the authenticated app surfaces where GA4 already runs;
+         this keeps Plausible focused on marketing-funnel signal. The queue
+         shim lets trackEvent() fire window.plausible() before the deferred
+         script has loaded — calls are batched and replayed on script ready. -->
+    <script
+      defer
+      data-domain="qualcanvas.com"
+      data-exclude="/canvas, /canvas/**, /account, /admin, /repository, /team, /forgot-password, /reset-password, /verify-email"
+      src="https://plausible.io/js/script.exclusions.tagged-events.outbound-links.js"
+    ></script>
+    <script>
+      window.plausible =
+        window.plausible ||
+        function () {
+          (window.plausible.q = window.plausible.q || []).push(arguments);
+        };
+    </script>
+
     <!-- Prerender marketing content styles. Inline so first paint
          renders without waiting for the React bundle. Removed
          alongside #marketing-root once React mounts. -->

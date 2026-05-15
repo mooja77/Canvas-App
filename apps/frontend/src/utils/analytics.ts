@@ -1,8 +1,13 @@
 type Gtag = (command: 'event', eventName: string, params?: Record<string, unknown>) => void;
 
+// Plausible's runtime signature; the deferred script attaches the real
+// function and replays anything our queue shim collected before load.
+type Plausible = (eventName: string, options?: { props?: Record<string, unknown>; callback?: () => void }) => void;
+
 declare global {
   interface Window {
     gtag?: Gtag;
+    plausible?: Plausible & { q?: unknown[] };
   }
 }
 
@@ -84,6 +89,10 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api';
 export function trackEvent(eventName: AnalyticsEvent, params?: Record<string, unknown>) {
   // GTM / GA4 via gtag
   window.gtag?.('event', eventName, params);
+
+  // Plausible — privacy-friendly funnel measurement on marketing routes.
+  // The script's `data-exclude` keeps it quiet on /canvas + auth pages.
+  window.plausible?.(eventName, params ? { props: params } : undefined);
 
   // Best-effort forward to backend for JMS ingest (no-op if 404 or auth missing)
   // We don't await this — it's fire-and-forget. The backend will write to
