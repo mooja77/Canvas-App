@@ -68,6 +68,7 @@ model User {
   emailDeliveries  EmailDelivery[]
   trainingAttempts TrainingAttempt[]
   canvasTemplates  CanvasTemplate[]
+  fileUploads      FileUpload[]
 
   @@index([email])
   @@index([stripeCustomerId])
@@ -233,6 +234,7 @@ model CanvasQuestion {
   parentQuestion   CanvasQuestion?    @relation("QuestionHierarchy", fields: [parentQuestionId], references: [id], onDelete: SetNull)
   childQuestions   CanvasQuestion[]   @relation("QuestionHierarchy")
   codings          CanvasTextCoding[]
+  aiSuggestions    AiSuggestion[]
 
   @@index([canvasId])
   @@index([parentQuestionId])
@@ -473,9 +475,11 @@ model FileUpload {
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   canvas            CodingCanvas?      @relation(fields: [canvasId], references: [id], onDelete: SetNull)
+  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
   transcriptionJobs TranscriptionJob[]
 
   @@index([canvasId])
+  @@index([userId])
   @@index([storageKey])
 }
 
@@ -557,10 +561,12 @@ model AiSuggestion {
   createdAt     DateTime         @default(now())
   canvas        CodingCanvas     @relation(fields: [canvasId], references: [id], onDelete: Cascade)
   transcript    CanvasTranscript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  question      CanvasQuestion?  @relation(fields: [questionId], references: [id], onDelete: SetNull)
 
   @@index([canvasId])
   @@index([transcriptId])
   @@index([status])
+  @@index([questionId])
 }
 
 // Reliability fix #8 — durable record of AI feature invocations so that if
@@ -579,8 +585,8 @@ model AiJob {
   result         String? // JSON-serialized response payload
   error          String?
   inputTokens    Int      @default(0)
-  outputTokens  Int       @default(0)
-  costCents     Float     @default(0)
+  outputTokens   Int      @default(0)
+  costCents      Float    @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
