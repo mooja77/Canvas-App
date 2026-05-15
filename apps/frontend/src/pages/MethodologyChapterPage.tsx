@@ -5,10 +5,19 @@ import { trackEvent } from '../utils/analytics';
 import PageShell from '../components/marketing/PageShell';
 import ChapterShell, { type ChapterNav } from '../components/marketing/ChapterShell';
 
+import FoundationsChapter, {
+  chapterMeta as foundationsMeta,
+  sections as foundationsSections,
+} from '../content/methodology/foundations';
 import ThematicAnalysisChapter, {
   chapterMeta as taMeta,
   sections as taSections,
 } from '../content/methodology/thematic-analysis';
+import GroundedTheoryChapter, {
+  chapterMeta as gtMeta,
+  sections as gtSections,
+} from '../content/methodology/grounded-theory';
+import IpaChapter, { chapterMeta as ipaMeta, sections as ipaSections } from '../content/methodology/ipa';
 import IntercoderReliabilityChapter, {
   chapterMeta as icrMeta,
   sections as icrSections,
@@ -26,18 +35,33 @@ interface ChapterEntry {
 }
 
 /**
- * Ordered list of published chapters. The order drives prev/next nav and is
- * intentionally the publication order, not the chapter-number order, so a
- * reader who lands on chapter 2 can step forwards into chapter 5 even though
- * chapters 3 and 4 are still in draft. The index page keeps the canonical
- * 1-through-6 order; this list is for in-chapter navigation only.
+ * Ordered list of published chapters in canonical 1-through-6 order. With all
+ * six chapters now drafted, prev/next nav follows the natural reading sequence.
  */
 const CHAPTERS: ChapterEntry[] = [
+  {
+    slug: 'foundations',
+    meta: foundationsMeta,
+    sections: foundationsSections,
+    Component: FoundationsChapter,
+  },
   {
     slug: 'thematic-analysis',
     meta: taMeta,
     sections: taSections,
     Component: ThematicAnalysisChapter,
+  },
+  {
+    slug: 'grounded-theory',
+    meta: gtMeta,
+    sections: gtSections,
+    Component: GroundedTheoryChapter,
+  },
+  {
+    slug: 'ipa',
+    meta: ipaMeta,
+    sections: ipaSections,
+    Component: IpaChapter,
   },
   {
     slug: 'intercoder-reliability',

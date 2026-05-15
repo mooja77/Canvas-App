@@ -13,11 +13,35 @@
   <generator uri="https://qualcanvas.com">QualCanvas marketing pipeline</generator>
 
   <entry>
+    <title>1.0 — Foundations</title>
+    <link href="https://qualcanvas.com/methodology/foundations"/>
+    <id>https://qualcanvas.com/methodology/foundations</id>
+    <updated>2026-05-15T00:00:00Z</updated>
+    <summary>What qualitative coding is and isn't. Inductive vs deductive vs abductive. Codes, categories, themes. Saturation honestly. The small set of distinctions you have to get right before any of the later chapters help.</summary>
+  </entry>
+
+  <entry>
     <title>2.0 — Thematic analysis</title>
     <link href="https://qualcanvas.com/methodology/thematic-analysis"/>
     <id>https://qualcanvas.com/methodology/thematic-analysis</id>
     <updated>2026-05-15T00:00:00Z</updated>
     <summary>Braun &amp; Clarke's six phases as they're actually practised: codebook drift, reviewer-2 anxiety, and the decisions you defend on the way to a finding. Reflexive vs codebook TA, and when intercoder agreement matters.</summary>
+  </entry>
+
+  <entry>
+    <title>3.0 — Grounded theory</title>
+    <link href="https://qualcanvas.com/methodology/grounded-theory"/>
+    <id>https://qualcanvas.com/methodology/grounded-theory</id>
+    <updated>2026-05-15T00:00:00Z</updated>
+    <summary>Charmaz's constructivist GT, initial → focused → theoretical coding, memo-writing as the analytic engine, theoretical sampling and constant comparison. The Glaser–Strauss–Charmaz lineage you need to know to pick a tradition.</summary>
+  </entry>
+
+  <entry>
+    <title>4.0 — Interpretative Phenomenological Analysis</title>
+    <link href="https://qualcanvas.com/methodology/ipa"/>
+    <id>https://qualcanvas.com/methodology/ipa</id>
+    <updated>2026-05-15T00:00:00Z</updated>
+    <summary>Smith's IPA — what the double hermeneutic actually requires of the analyst, the four-step procedure as it's now written, and why small samples are a design choice rather than a limitation.</summary>
   </entry>
 
   <entry>
