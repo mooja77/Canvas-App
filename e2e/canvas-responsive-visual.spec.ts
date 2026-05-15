@@ -62,7 +62,7 @@ test.describe('Canvas responsive visual fit', () => {
       data: { name: PREFIX },
     });
     canvasId = (await res.json()).data.id;
-    await p.request.post(`${API}/canvas/${canvasId}/transcripts`, {
+    const transcriptRes = await p.request.post(`${API}/canvas/${canvasId}/transcripts`, {
       headers: headers(),
       data: {
         title: 'Responsive Visual Test',
@@ -70,12 +70,46 @@ test.describe('Canvas responsive visual fit', () => {
           'The research methodology involved conducting semi-structured interviews with participants from diverse backgrounds across three institutions.',
       },
     });
+    const transcriptId = (await transcriptRes.json()).data.id;
+    const questionIds: string[] = [];
     for (const name of ['Methodology', 'Demographics', 'Findings']) {
-      await p.request.post(`${API}/canvas/${canvasId}/questions`, {
+      const qRes = await p.request.post(`${API}/canvas/${canvasId}/questions`, {
         headers: headers(),
         data: { text: name, color: '#4F46E5' },
       });
+      questionIds.push((await qRes.json()).data.id);
     }
+
+    // Seed explicit node positions + dimensions via PUT /canvas/:id/layout.
+    // With onlyRenderVisibleElements enabled, unmeasured nodes can stay
+    // culled at small viewports, leading to a fit-vs-mount deadlock. Known
+    // dimensions tell React Flow the bbox up front so the initial fit
+    // computation includes every node and they all mount.
+    const positions = [
+      {
+        nodeId: `transcript-${transcriptId}`,
+        nodeType: 'transcript',
+        x: 50,
+        y: 50,
+        width: 280,
+        height: 220,
+        collapsed: false,
+      },
+      ...questionIds.map((qid, i) => ({
+        nodeId: `question-${qid}`,
+        nodeType: 'question',
+        x: 380,
+        y: 50 + i * 110,
+        width: 240,
+        height: 90,
+        collapsed: false,
+      })),
+    ];
+    await p.request.put(`${API}/canvas/${canvasId}/layout`, {
+      headers: headers(),
+      data: { positions },
+    });
+
     await p.close();
     await ctx.close();
   });
