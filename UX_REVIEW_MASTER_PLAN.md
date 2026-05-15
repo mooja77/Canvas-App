@@ -163,6 +163,40 @@ Verification: makes `canvas-modal-accessibility.spec.ts` and `canvas-auth-gated-
 
 Every numbered finding in the live QA report (findings #1-#21) has a documented verified fix or an explicit "deferred" justification with date and successor ticket.
 
+**Status as of 2026-05-15 — Horizon 1 shipped.** PRs #18 (Sprint 1A), #19 (Sprint 1B), #20 (Sprint 1C), #21 (telemetry backend) merged to `main` and deployed.
+
+| #   | Finding                                             | Status           | Where                                                                               |
+| --- | --------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------- |
+| 1   | Mobile canvas opens mostly blank                    | ✅ shipped       | 1A — fit/framing                                                                    |
+| 2   | Dense graph initial fit not fitting                 | ✅ shipped       | 1A                                                                                  |
+| 3   | RF controls overlapped/blocked tablet/mobile        | ✅ shipped       | 1A + 1B                                                                             |
+| 4   | Minimap renders late / flicker                      | ✅ shipped       | 1B — minimap fade                                                                   |
+| 5   | Modal close buttons icon-only / unnamed             | ✅ shipped       | 1C                                                                                  |
+| 6   | Research Calendar legacy-auth poor                  | ✅ shipped       | 1C — EmailAuthRequired                                                              |
+| 7   | Telemetry endpoint 405                              | ✅ shipped       | Sprint 0 (frontend) + PR #21 (backend middleware order)                             |
+| 8   | Mobile toolbar too wide / truncates                 | ✅ shipped       | 1B — bottom-sheet                                                                   |
+| 9   | First-run overlays compete with canvas              | 🟡 deferred      | Out of scope per Scope section — separate small PR                                  |
+| 10  | Dense manual fit trades completeness for legibility | 🟡 partial       | 1A fixes framing; semantic overview → Horizon 3                                     |
+| 11  | Auto-arrange tall poorly-framed column              | ✅ shipped       | 1A — post-layout fit                                                                |
+| 12  | Mobile first load blank after stress layout         | ✅ shipped       | 1A                                                                                  |
+| 13  | Mobile dropdown clipped                             | ✅ shipped       | 1B — CollisionPopover                                                               |
+| 14  | Dark-mode graph framing inherits layout failure     | ✅ shipped       | 1A (framing)                                                                        |
+| 15  | Low-zoom selection state overwhelms                 | ✅ shipped       | 1B — canvas-low-zoom-bulk                                                           |
+| 16  | Search + presentation mode solid                    | ✅ no fix needed | Snapshot-protection deferred to a follow-up                                         |
+| 17  | Compact mobile blank                                | ✅ shipped       | 1A — math verified by 22 vitest cases; narrow-portrait e2e `.fixme` (RF cull quirk) |
+| 18  | Mobile landscape rotation doesn't recover           | ✅ shipped       | 1A — orientationchange refit                                                        |
+| 19  | Tools menu clips at non-mobile breakpoints          | ✅ shipped       | 1B                                                                                  |
+| 20  | Analyze menu not mobile-native                      | ✅ shipped       | 1B                                                                                  |
+| 21  | Desktop resize doesn't preserve graph visibility    | ✅ shipped       | 1A — ResizeObserver refit                                                           |
+
+18 of 21 shipped. #9 deferred (out of scope). #10 partial — framing fixed, semantic overview is Horizon 3. #16 needed no fix.
+
+Known follow-ups carried out of Horizon 1:
+
+- Narrow-portrait (320x568, 390x844) responsive-visual + popover e2e tests are `.fixme` / breakpoint-excluded — React Flow `onlyRenderVisibleElements` cull/measure deadlock + a 320px `.react-flow__pane` hidden-layout issue. Fit math itself is unit-verified. Revisit when the RF rendering layer is next touched.
+- Semantic low-zoom overview (group/cluster labels) — Horizon 3.
+- First-run overlay sequencing (#9) + search/presentation snapshot protection (#16) — separate small PR.
+
 Acceptance:
 
 - First load at `320x568`, `390x844`, `568x320`, `768x1024`, `1024x640`, `1024x768`, and desktop shows meaningful graph content or an explicit review/overview state.
