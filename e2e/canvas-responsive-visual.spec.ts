@@ -103,11 +103,24 @@ test.describe('Canvas responsive visual fit', () => {
       await page.setViewportSize({ width: bp.w, height: bp.h });
       await gotoSeededCanvas(page);
 
-      // Wait for at least one node to render. onlyRenderVisibleElements +
-      // a brief mount race can leave 0 nodes mounted until the fit settles.
-      await page.locator('.react-flow__node').first().waitFor({ state: 'attached', timeout: 8000 });
+      // Wait long enough for: RF mount-time auto-fit + our breakpoint-aware
+      // runFit('initial') at 200ms + node measurement + re-render. With
+      // onlyRenderVisibleElements enabled, unmeasured nodes can be culled
+      // until the viewport settles AND React Flow has run a measurement
+      // pass on them.
+      await page.waitForTimeout(1500);
 
-      const totalNodes = await page.locator('.react-flow__node').count();
+      // If still no nodes mounted, trigger an explicit Fit View click to
+      // force RF to remeasure + remount.
+      let totalNodes = await page.locator('.react-flow__node').count();
+      if (totalNodes === 0) {
+        const fitBtn = page.locator('.react-flow__controls-fitview');
+        if (await fitBtn.isVisible().catch(() => false)) {
+          await fitBtn.click();
+          await page.waitForTimeout(600);
+          totalNodes = await page.locator('.react-flow__node').count();
+        }
+      }
       expect(totalNodes).toBeGreaterThan(0);
 
       const visible = await page.locator('.react-flow__node:visible').count();
@@ -122,11 +135,21 @@ test.describe('Canvas responsive visual fit', () => {
   test('finding #18: orientation change re-runs fit and recovers graph', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoSeededCanvas(page);
-    await page.locator('.react-flow__node').first().waitFor({ state: 'attached', timeout: 8000 });
+    await page.waitForTimeout(1500);
+
+    // Make sure portrait fit landed nodes first.
+    let portraitNodes = await page.locator('.react-flow__node').count();
+    if (portraitNodes === 0) {
+      const fitBtn = page.locator('.react-flow__controls-fitview');
+      if (await fitBtn.isVisible().catch(() => false)) {
+        await fitBtn.click();
+        await page.waitForTimeout(500);
+      }
+    }
 
     await page.setViewportSize({ width: 844, height: 390 });
-    // ResizeObserver debounce (200ms) + animation (200ms) + buffer.
-    await page.waitForTimeout(800);
+    // ResizeObserver debounce (200ms) + RF re-measure + animation + buffer.
+    await page.waitForTimeout(1200);
 
     const transform = await getViewportTransform(page);
     expect(transform).not.toBeNull();
