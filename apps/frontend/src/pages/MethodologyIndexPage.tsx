@@ -33,7 +33,7 @@ const CHAPTERS: Chapter[] = [
     summary: 'What qualitative coding actually is. Inductive vs. deductive. Why coding is interpretive work.',
     slug: 'foundations',
     readMin: 7,
-    status: 'draft',
+    status: 'published',
   },
   {
     number: '2.0',
@@ -49,7 +49,7 @@ const CHAPTERS: Chapter[] = [
     summary: 'Open coding to theoretical coding. Memo-writing as theoretical development. Theoretical saturation.',
     slug: 'grounded-theory',
     readMin: 10,
-    status: 'draft',
+    status: 'published',
   },
   {
     number: '4.0',
@@ -57,7 +57,7 @@ const CHAPTERS: Chapter[] = [
     summary: "Smith's hermeneutic approach. The double hermeneutic. Reading and re-reading.",
     slug: 'ipa',
     readMin: 8,
-    status: 'draft',
+    status: 'published',
   },
   {
     number: '5.0',
