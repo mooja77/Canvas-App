@@ -4,12 +4,21 @@
   <subtitle>What we've shipped. New entry per feature or every two weeks.</subtitle>
   <link href="https://qualcanvas.com/changelog/feed.xml" rel="self"/>
   <link href="https://qualcanvas.com/changelog"/>
-  <updated>2026-05-14T00:00:00Z</updated>
+  <updated>2026-05-15T00:00:00Z</updated>
   <id>https://qualcanvas.com/changelog/</id>
   <author>
     <name>QualCanvas</name>
   </author>
   <generator uri="https://qualcanvas.com">QualCanvas marketing pipeline</generator>
+
+  <entry>
+    <title>Methodology field guide — six chapters live</title>
+    <link href="https://qualcanvas.com/changelog"/>
+    <id>https://qualcanvas.com/changelog#2026-05-15-methodology</id>
+    <updated>2026-05-15T00:00:00Z</updated>
+    <summary>Full set of methodology chapters at /methodology, ~11,000 words across foundations, thematic analysis, grounded theory, IPA, intercoder reliability, and ethics in practice.</summary>
+  </entry>
+
   <entry>
     <title>Marketing site refresh — Tier 2 brand activated</title>
     <link href="https://qualcanvas.com/changelog"/>
@@ -17,9 +26,52 @@
     <updated>2026-05-14T00:00:00Z</updated>
     <summary>The marketing surface is now on the Ink + Ochre palette with Fraunces display headings. Visible via override URL today; default-on flip at Phase 5 launch.</summary>
   </entry>
-  <!--
-    Backfill from git history lands here per Phase 3 follow-on. Until then,
-    new entries are added by hand alongside the page entries in
-    apps/frontend/src/pages/ChangelogPage.tsx.
-  -->
+
+  <entry>
+    <title>Onboarding, command palette, and the AI code suggester</title>
+    <link href="https://qualcanvas.com/changelog"/>
+    <id>https://qualcanvas.com/changelog#2026-05-13-ux</id>
+    <updated>2026-05-13T00:00:00Z</updated>
+    <summary>Two-screen onboarding with methodology templates, an activity bar with Cmd-K coverage across the canvas, and an inline AI code suggester that fires on text highlight.</summary>
+  </entry>
+
+  <entry>
+    <title>Krippendorff's α, Fleiss' κ, and the reliability batch</title>
+    <link href="https://qualcanvas.com/changelog"/>
+    <id>https://qualcanvas.com/changelog#2026-05-13-stats</id>
+    <updated>2026-05-13T00:00:00Z</updated>
+    <summary>Multi-coder agreement statistics expanded. Plus LLM retries with backoff, Stripe webhook reconciliation, a service-worker update toast, and weekly prod Postgres backups to R2.</summary>
+  </entry>
+
+  <entry>
+    <title>14-day Pro trial + countdown banner</title>
+    <link href="https://qualcanvas.com/changelog"/>
+    <id>https://qualcanvas.com/changelog#2026-04-25-trial</id>
+    <updated>2026-04-25T00:00:00Z</updated>
+    <summary>New signups start on a 14-day Pro trial with a tone-shifting countdown banner, plus an invoice.payment_succeeded webhook handler.</summary>
+  </entry>
+
+  <entry>
+    <title>Security audit — high, medium, and low findings resolved</title>
+    <link href="https://qualcanvas.com/changelog"/>
+    <id>https://qualcanvas.com/changelog#2026-04-24-security</id>
+    <updated>2026-04-24T00:00:00Z</updated>
+    <summary>Encrypted integration OAuth tokens, prod sourcemaps stripped, two IDOR routes patched, session invalidation propagates on credential change, structured logger and request-ID propagation throughout.</summary>
+  </entry>
+
+  <entry>
+    <title>JWT → httpOnly cookies migration</title>
+    <link href="https://qualcanvas.com/changelog"/>
+    <id>https://qualcanvas.com/changelog#2026-04-23-cookies</id>
+    <updated>2026-04-23T00:00:00Z</updated>
+    <summary>Authentication tokens move from localStorage into httpOnly cookies, closing the XSS-exfiltration surface. Plan-aware onboarding ships alongside.</summary>
+  </entry>
+
+  <entry>
+    <title>Sibling-app cross-linking + activation telemetry</title>
+    <link href="https://qualcanvas.com/changelog"/>
+    <id>https://qualcanvas.com/changelog#2026-04-10-cross-links</id>
+    <updated>2026-04-10T00:00:00Z</updated>
+    <summary>Footer cross-links to sibling JMS Dev Lab products, marketing prerender for crawler visibility, server-side activation telemetry for sign_up and first_canvas_created events.</summary>
+  </entry>
 </feed>
