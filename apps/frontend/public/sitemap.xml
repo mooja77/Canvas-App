@@ -28,11 +28,11 @@
   <url><loc>https://qualcanvas.com/privacy</loc><lastmod>2026-05-14</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>https://qualcanvas.com/terms</loc><lastmod>2026-05-14</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>https://qualcanvas.com/cookies</loc><lastmod>2026-05-14</lastmod><changefreq>yearly</changefreq><priority>0.2</priority></url>
-  <url><loc>https://qualcanvas.com/accessibility-statement</loc><lastmod>2026-05-14</lastmod><changefreq>quarterly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://qualcanvas.com/accessibility-statement</loc><lastmod>2026-05-14</lastmod><changefreq>monthly</changefreq><priority>0.4</priority></url>
 
   <!-- Studio + brand -->
-  <url><loc>https://qualcanvas.com/colophon</loc><lastmod>2026-05-14</lastmod><changefreq>quarterly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://qualcanvas.com/press</loc><lastmod>2026-05-14</lastmod><changefreq>quarterly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://qualcanvas.com/colophon</loc><lastmod>2026-05-14</lastmod><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://qualcanvas.com/press</loc><lastmod>2026-05-14</lastmod><changefreq>monthly</changefreq><priority>0.4</priority></url>
   <url><loc>https://qualcanvas.com/subscribe</loc><lastmod>2026-05-14</lastmod><changefreq>monthly</changefreq><priority>0.4</priority></url>
 
   <!-- Auth -->
