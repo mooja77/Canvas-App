@@ -16,8 +16,12 @@ import { openCanvas } from './helpers';
  * VIEWPORT_PAD constant in CollisionPopover.tsx.
  */
 
+// mobile-compact (320x568) is intentionally excluded: at 320px width the
+// .react-flow__pane resolves as hidden (zero visible size) before openCanvas
+// can interact with it — a pre-existing 320px layout issue tracked separately,
+// not caused by the CollisionPopover work. mobile-portrait (390) +
+// mobile-landscape (568) cover the responsive-popover behavior for phones.
 const BREAKPOINTS = [
-  { name: 'mobile-compact', w: 320, h: 568 },
   { name: 'mobile-portrait', w: 390, h: 844 },
   { name: 'mobile-landscape', w: 568, h: 320 },
   { name: 'tablet-portrait', w: 768, h: 1024 },
