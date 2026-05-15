@@ -307,6 +307,14 @@ v1Router.use(canvasPublicRoutes);
 // Protected billing routes
 v1Router.use(billingRoutes);
 
+// Public telemetry events sink — accepts anonymous + authenticated calls.
+// MUST be registered before the first `v1Router.use(auth, ...)` below:
+// Express runs router-level middleware in registration order, so the `auth`
+// middleware attached to the protected routes would otherwise 401 anonymous
+// telemetry posts (e.g. pricing_viewed from marketing pages). Live QA
+// finding #7 — the frontend half (VITE_API_URL) was fixed in Sprint 0.
+v1Router.use(eventsRoutes);
+
 // Protected canvas routes
 v1Router.use(auth, auditLog, canvasRoutes);
 
@@ -374,10 +382,6 @@ app.use('/api/email', publicLifecycleEmailRoutes);
 
 // Protected lifecycle email preferences
 v1Router.use(auth, auditLog, lifecycleEmailRoutes);
-
-// Public telemetry events sink — accepts anonymous + authenticated calls,
-// no auth wall (auth is optional for events like pricing_viewed).
-v1Router.use(eventsRoutes);
 
 // Mount under /api/v1 (versioned) and /api (backwards compat)
 app.use('/api/v1', v1Router);

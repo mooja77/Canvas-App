@@ -113,8 +113,8 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
         });
         // Also load consent records if present
         if (Array.isArray(d.consentRecords)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setConsents(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             d.consentRecords.map((c: any) => ({
               ...c,
               status: c.consentStatus || c.status || 'active',
