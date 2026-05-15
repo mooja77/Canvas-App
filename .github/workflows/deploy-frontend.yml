@@ -28,6 +28,13 @@ jobs:
       - run: npx prisma generate --schema=apps/backend/prisma/schema.prisma
       - run: npm run build --workspace=apps/frontend
         env:
+          # Pin VITE_API_URL explicitly so analytics.ts + services/api.ts never
+          # fall back to the relative `/api` default (which on Cloudflare Pages
+          # static host returns 405 — see live QA report finding #7). Local
+          # .env.production already sets this; pinning here is belt-and-suspenders
+          # to prevent silent regressions if Vite's mode resolution or working
+          # directory changes.
+          VITE_API_URL: https://canvas-app-production.up.railway.app/api
           VITE_STRIPE_PRO_MONTHLY_PRICE_ID: ${{ secrets.VITE_STRIPE_PRO_MONTHLY_PRICE_ID }}
           VITE_STRIPE_PRO_ANNUAL_PRICE_ID: ${{ secrets.VITE_STRIPE_PRO_ANNUAL_PRICE_ID }}
           VITE_STRIPE_TEAM_MONTHLY_PRICE_ID: ${{ secrets.VITE_STRIPE_TEAM_MONTHLY_PRICE_ID }}

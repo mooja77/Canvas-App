@@ -73,6 +73,7 @@ import { useAlignmentGuides } from '../../hooks/useAlignmentGuides';
 import { useAiConfigStore } from '../../stores/aiConfigStore';
 import { useUIStore } from '../../stores/uiStore';
 import { parseCsvRecords } from '../../utils/csv';
+import { breakpointFor, fitOptionsFor, type FitIntent } from '../../utils/canvasFit';
 import type {
   CanvasTranscript,
   CanvasQuestion,
@@ -91,11 +92,27 @@ const initialEdges: Edge[] = [];
 
 // Stable references for ReactFlow props (avoids re-renders from inline objects)
 const SNAP_GRID: [number, number] = [20, 20];
-// Initial framing stays legible, while explicit user-triggered Fit View must
-// be able to zoom out to React Flow's global floor so large canvases fit.
-const INITIAL_FIT_VIEW_OPTIONS = { padding: 0.2, minZoom: 0.5, maxZoom: 0.85 };
-const MANUAL_FIT_VIEW_OPTIONS = { padding: 0.2, minZoom: 0.15, maxZoom: 0.85 };
 const PRO_OPTIONS = { hideAttribution: true };
+
+// ReactFlow's built-in fitView prop handles the first-mount fit before
+// our 200ms setTimeout-driven runFit('initial') can run. Without it, the
+// onlyRenderVisibleElements optimization unmounts nodes that the default
+// {x:0, y:0, zoom:1} viewport leaves offscreen — breaking clicks in tests
+// that expect to interact with nodes immediately after openCanvas().
+// We give RF a generous floor (0.05, the same overview floor used by
+// our computeFit Stage 2) so the mount fit never clips dense graphs.
+// The breakpoint-aware refinement still runs 200ms later via runFit.
+const INITIAL_RF_FIT_OPTIONS = { padding: 0.2, minZoom: 0.05, maxZoom: 1.0 };
+
+// Per-intent animation durations for fit transitions. Resize/initial are
+// snappier so the user doesn't notice; manual + post-layout animate so the
+// change of viewport reads as intentional.
+const FIT_DURATION_MS: Record<FitIntent, number> = {
+  initial: 0,
+  manual: 300,
+  'post-layout': 400,
+  recover: 200,
+};
 
 export default function CanvasWorkspace() {
   // Granular selector hooks for read-only data
@@ -758,6 +775,39 @@ export default function CanvasWorkspace() {
     return [...codingEdges, ...relationEdges];
   }, [activeCanvas]);
 
+  // Fit/framing — see docs/canvas-ux/fit-framing-algorithm.md. Replaces the
+  // old static INITIAL_FIT_VIEW_OPTIONS / MANUAL_FIT_VIEW_OPTIONS pair which
+  // clipped dense graphs at first paint (live QA findings #1, #2, #11, #17,
+  // #18). We compute the transform ourselves and call setViewport so the
+  // math is testable in vitest without a browser (apps/frontend/src/utils/
+  // canvasFit.test.ts).
+  const runFit = useCallback(
+    (intent: FitIntent) => {
+      const rf = rfInstanceRef.current;
+      if (!rf) return;
+      const width = workspaceSize.width;
+      const height = workspaceSize.height;
+      if (!width || !height) return;
+      // Delegate to React Flow's fitView so we get its battle-tested
+      // node-visibility culling and edge-case handling. The breakpoint-aware
+      // envelope is the part we own. The pure math in computeFit / nodesToBbox
+      // stays unit-tested in canvasFit.test.ts.
+      const breakpoint = breakpointFor(width);
+      const opts = fitOptionsFor({ w: width, h: height }, breakpoint);
+      rf.fitView({ ...opts, duration: FIT_DURATION_MS[intent] });
+    },
+    [workspaceSize.width, workspaceSize.height],
+  );
+
+  // Latest-runFit ref so effects that fire on canvas-load (which depends on
+  // activeCanvas + buildNodes + buildEdges) don't need to list runFit as a
+  // dep — that would cause the same-canvas branch to re-rebuild nodes on
+  // every workspace resize.
+  const runFitRef = useRef(runFit);
+  useEffect(() => {
+    runFitRef.current = runFit;
+  }, [runFit]);
+
   // Sync nodes/edges when canvas data changes — preserve local positions, only fitView on canvas switch
   const loadedCanvasIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -777,7 +827,7 @@ export default function CanvasWorkspace() {
         loadedCanvasIdRef.current = canvasId;
         if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
         fitViewTimeoutRef.current = setTimeout(() => {
-          rfInstanceRef.current?.fitView(INITIAL_FIT_VIEW_OPTIONS);
+          runFitRef.current('initial');
         }, 200);
       }
     } else {
@@ -795,10 +845,46 @@ export default function CanvasWorkspace() {
     }
   }, [activeCanvas, buildNodes, buildEdges, setNodes, setEdges, clearHistory, pushHistory]);
 
-  // Note: No automatic fitView on container resize — sidebar open/close, navigator toggle,
-  // and other layout changes should not reset the user's viewport. Users can press F or
-  // click Fit View to re-center manually. ReactFlow handles its own internal viewport
-  // adjustments when the container size changes.
+  // Refit on viewport change (browser window resize, orientationchange).
+  // Sidebar/navigator toggles intentionally do NOT trigger a refit — those
+  // are chrome changes the user expects to leave their viewport intact.
+  // We detect a real viewport change by a > 50px delta on either axis vs
+  // the last fit's recorded size. See fit-framing-algorithm.md trigger
+  // policy table. Maps to QA findings #17, #18.
+  const lastFitSizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
+  const recoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!workspaceSize.width || !workspaceSize.height) return;
+    const last = lastFitSizeRef.current;
+    const dw = Math.abs(workspaceSize.width - last.w);
+    const dh = Math.abs(workspaceSize.height - last.h);
+    // First measurement seeds without firing; subsequent ones only fire
+    // when the change is large enough to be a real resize/orientation.
+    if (last.w === 0 && last.h === 0) {
+      lastFitSizeRef.current = { w: workspaceSize.width, h: workspaceSize.height };
+      return;
+    }
+    if (dw < 50 && dh < 50) return;
+    if (recoverTimeoutRef.current) clearTimeout(recoverTimeoutRef.current);
+    recoverTimeoutRef.current = setTimeout(() => {
+      lastFitSizeRef.current = { w: workspaceSize.width, h: workspaceSize.height };
+      runFit('recover');
+    }, 200);
+    return () => {
+      if (recoverTimeoutRef.current) clearTimeout(recoverTimeoutRef.current);
+    };
+  }, [workspaceSize.width, workspaceSize.height, runFit]);
+
+  useEffect(() => {
+    const onOrientation = () => {
+      if (recoverTimeoutRef.current) clearTimeout(recoverTimeoutRef.current);
+      recoverTimeoutRef.current = setTimeout(() => {
+        runFit('recover');
+      }, 400);
+    };
+    window.addEventListener('orientationchange', onOrientation);
+    return () => window.removeEventListener('orientationchange', onOrientation);
+  }, [runFit]);
 
   // Auto-collapse navigator sidebar when workspace gets narrow
   useEffect(() => {
@@ -1693,14 +1779,17 @@ export default function CanvasWorkspace() {
       return;
     }
     applyLayout(nodes, edges, { direction: 'LR', nodeSpacing: 60, rankSpacing: 120 });
-    // Save layout after animation and fit view
+    // Save layout after animation and re-fit. Auto-layout itself animates
+    // for ~500ms; the post-layout fit fires at 600ms so it overlaps with
+    // the tail of the layout animation, then animates the remaining ~400ms.
+    // See fit-framing-algorithm.md trigger policy table.
     setTimeout(() => {
       triggerSaveLayout();
       pushHistorySnapshot();
-      rfInstanceRef.current?.fitView({ padding: 0.4, maxZoom: 1.0, duration: 300 });
-    }, 700);
+      runFit('post-layout');
+    }, 600);
     toast.success('Canvas arranged');
-  }, [nodes, edges, applyLayout, triggerSaveLayout, pushHistorySnapshot]);
+  }, [nodes, edges, applyLayout, triggerSaveLayout, pushHistorySnapshot, runFit]);
 
   // Mute/unmute selected nodes (Ctrl+M)
   const handleToggleMute = useCallback(() => {
@@ -2107,8 +2196,8 @@ export default function CanvasWorkspace() {
               zoomOnDoubleClick={false}
               panActivationKeyCode="Space"
               fitView
-              fitViewOptions={INITIAL_FIT_VIEW_OPTIONS}
-              minZoom={0.15}
+              fitViewOptions={INITIAL_RF_FIT_OPTIONS}
+              minZoom={0.05}
               maxZoom={2}
               className="bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-[#0f1117] dark:via-[#131620] dark:to-[#0f1117]"
               connectionLineComponent={ConnectionLine}
@@ -2133,8 +2222,7 @@ export default function CanvasWorkspace() {
               )}
               {!focusMode && (
                 <Controls
-                  fitViewOptions={MANUAL_FIT_VIEW_OPTIONS}
-                  onFitView={() => rfInstanceRef.current?.fitView(MANUAL_FIT_VIEW_OPTIONS)}
+                  onFitView={() => runFit('manual')}
                   className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700"
                 />
               )}
@@ -2242,7 +2330,7 @@ export default function CanvasWorkspace() {
                 }}
                 onAddMemo={handleContextAddMemo}
                 onAddComputedNode={handleQuickAddComputed}
-                onFitView={() => rfInstanceRef.current?.fitView(MANUAL_FIT_VIEW_OPTIONS)}
+                onFitView={() => runFit('manual')}
                 onShowShortcuts={() => setShowShortcuts(true)}
                 onSelectAll={handleSelectAll}
                 onToggleSnapGrid={() => setSnapToGrid((s) => !s)}
@@ -2636,7 +2724,7 @@ export default function CanvasWorkspace() {
         <CommandPalette
           onClose={() => setShowCommandPalette(false)}
           onFocusNode={handleFocusNode}
-          onFitView={() => rfInstanceRef.current?.fitView(MANUAL_FIT_VIEW_OPTIONS)}
+          onFitView={() => runFit('manual')}
           onToggleGrid={() => setSnapToGrid((s) => !s)}
           onToggleNavigator={() => {
             manualNavToggleRef.current = true;

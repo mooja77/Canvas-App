@@ -72,22 +72,23 @@ The Prisma schema is at `apps/backend/prisma/schema.prisma` with `provider = "po
 
 Core user account model. Supports email/password auth with optional Google OAuth.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `email` | String | `@unique` | — |
-| `emailVerified` | Boolean | — | `false` |
-| `passwordHash` | String | — | — |
-| `name` | String | — | — |
-| `role` | String | — | `"researcher"` |
-| `plan` | String | — | `"free"` |
-| `stripeCustomerId` | String? | `@unique` | — |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
-| `resetTokenHash` | String? | — | — |
-| `resetTokenExpiry` | DateTime? | — | — |
+| Field              | Type      | Constraints  | Default        |
+| ------------------ | --------- | ------------ | -------------- |
+| `id`               | String    | `@id`        | `cuid()`       |
+| `email`            | String    | `@unique`    | —              |
+| `emailVerified`    | Boolean   | —            | `false`        |
+| `passwordHash`     | String    | —            | —              |
+| `name`             | String    | —            | —              |
+| `role`             | String    | —            | `"researcher"` |
+| `plan`             | String    | —            | `"free"`       |
+| `stripeCustomerId` | String?   | `@unique`    | —              |
+| `createdAt`        | DateTime  | —            | `now()`        |
+| `updatedAt`        | DateTime  | `@updatedAt` | —              |
+| `resetTokenHash`   | String?   | —            | —              |
+| `resetTokenExpiry` | DateTime? | —            | —              |
 
 **Relations:**
+
 - `subscription` -> Subscription (one-to-one)
 - `codingCanvases` -> CodingCanvas[] (one-to-many)
 - `dashboardAccess` -> DashboardAccess (one-to-one, optional)
@@ -108,18 +109,18 @@ Core user account model. Supports email/password auth with optional Google OAuth
 
 Stores user-provided AI API keys with AES-256-GCM encryption.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `userId` | String | `@unique` | — |
-| `provider` | String | — | `"openai"` |
-| `apiKeyEncrypted` | String | — | — |
-| `apiKeyIv` | String | — | — |
-| `apiKeyTag` | String | — | — |
-| `model` | String? | — | — |
-| `embeddingModel` | String? | — | — |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
+| Field             | Type     | Constraints  | Default    |
+| ----------------- | -------- | ------------ | ---------- |
+| `id`              | String   | `@id`        | `cuid()`   |
+| `userId`          | String   | `@unique`    | —          |
+| `provider`        | String   | —            | `"openai"` |
+| `apiKeyEncrypted` | String   | —            | —          |
+| `apiKeyIv`        | String   | —            | —          |
+| `apiKeyTag`       | String   | —            | —          |
+| `model`           | String?  | —            | —          |
+| `embeddingModel`  | String?  | —            | —          |
+| `createdAt`       | DateTime | —            | `now()`    |
+| `updatedAt`       | DateTime | `@updatedAt` | —          |
 
 **Relations:** `user` -> User (on delete: **Cascade**)
 
@@ -131,18 +132,18 @@ Stores user-provided AI API keys with AES-256-GCM encryption.
 
 Stripe subscription tracking for SaaS billing.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `userId` | String | `@unique` | — |
-| `stripeSubscriptionId` | String | `@unique` | — |
-| `stripePriceId` | String | — | — |
-| `status` | String | — | — |
-| `currentPeriodStart` | DateTime | — | — |
-| `currentPeriodEnd` | DateTime | — | — |
-| `cancelAtPeriodEnd` | Boolean | — | `false` |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
+| Field                  | Type     | Constraints  | Default  |
+| ---------------------- | -------- | ------------ | -------- |
+| `id`                   | String   | `@id`        | `cuid()` |
+| `userId`               | String   | `@unique`    | —        |
+| `stripeSubscriptionId` | String   | `@unique`    | —        |
+| `stripePriceId`        | String   | —            | —        |
+| `status`               | String   | —            | —        |
+| `currentPeriodStart`   | DateTime | —            | —        |
+| `currentPeriodEnd`     | DateTime | —            | —        |
+| `cancelAtPeriodEnd`    | Boolean  | —            | `false`  |
+| `createdAt`            | DateTime | —            | `now()`  |
+| `updatedAt`            | DateTime | `@updatedAt` | —        |
 
 **Status values:** `active`, `past_due`, `canceled`, `trialing`
 
@@ -154,20 +155,21 @@ Stripe subscription tracking for SaaS billing.
 
 Legacy access-code authentication. Users with access codes are grandfathered to Pro.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `accessCode` | String | `@unique` | — |
-| `accessCodeHash` | String? | — | — |
-| `name` | String | — | — |
-| `role` | String | — | — |
-| `expiresAt` | DateTime | — | — |
-| `createdAt` | DateTime | — | `now()` |
-| `userId` | String? | `@unique` | — |
+| Field            | Type     | Constraints | Default  |
+| ---------------- | -------- | ----------- | -------- |
+| `id`             | String   | `@id`       | `cuid()` |
+| `accessCode`     | String   | `@unique`   | —        |
+| `accessCodeHash` | String?  | —           | —        |
+| `name`           | String   | —           | —        |
+| `role`           | String   | —           | —        |
+| `expiresAt`      | DateTime | —           | —        |
+| `createdAt`      | DateTime | —           | `now()`  |
+| `userId`         | String?  | `@unique`   | —        |
 
 **Role values:** `policymaker`, `funder`, `researcher`
 
 **Relations:**
+
 - `user` -> User? (on delete: **SetNull**)
 - `codingCanvases` -> CodingCanvas[] (one-to-many)
 
@@ -177,21 +179,22 @@ Legacy access-code authentication. Users with access codes are grandfathered to 
 
 Central entity representing a qualitative coding workspace. Supports soft delete.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `dashboardAccessId` | String | — | — |
-| `userId` | String? | — | — |
-| `name` | String | — | — |
-| `description` | String? | — | — |
-| `ethicsApprovalId` | String? | — | — |
-| `ethicsStatus` | String | — | `"pending"` |
-| `dataRetentionDate` | DateTime? | — | — |
-| `deletedAt` | DateTime? | — | — |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
+| Field               | Type      | Constraints  | Default     |
+| ------------------- | --------- | ------------ | ----------- |
+| `id`                | String    | `@id`        | `cuid()`    |
+| `dashboardAccessId` | String    | —            | —           |
+| `userId`            | String?   | —            | —           |
+| `name`              | String    | —            | —           |
+| `description`       | String?   | —            | —           |
+| `ethicsApprovalId`  | String?   | —            | —           |
+| `ethicsStatus`      | String    | —            | `"pending"` |
+| `dataRetentionDate` | DateTime? | —            | —           |
+| `deletedAt`         | DateTime? | —            | —           |
+| `createdAt`         | DateTime  | —            | `now()`     |
+| `updatedAt`         | DateTime  | `@updatedAt` | —           |
 
 **Relations:**
+
 - `dashboardAccess` -> DashboardAccess (on delete: **Cascade**)
 - `user` -> User? (on delete: **Cascade**)
 - `transcripts` -> CanvasTranscript[]
@@ -223,15 +226,15 @@ Central entity representing a qualitative coding workspace. Supports soft delete
 
 Sharing links for canvases with optional expiration and clone tracking.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `shareCode` | String | `@unique` | — |
-| `createdBy` | String | — | — |
-| `expiresAt` | DateTime? | — | — |
-| `cloneCount` | Int | — | `0` |
-| `createdAt` | DateTime | — | `now()` |
+| Field        | Type      | Constraints | Default  |
+| ------------ | --------- | ----------- | -------- |
+| `id`         | String    | `@id`       | `cuid()` |
+| `canvasId`   | String    | —           | —        |
+| `shareCode`  | String    | `@unique`   | —        |
+| `createdBy`  | String    | —           | —        |
+| `expiresAt`  | DateTime? | —           | —        |
+| `cloneCount` | Int       | —           | `0`      |
+| `createdAt`  | DateTime  | —           | `now()`  |
 
 **Relations:** `canvas` -> CodingCanvas (on delete: **Cascade**)
 
@@ -243,31 +246,32 @@ Sharing links for canvases with optional expiration and clone tracking.
 
 Interview transcripts or text data within a canvas. Supports soft delete, geolocation, and timestamps.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `title` | String | — | — |
-| `content` | String | — | — |
-| `sortOrder` | Int | — | `0` |
-| `caseId` | String? | — | — |
-| `sourceType` | String? | — | — |
-| `sourceId` | String? | — | — |
-| `deletedAt` | DateTime? | — | — |
-| `isAnonymized` | Boolean | — | `false` |
-| `participantId` | String? | — | — |
-| `fileUploadId` | String? | — | — |
-| `timestamps` | String? | — | — |
-| `eventDate` | DateTime? | — | — |
-| `latitude` | Float? | — | — |
-| `longitude` | Float? | — | — |
-| `locationName` | String? | — | — |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
+| Field           | Type      | Constraints  | Default  |
+| --------------- | --------- | ------------ | -------- |
+| `id`            | String    | `@id`        | `cuid()` |
+| `canvasId`      | String    | —            | —        |
+| `title`         | String    | —            | —        |
+| `content`       | String    | —            | —        |
+| `sortOrder`     | Int       | —            | `0`      |
+| `caseId`        | String?   | —            | —        |
+| `sourceType`    | String?   | —            | —        |
+| `sourceId`      | String?   | —            | —        |
+| `deletedAt`     | DateTime? | —            | —        |
+| `isAnonymized`  | Boolean   | —            | `false`  |
+| `participantId` | String?   | —            | —        |
+| `fileUploadId`  | String?   | —            | —        |
+| `timestamps`    | String?   | —            | —        |
+| `eventDate`     | DateTime? | —            | —        |
+| `latitude`      | Float?    | —            | —        |
+| `longitude`     | Float?    | —            | —        |
+| `locationName`  | String?   | —            | —        |
+| `createdAt`     | DateTime  | —            | `now()`  |
+| `updatedAt`     | DateTime  | `@updatedAt` | —        |
 
 **JSON fields:** `timestamps` stores `[{start, end, text}]` for audio/video sync.
 
 **Relations:**
+
 - `canvas` -> CodingCanvas (on delete: **Cascade**)
 - `case` -> CanvasCase? (on delete: **SetNull**)
 - `codings` -> CanvasTextCoding[]
@@ -281,18 +285,19 @@ Interview transcripts or text data within a canvas. Supports soft delete, geoloc
 
 Qualitative codes/themes organized in a hierarchy.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `text` | String | — | — |
-| `color` | String | — | `"#3B82F6"` |
-| `sortOrder` | Int | — | `0` |
-| `parentQuestionId` | String? | — | — |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
+| Field              | Type     | Constraints  | Default     |
+| ------------------ | -------- | ------------ | ----------- |
+| `id`               | String   | `@id`        | `cuid()`    |
+| `canvasId`         | String   | —            | —           |
+| `text`             | String   | —            | —           |
+| `color`            | String   | —            | `"#3B82F6"` |
+| `sortOrder`        | Int      | —            | `0`         |
+| `parentQuestionId` | String?  | —            | —           |
+| `createdAt`        | DateTime | —            | `now()`     |
+| `updatedAt`        | DateTime | `@updatedAt` | —           |
 
 **Relations:**
+
 - `canvas` -> CodingCanvas (on delete: **Cascade**)
 - `parentQuestion` -> CanvasQuestion? (self-relation "QuestionHierarchy", on delete: **SetNull**)
 - `childQuestions` -> CanvasQuestion[] (self-relation "QuestionHierarchy")
@@ -306,15 +311,15 @@ Qualitative codes/themes organized in a hierarchy.
 
 Research memos/notes attached to a canvas.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `title` | String? | — | — |
-| `content` | String | — | — |
-| `color` | String | — | `"#FEF08A"` |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
+| Field       | Type     | Constraints  | Default     |
+| ----------- | -------- | ------------ | ----------- |
+| `id`        | String   | `@id`        | `cuid()`    |
+| `canvasId`  | String   | —            | —           |
+| `title`     | String?  | —            | —           |
+| `content`   | String   | —            | —           |
+| `color`     | String   | —            | `"#FEF08A"` |
+| `createdAt` | DateTime | —            | `now()`     |
+| `updatedAt` | DateTime | `@updatedAt` | —           |
 
 **Relations:** `canvas` -> CodingCanvas (on delete: **Cascade**)
 
@@ -324,20 +329,21 @@ Research memos/notes attached to a canvas.
 
 A coded text segment linking a transcript passage to a question/code.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `transcriptId` | String | — | — |
-| `questionId` | String | — | — |
-| `startOffset` | Int | — | — |
-| `endOffset` | Int | — | — |
-| `codedText` | String | — | — |
-| `note` | String? | — | — |
-| `annotation` | String? | — | — |
-| `createdAt` | DateTime | — | `now()` |
+| Field          | Type     | Constraints | Default  |
+| -------------- | -------- | ----------- | -------- |
+| `id`           | String   | `@id`       | `cuid()` |
+| `canvasId`     | String   | —           | —        |
+| `transcriptId` | String   | —           | —        |
+| `questionId`   | String   | —           | —        |
+| `startOffset`  | Int      | —           | —        |
+| `endOffset`    | Int      | —           | —        |
+| `codedText`    | String   | —           | —        |
+| `note`         | String?  | —           | —        |
+| `annotation`   | String?  | —           | —        |
+| `createdAt`    | DateTime | —           | `now()`  |
 
 **Relations:**
+
 - `canvas` -> CodingCanvas (on delete: **Cascade**)
 - `transcript` -> CanvasTranscript (on delete: **Cascade**)
 - `question` -> CanvasQuestion (on delete: **Cascade**)
@@ -350,17 +356,17 @@ A coded text segment linking a transcript passage to a question/code.
 
 Visual position and size of nodes on the canvas workspace.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `nodeId` | String | — | — |
-| `nodeType` | String | — | — |
-| `x` | Float | — | — |
-| `y` | Float | — | — |
-| `width` | Float? | — | — |
-| `height` | Float? | — | — |
-| `collapsed` | Boolean | — | `false` |
+| Field       | Type    | Constraints | Default  |
+| ----------- | ------- | ----------- | -------- |
+| `id`        | String  | `@id`       | `cuid()` |
+| `canvasId`  | String  | —           | —        |
+| `nodeId`    | String  | —           | —        |
+| `nodeType`  | String  | —           | —        |
+| `x`         | Float   | —           | —        |
+| `y`         | Float   | —           | —        |
+| `width`     | Float?  | —           | —        |
+| `height`    | Float?  | —           | —        |
+| `collapsed` | Boolean | —           | `false`  |
 
 **Unique:** `@@unique([canvasId, nodeId])`
 
@@ -374,20 +380,21 @@ Visual position and size of nodes on the canvas workspace.
 
 Cases group transcripts for cross-case analysis.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `name` | String | — | — |
-| `attributes` | String | — | `"{}"` |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
+| Field        | Type     | Constraints  | Default  |
+| ------------ | -------- | ------------ | -------- |
+| `id`         | String   | `@id`        | `cuid()` |
+| `canvasId`   | String   | —            | —        |
+| `name`       | String   | —            | —        |
+| `attributes` | String   | —            | `"{}"`   |
+| `createdAt`  | DateTime | —            | `now()`  |
+| `updatedAt`  | DateTime | `@updatedAt` | —        |
 
 **JSON fields:** `attributes` stores arbitrary case metadata as a JSON string.
 
 **Unique:** `@@unique([canvasId, name])`
 
 **Relations:**
+
 - `canvas` -> CodingCanvas (on delete: **Cascade**)
 - `transcripts` -> CanvasTranscript[]
 
@@ -399,16 +406,16 @@ Cases group transcripts for cross-case analysis.
 
 Edges between nodes on the canvas (code-to-code, question-to-memo, etc.).
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `fromType` | String | — | — |
-| `fromId` | String | — | — |
-| `toType` | String | — | — |
-| `toId` | String | — | — |
-| `label` | String | — | — |
-| `createdAt` | DateTime | — | `now()` |
+| Field       | Type     | Constraints | Default  |
+| ----------- | -------- | ----------- | -------- |
+| `id`        | String   | `@id`       | `cuid()` |
+| `canvasId`  | String   | —           | —        |
+| `fromType`  | String   | —           | —        |
+| `fromId`    | String   | —           | —        |
+| `toType`    | String   | —           | —        |
+| `toId`      | String   | —           | —        |
+| `label`     | String   | —           | —        |
+| `createdAt` | DateTime | —           | `now()`  |
 
 **Relations:** `canvas` -> CodingCanvas (on delete: **Cascade**)
 
@@ -420,16 +427,16 @@ Edges between nodes on the canvas (code-to-code, question-to-memo, etc.).
 
 Analysis/visualization nodes (stats, word cloud, co-occurrence, etc.) with persisted config and results.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `nodeType` | String | — | — |
-| `label` | String | — | — |
-| `config` | String | — | `"{}"` |
-| `result` | String | — | `"{}"` |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
+| Field       | Type     | Constraints  | Default  |
+| ----------- | -------- | ------------ | -------- |
+| `id`        | String   | `@id`        | `cuid()` |
+| `canvasId`  | String   | —            | —        |
+| `nodeType`  | String   | —            | —        |
+| `label`     | String   | —            | —        |
+| `config`    | String   | —            | `"{}"`   |
+| `result`    | String   | —            | `"{}"`   |
+| `createdAt` | DateTime | —            | `now()`  |
+| `updatedAt` | DateTime | `@updatedAt` | —        |
 
 **JSON fields:** `config` stores analysis parameters; `result` stores computed output. Both are JSON strings.
 
@@ -443,18 +450,18 @@ Analysis/visualization nodes (stats, word cloud, co-occurrence, etc.) with persi
 
 Ethics consent tracking for research participants.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `participantId` | String | — | — |
-| `consentType` | String | — | `"informed"` |
-| `consentStatus` | String | — | `"active"` |
-| `consentDate` | DateTime | — | `now()` |
-| `withdrawalDate` | DateTime? | — | — |
-| `ethicsProtocol` | String? | — | — |
-| `notes` | String? | — | — |
-| `createdAt` | DateTime | — | `now()` |
+| Field            | Type      | Constraints | Default      |
+| ---------------- | --------- | ----------- | ------------ |
+| `id`             | String    | `@id`       | `cuid()`     |
+| `canvasId`       | String    | —           | —            |
+| `participantId`  | String    | —           | —            |
+| `consentType`    | String    | —           | `"informed"` |
+| `consentStatus`  | String    | —           | `"active"`   |
+| `consentDate`    | DateTime  | —           | `now()`      |
+| `withdrawalDate` | DateTime? | —           | —            |
+| `ethicsProtocol` | String?   | —           | —            |
+| `notes`          | String?   | —           | —            |
+| `createdAt`      | DateTime  | —           | `now()`      |
 
 **Unique:** `@@unique([canvasId, participantId])`
 
@@ -468,20 +475,20 @@ Ethics consent tracking for research participants.
 
 Immutable audit trail for security and compliance. No foreign keys (standalone).
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `timestamp` | DateTime | — | `now()` |
-| `action` | String | — | — |
-| `resource` | String | — | — |
-| `resourceId` | String? | — | — |
-| `actorType` | String | — | — |
-| `actorId` | String? | — | — |
-| `ip` | String? | — | — |
-| `method` | String? | — | — |
-| `path` | String? | — | — |
-| `statusCode` | Int? | — | — |
-| `meta` | String? | — | — |
+| Field        | Type     | Constraints | Default  |
+| ------------ | -------- | ----------- | -------- |
+| `id`         | String   | `@id`       | `cuid()` |
+| `timestamp`  | DateTime | —           | `now()`  |
+| `action`     | String   | —           | —        |
+| `resource`   | String   | —           | —        |
+| `resourceId` | String?  | —           | —        |
+| `actorType`  | String   | —           | —        |
+| `actorId`    | String?  | —           | —        |
+| `ip`         | String?  | —           | —        |
+| `method`     | String?  | —           | —        |
+| `path`       | String?  | —           | —        |
+| `statusCode` | Int?     | —           | —        |
+| `meta`       | String?  | —           | —        |
 
 **JSON fields:** `meta` stores additional context as a JSON string.
 
@@ -495,13 +502,15 @@ Immutable audit trail for security and compliance. No foreign keys (standalone).
 
 Idempotency table for Stripe webhook deduplication.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | — |
-| `type` | String | — | — |
-| `createdAt` | DateTime | — | `now()` |
+| Field       | Type     | Constraints | Default |
+| ----------- | -------- | ----------- | ------- |
+| `id`        | String   | `@id`       | —       |
+| `type`      | String   | —           | —       |
+| `createdAt` | DateTime | —           | `now()` |
 
 **Note:** The `id` is the Stripe event ID (not auto-generated), ensuring each webhook is processed exactly once.
+
+**Migration discipline (post-incident, 2026-05-15):** The `WebhookEvent` model was added to `schema.prisma` in March 2026 but the migration was not generated until commit `11ea498` (2026-05-07). For ~2.5 months every Stripe webhook crashed the backend with `P2021: table does not exist`, the latest Railway deployment (`15b92f32`, May 3) sat in CRASHED status for 3+ days, and `qualcanvas.com` was unreachable. Migration `0018_add_webhook_event` resolved it. **Before shipping a Prisma model change, generate its migration in the same PR.** The CI check `npx prisma migrate status` should catch a divergent schema; if you find yourself disabling it, you are about to repeat this incident.
 
 ---
 
@@ -509,14 +518,14 @@ Idempotency table for Stripe webhook deduplication.
 
 Tracks users who have collaborative access to a canvas.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `userId` | String | — | — |
-| `role` | String | — | `"editor"` |
-| `invitedBy` | String? | — | — |
-| `createdAt` | DateTime | — | `now()` |
+| Field       | Type     | Constraints | Default    |
+| ----------- | -------- | ----------- | ---------- |
+| `id`        | String   | `@id`       | `cuid()`   |
+| `canvasId`  | String   | —           | —          |
+| `userId`    | String   | —           | —          |
+| `role`      | String   | —           | `"editor"` |
+| `invitedBy` | String?  | —           | —          |
+| `createdAt` | DateTime | —           | `now()`    |
 
 **Role values:** `owner`, `editor`, `viewer`
 
@@ -532,22 +541,23 @@ Tracks users who have collaborative access to a canvas.
 
 Image or PDF documents attached to a canvas for visual/region coding.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `fileUploadId` | String | — | — |
-| `title` | String | — | — |
-| `docType` | String | — | — |
-| `pageCount` | Int | — | `1` |
-| `metadata` | String | — | `"{}"` |
-| `createdAt` | DateTime | — | `now()` |
+| Field          | Type     | Constraints | Default  |
+| -------------- | -------- | ----------- | -------- |
+| `id`           | String   | `@id`       | `cuid()` |
+| `canvasId`     | String   | —           | —        |
+| `fileUploadId` | String   | —           | —        |
+| `title`        | String   | —           | —        |
+| `docType`      | String   | —           | —        |
+| `pageCount`    | Int      | —           | `1`      |
+| `metadata`     | String   | —           | `"{}"`   |
+| `createdAt`    | DateTime | —           | `now()`  |
 
 **docType values:** `image`, `pdf`
 
 **JSON fields:** `metadata` stores document-specific attributes.
 
 **Relations:**
+
 - `canvas` -> CodingCanvas (on delete: **Cascade**)
 - `regionCodings` -> DocumentRegionCoding[]
 
@@ -559,18 +569,18 @@ Image or PDF documents attached to a canvas for visual/region coding.
 
 Region-based coding on a document page (bounding box coordinates as percentages).
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `documentId` | String | — | — |
-| `questionId` | String | — | — |
-| `pageNumber` | Int | — | `1` |
-| `x` | Float | — | — |
-| `y` | Float | — | — |
-| `width` | Float | — | — |
-| `height` | Float | — | — |
-| `note` | String? | — | — |
-| `createdAt` | DateTime | — | `now()` |
+| Field        | Type     | Constraints | Default  |
+| ------------ | -------- | ----------- | -------- |
+| `id`         | String   | `@id`       | `cuid()` |
+| `documentId` | String   | —           | —        |
+| `questionId` | String   | —           | —        |
+| `pageNumber` | Int      | —           | `1`      |
+| `x`          | Float    | —           | —        |
+| `y`          | Float    | —           | —        |
+| `width`      | Float    | —           | —        |
+| `height`     | Float    | —           | —        |
+| `note`       | String?  | —           | —        |
+| `createdAt`  | DateTime | —           | `now()`  |
 
 **Note:** `x`, `y`, `width`, `height` are percentages (0-100) for resolution independence.
 
@@ -584,20 +594,21 @@ Region-based coding on a document page (bounding box coordinates as percentages)
 
 Coder training exercises with gold-standard codings for intercoder reliability.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `transcriptId` | String | — | — |
-| `name` | String | — | — |
-| `instructions` | String? | — | — |
-| `goldCodings` | String | — | — |
-| `passThreshold` | Float | — | `0.7` |
-| `createdAt` | DateTime | — | `now()` |
+| Field           | Type     | Constraints | Default  |
+| --------------- | -------- | ----------- | -------- |
+| `id`            | String   | `@id`       | `cuid()` |
+| `canvasId`      | String   | —           | —        |
+| `transcriptId`  | String   | —           | —        |
+| `name`          | String   | —           | —        |
+| `instructions`  | String?  | —           | —        |
+| `goldCodings`   | String   | —           | —        |
+| `passThreshold` | Float    | —           | `0.7`    |
+| `createdAt`     | DateTime | —           | `now()`  |
 
 **JSON fields:** `goldCodings` stores `[{questionId, startOffset, endOffset, codedText}]`.
 
 **Relations:**
+
 - `canvas` -> CodingCanvas (on delete: **Cascade**)
 - `attempts` -> TrainingAttempt[]
 
@@ -609,15 +620,15 @@ Coder training exercises with gold-standard codings for intercoder reliability.
 
 A coder's attempt at a training exercise, with Kappa score.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `trainingDocumentId` | String | — | — |
-| `userId` | String | — | — |
-| `codings` | String | — | — |
-| `kappaScore` | Float? | — | — |
-| `passed` | Boolean | — | `false` |
-| `createdAt` | DateTime | — | `now()` |
+| Field                | Type     | Constraints | Default  |
+| -------------------- | -------- | ----------- | -------- |
+| `id`                 | String   | `@id`       | `cuid()` |
+| `trainingDocumentId` | String   | —           | —        |
+| `userId`             | String   | —           | —        |
+| `codings`            | String   | —           | —        |
+| `kappaScore`         | Float?   | —           | —        |
+| `passed`             | Boolean  | —           | `false`  |
+| `createdAt`          | DateTime | —           | `now()`  |
 
 **JSON fields:** `codings` stores the user's submitted codings as JSON.
 
@@ -631,25 +642,26 @@ A coder's attempt at a training exercise, with Kappa score.
 
 Uploaded files (audio, images, PDFs) with processing status tracking.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String? | — | — |
-| `userId` | String? | — | — |
-| `storageKey` | String | `@unique` | — |
-| `originalName` | String | — | — |
-| `mimeType` | String | — | — |
-| `sizeBytes` | Int | — | — |
-| `status` | String | — | `"uploaded"` |
-| `metadata` | String | — | `"{}"` |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
+| Field          | Type     | Constraints  | Default      |
+| -------------- | -------- | ------------ | ------------ |
+| `id`           | String   | `@id`        | `cuid()`     |
+| `canvasId`     | String?  | —            | —            |
+| `userId`       | String?  | —            | —            |
+| `storageKey`   | String   | `@unique`    | —            |
+| `originalName` | String   | —            | —            |
+| `mimeType`     | String   | —            | —            |
+| `sizeBytes`    | Int      | —            | —            |
+| `status`       | String   | —            | `"uploaded"` |
+| `metadata`     | String   | —            | `"{}"`       |
+| `createdAt`    | DateTime | —            | `now()`      |
+| `updatedAt`    | DateTime | `@updatedAt` | —            |
 
 **Status values:** `uploaded`, `processing`, `ready`, `error`
 
 **JSON fields:** `metadata` stores file-specific attributes.
 
 **Relations:**
+
 - `canvas` -> CodingCanvas? (on delete: **SetNull**)
 - `transcriptionJobs` -> TranscriptionJob[]
 
@@ -661,18 +673,18 @@ Uploaded files (audio, images, PDFs) with processing status tracking.
 
 Audio/video transcription job tracking with progress.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `fileUploadId` | String | — | — |
-| `canvasId` | String | — | — |
-| `status` | String | — | `"queued"` |
-| `progress` | Float | — | `0` |
-| `resultText` | String? | — | — |
-| `resultSegments` | String? | — | — |
-| `errorMessage` | String? | — | — |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
+| Field            | Type     | Constraints  | Default    |
+| ---------------- | -------- | ------------ | ---------- |
+| `id`             | String   | `@id`        | `cuid()`   |
+| `fileUploadId`   | String   | —            | —          |
+| `canvasId`       | String   | —            | —          |
+| `status`         | String   | —            | `"queued"` |
+| `progress`       | Float    | —            | `0`        |
+| `resultText`     | String?  | —            | —          |
+| `resultSegments` | String?  | —            | —          |
+| `errorMessage`   | String?  | —            | —          |
+| `createdAt`      | DateTime | —            | `now()`    |
+| `updatedAt`      | DateTime | `@updatedAt` | —          |
 
 **Status values:** `queued`, `processing`, `completed`, `failed`
 
@@ -688,15 +700,15 @@ Audio/video transcription job tracking with progress.
 
 Vector embeddings for semantic search in the research assistant.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `sourceType` | String | — | — |
-| `sourceId` | String | — | — |
-| `chunkIndex` | Int | — | `0` |
-| `chunkText` | String | — | — |
-| `embedding` | String | — | — |
+| Field        | Type   | Constraints | Default  |
+| ------------ | ------ | ----------- | -------- |
+| `id`         | String | `@id`       | `cuid()` |
+| `canvasId`   | String | —           | —        |
+| `sourceType` | String | —           | —        |
+| `sourceId`   | String | —           | —        |
+| `chunkIndex` | Int    | —           | `0`      |
+| `chunkText`  | String | —           | —        |
+| `embedding`  | String | —           | —        |
 
 **sourceType values:** `transcript_chunk`, `coding`, `memo`
 
@@ -714,15 +726,15 @@ Vector embeddings for semantic search in the research assistant.
 
 Research assistant chat history with citation tracking.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `userId` | String? | — | — |
-| `role` | String | — | — |
-| `content` | String | — | — |
-| `citations` | String | — | `"[]"` |
-| `createdAt` | DateTime | — | `now()` |
+| Field       | Type     | Constraints | Default  |
+| ----------- | -------- | ----------- | -------- |
+| `id`        | String   | `@id`       | `cuid()` |
+| `canvasId`  | String   | —           | —        |
+| `userId`    | String?  | —           | —        |
+| `role`      | String   | —           | —        |
+| `content`   | String   | —           | —        |
+| `citations` | String   | —           | `"[]"`   |
+| `createdAt` | DateTime | —           | `now()`  |
 
 **Role values:** `user`, `assistant`
 
@@ -738,16 +750,16 @@ Research assistant chat history with citation tracking.
 
 AI-generated summaries of transcripts, codings, or the entire canvas.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `sourceType` | String | — | — |
-| `sourceId` | String? | — | — |
-| `summaryText` | String | — | — |
-| `summaryType` | String | — | `"paraphrase"` |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
+| Field         | Type     | Constraints  | Default        |
+| ------------- | -------- | ------------ | -------------- |
+| `id`          | String   | `@id`        | `cuid()`       |
+| `canvasId`    | String   | —            | —              |
+| `sourceType`  | String   | —            | —              |
+| `sourceId`    | String?  | —            | —              |
+| `summaryText` | String   | —            | —              |
+| `summaryType` | String   | —            | `"paraphrase"` |
+| `createdAt`   | DateTime | —            | `now()`        |
+| `updatedAt`   | DateTime | `@updatedAt` | —              |
 
 **sourceType values:** `transcript`, `coding`, `question`, `canvas`
 
@@ -763,23 +775,24 @@ AI-generated summaries of transcripts, codings, or the entire canvas.
 
 AI-generated coding suggestions awaiting user review.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `canvasId` | String | — | — |
-| `transcriptId` | String | — | — |
-| `questionId` | String? | — | — |
-| `suggestedText` | String | — | — |
-| `startOffset` | Int | — | — |
-| `endOffset` | Int | — | — |
-| `codedText` | String | — | — |
-| `confidence` | Float | — | `0` |
-| `status` | String | — | `"pending"` |
-| `createdAt` | DateTime | — | `now()` |
+| Field           | Type     | Constraints | Default     |
+| --------------- | -------- | ----------- | ----------- |
+| `id`            | String   | `@id`       | `cuid()`    |
+| `canvasId`      | String   | —           | —           |
+| `transcriptId`  | String   | —           | —           |
+| `questionId`    | String?  | —           | —           |
+| `suggestedText` | String   | —           | —           |
+| `startOffset`   | Int      | —           | —           |
+| `endOffset`     | Int      | —           | —           |
+| `codedText`     | String   | —           | —           |
+| `confidence`    | Float    | —           | `0`         |
+| `status`        | String   | —           | `"pending"` |
+| `createdAt`     | DateTime | —           | `now()`     |
 
 **Status values:** `pending`, `accepted`, `rejected`
 
 **Relations:**
+
 - `canvas` -> CodingCanvas (on delete: **Cascade**)
 - `transcript` -> CanvasTranscript (on delete: **Cascade**)
 
@@ -791,18 +804,18 @@ AI-generated coding suggestions awaiting user review.
 
 Token usage and cost tracking for AI features. Standalone (no FK relations).
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `userId` | String? | — | — |
-| `canvasId` | String? | — | — |
-| `feature` | String | — | — |
-| `provider` | String | — | — |
-| `model` | String | — | — |
-| `inputTokens` | Int | — | `0` |
-| `outputTokens` | Int | — | `0` |
-| `costCents` | Float | — | `0` |
-| `createdAt` | DateTime | — | `now()` |
+| Field          | Type     | Constraints | Default  |
+| -------------- | -------- | ----------- | -------- |
+| `id`           | String   | `@id`       | `cuid()` |
+| `userId`       | String?  | —           | —        |
+| `canvasId`     | String?  | —           | —        |
+| `feature`      | String   | —           | —        |
+| `provider`     | String   | —           | —        |
+| `model`        | String   | —           | —        |
+| `inputTokens`  | Int      | —           | `0`      |
+| `outputTokens` | Int      | —           | `0`      |
+| `costCents`    | Float    | —           | `0`      |
+| `createdAt`    | DateTime | —           | `now()`  |
 
 **Feature values:** `suggest_codes`, `auto_code`, `summarize`, `chat`, `transcribe`
 
@@ -816,17 +829,18 @@ Token usage and cost tracking for AI features. Standalone (no FK relations).
 
 Collections of research insights across canvases.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `userId` | String | — | — |
-| `name` | String | — | — |
-| `description` | String? | — | — |
-| `createdAt` | DateTime | — | `now()` |
+| Field         | Type     | Constraints | Default  |
+| ------------- | -------- | ----------- | -------- |
+| `id`          | String   | `@id`       | `cuid()` |
+| `userId`      | String   | —           | —        |
+| `name`        | String   | —           | —        |
+| `description` | String?  | —           | —        |
+| `createdAt`   | DateTime | —           | `now()`  |
 
 **Unique:** `@@unique([userId, name])`
 
 **Relations:**
+
 - `user` -> User (on delete: **Cascade**)
 - `insights` -> RepositoryInsight[]
 
@@ -836,17 +850,17 @@ Collections of research insights across canvases.
 
 Individual insights saved to a research repository.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `repositoryId` | String | — | — |
-| `canvasId` | String? | — | — |
-| `title` | String | — | — |
-| `content` | String | — | — |
-| `tags` | String | — | `"[]"` |
-| `sourceType` | String? | — | — |
-| `sourceId` | String? | — | — |
-| `createdAt` | DateTime | — | `now()` |
+| Field          | Type     | Constraints | Default  |
+| -------------- | -------- | ----------- | -------- |
+| `id`           | String   | `@id`       | `cuid()` |
+| `repositoryId` | String   | —           | —        |
+| `canvasId`     | String?  | —           | —        |
+| `title`        | String   | —           | —        |
+| `content`      | String   | —           | —        |
+| `tags`         | String   | —           | `"[]"`   |
+| `sourceType`   | String?  | —           | —        |
+| `sourceId`     | String?  | —           | —        |
+| `createdAt`    | DateTime | —           | `now()`  |
 
 **JSON fields:** `tags` stores a JSON array of tag strings.
 
@@ -860,16 +874,16 @@ Individual insights saved to a research repository.
 
 Third-party service connections (Zoom, Slack, Qualtrics) with OAuth tokens.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `userId` | String | — | — |
-| `provider` | String | — | — |
-| `accessToken` | String | — | — |
-| `refreshToken` | String? | — | — |
-| `metadata` | String | — | `"{}"` |
-| `expiresAt` | DateTime? | — | — |
-| `createdAt` | DateTime | — | `now()` |
+| Field          | Type      | Constraints | Default  |
+| -------------- | --------- | ----------- | -------- |
+| `id`           | String    | `@id`       | `cuid()` |
+| `userId`       | String    | —           | —        |
+| `provider`     | String    | —           | —        |
+| `accessToken`  | String    | —           | —        |
+| `refreshToken` | String?   | —           | —        |
+| `metadata`     | String    | —           | `"{}"`   |
+| `expiresAt`    | DateTime? | —           | —        |
+| `createdAt`    | DateTime  | —           | `now()`  |
 
 **Provider values:** `zoom`, `slack`, `qualtrics`
 
@@ -885,15 +899,16 @@ Third-party service connections (Zoom, Slack, Qualtrics) with OAuth tokens.
 
 Team entity for Team-tier collaborative workspaces.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `name` | String | — | — |
-| `ownerId` | String | — | — |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
+| Field       | Type     | Constraints  | Default  |
+| ----------- | -------- | ------------ | -------- |
+| `id`        | String   | `@id`        | `cuid()` |
+| `name`      | String   | —            | —        |
+| `ownerId`   | String   | —            | —        |
+| `createdAt` | DateTime | —            | `now()`  |
+| `updatedAt` | DateTime | `@updatedAt` | —        |
 
 **Relations:**
+
 - `owner` -> User (named "TeamOwner", no cascade specified)
 - `members` -> TeamMember[]
 
@@ -905,19 +920,20 @@ Team entity for Team-tier collaborative workspaces.
 
 Team membership with role-based access.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `teamId` | String | — | — |
-| `userId` | String | — | — |
-| `role` | String | — | `"member"` |
-| `joinedAt` | DateTime | — | `now()` |
+| Field      | Type     | Constraints | Default    |
+| ---------- | -------- | ----------- | ---------- |
+| `id`       | String   | `@id`       | `cuid()`   |
+| `teamId`   | String   | —           | —          |
+| `userId`   | String   | —           | —          |
+| `role`     | String   | —           | `"member"` |
+| `joinedAt` | DateTime | —           | `now()`    |
 
 **Role values:** `owner`, `admin`, `member`
 
 **Unique:** `@@unique([teamId, userId])`
 
 **Relations:**
+
 - `team` -> Team (on delete: **Cascade**)
 - `user` -> User (on delete: **Cascade**)
 
@@ -927,16 +943,16 @@ Team membership with role-based access.
 
 In-app notifications pushed via WebSocket and persisted for later viewing.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `userId` | String | — | — |
-| `type` | String | — | — |
-| `title` | String | — | — |
-| `message` | String | — | — |
-| `read` | Boolean | — | `false` |
-| `metadata` | String | — | `"{}"` |
-| `createdAt` | DateTime | — | `now()` |
+| Field       | Type     | Constraints | Default  |
+| ----------- | -------- | ----------- | -------- |
+| `id`        | String   | `@id`       | `cuid()` |
+| `userId`    | String   | —           | —        |
+| `type`      | String   | —           | —        |
+| `title`     | String   | —           | —        |
+| `message`   | String   | —           | —        |
+| `read`      | Boolean  | —           | `false`  |
+| `metadata`  | String   | —           | `"{}"`   |
+| `createdAt` | DateTime | —           | `now()`  |
 
 **Type values:** `coding_added`, `canvas_shared`, `team_invite`, `comment`, `mention`
 
@@ -952,17 +968,17 @@ In-app notifications pushed via WebSocket and persisted for later viewing.
 
 Scheduled email report configurations (daily, weekly, monthly).
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `userId` | String | — | — |
-| `canvasId` | String? | — | — |
-| `teamId` | String? | — | — |
-| `frequency` | String | — | `"weekly"` |
-| `dayOfWeek` | Int? | — | `1` |
-| `lastSent` | DateTime? | — | — |
-| `enabled` | Boolean | — | `true` |
-| `createdAt` | DateTime | — | `now()` |
+| Field       | Type      | Constraints | Default    |
+| ----------- | --------- | ----------- | ---------- |
+| `id`        | String    | `@id`       | `cuid()`   |
+| `userId`    | String    | —           | —          |
+| `canvasId`  | String?   | —           | —          |
+| `teamId`    | String?   | —           | —          |
+| `frequency` | String    | —           | `"weekly"` |
+| `dayOfWeek` | Int?      | —           | `1`        |
+| `lastSent`  | DateTime? | —           | —          |
+| `enabled`   | Boolean   | —           | `true`     |
+| `createdAt` | DateTime  | —           | `now()`    |
 
 **Frequency values:** `daily`, `weekly`, `monthly`
 
@@ -978,22 +994,22 @@ Scheduled email report configurations (daily, weekly, monthly).
 
 Research calendar events for tracking milestones, deadlines, and sessions.
 
-| Field | Type | Constraints | Default |
-|-------|------|-------------|---------|
-| `id` | String | `@id` | `cuid()` |
-| `userId` | String | — | — |
-| `canvasId` | String? | — | — |
-| `teamId` | String? | — | — |
-| `title` | String | — | — |
-| `description` | String? | — | — |
-| `startDate` | DateTime | — | — |
-| `endDate` | DateTime? | — | — |
-| `allDay` | Boolean | — | `false` |
-| `type` | String | — | `"milestone"` |
-| `color` | String? | — | — |
-| `reminder` | Int? | — | — |
-| `createdAt` | DateTime | — | `now()` |
-| `updatedAt` | DateTime | `@updatedAt` | — |
+| Field         | Type      | Constraints  | Default       |
+| ------------- | --------- | ------------ | ------------- |
+| `id`          | String    | `@id`        | `cuid()`      |
+| `userId`      | String    | —            | —             |
+| `canvasId`    | String?   | —            | —             |
+| `teamId`      | String?   | —            | —             |
+| `title`       | String    | —            | —             |
+| `description` | String?   | —            | —             |
+| `startDate`   | DateTime  | —            | —             |
+| `endDate`     | DateTime? | —            | —             |
+| `allDay`      | Boolean   | —            | `false`       |
+| `type`        | String    | —            | `"milestone"` |
+| `color`       | String?   | —            | —             |
+| `reminder`    | Int?      | —            | —             |
+| `createdAt`   | DateTime  | —            | `now()`       |
+| `updatedAt`   | DateTime  | `@updatedAt` | —             |
 
 **Type values:** `milestone`, `deadline`, `session`, `review`
 
@@ -1010,6 +1026,7 @@ Research calendar events for tracking milestones, deadlines, and sessions.
 ### Soft Delete
 
 Models with a `deletedAt` (DateTime?) field support soft delete:
+
 - **CodingCanvas** — `deletedAt` indexed for efficient filtering
 - **CanvasTranscript** — `deletedAt` indexed for efficient filtering
 
@@ -1018,6 +1035,7 @@ Soft-deleted records are excluded from normal queries and can be restored by set
 ### Audit Logging
 
 The `AuditLog` model provides an immutable audit trail:
+
 - Records every significant action (`action` field) on any resource
 - Captures HTTP context: `method`, `path`, `statusCode`, `ip`
 - Actor tracking via `actorType` and `actorId`
@@ -1028,6 +1046,7 @@ The `AuditLog` model provides an immutable audit trail:
 ### Encryption (UserAiConfig)
 
 User-provided AI API keys are encrypted at rest using AES-256-GCM:
+
 - `apiKeyEncrypted` — the ciphertext
 - `apiKeyIv` — the initialization vector (unique per encryption)
 - `apiKeyTag` — the GCM authentication tag (integrity verification)
@@ -1038,23 +1057,23 @@ User-provided AI API keys are encrypted at rest using AES-256-GCM:
 
 Several models store structured data as JSON strings (since SQLite compatibility requires string storage):
 
-| Model | Field | Content |
-|-------|-------|---------|
-| CanvasTranscript | `timestamps` | `[{start, end, text}]` — media sync data |
-| CanvasCase | `attributes` | Arbitrary case metadata |
-| CanvasComputedNode | `config` | Analysis parameters |
-| CanvasComputedNode | `result` | Computed analysis output |
-| CanvasDocument | `metadata` | Document attributes |
-| FileUpload | `metadata` | File attributes |
-| TranscriptionJob | `resultSegments` | `[{start, end, text}]` — transcription segments |
-| TrainingDocument | `goldCodings` | `[{questionId, startOffset, endOffset, codedText}]` |
-| TrainingAttempt | `codings` | User-submitted codings |
-| TextEmbedding | `embedding` | Float array (vector) |
-| ChatMessage | `citations` | `[{sourceType, sourceId, text}]` |
-| RepositoryInsight | `tags` | String array |
-| Integration | `metadata` | Provider-specific config |
-| AuditLog | `meta` | Additional context |
-| Notification | `metadata` | `{ canvasId, canvasName, actorName, actorId, ... }` |
+| Model              | Field            | Content                                             |
+| ------------------ | ---------------- | --------------------------------------------------- |
+| CanvasTranscript   | `timestamps`     | `[{start, end, text}]` — media sync data            |
+| CanvasCase         | `attributes`     | Arbitrary case metadata                             |
+| CanvasComputedNode | `config`         | Analysis parameters                                 |
+| CanvasComputedNode | `result`         | Computed analysis output                            |
+| CanvasDocument     | `metadata`       | Document attributes                                 |
+| FileUpload         | `metadata`       | File attributes                                     |
+| TranscriptionJob   | `resultSegments` | `[{start, end, text}]` — transcription segments     |
+| TrainingDocument   | `goldCodings`    | `[{questionId, startOffset, endOffset, codedText}]` |
+| TrainingAttempt    | `codings`        | User-submitted codings                              |
+| TextEmbedding      | `embedding`      | Float array (vector)                                |
+| ChatMessage        | `citations`      | `[{sourceType, sourceId, text}]`                    |
+| RepositoryInsight  | `tags`           | String array                                        |
+| Integration        | `metadata`       | Provider-specific config                            |
+| AuditLog           | `meta`           | Additional context                                  |
+| Notification       | `metadata`       | `{ canvasId, canvasName, actorName, actorId, ... }` |
 
 ### Webhook Idempotency
 
@@ -1062,10 +1081,10 @@ The `WebhookEvent` model uses the Stripe event ID as its primary key (`@id` with
 
 ### Cascade Rules Summary
 
-| On Delete Rule | Used By |
-|----------------|---------|
-| **Cascade** | Most child entities (transcripts, codings, questions, memos, shares, etc.) |
-| **SetNull** | DashboardAccess.user, CanvasTranscript.case, FileUpload.canvas |
+| On Delete Rule | Used By                                                                    |
+| -------------- | -------------------------------------------------------------------------- |
+| **Cascade**    | Most child entities (transcripts, codings, questions, memos, shares, etc.) |
+| **SetNull**    | DashboardAccess.user, CanvasTranscript.case, FileUpload.canvas             |
 
 When a CodingCanvas is deleted, all its children (transcripts, questions, memos, codings, positions, cases, relations, computed nodes, shares, consent records, suggestions, embeddings, chat messages, summaries, collaborators, documents, training documents) are cascade-deleted. FileUploads are set to null (orphaned but preserved).
 
@@ -1091,6 +1110,7 @@ npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma
 ### CI
 
 The GitHub Actions pipeline uses SQLite for testing:
+
 ```bash
 npx prisma generate --schema=apps/backend/prisma/schema.prisma
 npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma
@@ -1099,6 +1119,7 @@ npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma
 ### Docker
 
 The Docker entrypoint automatically runs migrations before starting the server:
+
 ```dockerfile
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
 ```
@@ -1115,15 +1136,15 @@ CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
 
 The admin portal (`adminRoutes.ts`) does not introduce new database models. Instead, it aggregates data from existing tables:
 
-| Admin Endpoint | Tables Queried |
-|----------------|---------------|
+| Admin Endpoint         | Tables Queried                                                          |
+| ---------------------- | ----------------------------------------------------------------------- |
 | `GET /admin/dashboard` | User, CodingCanvas, AuditLog, Subscription, CanvasComputedNode, AiUsage |
-| `GET /admin/users` | User, AuditLog (last login lookup), CodingCanvas (count) |
-| `GET /admin/users/:id` | User, Subscription, CodingCanvas, AuditLog, AiUsage |
-| `GET /admin/billing` | Subscription, User |
-| `GET /admin/health` | Raw SQL (`SELECT 1`) for connectivity check |
-| `GET /admin/activity` | AuditLog, User (email lookup) |
-| `GET /admin/features` | CanvasComputedNode, AiUsage |
+| `GET /admin/users`     | User, AuditLog (last login lookup), CodingCanvas (count)                |
+| `GET /admin/users/:id` | User, Subscription, CodingCanvas, AuditLog, AiUsage                     |
+| `GET /admin/billing`   | Subscription, User                                                      |
+| `GET /admin/health`    | Raw SQL (`SELECT 1`) for connectivity check                             |
+| `GET /admin/activity`  | AuditLog, User (email lookup)                                           |
+| `GET /admin/features`  | CanvasComputedNode, AiUsage                                             |
 
 ---
 
