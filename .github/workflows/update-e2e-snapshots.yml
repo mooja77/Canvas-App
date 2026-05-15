@@ -6,7 +6,17 @@ name: Update E2E Snapshots
 #
 # Trigger: Actions tab → Update E2E Snapshots → Run workflow → pick the branch.
 # The job re-runs the e2e suite with --update-snapshots and pushes the changed
-# PNGs back to the branch with a [skip ci] commit so we don't loop.
+# PNGs back to the branch.
+#
+# GOTCHA — the bot's commit will NOT trigger downstream CI on its own, because
+# pushes authenticated with the default GITHUB_TOKEN don't fire workflow_run /
+# pull_request:synchronize events (this is by GitHub design to prevent loops).
+# Workflow: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+#
+# So after this job lands its commit on the branch, if you've already opened
+# a PR, push one more real commit (or close+reopen the PR) to wake CI up.
+# To fix this permanently, swap GITHUB_TOKEN for a PAT in `actions/checkout`
+# below — that change is the only thing blocking auto-CI here.
 
 on:
   workflow_dispatch:
@@ -76,5 +86,9 @@ jobs:
             exit 0
           fi
           git add 'e2e/**/*.png'
-          git commit -m "chore(e2e): regenerate visual-regression baselines [skip ci]"
+          # No [skip ci] tag: the GITHUB_TOKEN push won't trigger workflows
+          # anyway (see header comment), so we'd just be paying a clarity cost
+          # for redundancy. Without [skip ci], if the bot push DOES somehow
+          # trigger CI (e.g. user later swaps to a PAT), the run is wanted.
+          git commit -m "chore(e2e): regenerate visual-regression baselines"
           git push origin HEAD:${{ github.ref_name }}
