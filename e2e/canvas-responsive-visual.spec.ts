@@ -24,7 +24,7 @@ const BREAKPOINTS = [
 ] as const;
 
 for (const bp of BREAKPOINTS) {
-  test.skip(`finding #1, #2, #17, #18: initial fit renders ${bp.minVisibleRatio * 100}%+ of nodes at ${bp.name}`, async ({
+  test(`finding #1, #2, #17, #18: initial fit renders ${bp.minVisibleRatio * 100}%+ of nodes at ${bp.name}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: bp.w, height: bp.h });
@@ -42,7 +42,7 @@ for (const bp of BREAKPOINTS) {
   });
 }
 
-test.skip('finding #18: orientation change re-runs fit and recovers graph', async ({ page }) => {
+test('finding #18: orientation change re-runs fit and recovers graph', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openCanvas(page);
 
@@ -55,7 +55,7 @@ test.skip('finding #18: orientation change re-runs fit and recovers graph', asyn
   expect(visible).toBeGreaterThan(0);
 });
 
-test.skip('finding #3: Fit View control is not intercepted by minimap/status at tablet', async ({ page }) => {
+test('finding #3: Fit View control is not intercepted by minimap/status at tablet', async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   await openCanvas(page);
 

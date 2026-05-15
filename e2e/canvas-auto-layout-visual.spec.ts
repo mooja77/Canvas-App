@@ -14,7 +14,7 @@ import { getViewportTransform, openCanvas } from './helpers';
  * edges, and re-runs fit after layout.
  */
 
-test.skip('finding #11: auto-layout does not collapse a dense graph into a vertical column', async ({ page }) => {
+test('finding #11: auto-layout does not collapse a dense graph into a vertical column', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openCanvas(page);
 
@@ -41,7 +41,7 @@ test.skip('finding #11: auto-layout does not collapse a dense graph into a verti
   expect(aspect!).toBeGreaterThan(0.4);
 });
 
-test.skip('finding #11: auto-layout preserves visible edges in dense graphs', async ({ page }) => {
+test('finding #11: auto-layout preserves visible edges in dense graphs', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openCanvas(page);
 
@@ -54,7 +54,7 @@ test.skip('finding #11: auto-layout preserves visible edges in dense graphs', as
   expect(edgesAfter).toBeGreaterThanOrEqual(edgesBefore);
 });
 
-test.skip('finding #11: post-layout fit produces a meaningful scale (not < 0.18)', async ({ page }) => {
+test('finding #11: post-layout fit produces a meaningful scale (not < 0.18)', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openCanvas(page);
 
