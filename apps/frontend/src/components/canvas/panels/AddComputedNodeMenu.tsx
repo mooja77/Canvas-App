@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useCanvasStore } from '../../../stores/canvasStore';
 import type { ComputedNodeType } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
+import { CollisionPopover } from '../primitives/CollisionPopover';
 
 interface NodeOption {
   type: ComputedNodeType;
@@ -78,15 +79,7 @@ const _NODE_OPTIONS = NODE_CATEGORIES.flatMap((c) => c.nodes);
 export default function AddComputedNodeMenu() {
   const addComputedNode = useCanvasStore((s) => s.addComputedNode);
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as HTMLElement)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  const anchorRef = useRef<HTMLButtonElement | null>(null);
 
   const handleAdd = async (type: ComputedNodeType, label: string) => {
     try {
@@ -99,9 +92,13 @@ export default function AddComputedNodeMenu() {
   };
 
   return (
-    <div data-tour="canvas-btn-query" className="relative" ref={ref}>
+    <div data-tour="canvas-btn-query" className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        ref={anchorRef}
+        onClick={() => setOpen((prev) => !prev)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Analyze menu"
         className="flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition-colors"
         title="Add an analysis view to your canvas"
       >
@@ -124,8 +121,8 @@ export default function AddComputedNodeMenu() {
         </svg>
       </button>
 
-      {open && (
-        <div className="dropdown-enter absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-gray-200/60 bg-white/95 p-1.5 shadow-lg backdrop-blur-xl dark:border-gray-700 dark:bg-gray-800/95 max-h-[70vh] overflow-y-auto">
+      <CollisionPopover open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} width={288}>
+        <div className="p-1.5">
           {NODE_CATEGORIES.map((cat, ci) => (
             <div key={cat.title}>
               {ci > 0 && <div className="mx-2 my-1 border-t border-gray-100 dark:border-gray-700/50" />}
@@ -154,7 +151,7 @@ export default function AddComputedNodeMenu() {
             </div>
           ))}
         </div>
-      )}
+      </CollisionPopover>
     </div>
   );
 }

@@ -104,6 +104,23 @@
   box-shadow: 0 0 0 2px rgba(96,165,250,0.4), 0 0 16px rgba(96,165,250,0.15) !important;
 }
 
+/* Low-zoom selection rendering — live QA finding #15. When the user has
+   selected many nodes AND zoomed out, individual selection handles and
+   the per-node glow dominate the view. Hide handles + reduce glow at
+   overview zoom so the graph shape stays legible. The `.canvas-low-zoom-bulk`
+   class is added by CanvasWorkspace.tsx when viewport zoom < 0.4 AND
+   selected node count > 20. */
+.canvas-low-zoom-bulk .react-flow__node.selected {
+  box-shadow: 0 0 0 1px rgba(59,130,246,0.5) !important;
+}
+.canvas-low-zoom-bulk.dark .react-flow__node.selected {
+  box-shadow: 0 0 0 1px rgba(96,165,250,0.6) !important;
+}
+.canvas-low-zoom-bulk .react-flow__node.selected .react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* Node entrance */
 @keyframes nodeEnter {
   from { opacity: 0; transform: scale(0.92); }

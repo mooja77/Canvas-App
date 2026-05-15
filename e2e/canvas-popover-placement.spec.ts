@@ -23,7 +23,7 @@ const BREAKPOINTS = [
 ] as const;
 
 for (const bp of BREAKPOINTS) {
-  test.skip(`finding #13, #19: Tools menu does not clip at ${bp.name}`, async ({ page }) => {
+  test(`finding #13, #19: Tools menu does not clip at ${bp.name}`, async ({ page }) => {
     await page.setViewportSize({ width: bp.w, height: bp.h });
     await openCanvas(page);
 
@@ -39,7 +39,7 @@ for (const bp of BREAKPOINTS) {
     expect(box!.y + box!.height).toBeLessThanOrEqual(bp.h);
   });
 
-  test.skip(`finding #13, #20: Analyze menu does not clip at ${bp.name}`, async ({ page }) => {
+  test(`finding #13, #20: Analyze menu does not clip at ${bp.name}`, async ({ page }) => {
     await page.setViewportSize({ width: bp.w, height: bp.h });
     await openCanvas(page);
 
@@ -59,7 +59,7 @@ for (const bp of BREAKPOINTS) {
   });
 }
 
-test.skip('finding #4: minimap fades in deliberately (no flicker)', async ({ page }) => {
+test('finding #4: minimap fades in deliberately (no flicker)', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openCanvas(page);
 
