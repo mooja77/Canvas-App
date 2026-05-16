@@ -2161,11 +2161,19 @@ export default function CanvasWorkspace() {
             requireAiConfig={requireAiConfig}
           />
         )}
-        <div className="flex flex-1 min-h-0">
+        {/* Column: canvas fills the space, status bar sits as a thin strip
+            below it. Without flex-col this is a row — the status bar then
+            renders as a ~540px-wide sibling COLUMN, squeezing the canvas
+            (to ~55% on desktop, to 0px on mobile where the status content's
+            min-width exceeds the viewport). That 0-width canvas is the real,
+            unfixed core of live QA finding #1 — Sprint 1A shipped correct
+            fit math but the pane it fit into had collapsed. The `min-h-0`
+            here was always a flex-column marker; the `flex-col` was missing. */}
+        <div className="flex flex-col flex-1 min-h-0">
           <div
             ref={canvasContainerRef}
             data-tour="canvas-flow-area"
-            className="relative flex-1 h-full"
+            className="relative flex-1 min-h-0"
             onDragEnter={handleFileDragEnter}
             onDragLeave={handleFileDragLeave}
             onDragOver={handleFileDragOver}
