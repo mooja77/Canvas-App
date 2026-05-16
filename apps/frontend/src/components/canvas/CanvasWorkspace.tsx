@@ -800,6 +800,15 @@ export default function CanvasWorkspace() {
       const breakpoint = breakpointFor(width);
       const opts = fitOptionsFor({ w: width, h: height }, breakpoint);
       rf.fitView({ ...opts, duration: FIT_DURATION_MS[intent] });
+      // DIAG (finding #1) — temporary instrumentation. Records every fit so a
+      // CI run can show whether the canvas is perpetually re-fitting. Remove
+      // once the React Flow instability is understood.
+      try {
+        const w = window as unknown as { __fitDiag?: unknown[] };
+        (w.__fitDiag ||= []).push({ t: Math.round(performance.now()), intent, w: width, h: height });
+      } catch {
+        /* diag only */
+      }
     },
     [workspaceSize.width, workspaceSize.height],
   );
@@ -872,6 +881,21 @@ export default function CanvasWorkspace() {
     const last = lastFitSizeRef.current;
     const dw = Math.abs(workspaceSize.width - last.w);
     const dh = Math.abs(workspaceSize.height - last.h);
+    // DIAG (finding #1) — record every workspace-size observation so a CI run
+    // shows whether the container size is oscillating. Temporary.
+    try {
+      const wd = window as unknown as { __fitDiag?: unknown[] };
+      (wd.__fitDiag ||= []).push({
+        t: Math.round(performance.now()),
+        kind: 'size',
+        w: workspaceSize.width,
+        h: workspaceSize.height,
+        dw,
+        dh,
+      });
+    } catch {
+      /* diag only */
+    }
     // First measurement seeds without firing; subsequent ones only fire
     // when the change is large enough to be a real resize/orientation.
     if (last.w === 0 && last.h === 0) {
