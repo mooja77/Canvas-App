@@ -830,6 +830,7 @@ export default function CanvasWorkspace() {
       pushHistory(newNodes, newEdges);
       if (canvasId) {
         loadedCanvasIdRef.current = canvasId;
+        canvasLoadedAtRef.current = Date.now();
         if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
         fitViewTimeoutRef.current = setTimeout(() => {
           runFitRef.current('initial');
@@ -858,6 +859,14 @@ export default function CanvasWorkspace() {
   // policy table. Maps to QA findings #17, #18.
   const lastFitSizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
   const recoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mount grace window: during the first ~1.2s after a canvas loads the
+  // layout is still settling (flex reflow, status-bar placement, AI banner
+  // mount/dismiss). Those settling resizes must NOT trigger an animated
+  // `recover` re-fit — that re-fit competes with the `initial` fit and
+  // leaves nodes/edges mid-animation, racing any interaction. Settling
+  // resizes are absorbed into lastFitSizeRef instead.
+  const RESIZE_GRACE_MS = 1200;
+  const canvasLoadedAtRef = useRef<number>(0);
   useEffect(() => {
     if (!workspaceSize.width || !workspaceSize.height) return;
     const last = lastFitSizeRef.current;
@@ -870,6 +879,12 @@ export default function CanvasWorkspace() {
       return;
     }
     if (dw < 50 && dh < 50) return;
+    // Within the mount grace window, absorb the new size without re-fitting —
+    // the `initial` fit (fired 200ms after load) already frames this size.
+    if (Date.now() - canvasLoadedAtRef.current < RESIZE_GRACE_MS) {
+      lastFitSizeRef.current = { w: workspaceSize.width, h: workspaceSize.height };
+      return;
+    }
     if (recoverTimeoutRef.current) clearTimeout(recoverTimeoutRef.current);
     recoverTimeoutRef.current = setTimeout(() => {
       lastFitSizeRef.current = { w: workspaceSize.width, h: workspaceSize.height };
