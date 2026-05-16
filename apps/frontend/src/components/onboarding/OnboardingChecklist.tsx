@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCanvasStore } from '../../stores/canvasStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
+import { useMobile } from '../../hooks/useMobile';
 
 /**
  * Asana-style persistent checklist. Reads canvas content reactively so each
@@ -10,9 +11,15 @@ import { useUIStore } from '../../stores/uiStore';
  * piece of state that could drift.
  *
  * Collapsed-by-default after first action so it doesn't crowd the canvas.
+ *
+ * Hidden entirely on mobile (live QA finding #9): the 288px floating card
+ * fixed bottom-right covers most of a phone-width canvas and competes with
+ * the canvas controls. Mobile is a review/navigation surface — the
+ * activation checklist belongs on tablet/desktop where there's room.
  */
 export default function OnboardingChecklist() {
   const navigate = useNavigate();
+  const isMobile = useMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const activeCanvas = useCanvasStore((s) => s.activeCanvas);
@@ -74,7 +81,8 @@ export default function OnboardingChecklist() {
   const allDone = completedCount === tasks.length;
 
   // Auto-hide once everything is done; user has finished the activation arc.
-  if (dismissed || allDone) return null;
+  // Also hidden on mobile so it doesn't crowd the phone-width canvas (#9).
+  if (dismissed || allDone || isMobile) return null;
 
   return (
     <div className="fixed bottom-4 right-4 z-40 w-72 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg">
