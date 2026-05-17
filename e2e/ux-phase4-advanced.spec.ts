@@ -194,9 +194,14 @@ test.describe('UX Phase 4 — Advanced Features', () => {
     await page.getByRole('button', { name: 'Fit View' }).click();
     await page.waitForTimeout(1000);
 
-    // Zoom in to full zoom tier to see annotation badges and edges
+    // Zoom in to full zoom tier to see annotation badges and edges. Click
+    // only while the control is still enabled — React Flow disables "Zoom In"
+    // once maxZoom is reached, and the starting zoom varies with the fit, so a
+    // fixed click count can overshoot and hang on a disabled button.
     for (let i = 0; i < 6; i++) {
-      await page.getByRole('button', { name: 'Zoom In' }).click();
+      const zoomIn = page.getByRole('button', { name: 'Zoom In' });
+      if (!(await zoomIn.isEnabled().catch(() => false))) break;
+      await zoomIn.click();
     }
     await page.waitForTimeout(1000);
 

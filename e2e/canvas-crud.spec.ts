@@ -410,19 +410,18 @@ test.describe('Workspace Tests', () => {
 
     const before = await page.locator('.react-flow__node[data-id^="question-"]').count();
     const node = page.locator('.react-flow__node[data-id^="question-"]').last();
-    await scrollNodeIntoView(page, node);
-    await node.click({ button: 'right', force: true });
-    const del = page.getByText('Delete').last();
-    await del.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
-    if (await del.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await del.click();
-      const dlg = page.locator('[role="alertdialog"]');
-      if (await dlg.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await dlg.getByRole('button', { name: /Delete|Confirm/i }).click();
-      }
-      await page.waitForLoadState('networkidle');
-      expect(await page.locator('.react-flow__node[data-id^="question-"]').count()).toBeLessThan(before);
+    // Select the node (raises its z-index above neighbours), then delete via
+    // its header button. The right-click context menu is avoided here: it
+    // renders downward from the cursor and clips off-screen when the node
+    // sits low in the viewport.
+    await node.click();
+    await node.locator('button[title="Delete question"]').click();
+    const dlg = page.locator('[role="alertdialog"]');
+    if (await dlg.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await dlg.getByRole('button', { name: /Delete|Confirm/i }).click();
     }
+    await page.waitForLoadState('networkidle');
+    expect(await page.locator('.react-flow__node[data-id^="question-"]').count()).toBeLessThan(before);
   });
 
   // ── Coding workflow tests ──
