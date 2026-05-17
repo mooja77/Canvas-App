@@ -2174,7 +2174,11 @@ export default function CanvasWorkspace() {
               live QA finding #1 (Sprint 1A's fit math had a 0-width pane to
               fit into). As a column child the status bar takes its natural
               ~32px height and the canvas gets full width at every breakpoint. */}
-          <div className="relative flex flex-col flex-1 min-h-0">
+          {/* min-w-0: the status bar gives this column a ~400px+ min-content
+              width; without it the column can't shrink when the panel docks
+              and the row overflows on narrow workspaces (the finding #1 trap
+              again, this time on the horizontal axis). */}
+          <div className="relative flex flex-col flex-1 min-h-0 min-w-0">
             <div
               ref={canvasContainerRef}
               data-tour="canvas-flow-area"
