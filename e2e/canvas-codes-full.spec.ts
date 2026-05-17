@@ -15,7 +15,10 @@ async function openTestCanvas(page: import('@playwright/test').Page, canvasName:
   await page.waitForLoadState('networkidle');
 
   // Click the canvas card matching our test name
-  const card = page.locator('[class*="cursor-pointer"]').filter({ has: page.locator('h3') }).filter({ hasText: canvasName });
+  const card = page
+    .locator('[class*="cursor-pointer"]')
+    .filter({ has: page.locator('h3') })
+    .filter({ hasText: canvasName });
   await expect(card.first()).toBeVisible({ timeout: 5000 });
   await card.first().click();
 
@@ -24,24 +27,37 @@ async function openTestCanvas(page: import('@playwright/test').Page, canvasName:
 
   // Dismiss tour overlay if present
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
 
   // Wait for nodes to stabilize
-  await page.waitForFunction(() => {
-    const countNow = document.querySelectorAll('.react-flow__node').length;
-    const prev = (window as any).__nodeCount || 0;
-    (window as any).__nodeCount = countNow;
-    return countNow > 0 && countNow === prev;
-  }, undefined, { timeout: 10000 }).catch(() => {});
+  await page
+    .waitForFunction(
+      () => {
+        const countNow = document.querySelectorAll('.react-flow__node').length;
+        const prev = (window as any).__nodeCount || 0;
+        (window as any).__nodeCount = countNow;
+        return countNow > 0 && countNow === prev;
+      },
+      undefined,
+      { timeout: 10000 },
+    )
+    .catch(() => {});
 }
 
 /** Ensure the navigator sidebar is visible and on Codes tab */
 async function ensureNavigatorOpen(page: import('@playwright/test').Page) {
   const codesTab = page.locator('button').filter({ hasText: /^Codes\s*\(/ });
-  if (!await codesTab.isVisible({ timeout: 2000 }).catch(() => false)) {
-    const toggler = page.locator('button[title*="navigator" i], button[title*="Navigator" i], button[title*="sidebar" i]').first();
+  if (!(await codesTab.isVisible({ timeout: 2000 }).catch(() => false))) {
+    const toggler = page
+      .locator('button[title*="navigator" i], button[title*="Navigator" i], button[title*="sidebar" i]')
+      .first();
     if (await toggler.isVisible({ timeout: 1000 }).catch(() => false)) {
       await toggler.click();
     }
@@ -51,10 +67,31 @@ async function ensureNavigatorOpen(page: import('@playwright/test').Page) {
   }
 }
 
+/** Count code (question) nodes via the API. Counting `.react-flow__node`
+ * elements is unreliable: React Flow culls off-screen nodes, so the DOM count
+ * tracks only *visible* nodes and jumps around whenever the canvas re-fits.
+ * Hits the canvas detail endpoint by id — the list endpoint paginates
+ * (default 50, ordered by updatedAt), so a name lookup there is not reliable. */
+async function questionCountViaApi(page: import('@playwright/test').Page, canvasId: string) {
+  const jwt = await page.evaluate(() => {
+    const raw = localStorage.getItem('qualcanvas-auth');
+    return raw ? JSON.parse(raw)?.state?.jwt || '' : '';
+  });
+  const res = await page.request.get(`http://localhost:3007/api/canvas/${canvasId}`, {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  const detail = await res.json();
+  return ((detail?.data?.questions as unknown[] | undefined)?.length as number | undefined) ?? 0;
+}
+
 // Unique canvas name for this test suite to avoid cross-test interference
 const CANVAS_NAME = `E2E-Codes ${Date.now()}`;
 
 test.describe('Code Management', () => {
+  // Canvas id of the suite's fixture canvas — set in beforeAll, used for
+  // viewport-independent question counts via the API.
+  let fixtureCanvasId = '';
+
   // Create a fresh canvas with a transcript and one code via API
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
@@ -73,7 +110,7 @@ test.describe('Code Management', () => {
 
     if (jwt) {
       const baseUrl = 'http://localhost:3007/api';
-      const headers = { 'Authorization': `Bearer ${jwt}`, 'Content-Type': 'application/json' };
+      const headers = { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
 
       // Create canvas
       const canvasRes = await page.request.post(`${baseUrl}/canvas`, {
@@ -82,6 +119,7 @@ test.describe('Code Management', () => {
       });
       const canvasData = await canvasRes.json();
       const canvasId = canvasData?.data?.id;
+      fixtureCanvasId = canvasId ?? '';
 
       if (canvasId) {
         // Add a transcript
@@ -120,8 +158,9 @@ test.describe('Code Management', () => {
     await input.fill('Test Code Alpha');
     await input.press('Enter');
 
-    await expect(page.locator('.react-flow__node[data-id^="question-"]'))
-      .toHaveCount(beforeCount + 1, { timeout: 10000 });
+    await expect(page.locator('.react-flow__node[data-id^="question-"]')).toHaveCount(beforeCount + 1, {
+      timeout: 10000,
+    });
   });
 
   test('code appears in navigator sidebar with name', async ({ page }) => {
@@ -132,7 +171,10 @@ test.describe('Code Management', () => {
     });
 
     const count = await codeItems.count();
-    if (count === 0) { test.skip(); return; }
+    if (count === 0) {
+      test.skip();
+      return;
+    }
 
     const firstCodeText = await codeItems.first().textContent();
     expect(firstCodeText).toBeTruthy();
@@ -143,11 +185,12 @@ test.describe('Code Management', () => {
     await ensureNavigatorOpen(page);
 
     const colorDots = page.locator('[data-tour="canvas-navigator"] div[role="button"] .rounded-full').first();
-    if (!await colorDots.isVisible({ timeout: 3000 }).catch(() => false)) {
-      test.skip(); return;
+    if (!(await colorDots.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
     }
 
-    const bgColor = await colorDots.evaluate(el => el.style.backgroundColor);
+    const bgColor = await colorDots.evaluate((el) => el.style.backgroundColor);
     expect(bgColor).toBeTruthy();
   });
 
@@ -163,8 +206,7 @@ test.describe('Code Management', () => {
     await input.fill('Multi Code One');
     await input.press('Enter');
 
-    await expect(page.locator('.react-flow__node[data-id^="question-"]'))
-      .toHaveCount(count0 + 1, { timeout: 10000 });
+    await expect(page.locator('.react-flow__node[data-id^="question-"]')).toHaveCount(count0 + 1, { timeout: 10000 });
 
     const count1 = await page.locator('.react-flow__node[data-id^="question-"]').count();
 
@@ -174,8 +216,7 @@ test.describe('Code Management', () => {
     await input.fill('Multi Code Two');
     await input.press('Enter');
 
-    await expect(page.locator('.react-flow__node[data-id^="question-"]'))
-      .toHaveCount(count1 + 1, { timeout: 10000 });
+    await expect(page.locator('.react-flow__node[data-id^="question-"]')).toHaveCount(count1 + 1, { timeout: 10000 });
   });
 
   test('navigator shows "By count" sorting button', async ({ page }) => {
@@ -184,7 +225,10 @@ test.describe('Code Management', () => {
     const codeItems = page.locator('[data-tour="canvas-navigator"] div[role="button"]').filter({
       has: page.locator('.rounded-full'),
     });
-    if (await codeItems.count() === 0) { test.skip(); return; }
+    if ((await codeItems.count()) === 0) {
+      test.skip();
+      return;
+    }
 
     await expect(page.getByText('By count')).toBeVisible({ timeout: 3000 });
     await expect(page.getByText('A-Z')).toBeVisible({ timeout: 3000 });
@@ -197,7 +241,10 @@ test.describe('Code Management', () => {
       has: page.locator('.rounded-full'),
     });
     const count = await codeItems.count();
-    if (count === 0) { test.skip(); return; }
+    if (count === 0) {
+      test.skip();
+      return;
+    }
 
     await codeItems.first().click();
 
@@ -221,8 +268,9 @@ test.describe('Code Management', () => {
     await input.fill('Code To Delete');
     await input.press('Enter');
 
-    await expect(page.locator('.react-flow__node[data-id^="question-"]'))
-      .toHaveCount(beforeCount + 1, { timeout: 10000 });
+    await expect(page.locator('.react-flow__node[data-id^="question-"]')).toHaveCount(beforeCount + 1, {
+      timeout: 10000,
+    });
 
     // Get the new node's data-id to extract the question ID
     const newNode = page.locator('.react-flow__node[data-id^="question-"]').filter({ hasText: 'Code To Delete' });
@@ -250,7 +298,7 @@ test.describe('Code Management', () => {
 
       if (canvasId) {
         const baseUrl = 'http://localhost:3007/api';
-        const headers = { 'Authorization': `Bearer ${jwt}`, 'Content-Type': 'application/json' };
+        const headers = { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
 
         await page.request.delete(`${baseUrl}/canvas/${canvasId}/questions/${questionId}`, { headers });
 
@@ -260,15 +308,22 @@ test.describe('Code Management', () => {
         await page.waitForLoadState('networkidle');
 
         // Wait for nodes to stabilize
-        await page.waitForFunction(() => {
-          const countNow = document.querySelectorAll('.react-flow__node').length;
-          const prev = (window as any).__nodeCount || 0;
-          (window as any).__nodeCount = countNow;
-          return countNow > 0 && countNow === prev;
-        }, undefined, { timeout: 10000 }).catch(() => {});
+        await page
+          .waitForFunction(
+            () => {
+              const countNow = document.querySelectorAll('.react-flow__node').length;
+              const prev = (window as any).__nodeCount || 0;
+              (window as any).__nodeCount = countNow;
+              return countNow > 0 && countNow === prev;
+            },
+            undefined,
+            { timeout: 10000 },
+          )
+          .catch(() => {});
 
-        await expect(page.locator('.react-flow__node[data-id^="question-"]'))
-          .toHaveCount(beforeCount, { timeout: 10000 });
+        await expect(page.locator('.react-flow__node[data-id^="question-"]')).toHaveCount(beforeCount, {
+          timeout: 10000,
+        });
       }
     }
   });
@@ -290,18 +345,15 @@ test.describe('Code Management', () => {
     const codeBtn = page.locator('[data-tour="canvas-btn-question"]');
     await expect(codeBtn).toBeVisible({ timeout: 5000 });
 
-    const beforeCount = await page.locator('.react-flow__node[data-id^="question-"]').count();
+    // Count via the API — see questionCountViaApi: the DOM count is culled.
+    const beforeCount = await questionCountViaApi(page, fixtureCanvasId);
 
     await codeBtn.click();
     let input = page.locator('input[placeholder="Type your research question..."]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Duplicate Name');
     await input.press('Enter');
-
-    await expect(page.locator('.react-flow__node[data-id^="question-"]'))
-      .toHaveCount(beforeCount + 1, { timeout: 10000 });
-
-    const afterFirst = await page.locator('.react-flow__node[data-id^="question-"]').count();
+    await expect.poll(() => questionCountViaApi(page, fixtureCanvasId), { timeout: 10000 }).toBe(beforeCount + 1);
 
     await codeBtn.click();
     input = page.locator('input[placeholder="Type your research question..."]');
@@ -309,12 +361,8 @@ test.describe('Code Management', () => {
     await input.fill('Duplicate Name');
     await input.press('Enter');
 
-    await page.waitForLoadState('networkidle');
-
-    const afterSecond = await page.locator('.react-flow__node[data-id^="question-"]').count();
-
-    // Accept either: duplicate created (count +1) or gracefully handled (no crash)
-    expect(afterSecond).toBeGreaterThanOrEqual(afterFirst);
+    // A second code with the same name must create a SEPARATE node, not merge.
+    await expect.poll(() => questionCountViaApi(page, fixtureCanvasId), { timeout: 10000 }).toBe(beforeCount + 2);
     await expect(page.locator('.react-flow__pane')).toBeAttached();
   });
 
