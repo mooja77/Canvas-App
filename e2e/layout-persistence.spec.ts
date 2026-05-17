@@ -217,11 +217,18 @@ test.describe('Layout Persistence', () => {
     const count = await nodes.count();
     expect(count).toBeGreaterThanOrEqual(3);
 
-    // Record positions before reload
-    const positionsBefore: { x: number; y: number }[] = [];
+    // Record FLOW-coordinate positions before reload. boundingBox() is
+    // screen-space and depends on the fit transform (which varies with the
+    // canvas size); the node's own transform is its persisted flow position,
+    // so it round-trips exactly regardless of how the canvas is framed.
+    const idsToCheck: string[] = [];
     for (let i = 0; i < Math.min(count, 3); i++) {
-      const box = await nodes.nth(i).boundingBox();
-      if (box) positionsBefore.push({ x: box.x, y: box.y });
+      const id = await nodes.nth(i).getAttribute('data-id');
+      if (id) idsToCheck.push(id);
+    }
+    const positionsBefore: { x: number; y: number }[] = [];
+    for (const id of idsToCheck) {
+      positionsBefore.push(await nodePosition(page, `.react-flow__node[data-id="${id}"]`));
     }
 
     // Reload
@@ -230,14 +237,11 @@ test.describe('Layout Persistence', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(1000);
 
-    // Verify positions after reload
-    const nodesAfter = page.locator('.react-flow__node');
+    // Verify flow positions after reload — these persist exactly.
     for (let i = 0; i < positionsBefore.length; i++) {
-      const box = await nodesAfter.nth(i).boundingBox();
-      expect(box).toBeTruthy();
-      // Positions should be within tolerance
-      expect(Math.abs(box!.x - positionsBefore[i].x)).toBeLessThan(50);
-      expect(Math.abs(box!.y - positionsBefore[i].y)).toBeLessThan(50);
+      const after = await nodePosition(page, `.react-flow__node[data-id="${idsToCheck[i]}"]`);
+      expect(Math.abs(after.x - positionsBefore[i].x)).toBeLessThan(1);
+      expect(Math.abs(after.y - positionsBefore[i].y)).toBeLessThan(1);
     }
   });
 

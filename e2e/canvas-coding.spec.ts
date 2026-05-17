@@ -96,16 +96,30 @@ test.describe('Canvas Coding Workflow', () => {
   });
 
   test('view coded segments opens detail panel', async ({ page }) => {
-    // Find a question/code node with the "View coded segments" button
-    const viewSegmentsBtn = page.locator('button[title="View coded segments"]');
-    const count = await viewSegmentsBtn.count();
+    // Find the question/code nodes' "View coded segments" buttons.
+    const viewSegmentsBtns = page.locator('button[title="View coded segments"]');
+    const count = await viewSegmentsBtns.count();
     if (count === 0) {
       test.skip();
       return;
     }
 
-    // Click the first "View coded segments" button
-    await viewSegmentsBtn.first().click();
+    // Click the first button that is actually actionable. openCanvas opens a
+    // non-deterministic seeded canvas where a transcript node can overlap a
+    // question node and its drag-handle intercepts the (tiny) header button —
+    // so blindly clicking .first() is flaky. Trying each in turn clicks a
+    // button that isn't covered, which is all this test needs to assert.
+    let clicked = false;
+    for (let i = 0; i < count; i++) {
+      try {
+        await viewSegmentsBtns.nth(i).click({ timeout: 5000 });
+        clicked = true;
+        break;
+      } catch {
+        // Covered by an overlapping node — try the next one.
+      }
+    }
+    expect(clicked).toBe(true);
 
     // The CodingDetailPanel should appear with "Coded Segments" heading
     const detailPanel = page.getByText('Coded Segments');

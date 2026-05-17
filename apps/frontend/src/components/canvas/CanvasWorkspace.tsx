@@ -2161,11 +2161,18 @@ export default function CanvasWorkspace() {
             requireAiConfig={requireAiConfig}
           />
         )}
-        <div className="flex flex-1 min-h-0">
+        {/* Canvas + status bar stack vertically. This MUST be a flex COLUMN:
+            the status bar used to be a flex-ROW sibling of the canvas, so its
+            ~493px min-content width squeezed the flex-1 canvas to ~55% on
+            desktop and to 0px on phone widths — the real, unfixed core of live
+            QA finding #1 (Sprint 1A's fit math had a 0-width pane to fit into).
+            As a column child the status bar takes its natural ~32px height and
+            the canvas gets the full width at every breakpoint. */}
+        <div className="relative flex flex-col flex-1 min-h-0">
           <div
             ref={canvasContainerRef}
             data-tour="canvas-flow-area"
-            className="relative flex-1 h-full"
+            className="relative flex-1 min-h-0"
             onDragEnter={handleFileDragEnter}
             onDragLeave={handleFileDragLeave}
             onDragOver={handleFileDragOver}
@@ -2564,11 +2571,13 @@ export default function CanvasWorkspace() {
             )}
           </div>
 
-          {/* Status bar */}
+          {/* Status bar — an in-flow flex-column child below the canvas, so it
+              takes its natural ~32px height and never competes for the canvas's
+              width (live QA finding #1). */}
           {!focusMode && (
             <div
               data-tour="canvas-status-bar"
-              className="flex items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-400 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-500"
+              className="flex shrink-0 items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-400 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-500"
             >
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1">
