@@ -296,24 +296,11 @@ test.describe('Coding Workflow', () => {
     }
     await researchItem.click();
 
-    // Fit the view after the navigator pan so nodes don't overlap the
-    // "View coded segments" button. This canvas only has 3 nodes (1 transcript
-    // + 2 codes) which Fit View places cleanly side-by-side.
-    const fitViewBtn = page.getByRole('button', { name: 'Fit View' });
-    if (await fitViewBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await fitViewBtn.click();
-      await page
-        .waitForFunction(
-          () =>
-            Array.from(document.querySelectorAll('.react-flow__node')).some((n) => {
-              const r = n.getBoundingClientRect();
-              return r.width > 0 && r.top >= 0 && r.bottom <= window.innerHeight;
-            }),
-          undefined,
-          { timeout: 3000 },
-        )
-        .catch(() => {});
-    }
+    // Note: do NOT click "Fit View" here. Selecting the code opens the
+    // Coded Segments panel, and until the panel-docking fix (PR #28) lands the
+    // open panel can squeeze the canvas — and with it the Fit View control —
+    // to zero height, so clicking it would hang. The navigator click already
+    // opens the panel; that's all this test needs.
 
     // Selecting the code in the navigator opens its Coded Segments panel
     // directly; a node's "View coded segments" button is a second path to the
