@@ -117,6 +117,13 @@ async function createVisualCanvas(page: Page): Promise<string> {
  * screenshot is captured mid-fit and the nodes drift a few px run-to-run,
  * crossing the pixel-diff threshold intermittently. */
 async function waitForViewportStable(page: Page, settleMs = 600) {
+  // Clear any state left by a previous call on this page, so a stale
+  // transform value can't be mistaken for "already settled".
+  await page.evaluate(() => {
+    const w = window as unknown as { __vpLast?: string; __vpSince?: number };
+    delete w.__vpLast;
+    delete w.__vpSince;
+  });
   await page.waitForFunction(
     (settle) => {
       const vp = document.querySelector('.react-flow__viewport') as HTMLElement | null;

@@ -69,24 +69,29 @@ async function ensureNavigatorOpen(page: import('@playwright/test').Page) {
 
 /** Count code (question) nodes via the API. Counting `.react-flow__node`
  * elements is unreliable: React Flow culls off-screen nodes, so the DOM count
- * tracks only *visible* nodes and jumps around whenever the canvas re-fits. */
-async function questionCountViaApi(page: import('@playwright/test').Page, canvasName: string) {
+ * tracks only *visible* nodes and jumps around whenever the canvas re-fits.
+ * Hits the canvas detail endpoint by id — the list endpoint paginates
+ * (default 50, ordered by updatedAt), so a name lookup there is not reliable. */
+async function questionCountViaApi(page: import('@playwright/test').Page, canvasId: string) {
   const jwt = await page.evaluate(() => {
     const raw = localStorage.getItem('qualcanvas-auth');
     return raw ? JSON.parse(raw)?.state?.jwt || '' : '';
   });
-  const res = await page.request.get('http://localhost:3007/api/canvas', {
+  const res = await page.request.get(`http://localhost:3007/api/canvas/${canvasId}`, {
     headers: { Authorization: `Bearer ${jwt}` },
   });
-  const list = (await res.json())?.data ?? [];
-  const canvas = list.find((c: { name: string }) => c.name === canvasName);
-  return (canvas?._count?.questions as number | undefined) ?? 0;
+  const detail = await res.json();
+  return ((detail?.data?.questions as unknown[] | undefined)?.length as number | undefined) ?? 0;
 }
 
 // Unique canvas name for this test suite to avoid cross-test interference
 const CANVAS_NAME = `E2E-Codes ${Date.now()}`;
 
 test.describe('Code Management', () => {
+  // Canvas id of the suite's fixture canvas — set in beforeAll, used for
+  // viewport-independent question counts via the API.
+  let fixtureCanvasId = '';
+
   // Create a fresh canvas with a transcript and one code via API
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
@@ -114,6 +119,7 @@ test.describe('Code Management', () => {
       });
       const canvasData = await canvasRes.json();
       const canvasId = canvasData?.data?.id;
+      fixtureCanvasId = canvasId ?? '';
 
       if (canvasId) {
         // Add a transcript
@@ -340,14 +346,14 @@ test.describe('Code Management', () => {
     await expect(codeBtn).toBeVisible({ timeout: 5000 });
 
     // Count via the API — see questionCountViaApi: the DOM count is culled.
-    const beforeCount = await questionCountViaApi(page, CANVAS_NAME);
+    const beforeCount = await questionCountViaApi(page, fixtureCanvasId);
 
     await codeBtn.click();
     let input = page.locator('input[placeholder="Type your research question..."]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Duplicate Name');
     await input.press('Enter');
-    await expect.poll(() => questionCountViaApi(page, CANVAS_NAME), { timeout: 10000 }).toBe(beforeCount + 1);
+    await expect.poll(() => questionCountViaApi(page, fixtureCanvasId), { timeout: 10000 }).toBe(beforeCount + 1);
 
     await codeBtn.click();
     input = page.locator('input[placeholder="Type your research question..."]');
@@ -356,7 +362,7 @@ test.describe('Code Management', () => {
     await input.press('Enter');
 
     // A second code with the same name must create a SEPARATE node, not merge.
-    await expect.poll(() => questionCountViaApi(page, CANVAS_NAME), { timeout: 10000 }).toBe(beforeCount + 2);
+    await expect.poll(() => questionCountViaApi(page, fixtureCanvasId), { timeout: 10000 }).toBe(beforeCount + 2);
     await expect(page.locator('.react-flow__pane')).toBeAttached();
   });
 
