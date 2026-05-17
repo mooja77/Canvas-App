@@ -284,11 +284,29 @@ test.describe('Coding Workflow', () => {
     }
     await researchItem.click();
 
+    // Fit the view after the navigator pan so nodes don't overlap the
+    // "View coded segments" button. This canvas only has 3 nodes (1 transcript
+    // + 2 codes) which Fit View places cleanly side-by-side.
+    const fitViewBtn = page.getByRole('button', { name: 'Fit View' });
+    if (await fitViewBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await fitViewBtn.click();
+      await page
+        .waitForFunction(
+          () =>
+            Array.from(document.querySelectorAll('.react-flow__node')).some((n) => {
+              const r = n.getBoundingClientRect();
+              return r.width > 0 && r.top >= 0 && r.bottom <= window.innerHeight;
+            }),
+          undefined,
+          { timeout: 3000 },
+        )
+        .catch(() => {});
+    }
+
     // Click the first "View coded segments" button that is actually
-    // actionable. A force-click is unreliable here: openCanvas opens a
-    // non-deterministic seeded canvas where a transcript node can overlap a
-    // question node, and force-clicking then dispatches the event to the
-    // overlapping node instead of the button, so the panel never opens.
+    // actionable. A force-click is unreliable here: this canvas has a
+    // transcript node that can overlap a code node's header buttons after a
+    // navigator-driven pan; trying each button in turn finds an unobstructed one.
     const viewSegmentsBtns = page.locator('button[title="View coded segments"]');
     const count = await viewSegmentsBtns.count();
     if (count === 0) {
