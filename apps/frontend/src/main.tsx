@@ -56,7 +56,10 @@ const updateSW = registerSW({
     let lastCheck = Date.now();
     const checkForUpdate = () => {
       lastCheck = Date.now();
-      void registration.update();
+      // Swallow rejections — update() fails offline / on a network blip, and
+      // an unhandled rejection would just be Sentry noise. The next tick or
+      // refocus retries anyway.
+      registration.update().catch(() => {});
     };
     setInterval(() => {
       if (document.visibilityState === 'visible') checkForUpdate();
