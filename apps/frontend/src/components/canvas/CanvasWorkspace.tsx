@@ -2666,9 +2666,10 @@ export default function CanvasWorkspace() {
                   {selectedNodes.length > 0 && (
                     <span className="text-blue-500 font-medium">{selectedNodes.length} selected</span>
                   )}
-                  {/* Edge type legend */}
+                  {/* Edge type legend — hidden on phones, where the ~493px
+                      status bar would otherwise overflow the viewport. */}
                   {(nodeCounts.codings > 0 || nodeCounts.relations > 0) && (
-                    <div className="flex items-center gap-2.5 ml-1 border-l border-gray-200/60 dark:border-gray-700/60 pl-2.5">
+                    <div className="hidden sm:flex items-center gap-2.5 ml-1 border-l border-gray-200/60 dark:border-gray-700/60 pl-2.5">
                       {nodeCounts.codings > 0 && (
                         <span className="flex items-center gap-1">
                           <svg width="16" height="6" className="shrink-0">
@@ -2697,9 +2698,11 @@ export default function CanvasWorkspace() {
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  {/* Bookmark slot indicators */}
+                  {/* Bookmark slot indicators — hidden on phones: the
+                      Ctrl+Shift / Alt shortcuts they document need a keyboard,
+                      and the row would otherwise overflow a phone viewport. */}
                   <div
-                    className="flex items-center gap-0.5"
+                    className="hidden sm:flex items-center gap-0.5"
                     title="Viewport bookmarks — Ctrl+Shift+1-5 to save the current view, Alt+1-5 to recall"
                     aria-label="Viewport bookmarks: Ctrl+Shift+1-5 to save, Alt+1-5 to recall"
                   >
@@ -2728,9 +2731,11 @@ export default function CanvasWorkspace() {
                       isConnected={collaboration.isConnected}
                     />
                   )}
+                  {/* Wheel zoom/pan toggle — hidden on phones, which have no
+                      mouse wheel; also keeps the status bar from overflowing. */}
                   <button
                     onClick={() => setScrollMode(scrollMode === 'zoom' ? 'pan' : 'zoom')}
-                    className="flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
+                    className="hidden sm:flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
                     title={`Mouse wheel ${scrollMode === 'zoom' ? 'zooms the canvas' : 'pans the canvas'} — click to switch`}
                     aria-label={`Scroll: ${scrollMode === 'zoom' ? 'Zoom' : 'Pan'}`}
                   >
