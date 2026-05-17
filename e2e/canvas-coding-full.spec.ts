@@ -284,21 +284,28 @@ test.describe('Coding Workflow', () => {
     }
     await researchItem.click();
 
-    // Wait for the node to be focused/visible
-    const codeNode = page.locator('.react-flow__node[data-id^="question-"]').filter({ hasText: 'Research Methods' });
-    // The button should be on this node — find it
-    const viewSegmentsBtn = codeNode.locator('button[title="View coded segments"]');
-    if ((await viewSegmentsBtn.count()) === 0) {
-      // Try the global button
-      const globalBtn = page.locator('button[title="View coded segments"]');
-      if ((await globalBtn.count()) === 0) {
-        test.skip();
-        return;
-      }
-      await globalBtn.first().click({ force: true });
-    } else {
-      await viewSegmentsBtn.first().click({ force: true });
+    // Click the first "View coded segments" button that is actually
+    // actionable. A force-click is unreliable here: openCanvas opens a
+    // non-deterministic seeded canvas where a transcript node can overlap a
+    // question node, and force-clicking then dispatches the event to the
+    // overlapping node instead of the button, so the panel never opens.
+    const viewSegmentsBtns = page.locator('button[title="View coded segments"]');
+    const count = await viewSegmentsBtns.count();
+    if (count === 0) {
+      test.skip();
+      return;
     }
+    let clicked = false;
+    for (let i = 0; i < count; i++) {
+      try {
+        await viewSegmentsBtns.nth(i).click({ timeout: 5000 });
+        clicked = true;
+        break;
+      } catch {
+        // Covered by an overlapping node — try the next one.
+      }
+    }
+    expect(clicked).toBe(true);
 
     const detailPanel = page.getByText('Coded Segments');
     await expect(detailPanel).toBeVisible({ timeout: 5000 });
