@@ -163,11 +163,13 @@ Verification: makes `canvas-modal-accessibility.spec.ts` and `canvas-auth-gated-
 
 Every numbered finding in the live QA report (findings #1-#21) has a documented verified fix or an explicit "deferred" justification with date and successor ticket.
 
-**Status as of 2026-05-15 — Horizon 1 shipped.** PRs #18 (Sprint 1A), #19 (Sprint 1B), #20 (Sprint 1C), #21 (telemetry backend) merged to `main` and deployed.
+**Status as of 2026-05-16 — Horizon 1 shipped (one finding reopened).** PRs #18 (Sprint 1A), #19 (Sprint 1B), #20 (Sprint 1C), #21 (telemetry backend), #22 (#9/#16 follow-up) merged to `main` and deployed.
+
+Correction (2026-05-16): a live production browser check found finding #1 is **not actually resolved**. Sprint 1A shipped a correct, unit-tested fit algorithm — but on phone-width viewports the React Flow pane itself renders 0px wide (a flex-layout bug — the canvas status bar is a row sibling whose ~493px min-content width starves the `flex-1` canvas). The fit had nothing to fit into. See finding #1 row below and the Known follow-ups section.
 
 | #   | Finding                                             | Status           | Where                                                                               |
 | --- | --------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------- |
-| 1   | Mobile canvas opens mostly blank                    | ✅ shipped       | 1A — fit/framing                                                                    |
+| 1   | Mobile canvas opens mostly blank                    | 🔴 reopened      | 1A fit math shipped, but canvas pane is 0px-wide on mobile — see Known follow-ups   |
 | 2   | Dense graph initial fit not fitting                 | ✅ shipped       | 1A                                                                                  |
 | 3   | RF controls overlapped/blocked tablet/mobile        | ✅ shipped       | 1A + 1B                                                                             |
 | 4   | Minimap renders late / flicker                      | ✅ shipped       | 1B — minimap fade                                                                   |
@@ -189,7 +191,19 @@ Every numbered finding in the live QA report (findings #1-#21) has a documented 
 | 20  | Analyze menu not mobile-native                      | ✅ shipped       | 1B                                                                                  |
 | 21  | Desktop resize doesn't preserve graph visibility    | ✅ shipped       | 1A — ResizeObserver refit                                                           |
 
-18 of 21 shipped. #9 deferred (out of scope). #10 partial — framing fixed, semantic overview is Horizon 3. #16 needed no fix.
+17 of 21 shipped. #1 reopened (see below). #9 deferred (out of scope). #10 partial — framing fixed, semantic overview is Horizon 3. #16 needed no fix.
+
+**Finding #1 — reopened, diagnosed, blocked on environment.**
+
+- Root cause (confirmed via live prod DOM): `CanvasWorkspace.tsx` renders the canvas status bar as a flex-**row** sibling of the canvas pane, under `<div className="flex flex-1 min-h-0">`. The status bar's content has a ~493px min-content width; on a viewport narrower than that it consumes the whole row and the `flex-1` canvas pane collapses to 0px. Desktop is also affected (canvas squeezed to ~55%) but not fatally.
+- Flexbox constraint (verified by reasoning): there is no row-sibling tweak that fixes this — shrink is proportional to flex-basis, so the status bar always absorbs the row. The fix **requires** restructuring: the status bar must become a flex-column child below the canvas, or an `absolute` overlay.
+- Two restructure attempts (flex-column; absolute-overlay) made 3 e2e tests fail (`canvas-coding`, `canvas-crud`, `ux-phase4`) plus the `visual-regression` canvas snapshot. A CI fit-diagnostic (instrumented `runFit` + viewport-transform polling, run 25974603223) **reframed this**:
+  - The canvas viewport is **stable** — exactly one `initial` fit, no re-fit loop, no animation. The absolute-overlay restructure does **not** destabilize the canvas. The earlier "non-deterministic fit" reading was wrong.
+  - `visual-regression` failure = a **stale baseline** — the WIP branch carries the flex-column baseline while running absolute-overlay code. Regenerating the baseline clears it.
+  - The 3 click failures are **not** "element not stable" — the element is stable. The real error is a transcript node's `.drag-handle` (`z-20`) **intercepting pointer events** on the target button: a node-overlap / hit-test issue, likely exposed by the wider full-width canvas + these tests' use of the non-deterministic `openCanvas` helper.
+- Remaining work to finish #1 is therefore small and well-scoped, not a deep React Flow mystery: (a) regenerate the `canvas-workspace` snapshot baseline for the absolute-overlay layout; (b) determine whether the drag-handle interception is a real node-overlap or a Playwright center-click edge case, and make the 3 tests robust accordingly; (c) remove the temporary `__fitDiag` instrumentation + `e2e/canvas-fit-diag.spec.ts`; (d) verify, PR, merge.
+- Step (b) still wants a browser on the WIP branch; the local dev environment remains unreliable for that (see the project's `local-dev-env-broken` notes).
+- Work-in-progress preserved on branch `canvas-ux/finding-1-layout-wip` (commit `10032ef`). Estimated ~1 hour to finish.
 
 Known follow-ups carried out of Horizon 1:
 
