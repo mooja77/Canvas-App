@@ -417,11 +417,12 @@ test.describe('Workspace Tests', () => {
     await node.click();
     await node.locator('button[title="Delete question"]').click();
     const dlg = page.locator('[role="alertdialog"]');
-    if (await dlg.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await dlg.getByRole('button', { name: /Delete|Confirm/i }).click();
-    }
-    await page.waitForLoadState('networkidle');
-    expect(await page.locator('.react-flow__node[data-id^="question-"]').count()).toBeLessThan(before);
+    await dlg.getByRole('button', { name: /Delete|Confirm/i }).click();
+    // The delete is async (the confirm button shows "Working..." mid-request).
+    // Wait for the node to actually leave the canvas rather than racing it.
+    await expect(page.locator('.react-flow__node[data-id^="question-"]')).toHaveCount(before - 1, {
+      timeout: 10000,
+    });
   });
 
   // ── Coding workflow tests ──
