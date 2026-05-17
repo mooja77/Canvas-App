@@ -800,15 +800,6 @@ export default function CanvasWorkspace() {
       const breakpoint = breakpointFor(width);
       const opts = fitOptionsFor({ w: width, h: height }, breakpoint);
       rf.fitView({ ...opts, duration: FIT_DURATION_MS[intent] });
-      // DIAG (finding #1) — temporary instrumentation. Records every fit so a
-      // CI run can show whether the canvas is perpetually re-fitting. Remove
-      // once the React Flow instability is understood.
-      try {
-        const w = window as unknown as { __fitDiag?: unknown[] };
-        (w.__fitDiag ||= []).push({ t: Math.round(performance.now()), intent, w: width, h: height });
-      } catch {
-        /* diag only */
-      }
     },
     [workspaceSize.width, workspaceSize.height],
   );
@@ -881,21 +872,6 @@ export default function CanvasWorkspace() {
     const last = lastFitSizeRef.current;
     const dw = Math.abs(workspaceSize.width - last.w);
     const dh = Math.abs(workspaceSize.height - last.h);
-    // DIAG (finding #1) — record every workspace-size observation so a CI run
-    // shows whether the container size is oscillating. Temporary.
-    try {
-      const wd = window as unknown as { __fitDiag?: unknown[] };
-      (wd.__fitDiag ||= []).push({
-        t: Math.round(performance.now()),
-        kind: 'size',
-        w: workspaceSize.width,
-        h: workspaceSize.height,
-        dw,
-        dh,
-      });
-    } catch {
-      /* diag only */
-    }
     // First measurement seeds without firing; subsequent ones only fire
     // when the change is large enough to be a real resize/orientation.
     if (last.w === 0 && last.h === 0) {
@@ -2200,20 +2176,18 @@ export default function CanvasWorkspace() {
             requireAiConfig={requireAiConfig}
           />
         )}
-        {/* The canvas fills this row; the status bar is an absolute overlay
-            pinned to the bottom of the canvas container (see below).
-            Previously the status bar was a flex-ROW SIBLING of the canvas —
-            its ~493px min-content width then squeezed the flex-1 canvas to
-            ~55% on desktop and to 0px on mobile (the real, unfixed core of
-            live QA finding #1: Sprint 1A's fit math had a 0-width pane to
-            fit into). Making it an overlay keeps the React Flow container
-            byte-identical to its long-stable form — no flex restructuring
-            around React Flow, which is sensitive to it. */}
-        <div className="relative flex flex-1 min-h-0">
+        {/* Canvas + status bar stack vertically. This MUST be a flex COLUMN:
+            the status bar used to be a flex-ROW sibling of the canvas, so its
+            ~493px min-content width squeezed the flex-1 canvas to ~55% on
+            desktop and to 0px on phone widths — the real, unfixed core of live
+            QA finding #1 (Sprint 1A's fit math had a 0-width pane to fit into).
+            As a column child the status bar takes its natural ~32px height and
+            the canvas gets the full width at every breakpoint. */}
+        <div className="relative flex flex-col flex-1 min-h-0">
           <div
             ref={canvasContainerRef}
             data-tour="canvas-flow-area"
-            className="relative flex-1 h-full"
+            className="relative flex-1 min-h-0"
             onDragEnter={handleFileDragEnter}
             onDragLeave={handleFileDragLeave}
             onDragOver={handleFileDragOver}
@@ -2279,9 +2253,6 @@ export default function CanvasWorkspace() {
               {!focusMode && (
                 <Controls
                   onFitView={() => runFit('manual')}
-                  /* Lift above the ~32px status-bar overlay strip so the
-                     Fit View control stays clickable (live QA finding #3). */
-                  style={{ bottom: 40 }}
                   className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700"
                 />
               )}
@@ -2292,7 +2263,6 @@ export default function CanvasWorkspace() {
                   pannable
                   zoomable
                   style={{
-                    bottom: 40,
                     opacity: minimapReady ? 1 : 0,
                     transition: 'opacity 200ms ease-out',
                     pointerEvents: minimapReady ? 'auto' : 'none',
@@ -2616,15 +2586,13 @@ export default function CanvasWorkspace() {
             )}
           </div>
 
-          {/* Status bar — an absolute overlay pinned to the bottom of the
-              canvas (its parent div is `relative`). Kept out of the flex
-              flow so its ~493px min-content width can't squeeze the canvas
-              (live QA finding #1). The translucent bg + backdrop-blur was
-              always overlay styling; this restores that intent. */}
+          {/* Status bar — an in-flow flex-column child below the canvas, so it
+              takes its natural ~32px height and never competes for the canvas's
+              width (live QA finding #1). */}
           {!focusMode && (
             <div
               data-tour="canvas-status-bar"
-              className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-400 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-500"
+              className="flex shrink-0 items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-400 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-500"
             >
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1">
