@@ -44,6 +44,29 @@ useFeatureFlagsStore.subscribe((s) => {
 // of letting the next nav silently activate a possibly-incompatible bundle.
 // The toast persists (duration: Infinity) until the user clicks Reload.
 const updateSW = registerSW({
+  onRegisteredSW(_swScriptUrl, registration) {
+    if (!registration) return;
+    // registerSW only probes for a new service worker on the initial page
+    // load. Researchers keep the canvas tab open for hours, so without an
+    // explicit poll they never see the "New version" toast after a deploy —
+    // which is how the finding #1 fix initially looked "not deployed".
+    // Poll every 30 min, and whenever the tab regains focus (throttled to the
+    // same interval so rapid tab-switching doesn't spam update requests).
+    const UPDATE_INTERVAL_MS = 30 * 60 * 1000;
+    let lastCheck = Date.now();
+    const checkForUpdate = () => {
+      lastCheck = Date.now();
+      void registration.update();
+    };
+    setInterval(() => {
+      if (document.visibilityState === 'visible') checkForUpdate();
+    }, UPDATE_INTERVAL_MS);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastCheck > UPDATE_INTERVAL_MS) {
+        checkForUpdate();
+      }
+    });
+  },
   onNeedRefresh() {
     trackEvent('service_worker_update_available');
     toast(
