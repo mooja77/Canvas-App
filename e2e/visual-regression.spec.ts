@@ -112,6 +112,30 @@ async function createVisualCanvas(page: Page): Promise<string> {
   return canvasId;
 }
 
+/** Wait until the React Flow viewport transform stops changing — i.e. the
+ * canvas fit animation has fully settled. Without this the canvas-workspace
+ * screenshot is captured mid-fit and the nodes drift a few px run-to-run,
+ * crossing the pixel-diff threshold intermittently. */
+async function waitForViewportStable(page: Page, settleMs = 600) {
+  await page.waitForFunction(
+    (settle) => {
+      const vp = document.querySelector('.react-flow__viewport') as HTMLElement | null;
+      if (!vp) return false;
+      const w = window as unknown as { __vpLast?: string; __vpSince?: number };
+      const now = Date.now();
+      const transform = vp.style.transform;
+      if (w.__vpLast !== transform) {
+        w.__vpLast = transform;
+        w.__vpSince = now;
+        return false;
+      }
+      return now - (w.__vpSince ?? now) >= settle;
+    },
+    settleMs,
+    { timeout: 10000, polling: 100 },
+  );
+}
+
 async function openVisualCanvas(page: Page, canvasId: string) {
   await page.addInitScript(() => {
     const existing = localStorage.getItem('qualcanvas-ui');
@@ -126,8 +150,9 @@ async function openVisualCanvas(page: Page, canvasId: string) {
   const fitViewBtn = page.getByRole('button', { name: 'Fit View' });
   if (await fitViewBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
     await fitViewBtn.click();
-    await page.waitForTimeout(500);
   }
+  // Wait for the fit to fully settle so the screenshot is deterministic.
+  await waitForViewportStable(page);
 }
 
 // ─── Page Snapshots (Public Pages) ───────────────────────────────
