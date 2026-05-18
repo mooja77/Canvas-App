@@ -331,25 +331,25 @@ test.describe('UX Phase 3 — Power User Features', () => {
       return;
     }
 
-    // Find an edge path and hover over it
-    const edgePaths = page.locator('.react-flow__edge path[stroke="transparent"]');
-    const pathCount = await edgePaths.count();
-
+    // Hover an edge to surface its "coded segment count" tooltip. Prefer the
+    // edge-label badge: a real element whose centre Playwright hovers
+    // reliably. Hovering the midpoint of a curved edge path's *bounding box*
+    // often misses the stroke entirely (bbox centre is not a point on the
+    // path), which is fragile as soon as fit/framing shifts edge geometry.
     let hovered = false;
-    for (let i = 0; i < pathCount && !hovered; i++) {
-      const box = await edgePaths.nth(i).boundingBox();
-      if (box && box.width > 0 && box.height > 0) {
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-        hovered = true;
-      }
-    }
-
-    if (!hovered) {
-      // Fallback: hover directly over the annotation badge if visible
-      const badge = page.locator('.react-flow__edgelabel .rounded-full').first();
-      if (await badge.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await badge.hover();
-        hovered = true;
+    const badge = page.locator('.react-flow__edgelabel .rounded-full').first();
+    if (await badge.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await badge.hover();
+      hovered = true;
+    } else {
+      const edgePaths = page.locator('.react-flow__edge path[stroke="transparent"]');
+      const pathCount = await edgePaths.count();
+      for (let i = 0; i < pathCount && !hovered; i++) {
+        const box = await edgePaths.nth(i).boundingBox();
+        if (box && box.width > 0 && box.height > 0) {
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+          hovered = true;
+        }
       }
     }
 
