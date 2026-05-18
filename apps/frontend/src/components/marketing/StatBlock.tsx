@@ -36,9 +36,21 @@ export default function StatBlock({ number, label, animateCountUp = true, classN
       return;
     }
 
-    setDisplayed('0');
     const el = ref.current;
     if (!el) return;
+
+    // If the stat is already on-screen at mount, don't reset it to "0" — a
+    // count-up the user is already looking at flashes a misleading
+    // "0 Analysis tools". Show the real value immediately; the count-up
+    // reveal is reserved for stats the user scrolls down into view.
+    const rect = el.getBoundingClientRect();
+    const alreadyVisible = rect.top < window.innerHeight && rect.bottom > 0;
+    if (alreadyVisible) {
+      setDisplayed(numericTarget.toLocaleString());
+      return;
+    }
+
+    setDisplayed('0');
 
     let raf = 0;
     let started = false;
