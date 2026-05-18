@@ -839,11 +839,23 @@ export default function CanvasWorkspace() {
       // Same canvas — update node data but preserve local positions
       const freshNodes = buildNodes();
       setNodes((currentNodes: Node[]) => {
-        const currentPosMap = new Map(currentNodes.map((n) => [n.id, n.position]));
+        const prevById = new Map(currentNodes.map((n) => [n.id, n]));
         const selectedIds = new Set(currentNodes.filter((n) => n.selected).map((n) => n.id));
         return freshNodes.map((n) => {
-          const localPos = currentPosMap.get(n.id);
-          return { ...n, position: localPos ?? n.position, selected: selectedIds.has(n.id) };
+          const prev = prevById.get(n.id);
+          // Carry React Flow's measured dimensions across data-driven
+          // rebuilds. buildNodes() returns fresh objects with no size info;
+          // dropping `measured` here leaves <MiniMap> unable to size nodes
+          // (its nodeHasDimensions() check fails) — the minimap renders as
+          // an empty box. position/selected are preserved as before.
+          return {
+            ...n,
+            position: prev?.position ?? n.position,
+            selected: selectedIds.has(n.id),
+            ...(prev?.measured ? { measured: prev.measured } : {}),
+            ...(prev?.width != null ? { width: prev.width } : {}),
+            ...(prev?.height != null ? { height: prev.height } : {}),
+          };
         });
       });
       setEdges(buildEdges());

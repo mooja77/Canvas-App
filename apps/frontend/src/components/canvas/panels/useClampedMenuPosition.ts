@@ -24,10 +24,14 @@ export function useClampedMenuPosition(
     const el = ref.current;
     if (!el) return;
     const clamp = () => {
-      const rect = el.getBoundingClientRect();
+      // offsetWidth/offsetHeight, not getBoundingClientRect(): the menus
+      // animate in with a scale transform, and getBoundingClientRect()
+      // reports the *transformed* (smaller) size mid-animation — clamping
+      // against that leaves the menu a few px past the viewport edge once
+      // it settles at full size. offsetWidth/Height ignore transforms.
       setPos({
-        x: Math.max(pad, Math.min(x, window.innerWidth - rect.width - pad)),
-        y: Math.max(pad, Math.min(y, window.innerHeight - rect.height - pad)),
+        x: Math.max(pad, Math.min(x, window.innerWidth - el.offsetWidth - pad)),
+        y: Math.max(pad, Math.min(y, window.innerHeight - el.offsetHeight - pad)),
       });
     };
     clamp();

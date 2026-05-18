@@ -297,7 +297,9 @@ export default function CanvasToolbar({
         className="relative z-10 flex flex-wrap items-center justify-between gap-y-1 border-b border-gray-200/80 bg-white/90 px-3 py-2 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90"
       >
         {/* ── Left side: nav, back, canvas name, data buttons ── */}
-        <div className="flex items-center gap-2 min-w-0">
+        {/* flex-wrap so the data buttons drop to a second row on narrow
+            viewports instead of overflowing off-screen (mobile audit). */}
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           {/* Navigator toggle */}
           {onToggleNavigator && (
             <button
@@ -369,7 +371,7 @@ export default function CanvasToolbar({
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex flex-wrap items-center gap-1">
               <TranscriptSourceMenu />
               <button
                 onClick={() => setShowSurveyImport(true)}
@@ -428,7 +430,9 @@ export default function CanvasToolbar({
         </div>
 
         {/* ── Right side: dropdown menus + icon buttons + analyze ── */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* flex-wrap so the menu cluster wraps on narrow viewports rather
+            than pushing Analyze off the right edge (mobile audit). */}
+        <div className="flex flex-wrap items-center gap-1.5">
           {/* AI dropdown (purple) */}
           <ToolbarDropdown
             data-tour="canvas-btn-ai"
