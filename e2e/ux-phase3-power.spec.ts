@@ -331,32 +331,37 @@ test.describe('UX Phase 3 — Power User Features', () => {
       return;
     }
 
-    // Hover an edge to surface its "coded segment count" tooltip. Prefer the
-    // edge-label badge: a real element whose centre Playwright hovers
-    // reliably. Hovering the midpoint of a curved edge path's *bounding box*
-    // often misses the stroke entirely (bbox centre is not a point on the
-    // path), which is fragile as soon as fit/framing shifts edge geometry.
-    let hovered = false;
-    const badge = page.locator('.react-flow__edgelabel .rounded-full').first();
-    if (await badge.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await badge.hover();
-      hovered = true;
-    } else {
-      const edgePaths = page.locator('.react-flow__edge path[stroke="transparent"]');
-      const pathCount = await edgePaths.count();
-      for (let i = 0; i < pathCount && !hovered; i++) {
-        const box = await edgePaths.nth(i).boundingBox();
-        if (box && box.width > 0 && box.height > 0) {
-          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-          hovered = true;
-        }
-      }
-    }
+    // The tooltip is surfaced by the onMouseEnter on each edge's invisible
+    // wide hover-path (strokeWidth 24) — the cursor must land on the actual
+    // stroke. The annotation badge only renders at the 'full' zoom tier,
+    // which Fit View does not reach, so it cannot be relied on here. And
+    // hovering the centre of a path's *bounding box* misses curved beziers
+    // entirely (the bbox centre is not a point on the curve).
+    //
+    // getPointAtLength(len/2) gives a real on-stroke point in the path's
+    // user space; mapping it through the path's screen CTM converts it to
+    // client coordinates, so the hover lands on the edge regardless of how
+    // framing or zoom has shifted the geometry.
+    const point = await page.evaluate(() => {
+      const path = document.querySelector('.react-flow__edge path[stroke="transparent"]') as SVGPathElement | null;
+      if (!path) return null;
+      const len = path.getTotalLength();
+      if (!len) return null;
+      const pt = path.getPointAtLength(len / 2);
+      const ctm = path.getScreenCTM();
+      if (!ctm) return null;
+      return {
+        x: pt.x * ctm.a + pt.y * ctm.c + ctm.e,
+        y: pt.x * ctm.b + pt.y * ctm.d + ctm.f,
+      };
+    });
 
-    if (!hovered) {
+    if (!point) {
       test.skip();
       return;
     }
+
+    await page.mouse.move(point.x, point.y, { steps: 4 });
 
     // Tooltip should appear with "coded segment" text
     const tooltip = page.locator('.edge-tooltip-enter').or(page.getByText(/coded segment/i));
