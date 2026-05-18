@@ -240,14 +240,17 @@ test.describe.serial('Visual Regression — Authenticated Pages', () => {
   test('7 - Canvas workspace', async ({ page }) => {
     await page.setViewportSize(STANDARD_VIEWPORT);
     await openVisualCanvas(page, visualCanvasId);
-    // Mask the React Flow viewport + minimap: their node pixels depend on the
-    // fit transform, which shifts a few px run-to-run with node-measurement
-    // timing — a stable ~12.7k-px diff that is not a real regression. This
-    // test guards the workspace CHROME (header, sidebar, toolbar, status bar,
-    // controls); canvas content is covered by the functional canvas specs.
+    // Mask the whole canvas pane. Its node pixels depend on the fit
+    // transform, which shifts a few px run-to-run with node-measurement
+    // timing — not a real regression. Mask the *stable* container
+    // ([data-tour="canvas-flow-area"]), NOT .react-flow__viewport: the
+    // viewport carries the pan/zoom transform, so its bounding box jitters
+    // with the fit and the mask edges themselves would differ run-to-run.
+    // This test guards the workspace CHROME (header, sidebar, toolbar,
+    // status bar); canvas content is covered by the functional canvas specs.
     await expect(page).toHaveScreenshot('canvas-workspace.png', {
       ...CANVAS_WORKSPACE_SCREENSHOT_OPTS,
-      mask: [page.locator('.react-flow__viewport'), page.locator('.react-flow__minimap')],
+      mask: [page.locator('[data-tour="canvas-flow-area"]')],
     });
   });
 });
