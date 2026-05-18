@@ -2161,133 +2161,126 @@ export default function CanvasWorkspace() {
             requireAiConfig={requireAiConfig}
           />
         )}
-        {/* Canvas + status bar stack vertically. This MUST be a flex COLUMN:
-            the status bar used to be a flex-ROW sibling of the canvas, so its
-            ~493px min-content width squeezed the flex-1 canvas to ~55% on
-            desktop and to 0px on phone widths — the real, unfixed core of live
-            QA finding #1 (Sprint 1A's fit math had a 0-width pane to fit into).
-            As a column child the status bar takes its natural ~32px height and
-            the canvas gets the full width at every breakpoint. */}
-        <div className="relative flex flex-col flex-1 min-h-0">
-          <div
-            ref={canvasContainerRef}
-            data-tour="canvas-flow-area"
-            className="relative flex-1 min-h-0"
-            onDragEnter={handleFileDragEnter}
-            onDragLeave={handleFileDragLeave}
-            onDragOver={handleFileDragOver}
-            onDrop={handleFileDrop}
-          >
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={handleNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onReconnect={onReconnect}
-              onConnectStart={onConnectStart}
-              onConnectEnd={onConnectEnd}
-              onInit={handleRfInit}
-              onMove={handleRfMove}
-              onMoveEnd={handleRfMoveEnd}
-              onPaneContextMenu={handlePaneContextMenu}
-              onNodeContextMenu={handleNodeContextMenu}
-              onEdgeContextMenu={handleEdgeContextMenu}
-              onPaneClick={handlePaneClick}
-              onNodeDragStart={handleNodeDragStart}
-              onNodeDrag={handleNodeDrag}
-              onNodeDragStop={handleNodeDragStop}
-              onSelectionChange={handleSelectionChange}
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              snapToGrid={snapToGrid}
-              snapGrid={SNAP_GRID}
-              edgesReconnectable
-              zoomOnScroll={scrollMode === 'zoom'}
-              panOnScroll={scrollMode === 'pan'}
-              zoomOnDoubleClick={false}
-              panActivationKeyCode="Space"
-              fitView
-              fitViewOptions={INITIAL_RF_FIT_OPTIONS}
-              minZoom={0.05}
-              maxZoom={2}
-              className={
-                'bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-[#0f1117] dark:via-[#131620] dark:to-[#0f1117]' +
-                (viewportState.zoom < 0.4 && selectedNodes.length > 20 ? ' canvas-low-zoom-bulk' : '')
-              }
-              connectionLineComponent={ConnectionLine}
-              onlyRenderVisibleElements
-              proOptions={PRO_OPTIONS}
+        {/* Canvas area + the "Coded Segments" detail panel sit side by side
+            in a flex ROW: the panel docks to the right at its natural width
+            and the canvas keeps full height. Without this row wrapper the
+            panel was a flex-COLUMN sibling and its h-full/shrink-0 collapsed
+            the canvas to ~0 height whenever a code was selected. */}
+        <div className="flex flex-1 min-h-0">
+          {/* Canvas + status bar stack vertically. This MUST be a flex COLUMN:
+              the status bar used to be a flex-ROW sibling of the canvas, so its
+              ~493px min-content width squeezed the flex-1 canvas to ~55% on
+              desktop and to 0px on phone widths — the real, unfixed core of
+              live QA finding #1 (Sprint 1A's fit math had a 0-width pane to
+              fit into). As a column child the status bar takes its natural
+              ~32px height and the canvas gets full width at every breakpoint. */}
+          {/* min-w-0: the status bar gives this column a ~400px+ min-content
+              width; without it the column can't shrink when the panel docks
+              and the row overflows on narrow workspaces (the finding #1 trap
+              again, this time on the horizontal axis). */}
+          <div className="relative flex flex-col flex-1 min-h-0 min-w-0">
+            <div
+              ref={canvasContainerRef}
+              data-tour="canvas-flow-area"
+              className="relative flex-1 min-h-0"
+              onDragEnter={handleFileDragEnter}
+              onDragLeave={handleFileDragLeave}
+              onDragOver={handleFileDragOver}
+              onDrop={handleFileDrop}
             >
-              <Background
-                id="bg-dots"
-                variant={BackgroundVariant.Dots}
-                gap={24}
-                size={0.8}
-                color={darkMode ? '#2a2f3d' : '#e2e8f0'}
-              />
-              {snapToGrid && (
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={handleNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onReconnect={onReconnect}
+                onConnectStart={onConnectStart}
+                onConnectEnd={onConnectEnd}
+                onInit={handleRfInit}
+                onMove={handleRfMove}
+                onMoveEnd={handleRfMoveEnd}
+                onPaneContextMenu={handlePaneContextMenu}
+                onNodeContextMenu={handleNodeContextMenu}
+                onEdgeContextMenu={handleEdgeContextMenu}
+                onPaneClick={handlePaneClick}
+                onNodeDragStart={handleNodeDragStart}
+                onNodeDrag={handleNodeDrag}
+                onNodeDragStop={handleNodeDragStop}
+                onSelectionChange={handleSelectionChange}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                snapToGrid={snapToGrid}
+                snapGrid={SNAP_GRID}
+                edgesReconnectable
+                zoomOnScroll={scrollMode === 'zoom'}
+                panOnScroll={scrollMode === 'pan'}
+                zoomOnDoubleClick={false}
+                panActivationKeyCode="Space"
+                fitView
+                fitViewOptions={INITIAL_RF_FIT_OPTIONS}
+                minZoom={0.05}
+                maxZoom={2}
+                className={
+                  'bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-[#0f1117] dark:via-[#131620] dark:to-[#0f1117]' +
+                  (viewportState.zoom < 0.4 && selectedNodes.length > 20 ? ' canvas-low-zoom-bulk' : '')
+                }
+                connectionLineComponent={ConnectionLine}
+                onlyRenderVisibleElements
+                proOptions={PRO_OPTIONS}
+              >
                 <Background
-                  id="bg-grid"
+                  id="bg-dots"
                   variant={BackgroundVariant.Dots}
-                  gap={100}
-                  size={1.5}
+                  gap={24}
+                  size={0.8}
                   color={darkMode ? '#2a2f3d' : '#e2e8f0'}
                 />
-              )}
-              {!focusMode && (
-                <Controls
-                  onFitView={() => runFit('manual')}
-                  className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700"
-                />
-              )}
-              {!focusMode && (
-                <MiniMap
-                  nodeColor={minimapColor}
-                  maskColor={darkMode ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.06)'}
-                  pannable
-                  zoomable
-                  style={{
-                    opacity: minimapReady ? 1 : 0,
-                    transition: 'opacity 200ms ease-out',
-                    pointerEvents: minimapReady ? 'auto' : 'none',
-                  }}
-                  className="!bg-white/90 !backdrop-blur-sm !rounded-xl !shadow-node dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700 !w-[160px] !h-[110px]"
-                />
-              )}
-              {collaboration.isConnected && <CollabCursors cursors={collaboration.cursors} />}
+                {snapToGrid && (
+                  <Background
+                    id="bg-grid"
+                    variant={BackgroundVariant.Dots}
+                    gap={100}
+                    size={1.5}
+                    color={darkMode ? '#2a2f3d' : '#e2e8f0'}
+                  />
+                )}
+                {!focusMode && (
+                  <Controls
+                    onFitView={() => runFit('manual')}
+                    className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700"
+                  />
+                )}
+                {!focusMode && (
+                  <MiniMap
+                    nodeColor={minimapColor}
+                    maskColor={darkMode ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.06)'}
+                    pannable
+                    zoomable
+                    style={{
+                      opacity: minimapReady ? 1 : 0,
+                      transition: 'opacity 200ms ease-out',
+                      pointerEvents: minimapReady ? 'auto' : 'none',
+                    }}
+                    className="!bg-white/90 !backdrop-blur-sm !rounded-xl !shadow-node dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700 !w-[160px] !h-[110px]"
+                  />
+                )}
+                {collaboration.isConnected && <CollabCursors cursors={collaboration.cursors} />}
 
-              {/* Alignment guide lines rendered in flow coordinate space */}
-              {guideLines.length > 0 && <AlignmentGuideOverlay guideLines={guideLines} />}
-            </ReactFlow>
+                {/* Alignment guide lines rendered in flow coordinate space */}
+                {guideLines.length > 0 && <AlignmentGuideOverlay guideLines={guideLines} />}
+              </ReactFlow>
 
-            {/* Focus mode exit button */}
-            {focusMode && (
-              <div className="absolute top-4 right-4 z-50 animate-fade-in">
-                <button
-                  onClick={() => setFocusMode(false)}
-                  className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-gray-500 shadow-lg ring-1 ring-black/5 backdrop-blur-md hover:bg-white hover:text-gray-700 dark:bg-gray-800/90 dark:text-gray-400 dark:ring-white/10 dark:hover:bg-gray-800 transition-all"
-                  title="Exit focus mode (Ctrl+. or Esc)"
-                >
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25"
-                    />
-                  </svg>
-                  Exit Focus
-                </button>
-              </div>
-            )}
-
-            {/* Drag-and-drop file overlay */}
-            {isDraggingFile && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center bg-brand-500/10 backdrop-blur-[2px] border-2 border-dashed border-brand-400 rounded-xl pointer-events-none animate-fade-in">
-                <div className="flex flex-col items-center gap-3 rounded-2xl bg-white/90 dark:bg-gray-800/90 px-8 py-6 shadow-xl">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 dark:bg-brand-900/30">
+              {/* Focus mode exit button */}
+              {focusMode && (
+                <div className="absolute top-4 right-4 z-50 animate-fade-in">
+                  <button
+                    onClick={() => setFocusMode(false)}
+                    className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-gray-500 shadow-lg ring-1 ring-black/5 backdrop-blur-md hover:bg-white hover:text-gray-700 dark:bg-gray-800/90 dark:text-gray-400 dark:ring-white/10 dark:hover:bg-gray-800 transition-all"
+                    title="Exit focus mode (Ctrl+. or Esc)"
+                  >
                     <svg
-                      className="h-7 w-7 text-brand-500"
+                      className="h-3.5 w-3.5"
                       fill="none"
                       viewBox="0 0 24 24"
                       strokeWidth={1.5}
@@ -2296,142 +2289,322 @@ export default function CanvasWorkspace() {
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+                        d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25"
                       />
                     </svg>
+                    Exit Focus
+                  </button>
+                </div>
+              )}
+
+              {/* Drag-and-drop file overlay */}
+              {isDraggingFile && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-brand-500/10 backdrop-blur-[2px] border-2 border-dashed border-brand-400 rounded-xl pointer-events-none animate-fade-in">
+                  <div className="flex flex-col items-center gap-3 rounded-2xl bg-white/90 dark:bg-gray-800/90 px-8 py-6 shadow-xl">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 dark:bg-brand-900/30">
+                      <svg
+                        className="h-7 w-7 text-brand-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+                        />
+                      </svg>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">Drop files to import</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        .txt, .csv, .md, .json, or .png files
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">Drop files to import</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      .txt, .csv, .md, .json, or .png files
+                </div>
+              )}
+
+              {/* Selection toolbar */}
+              {selectedNodes.length >= 2 && (
+                <SelectionToolbar
+                  selectedNodes={selectedNodes}
+                  position={selectionToolbarPos}
+                  onDeleteAll={handleDeleteAllSelected}
+                  onCollapseAll={handleCollapseAll}
+                  onExpandAll={handleExpandAll}
+                  onAlignLeft={handleAlignLeft}
+                  onAlignTop={handleAlignTop}
+                  onDistributeH={handleDistributeH}
+                  onDistributeV={handleDistributeV}
+                  onAnalyzeSelection={(transcriptIds, questionIds) => {
+                    toast.success(`Analyzing ${transcriptIds.length} transcripts, ${questionIds.length} codes`);
+                  }}
+                />
+              )}
+
+              {/* Canvas-wide search overlay */}
+              {showSearch && (
+                <CanvasSearchOverlay
+                  onClose={() => setShowSearch(false)}
+                  onResults={setHighlightedNodeIds}
+                  onFocusNode={handleFocusNode}
+                />
+              )}
+
+              {/* Pane context menu */}
+              {contextMenu?.show && (
+                <CanvasContextMenu
+                  x={contextMenu.x}
+                  y={contextMenu.y}
+                  onAddTranscript={() => {
+                    toast('Use the Transcript button in the toolbar to add transcripts', { icon: '\u2139\uFE0F' });
+                  }}
+                  onAddQuestion={() => {
+                    toast('Use the Question button in the toolbar to add questions', { icon: '\u2139\uFE0F' });
+                  }}
+                  onAddMemo={handleContextAddMemo}
+                  onAddComputedNode={handleQuickAddComputed}
+                  onFitView={() => runFit('manual')}
+                  onShowShortcuts={() => setShowShortcuts(true)}
+                  onSelectAll={handleSelectAll}
+                  onToggleSnapGrid={() => setSnapToGrid((s) => !s)}
+                  snapToGrid={snapToGrid}
+                  onAutoLayout={handleAutoLayout}
+                  onClose={() => setContextMenu(null)}
+                />
+              )}
+
+              {/* Node context menu */}
+              {nodeContextMenu?.show && (
+                <NodeContextMenu
+                  x={nodeContextMenu.x}
+                  y={nodeContextMenu.y}
+                  nodeId={nodeContextMenu.nodeId}
+                  nodeType={nodeContextMenu.nodeType}
+                  collapsed={nodeContextMenu.collapsed}
+                  onDuplicate={handleNodeDuplicate}
+                  onDelete={handleNodeDelete}
+                  onToggleCollapse={handleNodeToggleCollapse}
+                  onResetSize={handleNodeResetSize}
+                  onSetNodeColor={setNodeColor}
+                  onClose={() => setNodeContextMenu(null)}
+                />
+              )}
+
+              {/* Edge context menu */}
+              {edgeContextMenu?.show && (
+                <EdgeContextMenu
+                  x={edgeContextMenu.x}
+                  y={edgeContextMenu.y}
+                  edgeId={edgeContextMenu.edgeId}
+                  edgeType={edgeContextMenu.edgeType}
+                  label={edgeContextMenu.label}
+                  onDelete={handleEdgeDelete}
+                  onAddWaypoint={(edgeId, x, y) => {
+                    const viewport = rfInstanceRef.current?.getViewport();
+                    if (viewport) {
+                      const canvasX = (x - viewport.x) / viewport.zoom;
+                      const canvasY = (y - viewport.y) / viewport.zoom;
+                      addReroute(canvasX, canvasY, edgeId);
+                    }
+                  }}
+                  onClose={() => setEdgeContextMenu(null)}
+                />
+              )}
+
+              {/* Quick-add menu (double-click) */}
+              {quickAddMenu && (
+                <QuickAddMenu
+                  x={quickAddMenu.x}
+                  y={quickAddMenu.y}
+                  onAddTranscript={handleQuickAddTranscript}
+                  onAddQuestion={() => handleQuickAddQuestion({ x: quickAddMenu.flowX, y: quickAddMenu.flowY })}
+                  onAddMemo={() => handleQuickAddMemo({ x: quickAddMenu.flowX, y: quickAddMenu.flowY })}
+                  onAddComputedNode={(type, label) =>
+                    handleQuickAddComputed(type, label, { x: quickAddMenu.flowX, y: quickAddMenu.flowY })
+                  }
+                  onAddStickyNote={() => {
+                    addStickyNote(quickAddMenu.flowX, quickAddMenu.flowY);
+                  }}
+                  onClose={() => {
+                    setQuickAddMenu(null);
+                    setSmartLinkSource(null);
+                    smartLinkAllowedRef.current = null;
+                  }}
+                  allowedItems={smartLinkAllowedRef.current || undefined}
+                />
+              )}
+
+              {/* Empty state overlay */}
+              {activeCanvas && activeCanvas.transcripts.length === 0 && activeCanvas.questions.length === 0 && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center animate-fade-in">
+                  <div className="max-w-lg text-center px-8">
+                    {/* Icon */}
+                    <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-50 to-blue-50 dark:from-brand-900/20 dark:to-blue-900/20 gentle-pulse">
+                      <svg
+                        className="h-10 w-10 text-brand-400 dark:text-brand-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1}
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                        />
+                      </svg>
+                    </div>
+
+                    {/* Heading */}
+                    <h3 className="text-xl font-semibold text-gray-400 dark:text-gray-500">Your workspace is ready</h3>
+                    <p className="mt-2 text-sm text-gray-300 dark:text-gray-600 max-w-sm mx-auto leading-relaxed">
+                      Start by adding your interview transcripts, then create research questions to begin coding.
+                    </p>
+
+                    {/* Steps */}
+                    <div className="mt-8 grid grid-cols-3 gap-4">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-900/20">
+                          <svg
+                            className="h-5 w-5 text-blue-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                            />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Step 1</p>
+                          <p className="text-[11px] text-gray-300 dark:text-gray-600">Add transcripts</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 dark:bg-purple-900/20">
+                          <svg
+                            className="h-5 w-5 text-purple-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
+                            />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Step 2</p>
+                          <p className="text-[11px] text-gray-300 dark:text-gray-600">Create questions</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                          <svg
+                            className="h-5 w-5 text-emerald-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Step 3</p>
+                          <p className="text-[11px] text-gray-300 dark:text-gray-600">Select text & code</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Hint */}
+                    <p className="mt-6 text-[11px] text-gray-300 dark:text-gray-600">
+                      Drop .txt/.csv files to import &middot; Double-click canvas to quick-add &middot; Press{' '}
+                      <kbd className="rounded bg-gray-100 dark:bg-gray-700 px-1 py-0.5 font-mono text-[10px]">
+                        Ctrl+K
+                      </kbd>{' '}
+                      for commands
                     </p>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Selection toolbar */}
-            {selectedNodes.length >= 2 && (
-              <SelectionToolbar
-                selectedNodes={selectedNodes}
-                position={selectionToolbarPos}
-                onDeleteAll={handleDeleteAllSelected}
-                onCollapseAll={handleCollapseAll}
-                onExpandAll={handleExpandAll}
-                onAlignLeft={handleAlignLeft}
-                onAlignTop={handleAlignTop}
-                onDistributeH={handleDistributeH}
-                onDistributeV={handleDistributeV}
-                onAnalyzeSelection={(transcriptIds, questionIds) => {
-                  toast.success(`Analyzing ${transcriptIds.length} transcripts, ${questionIds.length} codes`);
-                }}
-              />
-            )}
+              {/* Relation label prompt */}
+              {relationLabel.show && (
+                <div className="modal-backdrop absolute inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+                  <RelationLabelPrompt
+                    onSubmit={handleCreateRelation}
+                    onCancel={() => setRelationLabel({ show: false, source: '', target: '' })}
+                  />
+                </div>
+              )}
 
-            {/* Canvas-wide search overlay */}
-            {showSearch && (
-              <CanvasSearchOverlay
-                onClose={() => setShowSearch(false)}
-                onResults={setHighlightedNodeIds}
-                onFocusNode={handleFocusNode}
-              />
-            )}
+              {/* Merge questions confirm */}
+              {mergeConfirm.show && (
+                <div className="modal-backdrop absolute inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+                  <div className="modal-content rounded-2xl bg-white p-4 shadow-xl ring-1 ring-black/5 dark:bg-gray-800 w-80">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Merge Codes</h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                      Merge <strong>"{mergeConfirm.sourceName}"</strong> into{' '}
+                      <strong>"{mergeConfirm.targetName}"</strong>? All codings from the source will move to the target.
+                      The source code will be deleted.
+                    </p>
+                    <div className="flex gap-2">
+                      <button onClick={handleMerge} className="btn-primary h-8 px-3 text-xs">
+                        Merge
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMergeConfirm({ show: false, sourceId: '', targetId: '', sourceName: '', targetName: '' });
+                          setRelationLabel({
+                            show: true,
+                            source: `question-${mergeConfirm.sourceId}`,
+                            target: `question-${mergeConfirm.targetId}`,
+                          });
+                        }}
+                        className="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-750"
+                      >
+                        Create Relation Instead
+                      </button>
+                      <button
+                        onClick={() =>
+                          setMergeConfirm({ show: false, sourceId: '', targetId: '', sourceName: '', targetName: '' })
+                        }
+                        className="text-xs text-gray-400 hover:text-gray-600"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
-            {/* Pane context menu */}
-            {contextMenu?.show && (
-              <CanvasContextMenu
-                x={contextMenu.x}
-                y={contextMenu.y}
-                onAddTranscript={() => {
-                  toast('Use the Transcript button in the toolbar to add transcripts', { icon: '\u2139\uFE0F' });
-                }}
-                onAddQuestion={() => {
-                  toast('Use the Question button in the toolbar to add questions', { icon: '\u2139\uFE0F' });
-                }}
-                onAddMemo={handleContextAddMemo}
-                onAddComputedNode={handleQuickAddComputed}
-                onFitView={() => runFit('manual')}
-                onShowShortcuts={() => setShowShortcuts(true)}
-                onSelectAll={handleSelectAll}
-                onToggleSnapGrid={() => setSnapToGrid((s) => !s)}
-                snapToGrid={snapToGrid}
-                onAutoLayout={handleAutoLayout}
-                onClose={() => setContextMenu(null)}
-              />
-            )}
-
-            {/* Node context menu */}
-            {nodeContextMenu?.show && (
-              <NodeContextMenu
-                x={nodeContextMenu.x}
-                y={nodeContextMenu.y}
-                nodeId={nodeContextMenu.nodeId}
-                nodeType={nodeContextMenu.nodeType}
-                collapsed={nodeContextMenu.collapsed}
-                onDuplicate={handleNodeDuplicate}
-                onDelete={handleNodeDelete}
-                onToggleCollapse={handleNodeToggleCollapse}
-                onResetSize={handleNodeResetSize}
-                onSetNodeColor={setNodeColor}
-                onClose={() => setNodeContextMenu(null)}
-              />
-            )}
-
-            {/* Edge context menu */}
-            {edgeContextMenu?.show && (
-              <EdgeContextMenu
-                x={edgeContextMenu.x}
-                y={edgeContextMenu.y}
-                edgeId={edgeContextMenu.edgeId}
-                edgeType={edgeContextMenu.edgeType}
-                label={edgeContextMenu.label}
-                onDelete={handleEdgeDelete}
-                onAddWaypoint={(edgeId, x, y) => {
-                  const viewport = rfInstanceRef.current?.getViewport();
-                  if (viewport) {
-                    const canvasX = (x - viewport.x) / viewport.zoom;
-                    const canvasY = (y - viewport.y) / viewport.zoom;
-                    addReroute(canvasX, canvasY, edgeId);
-                  }
-                }}
-                onClose={() => setEdgeContextMenu(null)}
-              />
-            )}
-
-            {/* Quick-add menu (double-click) */}
-            {quickAddMenu && (
-              <QuickAddMenu
-                x={quickAddMenu.x}
-                y={quickAddMenu.y}
-                onAddTranscript={handleQuickAddTranscript}
-                onAddQuestion={() => handleQuickAddQuestion({ x: quickAddMenu.flowX, y: quickAddMenu.flowY })}
-                onAddMemo={() => handleQuickAddMemo({ x: quickAddMenu.flowX, y: quickAddMenu.flowY })}
-                onAddComputedNode={(type, label) =>
-                  handleQuickAddComputed(type, label, { x: quickAddMenu.flowX, y: quickAddMenu.flowY })
-                }
-                onAddStickyNote={() => {
-                  addStickyNote(quickAddMenu.flowX, quickAddMenu.flowY);
-                }}
-                onClose={() => {
-                  setQuickAddMenu(null);
-                  setSmartLinkSource(null);
-                  smartLinkAllowedRef.current = null;
-                }}
-                allowedItems={smartLinkAllowedRef.current || undefined}
-              />
-            )}
-
-            {/* Empty state overlay */}
-            {activeCanvas && activeCanvas.transcripts.length === 0 && activeCanvas.questions.length === 0 && (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center animate-fade-in">
-                <div className="max-w-lg text-center px-8">
-                  {/* Icon */}
-                  <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-50 to-blue-50 dark:from-brand-900/20 dark:to-blue-900/20 gentle-pulse">
+            {/* Status bar — an in-flow flex-column child below the canvas, so it
+              takes its natural ~32px height and never competes for the canvas's
+              width (live QA finding #1). */}
+            {!focusMode && (
+              <div
+                data-tour="canvas-status-bar"
+                className="flex shrink-0 items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-400 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-500"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1">
                     <svg
-                      className="h-10 w-10 text-brand-400 dark:text-brand-500"
+                      className="h-3 w-3 text-blue-400"
                       fill="none"
                       viewBox="0 0 24 24"
-                      strokeWidth={1}
+                      strokeWidth={1.5}
                       stroke="currentColor"
                     >
                       <path
@@ -2440,298 +2613,160 @@ export default function CanvasWorkspace() {
                         d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
                       />
                     </svg>
-                  </div>
-
-                  {/* Heading */}
-                  <h3 className="text-xl font-semibold text-gray-400 dark:text-gray-500">Your workspace is ready</h3>
-                  <p className="mt-2 text-sm text-gray-300 dark:text-gray-600 max-w-sm mx-auto leading-relaxed">
-                    Start by adding your interview transcripts, then create research questions to begin coding.
-                  </p>
-
-                  {/* Steps */}
-                  <div className="mt-8 grid grid-cols-3 gap-4">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-900/20">
-                        <svg
-                          className="h-5 w-5 text-blue-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth={1.5}
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-                          />
-                        </svg>
+                    {nodeCounts.transcripts}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <svg
+                      className="h-3 w-3 text-purple-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
+                      />
+                    </svg>
+                    {nodeCounts.questions}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <svg
+                      className="h-3 w-3 text-emerald-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                    {nodeCounts.codings}
+                  </span>
+                  {/* Coverage bar */}
+                  {nodeCounts.transcripts > 0 && (
+                    <span className="flex items-center gap-1.5">
+                      <div className="h-1 w-16 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${nodeCounts.coveragePct}%`,
+                            backgroundColor:
+                              nodeCounts.coveragePct < 30
+                                ? '#f59e0b'
+                                : nodeCounts.coveragePct < 70
+                                  ? '#3b82f6'
+                                  : '#10b981',
+                          }}
+                        />
                       </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Step 1</p>
-                        <p className="text-[11px] text-gray-300 dark:text-gray-600">Add transcripts</p>
-                      </div>
+                      <span className="tabular-nums">{nodeCounts.coveragePct}% coded</span>
+                    </span>
+                  )}
+                  {selectedNodes.length > 0 && (
+                    <span className="text-blue-500 font-medium">{selectedNodes.length} selected</span>
+                  )}
+                  {/* Edge type legend — hidden on phones, where the ~493px
+                      status bar would otherwise overflow the viewport. */}
+                  {(nodeCounts.codings > 0 || nodeCounts.relations > 0) && (
+                    <div className="hidden sm:flex items-center gap-2.5 ml-1 border-l border-gray-200/60 dark:border-gray-700/60 pl-2.5">
+                      {nodeCounts.codings > 0 && (
+                        <span className="flex items-center gap-1">
+                          <svg width="16" height="6" className="shrink-0">
+                            <line x1="0" y1="3" x2="16" y2="3" stroke="#3B82F6" strokeWidth="1.5" />
+                          </svg>
+                          <span>Coding</span>
+                        </span>
+                      )}
+                      {nodeCounts.relations > 0 && (
+                        <span className="flex items-center gap-1">
+                          <svg width="16" height="6" className="shrink-0">
+                            <line
+                              x1="0"
+                              y1="3"
+                              x2="16"
+                              y2="3"
+                              stroke="#94A3B8"
+                              strokeWidth="1.5"
+                              strokeDasharray="3 2"
+                            />
+                          </svg>
+                          <span>Relation</span>
+                        </span>
+                      )}
                     </div>
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 dark:bg-purple-900/20">
-                        <svg
-                          className="h-5 w-5 text-purple-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth={1.5}
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Step 2</p>
-                        <p className="text-[11px] text-gray-300 dark:text-gray-600">Create questions</p>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
-                        <svg
-                          className="h-5 w-5 text-emerald-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth={1.5}
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Step 3</p>
-                        <p className="text-[11px] text-gray-300 dark:text-gray-600">Select text & code</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Hint */}
-                  <p className="mt-6 text-[11px] text-gray-300 dark:text-gray-600">
-                    Drop .txt/.csv files to import &middot; Double-click canvas to quick-add &middot; Press{' '}
-                    <kbd className="rounded bg-gray-100 dark:bg-gray-700 px-1 py-0.5 font-mono text-[10px]">Ctrl+K</kbd>{' '}
-                    for commands
-                  </p>
+                  )}
                 </div>
-              </div>
-            )}
-
-            {/* Relation label prompt */}
-            {relationLabel.show && (
-              <div className="modal-backdrop absolute inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-                <RelationLabelPrompt
-                  onSubmit={handleCreateRelation}
-                  onCancel={() => setRelationLabel({ show: false, source: '', target: '' })}
-                />
-              </div>
-            )}
-
-            {/* Merge questions confirm */}
-            {mergeConfirm.show && (
-              <div className="modal-backdrop absolute inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-                <div className="modal-content rounded-2xl bg-white p-4 shadow-xl ring-1 ring-black/5 dark:bg-gray-800 w-80">
-                  <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Merge Codes</h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                    Merge <strong>"{mergeConfirm.sourceName}"</strong> into <strong>"{mergeConfirm.targetName}"</strong>
-                    ? All codings from the source will move to the target. The source code will be deleted.
-                  </p>
-                  <div className="flex gap-2">
-                    <button onClick={handleMerge} className="btn-primary h-8 px-3 text-xs">
-                      Merge
-                    </button>
-                    <button
-                      onClick={() => {
-                        setMergeConfirm({ show: false, sourceId: '', targetId: '', sourceName: '', targetName: '' });
-                        setRelationLabel({
-                          show: true,
-                          source: `question-${mergeConfirm.sourceId}`,
-                          target: `question-${mergeConfirm.targetId}`,
-                        });
-                      }}
-                      className="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-750"
-                    >
-                      Create Relation Instead
-                    </button>
-                    <button
-                      onClick={() =>
-                        setMergeConfirm({ show: false, sourceId: '', targetId: '', sourceName: '', targetName: '' })
-                      }
-                      className="text-xs text-gray-400 hover:text-gray-600"
-                    >
-                      Cancel
-                    </button>
+                <div className="flex items-center gap-3">
+                  {/* Bookmark slot indicators — hidden on phones: the
+                      Ctrl+Shift / Alt shortcuts they document need a keyboard,
+                      and the row would otherwise overflow a phone viewport. */}
+                  <div
+                    className="hidden sm:flex items-center gap-0.5"
+                    title="Viewport bookmarks — Ctrl+Shift+1-5 to save the current view, Alt+1-5 to recall"
+                    aria-label="Viewport bookmarks: Ctrl+Shift+1-5 to save, Alt+1-5 to recall"
+                  >
+                    {bookmarks.map((b, i) => (
+                      <div
+                        key={i}
+                        className={`h-1.5 w-1.5 rounded-full transition-colors ${b ? 'bg-blue-400 dark:bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+                        title={
+                          b
+                            ? `Bookmark ${i + 1} saved — press Alt+${i + 1} to recall`
+                            : `Bookmark ${i + 1} empty — press Ctrl+Shift+${i + 1} to save current view`
+                        }
+                      />
+                    ))}
                   </div>
+                  {snapToGrid && (
+                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
+                      GRID
+                    </span>
+                  )}
+                  <span>{savingLayout ? 'Saving...' : 'Saved'}</span>
+                  <NotificationBell />
+                  {collaboration.isConnected && collaboration.collaborators.length > 0 && (
+                    <PresenceAvatars
+                      collaborators={collaboration.collaborators}
+                      isConnected={collaboration.isConnected}
+                    />
+                  )}
+                  {/* Wheel zoom/pan toggle — hidden on phones, which have no
+                      mouse wheel; also keeps the status bar from overflowing. */}
+                  <button
+                    onClick={() => setScrollMode(scrollMode === 'zoom' ? 'pan' : 'zoom')}
+                    className="hidden sm:flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
+                    title={`Mouse wheel ${scrollMode === 'zoom' ? 'zooms the canvas' : 'pans the canvas'} — click to switch`}
+                    aria-label={`Scroll: ${scrollMode === 'zoom' ? 'Zoom' : 'Pan'}`}
+                  >
+                    <svg
+                      className="h-2.5 w-2.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.8}
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      {/* scroll-wheel glyph */}
+                      <rect x="9" y="3" width="6" height="18" rx="3" />
+                      <path strokeLinecap="round" d="M12 7v3" />
+                    </svg>
+                    {scrollMode === 'zoom' ? 'Wheel zooms' : 'Wheel pans'}
+                  </button>
+                  <span className="tabular-nums">{zoomLevel}%</span>
                 </div>
               </div>
             )}
           </div>
-
-          {/* Status bar — an in-flow flex-column child below the canvas, so it
-              takes its natural ~32px height and never competes for the canvas's
-              width (live QA finding #1). */}
-          {!focusMode && (
-            <div
-              data-tour="canvas-status-bar"
-              className="flex shrink-0 items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-400 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-500"
-            >
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1">
-                  <svg
-                    className="h-3 w-3 text-blue-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-                    />
-                  </svg>
-                  {nodeCounts.transcripts}
-                </span>
-                <span className="flex items-center gap-1">
-                  <svg
-                    className="h-3 w-3 text-purple-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
-                    />
-                  </svg>
-                  {nodeCounts.questions}
-                </span>
-                <span className="flex items-center gap-1">
-                  <svg
-                    className="h-3 w-3 text-emerald-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                  </svg>
-                  {nodeCounts.codings}
-                </span>
-                {/* Coverage bar */}
-                {nodeCounts.transcripts > 0 && (
-                  <span className="flex items-center gap-1.5">
-                    <div className="h-1 w-16 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${nodeCounts.coveragePct}%`,
-                          backgroundColor:
-                            nodeCounts.coveragePct < 30
-                              ? '#f59e0b'
-                              : nodeCounts.coveragePct < 70
-                                ? '#3b82f6'
-                                : '#10b981',
-                        }}
-                      />
-                    </div>
-                    <span className="tabular-nums">{nodeCounts.coveragePct}% coded</span>
-                  </span>
-                )}
-                {selectedNodes.length > 0 && (
-                  <span className="text-blue-500 font-medium">{selectedNodes.length} selected</span>
-                )}
-                {/* Edge type legend */}
-                {(nodeCounts.codings > 0 || nodeCounts.relations > 0) && (
-                  <div className="flex items-center gap-2.5 ml-1 border-l border-gray-200/60 dark:border-gray-700/60 pl-2.5">
-                    {nodeCounts.codings > 0 && (
-                      <span className="flex items-center gap-1">
-                        <svg width="16" height="6" className="shrink-0">
-                          <line x1="0" y1="3" x2="16" y2="3" stroke="#3B82F6" strokeWidth="1.5" />
-                        </svg>
-                        <span>Coding</span>
-                      </span>
-                    )}
-                    {nodeCounts.relations > 0 && (
-                      <span className="flex items-center gap-1">
-                        <svg width="16" height="6" className="shrink-0">
-                          <line x1="0" y1="3" x2="16" y2="3" stroke="#94A3B8" strokeWidth="1.5" strokeDasharray="3 2" />
-                        </svg>
-                        <span>Relation</span>
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                {/* Bookmark slot indicators */}
-                <div
-                  className="flex items-center gap-0.5"
-                  title="Viewport bookmarks — Ctrl+Shift+1-5 to save the current view, Alt+1-5 to recall"
-                  aria-label="Viewport bookmarks: Ctrl+Shift+1-5 to save, Alt+1-5 to recall"
-                >
-                  {bookmarks.map((b, i) => (
-                    <div
-                      key={i}
-                      className={`h-1.5 w-1.5 rounded-full transition-colors ${b ? 'bg-blue-400 dark:bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
-                      title={
-                        b
-                          ? `Bookmark ${i + 1} saved — press Alt+${i + 1} to recall`
-                          : `Bookmark ${i + 1} empty — press Ctrl+Shift+${i + 1} to save current view`
-                      }
-                    />
-                  ))}
-                </div>
-                {snapToGrid && (
-                  <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
-                    GRID
-                  </span>
-                )}
-                <span>{savingLayout ? 'Saving...' : 'Saved'}</span>
-                <NotificationBell />
-                {collaboration.isConnected && collaboration.collaborators.length > 0 && (
-                  <PresenceAvatars
-                    collaborators={collaboration.collaborators}
-                    isConnected={collaboration.isConnected}
-                  />
-                )}
-                <button
-                  onClick={() => setScrollMode(scrollMode === 'zoom' ? 'pan' : 'zoom')}
-                  className="flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
-                  title={`Mouse wheel ${scrollMode === 'zoom' ? 'zooms the canvas' : 'pans the canvas'} — click to switch`}
-                  aria-label={`Scroll: ${scrollMode === 'zoom' ? 'Zoom' : 'Pan'}`}
-                >
-                  <svg
-                    className="h-2.5 w-2.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.8}
-                    stroke="currentColor"
-                    aria-hidden="true"
-                  >
-                    {/* scroll-wheel glyph */}
-                    <rect x="9" y="3" width="6" height="18" rx="3" />
-                    <path strokeLinecap="round" d="M12 7v3" />
-                  </svg>
-                  {scrollMode === 'zoom' ? 'Wheel zooms' : 'Wheel pans'}
-                </button>
-                <span className="tabular-nums">{zoomLevel}%</span>
-              </div>
-            </div>
+          {/* Coded Segments detail panel — a flex-ROW sibling of the canvas
+              (see the row wrapper above), so it docks to the right rather
+              than collapsing the canvas height. */}
+          {selectedQuestionId && (
+            <ErrorBoundary>
+              <CodingDetailPanel />
+            </ErrorBoundary>
           )}
         </div>
-        {/* Detail panel — inside flex row with canvas, below toolbar */}
-        {selectedQuestionId && (
-          <ErrorBoundary>
-            <CodingDetailPanel />
-          </ErrorBoundary>
-        )}
       </div>
 
       {/* Keyboard shortcuts modal */}
