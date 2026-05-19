@@ -195,7 +195,7 @@ export default function CommandPalette({
         category: 'action',
         icon: <IconLayout />,
         label: 'Auto-Arrange Canvas',
-        description: 'Organize nodes automatically',
+        description: 'Organize nodes automatically — select 2+ to arrange only those',
         shortcut: 'Ctrl+Shift+L',
         action: () => {
           onAutoLayout();

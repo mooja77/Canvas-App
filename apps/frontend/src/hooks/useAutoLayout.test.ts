@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { computeLayout, useAutoLayout } from './useAutoLayout';
+import { computeLayout, computeSubsetLayout, useAutoLayout } from './useAutoLayout';
 import type { Node, Edge } from '@xyflow/react';
 
 function makeNode(id: string, opts: Partial<Node> = {}): Node {
@@ -81,11 +81,7 @@ describe('computeLayout', () => {
   });
 
   it('excludes group nodes from layout', () => {
-    const nodes = [
-      makeNode('n1'),
-      makeNode('n2'),
-      makeNode('g1', { type: 'group' }),
-    ];
+    const nodes = [makeNode('n1'), makeNode('n2'), makeNode('g1', { type: 'group' })];
     const edges = [makeEdge('n1', 'n2')];
 
     const result = computeLayout(nodes, edges);
@@ -105,6 +101,94 @@ describe('computeLayout', () => {
     const pos1 = result.get('n1')!;
     const pos2 = result.get('n2')!;
     expect(pos1.y).toBeLessThan(pos2.y);
+  });
+
+  it('wraps a dense rank into a 2-D grid instead of one vertical column (F4)', () => {
+    // One source connected to 12 codes — without wrapping all 12 codes would
+    // stack into a single vertical column.
+    const source = makeNode('src');
+    const codes = Array.from({ length: 12 }, (_, i) => makeNode(`c${i}`));
+    const edges = codes.map((c) => makeEdge('src', c.id));
+
+    const result = computeLayout([source, ...codes], edges, { maxPerColumn: 6 });
+
+    const codeXs = new Set(codes.map((c) => Math.round(result.get(c.id)!.x)));
+    const codeYs = new Set(codes.map((c) => Math.round(result.get(c.id)!.y)));
+
+    // The dense rank must span multiple columns AND multiple rows — a grid.
+    expect(codeXs.size).toBeGreaterThan(1);
+    expect(codeYs.size).toBeGreaterThan(1);
+  });
+
+  it('keeps a small rank as a single column (no wrapping below threshold)', () => {
+    const source = makeNode('src');
+    const codes = Array.from({ length: 4 }, (_, i) => makeNode(`c${i}`));
+    const edges = codes.map((c) => makeEdge('src', c.id));
+
+    const result = computeLayout([source, ...codes], edges, { maxPerColumn: 6 });
+
+    const codeXs = new Set(codes.map((c) => Math.round(result.get(c.id)!.x)));
+    // 4 codes, threshold 6 → still a single column (one shared x).
+    expect(codeXs.size).toBe(1);
+  });
+});
+
+describe('computeSubsetLayout', () => {
+  it('returns empty map for empty selection', () => {
+    expect(computeSubsetLayout([], []).size).toBe(0);
+  });
+
+  it('lays out only the selected nodes', () => {
+    const selected = [
+      makeNode('s1', { position: { x: 900, y: 900 } }),
+      makeNode('s2', { position: { x: 900, y: 1100 } }),
+      makeNode('s3', { position: { x: 900, y: 1300 } }),
+    ];
+    const edges = [makeEdge('s1', 's2'), makeEdge('s2', 's3')];
+
+    const result = computeSubsetLayout(selected, edges);
+
+    expect(result.size).toBe(3);
+    // Chain s1→s2→s3 should read left-to-right after arranging.
+    expect(result.get('s1')!.x).toBeLessThan(result.get('s2')!.x);
+    expect(result.get('s2')!.x).toBeLessThan(result.get('s3')!.x);
+  });
+
+  it('keeps the arranged cluster at its original centroid', () => {
+    const selected = [
+      makeNode('s1', { position: { x: 1000, y: 2000 } }),
+      makeNode('s2', { position: { x: 1000, y: 2400 } }),
+      makeNode('s3', { position: { x: 1000, y: 2800 } }),
+    ];
+    const edges = [makeEdge('s1', 's2'), makeEdge('s2', 's3')];
+
+    // Original centroid.
+    const cx = (1000 + 1000 + 1000) / 3;
+    const cy = (2000 + 2400 + 2800) / 3;
+
+    const result = computeSubsetLayout(selected, edges);
+
+    let rx = 0;
+    let ry = 0;
+    for (const pos of result.values()) {
+      rx += pos.x;
+      ry += pos.y;
+    }
+    rx /= result.size;
+    ry /= result.size;
+
+    // Centroid is preserved so the cluster stays where the researcher had it.
+    expect(Math.abs(rx - cx)).toBeLessThan(1);
+    expect(Math.abs(ry - cy)).toBeLessThan(1);
+  });
+
+  it('only considers edges within the selection', () => {
+    const selected = [makeNode('s1', { position: { x: 0, y: 0 } }), makeNode('s2', { position: { x: 0, y: 200 } })];
+    // Edge to a node outside the selection must be ignored, not throw.
+    const edges = [makeEdge('s1', 's2'), makeEdge('s2', 'outside')];
+
+    const result = computeSubsetLayout(selected, edges);
+    expect(result.size).toBe(2);
   });
 });
 

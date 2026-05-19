@@ -333,7 +333,7 @@ export default function CanvasWorkspace() {
   const { stickyNotes, addStickyNote, removeStickyNote, updateStickyNote } = useCanvasStickyNotes();
 
   // Auto-layout
-  const { applyLayout } = useAutoLayout(setNodes);
+  const { applyLayout, applyLayoutSubset } = useAutoLayout(setNodes);
 
   // Undo/redo history (layout changes only)
   const {
@@ -1844,13 +1844,24 @@ export default function CanvasWorkspace() {
     toast.success('Group created — double-click title to rename');
   }, [selectedNodes, addGroup, triggerSaveLayout]);
 
-  // Auto-layout handler
+  // Auto-layout handler. With a multi-node selection it arranges only the
+  // selected cluster and leaves every other node where the researcher placed
+  // it (ergonomics finding L3); otherwise it re-lays the whole canvas.
   const handleAutoLayout = useCallback(() => {
-    if (nodes.length === 0) {
+    const arrangeable = nodes.filter((n) => n.type !== 'group');
+    if (arrangeable.length === 0) {
       toast('No nodes to arrange', { icon: '\u2139\uFE0F' });
       return;
     }
-    applyLayout(nodes, edges, { direction: 'LR', nodeSpacing: 60, rankSpacing: 120 });
+    const layoutOptions = { direction: 'LR' as const, nodeSpacing: 60, rankSpacing: 120 };
+    const selected = arrangeable.filter((n) => n.selected);
+    const incremental = selected.length >= 2 && selected.length < arrangeable.length;
+
+    if (incremental) {
+      applyLayoutSubset(selected, edges, layoutOptions);
+    } else {
+      applyLayout(nodes, edges, layoutOptions);
+    }
     // Save layout after animation and re-fit. Auto-layout itself animates
     // for ~500ms; the post-layout fit fires at 600ms so it overlaps with
     // the tail of the layout animation, then animates the remaining ~400ms.
@@ -1860,8 +1871,10 @@ export default function CanvasWorkspace() {
       pushHistorySnapshot();
       runFit('post-layout');
     }, 600);
-    toast.success('Canvas arranged');
-  }, [nodes, edges, applyLayout, triggerSaveLayout, pushHistorySnapshot, runFit]);
+    toast.success(
+      incremental ? `Arranged ${selected.length} selected nodes \u2014 others left in place` : 'Canvas arranged',
+    );
+  }, [nodes, edges, applyLayout, applyLayoutSubset, triggerSaveLayout, pushHistorySnapshot, runFit]);
 
   // Mute/unmute selected nodes (Ctrl+M)
   const handleToggleMute = useCallback(() => {
