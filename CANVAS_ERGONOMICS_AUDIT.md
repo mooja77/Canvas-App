@@ -148,14 +148,23 @@ list. Finding a tool means scanning the whole menu.
 → Split: a "Analysis" group, a "View" group; move edge-style to a settings
 affordance. **Effort ~0.5 d.**
 
-### F12 — No find / jump-to-existing-node 🟡 P3
+### F12 — ~~No find / jump-to-existing-node~~ — WITHDRAWN ✅
 
-**[verified]** Ctrl+K opens a _"Search nodes"_ palette — but it searches node
-**types to add** (CORE: Transcript / Research Question / Memo / Sticky Note;
-ANALYSIS: Text Search / Co-occurrence / Framework Matrix / Statistics / …), not
-existing nodes. In a large project there is no way to type "Caregiving" and have
-the canvas centre on that code.
-→ Add an existing-node search/jump mode to the palette. **Effort ~0.5 d.**
+**Correction (2026-05-19): this finding was wrong.** `CommandPalette.tsx`
+already pushes every existing transcript, code, memo and computed node into
+the palette as a `category: 'navigate'` item with the node text as the
+searchable label (L465–520), the filter matches on both label and
+description (L555), and selecting one calls `handleFocusNode` →
+`setCenter(...)` (CanvasWorkspace L2054), which centres the canvas on the
+node and selects it. The placeholder reads _"Search actions, codes,
+transcripts..."_. Typing "Caregiving" against a project that has that code
+returns it under the Navigate section and centres on it on Enter.
+
+The original audit walkthrough almost certainly tested the palette against
+an API-probe canvas with no codes/transcripts, so the Navigate section was
+empty and only the "types to add" items were visible. Same pattern as F6
+and F13 — three false negatives now, all from probing the surface without
+seed data. No work required.
 
 ### F13 — ~~Add-node is fragmented; no double-click add~~ — WITHDRAWN ✅
 
@@ -190,7 +199,8 @@ and density. A node canvas's calm comes from uniform chrome.
    Collapse C, Delete Del).
 4. **Domain graphics** — coding stripes / inline highlight of coded text,
    colour-keyed edges, group boxes, sticky notes. No generic node tool matches.
-5. **Ctrl+K add palette** — categorised, searchable, fast (just add-only — F12).
+5. **Ctrl+K palette** — categorised, searchable, fast; covers both add-actions
+   _and_ jump-to-existing-node (transcripts, codes, memos, computed nodes).
 6. **Minimap** — renders node rects correctly (PR #32).
 7. **Dark mode** — clean and complete across canvas, nodes, edges, panels.
 8. **Edge styling** — bezier / straight / step / smoothstep, colour-keyed,
@@ -225,16 +235,19 @@ culling fragility seen during the minimap work.)
 | ~~F13~~ | ~~Double-click-empty-canvas → add~~ — WITHDRAWN, already works | —        | —       | —        |
 | F10     | Hide/shrink minimap on mobile                                  | 🟡 P3    | 0.25 d  | polish   |
 | F11     | Split the Tools "junk drawer" menu                             | 🟡 P3    | 0.5 d   | polish   |
-| F12     | Find / jump-to-existing-node in the palette                    | 🟡 P3    | 0.5 d   | feature  |
+| ~~F12~~ | ~~Find / jump-to-existing-node~~ — WITHDRAWN, already works    | —        | —       | —        |
 | F8      | Slim mobile chrome stack                                       | 🟡 P3    | 0.5 d   | polish   |
 | F9      | Mobile coding-on-phone messaging                               | 🟡 P3    | 0.25 d  | polish   |
 | F15     | Uniform node chrome across 18 types                            | 🟢 P4    | 1 d     | polish   |
 | F14     | Reduce modal-heaviness                                         | 🟢 P4    | —       | refactor |
 
-**Progress:** PR #33 shipped F3, F7, F10. PR #34 corrected F6. The ergonomics
-PR-2 ships F2 (inline sub-code input) + F11 (Tools-menu grouping); F13 was found
-already implemented. **Remaining:** F1 (node placement — its own PR, since it
-is e2e-sensitive), F4 (auto-layout), F5, F8, F9, F12, F15, F14.
+**Progress:** PR #33 shipped F3, F7, F10. PR #34 corrected F6. PR #35 shipped
+F2 + F11 (F13 found already implemented). PR #36 shipped F1 (the headline node
+placement fix). PR #37 shipped F4 + L3 (balanced 2-D auto-layout +
+non-destructive Auto-Arrange). PR #38 shipped F8 + F9 (mobile toolbar + phone
+coding hint). PR #39 corrected F12. **Remaining:** F5 (reassessed as not a real
+bug — `fitView` does centre small graphs), F15 (uniform node chrome across 18
+types, P4), F14 (modal-heaviness refactor, P4).
 
 ---
 
