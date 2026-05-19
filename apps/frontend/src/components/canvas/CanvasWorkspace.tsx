@@ -149,7 +149,7 @@ export default function CanvasWorkspace() {
   const reassignCoding = useCanvasStore.getState().reassignCoding;
   const refreshCanvas = useCanvasStore.getState().refreshCanvas;
 
-  const _isMobile = useMobile();
+  const isMobile = useMobile();
 
   const { showWarning: showSessionWarning, dismissWarning: dismissSessionWarning } = useSessionTimeout();
 
@@ -2265,7 +2265,9 @@ export default function CanvasWorkspace() {
                     className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700"
                   />
                 )}
-                {!focusMode && (
+                {/* Minimap hidden on mobile — at phone widths it overlapped
+                    bottom-right canvas content, covering nodes. */}
+                {!focusMode && !isMobile && (
                   <MiniMap
                     nodeColor={minimapColor}
                     maskColor={darkMode ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.06)'}
