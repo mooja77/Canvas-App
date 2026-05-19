@@ -147,7 +147,19 @@ test.describe('Code Management', () => {
   });
 
   test('add code via toolbar Code button + Enter creates code node', async ({ page }) => {
-    const beforeCount = await page.locator('.react-flow__node[data-id^="question-"]').count();
+    // A freshly-added code node spawns at a fixed canvas position that may be
+    // outside the viewport, where onlyRenderVisibleElements culls it from the
+    // DOM. Fit the whole graph into view before each count so the assertion
+    // is culling-independent — including the baseline count.
+    const fitView = page.getByRole('button', { name: 'Fit View' });
+    const refit = async () => {
+      await fitView.click();
+      await page.waitForTimeout(800);
+    };
+    const questionNodes = page.locator('.react-flow__node[data-id^="question-"]');
+
+    await refit();
+    const beforeCount = await questionNodes.count();
 
     const codeBtn = page.locator('[data-tour="canvas-btn-question"]');
     await expect(codeBtn).toBeVisible({ timeout: 5000 });
@@ -157,8 +169,9 @@ test.describe('Code Management', () => {
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Test Code Alpha');
     await input.press('Enter');
+    await refit();
 
-    await expect(page.locator('.react-flow__node[data-id^="question-"]')).toHaveCount(beforeCount + 1, {
+    await expect(questionNodes).toHaveCount(beforeCount + 1, {
       timeout: 10000,
     });
   });
@@ -198,25 +211,40 @@ test.describe('Code Management', () => {
     const codeBtn = page.locator('[data-tour="canvas-btn-question"]');
     await expect(codeBtn).toBeVisible({ timeout: 5000 });
 
-    const count0 = await page.locator('.react-flow__node[data-id^="question-"]').count();
+    // A freshly-added code node spawns at a fixed canvas position that may
+    // be outside the current viewport, where onlyRenderVisibleElements culls
+    // it from the DOM. This test asserts on rendered node count, so fit the
+    // whole graph into view before each count — that frames every node and
+    // makes the DOM count deterministic regardless of culling.
+    const fitView = page.getByRole('button', { name: 'Fit View' });
+    const refit = async () => {
+      await fitView.click();
+      await page.waitForTimeout(800);
+    };
+    const questionNodes = page.locator('.react-flow__node[data-id^="question-"]');
+
+    await refit();
+    const count0 = await questionNodes.count();
 
     await codeBtn.click();
     let input = page.locator('input[placeholder="Type your research question..."]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Multi Code One');
     await input.press('Enter');
+    await refit();
 
-    await expect(page.locator('.react-flow__node[data-id^="question-"]')).toHaveCount(count0 + 1, { timeout: 10000 });
+    await expect(questionNodes).toHaveCount(count0 + 1, { timeout: 10000 });
 
-    const count1 = await page.locator('.react-flow__node[data-id^="question-"]').count();
+    const count1 = await questionNodes.count();
 
     await codeBtn.click();
     input = page.locator('input[placeholder="Type your research question..."]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Multi Code Two');
     await input.press('Enter');
+    await refit();
 
-    await expect(page.locator('.react-flow__node[data-id^="question-"]')).toHaveCount(count1 + 1, { timeout: 10000 });
+    await expect(questionNodes).toHaveCount(count1 + 1, { timeout: 10000 });
   });
 
   test('navigator shows "By count" sorting button', async ({ page }) => {
@@ -260,6 +288,17 @@ test.describe('Code Management', () => {
     const codeBtn = page.locator('[data-tour="canvas-btn-question"]');
     await expect(codeBtn).toBeVisible({ timeout: 5000 });
 
+    // A freshly-added code node spawns at a fixed canvas position that may be
+    // outside the viewport, where onlyRenderVisibleElements culls it from the
+    // DOM. Fit the whole graph into view before each count / DOM check so the
+    // assertions are culling-independent — including the baseline count.
+    const fitView = page.getByRole('button', { name: 'Fit View' });
+    const refit = async () => {
+      await fitView.click();
+      await page.waitForTimeout(800);
+    };
+
+    await refit();
     const beforeCount = await page.locator('.react-flow__node[data-id^="question-"]').count();
 
     await codeBtn.click();
@@ -267,6 +306,7 @@ test.describe('Code Management', () => {
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Code To Delete');
     await input.press('Enter');
+    await refit();
 
     await expect(page.locator('.react-flow__node[data-id^="question-"]')).toHaveCount(beforeCount + 1, {
       timeout: 10000,
@@ -321,6 +361,7 @@ test.describe('Code Management', () => {
           )
           .catch(() => {});
 
+        await refit();
         await expect(page.locator('.react-flow__node[data-id^="question-"]')).toHaveCount(beforeCount, {
           timeout: 10000,
         });

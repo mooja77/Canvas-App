@@ -604,6 +604,11 @@ test.describe('Workspace Tests', () => {
     await openCanvasById(page, canvasId);
     await page.locator('[data-tour="canvas-btn-memo"]').click();
     await expect(page.getByText('Memo added')).toBeVisible({ timeout: 5000 });
+    // A freshly-added memo node spawns at a fixed canvas position that may be
+    // outside the viewport, where onlyRenderVisibleElements culls it from the
+    // DOM. Fit the graph into view so the assertion is culling-independent.
+    await page.getByRole('button', { name: 'Fit View' }).click();
+    await page.waitForTimeout(800);
     await expect(page.locator('.react-flow__node[data-id^="memo-"]').first()).toBeAttached({ timeout: 5000 });
   });
 
