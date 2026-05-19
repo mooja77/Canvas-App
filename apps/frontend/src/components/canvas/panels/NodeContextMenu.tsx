@@ -87,6 +87,8 @@ export default function NodeContextMenu({
   const [showCoverage, setShowCoverage] = useState(false);
   const [showCanvasLinker, setShowCanvasLinker] = useState(false);
   const [canvasSearch, setCanvasSearch] = useState('');
+  const [showSubCodeInput, setShowSubCodeInput] = useState(false);
+  const [subCodeName, setSubCodeName] = useState('');
 
   const activeCanvas = useActiveCanvas();
   const canvases = useCanvasStore((s) => s.canvases);
@@ -192,16 +194,17 @@ export default function NodeContextMenu({
     onClose();
   };
 
+  // Sub-code name is taken from an inline input (see render) — no native
+  // window.prompt(), which was off-brand and unvalidated.
   const handleAddSubCode = async () => {
+    const name = subCodeName.trim();
+    if (!name) return;
     try {
-      const name = window.prompt('Sub-code name:', '');
-      if (name === null) {
-        onClose();
-        return;
-      }
-      const newQ = await addQuestion(name.trim() || 'New sub-code');
+      const newQ = await addQuestion(name);
       await updateQuestion(newQ.id, { parentQuestionId: entityId });
       toast.success('Sub-code created');
+      setSubCodeName('');
+      setShowSubCodeInput(false);
     } catch {
       toast.error('Failed to create sub-code');
     }
@@ -464,10 +467,39 @@ export default function NodeContextMenu({
             <Icon d={icons.rename} />
             Rename
           </button>
-          <button onClick={handleAddSubCode} className={btnClass}>
+          <button onClick={() => setShowSubCodeInput((prev) => !prev)} className={btnClass}>
             <Icon d={icons.addChild} />
             Add Sub-Code
+            <span className="ml-auto">
+              <Icon d={showSubCodeInput ? icons.chevronUp : icons.chevronDown} className="h-3 w-3 text-gray-400" />
+            </span>
           </button>
+          {showSubCodeInput && (
+            <div className="mx-2 mb-1 rounded-lg border border-gray-100 bg-gray-50/80 p-2 dark:border-gray-700 dark:bg-gray-750/80">
+              <input
+                autoFocus
+                type="text"
+                value={subCodeName}
+                onChange={(e) => setSubCodeName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddSubCode();
+                  if (e.key === 'Escape') {
+                    setShowSubCodeInput(false);
+                    setSubCodeName('');
+                  }
+                }}
+                placeholder="Sub-code name…"
+                className="w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 placeholder-gray-400 focus:border-blue-400 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+              />
+              <button
+                onClick={handleAddSubCode}
+                disabled={!subCodeName.trim()}
+                className="mt-1.5 w-full rounded-md bg-blue-500 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-40"
+              >
+                Add sub-code
+              </button>
+            </div>
+          )}
           <button onClick={handleViewCodings} className={btnClass}>
             <Icon d={icons.viewCodings} />
             View Codings

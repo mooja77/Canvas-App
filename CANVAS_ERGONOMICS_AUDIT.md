@@ -157,13 +157,13 @@ existing nodes. In a large project there is no way to type "Caregiving" and have
 the canvas centre on that code.
 → Add an existing-node search/jump mode to the palette. **Effort ~0.5 d.**
 
-### F13 — Add-node is fragmented; no double-click add 🟡 P3
+### F13 — ~~Add-node is fragmented; no double-click add~~ — WITHDRAWN ✅
 
-**[verified]** Three add paths — toolbar buttons, right-click "Add Data", and
-the Ctrl+K palette — and none responds to the most common node-canvas gesture:
-**double-click empty canvas does nothing**.
-→ Wire double-click-empty-canvas to the Ctrl+K add palette at the cursor.
-**Effort ~0.25 d.**
+**Correction (2026-05-19): this finding was wrong.** `CanvasWorkspace.tsx`
+`handlePaneClick` (≈L1514) already detects a double-click on the empty pane
+and opens a quick-add menu **at the cursor**. The original audit's
+double-click probe used a detection selector that the quick-add menu does not
+match — a false negative. Double-click-to-add already works; no change needed.
 
 ### F14 — Modal-heaviness 🟢 P4
 
@@ -213,28 +213,28 @@ culling fragility seen during the minimap work.)
 
 ## 6. Prioritized worklist
 
-| #      | Item                                                      | Priority | Effort  | Type     |
-| ------ | --------------------------------------------------------- | -------- | ------- | -------- |
-| F1     | New nodes placed in nearest clear space (collision-aware) | 🔴 P1    | 0.5–1 d | defect   |
-| F2     | Replace `window.prompt` Add Sub-Code with inline input    | 🟠 P1    | 0.5 d   | defect   |
-| F3     | Node-header controls — minimum hit size, zoom-independent | 🟠 P2    | 0.5 d   | defect   |
-| F5     | Centre small graphs on initial fit                        | 🟠 P2    | 0.5 d   | defect   |
-| F4     | Auto-layout: balanced 2-D instead of vertical column      | 🟠 P2    | 1 d     | defect   |
-| ~~F6~~ | ~~Starter templates~~ — WITHDRAWN, already exists         | —        | —       | —        |
-| F7     | Slim the AI banner                                        | 🟡 P3    | 0.25 d  | polish   |
-| F13    | Double-click-empty-canvas → add palette                   | 🟡 P3    | 0.25 d  | feature  |
-| F10    | Hide/shrink minimap on mobile                             | 🟡 P3    | 0.25 d  | polish   |
-| F11    | Split the Tools "junk drawer" menu                        | 🟡 P3    | 0.5 d   | polish   |
-| F12    | Find / jump-to-existing-node in the palette               | 🟡 P3    | 0.5 d   | feature  |
-| F8     | Slim mobile chrome stack                                  | 🟡 P3    | 0.5 d   | polish   |
-| F9     | Mobile coding-on-phone messaging                          | 🟡 P3    | 0.25 d  | polish   |
-| F15    | Uniform node chrome across 18 types                       | 🟢 P4    | 1 d     | polish   |
-| F14    | Reduce modal-heaviness                                    | 🟢 P4    | —       | refactor |
+| #       | Item                                                           | Priority | Effort  | Type     |
+| ------- | -------------------------------------------------------------- | -------- | ------- | -------- |
+| F1      | New nodes placed in nearest clear space (collision-aware)      | 🔴 P1    | 0.5–1 d | defect   |
+| F2      | Replace `window.prompt` Add Sub-Code with inline input         | 🟠 P1    | 0.5 d   | defect   |
+| F3      | Node-header controls — minimum hit size, zoom-independent      | 🟠 P2    | 0.5 d   | defect   |
+| F5      | Centre small graphs on initial fit                             | 🟠 P2    | 0.5 d   | defect   |
+| F4      | Auto-layout: balanced 2-D instead of vertical column           | 🟠 P2    | 1 d     | defect   |
+| ~~F6~~  | ~~Starter templates~~ — WITHDRAWN, already exists              | —        | —       | —        |
+| F7      | Slim the AI banner                                             | 🟡 P3    | 0.25 d  | polish   |
+| ~~F13~~ | ~~Double-click-empty-canvas → add~~ — WITHDRAWN, already works | —        | —       | —        |
+| F10     | Hide/shrink minimap on mobile                                  | 🟡 P3    | 0.25 d  | polish   |
+| F11     | Split the Tools "junk drawer" menu                             | 🟡 P3    | 0.5 d   | polish   |
+| F12     | Find / jump-to-existing-node in the palette                    | 🟡 P3    | 0.5 d   | feature  |
+| F8      | Slim mobile chrome stack                                       | 🟡 P3    | 0.5 d   | polish   |
+| F9      | Mobile coding-on-phone messaging                               | 🟡 P3    | 0.25 d  | polish   |
+| F15     | Uniform node chrome across 18 types                            | 🟢 P4    | 1 d     | polish   |
+| F14     | Reduce modal-heaviness                                         | 🟢 P4    | —       | refactor |
 
-**Suggested PR 1 — defects & polish (~2.25 d):** F1 + F2 + F3 + F5 + F7 + F13 +
-F10. All small, self-contained, same shape as the 2026-05-18 audit PR.
-**Suggested PR 2 — auto-layout (~1 d):** F4 (balanced layout).
-_(Former "PR 3 — F6 starter templates" withdrawn — templates already exist.)_
+**Progress:** PR #33 shipped F3, F7, F10. PR #34 corrected F6. The ergonomics
+PR-2 ships F2 (inline sub-code input) + F11 (Tools-menu grouping); F13 was found
+already implemented. **Remaining:** F1 (node placement — its own PR, since it
+is e2e-sensitive), F4 (auto-layout), F5, F8, F9, F12, F15, F14.
 
 ---
 
