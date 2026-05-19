@@ -106,8 +106,14 @@ function DropdownItem({
   );
 }
 
-function DropdownDivider() {
-  return <div className="my-1.5 h-px bg-gray-200 dark:bg-gray-700" />;
+/** Section header inside a long dropdown — groups the Tools menu so it
+ *  reads as Analysis / Workspace / Display rather than one 14-item list. */
+function DropdownLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+      {children}
+    </div>
+  );
 }
 
 /* ── Main toolbar ─────────────────────────────────────────────────── */
@@ -553,6 +559,7 @@ export default function CanvasToolbar({
                 </svg>
               }
             >
+              <DropdownLabel>Analysis</DropdownLabel>
               <DropdownItem
                 icon={
                   <svg
@@ -648,7 +655,7 @@ export default function CanvasToolbar({
                 label="Weights"
                 onClick={() => setShowWeighting(true)}
               />
-              <DropdownDivider />
+              <DropdownLabel>Workspace</DropdownLabel>
               <DropdownItem
                 icon={
                   <svg
@@ -757,7 +764,7 @@ export default function CanvasToolbar({
                 label="Research Calendar"
                 onClick={() => setShowCalendar(true)}
               />
-              <DropdownDivider />
+              <DropdownLabel>Display</DropdownLabel>
               {/* Edge style */}
               <div className="px-3 py-2">
                 <span className="text-xs text-gray-500 dark:text-gray-400 mb-1.5 block">Edges:</span>
