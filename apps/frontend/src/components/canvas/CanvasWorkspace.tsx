@@ -709,6 +709,59 @@ export default function CanvasWorkspace() {
       }
     }
 
+    // ── F1: de-overlap fallback-positioned nodes ──────────────────────
+    // Any node without a persisted position is placed above on a fixed
+    // type-column grid that is blind to existing nodes — so new nodes (and
+    // API-imported ones) spawn on top of existing content. This pass nudges
+    // ONLY fallback-positioned nodes downward until they no longer overlap,
+    // treating persisted (hand-placed) nodes as immovable anchors. It is
+    // deterministic: the same inputs produce the same layout every rebuild.
+    {
+      const FALLBACK_SIZE: Record<string, { w: number; h: number }> = {
+        transcript: { w: 460, h: 240 },
+        question: { w: 280, h: 150 },
+        memo: { w: 260, h: 170 },
+        case: { w: 240, h: 140 },
+        group: { w: 340, h: 260 },
+        sticky: { w: 220, h: 220 },
+      };
+      const COMPUTED_SIZE = { w: 340, h: 300 };
+      const GAP = 24;
+      type Rect = { x: number; y: number; w: number; h: number };
+      const sizeOf = (n: Node): { w: number; h: number } => {
+        const pd = posMap.get(n.id);
+        const sw = typeof n.style?.width === 'number' ? n.style.width : undefined;
+        const sh = typeof n.style?.height === 'number' ? n.style.height : undefined;
+        const w = sw ?? pd?.width;
+        const h = sh ?? pd?.height;
+        if (w && h) return { w, h };
+        return FALLBACK_SIZE[n.type ?? ''] ?? COMPUTED_SIZE;
+      };
+      const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+      const placed: Rect[] = [];
+      // Persisted (hand-placed) nodes are fixed anchors — register them first.
+      for (const n of result) {
+        if (n.type === 'reroute' || !posMap.has(n.id)) continue;
+        const s = sizeOf(n);
+        placed.push({ x: n.position.x, y: n.position.y, w: s.w, h: s.h });
+      }
+      // Fallback-positioned nodes: drop each below any rect it collides with.
+      for (const n of result) {
+        if (n.type === 'reroute' || posMap.has(n.id)) continue;
+        const s = sizeOf(n);
+        const rect: Rect = { x: n.position.x, y: n.position.y, w: s.w, h: s.h };
+        let guard = 0;
+        while (guard < 250) {
+          const hit = placed.filter((p) => overlaps(rect, p));
+          if (hit.length === 0) break;
+          rect.y = Math.max(...hit.map((p) => p.y + p.h)) + GAP;
+          guard++;
+        }
+        n.position = { x: rect.x, y: rect.y };
+        placed.push(rect);
+      }
+    }
+
     return result;
   }, [
     activeCanvas,
