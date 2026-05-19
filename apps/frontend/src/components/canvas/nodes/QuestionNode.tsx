@@ -114,7 +114,7 @@ function QuestionNode({ data, id, selected }: NodeProps) {
           <div className="relative nodrag">
             <button
               onClick={() => setShowColorPicker((c) => !c)}
-              className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-black/10 hover:scale-125 transition-transform"
+              className="h-4 w-4 shrink-0 rounded-full ring-1 ring-black/10 hover:scale-125 transition-transform"
               style={{ backgroundColor: nodeData.color }}
               title="Change color"
             />
@@ -151,13 +151,15 @@ function QuestionNode({ data, id, selected }: NodeProps) {
               {codingCount}
             </span>
           )}
+          {/* p-1 + h-4 icons — header controls were ~14-18px at 100% zoom and
+              shrank to ~8-11px when zoomed out for an overview. */}
           <button
             onClick={toggleCollapsed}
-            className="rounded p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            className="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             title={collapsed ? 'Expand' : 'Collapse'}
           >
             <svg
-              className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`}
+              className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`}
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -168,10 +170,10 @@ function QuestionNode({ data, id, selected }: NodeProps) {
           </button>
           <button
             onClick={() => setSelectedQuestionId(isSelected ? null : nodeData.questionId)}
-            className="rounded p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            className="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             title="View coded segments"
           >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -182,10 +184,10 @@ function QuestionNode({ data, id, selected }: NodeProps) {
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="rounded p-0.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+            className="rounded p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
             title="Delete question"
           >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>
           </button>

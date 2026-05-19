@@ -29,9 +29,11 @@ export default function AiSetupBanner() {
   };
 
   return (
-    <div className="flex-shrink-0 border-b border-indigo-200 bg-indigo-50 px-4 py-2 dark:border-indigo-800 dark:bg-indigo-900/30">
+    <div className="flex-shrink-0 border-b border-indigo-200 bg-indigo-50 px-4 py-1.5 dark:border-indigo-800 dark:bg-indigo-900/30">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm text-indigo-800 dark:text-indigo-200">
+        {/* min-w-0 + truncate keep this to a single line at every width — it
+            used to wrap to three lines on mobile, eating prime canvas space. */}
+        <div className="flex min-w-0 items-center gap-2 text-sm text-indigo-800 dark:text-indigo-200">
           <svg
             className="h-4 w-4 flex-shrink-0"
             fill="none"
@@ -45,12 +47,11 @@ export default function AiSetupBanner() {
               d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
             />
           </svg>
-          <span>
-            AI features are part of your plan.{' '}
+          <span className="truncate">
             <a href="/account#ai" className="font-medium underline hover:no-underline">
               Add an OpenAI or Anthropic key
             </a>{' '}
-            to enable code suggestions, auto-coding, and summaries.
+            to enable AI code suggestions, auto-coding &amp; summaries.
           </span>
         </div>
         <button
