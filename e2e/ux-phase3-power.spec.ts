@@ -331,41 +331,48 @@ test.describe('UX Phase 3 — Power User Features', () => {
       return;
     }
 
-    // The tooltip is surfaced by the onMouseEnter on each edge's invisible
-    // wide hover-path (strokeWidth 24) — the cursor must land on the actual
-    // stroke. The annotation badge only renders at the 'full' zoom tier,
-    // which Fit View does not reach, so it cannot be relied on here. And
-    // hovering the centre of a path's *bounding box* misses curved beziers
-    // entirely (the bbox centre is not a point on the curve).
-    //
-    // getPointAtLength(len/2) gives a real on-stroke point in the path's
-    // user space; mapping it through the path's screen CTM converts it to
-    // client coordinates, so the hover lands on the edge regardless of how
-    // framing or zoom has shifted the geometry.
-    const point = await page.evaluate(() => {
-      const path = document.querySelector('.react-flow__edge path[stroke="transparent"]') as SVGPathElement | null;
-      if (!path) return null;
-      const len = path.getTotalLength();
-      if (!len) return null;
-      const pt = path.getPointAtLength(len / 2);
-      const ctm = path.getScreenCTM();
-      if (!ctm) return null;
-      return {
-        x: pt.x * ctm.a + pt.y * ctm.c + ctm.e,
-        y: pt.x * ctm.b + pt.y * ctm.d + ctm.f,
-      };
-    });
+    // The tooltip is surfaced by onMouseEnter on each edge's invisible wide
+    // hover-path (strokeWidth 24). Two things make a single fixed hover point
+    // unreliable: (a) the bbox centre of a curved bezier is not on the stroke,
+    // and (b) an on-stroke point can still sit *under a node* — nodes paint
+    // above edges, so the node intercepts the pointer and the edge's
+    // onMouseEnter never fires. So: walk every edge path, sample several
+    // on-stroke points (via getPointAtLength + screen CTM), hover each, and
+    // stop as soon as the tooltip appears. At least one point on one edge
+    // lands in open space between nodes.
+    const tooltip = page.locator('.edge-tooltip-enter').or(page.getByText(/coded segment/i));
+    const paths = page.locator('.react-flow__edge path[stroke="transparent"]');
+    const pathCount = await paths.count();
 
-    if (!point) {
-      test.skip();
-      return;
+    let shown = false;
+    for (let i = 0; i < pathCount && !shown; i++) {
+      for (const frac of [0.5, 0.35, 0.65, 0.2, 0.8]) {
+        const point = await paths.nth(i).evaluate((el, f) => {
+          const p = el as unknown as SVGPathElement;
+          const len = p.getTotalLength();
+          if (!len) return null;
+          const pt = p.getPointAtLength(len * f);
+          const ctm = p.getScreenCTM();
+          if (!ctm) return null;
+          return { x: pt.x * ctm.a + pt.y * ctm.c + ctm.e, y: pt.x * ctm.b + pt.y * ctm.d + ctm.f };
+        }, frac);
+        if (!point) continue;
+        // Approach from off-stroke so the browser fires a fresh mouseenter.
+        await page.mouse.move(point.x - 60, point.y - 60);
+        await page.mouse.move(point.x, point.y, { steps: 4 });
+        if (
+          await tooltip
+            .first()
+            .isVisible({ timeout: 600 })
+            .catch(() => false)
+        ) {
+          shown = true;
+          break;
+        }
+      }
     }
 
-    await page.mouse.move(point.x, point.y, { steps: 4 });
-
-    // Tooltip should appear with "coded segment" text
-    const tooltip = page.locator('.edge-tooltip-enter').or(page.getByText(/coded segment/i));
-    await expect(tooltip.first()).toBeVisible({ timeout: 5000 });
+    expect(shown, 'edge tooltip should appear when hovering an edge stroke').toBeTruthy();
   });
 
   test('4 - Edge direction dot exists (animated circle on edge path)', async ({ page }) => {
