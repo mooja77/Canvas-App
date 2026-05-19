@@ -95,13 +95,15 @@ with ~75 % empty canvas. `fitView` frames the bbox but does not account for how
 a 1–3-node graph reads in a wide viewport.
 → Centre small graphs and cap zoom. **Effort ~0.5 d (extends `canvasFit.ts`).**
 
-### F6 — Blank-canvas problem: no starter templates 🟠 P2
+### F6 — ~~Blank-canvas problem: no starter templates~~ — WITHDRAWN ✅
 
-**[verified]** A new canvas is an empty void. The codes panel shows a good
-text hint ("No codes yet — select text in a transcript to start coding") but
-there is no scaffold for the _shape_ of an analysis.
-→ Offer 2–3 starter templates ("Thematic analysis", "Framework matrix",
-"Single-case deep coding") at canvas creation. **Effort ~1–2 d.**
+**Correction (longitudinal test, 2026-05-19): this finding was wrong.** The
+"New Canvas" modal already offers a full methodology-template chooser — Blank,
+Thematic Analysis, Grounded Theory, IPA, Framework Analysis, Content Analysis —
+each (except Blank) seeding 4–5 starter codes. The original audit created its
+probe canvases via the API, which bypasses the "New Canvas" modal, so the
+template chooser was never seen. No work required — the blank-canvas concern is
+already addressed by the product. See `LONGITUDINAL_TEST_2026-05-19.md`.
 
 ### F7 — Persistent AI banner eats prime vertical space 🟡 P3
 
@@ -211,28 +213,28 @@ culling fragility seen during the minimap work.)
 
 ## 6. Prioritized worklist
 
-| #   | Item                                                      | Priority | Effort  | Type     |
-| --- | --------------------------------------------------------- | -------- | ------- | -------- |
-| F1  | New nodes placed in nearest clear space (collision-aware) | 🔴 P1    | 0.5–1 d | defect   |
-| F2  | Replace `window.prompt` Add Sub-Code with inline input    | 🟠 P1    | 0.5 d   | defect   |
-| F3  | Node-header controls — minimum hit size, zoom-independent | 🟠 P2    | 0.5 d   | defect   |
-| F5  | Centre small graphs on initial fit                        | 🟠 P2    | 0.5 d   | defect   |
-| F4  | Auto-layout: balanced 2-D instead of vertical column      | 🟠 P2    | 1 d     | defect   |
-| F6  | Starter templates at canvas creation                      | 🟠 P2    | 1–2 d   | feature  |
-| F7  | Slim the AI banner                                        | 🟡 P3    | 0.25 d  | polish   |
-| F13 | Double-click-empty-canvas → add palette                   | 🟡 P3    | 0.25 d  | feature  |
-| F10 | Hide/shrink minimap on mobile                             | 🟡 P3    | 0.25 d  | polish   |
-| F11 | Split the Tools "junk drawer" menu                        | 🟡 P3    | 0.5 d   | polish   |
-| F12 | Find / jump-to-existing-node in the palette               | 🟡 P3    | 0.5 d   | feature  |
-| F8  | Slim mobile chrome stack                                  | 🟡 P3    | 0.5 d   | polish   |
-| F9  | Mobile coding-on-phone messaging                          | 🟡 P3    | 0.25 d  | polish   |
-| F15 | Uniform node chrome across 18 types                       | 🟢 P4    | 1 d     | polish   |
-| F14 | Reduce modal-heaviness                                    | 🟢 P4    | —       | refactor |
+| #      | Item                                                      | Priority | Effort  | Type     |
+| ------ | --------------------------------------------------------- | -------- | ------- | -------- |
+| F1     | New nodes placed in nearest clear space (collision-aware) | 🔴 P1    | 0.5–1 d | defect   |
+| F2     | Replace `window.prompt` Add Sub-Code with inline input    | 🟠 P1    | 0.5 d   | defect   |
+| F3     | Node-header controls — minimum hit size, zoom-independent | 🟠 P2    | 0.5 d   | defect   |
+| F5     | Centre small graphs on initial fit                        | 🟠 P2    | 0.5 d   | defect   |
+| F4     | Auto-layout: balanced 2-D instead of vertical column      | 🟠 P2    | 1 d     | defect   |
+| ~~F6~~ | ~~Starter templates~~ — WITHDRAWN, already exists         | —        | —       | —        |
+| F7     | Slim the AI banner                                        | 🟡 P3    | 0.25 d  | polish   |
+| F13    | Double-click-empty-canvas → add palette                   | 🟡 P3    | 0.25 d  | feature  |
+| F10    | Hide/shrink minimap on mobile                             | 🟡 P3    | 0.25 d  | polish   |
+| F11    | Split the Tools "junk drawer" menu                        | 🟡 P3    | 0.5 d   | polish   |
+| F12    | Find / jump-to-existing-node in the palette               | 🟡 P3    | 0.5 d   | feature  |
+| F8     | Slim mobile chrome stack                                  | 🟡 P3    | 0.5 d   | polish   |
+| F9     | Mobile coding-on-phone messaging                          | 🟡 P3    | 0.25 d  | polish   |
+| F15    | Uniform node chrome across 18 types                       | 🟢 P4    | 1 d     | polish   |
+| F14    | Reduce modal-heaviness                                    | 🟢 P4    | —       | refactor |
 
 **Suggested PR 1 — defects & polish (~2.25 d):** F1 + F2 + F3 + F5 + F7 + F13 +
 F10. All small, self-contained, same shape as the 2026-05-18 audit PR.
 **Suggested PR 2 — auto-layout (~1 d):** F4 (balanced layout).
-**Suggested PR 3 — feature:** F6 starter templates (highest-value new feature).
+_(Former "PR 3 — F6 starter templates" withdrawn — templates already exist.)_
 
 ---
 
@@ -243,13 +245,14 @@ The canvas is **capable** — it has the full node-canvas interaction layer
 mode) _and_ domain graphics generic node tools cannot match (coding stripes,
 colour-keyed edges). It does **not** have a parity problem.
 
-It has a **last-mile friction problem**, and three findings carry most of the
+It has a **last-mile friction problem**, and two findings carry most of the
 weight:
 
 - **F1** — new nodes pile on top of existing content (every session, dozens of
-  times). The single most important fix.
+  times). The single most important fix. The longitudinal test
+  (`LONGITUDINAL_TEST_2026-05-19.md`) shows this compounds across a project's
+  life and that the only repair, Auto-Arrange, is destructive to manual layout.
 - **F2** — one OS dialog breaks the polish.
-- **F6** — a new canvas gives the researcher no starting point.
 
-Fix those three and the canvas goes from "capable but fiddly" to "quiet and
-obvious" — which, for a research audience, is the whole game.
+Fix those and the canvas goes from "capable but fiddly" to "quiet and obvious"
+— which, for a research audience, is the whole game.
