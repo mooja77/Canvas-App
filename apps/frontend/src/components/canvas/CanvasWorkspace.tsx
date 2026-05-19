@@ -151,6 +151,21 @@ export default function CanvasWorkspace() {
 
   const isMobile = useMobile();
 
+  // F9 — Mobile is realistically a read/review surface; coding by selection is
+  // impractical at phone widths. Show a one-time gentle hint per browser so the
+  // product stance is explicit rather than silent.
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!activeCanvas) return;
+    try {
+      if (localStorage.getItem('qualcanvas_mobile_coding_hint_seen') === '1') return;
+      toast('Best on a larger screen for coding — phone is great for reviewing.', { icon: '📱', duration: 6000 });
+      localStorage.setItem('qualcanvas_mobile_coding_hint_seen', '1');
+    } catch {
+      // localStorage may throw in private/restricted modes — ignore silently.
+    }
+  }, [isMobile, activeCanvas]);
+
   const { showWarning: showSessionWarning, dismissWarning: dismissSessionWarning } = useSessionTimeout();
 
   // Real-time collaboration

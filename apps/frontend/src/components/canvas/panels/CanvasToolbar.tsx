@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { canvasApi } from '../../../services/api';
 import FeatureTooltip from '../../FeatureTooltip';
 import { CollisionPopover } from '../primitives/CollisionPopover';
+import { useMobile } from '../../../hooks/useMobile';
 
 const AutoCodeModal = lazy(() => import('./AutoCodeModal'));
 const CaseManagerPanel = lazy(() => import('./CaseManagerPanel'));
@@ -144,6 +145,9 @@ export default function CanvasToolbar({
   const { t } = useTranslation();
   const activeCanvas = useActiveCanvas();
   const showCodingStripes = useShowCodingStripes();
+  // F8 — on phone-class viewports we collapse Survey / Share / Export into the
+  // existing "More" overflow so the toolbar no longer wraps to 3 rows.
+  const isMobile = useMobile();
   const closeCanvas = useCanvasStore((s) => s.closeCanvas);
   const addQuestion = useCanvasStore((s) => s.addQuestion);
   const addMemo = useCanvasStore((s) => s.addMemo);
@@ -379,20 +383,23 @@ export default function CanvasToolbar({
           ) : (
             <div className="flex flex-wrap items-center gap-1">
               <TranscriptSourceMenu />
-              <button
-                onClick={() => setShowSurveyImport(true)}
-                className="flex items-center gap-1.5 rounded-lg bg-teal-50 px-2.5 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300 dark:hover:bg-teal-900/50 transition-colors"
-                title="Import survey responses from CSV"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
-                  />
-                </svg>
-                {t('toolbar.survey')}
-              </button>
+              {/* F8 — Survey import folds into the More menu on mobile. */}
+              {!isMobile && (
+                <button
+                  onClick={() => setShowSurveyImport(true)}
+                  className="flex items-center gap-1.5 rounded-lg bg-teal-50 px-2.5 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300 dark:hover:bg-teal-900/50 transition-colors"
+                  title="Import survey responses from CSV"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+                    />
+                  </svg>
+                  {t('toolbar.survey')}
+                </button>
+              )}
               <button
                 data-tour="canvas-btn-question"
                 onClick={() => setShowQuestionInput(true)}
@@ -848,24 +855,45 @@ export default function CanvasToolbar({
             </ToolbarDropdown>
           </FeatureTooltip>
 
-          {/* Export dropdown (icon only) */}
-          <FeatureTooltip
-            feature="exportSeen"
-            title="Export your work"
-            body="Export to HTML, Markdown, Excel, PNG, or QDPX for NVivo / ATLAS.ti."
-          >
-            <ToolbarDropdown
-              icon={
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
-                  />
-                </svg>
-              }
+          {/* Export dropdown (icon only) — F8: folded into More on mobile. */}
+          {!isMobile && (
+            <FeatureTooltip
+              feature="exportSeen"
+              title="Export your work"
+              body="Export to HTML, Markdown, Excel, PNG, or QDPX for NVivo / ATLAS.ti."
             >
-              {onExportPNG && (
+              <ToolbarDropdown
+                icon={
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+                    />
+                  </svg>
+                }
+              >
+                {onExportPNG && (
+                  <DropdownItem
+                    icon={
+                      <svg
+                        className="h-4 w-4 text-gray-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5a2.25 2.25 0 0 0 2.25-2.25V5.25a2.25 2.25 0 0 0-2.25-2.25H3.75a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
+                        />
+                      </svg>
+                    }
+                    label="Export PNG"
+                    onClick={onExportPNG}
+                  />
+                )}
                 <DropdownItem
                   icon={
                     <svg
@@ -878,96 +906,79 @@ export default function CanvasToolbar({
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5a2.25 2.25 0 0 0 2.25-2.25V5.25a2.25 2.25 0 0 0-2.25-2.25H3.75a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
+                        d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
                       />
                     </svg>
                   }
-                  label="Export PNG"
-                  onClick={onExportPNG}
+                  label="Export Report (HTML/MD)"
+                  onClick={() => setShowRichExport(true)}
                 />
-              )}
-              <DropdownItem
-                icon={
-                  <svg
-                    className="h-4 w-4 text-gray-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-                    />
-                  </svg>
-                }
-                label="Export Report (HTML/MD)"
-                onClick={() => setShowRichExport(true)}
-              />
-              <DropdownItem
-                icon={
-                  <svg
-                    className="h-4 w-4 text-green-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0v1.5c0 .621-.504 1.125-1.125 1.125"
-                    />
-                  </svg>
-                }
-                label={exportingExcel ? 'Exporting...' : 'Export Excel (.xlsx)'}
-                onClick={handleExportExcel}
-              />
-              {/* QDPX Export — rendered inline to use QdpxExportButton's own state */}
-              <div className="px-3 py-1">
-                <QdpxExportButton canvasId={activeCanvas.id} />
-              </div>
-              <DropdownItem
-                icon={
-                  <svg
-                    className="h-4 w-4 text-gray-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
-                    />
-                  </svg>
-                }
-                label="QDPX Import"
-                onClick={() => setShowQdpxImport(true)}
-              />
-            </ToolbarDropdown>
-          </FeatureTooltip>
+                <DropdownItem
+                  icon={
+                    <svg
+                      className="h-4 w-4 text-green-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0v1.5c0 .621-.504 1.125-1.125 1.125"
+                      />
+                    </svg>
+                  }
+                  label={exportingExcel ? 'Exporting...' : 'Export Excel (.xlsx)'}
+                  onClick={handleExportExcel}
+                />
+                {/* QDPX Export — rendered inline to use QdpxExportButton's own state */}
+                <div className="px-3 py-1">
+                  <QdpxExportButton canvasId={activeCanvas.id} />
+                </div>
+                <DropdownItem
+                  icon={
+                    <svg
+                      className="h-4 w-4 text-gray-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+                      />
+                    </svg>
+                  }
+                  label="QDPX Import"
+                  onClick={() => setShowQdpxImport(true)}
+                />
+              </ToolbarDropdown>
+            </FeatureTooltip>
+          )}
 
-          {/* Divider */}
-          <div className="h-5 w-px bg-gray-200/80 dark:bg-gray-700/80" />
+          {/* Divider — F8: hidden on mobile alongside Export/Share. */}
+          {!isMobile && <div className="h-5 w-px bg-gray-200/80 dark:bg-gray-700/80" />}
 
-          {/* Share — kept visible as a primary social action */}
-          <button
-            onClick={() => setShowShare(true)}
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
-            title="Share canvas"
-            aria-label="Share canvas"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
-              />
-            </svg>
-          </button>
+          {/* Share — F8: folded into More on mobile. */}
+          {!isMobile && (
+            <button
+              onClick={() => setShowShare(true)}
+              className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
+              title="Share canvas"
+              aria-label="Share canvas"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+                />
+              </svg>
+            </button>
+          )}
 
           {/* "More" overflow — folds in actions that were previously their
               own buttons but are infrequent (auto-arrange, command palette,
@@ -992,6 +1003,113 @@ export default function CanvasToolbar({
             }
             className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
           >
+            {/* F8 — mobile-only entries fold the hidden Survey / Share / Export
+                controls into this overflow menu so phone users keep access. */}
+            {isMobile && (
+              <>
+                <DropdownLabel>Share</DropdownLabel>
+                <DropdownItem
+                  icon={
+                    <svg
+                      className="h-4 w-4 text-gray-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+                      />
+                    </svg>
+                  }
+                  label="Share canvas"
+                  onClick={() => setShowShare(true)}
+                />
+                <DropdownLabel>Import</DropdownLabel>
+                <DropdownItem
+                  icon={
+                    <svg
+                      className="h-4 w-4 text-teal-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+                      />
+                    </svg>
+                  }
+                  label={t('toolbar.survey')}
+                  onClick={() => setShowSurveyImport(true)}
+                />
+                <DropdownLabel>Export</DropdownLabel>
+                {onExportPNG && (
+                  <DropdownItem
+                    icon={
+                      <svg
+                        className="h-4 w-4 text-gray-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5a2.25 2.25 0 0 0 2.25-2.25V5.25a2.25 2.25 0 0 0-2.25-2.25H3.75a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 3.75 21Z"
+                        />
+                      </svg>
+                    }
+                    label="Export PNG"
+                    onClick={onExportPNG}
+                  />
+                )}
+                <DropdownItem
+                  icon={
+                    <svg
+                      className="h-4 w-4 text-gray-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                      />
+                    </svg>
+                  }
+                  label="Export Report (HTML/MD)"
+                  onClick={() => setShowRichExport(true)}
+                />
+                <DropdownItem
+                  icon={
+                    <svg
+                      className="h-4 w-4 text-green-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3.375 19.5h17.25M3.375 5.625v12.75M20.625 5.625v12.75M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125Z"
+                      />
+                    </svg>
+                  }
+                  label={exportingExcel ? 'Exporting...' : 'Export Excel (.xlsx)'}
+                  onClick={handleExportExcel}
+                />
+                <DropdownLabel>More</DropdownLabel>
+              </>
+            )}
             {onAutoLayout && (
               <DropdownItem
                 icon={
