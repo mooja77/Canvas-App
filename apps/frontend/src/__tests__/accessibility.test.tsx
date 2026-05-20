@@ -191,15 +191,19 @@ describe('Accessibility', () => {
   // ── LoginPage ────────────────────────────────────────────────────────────
 
   describe('LoginPage', () => {
-    it('form inputs have associated labels', () => {
+    it('form inputs have associated labels and are marked required', () => {
       renderWith(<LoginPage />);
 
-      const emailInput = screen.getByLabelText('Email');
+      // Labels carry a visible "*" required marker for sighted users; match the
+      // accessible name by prefix to stay tolerant of decoration.
+      const emailInput = screen.getByLabelText(/^Email/);
       expect(emailInput).toBeInTheDocument();
       expect(emailInput).toHaveAttribute('type', 'email');
+      expect(emailInput).toBeRequired();
 
-      const passwordInput = screen.getByLabelText('Password');
+      const passwordInput = screen.getByLabelText(/^Password/);
       expect(passwordInput).toBeInTheDocument();
+      expect(passwordInput).toBeRequired();
     });
 
     it('password field has show/hide toggle with aria-label', () => {
