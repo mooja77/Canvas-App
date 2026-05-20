@@ -163,9 +163,14 @@ test.describe('Forgot Password Page', () => {
     await expect(page.getByText(/if an account exists/i)).toBeVisible({ timeout: 10000 });
   });
 
-  test('13 - empty email keeps Send button disabled', async ({ page }) => {
+  test('13 - email is marked required, Send button stays enabled for browser validation', async ({ page }) => {
+    // PR #46 swapped the disabled-button anti-pattern for browser-native
+    // required validation. Empty-submit should now surface "Please fill out
+    // this field" rather than silently disabling the button.
+    const emailInput = page.getByLabel(/^Email address/);
+    await expect(emailInput).toHaveAttribute('required', '');
     const sendBtn = page.getByRole('button', { name: 'Send Reset Link' });
-    await expect(sendBtn).toBeDisabled();
+    await expect(sendBtn).toBeEnabled();
   });
 
   test('14 - back to login link works', async ({ page }) => {
