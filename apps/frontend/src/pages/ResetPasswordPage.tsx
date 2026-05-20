@@ -108,6 +108,9 @@ export default function ResetPasswordPage() {
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   New Password
+                  <span aria-hidden="true" className="ml-0.5 text-red-500">
+                    *
+                  </span>
                 </label>
                 <input
                   id="new-password"
@@ -117,6 +120,8 @@ export default function ResetPasswordPage() {
                   placeholder="At least 8 characters"
                   autoComplete="new-password"
                   autoFocus
+                  required
+                  minLength={8}
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 />
               </div>
@@ -126,6 +131,9 @@ export default function ResetPasswordPage() {
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Confirm Password
+                  <span aria-hidden="true" className="ml-0.5 text-red-500">
+                    *
+                  </span>
                 </label>
                 <input
                   id="confirm-password"
@@ -134,12 +142,14 @@ export default function ResetPasswordPage() {
                   onChange={(e) => setConfirm(e.target.value)}
                   placeholder="Re-enter your new password"
                   autoComplete="new-password"
+                  required
+                  minLength={8}
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 />
               </div>
               <button
                 type="submit"
-                disabled={loading || !password || !confirm}
+                disabled={loading}
                 className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
               >
                 {loading ? 'Resetting...' : 'Reset Password'}
