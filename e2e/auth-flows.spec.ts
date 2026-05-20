@@ -28,12 +28,22 @@ test.describe('Login Page UI', () => {
     await expect(passwordInput).toBeVisible();
   });
 
-  test('2 - Sign In button is disabled when fields are empty', async ({ page }) => {
+  test('2 - email and password fields are marked required, button stays enabled for browser validation', async ({
+    page,
+  }) => {
+    // We deliberately removed the disabled-button-without-hint anti-pattern;
+    // clicking with empty fields now triggers the browser's required-field
+    // UX (focus + native tooltip) instead of silently doing nothing.
+    const emailInput = page.locator('#login-email');
+    const passwordInput = page.locator('#login-password');
+    await expect(emailInput).toHaveAttribute('required', '');
+    await expect(passwordInput).toHaveAttribute('required', '');
+
     const signInBtn = page.getByRole('button', { name: 'Sign In' }).first();
-    await expect(signInBtn).toBeDisabled();
+    await expect(signInBtn).toBeEnabled();
   });
 
-  test('3 - Sign In button enables when email and password are filled', async ({ page }) => {
+  test('3 - Sign In button stays enabled when email and password are filled', async ({ page }) => {
     await page.locator('#login-email').fill('user@example.com');
     await page.locator('#login-password').fill('somepassword');
 
