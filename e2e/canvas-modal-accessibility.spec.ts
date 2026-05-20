@@ -130,6 +130,17 @@ test.describe('Canvas modal accessibility', () => {
       await closeBtn.click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
     });
+
+    test(`Esc closes ${modal.name} modal (live QA 2026-05-20)`, async ({ page }) => {
+      // WAI-ARIA dialogs are expected to dismiss on Esc. Sprint 1C added the
+      // role/aria attributes but not the Esc handler; a follow-up shared hook
+      // `useEscapeToClose` was wired into 11 modals.
+      await gotoSeededCanvas(page);
+      await openToolsItem(page, modal.toolsItem);
+      await expect(page.getByRole('dialog').first()).toBeVisible({ timeout: 10000 });
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+    });
   }
 
   test('F14: Project Overview side panel exposes complementary landmark + named Close + Esc-to-close', async ({

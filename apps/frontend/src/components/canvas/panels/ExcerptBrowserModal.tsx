@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 
 interface ExcerptBrowserModalProps {
   onClose: () => void;
@@ -22,6 +23,7 @@ interface EnrichedExcerpt {
 }
 
 export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProps) {
+  useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const deleteCoding = useCanvasStore((s) => s.deleteCoding);
   const setSelectedQuestionId = useCanvasStore((s) => s.setSelectedQuestionId);

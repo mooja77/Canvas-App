@@ -4,6 +4,7 @@ import { calendarApi } from '../../../services/api';
 import type { CalendarEventInput } from '../../../services/api';
 import { useAuthStore } from '../../../stores/authStore';
 import toast from 'react-hot-toast';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 
 interface CalendarPanelProps {
   onClose: () => void;
@@ -85,6 +86,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function CalendarPanel({ onClose }: CalendarPanelProps) {
+  useEscapeToClose(onClose);
   const authType = useAuthStore((s) => s.authType);
   const emailAuthed = authType === 'email';
   const [events, setEvents] = useState<CalendarEvent[]>([]);

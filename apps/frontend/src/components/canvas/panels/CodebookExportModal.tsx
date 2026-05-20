@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 
 interface CodebookExportModalProps {
   onClose: () => void;
@@ -32,6 +33,7 @@ interface DataRow {
 type Tab = 'codebook' | 'data';
 
 export default function CodebookExportModal({ onClose }: CodebookExportModalProps) {
+  useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const [tab, setTab] = useState<Tab>('codebook');
 

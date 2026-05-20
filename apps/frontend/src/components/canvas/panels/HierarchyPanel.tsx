@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { useCanvasStore, useCanvasQuestions, useCanvasCodings } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 
 interface HierarchyPanelProps {
   onClose: () => void;
@@ -15,12 +16,13 @@ interface TreeItem {
 }
 
 export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
+  useEscapeToClose(onClose);
   const questions = useCanvasQuestions();
   const codings = useCanvasCodings();
-  const updateQuestion = useCanvasStore(s => s.updateQuestion);
+  const updateQuestion = useCanvasStore((s) => s.updateQuestion);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(questions.map(q => q.id)));
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(questions.map((q) => q.id)));
 
   // Coding counts per question
   const codingCounts = useMemo(() => {
@@ -50,8 +52,10 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
         let d = 1;
         while (p && d < 4) {
           const pq = questions.find((x: CanvasQuestion) => x.id === p);
-          if (pq?.parentQuestionId) { d++; p = pq.parentQuestionId; }
-          else break;
+          if (pq?.parentQuestionId) {
+            d++;
+            p = pq.parentQuestionId;
+          } else break;
         }
         item.depth = d;
       } else {
@@ -66,7 +70,7 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
   const flatList = useMemo(() => {
     const result: TreeItem[] = [];
     const walk = (items: TreeItem[]) => {
-      items.forEach(item => {
+      items.forEach((item) => {
         result.push(item);
         if (expandedIds.has(item.question.id)) {
           walk(item.children);
@@ -78,7 +82,7 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
   }, [tree, expandedIds]);
 
   const toggleExpanded = useCallback((id: string) => {
-    setExpandedIds(prev => {
+    setExpandedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -95,47 +99,53 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
     setDragOverId(id);
   }, []);
 
-  const handleDrop = useCallback(async (targetId: string) => {
-    if (!dragId || dragId === targetId) {
+  const handleDrop = useCallback(
+    async (targetId: string) => {
+      if (!dragId || dragId === targetId) {
+        setDragId(null);
+        setDragOverId(null);
+        return;
+      }
+
+      // Don't allow making a parent a child of its own descendant
+      const isDescendant = (parentId: string, childId: string): boolean => {
+        const q = questions.find((x) => x.id === childId);
+        if (!q?.parentQuestionId) return false;
+        if (q.parentQuestionId === parentId) return true;
+        return isDescendant(parentId, q.parentQuestionId);
+      };
+
+      if (isDescendant(dragId, targetId)) {
+        toast.error('Cannot make a parent a child of its own descendant');
+        setDragId(null);
+        setDragOverId(null);
+        return;
+      }
+
+      try {
+        await updateQuestion(dragId, { parentQuestionId: targetId });
+        toast.success('Code moved');
+        setExpandedIds((prev) => new Set([...prev, targetId]));
+      } catch {
+        toast.error('Failed to move code');
+      }
       setDragId(null);
       setDragOverId(null);
-      return;
-    }
+    },
+    [dragId, questions, updateQuestion],
+  );
 
-    // Don't allow making a parent a child of its own descendant
-    const isDescendant = (parentId: string, childId: string): boolean => {
-      const q = questions.find(x => x.id === childId);
-      if (!q?.parentQuestionId) return false;
-      if (q.parentQuestionId === parentId) return true;
-      return isDescendant(parentId, q.parentQuestionId);
-    };
-
-    if (isDescendant(dragId, targetId)) {
-      toast.error('Cannot make a parent a child of its own descendant');
-      setDragId(null);
-      setDragOverId(null);
-      return;
-    }
-
-    try {
-      await updateQuestion(dragId, { parentQuestionId: targetId });
-      toast.success('Code moved');
-      setExpandedIds(prev => new Set([...prev, targetId]));
-    } catch {
-      toast.error('Failed to move code');
-    }
-    setDragId(null);
-    setDragOverId(null);
-  }, [dragId, questions, updateQuestion]);
-
-  const handleMoveToRoot = useCallback(async (id: string) => {
-    try {
-      await updateQuestion(id, { parentQuestionId: null });
-      toast.success('Moved to top level');
-    } catch {
-      toast.error('Failed to move');
-    }
-  }, [updateQuestion]);
+  const handleMoveToRoot = useCallback(
+    async (id: string) => {
+      try {
+        await updateQuestion(id, { parentQuestionId: null });
+        toast.success('Moved to top level');
+      } catch {
+        toast.error('Failed to move');
+      }
+    },
+    [updateQuestion],
+  );
 
   const totalCodingCount = codings.length;
 
@@ -149,7 +159,10 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
               Drag codes to reorganize &middot; {questions.length} codes &middot; {totalCodingCount} codings
             </p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 transition-colors">
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 transition-colors"
+          >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>
@@ -164,7 +177,7 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
             </div>
           ) : (
             <div className="space-y-0.5">
-              {flatList.map(item => {
+              {flatList.map((item) => {
                 const hasChildren = item.children.length > 0;
                 const isExpanded = expandedIds.has(item.question.id);
                 const isDragOver = dragOverId === item.question.id;
@@ -178,11 +191,16 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
                     onDragOver={(e) => handleDragOver(e, item.question.id)}
                     onDragLeave={() => setDragOverId(null)}
                     onDrop={() => handleDrop(item.question.id)}
-                    onDragEnd={() => { setDragId(null); setDragOverId(null); }}
+                    onDragEnd={() => {
+                      setDragId(null);
+                      setDragOverId(null);
+                    }}
                     className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-all duration-100 cursor-grab active:cursor-grabbing ${
-                      isDragOver ? 'bg-brand-50 dark:bg-brand-900/30 ring-1 ring-brand-300 dark:ring-brand-700' :
-                      isDragging ? 'opacity-40' :
-                      'hover:bg-gray-50 dark:hover:bg-gray-750'
+                      isDragOver
+                        ? 'bg-brand-50 dark:bg-brand-900/30 ring-1 ring-brand-300 dark:ring-brand-700'
+                        : isDragging
+                          ? 'opacity-40'
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-750'
                     }`}
                     style={{ paddingLeft: `${8 + item.depth * 20}px` }}
                   >
@@ -192,7 +210,13 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
                         onClick={() => toggleExpanded(item.question.id)}
                         className="shrink-0 rounded p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                       >
-                        <svg className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <svg
+                          className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={2}
+                          stroke="currentColor"
+                        >
                           <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                         </svg>
                       </button>
@@ -201,15 +225,18 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
                     )}
 
                     {/* Color dot */}
-                    <div className="h-3 w-3 rounded-full shrink-0 ring-1 ring-black/10" style={{ backgroundColor: item.question.color }} />
+                    <div
+                      className="h-3 w-3 rounded-full shrink-0 ring-1 ring-black/10"
+                      style={{ backgroundColor: item.question.color }}
+                    />
 
                     {/* Label */}
-                    <span className="text-xs text-gray-800 dark:text-gray-200 flex-1 truncate">{item.question.text}</span>
+                    <span className="text-xs text-gray-800 dark:text-gray-200 flex-1 truncate">
+                      {item.question.text}
+                    </span>
 
                     {/* Coding count */}
-                    <span className="shrink-0 text-[10px] tabular-nums text-gray-400">
-                      {item.codingCount}
-                    </span>
+                    <span className="shrink-0 text-[10px] tabular-nums text-gray-400">{item.codingCount}</span>
 
                     {/* Move to root */}
                     {item.depth > 0 && (
@@ -234,8 +261,14 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
         {dragId && (
           <div
             className="mx-2 mb-2 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700 py-2 text-center text-[10px] text-gray-400 transition-colors hover:border-brand-300 hover:text-brand-500"
-            onDragOver={(e) => { e.preventDefault(); }}
-            onDrop={() => { handleMoveToRoot(dragId); setDragId(null); setDragOverId(null); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+            }}
+            onDrop={() => {
+              handleMoveToRoot(dragId);
+              setDragId(null);
+              setDragOverId(null);
+            }}
           >
             Drop here to move to top level
           </div>

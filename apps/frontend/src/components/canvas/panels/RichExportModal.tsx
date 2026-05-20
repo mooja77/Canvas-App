@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase, CanvasMemo } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 
 interface RichExportModalProps {
   onClose: () => void;
@@ -11,6 +12,7 @@ type ExportFormat = 'html' | 'markdown';
 type GroupBy = 'code' | 'source' | 'case';
 
 export default function RichExportModal({ onClose }: RichExportModalProps) {
+  useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const [format, setFormat] = useState<ExportFormat>('html');
   const [groupBy, setGroupBy] = useState<GroupBy>('code');
