@@ -7,11 +7,16 @@ import { test, expect, type Page } from '@playwright/test';
  * aria-labelledby, and have a Close control reachable by accessible name.
  * Code Weighting's star-rating buttons must have "Rate N stars" labels.
  *
- * Coverage: the five modals reachable through the Tools dropdown
- * (Weights, Dashboard, Ethics, Excerpts, Codebook). RichExportModal received
- * the identical markup change but lives in the Export dropdown; ShareCanvas
+ * Coverage: the four remaining modals reachable through the Tools dropdown
+ * (Weights, Ethics, Excerpts, Codebook). RichExportModal received the
+ * identical markup change but lives in the Export dropdown; ShareCanvas
  * already had dialog semantics pre-Sprint-1C. Codebook was added in a
  * follow-up after a prod a11y audit found it missing the same attributes.
+ *
+ * Project Overview (formerly the Dashboard modal) was converted to a
+ * non-modal docked side panel in the F14 follow-up — it has its own
+ * separate non-modal a11y assertions below since a complementary landmark
+ * is the right semantic, not a dialog.
  */
 
 const API = 'http://localhost:3007/api/v1';
@@ -101,7 +106,6 @@ test.describe('Canvas modal accessibility', () => {
 
   const MODALS = [
     { name: 'Code Weighting', toolsItem: /^Weights$/ },
-    { name: 'Project Overview', toolsItem: /^Dashboard$/ },
     { name: 'Ethics & Compliance', toolsItem: /^Ethics$/ },
     { name: 'Excerpt Browser', toolsItem: /^Excerpts$/ },
     { name: 'Codebook Export', toolsItem: /^Codebook$/ },
@@ -127,6 +131,34 @@ test.describe('Canvas modal accessibility', () => {
       await expect(page.getByRole('dialog')).toHaveCount(0);
     });
   }
+
+  test('F14: Project Overview side panel exposes complementary landmark + named Close + Esc-to-close', async ({
+    page,
+  }) => {
+    await gotoSeededCanvas(page);
+    await openToolsItem(page, /^Dashboard$/);
+
+    // Non-modal side panel — landmark, not a dialog.
+    const panel = page.getByTestId('project-overview-panel');
+    await expect(panel).toBeVisible({ timeout: 10000 });
+    await expect(panel).toHaveRole('complementary');
+    const labelledBy = await panel.getAttribute('aria-labelledby');
+    expect(labelledBy).toBeTruthy();
+    await expect(page.locator(`#${labelledBy}`)).toHaveCount(1);
+
+    // No backdrop covers the canvas — the React Flow pane is still hit-testable.
+    await expect(page.locator('.react-flow__pane')).toBeVisible();
+
+    // Close by accessible name closes the panel.
+    await panel.getByRole('button', { name: /^Close$/i }).click();
+    await expect(page.getByTestId('project-overview-panel')).toHaveCount(0);
+
+    // Re-open and verify Esc closes too (matches the dismiss gesture of other panels).
+    await openToolsItem(page, /^Dashboard$/);
+    await expect(page.getByTestId('project-overview-panel')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('project-overview-panel')).toHaveCount(0);
+  });
 
   test('finding #5: Code Weighting star buttons have Rate N stars labels', async ({ page }) => {
     await gotoSeededCanvas(page);
