@@ -428,6 +428,29 @@ input[type="checkbox"]:checked {
   animation: slideInRight 200ms ease-out both;
 }
 
+/* ─── Right side-panel chrome shift ─────────────────────────────────────────
+   F14 follow-up. When a non-modal docked right-side panel is open (e.g.
+   Project Overview, Tools → Dashboard), the React Flow minimap — anchored
+   bottom-right of the canvas viewport — was completely covered by the 400px
+   panel, so users lost the canvas overview the minimap provides. We use
+   `body:has([data-side-panel="right"])` to detect any right-docked panel
+   and translate the minimap leftwards by the panel width + its right margin
+   (400px + 12px) plus a small breathing gap (16px) so it sits comfortably to
+   the left of the panel.
+
+   Limited to sm+ (≥640px) because below that, side panels render full-width
+   and the minimap is already hidden on mobile via `!isMobile` in
+   CanvasWorkspace.tsx. The transition is on the .react-flow__minimap base
+   selector so opening AND closing the panel both animate smoothly. */
+.react-flow__minimap {
+  transition: transform 200ms ease-out;
+}
+@media (min-width: 640px) {
+  body:has([data-side-panel='right']) .react-flow__minimap {
+    transform: translateX(-428px);
+  }
+}
+
 /* ─── Enhanced card hover ─── */
 .shadow-card-hover {
   box-shadow: 0 8px 25px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
