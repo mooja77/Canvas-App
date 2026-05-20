@@ -35,7 +35,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { authenticated, logout, authType: _authType } = useAuthStore();
+  const { authenticated, logout, authType: _authType, setEmailAuth } = useAuthStore();
   usePageMeta('Account — QualCanvas', 'Manage your QualCanvas account, profile, plan, and billing.');
 
   // Edit profile state
@@ -84,6 +84,13 @@ export default function AccountPage() {
   // Post-upgrade welcome state
   const [searchParams, setSearchParams] = useSearchParams();
   const [showWelcome, setShowWelcome] = useState(false);
+
+  // Link-account form (legacy access-code users adding an email)
+  const [linkEmail, setLinkEmail] = useState('');
+  const [linkPassword, setLinkPassword] = useState('');
+  const [linkName, setLinkName] = useState('');
+  const [linking, setLinking] = useState(false);
+  const [showLinkForm, setShowLinkForm] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('session_id')) {
@@ -277,6 +284,38 @@ export default function AccountPage() {
     navigate('/');
   };
 
+  const handleLinkEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLinking(true);
+    try {
+      const res = await authApi.linkAccount(linkEmail.trim(), linkPassword, linkName.trim() || undefined);
+      const { jwt, user } = res.data.data;
+      setEmailAuth({
+        jwt,
+        email: user.email,
+        userId: user.id,
+        name: user.name,
+        role: user.role,
+        plan: user.plan,
+        emailVerified: false,
+      });
+      const refreshed = await authApi.getMe();
+      setProfile(refreshed.data.data);
+      setEditName(refreshed.data.data.user.name);
+      setEditEmail(refreshed.data.data.user.email || '');
+      setLinkEmail('');
+      setLinkPassword('');
+      setLinkName('');
+      setShowLinkForm(false);
+      toast.success('Email linked. Check your inbox to verify it.');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to link email');
+    } finally {
+      setLinking(false);
+    }
+  };
+
   const handleEmailPreferenceChange = async (key: keyof Omit<EmailPreferences, 'unsubscribedAt'>, value: boolean) => {
     if (!emailPreferences) return;
     const next = { ...emailPreferences, [key]: value };
@@ -417,10 +456,103 @@ export default function AccountPage() {
                 <span className="text-sm text-gray-600 dark:text-gray-400">Account type</span>
                 <span className="text-sm font-medium text-gray-900 dark:text-white">Access Code (Legacy)</span>
               </div>
-              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg space-y-3">
                 <p className="text-sm text-amber-800 dark:text-amber-200">
                   Add an email to secure your account and access billing features.
                 </p>
+                {!showLinkForm ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowLinkForm(true)}
+                    className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+                  >
+                    Link an email →
+                  </button>
+                ) : (
+                  <form onSubmit={handleLinkEmail} className="space-y-3 pt-1">
+                    <div>
+                      <label
+                        htmlFor="link-email"
+                        className="block text-xs font-medium text-amber-900 dark:text-amber-100 mb-1"
+                      >
+                        Email
+                        <span aria-hidden="true" className="ml-0.5 text-red-500">
+                          *
+                        </span>
+                      </label>
+                      <input
+                        id="link-email"
+                        type="email"
+                        value={linkEmail}
+                        onChange={(e) => setLinkEmail(e.target.value)}
+                        placeholder="you@university.edu"
+                        autoComplete="email"
+                        required
+                        className="w-full px-3 py-2 border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="link-password"
+                        className="block text-xs font-medium text-amber-900 dark:text-amber-100 mb-1"
+                      >
+                        Password
+                        <span aria-hidden="true" className="ml-0.5 text-red-500">
+                          *
+                        </span>
+                        <span className="ml-2 font-normal text-amber-700 dark:text-amber-300">(min 8 characters)</span>
+                      </label>
+                      <input
+                        id="link-password"
+                        type="password"
+                        value={linkPassword}
+                        onChange={(e) => setLinkPassword(e.target.value)}
+                        autoComplete="new-password"
+                        required
+                        minLength={8}
+                        className="w-full px-3 py-2 border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="link-name"
+                        className="block text-xs font-medium text-amber-900 dark:text-amber-100 mb-1"
+                      >
+                        Name <span className="font-normal text-amber-700 dark:text-amber-300">(optional)</span>
+                      </label>
+                      <input
+                        id="link-name"
+                        type="text"
+                        value={linkName}
+                        onChange={(e) => setLinkName(e.target.value)}
+                        placeholder={profile.user.name}
+                        autoComplete="name"
+                        className="w-full px-3 py-2 border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="submit"
+                        disabled={linking}
+                        className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {linking ? 'Linking...' : 'Link Email'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowLinkForm(false);
+                          setLinkEmail('');
+                          setLinkPassword('');
+                          setLinkName('');
+                        }}
+                        className="px-3 py-2 text-sm text-amber-900 dark:text-amber-100 hover:underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             </div>
           )}
