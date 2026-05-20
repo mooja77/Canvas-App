@@ -92,11 +92,11 @@ function ComputedNodeShell({
         <div className="flex items-center gap-0.5">
           <button
             onClick={toggleCollapsed}
-            className="rounded p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            className="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             title={collapsed ? 'Expand' : 'Collapse'}
           >
             <svg
-              className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`}
+              className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`}
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -108,10 +108,10 @@ function ComputedNodeShell({
           {onConfigure && (
             <button
               onClick={onConfigure}
-              className="rounded p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               title="Configure"
             >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -132,10 +132,10 @@ function ComputedNodeShell({
           ) : (
             <button
               onClick={handleRun}
-              className="rounded p-0.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
+              className="rounded p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
               title="Run computation"
             >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -146,10 +146,10 @@ function ComputedNodeShell({
           )}
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="rounded p-0.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+            className="rounded p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
             title="Delete node"
           >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>
           </button>
