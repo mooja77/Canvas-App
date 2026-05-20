@@ -130,6 +130,10 @@ export default function ProjectDashboard({ onClose }: Props) {
       role="complementary"
       aria-labelledby="project-overview-title"
       data-testid="project-overview-panel"
+      // `data-side-panel="right"` is the generic hook other chrome (minimap,
+      // future side panels) uses to shift out of the way when a right-docked
+      // panel is open. See index.css.
+      data-side-panel="right"
       // Mobile: fills the viewport minus small margins so the dense content
       // (4 cards + 2 charts + activity feed) is readable. Desktop: docked to
       // the right at 400px wide so canvas remains visible to the left.

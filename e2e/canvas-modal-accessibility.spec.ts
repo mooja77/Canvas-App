@@ -160,6 +160,34 @@ test.describe('Canvas modal accessibility', () => {
     await expect(page.getByTestId('project-overview-panel')).toHaveCount(0);
   });
 
+  test('F14 follow-up: opening the side panel shifts the minimap so it stays visible', async ({ page }) => {
+    // Live QA finding (2026-05-20): the minimap was completely covered by the
+    // 400px-wide Dashboard panel because both anchor to the bottom-right of the
+    // viewport. The CSS `body:has([data-side-panel="right"])` rule translates
+    // the minimap left so it sits to the left of the panel.
+    await gotoSeededCanvas(page);
+    const minimap = page.locator('.react-flow__minimap');
+    await expect(minimap).toBeVisible({ timeout: 10000 });
+    const beforeBox = await minimap.boundingBox();
+    expect(beforeBox).not.toBeNull();
+
+    await openToolsItem(page, /^Dashboard$/);
+    const panel = page.getByTestId('project-overview-panel');
+    await expect(panel).toBeVisible({ timeout: 10000 });
+
+    // Wait for the 200ms transform transition to settle before measuring.
+    await page.waitForTimeout(350);
+    const afterBox = await minimap.boundingBox();
+    const panelBox = await panel.boundingBox();
+    expect(afterBox).not.toBeNull();
+    expect(panelBox).not.toBeNull();
+
+    // Minimap must have moved left.
+    expect(afterBox!.x).toBeLessThan(beforeBox!.x);
+    // Minimap right edge must be to the left of the panel left edge — i.e. no overlap.
+    expect(afterBox!.x + afterBox!.width).toBeLessThanOrEqual(panelBox!.x);
+  });
+
   test('finding #5: Code Weighting star buttons have Rate N stars labels', async ({ page }) => {
     await gotoSeededCanvas(page);
     await openToolsItem(page, /^Weights$/);
