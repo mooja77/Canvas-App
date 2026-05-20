@@ -367,11 +367,11 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
           )}
           <button
             onClick={toggleCollapsed}
-            className="rounded p-0.5 text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800"
+            className="rounded p-1 text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800"
             title={collapsed ? 'Expand' : 'Collapse'}
           >
             <svg
-              className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`}
+              className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`}
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -382,10 +382,10 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="rounded p-0.5 text-blue-400 hover:bg-blue-100 hover:text-red-600 dark:hover:bg-blue-800 dark:hover:text-red-400"
+            className="rounded p-1 text-blue-400 hover:bg-blue-100 hover:text-red-600 dark:hover:bg-blue-800 dark:hover:text-red-400"
             title="Delete transcript"
           >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>
           </button>
