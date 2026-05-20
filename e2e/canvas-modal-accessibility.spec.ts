@@ -7,10 +7,11 @@ import { test, expect, type Page } from '@playwright/test';
  * aria-labelledby, and have a Close control reachable by accessible name.
  * Code Weighting's star-rating buttons must have "Rate N stars" labels.
  *
- * Coverage: the four modals reachable through the Tools dropdown
- * (Weights, Dashboard, Ethics, Excerpts). RichExportModal received the
- * identical markup change but lives in the Export dropdown; ShareCanvas
- * already had dialog semantics pre-Sprint-1C.
+ * Coverage: the five modals reachable through the Tools dropdown
+ * (Weights, Dashboard, Ethics, Excerpts, Codebook). RichExportModal received
+ * the identical markup change but lives in the Export dropdown; ShareCanvas
+ * already had dialog semantics pre-Sprint-1C. Codebook was added in a
+ * follow-up after a prod a11y audit found it missing the same attributes.
  */
 
 const API = 'http://localhost:3007/api/v1';
@@ -103,6 +104,7 @@ test.describe('Canvas modal accessibility', () => {
     { name: 'Project Overview', toolsItem: /^Dashboard$/ },
     { name: 'Ethics & Compliance', toolsItem: /^Ethics$/ },
     { name: 'Excerpt Browser', toolsItem: /^Excerpts$/ },
+    { name: 'Codebook Export', toolsItem: /^Codebook$/ },
   ] as const;
 
   for (const modal of MODALS) {
