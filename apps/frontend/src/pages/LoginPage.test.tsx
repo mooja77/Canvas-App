@@ -67,22 +67,32 @@ describe('LoginPage', () => {
     mockSearchParams.delete('expired');
   });
 
-  it('renders email and password fields', () => {
+  it('renders email and password fields marked as required', () => {
     render(<LoginPage />);
-    expect(screen.getByLabelText('Email')).toBeInTheDocument();
-    expect(screen.getByLabelText('Password')).toBeInTheDocument();
+    // Labels include a visible "*" marker for sighted users; match by prefix.
+    const emailInput = screen.getByLabelText(/^Email/);
+    const passwordInput = screen.getByLabelText(/^Password/);
+    expect(emailInput).toBeInTheDocument();
+    expect(passwordInput).toBeInTheDocument();
+    // HTML5 required attribute drives the screen-reader announcement and the
+    // browser's native empty-field tooltip on submit.
+    expect(emailInput).toBeRequired();
+    expect(passwordInput).toBeRequired();
   });
 
-  it('Sign In button disabled when fields empty', () => {
+  it('Sign In button is enabled even when fields empty (browser validation handles empty submit)', () => {
+    // We deliberately removed the disabled-button-without-hint anti-pattern;
+    // clicking with empty fields now triggers the browser's required-field
+    // UX instead of silently doing nothing.
     render(<LoginPage />);
     const submitBtn = screen.getByRole('button', { name: 'Sign In' });
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).not.toBeDisabled();
   });
 
-  it('Sign In button enabled when fields filled', () => {
+  it('Sign In button still enabled when fields filled', () => {
     render(<LoginPage />);
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'test@example.com' } });
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'password123' } });
 
     const submitBtn = screen.getByRole('button', { name: 'Sign In' });
     expect(submitBtn).not.toBeDisabled();
@@ -94,11 +104,13 @@ describe('LoginPage', () => {
     expect(signUpTab).toBeInTheDocument();
   });
 
-  it('Sign Up tab shows name field', () => {
+  it('Sign Up tab shows name field marked as required', () => {
     render(<LoginPage />);
     // Click Sign Up tab
     fireEvent.click(screen.getByRole('tab', { name: 'Sign Up' }));
-    expect(screen.getByLabelText('Your Name')).toBeInTheDocument();
+    const nameInput = screen.getByLabelText(/^Your Name/);
+    expect(nameInput).toBeInTheDocument();
+    expect(nameInput).toBeRequired();
   });
 
   it('access code section expandable', () => {
@@ -123,7 +135,7 @@ describe('LoginPage', () => {
     // Switch to Sign Up
     fireEvent.click(screen.getByRole('tab', { name: 'Sign Up' }));
     // Type a password
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Str0ng!Pass' } });
+    fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'Str0ng!Pass' } });
 
     // Should show a strength label
     expect(screen.getByText(/Weak|Fair|Good|Strong/)).toBeInTheDocument();
@@ -135,8 +147,8 @@ describe('LoginPage', () => {
     });
 
     render(<LoginPage />);
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'bad@example.com' } });
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrongpass' } });
+    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: 'bad@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'wrongpass' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Sign In' }));
 
     await waitFor(() => {
@@ -157,8 +169,8 @@ describe('LoginPage', () => {
     });
 
     render(<LoginPage />);
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'a@b.com' } });
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: 'a@b.com' } });
+    fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: 'password123' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Sign In' }));
 
     await waitFor(() => {
