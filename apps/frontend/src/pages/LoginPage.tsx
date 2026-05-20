@@ -565,16 +565,27 @@ export default function LoginPage() {
             </button>
             {showAccessCode && (
               <form onSubmit={handleAccessCodeLogin} className="mt-4 space-y-3">
+                <label
+                  htmlFor="access-code-input"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Access code
+                  <span aria-hidden="true" className="ml-0.5 text-red-500">
+                    *
+                  </span>
+                </label>
                 <input
+                  id="access-code-input"
                   type="text"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="Enter your access code"
+                  required
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm"
                 />
                 <button
                   type="submit"
-                  disabled={loading || !code.trim()}
+                  disabled={loading}
                   className="w-full py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 text-sm"
                 >
                   {loading ? t('auth.signingIn') : t('auth.signInWithCode')}
