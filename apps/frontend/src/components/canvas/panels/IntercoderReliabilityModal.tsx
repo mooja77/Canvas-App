@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding } from '@qualcanvas/shared';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 
 interface IntercoderReliabilityModalProps {
   onClose: () => void;
@@ -50,14 +51,15 @@ function computeKappa(a11: number, a10: number, a01: number, a00: number) {
 
 function interpretKappa(k: number): { label: string; color: string } {
   if (k < 0) return { label: 'Poor', color: '#EF4444' };
-  if (k <= 0.20) return { label: 'Slight', color: '#F97316' };
-  if (k <= 0.40) return { label: 'Fair', color: '#F59E0B' };
-  if (k <= 0.60) return { label: 'Moderate', color: '#EAB308' };
-  if (k <= 0.80) return { label: 'Substantial', color: '#22C55E' };
+  if (k <= 0.2) return { label: 'Slight', color: '#F97316' };
+  if (k <= 0.4) return { label: 'Fair', color: '#F59E0B' };
+  if (k <= 0.6) return { label: 'Moderate', color: '#EAB308' };
+  if (k <= 0.8) return { label: 'Substantial', color: '#22C55E' };
   return { label: 'Almost Perfect', color: '#10B981' };
 }
 
 export default function IntercoderReliabilityModal({ onClose }: IntercoderReliabilityModalProps) {
+  useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const [codeA, setCodeA] = useState('');
   const [codeB, setCodeB] = useState('');
@@ -73,18 +75,21 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
 
   // Filter to codes that have at least 1 coding
   const codesWithCodings = useMemo(() => {
-    const codedIds = new Set(codings.map(c => c.questionId));
-    return questions.filter(q => codedIds.has(q.id));
+    const codedIds = new Set(codings.map((c) => c.questionId));
+    return questions.filter((q) => codedIds.has(q.id));
   }, [questions, codings]);
 
   // Compute results
   const result = useMemo(() => {
     if (!codeA || !codeB || codeA === codeB || !computed) return null;
 
-    const codingsA = codings.filter(c => c.questionId === codeA);
-    const codingsB = codings.filter(c => c.questionId === codeB);
+    const codingsA = codings.filter((c) => c.questionId === codeA);
+    const codingsB = codings.filter((c) => c.questionId === codeB);
 
-    let totalBoth = 0, totalOnlyA = 0, totalOnlyB = 0, totalNeither = 0;
+    let totalBoth = 0,
+      totalOnlyA = 0,
+      totalOnlyB = 0,
+      totalNeither = 0;
     const perTranscript: {
       transcriptId: string;
       title: string;
@@ -97,14 +102,17 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
 
     for (const t of transcripts) {
       const segments = segmentTranscript(t.content, unitSize);
-      const tCodingsA = codingsA.filter(c => c.transcriptId === t.id);
-      const tCodingsB = codingsB.filter(c => c.transcriptId === t.id);
+      const tCodingsA = codingsA.filter((c) => c.transcriptId === t.id);
+      const tCodingsB = codingsB.filter((c) => c.transcriptId === t.id);
 
-      let both = 0, onlyA = 0, onlyB = 0, neither = 0;
+      let both = 0,
+        onlyA = 0,
+        onlyB = 0,
+        neither = 0;
 
       for (const seg of segments) {
-        const hasA = tCodingsA.some(c => overlaps(c, seg));
-        const hasB = tCodingsB.some(c => overlaps(c, seg));
+        const hasA = tCodingsA.some((c) => overlaps(c, seg));
+        const hasB = tCodingsB.some((c) => overlaps(c, seg));
         if (hasA && hasB) both++;
         else if (hasA) onlyA++;
         else if (hasB) onlyB++;
@@ -141,8 +149,8 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
     };
   }, [codeA, codeB, codings, transcripts, unitSize, computed]);
 
-  const codeAName = questions.find(q => q.id === codeA)?.text ?? '';
-  const codeBName = questions.find(q => q.id === codeB)?.text ?? '';
+  const codeAName = questions.find((q) => q.id === codeA)?.text ?? '';
+  const codeBName = questions.find((q) => q.id === codeB)?.text ?? '';
 
   const handleExport = () => {
     if (!result) return;
@@ -164,7 +172,7 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
       `  Neither: ${result.neither}`,
       '',
       'Per-Transcript Breakdown:',
-      ...result.perTranscript.map(pt => {
+      ...result.perTranscript.map((pt) => {
         const ptK = computeKappa(pt.both, pt.onlyA, pt.onlyB, pt.neither);
         return `  ${pt.title}: κ=${ptK.kappa.toFixed(3)}, ${pt.segments} units, agree=${pt.both + pt.neither}/${pt.segments}`;
       }),
@@ -179,18 +187,26 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
   };
 
   return (
-    <div className="modal-backdrop fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="modal-backdrop fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
         className="modal-content w-full max-w-2xl rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10 max-h-[85vh] flex flex-col"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-5 py-3">
           <div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Intercoder Reliability</h3>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400">Compare coding agreement between two codes using Cohen's Kappa</p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">
+              Compare coding agreement between two codes using Cohen's Kappa
+            </p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>
@@ -204,13 +220,16 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
               <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">Code A</label>
               <select
                 value={codeA}
-                onChange={e => { setCodeA(e.target.value); setComputed(false); }}
+                onChange={(e) => {
+                  setCodeA(e.target.value);
+                  setComputed(false);
+                }}
                 className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
               >
                 <option value="">Select code...</option>
                 {codesWithCodings.map((q: CanvasQuestion) => (
                   <option key={q.id} value={q.id} disabled={q.id === codeB}>
-                    {q.text} ({codings.filter(c => c.questionId === q.id).length} codings)
+                    {q.text} ({codings.filter((c) => c.questionId === q.id).length} codings)
                   </option>
                 ))}
               </select>
@@ -219,13 +238,16 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
               <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">Code B</label>
               <select
                 value={codeB}
-                onChange={e => { setCodeB(e.target.value); setComputed(false); }}
+                onChange={(e) => {
+                  setCodeB(e.target.value);
+                  setComputed(false);
+                }}
                 className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
               >
                 <option value="">Select code...</option>
                 {codesWithCodings.map((q: CanvasQuestion) => (
                   <option key={q.id} value={q.id} disabled={q.id === codeA}>
-                    {q.text} ({codings.filter(c => c.questionId === q.id).length} codings)
+                    {q.text} ({codings.filter((c) => c.questionId === q.id).length} codings)
                   </option>
                 ))}
               </select>
@@ -234,12 +256,17 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
 
           <div className="flex items-center gap-4">
             <div>
-              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">Analysis Unit</label>
+              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">
+                Analysis Unit
+              </label>
               <div className="flex gap-2">
-                {(['paragraph', 'sentence'] as const).map(u => (
+                {(['paragraph', 'sentence'] as const).map((u) => (
                   <button
                     key={u}
-                    onClick={() => { setUnitSize(u); setComputed(false); }}
+                    onClick={() => {
+                      setUnitSize(u);
+                      setComputed(false);
+                    }}
                     className={`rounded-lg px-3 py-1 text-[10px] font-medium transition-colors ${
                       unitSize === u
                         ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
@@ -266,14 +293,25 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {!result ? (
             <div className="py-12 text-center">
-              <svg className="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+              <svg
+                className="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600 mb-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"
+                />
               </svg>
               <p className="text-xs text-gray-400 dark:text-gray-500">
                 Select two codes and click "Compute Kappa" to calculate intercoder reliability
               </p>
               <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 max-w-sm mx-auto">
-                This compares how two codes overlap across transcript {unitSize}s. Useful for checking coding consistency, especially after multiple coding passes.
+                This compares how two codes overlap across transcript {unitSize}s. Useful for checking coding
+                consistency, especially after multiple coding passes.
               </p>
             </div>
           ) : (
@@ -291,15 +329,23 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
                   {result.interpretation.label} Agreement
                 </div>
                 <div className="mt-3 flex justify-center gap-6 text-[10px] text-gray-500 dark:text-gray-400">
-                  <span>Observed: <strong>{(result.po * 100).toFixed(1)}%</strong></span>
-                  <span>Expected: <strong>{(result.pe * 100).toFixed(1)}%</strong></span>
-                  <span>Units: <strong>{result.n}</strong></span>
+                  <span>
+                    Observed: <strong>{(result.po * 100).toFixed(1)}%</strong>
+                  </span>
+                  <span>
+                    Expected: <strong>{(result.pe * 100).toFixed(1)}%</strong>
+                  </span>
+                  <span>
+                    Units: <strong>{result.n}</strong>
+                  </span>
                 </div>
               </div>
 
               {/* Contingency table */}
               <div>
-                <h4 className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Contingency Table</h4>
+                <h4 className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">
+                  Contingency Table
+                </h4>
                 <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
                   <table className="w-full text-xs">
                     <thead>
@@ -315,14 +361,22 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
                     </thead>
                     <tbody>
                       <tr className="border-t border-gray-100 dark:border-gray-700/50">
-                        <td className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300">{codeAName.slice(0, 20)} Present</td>
-                        <td className="px-3 py-2 text-center font-semibold text-green-600 dark:text-green-400 bg-green-50/50 dark:bg-green-900/10">{result.both}</td>
+                        <td className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300">
+                          {codeAName.slice(0, 20)} Present
+                        </td>
+                        <td className="px-3 py-2 text-center font-semibold text-green-600 dark:text-green-400 bg-green-50/50 dark:bg-green-900/10">
+                          {result.both}
+                        </td>
                         <td className="px-3 py-2 text-center text-orange-600 dark:text-orange-400">{result.onlyA}</td>
                       </tr>
                       <tr className="border-t border-gray-100 dark:border-gray-700/50">
-                        <td className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300">{codeAName.slice(0, 20)} Absent</td>
+                        <td className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300">
+                          {codeAName.slice(0, 20)} Absent
+                        </td>
                         <td className="px-3 py-2 text-center text-blue-600 dark:text-blue-400">{result.onlyB}</td>
-                        <td className="px-3 py-2 text-center font-semibold text-green-600 dark:text-green-400 bg-green-50/50 dark:bg-green-900/10">{result.neither}</td>
+                        <td className="px-3 py-2 text-center font-semibold text-green-600 dark:text-green-400 bg-green-50/50 dark:bg-green-900/10">
+                          {result.neither}
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -332,26 +386,38 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
               {/* Per-transcript breakdown */}
               {result.perTranscript.length > 0 && (
                 <div>
-                  <h4 className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">Per-Transcript Breakdown</h4>
+                  <h4 className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">
+                    Per-Transcript Breakdown
+                  </h4>
                   <div className="space-y-1.5">
-                    {result.perTranscript.map(pt => {
+                    {result.perTranscript.map((pt) => {
                       const ptK = computeKappa(pt.both, pt.onlyA, pt.onlyB, pt.neither);
                       const ptInterp = interpretKappa(ptK.kappa);
-                      const agreeRate = pt.segments > 0 ? ((pt.both + pt.neither) / pt.segments * 100) : 0;
+                      const agreeRate = pt.segments > 0 ? ((pt.both + pt.neither) / pt.segments) * 100 : 0;
                       return (
-                        <div key={pt.transcriptId} className="flex items-center gap-3 rounded-lg bg-gray-50 dark:bg-gray-700/30 px-3 py-2">
+                        <div
+                          key={pt.transcriptId}
+                          className="flex items-center gap-3 rounded-lg bg-gray-50 dark:bg-gray-700/30 px-3 py-2"
+                        >
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{pt.title}</p>
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500">{pt.segments} {unitSize}s</p>
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                              {pt.segments} {unitSize}s
+                            </p>
                           </div>
                           <div className="text-right">
                             <span className="text-xs font-bold" style={{ color: ptInterp.color }}>
                               κ = {ptK.kappa.toFixed(2)}
                             </span>
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500">{agreeRate.toFixed(0)}% agree</p>
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                              {agreeRate.toFixed(0)}% agree
+                            </p>
                           </div>
                           <div className="w-16 h-1.5 rounded-full bg-gray-200 dark:bg-gray-600 overflow-hidden">
-                            <div className="h-full rounded-full" style={{ width: `${agreeRate}%`, backgroundColor: ptInterp.color }} />
+                            <div
+                              className="h-full rounded-full"
+                              style={{ width: `${agreeRate}%`, backgroundColor: ptInterp.color }}
+                            />
                           </div>
                         </div>
                       );
@@ -362,7 +428,9 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
 
               {/* Interpretation guide */}
               <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 p-3">
-                <h4 className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 mb-2">Kappa Interpretation Guide</h4>
+                <h4 className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 mb-2">
+                  Kappa Interpretation Guide
+                </h4>
                 <div className="grid grid-cols-3 gap-1 text-[10px]">
                   {[
                     { range: '< 0', label: 'Poor', color: '#EF4444' },
@@ -371,10 +439,12 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
                     { range: '0.41–0.60', label: 'Moderate', color: '#EAB308' },
                     { range: '0.61–0.80', label: 'Substantial', color: '#22C55E' },
                     { range: '0.81–1.00', label: 'Almost Perfect', color: '#10B981' },
-                  ].map(g => (
+                  ].map((g) => (
                     <div key={g.label} className="flex items-center gap-1.5">
                       <div className="h-2 w-2 rounded-full" style={{ backgroundColor: g.color }} />
-                      <span className="text-gray-600 dark:text-gray-400">{g.range}: <strong style={{ color: g.color }}>{g.label}</strong></span>
+                      <span className="text-gray-600 dark:text-gray-400">
+                        {g.range}: <strong style={{ color: g.color }}>{g.label}</strong>
+                      </span>
                     </div>
                   ))}
                 </div>

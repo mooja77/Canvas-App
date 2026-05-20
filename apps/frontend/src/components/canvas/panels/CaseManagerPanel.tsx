@@ -3,12 +3,14 @@ import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import ConfirmDialog from '../ConfirmDialog';
 import type { CanvasCase, CanvasTranscript } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 
 interface CaseManagerPanelProps {
   onClose: () => void;
 }
 
 export default function CaseManagerPanel({ onClose }: CaseManagerPanelProps) {
+  useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const addCase = useCanvasStore((s) => s.addCase);
   const updateCase = useCanvasStore((s) => s.updateCase);

@@ -7,6 +7,7 @@ import {
   useCanvasTranscripts,
 } from '../../../stores/canvasStore';
 import type { CanvasQuestion } from '@qualcanvas/shared';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 
 interface CodeWeightingPanelProps {
   onClose: () => void;
@@ -71,6 +72,7 @@ function StarRating({
 }
 
 export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps) {
+  useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const activeCanvasId = useActiveCanvasId();
   const questions = useCanvasQuestions();
