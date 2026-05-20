@@ -307,10 +307,14 @@ export default function LoginPage() {
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   {t('auth.email')}
+                  <span aria-hidden="true" className="ml-0.5 text-red-500">
+                    *
+                  </span>
                 </label>
                 <input
                   id="login-email"
                   type="email"
+                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@university.edu"
@@ -325,11 +329,15 @@ export default function LoginPage() {
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   {t('auth.password')}
+                  <span aria-hidden="true" className="ml-0.5 text-red-500">
+                    *
+                  </span>
                 </label>
                 <div className="relative">
                   <input
                     id="login-password"
                     type={showPassword ? 'text' : 'password'}
+                    required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
@@ -366,7 +374,7 @@ export default function LoginPage() {
               </div>
               <button
                 type="submit"
-                disabled={loading || !email.trim() || !password}
+                disabled={loading}
                 className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
               >
                 {loading ? (
@@ -399,10 +407,14 @@ export default function LoginPage() {
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   {t('auth.yourName')}
+                  <span aria-hidden="true" className="ml-0.5 text-red-500">
+                    *
+                  </span>
                 </label>
                 <input
                   id="register-name"
                   type="text"
+                  required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Dr. Jane Doe"
@@ -417,10 +429,14 @@ export default function LoginPage() {
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   {t('auth.email')}
+                  <span aria-hidden="true" className="ml-0.5 text-red-500">
+                    *
+                  </span>
                 </label>
                 <input
                   id="register-email"
                   type="email"
+                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@university.edu"
@@ -434,11 +450,16 @@ export default function LoginPage() {
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   {t('auth.password')}
+                  <span aria-hidden="true" className="ml-0.5 text-red-500">
+                    *
+                  </span>
                 </label>
                 <div className="relative">
                   <input
                     id="register-password"
                     type={showPassword ? 'text' : 'password'}
+                    required
+                    minLength={8}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="At least 8 characters"
@@ -488,7 +509,7 @@ export default function LoginPage() {
               </div>
               <button
                 type="submit"
-                disabled={loading || !email.trim() || !password || !name.trim()}
+                disabled={loading}
                 className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
               >
                 {loading ? (
