@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useCanvasStore } from '../../../stores/canvasStore';
 import { parseCsvRecords } from '../../../utils/csv';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
 
 interface ParsedEntry {
@@ -23,6 +24,7 @@ function parseCsv(text: string): ParsedEntry[] {
 }
 
 export default function FileUploadModal({ onClose }: Props) {
+  useEscapeToClose(onClose);
   const { addTranscript, refreshCanvas } = useCanvasStore();
   const [entries, setEntries] = useState<ParsedEntry[]>([]);
   const [fileName, setFileName] = useState('');
@@ -106,11 +108,16 @@ export default function FileUploadModal({ onClose }: Props) {
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="file-upload-title"
         className="modal-content w-full max-w-2xl max-h-[80vh] flex flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 pb-3">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Upload File</h3>
+          <h3 id="file-upload-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Upload File
+          </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Import transcripts from .txt or .csv files. CSV files should have title in column 1 and content in column 2.
           </p>

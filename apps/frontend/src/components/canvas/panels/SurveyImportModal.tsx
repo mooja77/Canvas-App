@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 
 interface SurveyImportModalProps {
   isOpen: boolean;
@@ -65,11 +66,12 @@ function parseCSV(content: string): ParsedCSV {
 
   return {
     headers: rows[0],
-    rows: rows.slice(1).filter(r => r.some(cell => cell.length > 0)),
+    rows: rows.slice(1).filter((r) => r.some((cell) => cell.length > 0)),
   };
 }
 
 export default function SurveyImportModal({ isOpen, onClose, onImport }: SurveyImportModalProps) {
+  useEscapeToClose(onClose);
   const [csvContent, setCsvContent] = useState('');
   const [titleColumn, setTitleColumn] = useState('');
   const [contentColumn, setContentColumn] = useState('');
@@ -98,10 +100,12 @@ export default function SurveyImportModal({ isOpen, onClose, onImport }: SurveyI
       // Auto-detect columns
       const result = parseCSV(text);
       if (result.headers.length > 0) {
-        const headers = result.headers.map(h => h.toLowerCase());
-        const titleIdx = headers.findIndex(h => h.includes('title') || h.includes('name') || h.includes('id'));
-        const contentIdx = headers.findIndex(h => h.includes('content') || h.includes('response') || h.includes('text') || h.includes('answer'));
-        const caseIdx = headers.findIndex(h => h.includes('case') || h.includes('group') || h.includes('category'));
+        const headers = result.headers.map((h) => h.toLowerCase());
+        const titleIdx = headers.findIndex((h) => h.includes('title') || h.includes('name') || h.includes('id'));
+        const contentIdx = headers.findIndex(
+          (h) => h.includes('content') || h.includes('response') || h.includes('text') || h.includes('answer'),
+        );
+        const caseIdx = headers.findIndex((h) => h.includes('case') || h.includes('group') || h.includes('category'));
 
         if (titleIdx >= 0) setTitleColumn(result.headers[titleIdx]);
         if (contentIdx >= 0) setContentColumn(result.headers[contentIdx]);
@@ -148,7 +152,7 @@ export default function SurveyImportModal({ isOpen, onClose, onImport }: SurveyI
         content: row[contentIdx] || '',
         ...(caseIdx >= 0 && row[caseIdx] ? { caseId: row[caseIdx] } : {}),
       }))
-      .filter(r => r.content.length > 0);
+      .filter((r) => r.content.length > 0);
 
     if (rows.length === 0) {
       setError('No valid rows found');
@@ -171,14 +175,20 @@ export default function SurveyImportModal({ isOpen, onClose, onImport }: SurveyI
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="survey-import-title"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+      >
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+          <h2 id="survey-import-title" className="text-lg font-semibold text-gray-800 dark:text-gray-200">
             Import Survey Data (CSV)
           </h2>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl"
           >
             &times;
@@ -189,9 +199,7 @@ export default function SurveyImportModal({ isOpen, onClose, onImport }: SurveyI
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {/* File upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Upload CSV File
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Upload CSV File</label>
             <input
               type="file"
               accept=".csv,text/csv"
@@ -204,8 +212,7 @@ export default function SurveyImportModal({ isOpen, onClose, onImport }: SurveyI
           {parsed && parsed.headers.length > 0 && (
             <div className="space-y-3">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Found {parsed.rows.length} rows with {parsed.headers.length} columns.
-                Map the columns below:
+                Found {parsed.rows.length} rows with {parsed.headers.length} columns. Map the columns below:
               </p>
 
               <div className="grid grid-cols-3 gap-3">
@@ -219,8 +226,10 @@ export default function SurveyImportModal({ isOpen, onClose, onImport }: SurveyI
                     className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                   >
                     <option value="">Select...</option>
-                    {parsed.headers.map(h => (
-                      <option key={h} value={h}>{h}</option>
+                    {parsed.headers.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -235,8 +244,10 @@ export default function SurveyImportModal({ isOpen, onClose, onImport }: SurveyI
                     className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                   >
                     <option value="">Select...</option>
-                    {parsed.headers.map(h => (
-                      <option key={h} value={h}>{h}</option>
+                    {parsed.headers.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -251,8 +262,10 @@ export default function SurveyImportModal({ isOpen, onClose, onImport }: SurveyI
                     className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                   >
                     <option value="">None</option>
-                    {parsed.headers.map(h => (
-                      <option key={h} value={h}>{h}</option>
+                    {parsed.headers.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -263,18 +276,14 @@ export default function SurveyImportModal({ isOpen, onClose, onImport }: SurveyI
           {/* Preview */}
           {previewRows.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Preview (first 5 rows)
-              </h3>
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Preview (first 5 rows)</h3>
               <div className="border border-gray-200 dark:border-gray-600 rounded overflow-hidden">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-gray-50 dark:bg-gray-700">
                       <th className="px-3 py-1.5 text-left text-gray-600 dark:text-gray-400">Title</th>
                       <th className="px-3 py-1.5 text-left text-gray-600 dark:text-gray-400">Content</th>
-                      {caseColumn && (
-                        <th className="px-3 py-1.5 text-left text-gray-600 dark:text-gray-400">Case</th>
-                      )}
+                      {caseColumn && <th className="px-3 py-1.5 text-left text-gray-600 dark:text-gray-400">Case</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -291,16 +300,12 @@ export default function SurveyImportModal({ isOpen, onClose, onImport }: SurveyI
                 </table>
               </div>
               {parsed && parsed.rows.length > 5 && (
-                <p className="text-xs text-gray-500 mt-1">
-                  ...and {parsed.rows.length - 5} more rows
-                </p>
+                <p className="text-xs text-gray-500 mt-1">...and {parsed.rows.length - 5} more rows</p>
               )}
             </div>
           )}
 
-          {error && (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
         {/* Footer */}

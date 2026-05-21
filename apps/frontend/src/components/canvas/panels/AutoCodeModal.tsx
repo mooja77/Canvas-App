@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTranscript } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 
 interface AutoCodeModalProps {
   onClose: () => void;
@@ -13,8 +14,9 @@ interface PreviewMatch {
 }
 
 export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
+  useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
-  const autoCode = useCanvasStore(s => s.autoCode);
+  const autoCode = useCanvasStore((s) => s.autoCode);
   const [pattern, setPattern] = useState('');
   const [mode, setMode] = useState<'keyword' | 'regex'>('keyword');
   const [questionId, setQuestionId] = useState('');
@@ -34,8 +36,8 @@ export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
       try {
         new RegExp(value.trim());
         setRegexError(null);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (err: any) {
         setRegexError(err?.message || 'Invalid regex');
       }
     } else {
@@ -77,15 +79,19 @@ export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
   const handleSubmit = async () => {
     if (!pattern.trim() || !questionId) return;
     if (mode === 'regex') {
-      try { new RegExp(pattern.trim()); }
-      catch { toast.error('Invalid regex pattern'); return; }
+      try {
+        new RegExp(pattern.trim());
+      } catch {
+        toast.error('Invalid regex pattern');
+        return;
+      }
     }
     setLoading(true);
     try {
       const result = await autoCode(questionId, pattern.trim(), mode, transcriptIds.length ? transcriptIds : undefined);
       toast.success(`Auto-coded ${result.created} match${result.created !== 1 ? 'es' : ''}`);
       onClose();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Auto-coding failed';
       toast.error(msg);
@@ -95,7 +101,7 @@ export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
   };
 
   const toggleTranscript = (tid: string) => {
-    setTranscriptIds(prev => prev.includes(tid) ? prev.filter(id => id !== tid) : [...prev, tid]);
+    setTranscriptIds((prev) => (prev.includes(tid) ? prev.filter((id) => id !== tid) : [...prev, tid]));
     setShowPreview(false);
   };
 
@@ -103,10 +109,21 @@ export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
 
   return (
     <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="modal-content w-full max-w-md rounded-2xl bg-white shadow-xl backdrop-blur-xl ring-1 ring-black/5 dark:bg-gray-800">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="autocode-title"
+        className="modal-content w-full max-w-md rounded-2xl bg-white shadow-xl backdrop-blur-xl ring-1 ring-black/5 dark:bg-gray-800"
+      >
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Auto-Code by Pattern</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+          <h3 id="autocode-title" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Auto-Code by Pattern
+          </h3>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>
@@ -122,11 +139,9 @@ export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
               className={`input w-full text-sm ${regexError ? 'border-red-400 focus:ring-red-400' : ''}`}
               placeholder={mode === 'regex' ? 'e.g. sustainab(le|ility)' : 'e.g. sustainability'}
               value={pattern}
-              onChange={e => handlePatternChange(e.target.value)}
+              onChange={(e) => handlePatternChange(e.target.value)}
             />
-            {regexError && (
-              <p className="mt-1 text-[11px] text-red-500">{regexError}</p>
-            )}
+            {regexError && <p className="mt-1 text-[11px] text-red-500">{regexError}</p>}
           </div>
 
           {/* Mode toggle */}
@@ -134,13 +149,20 @@ export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Match Mode</label>
             <div className="flex gap-2">
               <button
-                onClick={() => { setMode('keyword'); setRegexError(null); setShowPreview(false); }}
+                onClick={() => {
+                  setMode('keyword');
+                  setRegexError(null);
+                  setShowPreview(false);
+                }}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium ${mode === 'keyword' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}
               >
                 Keyword
               </button>
               <button
-                onClick={() => { setMode('regex'); handlePatternChange(pattern); }}
+                onClick={() => {
+                  setMode('regex');
+                  handlePatternChange(pattern);
+                }}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium ${mode === 'regex' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}
               >
                 Regex
@@ -150,11 +172,15 @@ export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
 
           {/* Question selection */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Assign to Question</label>
-            <select className="input w-full text-sm" value={questionId} onChange={e => setQuestionId(e.target.value)}>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Assign to Question
+            </label>
+            <select className="input w-full text-sm" value={questionId} onChange={(e) => setQuestionId(e.target.value)}>
               <option value="">Select a question...</option>
               {questions.map((q: CanvasQuestion) => (
-                <option key={q.id} value={q.id}>{q.text}</option>
+                <option key={q.id} value={q.id}>
+                  {q.text}
+                </option>
               ))}
             </select>
           </div>
@@ -184,9 +210,12 @@ export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  Preview: {previewMatches.length}{previewMatches.length >= 50 ? '+' : ''} match{previewMatches.length !== 1 ? 'es' : ''}
+                  Preview: {previewMatches.length}
+                  {previewMatches.length >= 50 ? '+' : ''} match{previewMatches.length !== 1 ? 'es' : ''}
                 </span>
-                <button onClick={() => setShowPreview(false)} className="text-[10px] text-gray-400 hover:text-gray-600">Hide</button>
+                <button onClick={() => setShowPreview(false)} className="text-[10px] text-gray-400 hover:text-gray-600">
+                  Hide
+                </button>
               </div>
               <div className="max-h-[140px] overflow-y-auto rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750 p-2 space-y-1.5">
                 {previewMatches.length === 0 ? (
@@ -208,7 +237,9 @@ export default function AutoCodeModal({ onClose }: AutoCodeModalProps) {
         </div>
 
         <div className="flex justify-end gap-2 border-t border-gray-200 px-4 py-3 dark:border-gray-700">
-          <button onClick={onClose} className="btn-secondary h-8 px-3 text-xs">Cancel</button>
+          <button onClick={onClose} className="btn-secondary h-8 px-3 text-xs">
+            Cancel
+          </button>
           <button
             onClick={() => setShowPreview(true)}
             disabled={!canPreview}
