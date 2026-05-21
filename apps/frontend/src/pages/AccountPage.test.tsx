@@ -163,12 +163,15 @@ describe('AccountPage', () => {
   it('Change Password section present', async () => {
     render(<AccountPage />);
 
+    // Form labels now carry visible "*" required markers; match by prefix
+    // to stay tolerant of decoration (mirrors LoginPage test pattern).
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Current password')).toBeInTheDocument();
+      expect(screen.getByLabelText(/^Current password/)).toBeInTheDocument();
     });
 
     expect(screen.getAllByText('Change Password').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByPlaceholderText('New password (min 8 characters)')).toBeInTheDocument();
+    expect(screen.getByLabelText(/^New password/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Confirm new password/)).toBeInTheDocument();
   });
 
   it('Delete account section present', async () => {
