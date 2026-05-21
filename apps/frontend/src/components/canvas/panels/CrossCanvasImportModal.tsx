@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { canvasApi } from '../../../services/api';
 import { useCanvasStore, useActiveCanvasId } from '../../../stores/canvasStore';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import type { CanvasTranscript } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 
@@ -16,8 +17,9 @@ interface Props {
 }
 
 export default function CrossCanvasImportModal({ onClose }: Props) {
+  useEscapeToClose(onClose);
   const activeCanvasId = useActiveCanvasId();
-  const importFromCanvas = useCanvasStore(s => s.importFromCanvas);
+  const importFromCanvas = useCanvasStore((s) => s.importFromCanvas);
   const [canvases, setCanvases] = useState<CanvasSummary[]>([]);
   const [selectedCanvasId, setSelectedCanvasId] = useState<string | null>(null);
   const [transcripts, setTranscripts] = useState<CanvasTranscript[]>([]);
@@ -27,8 +29,9 @@ export default function CrossCanvasImportModal({ onClose }: Props) {
   const [importing, setImporting] = useState(false);
 
   useEffect(() => {
-    canvasApi.getCanvases()
-      .then(res => {
+    canvasApi
+      .getCanvases()
+      .then((res) => {
         // Filter out the current canvas
         const list = (res.data.data || []).filter((c: CanvasSummary) => c.id !== activeCanvasId);
         setCanvases(list);
@@ -53,7 +56,7 @@ export default function CrossCanvasImportModal({ onClose }: Props) {
   };
 
   const toggleId = (id: string) => {
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -65,7 +68,7 @@ export default function CrossCanvasImportModal({ onClose }: Props) {
     if (selectedIds.size === transcripts.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(transcripts.map(t => t.id)));
+      setSelectedIds(new Set(transcripts.map((t) => t.id)));
     }
   };
 
@@ -86,13 +89,21 @@ export default function CrossCanvasImportModal({ onClose }: Props) {
   const wordCount = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
   return (
-    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cross-canvas-import-title"
         className="modal-content w-full max-w-2xl max-h-[80vh] flex flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 pb-3">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Import from Another Canvas</h3>
+          <h3 id="cross-canvas-import-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Import from Another Canvas
+          </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Copy transcripts from one of your other canvases.
           </p>
@@ -110,10 +121,10 @@ export default function CrossCanvasImportModal({ onClose }: Props) {
                 <select
                   className="input mt-1"
                   value={selectedCanvasId || ''}
-                  onChange={e => handleSelectCanvas(e.target.value)}
+                  onChange={(e) => handleSelectCanvas(e.target.value)}
                 >
                   <option value="">Select a canvas...</option>
-                  {canvases.map(c => (
+                  {canvases.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} ({c._count?.transcripts || 0} transcripts)
                     </option>
@@ -121,9 +132,7 @@ export default function CrossCanvasImportModal({ onClose }: Props) {
                 </select>
               </div>
 
-              {loadingDetail && (
-                <div className="py-6 text-center text-gray-400">Loading transcripts...</div>
-              )}
+              {loadingDetail && <div className="py-6 text-center text-gray-400">Loading transcripts...</div>}
               {!loadingDetail && selectedCanvasId && transcripts.length === 0 && (
                 <div className="py-6 text-center text-gray-400">No transcripts in this canvas</div>
               )}
@@ -136,9 +145,11 @@ export default function CrossCanvasImportModal({ onClose }: Props) {
                     >
                       {selectedIds.size === transcripts.length ? 'Deselect All' : 'Select All'}
                     </button>
-                    <span className="text-xs text-gray-400">{selectedIds.size} of {transcripts.length} selected</span>
+                    <span className="text-xs text-gray-400">
+                      {selectedIds.size} of {transcripts.length} selected
+                    </span>
                   </div>
-                  {transcripts.map(t => (
+                  {transcripts.map((t) => (
                     <label
                       key={t.id}
                       className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
@@ -169,12 +180,10 @@ export default function CrossCanvasImportModal({ onClose }: Props) {
         </div>
 
         <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4 dark:border-gray-700">
-          <button onClick={onClose} className="btn-secondary text-sm">Cancel</button>
-          <button
-            onClick={handleImport}
-            disabled={importing || selectedIds.size === 0}
-            className="btn-primary text-sm"
-          >
+          <button onClick={onClose} className="btn-secondary text-sm">
+            Cancel
+          </button>
+          <button onClick={handleImport} disabled={importing || selectedIds.size === 0} className="btn-primary text-sm">
             {importing ? 'Importing...' : `Import ${selectedIds.size > 0 ? selectedIds.size : ''} Selected`}
           </button>
         </div>

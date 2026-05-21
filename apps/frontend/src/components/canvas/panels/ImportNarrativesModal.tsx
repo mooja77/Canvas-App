@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createWiseShiftBridge } from '../../../services/api';
 import { useCanvasStore } from '../../../stores/canvasStore';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
 
 interface Narrative {
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function ImportNarrativesModal({ onClose }: Props) {
+  useEscapeToClose(onClose);
   const { importNarratives } = useCanvasStore();
 
   // WISEShift connection settings
@@ -52,7 +54,7 @@ export default function ImportNarrativesModal({ onClose }: Props) {
       } else {
         toast.success(`Found ${data.length} narrative responses`);
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       const msg = err.response?.data?.error || err.message || 'Connection failed';
       toast.error(`Failed to connect: ${msg}`);
@@ -62,7 +64,7 @@ export default function ImportNarrativesModal({ onClose }: Props) {
   };
 
   const toggleId = (id: string) => {
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -74,7 +76,7 @@ export default function ImportNarrativesModal({ onClose }: Props) {
     if (selectedIds.size === narratives.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(narratives.map(n => n.id)));
+      setSelectedIds(new Set(narratives.map((n) => n.id)));
     }
   };
 
@@ -82,8 +84,8 @@ export default function ImportNarrativesModal({ onClose }: Props) {
     if (selectedIds.size === 0) return;
     setImporting(true);
     try {
-      const selected = narratives.filter(n => selectedIds.has(n.id));
-      const formatted = selected.map(n => ({
+      const selected = narratives.filter((n) => selectedIds.has(n.id));
+      const formatted = selected.map((n) => ({
         title: `${n.organisationName} — ${n.domainKey}: ${(n.textValue || '').slice(0, 60).replace(/\s+\S*$/, '')}...`,
         content: n.textValue,
         sourceType: 'wiseshift-import',
@@ -114,23 +116,31 @@ export default function ImportNarrativesModal({ onClose }: Props) {
   };
 
   return (
-    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="import-narratives-title"
         className="modal-content w-full max-w-2xl max-h-[80vh] flex flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 pb-3">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Import Narratives</h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Import text from WISEShift or enter manually.
-          </p>
+          <h3 id="import-narratives-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Import Narratives
+          </h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Import text from WISEShift or enter manually.</p>
 
           {/* Mode selector */}
           <div className="flex mt-3 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
             <button
               onClick={() => setMode('bridge')}
               className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                mode === 'bridge' ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300' : 'text-gray-500'
+                mode === 'bridge'
+                  ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300'
+                  : 'text-gray-500'
               }`}
             >
               WISEShift Bridge
@@ -138,7 +148,9 @@ export default function ImportNarrativesModal({ onClose }: Props) {
             <button
               onClick={() => setMode('manual')}
               className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                mode === 'manual' ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300' : 'text-gray-500'
+                mode === 'manual'
+                  ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300'
+                  : 'text-gray-500'
               }`}
             >
               Manual Entry
@@ -155,7 +167,7 @@ export default function ImportNarrativesModal({ onClose }: Props) {
                   type="text"
                   className="input"
                   value={manualTitle}
-                  onChange={e => setManualTitle(e.target.value)}
+                  onChange={(e) => setManualTitle(e.target.value)}
                   placeholder="Transcript title..."
                 />
               </div>
@@ -164,7 +176,7 @@ export default function ImportNarrativesModal({ onClose }: Props) {
                 <textarea
                   className="input min-h-[200px]"
                   value={manualContent}
-                  onChange={e => setManualContent(e.target.value)}
+                  onChange={(e) => setManualContent(e.target.value)}
                   placeholder="Paste transcript text here..."
                 />
               </div>
@@ -177,7 +189,7 @@ export default function ImportNarrativesModal({ onClose }: Props) {
                   type="text"
                   className="input"
                   value={wiseShiftUrl}
-                  onChange={e => setWiseShiftUrl(e.target.value)}
+                  onChange={(e) => setWiseShiftUrl(e.target.value)}
                   placeholder="http://localhost:3006"
                 />
               </div>
@@ -187,15 +199,11 @@ export default function ImportNarrativesModal({ onClose }: Props) {
                   type="text"
                   className="input"
                   value={dashboardCode}
-                  onChange={e => setDashboardCode(e.target.value)}
+                  onChange={(e) => setDashboardCode(e.target.value)}
                   placeholder="DASH-XXXXXXXX"
                 />
               </div>
-              <button
-                onClick={handleConnect}
-                disabled={loading}
-                className="btn-primary text-sm w-full"
-              >
+              <button onClick={handleConnect} disabled={loading} className="btn-primary text-sm w-full">
                 {loading ? 'Connecting...' : 'Connect & Fetch Narratives'}
               </button>
             </div>
@@ -212,9 +220,11 @@ export default function ImportNarrativesModal({ onClose }: Props) {
                     >
                       {selectedIds.size === narratives.length ? 'Deselect All' : 'Select All'}
                     </button>
-                    <span className="text-xs text-gray-400">{selectedIds.size} of {narratives.length} selected</span>
+                    <span className="text-xs text-gray-400">
+                      {selectedIds.size} of {narratives.length} selected
+                    </span>
                   </div>
-                  {narratives.map(n => (
+                  {narratives.map((n) => (
                     <label
                       key={n.id}
                       className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
@@ -233,9 +243,7 @@ export default function ImportNarrativesModal({ onClose }: Props) {
                         <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
                           {n.organisationName} — {n.domainKey}
                         </p>
-                        <p className="mt-0.5 text-xs text-gray-400 line-clamp-2">
-                          {n.textValue}
-                        </p>
+                        <p className="mt-0.5 text-xs text-gray-400 line-clamp-2">{n.textValue}</p>
                       </div>
                     </label>
                   ))}
@@ -246,7 +254,9 @@ export default function ImportNarrativesModal({ onClose }: Props) {
         </div>
 
         <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4 dark:border-gray-700">
-          <button onClick={onClose} className="btn-secondary text-sm">Cancel</button>
+          <button onClick={onClose} className="btn-secondary text-sm">
+            Cancel
+          </button>
           {mode === 'manual' ? (
             <button
               onClick={handleManualImport}
