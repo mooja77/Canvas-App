@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 // AiSetupGuide reads authType from the auth store via a selector and talks to
@@ -59,5 +59,16 @@ describe('AiSetupGuide', () => {
     renderGuide();
     expect(screen.getByText('OpenAI')).toBeInTheDocument();
     expect(screen.queryByText(GATE_CTA)).not.toBeInTheDocument();
+  });
+
+  it('closes on Escape, like the other canvas modals (#45/#50)', () => {
+    const onClose = vi.fn();
+    render(
+      <MemoryRouter>
+        <AiSetupGuide onClose={onClose} trigger="AI Auto-Code" />
+      </MemoryRouter>,
+    );
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

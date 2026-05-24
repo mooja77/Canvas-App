@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { aiSettingsApi } from '../../../services/api';
 import { useAiConfigStore } from '../../../stores/aiConfigStore';
 import { useAuthStore } from '../../../stores/authStore';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
 
 const PROVIDERS = [
@@ -47,6 +48,7 @@ interface AiSetupGuideProps {
 }
 
 export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
+  useEscapeToClose(onClose);
   const [step, setStep] = useState<'choose' | 'configure' | 'success'>('choose');
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState('');
