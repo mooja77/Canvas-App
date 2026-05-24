@@ -60,3 +60,52 @@ describe('errorHandler', () => {
     expect(res.status).toHaveBeenCalledWith(403);
   });
 });
+
+// Prisma surfaces failed DB operations as PrismaClientKnownRequestError with a
+// P-code. Without translation these fall through to a generic 500 — e.g.
+// creating a canvas with a duplicate name (unique constraint on
+// dashboardAccessId+name) returned "Internal server error" instead of a clear
+// "already exists". Map the common codes to proper 4xx responses.
+function prismaError(code: string, meta?: Record<string, unknown>): Error {
+  const err = new Error(`Prisma ${code}`) as Error & { code?: string; meta?: unknown };
+  err.name = 'PrismaClientKnownRequestError';
+  err.code = code;
+  if (meta) err.meta = meta;
+  return err;
+}
+
+describe('errorHandler — Prisma errors', () => {
+  it('maps P2002 unique-constraint violation to 409 naming the field', () => {
+    const res = mockRes();
+    errorHandler(prismaError('P2002', { target: ['dashboardAccessId', 'name'] }), req, res, next);
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, error: expect.stringMatching(/name already exists/i) }),
+    );
+  });
+
+  it('maps P2002 with no field metadata to a generic 409', () => {
+    const res = mockRes();
+    errorHandler(prismaError('P2002'), req, res, next);
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, error: expect.stringMatching(/already exists/i) }),
+    );
+  });
+
+  it('maps P2025 record-not-found to 404', () => {
+    const res = mockRes();
+    errorHandler(prismaError('P2025'), req, res, next);
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, error: expect.stringMatching(/not found/i) }),
+    );
+  });
+
+  it('does not leak the message for an unmapped Prisma code (falls through to 500)', () => {
+    const res = mockRes();
+    errorHandler(prismaError('P2034'), req, res, next);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Internal server error' }));
+  });
+});
