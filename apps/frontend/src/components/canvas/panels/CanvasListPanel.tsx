@@ -775,6 +775,8 @@ export default function CanvasListPanel() {
       <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
         <button
           onClick={handleToggleTrash}
+          aria-expanded={showTrash}
+          aria-controls="canvas-trash-section"
           className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
         >
           <svg
@@ -802,7 +804,7 @@ export default function CanvasListPanel() {
         </button>
 
         {showTrash && (
-          <div className="mt-3 space-y-2">
+          <div id="canvas-trash-section" className="mt-3 space-y-2">
             {trashLoading && <div className="py-4 text-center text-sm text-gray-400">Loading trash...</div>}
             {!trashLoading && trashedCanvases.length === 0 && (
               <div className="py-4 text-center text-sm text-gray-400 dark:text-gray-500">
