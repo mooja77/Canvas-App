@@ -101,7 +101,8 @@ export default function ImportNarrativesModal({ onClose }: Props) {
     }
   };
 
-  const handleManualImport = async () => {
+  const handleManualImport = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!manualTitle.trim() || !manualContent.trim()) return;
     setImporting(true);
     try {
@@ -160,27 +161,41 @@ export default function ImportNarrativesModal({ onClose }: Props) {
 
         <div className="flex-1 overflow-y-auto px-6 pb-6">
           {mode === 'manual' ? (
-            <div className="space-y-3">
+            <form id="manual-narrative-form" onSubmit={handleManualImport} className="space-y-3">
               <div>
-                <label className="label">Title</label>
+                <label className="label" htmlFor="manual-narrative-title">
+                  Title
+                  <span aria-hidden="true" className="ml-0.5 text-red-500">
+                    *
+                  </span>
+                </label>
                 <input
+                  id="manual-narrative-title"
                   type="text"
                   className="input"
                   value={manualTitle}
                   onChange={(e) => setManualTitle(e.target.value)}
                   placeholder="Transcript title..."
+                  required
                 />
               </div>
               <div>
-                <label className="label">Content</label>
+                <label className="label" htmlFor="manual-narrative-content">
+                  Content
+                  <span aria-hidden="true" className="ml-0.5 text-red-500">
+                    *
+                  </span>
+                </label>
                 <textarea
+                  id="manual-narrative-content"
                   className="input min-h-[200px]"
                   value={manualContent}
                   onChange={(e) => setManualContent(e.target.value)}
                   placeholder="Paste transcript text here..."
+                  required
                 />
               </div>
-            </div>
+            </form>
           ) : !connected ? (
             <div className="space-y-3">
               <div>
@@ -258,11 +273,7 @@ export default function ImportNarrativesModal({ onClose }: Props) {
             Cancel
           </button>
           {mode === 'manual' ? (
-            <button
-              onClick={handleManualImport}
-              disabled={importing || !manualTitle.trim() || !manualContent.trim()}
-              className="btn-primary text-sm"
-            >
+            <button type="submit" form="manual-narrative-form" disabled={importing} className="btn-primary text-sm">
               {importing ? 'Adding...' : 'Add Transcript'}
             </button>
           ) : connected ? (
