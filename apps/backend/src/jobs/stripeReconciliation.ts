@@ -67,13 +67,28 @@ export async function reconcileStripeSubscriptions(): Promise<ReconciliationResu
           if (!dbSub) {
             // Only flag active-ish subs as drift; old canceled ones are fine.
             if (stripeSub.status === 'active' || stripeSub.status === 'trialing' || stripeSub.status === 'past_due') {
-              result.orphanedInStripe++;
-              logError(new Error('Stripe subscription not in DB'), {
-                action: 'stripeReconciliation.orphanedInStripe',
-                stripeSubId: stripeSub.id,
-                status: stripeSub.status,
-                customer: typeof stripeSub.customer === 'string' ? stripeSub.customer : stripeSub.customer?.id,
-              });
+              // This Stripe account is shared across multiple products (Staff
+              // Hub, TaxMatch, …). A sub missing from our DB is only QualCanvas
+              // drift if one of OUR Users owns this Stripe customer; otherwise
+              // it belongs to another product and must be ignored. Without this
+              // check the job false-flagged every other product's subscription
+              // as "Stripe subscription not in DB".
+              const customerId = typeof stripeSub.customer === 'string' ? stripeSub.customer : stripeSub.customer?.id;
+              const ownedByQualcanvasUser = customerId
+                ? (await prisma.user.findUnique({
+                    where: { stripeCustomerId: customerId },
+                    select: { id: true },
+                  })) !== null
+                : false;
+              if (ownedByQualcanvasUser) {
+                result.orphanedInStripe++;
+                logError(new Error('Stripe subscription not in DB'), {
+                  action: 'stripeReconciliation.orphanedInStripe',
+                  stripeSubId: stripeSub.id,
+                  status: stripeSub.status,
+                  customer: customerId,
+                });
+              }
             }
             continue;
           }
