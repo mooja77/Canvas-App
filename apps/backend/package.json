@@ -21,6 +21,7 @@
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.3.0",
     "@qualcanvas/shared": "*",
+    "@sentry/node": "^10.53.1",
     "@types/cookie-parser": "^1.4.8",
     "archiver": "^7.0.1",
     "bcryptjs": "^3.0.3",
