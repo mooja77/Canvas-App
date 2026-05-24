@@ -43,6 +43,9 @@ export default function TranscriptUploadModal({ onSubmit, onClose }: Props) {
           <div>
             <label className="label" htmlFor="transcript-title">
               Title
+              <span aria-hidden="true" className="ml-0.5 text-red-500">
+                *
+              </span>
             </label>
             <input
               id="transcript-title"
@@ -51,12 +54,16 @@ export default function TranscriptUploadModal({ onSubmit, onClose }: Props) {
               placeholder="e.g. Interview #1 — Participant A"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              required
               autoFocus
             />
           </div>
           <div>
             <label className="label" htmlFor="transcript-content">
               Transcript Content
+              <span aria-hidden="true" className="ml-0.5 text-red-500">
+                *
+              </span>
             </label>
             <textarea
               id="transcript-content"
@@ -64,6 +71,7 @@ export default function TranscriptUploadModal({ onSubmit, onClose }: Props) {
               placeholder="Paste the full interview transcript here..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
+              required
               rows={10}
             />
           </div>
@@ -71,11 +79,7 @@ export default function TranscriptUploadModal({ onSubmit, onClose }: Props) {
             <button type="button" onClick={onClose} className="btn-secondary text-sm">
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={submitting || !title.trim() || !content.trim()}
-              className="btn-primary text-sm"
-            >
+            <button type="submit" disabled={submitting} className="btn-primary text-sm">
               {submitting ? 'Adding...' : 'Add Transcript'}
             </button>
           </div>
