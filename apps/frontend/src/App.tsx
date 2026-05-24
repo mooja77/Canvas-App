@@ -27,6 +27,7 @@ import MethodologyIndexPage from './pages/MethodologyIndexPage';
 import CustomersIndexPage from './pages/CustomersIndexPage';
 import ChangelogPage from './pages/ChangelogPage';
 import VsIndexPage from './pages/VsIndexPage';
+import VsCompetitorRedirect from './pages/VsCompetitorRedirect';
 import SubscribePage from './pages/SubscribePage';
 import { useAuthStore } from './stores/authStore';
 
@@ -72,6 +73,8 @@ export default function App() {
           <Route path="/customers" element={<CustomersIndexPage />} />
           <Route path="/changelog" element={<ChangelogPage />} />
           <Route path="/vs" element={<VsIndexPage />} />
+          {/* Per-competitor pages aren't published yet — redirect to the /vs index so these URLs don't 404. */}
+          <Route path="/vs/:competitor" element={<VsCompetitorRedirect />} />
           <Route path="/subscribe" element={<SubscribePage />} />
           <Route
             path="/account"
