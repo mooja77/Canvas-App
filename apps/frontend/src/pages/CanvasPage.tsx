@@ -136,6 +136,9 @@ export default function CanvasPage() {
       >
         Skip to canvas
       </a>
+      {/* Screen-reader page heading — the workspace is otherwise heading-less,
+          leaving SR users without a top-level landmark to orient on. */}
+      <h1 className="sr-only">Canvas workspace</h1>
       {/* Minimal header */}
       <header className="flex-shrink-0 h-12 border-b border-gray-200/80 dark:border-gray-700/80 flex items-center justify-between px-4 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md">
         <div className="flex items-center gap-3">
