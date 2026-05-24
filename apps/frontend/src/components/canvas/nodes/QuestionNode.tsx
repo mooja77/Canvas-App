@@ -74,12 +74,16 @@ function QuestionNode({ data, id, selected }: NodeProps) {
 
   return (
     <div
-      className={`min-w-[200px] w-full h-full rounded-xl border-2 shadow-node transition-all duration-200 hover:shadow-node-hover ${isSelected ? 'ring-2 ring-offset-2' : ''} ${selected ? 'ring-2 ring-blue-400' : ''}`}
-      style={{
-        borderColor: nodeData.color,
-        ...(isSelected ? ({ '--tw-ring-color': nodeData.color } as React.CSSProperties) : {}),
-      }}
+      className={`group relative min-w-[200px] w-full h-full overflow-hidden rounded-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm shadow-node transition-all duration-200 hover:shadow-node-hover hover:-translate-y-px ${selected || isSelected ? 'ring-2' : 'ring-1 ring-gray-200/70 dark:ring-gray-700/60'}`}
+      style={selected || isSelected ? ({ '--tw-ring-color': nodeData.color } as React.CSSProperties) : undefined}
     >
+      {/* Color identity spine — calm color-coding without a heavy full border. */}
+      <div
+        className="pointer-events-none absolute inset-y-0 left-0 z-30 w-1"
+        style={{ backgroundColor: nodeData.color }}
+        aria-hidden="true"
+      />
+
       <NodeResizer
         minWidth={200}
         minHeight={collapsed ? 44 : 80}
@@ -105,18 +109,17 @@ function QuestionNode({ data, id, selected }: NodeProps) {
         style={{ borderColor: nodeData.color, backgroundColor: nodeData.color, top: '50%' }}
       />
 
-      {/* Drag handle header */}
-      <div
-        className="drag-handle relative z-20 flex items-center justify-between rounded-t-lg px-3 py-2.5 cursor-grab active:cursor-grabbing"
-        style={{ background: `linear-gradient(135deg, ${nodeData.color}12, ${nodeData.color}08)` }}
-      >
+      {/* Drag handle header — calm by default; controls reveal on hover/focus
+          so the code text stays the hero. */}
+      <div className="drag-handle relative z-20 flex items-center justify-between gap-2 pl-4 pr-1.5 py-2 cursor-grab active:cursor-grabbing">
         <div className="flex items-center gap-2 min-w-0">
           <div className="relative nodrag">
             <button
               onClick={() => setShowColorPicker((c) => !c)}
-              className="h-4 w-4 shrink-0 rounded-full ring-1 ring-black/10 hover:scale-125 transition-transform"
+              className="h-3 w-3 shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/15 transition-transform hover:scale-125"
               style={{ backgroundColor: nodeData.color }}
               title="Change color"
+              aria-label="Change code color"
             />
             {showColorPicker && (
               <div className="absolute top-5 left-0 z-50">
@@ -128,7 +131,6 @@ function QuestionNode({ data, id, selected }: NodeProps) {
               </div>
             )}
           </div>
-          <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Code</span>
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {(nodeData as any).muted && (
             <span className="shrink-0 rounded bg-gray-400/80 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white">
@@ -136,7 +138,7 @@ function QuestionNode({ data, id, selected }: NodeProps) {
             </span>
           )}
           {childCount > 0 && (
-            <span className="rounded-full bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 text-[9px] font-medium text-gray-600 dark:text-gray-300">
+            <span className="rounded-full bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 dark:text-gray-400">
               {childCount} sub
             </span>
           )}
@@ -151,52 +153,52 @@ function QuestionNode({ data, id, selected }: NodeProps) {
               {codingCount}
             </span>
           )}
-          {/* p-1 + h-4 icons — header controls were ~14-18px at 100% zoom and
-              shrank to ~8-11px when zoomed out for an overview. */}
-          <button
-            onClick={toggleCollapsed}
-            className="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            title={collapsed ? 'Expand' : 'Collapse'}
-          >
-            <svg
-              className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
+          <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+            <button
+              onClick={toggleCollapsed}
+              className="rounded p-1 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200"
+              title={collapsed ? 'Expand' : 'Collapse'}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setSelectedQuestionId(isSelected ? null : nodeData.questionId)}
-            className="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            title="View coded segments"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
-              />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="rounded p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-            title="Delete question"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
-          </button>
+              <svg
+                className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setSelectedQuestionId(isSelected ? null : nodeData.questionId)}
+              className="rounded p-1 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200"
+              title="View coded segments"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="rounded p-1 text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400"
+              title="Delete question"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Question body - collapsible */}
       {!collapsed && zoomTier === 'full' && (
-        <div className="bg-white px-3 py-2 dark:bg-gray-800 rounded-b-xl">
+        <div className="relative z-10 px-4 pb-3 pt-1">
           {/* Parent breadcrumb */}
           {parentQuestion && (
             <div className="flex items-center gap-1 mb-1.5 text-[10px] text-gray-400">
@@ -234,7 +236,7 @@ function QuestionNode({ data, id, selected }: NodeProps) {
             </div>
           ) : (
             <p
-              className="text-sm text-gray-800 dark:text-gray-200 cursor-text nodrag"
+              className="text-sm font-medium leading-snug text-gray-900 dark:text-gray-100 cursor-text nodrag"
               onDoubleClick={() => {
                 setEditText(nodeData.text);
                 setEditing(true);
@@ -245,29 +247,25 @@ function QuestionNode({ data, id, selected }: NodeProps) {
             </p>
           )}
 
-          {/* Coding count */}
-          <div className="mt-2 flex items-center gap-1.5">
-            <span
-              className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
-              style={{ backgroundColor: nodeData.color }}
-            >
-              {codingCount} coding{codingCount !== 1 ? 's' : ''}
-            </span>
+          {/* Coding count — quiet metadata; color is a small cue, not a loud pill. */}
+          <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: nodeData.color }} aria-hidden="true" />
+            {codingCount} coding{codingCount !== 1 ? 's' : ''}
           </div>
         </div>
       )}
 
-      {/* Reduced zoom: color dot + question text only */}
+      {/* Reduced zoom: question text only */}
       {!collapsed && isReduced && (
-        <div className="bg-white px-3 py-1.5 dark:bg-gray-800 rounded-b-xl">
+        <div className="relative z-10 px-4 pb-2 pt-0.5">
           <p className="text-xs text-gray-700 dark:text-gray-300 truncate">{nodeData.text}</p>
         </div>
       )}
 
-      {/* Minimal zoom: color dot + count */}
+      {/* Minimal zoom: count only */}
       {!collapsed && isMinimal && (
-        <div className="bg-white px-3 py-1 dark:bg-gray-800 rounded-b-xl">
-          <span className="text-[10px]" style={{ color: nodeData.color }}>
+        <div className="relative z-10 px-4 pb-1.5 pt-0.5">
+          <span className="text-[10px] font-medium" style={{ color: nodeData.color }}>
             {codingCount}c
           </span>
         </div>
