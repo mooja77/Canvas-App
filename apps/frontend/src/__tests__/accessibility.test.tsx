@@ -286,6 +286,12 @@ describe('Accessibility', () => {
       const signOut = screen.getByLabelText('Sign out');
       expect(signOut).toBeInTheDocument();
     });
+
+    it('exposes a top-level h1 so screen readers can orient on the workspace', () => {
+      renderWith(<CanvasPage />);
+
+      expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+    });
   });
 
   // ── ErrorBoundary ────────────────────────────────────────────────────────
