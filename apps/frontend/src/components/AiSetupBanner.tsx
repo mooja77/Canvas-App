@@ -8,19 +8,27 @@ import { useAiConfigStore } from '../stores/aiConfigStore';
 // permanently hide it in case they revisit the setup later).
 export default function AiSetupBanner() {
   const plan = useAuthStore((s) => s.plan);
+  const authType = useAuthStore((s) => s.authType);
   const seen = useUIStore((s) => s.featureDiscovery.aiPromptSeen);
   const markSeen = useUIStore((s) => s.markFeatureSeen);
   const { configured, loaded, fetchConfig } = useAiConfigStore();
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Only Pro/Team users get AI — don't poll the endpoint for free users.
-    if (plan === 'pro' || plan === 'team') {
+    // AI keys are stored per email-auth user, so only Pro/Team email accounts can
+    // actually configure one. Don't poll the endpoint for free or legacy users —
+    // it would 401 for legacy (access-code) sessions and spam the console.
+    if (authType === 'email' && (plan === 'pro' || plan === 'team')) {
       fetchConfig();
     }
-  }, [plan, fetchConfig]);
+  }, [plan, authType, fetchConfig]);
 
-  const eligible = (plan === 'pro' || plan === 'team') && loaded && !configured && !seen && !dismissed;
+  // Legacy (access-code) users are grandfathered to Pro but can't add an AI key
+  // until they link an email — the Account page's AI Settings section is
+  // email-auth only. Showing them the "add a key" CTA would dead-end on /account,
+  // so gate the banner on email auth.
+  const eligible =
+    authType === 'email' && (plan === 'pro' || plan === 'team') && loaded && !configured && !seen && !dismissed;
   if (!eligible) return null;
 
   const handleDismiss = () => {

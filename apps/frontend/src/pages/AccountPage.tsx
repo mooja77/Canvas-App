@@ -155,6 +155,18 @@ export default function AccountPage() {
       });
   }, [authenticated, navigate]);
 
+  // The AI-setup banner links here with a #ai fragment. The AI Settings section
+  // is email-auth-only and renders after the profile fetch resolves, so the
+  // browser's native hash-scroll fires before the element exists. Scroll to it
+  // ourselves once the section is on the page.
+  useEffect(() => {
+    if (!loading && profile?.authType === 'email' && window.location.hash === '#ai') {
+      requestAnimationFrame(() => {
+        document.getElementById('ai')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }, [loading, profile]);
+
   const handleManageBilling = async () => {
     try {
       const res = await billingApi.createPortal();
@@ -657,7 +669,10 @@ export default function AccountPage() {
 
         {/* AI Settings */}
         {isEmailAuth && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
+          <div
+            id="ai"
+            className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6 scroll-mt-6"
+          >
             <div className="flex items-center gap-2 mb-4">
               <svg
                 className="h-4 w-4 text-purple-500"
