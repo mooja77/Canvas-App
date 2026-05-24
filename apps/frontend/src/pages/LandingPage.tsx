@@ -365,19 +365,12 @@ export default function LandingPage() {
                 <>
                   Three things. (1) Pricing is on this page; theirs isn\'t. (2) Your codes, transcripts, and themes live
                   on a visual canvas you can see all at once — not behind menus. (3) You can export to QDPX whenever you
-                  want. No lock-in. Compare in detail at{' '}
+                  want. No lock-in. See the sourced, side-by-side breakdown on{' '}
                   <Link
-                    to="/vs/nvivo"
+                    to="/vs"
                     className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
                   >
-                    /vs/nvivo
-                  </Link>{' '}
-                  and{' '}
-                  <Link
-                    to="/vs/atlas-ti"
-                    className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
-                  >
-                    /vs/atlas-ti
+                    our comparisons page
                   </Link>
                   .
                 </>
