@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import { aiSettingsApi } from '../../../services/api';
 import { useAiConfigStore } from '../../../stores/aiConfigStore';
+import { useAuthStore } from '../../../stores/authStore';
 import toast from 'react-hot-toast';
 
 const PROVIDERS = [
@@ -51,6 +53,12 @@ export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const { setConfigured } = useAiConfigStore();
+  // AI key storage is per email-auth user — PUT /ai-settings 401s for legacy
+  // (access-code) sessions. Legacy users are grandfathered to Pro so they can
+  // still trigger AI features and open this guide, but the provider/key steps
+  // would dead-end on "Connect & Verify". Show a link-account gate instead
+  // (mirrors the Research Calendar legacy-auth gate).
+  const emailAuthed = useAuthStore((s) => s.authType) === 'email';
 
   const provider = PROVIDERS.find((p) => p.id === selectedProvider);
 
@@ -65,7 +73,8 @@ export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
       setConfigured(true, selectedProvider);
       setStep('success');
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to verify API key';
+      const msg =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to verify API key';
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -73,7 +82,10 @@ export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-lg mx-4 rounded-2xl bg-white shadow-2xl dark:bg-gray-900 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -84,7 +96,11 @@ export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z"
+                  />
                 </svg>
               </div>
               <div>
@@ -103,50 +119,102 @@ export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
             </button>
           </div>
 
-          {/* Step indicator */}
-          <div className="mt-4 flex items-center gap-2">
-            {['Choose provider', 'Add API key', 'Ready'].map((label, i) => {
-              const stepIndex = step === 'choose' ? 0 : step === 'configure' ? 1 : 2;
-              return (
-                <div key={label} className="flex items-center gap-2">
-                  <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${
-                    i <= stepIndex ? 'bg-white text-purple-600' : 'bg-white/20 text-white/60'
-                  }`}>
-                    {i < stepIndex ? (
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                      </svg>
-                    ) : (
-                      i + 1
-                    )}
+          {/* Step indicator — hidden for the legacy gate, which has no steps */}
+          {emailAuthed && (
+            <div className="mt-4 flex items-center gap-2">
+              {['Choose provider', 'Add API key', 'Ready'].map((label, i) => {
+                const stepIndex = step === 'choose' ? 0 : step === 'configure' ? 1 : 2;
+                return (
+                  <div key={label} className="flex items-center gap-2">
+                    <div
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${
+                        i <= stepIndex ? 'bg-white text-purple-600' : 'bg-white/20 text-white/60'
+                      }`}
+                    >
+                      {i < stepIndex ? (
+                        <svg
+                          className="h-3.5 w-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={2}
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
+                      ) : (
+                        i + 1
+                      )}
+                    </div>
+                    <span className={`text-xs ${i <= stepIndex ? 'text-white' : 'text-white/50'}`}>{label}</span>
+                    {i < 2 && <div className={`h-px w-6 ${i < stepIndex ? 'bg-white/60' : 'bg-white/20'}`} />}
                   </div>
-                  <span className={`text-xs ${i <= stepIndex ? 'text-white' : 'text-white/50'}`}>{label}</span>
-                  {i < 2 && <div className={`h-px w-6 ${i < stepIndex ? 'bg-white/60' : 'bg-white/20'}`} />}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Body */}
         <div className="p-6">
+          {/* Legacy (access-code) users can't save an API key (PUT /ai-settings
+              401s without a userId). Gate to account linking instead of the
+              provider/key steps. Mirrors CalendarPanel's EmailAuthRequired. */}
+          {!emailAuthed && (
+            <div className="flex flex-col items-center justify-center gap-3 px-2 py-6 text-center">
+              <svg
+                className="h-10 w-10 text-gray-300 dark:text-gray-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
+                />
+              </svg>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Email account required</h3>
+              <p className="max-w-sm text-xs text-gray-500 dark:text-gray-400">
+                AI features run on your own provider API key, which is saved to an email-linked account. You&rsquo;re
+                currently signed in with an access code.
+              </p>
+              <Link
+                to="/account"
+                className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700 transition-colors"
+              >
+                Link your email account
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                </svg>
+              </Link>
+            </div>
+          )}
+
           {/* Step 1: Choose provider */}
-          {step === 'choose' && (
+          {emailAuthed && step === 'choose' && (
             <div className="space-y-3">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Your API key is encrypted and stored securely. You pay your AI provider directly — we never charge for AI usage.
+                Your API key is encrypted and stored securely. You pay your AI provider directly — we never charge for
+                AI usage.
               </p>
               {PROVIDERS.map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => { setSelectedProvider(p.id); setStep('configure'); }}
+                  onClick={() => {
+                    setSelectedProvider(p.id);
+                    setStep('configure');
+                  }}
                   className={`w-full flex items-start gap-4 rounded-xl border-2 p-4 text-left transition-all hover:shadow-md ${
                     selectedProvider === p.id
                       ? 'border-purple-400 bg-purple-50 dark:bg-purple-900/20'
                       : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: p.color + '15' }}>
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                    style={{ backgroundColor: p.color + '15' }}
+                  >
                     <span className="text-lg font-bold" style={{ color: p.color }}>
                       {p.name[0]}
                     </span>
@@ -163,13 +231,22 @@ export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{p.description}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {p.features.map((f) => (
-                        <span key={f} className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                        <span
+                          key={f}
+                          className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                        >
                           {f}
                         </span>
                       ))}
                     </div>
                   </div>
-                  <svg className="h-5 w-5 shrink-0 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <svg
+                    className="h-5 w-5 shrink-0 text-gray-300 dark:text-gray-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                   </svg>
                 </button>
@@ -178,9 +255,12 @@ export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
           )}
 
           {/* Step 2: Configure */}
-          {step === 'configure' && provider && (
+          {emailAuthed && step === 'configure' && provider && (
             <div className="space-y-4">
-              <button onClick={() => setStep('choose')} className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+              <button
+                onClick={() => setStep('choose')}
+                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              >
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
                 </svg>
@@ -193,15 +273,31 @@ export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
                 </h3>
                 <ol className="space-y-2 text-xs text-gray-600 dark:text-gray-400">
                   <li className="flex gap-2">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-bold text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">1</span>
-                    <span>Go to <a href={provider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 underline hover:text-purple-700 dark:text-purple-400">{provider.name} API Keys page</a></span>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-bold text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+                      1
+                    </span>
+                    <span>
+                      Go to{' '}
+                      <a
+                        href={provider.docsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-purple-600 underline hover:text-purple-700 dark:text-purple-400"
+                      >
+                        {provider.name} API Keys page
+                      </a>
+                    </span>
                   </li>
                   <li className="flex gap-2">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-bold text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">2</span>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-bold text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+                      2
+                    </span>
                     <span>Create a new API key (name it &ldquo;QualCanvas&rdquo;)</span>
                   </li>
                   <li className="flex gap-2">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-bold text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">3</span>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-bold text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+                      3
+                    </span>
                     <span>Copy the key and paste it below</span>
                   </li>
                 </ol>
@@ -225,10 +321,15 @@ export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d={showKey
-                        ? "M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
-                        : "M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                      } />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d={
+                          showKey
+                            ? 'M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88'
+                            : 'M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z'
+                        }
+                      />
                     </svg>
                   </button>
                 </div>
@@ -240,7 +341,8 @@ export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
               {provider.limitations && (
                 <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
                   <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                    <strong>Note:</strong> {provider.name} doesn&apos;t support: {provider.limitations.join(', ')}. You can add an OpenAI key later for those features.
+                    <strong>Note:</strong> {provider.name} doesn&apos;t support: {provider.limitations.join(', ')}. You
+                    can add an OpenAI key later for those features.
                   </p>
                 </div>
               )}
@@ -263,22 +365,29 @@ export default function AiSetupGuide({ onClose, trigger }: AiSetupGuideProps) {
           )}
 
           {/* Step 3: Success */}
-          {step === 'success' && provider && (
+          {emailAuthed && step === 'success' && provider && (
             <div className="text-center py-4">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-green-100 dark:bg-green-900/30">
-                <svg className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <svg
+                  className="h-8 w-8 text-green-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                You&apos;re all set!
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">You&apos;re all set!</h3>
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 {provider.name} is connected. AI features are now available across your workspace.
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {provider.features.map((f) => (
-                  <span key={f} className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                  <span
+                    key={f}
+                    className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                  >
                     {f}
                   </span>
                 ))}
