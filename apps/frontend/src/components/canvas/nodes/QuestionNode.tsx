@@ -74,12 +74,14 @@ function QuestionNode({ data, id, selected }: NodeProps) {
 
   return (
     <div
-      className={`group relative min-w-[200px] w-full h-full overflow-hidden rounded-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm shadow-node transition-all duration-200 hover:shadow-node-hover hover:-translate-y-px ${selected || isSelected ? 'ring-2' : 'ring-1 ring-gray-200/70 dark:ring-gray-700/60'}`}
+      className={`group relative min-w-[200px] w-full h-full rounded-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm shadow-node transition-all duration-200 hover:shadow-node-hover hover:-translate-y-px ${selected || isSelected ? 'ring-2' : 'ring-1 ring-gray-200/70 dark:ring-gray-700/60'}`}
       style={selected || isSelected ? ({ '--tw-ring-color': nodeData.color } as React.CSSProperties) : undefined}
     >
-      {/* Color identity spine — calm color-coding without a heavy full border. */}
+      {/* Color identity spine — a calm left-edge accent (inset + rounded so it
+          reads cleanly inside the card's corners without needing overflow
+          clipping, which would crop the node body). */}
       <div
-        className="pointer-events-none absolute inset-y-0 left-0 z-30 w-1"
+        className="pointer-events-none absolute inset-y-2 left-0 z-30 w-1 rounded-full"
         style={{ backgroundColor: nodeData.color }}
         aria-hidden="true"
       />
