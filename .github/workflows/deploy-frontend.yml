@@ -41,7 +41,19 @@ jobs:
           VITE_STRIPE_TEAM_ANNUAL_PRICE_ID: ${{ secrets.VITE_STRIPE_TEAM_ANNUAL_PRICE_ID }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
       - name: Publish to Cloudflare Pages
-        run: npx wrangler@4 pages deploy apps/frontend/dist --project-name=qualcanvas --branch=main
+        run: |
+          # wrangler auto-detects the git commit message and sends it to the
+          # Cloudflare Pages API, which rejects anything that isn't clean UTF-8.
+          # It can truncate a multibyte char (—, →, emoji) mid-sequence, yielding
+          # invalid bytes → "Invalid commit message" [code 8000111] and a failed
+          # deploy (hit on commit 14c3b6b). Pass an explicit ASCII-sanitised
+          # subject + hash so the message can never break the publish again.
+          MSG=$(git log -1 --pretty=%s | LC_ALL=C tr -cd '\40-\176' | cut -c1-100)
+          npx wrangler@4 pages deploy apps/frontend/dist \
+            --project-name=qualcanvas --branch=main \
+            --commit-hash="$GITHUB_SHA" \
+            --commit-message="${MSG:-deploy}"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GITHUB_SHA: ${{ github.sha }}
