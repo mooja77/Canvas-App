@@ -1,4 +1,9 @@
 import 'dotenv/config';
+import { initSentry } from './lib/sentry.js';
+
+// Initialize error monitoring as early as possible (after dotenv loads env) so
+// startup failures are captured. No-op unless SENTRY_DSN is set.
+initSentry();
 
 // Validate required environment variables (skip in test — tests mock env vars)
 if (process.env.NODE_ENV !== 'test') {
