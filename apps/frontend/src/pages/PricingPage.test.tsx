@@ -3,6 +3,12 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();
+// Mutable auth state so individual tests can exercise legacy vs email auth.
+const authState = {
+  authenticated: false,
+  plan: null as string | null,
+  authType: null as 'legacy' | 'email' | null,
+};
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
@@ -24,11 +30,7 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('../stores/authStore', () => ({
-  useAuthStore: () => ({
-    authenticated: false,
-    plan: null,
-    authType: null,
-  }),
+  useAuthStore: () => authState,
 }));
 
 vi.mock('../services/api', () => ({
@@ -38,7 +40,7 @@ vi.mock('../services/api', () => ({
 }));
 
 vi.mock('react-hot-toast', () => ({
-  default: { success: vi.fn(), error: vi.fn() },
+  default: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }));
 
 vi.mock('../utils/analytics', () => ({
@@ -54,6 +56,22 @@ import PricingPage from './PricingPage';
 describe('PricingPage (refresh)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    authState.authenticated = false;
+    authState.plan = null;
+    authState.authType = null;
+  });
+
+  it('routes legacy (access-code) users to /account to link an email instead of dead-ending', () => {
+    // Legacy users are grandfathered to Pro but have no Stripe userId, so they
+    // can't checkout. Previously the upgrade CTA only flashed an ephemeral,
+    // non-actionable toast. Now it should take them somewhere they can act —
+    // /account, which has the "Link an email" form.
+    authState.authenticated = true;
+    authState.plan = 'pro';
+    authState.authType = 'legacy';
+    render(<PricingPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Start Team' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/account');
   });
 
   it('renders the four tier headings (Free, Pro, Team, Institutions)', () => {

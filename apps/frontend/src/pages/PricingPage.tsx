@@ -71,7 +71,11 @@ export default function PricingPage() {
       return;
     }
     if (authType === 'legacy') {
-      toast.error('Please add an email to your account first (Settings > Link Account)');
+      // Legacy (access-code) users have no Stripe userId and can't checkout
+      // until they link an email. Take them to /account (which has the "Link
+      // an email" form) rather than just flashing an ephemeral toast.
+      toast('Link an email to your account to upgrade.');
+      navigate('/account');
       return;
     }
 
