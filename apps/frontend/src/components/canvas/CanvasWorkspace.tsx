@@ -1214,7 +1214,7 @@ export default function CanvasWorkspace() {
         /* continue */
       }
     }
-    toast.success(`Deleted ${selectedNodes.length} nodes`);
+    toast.success(`Deleted ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''}`);
     setTimeout(() => pushHistorySnapshot(), 300);
   }, [
     selectedNodes,
@@ -2436,7 +2436,9 @@ export default function CanvasWorkspace() {
                   onDistributeH={handleDistributeH}
                   onDistributeV={handleDistributeV}
                   onAnalyzeSelection={(transcriptIds, questionIds) => {
-                    toast.success(`Analyzing ${transcriptIds.length} transcripts, ${questionIds.length} codes`);
+                    toast.success(
+                      `Analyzing ${transcriptIds.length} transcript${transcriptIds.length !== 1 ? 's' : ''}, ${questionIds.length} code${questionIds.length !== 1 ? 's' : ''}`,
+                    );
                   }}
                 />
               )}

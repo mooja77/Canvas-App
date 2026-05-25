@@ -445,7 +445,7 @@ test.describe('UX Phase 1 — Placement & Navigation', () => {
 
     await page
       .getByRole('button', { name: /More canvas actions/i })
-      .nth(1)
+      .first()
       .click();
     // Click the keyboard shortcuts item in the overflow menu.
     const shortcutsBtn = page.getByRole('menuitem', { name: /Keyboard shortcuts/i });

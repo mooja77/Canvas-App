@@ -167,7 +167,9 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
       `Average Weight: ${stats.avgWeight.toFixed(2)}`,
       '',
       'Per-Code Average Weight:',
-      ...stats.perCode.map((c) => `  ${c.name}: ${c.avgWeight.toFixed(2)} avg (${c.count} codings)`),
+      ...stats.perCode.map(
+        (c) => `  ${c.name}: ${c.avgWeight.toFixed(2)} avg (${c.count} coding${c.count !== 1 ? 's' : ''})`,
+      ),
       '',
       'All Weighted Codings:',
       ...enrichedCodings
@@ -222,7 +224,9 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
 
         {/* Stats bar */}
         <div className="border-b border-gray-100 dark:border-gray-700/50 px-5 py-2 flex items-center gap-4 text-[10px] text-gray-500 dark:text-gray-400">
-          <span>{stats.totalCodings} codings</span>
+          <span>
+            {stats.totalCodings} coding{stats.totalCodings !== 1 ? 's' : ''}
+          </span>
           <span>{stats.weightedCount} weighted</span>
           <span>Avg: {stats.avgWeight > 0 ? stats.avgWeight.toFixed(1) + '/5' : '--'}</span>
           <div className="flex-1" />

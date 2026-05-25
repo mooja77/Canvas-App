@@ -127,7 +127,8 @@ export default function CanvasSwitcher({ canvasName }: Props) {
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{c.name}</p>
                     <p className="text-[10px] text-gray-400 dark:text-gray-500">
-                      {c._count?.transcripts || 0} transcripts &middot; {c._count?.codings || 0} codings
+                      {c._count?.transcripts || 0} transcript{(c._count?.transcripts || 0) !== 1 ? 's' : ''} &middot;{' '}
+                      {c._count?.codings || 0} coding{(c._count?.codings || 0) !== 1 ? 's' : ''}
                     </p>
                   </div>
                 </button>

@@ -73,7 +73,7 @@ test.describe('Deep Canvas: Layout Persistence', () => {
 
   test('2 - Auto-arrange shows toast', async ({ page }) => {
     await openCanvas(page);
-    await page.getByRole('button', { name: 'More canvas actions' }).nth(1).click();
+    await page.getByRole('button', { name: 'More canvas actions' }).first().click();
     await page.getByRole('menuitem', { name: /Auto-arrange layout/i }).click();
     const toast = page.getByText(/Canvas arranged|No nodes to arrange/i).first();
     await expect(toast).toBeVisible({ timeout: 5000 });

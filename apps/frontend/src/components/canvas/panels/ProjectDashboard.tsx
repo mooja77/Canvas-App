@@ -166,7 +166,7 @@ export default function ProjectDashboard({ onClose }: Props) {
           <MetricCard
             label="Transcripts"
             value={stats.transcriptCount}
-            sublabel={`${stats.totalWords.toLocaleString()} words`}
+            sublabel={`${stats.totalWords.toLocaleString()} word${stats.totalWords !== 1 ? 's' : ''}`}
             color="blue"
             icon={
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -181,7 +181,7 @@ export default function ProjectDashboard({ onClose }: Props) {
           <MetricCard
             label="Codes"
             value={stats.codeCount}
-            sublabel={`${stats.codingCount} codings`}
+            sublabel={`${stats.codingCount} coding${stats.codingCount !== 1 ? 's' : ''}`}
             color="purple"
             icon={
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -210,7 +210,9 @@ export default function ProjectDashboard({ onClose }: Props) {
           <MetricCard
             label="Memos"
             value={stats.memoCount}
-            sublabel={stats.caseCount > 0 ? `${stats.caseCount} cases` : 'analytical notes'}
+            sublabel={
+              stats.caseCount > 0 ? `${stats.caseCount} case${stats.caseCount !== 1 ? 's' : ''}` : 'analytical notes'
+            }
             color="amber"
             icon={
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">

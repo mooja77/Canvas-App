@@ -463,12 +463,13 @@ export default function CommandPalette({
     // ── Navigation: Transcripts, Codes, Memos, Computed ──
     if (activeCanvas) {
       activeCanvas.transcripts.forEach((t: CanvasTranscript) => {
+        const transcriptWordCount = t.content.split(/\s+/).filter(Boolean).length;
         items.push({
           id: `nav-transcript-${t.id}`,
           category: 'navigate',
           icon: <IconDoc />,
           label: t.title,
-          description: `Transcript · ${t.content.split(/\s+/).filter(Boolean).length} words`,
+          description: `Transcript · ${transcriptWordCount} word${transcriptWordCount !== 1 ? 's' : ''}`,
           action: () => {
             onFocusNode(`transcript-${t.id}`);
             onClose();

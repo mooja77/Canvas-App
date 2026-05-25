@@ -233,11 +233,14 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
                 className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
               >
                 <option value="">Select code...</option>
-                {codesWithCodings.map((q: CanvasQuestion) => (
-                  <option key={q.id} value={q.id} disabled={q.id === codeB}>
-                    {q.text} ({codings.filter((c) => c.questionId === q.id).length} codings)
-                  </option>
-                ))}
+                {codesWithCodings.map((q: CanvasQuestion) => {
+                  const qCodingCount = codings.filter((c) => c.questionId === q.id).length;
+                  return (
+                    <option key={q.id} value={q.id} disabled={q.id === codeB}>
+                      {q.text} ({qCodingCount} coding{qCodingCount !== 1 ? 's' : ''})
+                    </option>
+                  );
+                })}
               </select>
             </div>
             <div>
@@ -251,11 +254,14 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
                 className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
               >
                 <option value="">Select code...</option>
-                {codesWithCodings.map((q: CanvasQuestion) => (
-                  <option key={q.id} value={q.id} disabled={q.id === codeA}>
-                    {q.text} ({codings.filter((c) => c.questionId === q.id).length} codings)
-                  </option>
-                ))}
+                {codesWithCodings.map((q: CanvasQuestion) => {
+                  const qCodingCount = codings.filter((c) => c.questionId === q.id).length;
+                  return (
+                    <option key={q.id} value={q.id} disabled={q.id === codeA}>
+                      {q.text} ({qCodingCount} coding{qCodingCount !== 1 ? 's' : ''})
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>

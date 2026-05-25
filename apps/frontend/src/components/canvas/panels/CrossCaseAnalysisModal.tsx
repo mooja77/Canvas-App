@@ -201,8 +201,9 @@ export default function CrossCaseAnalysisModal({ onClose }: CrossCaseAnalysisMod
               Cross-Case Analysis
             </h3>
             <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              Query and compare codings across case attributes ({stats.casesWithAttrs} cases with attributes,{' '}
-              {stats.assignedTranscripts} assigned transcripts)
+              Query and compare codings across case attributes ({stats.casesWithAttrs} case
+              {stats.casesWithAttrs !== 1 ? 's' : ''} with attributes, {stats.assignedTranscripts} assigned transcript
+              {stats.assignedTranscripts !== 1 ? 's' : ''})
             </p>
           </div>
           <button
@@ -322,7 +323,7 @@ export default function CrossCaseAnalysisModal({ onClose }: CrossCaseAnalysisMod
                   ))}
                 </div>
                 <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                  {stats.totalCodings} codings matched
+                  {stats.totalCodings} coding{stats.totalCodings !== 1 ? 's' : ''} matched
                 </span>
               </div>
             </div>
@@ -436,7 +437,7 @@ export default function CrossCaseAnalysisModal({ onClose }: CrossCaseAnalysisMod
                         {groupByAttr}: {g.attrVal}
                       </span>
                       <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                        ({g.codings.length} excerpts)
+                        ({g.codings.length} excerpt{g.codings.length !== 1 ? 's' : ''})
                       </span>
                     </div>
                     <div className="space-y-1 ml-2">

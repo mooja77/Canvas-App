@@ -126,7 +126,7 @@ export default function CrossCanvasImportModal({ onClose }: Props) {
                   <option value="">Select a canvas...</option>
                   {canvases.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} ({c._count?.transcripts || 0} transcripts)
+                      {c.name} ({c._count?.transcripts || 0} transcript{(c._count?.transcripts || 0) !== 1 ? 's' : ''})
                     </option>
                   ))}
                 </select>
@@ -167,7 +167,9 @@ export default function CrossCanvasImportModal({ onClose }: Props) {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{t.title}</p>
-                          <span className="text-[10px] text-gray-400">{wordCount(t.content)} words</span>
+                          <span className="text-[10px] text-gray-400">
+                            {wordCount(t.content)} word{wordCount(t.content) !== 1 ? 's' : ''}
+                          </span>
                         </div>
                         <p className="mt-0.5 text-xs text-gray-400 line-clamp-1">{t.content}</p>
                       </div>

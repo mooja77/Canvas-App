@@ -512,8 +512,14 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
                         <span className="text-[9px] text-gray-400 tabular-nums w-7 text-right">{pct}%</span>
                       </div>
                       <div className="flex items-center gap-3 pl-5.5 text-[9px] text-gray-400">
-                        <span>{wordCount.toLocaleString()} words</span>
-                        {coverage && coverage.questionCount > 0 && <span>{coverage.questionCount} codes</span>}
+                        <span>
+                          {wordCount.toLocaleString()} word{wordCount !== 1 ? 's' : ''}
+                        </span>
+                        {coverage && coverage.questionCount > 0 && (
+                          <span>
+                            {coverage.questionCount} code{coverage.questionCount !== 1 ? 's' : ''}
+                          </span>
+                        )}
                       </div>
                     </button>
                   );

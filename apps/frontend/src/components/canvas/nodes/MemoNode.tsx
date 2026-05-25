@@ -368,7 +368,9 @@ function MemoNode({ data, id, selected }: NodeProps) {
               </div>
               {/* Footer */}
               <div className="mt-1.5 flex items-center justify-between text-[9px] text-gray-500/50">
-                <span>{wordCount} words</span>
+                <span>
+                  {wordCount} word{wordCount !== 1 ? 's' : ''}
+                </span>
                 <button
                   onClick={() => {
                     setEditContent(nodeData.content);
