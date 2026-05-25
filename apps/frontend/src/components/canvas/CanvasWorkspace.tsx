@@ -555,7 +555,9 @@ export default function CanvasWorkspace() {
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
       if (dimmed) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
-      if (posData?.height && !posData.collapsed) style.height = posData.height;
+      // Code nodes auto-fit their text height — never clip. Apply width only and
+      // let height follow content (a stored height that was too small used to
+      // crop the label). Ergonomics spec Phase 2; height is intentionally omitted.
       result.push({
         id: nodeId,
         type: 'question',
