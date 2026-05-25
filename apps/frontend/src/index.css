@@ -136,22 +136,65 @@
   to   { transform: translateY(-2px); }
 }
 
-/* Handle */
+/* Handle — a tidy visible dot wrapped in a large *invisible* hit zone so wires
+   are easy to grab and drop (ComfyUI-grade ergonomics). The dot keeps the calm
+   look; the ::before extends the grabbable area well beyond it. Pseudo-elements
+   forward pointer events to their host, so the handle itself receives them. */
 .react-flow__handle {
   transition: transform 150ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 150ms ease;
 }
+.react-flow__handle::before {
+  content: '';
+  position: absolute;
+  inset: -11px; /* ~22px of extra grab area around the dot */
+  border-radius: 9999px;
+}
 .react-flow__handle:hover {
-  transform: scale(1.4);
-  box-shadow: 0 0 8px rgba(99,102,241,0.5);
+  transform: scale(1.5);
+  box-shadow:
+    0 0 0 4px rgba(99, 102, 241, 0.18),
+    0 0 10px rgba(99, 102, 241, 0.5);
 }
 
 /* Handle pulse */
 @keyframes handlePulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.3); }
-  50% { box-shadow: 0 0 0 4px rgba(99,102,241,0); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(99, 102, 241, 0);
+  }
 }
 .react-flow__handle.connecting {
   animation: handlePulse 1.5s ease-in-out infinite;
+}
+
+/* Resize handles — make the grab corners big enough to find and drag. The
+   default 8px corners are effectively undiscoverable; widen the visible grip
+   and wrap it in a generous hit zone, with the bottom-right as the primary
+   affordance. (`!important` overrides the inline `!w-2 !h-2` Tailwind sizing.) */
+.react-flow__resize-control.handle {
+  width: 11px !important;
+  height: 11px !important;
+  border-radius: 3px;
+  opacity: 0.85;
+  transition:
+    transform 120ms ease,
+    opacity 120ms ease;
+}
+.react-flow__resize-control.handle::before {
+  content: '';
+  position: absolute;
+  inset: -8px; /* generous grab area around each resize corner */
+}
+.react-flow__resize-control.handle:hover {
+  opacity: 1;
+  transform: scale(1.25);
+}
+.react-flow__resize-control.handle.bottom.right {
+  width: 13px !important;
+  height: 13px !important;
 }
 
 /* Edge hover flow */
