@@ -74,6 +74,22 @@ describe('PricingPage (refresh)', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/account');
   });
 
+  it('shows a disabled "Current plan" CTA on the tier the user is already on, not an active upgrade button', () => {
+    // A logged-in Pro user viewing pricing should not see an active "Start Pro"
+    // button on the card flagged "Current" — clicking it would re-open Stripe
+    // checkout for a plan they already have. Surface a disabled "Current plan"
+    // affordance instead. The other tiers keep their normal CTAs.
+    authState.authenticated = true;
+    authState.plan = 'pro';
+    authState.authType = 'email';
+    render(<PricingPage />);
+    expect(screen.queryByRole('button', { name: 'Start Pro' })).not.toBeInTheDocument();
+    const currentBtn = screen.getByRole('button', { name: /current plan/i });
+    expect(currentBtn).toBeDisabled();
+    // Team is still upgradable from Pro.
+    expect(screen.getByRole('button', { name: 'Start Team' })).toBeInTheDocument();
+  });
+
   it('renders the four tier headings (Free, Pro, Team, Institutions)', () => {
     render(<PricingPage />);
     // Each tier is an h3 inside TierCardV2
