@@ -180,7 +180,7 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
         transcripts.forEach((t: CanvasTranscript) => {
           const tCodings = codings.filter((c: CanvasTextCoding) => c.transcriptId === t.id);
           if (tCodings.length === 0) return;
-          html += `<h3>${escHTML(t.title)} <span style="color:#9ca3af;font-weight:400">(${tCodings.length} excerpts)</span></h3>`;
+          html += `<h3>${escHTML(t.title)} <span style="color:#9ca3af;font-weight:400">(${tCodings.length} excerpt${tCodings.length !== 1 ? 's' : ''})</span></h3>`;
           tCodings.forEach((c: CanvasTextCoding) => {
             const q = questionMap.get(c.questionId);
             html += `<div class="excerpt" style="border-left-color:${q?.color || '#6366f1'}">&ldquo;${escHTML(c.codedText)}&rdquo;<div class="source"><span class="code-badge"><span class="code-dot" style="background:${q?.color || '#888'}"></span>${escHTML(q?.text || 'Unknown')}</span></div></div>`;
@@ -200,7 +200,7 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
           const tIds = new Set(group.transcripts.map((t) => t.id));
           const caseCodings = codings.filter((c: CanvasTextCoding) => tIds.has(c.transcriptId));
           if (caseCodings.length === 0) return;
-          html += `<h3>${group.case ? escHTML(group.case.name) : 'Uncategorized'} <span style="color:#9ca3af;font-weight:400">(${caseCodings.length} excerpts)</span></h3>`;
+          html += `<h3>${group.case ? escHTML(group.case.name) : 'Uncategorized'} <span style="color:#9ca3af;font-weight:400">(${caseCodings.length} excerpt${caseCodings.length !== 1 ? 's' : ''})</span></h3>`;
           caseCodings.forEach((c: CanvasTextCoding) => {
             const q = questionMap.get(c.questionId);
             const t = transcriptMap.get(c.transcriptId);
@@ -285,7 +285,7 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
         transcripts.forEach((t: CanvasTranscript) => {
           const tCodings = codings.filter((c: CanvasTextCoding) => c.transcriptId === t.id);
           if (tCodings.length === 0) return;
-          md += `### ${t.title} (${tCodings.length} excerpts)\n\n`;
+          md += `### ${t.title} (${tCodings.length} excerpt${tCodings.length !== 1 ? 's' : ''})\n\n`;
           tCodings.forEach((c: CanvasTextCoding) => {
             const q = questionMap.get(c.questionId);
             md += `> "${c.codedText}"\n> — *[${q?.text || 'Unknown'}]*\n\n`;
@@ -303,7 +303,7 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
           const tIds = new Set(group.transcripts.map((t) => t.id));
           const caseCodings = codings.filter((c: CanvasTextCoding) => tIds.has(c.transcriptId));
           if (caseCodings.length === 0) return;
-          md += `### ${group.case?.name || 'Uncategorized'} (${caseCodings.length} excerpts)\n\n`;
+          md += `### ${group.case?.name || 'Uncategorized'} (${caseCodings.length} excerpt${caseCodings.length !== 1 ? 's' : ''})\n\n`;
           caseCodings.forEach((c: CanvasTextCoding) => {
             const q = questionMap.get(c.questionId);
             const t = transcriptMap.get(c.transcriptId);

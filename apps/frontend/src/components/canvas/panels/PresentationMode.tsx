@@ -20,28 +20,32 @@ export default function PresentationMode({ onExit }: PresentationModeProps) {
 
   // Theme summary cards
   const themeSummaries = useMemo(() => {
-    return questions.map((q: CanvasQuestion) => {
-      const qCodings = codings.filter((c: CanvasTextCoding) => c.questionId === q.id);
-      const topQuotes = qCodings.slice(0, 3).map(c => ({
-        text: c.codedText,
-        source: transcripts.find((t: CanvasTranscript) => t.id === c.transcriptId)?.title || 'Unknown',
-      }));
-      return { question: q, codingCount: qCodings.length, topQuotes };
-    }).sort((a, b) => b.codingCount - a.codingCount);
+    return questions
+      .map((q: CanvasQuestion) => {
+        const qCodings = codings.filter((c: CanvasTextCoding) => c.questionId === q.id);
+        const topQuotes = qCodings.slice(0, 3).map((c) => ({
+          text: c.codedText,
+          source: transcripts.find((t: CanvasTranscript) => t.id === c.transcriptId)?.title || 'Unknown',
+        }));
+        return { question: q, codingCount: qCodings.length, topQuotes };
+      })
+      .sort((a, b) => b.codingCount - a.codingCount);
   }, [questions, codings, transcripts]);
 
   // All coded excerpts grouped by code
   const excerptsByCode = useMemo(() => {
-    return questions.map((q: CanvasQuestion) => {
-      const qCodings = codings.filter((c: CanvasTextCoding) => c.questionId === q.id);
-      return {
-        question: q,
-        excerpts: qCodings.map(c => ({
-          text: c.codedText,
-          source: transcripts.find((t: CanvasTranscript) => t.id === c.transcriptId)?.title || 'Unknown',
-        })),
-      };
-    }).filter(g => g.excerpts.length > 0);
+    return questions
+      .map((q: CanvasQuestion) => {
+        const qCodings = codings.filter((c: CanvasTextCoding) => c.questionId === q.id);
+        return {
+          question: q,
+          excerpts: qCodings.map((c) => ({
+            text: c.codedText,
+            source: transcripts.find((t: CanvasTranscript) => t.id === c.transcriptId)?.title || 'Unknown',
+          })),
+        };
+      })
+      .filter((g) => g.excerpts.length > 0);
   }, [questions, codings, transcripts]);
 
   // Code frequencies for bar chart
@@ -55,7 +59,7 @@ export default function PresentationMode({ onExit }: PresentationModeProps) {
       .sort((a, b) => b.count - a.count);
   }, [questions, codings]);
 
-  const maxFreq = Math.max(...codeFrequencies.map(f => f.count), 1);
+  const maxFreq = Math.max(...codeFrequencies.map((f) => f.count), 1);
 
   if (!activeCanvas) return null;
 
@@ -66,7 +70,8 @@ export default function PresentationMode({ onExit }: PresentationModeProps) {
         <div>
           <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">{activeCanvas.name}</h1>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {transcripts.length} sources &middot; {questions.length} codes &middot; {codings.length} codings
+            {transcripts.length} source{transcripts.length !== 1 ? 's' : ''} &middot; {questions.length} code
+            {questions.length !== 1 ? 's' : ''} &middot; {codings.length} coding{codings.length !== 1 ? 's' : ''}
           </p>
         </div>
         <button
@@ -88,7 +93,7 @@ export default function PresentationMode({ onExit }: PresentationModeProps) {
               Themes & Codes
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {themeSummaries.map(ts => (
+              {themeSummaries.map((ts) => (
                 <div
                   key={ts.question.id}
                   className="rounded-xl border border-gray-200 p-4 dark:border-gray-700"
@@ -98,12 +103,17 @@ export default function PresentationMode({ onExit }: PresentationModeProps) {
                     <div className="h-3 w-3 rounded-full" style={{ backgroundColor: ts.question.color }} />
                     <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{ts.question.text}</h3>
                   </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{ts.codingCount} coding{ts.codingCount !== 1 ? 's' : ''}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {ts.codingCount} coding{ts.codingCount !== 1 ? 's' : ''}
+                  </span>
                   {ts.topQuotes.length > 0 && (
                     <div className="mt-2 space-y-1.5">
                       {ts.topQuotes.map((q, i) => (
                         <div key={i} className="text-xs text-gray-600 dark:text-gray-400">
-                          <span className="italic">&ldquo;{q.text.slice(0, 120)}{q.text.length > 120 ? '...' : ''}&rdquo;</span>
+                          <span className="italic">
+                            &ldquo;{q.text.slice(0, 120)}
+                            {q.text.length > 120 ? '...' : ''}&rdquo;
+                          </span>
                           <span className="text-gray-400 ml-1">— {q.source}</span>
                         </div>
                       ))}
@@ -122,7 +132,7 @@ export default function PresentationMode({ onExit }: PresentationModeProps) {
               Code Frequencies
             </h2>
             <div className="space-y-2">
-              {codeFrequencies.map(cf => (
+              {codeFrequencies.map((cf) => (
                 <div key={cf.name} className="flex items-center gap-3">
                   <span className="w-40 text-xs text-gray-600 dark:text-gray-400 truncate text-right">{cf.name}</span>
                   <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-800 rounded-md overflow-hidden">
@@ -145,7 +155,7 @@ export default function PresentationMode({ onExit }: PresentationModeProps) {
               Key Quotes by Code
             </h2>
             <div className="space-y-6">
-              {excerptsByCode.map(group => (
+              {excerptsByCode.map((group) => (
                 <div key={group.question.id}>
                   <div className="flex items-center gap-2 mb-2">
                     <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.question.color }} />
@@ -154,8 +164,15 @@ export default function PresentationMode({ onExit }: PresentationModeProps) {
                   </div>
                   <div className="space-y-1.5 pl-5">
                     {group.excerpts.slice(0, 5).map((ex, i) => (
-                      <div key={i} className="text-xs text-gray-600 dark:text-gray-400 border-l-2 pl-2" style={{ borderColor: group.question.color }}>
-                        <span className="italic">&ldquo;{ex.text.slice(0, 200)}{ex.text.length > 200 ? '...' : ''}&rdquo;</span>
+                      <div
+                        key={i}
+                        className="text-xs text-gray-600 dark:text-gray-400 border-l-2 pl-2"
+                        style={{ borderColor: group.question.color }}
+                      >
+                        <span className="italic">
+                          &ldquo;{ex.text.slice(0, 200)}
+                          {ex.text.length > 200 ? '...' : ''}&rdquo;
+                        </span>
                         <span className="text-gray-400 ml-1">— {ex.source}</span>
                       </div>
                     ))}
@@ -177,11 +194,7 @@ export default function PresentationMode({ onExit }: PresentationModeProps) {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {memos.map((m: CanvasMemo) => (
-                <div
-                  key={m.id}
-                  className="rounded-xl p-4"
-                  style={{ backgroundColor: m.color || '#FEF3C7' }}
-                >
+                <div key={m.id} className="rounded-xl p-4" style={{ backgroundColor: m.color || '#FEF3C7' }}>
                   {m.title && <h3 className="text-sm font-semibold text-gray-800 mb-1">{m.title}</h3>}
                   <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">{m.content}</p>
                 </div>

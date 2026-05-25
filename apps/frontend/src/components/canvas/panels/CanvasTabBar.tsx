@@ -27,11 +27,17 @@ function TabPreview({ tab, visible }: { tab: CanvasTab; visible: boolean }) {
         <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-1.5 line-clamp-2">{tab.description}</div>
       )}
       <div className="flex items-center gap-2 text-[10px] text-gray-400 dark:text-gray-500">
-        <span>{tab.transcriptCount ?? 0} transcripts</span>
+        <span>
+          {tab.transcriptCount ?? 0} transcript{(tab.transcriptCount ?? 0) !== 1 ? 's' : ''}
+        </span>
         <span className="text-gray-300 dark:text-gray-600">|</span>
-        <span>{tab.codeCount ?? 0} codes</span>
+        <span>
+          {tab.codeCount ?? 0} code{(tab.codeCount ?? 0) !== 1 ? 's' : ''}
+        </span>
         <span className="text-gray-300 dark:text-gray-600">|</span>
-        <span>{tab.codingCount ?? 0} codings</span>
+        <span>
+          {tab.codingCount ?? 0} coding{(tab.codingCount ?? 0) !== 1 ? 's' : ''}
+        </span>
       </div>
     </div>
   );

@@ -47,15 +47,21 @@ export default function TrainingAttemptView({
     if (isOpen) loadAttempts();
   }, [isOpen, loadAttempts]);
 
-  const getQuestionLabel = useCallback((questionId: string) => {
-    const q = questions.find(q => q.id === questionId);
-    return q?.text || 'Unknown Code';
-  }, [questions]);
+  const getQuestionLabel = useCallback(
+    (questionId: string) => {
+      const q = questions.find((q) => q.id === questionId);
+      return q?.text || 'Unknown Code';
+    },
+    [questions],
+  );
 
-  const getQuestionColor = useCallback((questionId: string) => {
-    const q = questions.find(q => q.id === questionId);
-    return q?.color || '#3B82F6';
-  }, [questions]);
+  const getQuestionColor = useCallback(
+    (questionId: string) => {
+      const q = questions.find((q) => q.id === questionId);
+      return q?.color || '#3B82F6';
+    },
+    [questions],
+  );
 
   const getKappaLabel = (score: number) => {
     if (score >= 0.81) return { label: 'Almost Perfect', color: 'text-green-600' };
@@ -103,7 +109,7 @@ export default function TrainingAttemptView({
                 <p className="text-sm text-gray-500">No attempts yet</p>
               ) : (
                 <div className="space-y-1">
-                  {attempts.map(attempt => {
+                  {attempts.map((attempt) => {
                     const kappa = attempt.kappaScore ?? 0;
                     const kappaInfo = getKappaLabel(kappa);
                     return (
@@ -117,14 +123,14 @@ export default function TrainingAttemptView({
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={`text-xs font-medium ${kappaInfo.color}`}>
-                            K={kappa.toFixed(3)}
-                          </span>
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                            attempt.passed
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                          }`}>
+                          <span className={`text-xs font-medium ${kappaInfo.color}`}>K={kappa.toFixed(3)}</span>
+                          <span
+                            className={`text-xs px-1.5 py-0.5 rounded-full ${
+                              attempt.passed
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                            }`}
+                          >
                             {attempt.passed ? 'Pass' : 'Fail'}
                           </span>
                         </div>
@@ -144,11 +150,13 @@ export default function TrainingAttemptView({
             {selectedAttempt ? (
               <div className="space-y-4">
                 {/* Kappa summary */}
-                <div className={`p-3 rounded-lg ${
-                  selectedAttempt.passed
-                    ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                    : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-                }`}>
+                <div
+                  className={`p-3 rounded-lg ${
+                    selectedAttempt.passed
+                      ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                      : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                  }`}
+                >
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -158,9 +166,11 @@ export default function TrainingAttemptView({
                         ({getKappaLabel(selectedAttempt.kappaScore ?? 0).label})
                       </span>
                     </div>
-                    <span className={`text-sm font-semibold ${
-                      selectedAttempt.passed ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
-                    }`}>
+                    <span
+                      className={`text-sm font-semibold ${
+                        selectedAttempt.passed ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
+                      }`}
+                    >
                       {selectedAttempt.passed ? 'PASSED' : 'FAILED'}
                     </span>
                   </div>
@@ -171,7 +181,7 @@ export default function TrainingAttemptView({
                   {/* Gold standard */}
                   <div>
                     <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                      Gold Standard ({goldCodings.length} codings)
+                      Gold Standard ({goldCodings.length} coding{goldCodings.length !== 1 ? 's' : ''})
                     </h4>
                     <div className="space-y-1 max-h-[400px] overflow-y-auto">
                       {goldCodings.map((c, i) => (
@@ -186,9 +196,7 @@ export default function TrainingAttemptView({
                           <span className="font-medium" style={{ color: getQuestionColor(c.questionId) }}>
                             {getQuestionLabel(c.questionId)}
                           </span>
-                          <p className="text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">
-                            "{c.codedText}"
-                          </p>
+                          <p className="text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">"{c.codedText}"</p>
                           <span className="text-gray-400">
                             [{c.startOffset}-{c.endOffset}]
                           </span>
@@ -200,7 +208,7 @@ export default function TrainingAttemptView({
                   {/* Attempt */}
                   <div>
                     <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                      Attempt ({attemptCodings.length} codings)
+                      Attempt ({attemptCodings.length} coding{attemptCodings.length !== 1 ? 's' : ''})
                     </h4>
                     <div className="space-y-1 max-h-[400px] overflow-y-auto">
                       {attemptCodings.map((c, i) => (
@@ -215,9 +223,7 @@ export default function TrainingAttemptView({
                           <span className="font-medium" style={{ color: getQuestionColor(c.questionId) }}>
                             {getQuestionLabel(c.questionId)}
                           </span>
-                          <p className="text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">
-                            "{c.codedText}"
-                          </p>
+                          <p className="text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">"{c.codedText}"</p>
                           <span className="text-gray-400">
                             [{c.startOffset}-{c.endOffset}]
                           </span>

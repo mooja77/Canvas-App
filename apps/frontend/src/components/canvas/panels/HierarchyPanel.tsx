@@ -163,7 +163,8 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
               Code Hierarchy
             </h3>
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
-              Drag codes to reorganize &middot; {questions.length} codes &middot; {totalCodingCount} codings
+              Drag codes to reorganize &middot; {questions.length} code{questions.length !== 1 ? 's' : ''} &middot;{' '}
+              {totalCodingCount} coding{totalCodingCount !== 1 ? 's' : ''}
             </p>
           </div>
           <button

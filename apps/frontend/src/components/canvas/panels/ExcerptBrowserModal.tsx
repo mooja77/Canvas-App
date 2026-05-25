@@ -541,9 +541,9 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
         <div className="border-t border-gray-200 dark:border-gray-700 px-5 py-2 flex items-center justify-between">
           <span className="text-[10px] text-gray-400">
             {viewMode === 'excerpts'
-              ? `${filteredExcerpts.length} of ${allExcerpts.length} excerpts`
+              ? `${filteredExcerpts.length} of ${allExcerpts.length} excerpt${allExcerpts.length !== 1 ? 's' : ''}`
               : kwicWord.trim()
-                ? `${kwicResults.length} occurrences`
+                ? `${kwicResults.length} occurrence${kwicResults.length !== 1 ? 's' : ''}`
                 : 'KWIC concordance view'}
           </span>
           <div className="flex items-center gap-2">
