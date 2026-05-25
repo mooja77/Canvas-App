@@ -461,6 +461,24 @@ input[type="checkbox"]:checked {
   animation: fadeIn 150ms ease-out both;
 }
 
+/* Scroll-safe centered overlays.
+   A full-screen centered modal taller than the viewport used to overflow its
+   backdrop equally top and bottom (align-items: center), pushing the modal's
+   header — title, first fields — above the screen where it was unreachable on
+   short viewports (reproduced: Add Transcript modal top at -123px @ 620px tall).
+   `safe center` keeps centering when the modal fits but falls back to top-
+   aligned the moment it would overflow, and overflow-y lets the backdrop scroll
+   so every part stays reachable. The four-class selector out-specifies
+   Tailwind's `.items-center` (no !important needed) and covers every modal that
+   uses the standard centered-overlay utilities — current and future — without a
+   per-component change. (Top-aligned overlays like the command palette use
+   items-start and are intentionally unaffected.) */
+.fixed.inset-0.items-center.justify-center {
+  align-items: safe center;
+  overflow-y: auto;
+  padding-block: 1rem;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
