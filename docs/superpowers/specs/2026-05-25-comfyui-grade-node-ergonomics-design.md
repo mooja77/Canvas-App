@@ -53,7 +53,7 @@ ComfyUI-grade: nodes always fit their content; handles are large and forgiving t
 
 - Add a forgiving `connectionRadius` (≈30) so wires snap to nearby handles on drop.
 - Make **resize undoable**: capture node dimension changes into `useCanvasHistory` so Ctrl+Z reverts a resize.
-- Decide computed-node **output handles**: either add a source handle (enable chaining/relations out of computed nodes) or document the omission as intentional. (Open question — see below.)
+- Computed nodes remain **terminal sinks** (no source handle added) per the resolved decision — documented as intentional.
 - Fold in any further "little bugs" surfaced during Phase 1/2 prod verification.
 
 ## Testing & verification
@@ -69,10 +69,10 @@ ComfyUI-grade: nodes always fit their content; handles are large and forgiving t
 - **Enlarged handle hit zones swallow clicks meant for the node body** → keep the hit zone confined to the node edge, `pointer-events` only on the handle pseudo, test that node-body double-click-to-edit and text selection still work.
 - **Stored-height migration** → don't migrate data; resolve at render (content height wins). No backend change.
 
-## Open questions for the user
+## Decisions (resolved with the user, 2026-05-25)
 
-1. Computed-node **output handles** — do you want to wire _out_ of analysis nodes (chain them / relate them), or keep them as terminal sinks?
-2. For text nodes, is **width-only resize** (height always follows text, ComfyUI-style) the desired model, or do you also want free height resize with a content floor?
+1. **Computed nodes stay terminal sinks** — no output/source handle is added. This pass fixes only their _input_ handle ergonomics. (Phase 3 drops the "decide output handles" item.)
+2. **Text nodes use width-only resize** — the user drags to set WIDTH; height always auto-fits the text and can never clip (ComfyUI-style). No free height resize for text nodes. (Computed nodes keep resizable height since their charts need it.)
 
 ## Rollout
 
