@@ -81,11 +81,11 @@ function SentimentNode({ data, id, selected }: NodeProps) {
         <div className="border-b border-gray-100 dark:border-gray-700 px-3 py-2 space-y-2">
           <div className="flex items-center gap-2">
             <label className="text-[10px] text-gray-500">Scope:</label>
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <select
               className="input h-7 text-xs flex-1"
               value={scope}
               onChange={(e) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 setScope(e.target.value as any);
                 setScopeId('');
               }}

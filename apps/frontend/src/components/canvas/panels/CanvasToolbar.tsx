@@ -37,12 +37,16 @@ const MethodsStatementModal = lazy(() => import('./MethodsStatementModal'));
 
 function ToolbarDropdown({
   label,
+  ariaLabel,
   icon,
   children,
   className,
   'data-tour': dataTour,
 }: {
   label?: string;
+  /** Accessible name for icon-only triggers (no visible label). Falls back to
+   *  `${label} menu`, then a generic "More canvas actions". */
+  ariaLabel?: string;
   icon: React.ReactNode;
   children: React.ReactNode;
   className?: string;
@@ -59,7 +63,7 @@ function ToolbarDropdown({
         onClick={() => setOpen((prev) => !prev)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={label ? `${label} menu` : 'More canvas actions'}
+        aria-label={ariaLabel || (label ? `${label} menu` : 'More canvas actions')}
         className={
           className ||
           'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors'
@@ -863,6 +867,7 @@ export default function CanvasToolbar({
               body="Export to HTML, Markdown, Excel, PNG, or QDPX for NVivo / ATLAS.ti."
             >
               <ToolbarDropdown
+                ariaLabel="Export and import"
                 icon={
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path
