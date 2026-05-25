@@ -2318,6 +2318,7 @@ export default function CanvasWorkspace() {
                 fitViewOptions={INITIAL_RF_FIT_OPTIONS}
                 minZoom={0.05}
                 maxZoom={2}
+                connectionRadius={36}
                 className={
                   'bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-[#0f1117] dark:via-[#131620] dark:to-[#0f1117]' +
                   (viewportState.zoom < 0.4 && selectedNodes.length > 20 ? ' canvas-low-zoom-bulk' : '')
