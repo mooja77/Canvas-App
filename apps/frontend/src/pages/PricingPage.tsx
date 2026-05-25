@@ -115,6 +115,20 @@ export default function PricingPage() {
     }
   };
 
+  // Shown in place of the upgrade button on whichever tier the user is already
+  // on, so we never invite them to re-checkout a plan they already have (the
+  // card also carries a "Current" badge via TierCardV2's isCurrent).
+  const currentPlanCta = (
+    <button
+      type="button"
+      disabled
+      aria-disabled="true"
+      className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 text-sm font-medium cursor-default"
+    >
+      Current plan
+    </button>
+  );
+
   return (
     <PageShell>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-12">
@@ -172,12 +186,16 @@ export default function PricingPage() {
             features={['1 canvas', '5 codes', 'CSV export', 'Stats + wordcloud']}
             isCurrent={plan === 'free'}
             cta={
-              <button
-                onClick={handleFreeSelect}
-                className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2"
-              >
-                Start free
-              </button>
+              plan === 'free' ? (
+                currentPlanCta
+              ) : (
+                <button
+                  onClick={handleFreeSelect}
+                  className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2"
+                >
+                  Start free
+                </button>
+              )
             }
           />
 
@@ -196,20 +214,24 @@ export default function PricingPage() {
             ]}
             isCurrent={plan === 'pro'}
             cta={
-              <button
-                onClick={() => {
-                  if (plan === 'team') {
-                    setPendingTier('pro');
-                    setShowDowngradeWarning(true);
-                  } else {
-                    handleUpgrade('pro');
-                  }
-                }}
-                disabled={loading}
-                className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-ochre-500 hover:bg-ochre-600 text-ink-950 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2 disabled:opacity-50"
-              >
-                {loading ? 'Loading…' : 'Start Pro'}
-              </button>
+              plan === 'pro' ? (
+                currentPlanCta
+              ) : (
+                <button
+                  onClick={() => {
+                    if (plan === 'team') {
+                      setPendingTier('pro');
+                      setShowDowngradeWarning(true);
+                    } else {
+                      handleUpgrade('pro');
+                    }
+                  }}
+                  disabled={loading}
+                  className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-ochre-500 hover:bg-ochre-600 text-ink-950 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2 disabled:opacity-50"
+                >
+                  {loading ? 'Loading…' : 'Start Pro'}
+                </button>
+              )
             }
           />
 
@@ -227,13 +249,17 @@ export default function PricingPage() {
             ]}
             isCurrent={plan === 'team'}
             cta={
-              <button
-                onClick={() => handleUpgrade('team')}
-                disabled={loading}
-                className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2 disabled:opacity-50"
-              >
-                {loading ? 'Loading…' : 'Start Team'}
-              </button>
+              plan === 'team' ? (
+                currentPlanCta
+              ) : (
+                <button
+                  onClick={() => handleUpgrade('team')}
+                  disabled={loading}
+                  className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2 disabled:opacity-50"
+                >
+                  {loading ? 'Loading…' : 'Start Team'}
+                </button>
+              )
             }
           />
 
