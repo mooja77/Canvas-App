@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import TranscriptUploadModal from './TranscriptUploadModal';
 import ImportNarrativesModal from './ImportNarrativesModal';
 import FileUploadModal from './FileUploadModal';
@@ -150,12 +151,24 @@ export default function TranscriptSourceMenu() {
         )}
       </div>
 
-      {activeModal === 'paste' && (
-        <TranscriptUploadModal onSubmit={handleAddTranscript} onClose={() => setActiveModal(null)} />
-      )}
-      {activeModal === 'assessment' && <ImportNarrativesModal onClose={() => setActiveModal(null)} />}
-      {activeModal === 'file' && <FileUploadModal onClose={() => setActiveModal(null)} />}
-      {activeModal === 'canvas' && <CrossCanvasImportModal onClose={() => setActiveModal(null)} />}
+      {/* Portal the modals to <body>. This menu lives inside the canvas toolbar
+          row, which has `backdrop-filter: blur()` — that establishes a containing
+          block for `position: fixed`, so an inline modal would center itself
+          inside the ~90px toolbar strip and push its header off the top of the
+          screen. Portaling escapes that containing block so `fixed inset-0`
+          covers the real viewport. */}
+      {activeModal &&
+        createPortal(
+          <>
+            {activeModal === 'paste' && (
+              <TranscriptUploadModal onSubmit={handleAddTranscript} onClose={() => setActiveModal(null)} />
+            )}
+            {activeModal === 'assessment' && <ImportNarrativesModal onClose={() => setActiveModal(null)} />}
+            {activeModal === 'file' && <FileUploadModal onClose={() => setActiveModal(null)} />}
+            {activeModal === 'canvas' && <CrossCanvasImportModal onClose={() => setActiveModal(null)} />}
+          </>,
+          document.body,
+        )}
     </>
   );
 }
