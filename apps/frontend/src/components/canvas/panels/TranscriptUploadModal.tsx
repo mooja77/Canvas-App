@@ -24,66 +24,70 @@ export default function TranscriptUploadModal({ onSubmit, onClose }: Props) {
   };
 
   return (
-    <div
-      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="transcript-upload-title"
-        className="modal-content w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl backdrop-blur-xl ring-1 ring-black/5 dark:bg-gray-800"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 id="transcript-upload-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Add Transcript
-        </h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Paste or type your interview transcript below.</p>
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <div>
-            <label className="label" htmlFor="transcript-title">
-              Title
-              <span aria-hidden="true" className="ml-0.5 text-red-500">
-                *
-              </span>
-            </label>
-            <input
-              id="transcript-title"
-              type="text"
-              className="input mt-1"
-              placeholder="e.g. Interview #1 — Participant A"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="transcript-content">
-              Transcript Content
-              <span aria-hidden="true" className="ml-0.5 text-red-500">
-                *
-              </span>
-            </label>
-            <textarea
-              id="transcript-content"
-              className="input mt-1 min-h-[200px] resize-y font-mono text-sm"
-              placeholder="Paste the full interview transcript here..."
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              required
-              rows={10}
-            />
-          </div>
-          <div className="flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="btn-secondary text-sm">
-              Cancel
-            </button>
-            <button type="submit" disabled={submitting} className="btn-primary text-sm">
-              {submitting ? 'Adding...' : 'Add Transcript'}
-            </button>
-          </div>
-        </form>
+    <div className="modal-backdrop fixed inset-0 z-50 overflow-y-auto bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      {/* min-h-full + items-center centers the modal when it fits and lets the
+          backdrop scroll (keeping the top reachable) when it's taller than the
+          viewport — otherwise a tall modal's header clips above the screen. */}
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="transcript-upload-title"
+          className="modal-content w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl backdrop-blur-xl ring-1 ring-black/5 dark:bg-gray-800"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 id="transcript-upload-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Add Transcript
+          </h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Paste or type your interview transcript below.
+          </p>
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+            <div>
+              <label className="label" htmlFor="transcript-title">
+                Title
+                <span aria-hidden="true" className="ml-0.5 text-red-500">
+                  *
+                </span>
+              </label>
+              <input
+                id="transcript-title"
+                type="text"
+                className="input mt-1"
+                placeholder="e.g. Interview #1 — Participant A"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor="transcript-content">
+                Transcript Content
+                <span aria-hidden="true" className="ml-0.5 text-red-500">
+                  *
+                </span>
+              </label>
+              <textarea
+                id="transcript-content"
+                className="input mt-1 min-h-[200px] resize-y font-mono text-sm"
+                placeholder="Paste the full interview transcript here..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                required
+                rows={10}
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={onClose} className="btn-secondary text-sm">
+                Cancel
+              </button>
+              <button type="submit" disabled={submitting} className="btn-primary text-sm">
+                {submitting ? 'Adding...' : 'Add Transcript'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
