@@ -479,7 +479,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
               )}
             </div>
             <span className="text-[10px] text-gray-300 dark:text-gray-600 tabular-nums">
-              {wordCount.toLocaleString()} words
+              {wordCount.toLocaleString()} word{wordCount !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
@@ -492,7 +492,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
             {codings.length} coding{codings.length !== 1 ? 's' : ''}
           </span>
           <span className="text-[10px] text-gray-300 dark:text-gray-600 tabular-nums">
-            {wordCount.toLocaleString()} words
+            {wordCount.toLocaleString()} word{wordCount !== 1 ? 's' : ''}
           </span>
         </div>
       )}

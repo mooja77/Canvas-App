@@ -159,9 +159,21 @@ function GroupNode({ data, id, selected }: NodeProps) {
       {nodeData.collapsedAsTheme && (
         <div className="px-3 py-2 rounded-b-2xl" style={{ backgroundColor: `${color}0A`, pointerEvents: 'auto' }}>
           <div className="flex items-center gap-3 text-[10px] text-gray-500 dark:text-gray-400">
-            {nodeData.memberCount != null && <span>{nodeData.memberCount} nodes</span>}
-            {(nodeData.codingCount ?? 0) > 0 && <span>{nodeData.codingCount} codings</span>}
-            {(nodeData.memoCount ?? 0) > 0 && <span>{nodeData.memoCount} memos</span>}
+            {nodeData.memberCount != null && (
+              <span>
+                {nodeData.memberCount} node{nodeData.memberCount !== 1 ? 's' : ''}
+              </span>
+            )}
+            {(nodeData.codingCount ?? 0) > 0 && (
+              <span>
+                {nodeData.codingCount} coding{nodeData.codingCount !== 1 ? 's' : ''}
+              </span>
+            )}
+            {(nodeData.memoCount ?? 0) > 0 && (
+              <span>
+                {nodeData.memoCount} memo{nodeData.memoCount !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
           {nodeData.onExpandTheme && (
             <button

@@ -35,10 +35,10 @@ function GeoMapNode({ data, id, selected }: NodeProps) {
 
   // Simple placeholder map visualization using a div with positioned markers
   // Normalize lat/lng to relative positions within the container
-  const latMin = points.length ? Math.min(...points.map(p => p.latitude)) : 0;
-  const latMax = points.length ? Math.max(...points.map(p => p.latitude)) : 0;
-  const lngMin = points.length ? Math.min(...points.map(p => p.longitude)) : 0;
-  const lngMax = points.length ? Math.max(...points.map(p => p.longitude)) : 0;
+  const latMin = points.length ? Math.min(...points.map((p) => p.latitude)) : 0;
+  const latMax = points.length ? Math.max(...points.map((p) => p.latitude)) : 0;
+  const lngMin = points.length ? Math.min(...points.map((p) => p.longitude)) : 0;
+  const lngMax = points.length ? Math.max(...points.map((p) => p.longitude)) : 0;
   const latRange = latMax - latMin || 1;
   const lngRange = lngMax - lngMin || 1;
 
@@ -85,7 +85,7 @@ function GeoMapNode({ data, id, selected }: NodeProps) {
                       height: size,
                       transform: 'translate(-50%, -50%)',
                     }}
-                    title={`${point.locationName || point.title}\n${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}\n${point.codingCount} codings`}
+                    title={`${point.locationName || point.title}\n${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}\n${point.codingCount} coding${point.codingCount !== 1 ? 's' : ''}`}
                   >
                     {point.codingCount > 0 ? point.codingCount : ''}
                   </div>
@@ -95,7 +95,10 @@ function GeoMapNode({ data, id, selected }: NodeProps) {
             {/* Legend */}
             <div className="mt-2 space-y-0.5">
               {points.slice(0, 8).map((point) => (
-                <div key={point.transcriptId} className="flex items-center gap-1 text-[10px] text-gray-600 dark:text-gray-400">
+                <div
+                  key={point.transcriptId}
+                  className="flex items-center gap-1 text-[10px] text-gray-600 dark:text-gray-400"
+                >
                   <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
                   <span className="truncate">{point.locationName || point.title}</span>
                   <span className="text-gray-400 ml-auto flex-shrink-0">
