@@ -1991,7 +1991,16 @@ export default function CanvasWorkspace() {
         .map((n) => {
           const restored = posMap.get(n.id);
           if (!restored) return n;
-          return { ...n, position: restored.position, style: restored.style };
+          // Restore React Flow's node dimensions too — the resized size lives in
+          // width/height (not style), so without this resize-undo can't revert.
+          // Skip height for code/question nodes to preserve their auto-fit (P2).
+          return {
+            ...n,
+            position: restored.position,
+            style: restored.style,
+            width: restored.width,
+            height: n.id.startsWith('question-') ? n.height : restored.height,
+          };
         });
       // Add nodes from restored state that aren't in current (were deleted)
       for (const rn of state.nodes) {
@@ -2026,7 +2035,16 @@ export default function CanvasWorkspace() {
         .map((n) => {
           const restored = posMap.get(n.id);
           if (!restored) return n;
-          return { ...n, position: restored.position, style: restored.style };
+          // Restore React Flow's node dimensions too — the resized size lives in
+          // width/height (not style), so without this resize-undo can't revert.
+          // Skip height for code/question nodes to preserve their auto-fit (P2).
+          return {
+            ...n,
+            position: restored.position,
+            style: restored.style,
+            width: restored.width,
+            height: n.id.startsWith('question-') ? n.height : restored.height,
+          };
         });
       for (const rn of state.nodes) {
         if (!currentNodes.find((n) => n.id === rn.id)) {

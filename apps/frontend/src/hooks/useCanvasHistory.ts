@@ -27,12 +27,17 @@ const DEBOUNCE_MS = 300;
  * Strips callbacks and heavy data to keep memory low.
  */
 function cloneForHistory(nodes: Node[], edges: Edge[]): { nodes: Node[]; edges: Edge[] } {
-  const clonedNodes = nodes.map(n => ({
+  const clonedNodes = nodes.map((n) => ({
     id: n.id,
     type: n.type,
     position: { x: n.position.x, y: n.position.y },
     data: {},
     style: n.style ? { ...n.style } : undefined,
+    // Capture React Flow's node dimensions. NodeResizer stores the resized size
+    // in node.width/height (which RF renders), NOT in node.style — so without
+    // these the size is never snapshotted and resize-undo can't revert it.
+    width: n.width,
+    height: n.height,
     measured: n.measured ? { ...n.measured } : undefined,
     selected: false,
     hidden: n.hidden,
@@ -41,7 +46,7 @@ function cloneForHistory(nodes: Node[], edges: Edge[]): { nodes: Node[]; edges: 
     expandParent: n.expandParent,
   })) as Node[];
 
-  const clonedEdges = edges.map(e => ({
+  const clonedEdges = edges.map((e) => ({
     id: e.id,
     source: e.source,
     target: e.target,
@@ -78,36 +83,39 @@ export function useCanvasHistory(): UseCanvasHistoryReturn {
     setCanRedo(pointerRef.current < timelineRef.current.length - 1);
   }, []);
 
-  const pushState = useCallback((nodes: Node[], edges: Edge[]) => {
-    const now = Date.now();
+  const pushState = useCallback(
+    (nodes: Node[], edges: Edge[]) => {
+      const now = Date.now();
 
-    // Debounce rapid pushes — replace last entry if within threshold
-    if (now - lastPushTimeRef.current < DEBOUNCE_MS && pointerRef.current >= 0) {
-      const { nodes: cn, edges: ce } = cloneForHistory(nodes, edges);
-      timelineRef.current[pointerRef.current] = { nodes: cn, edges: ce, timestamp: now };
+      // Debounce rapid pushes — replace last entry if within threshold
+      if (now - lastPushTimeRef.current < DEBOUNCE_MS && pointerRef.current >= 0) {
+        const { nodes: cn, edges: ce } = cloneForHistory(nodes, edges);
+        timelineRef.current[pointerRef.current] = { nodes: cn, edges: ce, timestamp: now };
+        lastPushTimeRef.current = now;
+        updateFlags();
+        return;
+      }
       lastPushTimeRef.current = now;
+
+      const { nodes: cn, edges: ce } = cloneForHistory(nodes, edges);
+
+      // Truncate any redo entries beyond current pointer
+      timelineRef.current = timelineRef.current.slice(0, pointerRef.current + 1);
+
+      // Add new entry
+      timelineRef.current.push({ nodes: cn, edges: ce, timestamp: now });
+
+      // Trim oldest if over max
+      if (timelineRef.current.length > MAX_HISTORY) {
+        const excess = timelineRef.current.length - MAX_HISTORY;
+        timelineRef.current = timelineRef.current.slice(excess);
+      }
+
+      pointerRef.current = timelineRef.current.length - 1;
       updateFlags();
-      return;
-    }
-    lastPushTimeRef.current = now;
-
-    const { nodes: cn, edges: ce } = cloneForHistory(nodes, edges);
-
-    // Truncate any redo entries beyond current pointer
-    timelineRef.current = timelineRef.current.slice(0, pointerRef.current + 1);
-
-    // Add new entry
-    timelineRef.current.push({ nodes: cn, edges: ce, timestamp: now });
-
-    // Trim oldest if over max
-    if (timelineRef.current.length > MAX_HISTORY) {
-      const excess = timelineRef.current.length - MAX_HISTORY;
-      timelineRef.current = timelineRef.current.slice(excess);
-    }
-
-    pointerRef.current = timelineRef.current.length - 1;
-    updateFlags();
-  }, [updateFlags]);
+    },
+    [updateFlags],
+  );
 
   const undo = useCallback((): { nodes: Node[]; edges: Edge[] } | null => {
     if (pointerRef.current <= 0) return null;
