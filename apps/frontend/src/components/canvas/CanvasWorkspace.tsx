@@ -1985,7 +1985,14 @@ export default function CanvasWorkspace() {
       // For edges, use the restored edge set entirely (edges carry less heavy data)
       return state.edges;
     });
-  }, [historyUndo, setNodes, setEdges]);
+    // Persist the restored layout so a later data-sync rebuild re-applies the
+    // UNDONE dimensions from the backend instead of clobbering them with the
+    // pre-undo size. Without this, undo restored the size locally but the next
+    // rebuild (buildNodes reading posData) reverted it — resize-undo appeared
+    // to do nothing. triggerSaveLayout reads the latest nodes via a deferred
+    // setNodes updater, so it captures the just-restored state.
+    triggerSaveLayout();
+  }, [historyUndo, setNodes, setEdges, triggerSaveLayout]);
 
   // Redo handler: restore next layout state
   const handleRedo = useCallback(() => {
@@ -2009,7 +2016,8 @@ export default function CanvasWorkspace() {
       return result;
     });
     setEdges(() => state.edges);
-  }, [historyRedo, setNodes, setEdges]);
+    triggerSaveLayout(); // persist the restored dims (see handleUndo)
+  }, [historyRedo, setNodes, setEdges, triggerSaveLayout]);
 
   // Global keyboard shortcuts (extracted to custom hook)
   useCanvasKeyboard({
