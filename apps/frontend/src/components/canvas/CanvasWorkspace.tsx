@@ -920,10 +920,30 @@ export default function CanvasWorkspace() {
           // an empty box) and makes fitView / onlyRenderVisibleElements
           // operate on zero-size phantom nodes. position/selected are
           // preserved as before.
+          //
+          // Also preserve locally-set STYLE dimensions (from a user resize, or
+          // restored by undo) across the rebuild — otherwise buildNodes()
+          // re-applies the persisted size from posData and clobbers them, which
+          // made resize-undo appear to do nothing (position was carried but the
+          // visual size, driven by style.width/height, was not). Width is
+          // preserved for every node; height is preserved EXCEPT for
+          // code/question nodes, which auto-fit their content (Phase 2) and must
+          // never be pinned to a fixed height.
+          const prevStyle = (prev?.style ?? {}) as Record<string, unknown>;
+          const mergedStyle: Record<string, unknown> = { ...((n.style ?? {}) as Record<string, unknown>) };
+          const nCollapsed = Boolean((n.data as Record<string, unknown> | undefined)?.collapsed);
+          if (typeof prevStyle.width === 'number') mergedStyle.width = prevStyle.width;
+          // Height carry is gated to mirror buildNodes: never for collapsed nodes
+          // (they must shrink to the header) and never for code/question nodes
+          // (auto-fit, Phase 2).
+          if (typeof prevStyle.height === 'number' && !nCollapsed && !n.id.startsWith('question-')) {
+            mergedStyle.height = prevStyle.height;
+          }
           return {
             ...n,
             position: prev?.position ?? n.position,
             selected: selectedIds.has(n.id),
+            style: mergedStyle,
             ...(prev?.measured ? { measured: prev.measured } : {}),
             ...(prev?.width != null ? { width: prev.width } : {}),
             ...(prev?.height != null ? { height: prev.height } : {}),
