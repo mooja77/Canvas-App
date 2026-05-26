@@ -4,6 +4,7 @@ import { BaseEdge, getBezierPath, getStraightPath, getSmoothStepPath, EdgeLabelR
 import type { EdgeProps } from '@xyflow/react';
 import { useCanvasStore } from '../../../stores/canvasStore';
 import { useUIStore } from '../../../stores/uiStore';
+import { useReducedMotion } from '../../../hooks/useReducedMotion';
 import ConfirmDialog from '../ConfirmDialog';
 import type { CanvasTextCoding } from '@qualcanvas/shared';
 
@@ -37,6 +38,7 @@ export default function CodingEdge({
   const deleteCoding = useCanvasStore((s) => s.deleteCoding);
   const edgeStyle = useUIStore((s) => s.edgeStyle);
   const zoomTier = useUIStore((s) => s.zoomTier);
+  const reducedMotion = useReducedMotion();
   const isDark = useIsDarkMode();
   const edgeData = data as CodingEdgeData | undefined;
 
@@ -79,8 +81,13 @@ export default function CodingEdge({
           opacity: hovered ? 1 : isDark ? 0.8 : 0.65,
         }}
       />
-      {/* Animated direction dot — visible at full zoom when not hovered */}
-      {!hovered && zoomTier === 'full' && (
+      {/* Animated direction dot — visible at full zoom when not hovered.
+          Skipped under prefers-reduced-motion: SVG SMIL <animateMotion> is a
+          separate animation mechanism that the global CSS reduced-motion reset
+          does NOT stop, and a moving dot per edge is exactly the kind of
+          continuous motion that affects vestibular-sensitive users. The
+          midpoint annotation badge below still marks the edge. */}
+      {!hovered && zoomTier === 'full' && !reducedMotion && (
         <circle r={3} fill={color} opacity={0.5}>
           <animateMotion dur="3s" repeatCount="indefinite" path={edgePath} />
         </circle>
