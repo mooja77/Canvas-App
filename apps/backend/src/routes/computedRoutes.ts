@@ -23,6 +23,7 @@ import {
   computeSentiment,
   computeTreemap,
   computeTimeline,
+  computeDocumentPortrait,
 } from '../utils/textAnalysis.js';
 
 export const computedRoutes = Router();
@@ -207,6 +208,12 @@ computedRoutes.post(
           break;
         case 'timeline':
           result = computeTimeline(transcripts, codings, questions);
+          break;
+        case 'documentportrait':
+          result = computeDocumentPortrait(transcripts, codings, questions, {
+            transcriptId: config.transcriptId,
+            questionIds: config.questionIds,
+          });
           break;
         case 'geomap': {
           // GeoMap: compute geographic distribution from transcript locations
