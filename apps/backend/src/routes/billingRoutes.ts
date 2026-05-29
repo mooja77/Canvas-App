@@ -38,9 +38,12 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
       });
     }
 
-    // Auto-apply academic discount for .edu emails
+    // Auto-apply academic discount for .edu emails.
+    // The Student tier is already academically priced ($5), so it must NOT
+    // stack the 40% coupon on top (that would drop it to ~$3). The coupon
+    // applies only to the full-price Pro/Team plans.
     const discounts: { coupon: string }[] = [];
-    if (user.email.endsWith('.edu') && process.env.STRIPE_ACADEMIC_COUPON_ID) {
+    if (user.email.endsWith('.edu') && plan !== 'student' && process.env.STRIPE_ACADEMIC_COUPON_ID) {
       discounts.push({ coupon: process.env.STRIPE_ACADEMIC_COUPON_ID });
     }
 
