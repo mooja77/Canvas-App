@@ -20,7 +20,8 @@ export function getExt(fileName: string): string | undefined {
 
 export function isSupportedTranscriptFile(fileName: string): boolean {
   const ext = getExt(fileName);
-  return ext === 'txt' || ext === 'csv' || isSubtitleExt(ext);
+  // .docx is read+extracted to text by the caller (mammoth) before parsing.
+  return ext === 'txt' || ext === 'csv' || ext === 'docx' || isSubtitleExt(ext);
 }
 
 /**
@@ -46,6 +47,6 @@ export function parseTranscriptFile(fileName: string, text: string): ParsedEntry
     return content ? [{ title: baseName, content }] : [];
   }
 
-  // .txt and any other plain-text upload
+  // .txt, already-extracted .docx text, and any other plain-text upload
   return [{ title: baseName, content: text.trim() }];
 }

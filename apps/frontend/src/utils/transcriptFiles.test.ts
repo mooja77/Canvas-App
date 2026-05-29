@@ -12,8 +12,9 @@ describe('getExt / isSupportedTranscriptFile', () => {
     expect(isSupportedTranscriptFile('a.csv')).toBe(true);
     expect(isSupportedTranscriptFile('a.vtt')).toBe(true);
     expect(isSupportedTranscriptFile('a.srt')).toBe(true);
-    expect(isSupportedTranscriptFile('a.docx')).toBe(false);
+    expect(isSupportedTranscriptFile('a.docx')).toBe(true);
     expect(isSupportedTranscriptFile('a.pdf')).toBe(false);
+    expect(isSupportedTranscriptFile('a.doc')).toBe(false); // legacy .doc not supported
   });
 });
 
