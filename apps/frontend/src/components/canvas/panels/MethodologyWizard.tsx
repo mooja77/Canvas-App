@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useActiveCanvas, useCanvasStore } from '../../../stores/canvasStore';
 import { METHODOLOGY_PARADIGMS, getParadigm } from '../../../data/methodologyParadigms';
 
 interface Props {
@@ -16,7 +17,10 @@ interface Props {
  */
 export default function MethodologyWizard({ onClose }: Props) {
   useEscapeToClose(onClose);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const activeCanvas = useActiveCanvas();
+  const setResearchParadigm = useCanvasStore((s) => s.setResearchParadigm);
+  // Pre-select this canvas's saved paradigm so reopening resumes where you left off.
+  const [selectedKey, setSelectedKey] = useState<string | null>(activeCanvas?.researchParadigm ?? null);
   const [stepIndex, setStepIndex] = useState(0);
 
   const paradigm = selectedKey ? getParadigm(selectedKey) : undefined;
@@ -24,6 +28,9 @@ export default function MethodologyWizard({ onClose }: Props) {
   const select = (key: string) => {
     setSelectedKey(key);
     setStepIndex(0);
+    // Persist the choice to the canvas so it's remembered and can name the
+    // methodology in the methods-statement. Best-effort; failure is non-fatal.
+    setResearchParadigm(key).catch(() => toast.error('Could not save your method choice'));
   };
 
   const back = () => {
@@ -88,7 +95,14 @@ export default function MethodologyWizard({ onClose }: Props) {
                   onClick={() => select(p.key)}
                   className="flex flex-col rounded-xl border border-gray-200 p-3 text-left transition-colors hover:border-blue-400 hover:bg-blue-50/40 dark:border-gray-700 dark:hover:border-blue-600 dark:hover:bg-blue-900/20"
                 >
-                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{p.name}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{p.name}</span>
+                    {activeCanvas?.researchParadigm === p.key && (
+                      <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                        Current
+                      </span>
+                    )}
+                  </span>
                   <span className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{p.tagline}</span>
                 </button>
               ))}

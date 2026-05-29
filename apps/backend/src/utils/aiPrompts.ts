@@ -217,10 +217,13 @@ export function buildMethodsStatementPrompt(params: {
   transcriptCount: number;
   totalCodings: number;
   totalCodes: number;
+  /** Human-readable methodology name from the wizard, e.g. "Grounded Theory". */
+  methodology?: string;
   intercoderResult?: { method: string; score: number; nCoders: number };
   aiUsage: { feature: string; count: number; provider: string; model: string }[];
   acceptanceLog?: { accepted: number; rejected: number; modified: number };
 }): LlmMessage[] {
+  const methodologyLine = params.methodology ? `Methodology: ${params.methodology}.` : '';
   const aiLines = params.aiUsage.length
     ? params.aiUsage
         .map((u) => `- ${u.feature} (used ${u.count} time${u.count === 1 ? '' : 's'}) via ${u.provider}/${u.model}`)
@@ -246,7 +249,7 @@ export function buildMethodsStatementPrompt(params: {
 - Cite tools by name with version where provided. Where a version isn't given, omit it rather than guessing.
 - Disclose AI use granularly: which feature, how many times, which provider+model. Match Jones (2025) heuristic for transparent AI disclosure in qualitative research.
 - Report intercoder reliability with the method name (Cohen's κ, Fleiss' κ, Krippendorff's α) AND the score AND the number of coders. If no intercoder analysis was performed, state that explicitly rather than omitting it.
-- Don't invent details. If the user doesn't provide a piece of information, omit it. Don't infer methodology (e.g. "thematic" vs "framework") that wasn't given.
+- Don't invent details. If the user doesn't provide a piece of information, omit it. If a methodology is named below, state it (and you may use its standard stages); if none is given, do NOT infer one.
 - Output plain text only. No Markdown formatting, no fences.`,
       cache_control: { type: 'ephemeral' },
     },
@@ -255,6 +258,7 @@ export function buildMethodsStatementPrompt(params: {
       content: `Generate a methods-section paragraph for this qualitative analysis.
 
 Project: "${params.canvasName}"
+${methodologyLine}
 Transcripts analyzed: ${params.transcriptCount}
 Total codings: ${params.totalCodings}
 Distinct code categories: ${params.totalCodes}

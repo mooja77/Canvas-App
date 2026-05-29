@@ -26,6 +26,20 @@ export const aiRoutes = Router();
 // what's pleasing on the canvas — give it a curated palette to draw from).
 const NEW_CODE_COLORS = ['#3B82F6', '#8B5CF6', '#EF4444', '#F59E0B', '#10B981', '#EC4899'];
 
+// Maps the Methodology-wizard paradigm keys to human-readable names so the
+// methods-statement can name the approach. Kept in sync with the frontend
+// data module (apps/frontend/src/data/methodologyParadigms.ts).
+const PARADIGM_NAMES: Record<string, string> = {
+  'reflexive-ta': 'Reflexive Thematic Analysis',
+  'grounded-theory': 'Grounded Theory',
+  framework: 'Framework Analysis',
+  ipa: 'Interpretative Phenomenological Analysis (IPA)',
+  'content-analysis': 'Qualitative Content Analysis',
+  'discourse-narrative': 'Discourse / Narrative Analysis',
+  phenomenology: 'Descriptive Phenomenology',
+  'mixed-methods': 'Mixed Methods',
+};
+
 interface InlineSuggestion {
   id: string; // existing code id, or `new-${index}` for to-be-created codes
   label: string;
@@ -791,6 +805,7 @@ aiRoutes.post(
 
       const messages = buildMethodsStatementPrompt({
         canvasName: canvas.name,
+        methodology: canvas.researchParadigm ? PARADIGM_NAMES[canvas.researchParadigm] : undefined,
         transcriptCount,
         totalCodings,
         totalCodes,
