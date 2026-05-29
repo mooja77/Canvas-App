@@ -1020,4 +1020,45 @@ describe('AI features integration tests', () => {
       expect(res.body.data.metadata.intercoder).toBeNull();
     });
   });
+
+  describe('AI disclosure', () => {
+    it('reports AI vs human coding provenance + a methods paragraph', async () => {
+      mockPrisma.canvasTextCoding.count
+        .mockResolvedValueOnce(10) // total codings
+        .mockResolvedValueOnce(4); // ai-originated
+      mockPrisma.aiSuggestion.groupBy.mockResolvedValue([
+        { status: 'accepted', _count: 4 },
+        { status: 'rejected', _count: 1 },
+        { status: 'pending', _count: 2 },
+      ]);
+      mockPrisma.aiUsage.groupBy.mockResolvedValue([
+        { provider: 'openai', model: 'gpt-4', _count: 6 },
+        { provider: 'openai', model: 'gpt-4', _count: 1 },
+      ]);
+
+      const res = await request(app).get(`/api/canvas/${canvasId}/ai/disclosure`).set('Authorization', `Bearer ${jwt}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      const d = res.body.data;
+      expect(d.codings).toMatchObject({ total: 10, aiOriginated: 4, humanOriginated: 6, aiPercent: 40 });
+      expect(d.suggestions).toMatchObject({ total: 7, accepted: 4, rejected: 1, pending: 2, acceptanceRate: 80 });
+      expect(d.models).toEqual(['openai/gpt-4']); // de-duplicated
+      expect(d.markdown).toContain('AI Disclosure');
+      expect(d.markdown).toContain('40%');
+    });
+
+    it('handles a canvas with no AI activity (0%, null acceptance rate)', async () => {
+      mockPrisma.canvasTextCoding.count.mockResolvedValueOnce(3).mockResolvedValueOnce(0);
+      mockPrisma.aiSuggestion.groupBy.mockResolvedValue([]);
+      mockPrisma.aiUsage.groupBy.mockResolvedValue([]);
+
+      const res = await request(app).get(`/api/canvas/${canvasId}/ai/disclosure`).set('Authorization', `Bearer ${jwt}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.codings).toMatchObject({ total: 3, aiOriginated: 0, humanOriginated: 3, aiPercent: 0 });
+      expect(res.body.data.suggestions.acceptanceRate).toBeNull();
+      expect(res.body.data.models).toEqual([]);
+    });
+  });
 });
