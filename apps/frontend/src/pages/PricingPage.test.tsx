@@ -8,6 +8,7 @@ const authState = {
   authenticated: false,
   plan: null as string | null,
   authType: null as 'legacy' | 'email' | null,
+  email: null as string | null,
 };
 
 vi.mock('react-router-dom', () => ({
@@ -59,6 +60,7 @@ describe('PricingPage (refresh)', () => {
     authState.authenticated = false;
     authState.plan = null;
     authState.authType = null;
+    authState.email = null;
   });
 
   it('routes legacy (access-code) users to /account to link an email instead of dead-ending', () => {
@@ -101,23 +103,41 @@ describe('PricingPage (refresh)', () => {
 
   it('defaults to annual billing and shows discounted prices', () => {
     render(<PricingPage />);
-    // Annual is the default in the refresh — Pro $9, Team $22.
-    expect(screen.getByText('$9')).toBeInTheDocument();
-    expect(screen.getByText('$22')).toBeInTheDocument();
+    // Annual is the default — Pro $12/mo (billed annually), Team $32/mo.
+    expect(screen.getByText('$12')).toBeInTheDocument();
+    expect(screen.getByText('$32')).toBeInTheDocument();
   });
 
   it('Monthly toggle switches to higher prices', () => {
     render(<PricingPage />);
     fireEvent.click(screen.getByRole('button', { name: /^Monthly$/ }));
-    expect(screen.getByText('$12')).toBeInTheDocument();
-    expect(screen.getByText('$29')).toBeInTheDocument();
+    expect(screen.getByText('$15')).toBeInTheDocument();
+    expect(screen.getByText('$39')).toBeInTheDocument();
   });
 
-  it('shows the "Save 25%" annual savings affordance', () => {
+  it('shows the "Save 20%" annual savings affordance', () => {
     render(<PricingPage />);
-    // The annual toggle button has "Save 25%" inline
+    // The annual toggle button has "Save 20%" inline
     const annualButton = screen.getByRole('button', { name: /Annual/ });
-    expect(within(annualButton).getByText(/Save 25%/)).toBeInTheDocument();
+    expect(within(annualButton).getByText(/Save 20%/)).toBeInTheDocument();
+  });
+
+  it('renders a Student tier with an .edu-gated CTA', () => {
+    render(<PricingPage />);
+    expect(screen.getByRole('heading', { name: 'Student', level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start Student' })).toBeInTheDocument();
+  });
+
+  it('blocks Student checkout for a non-.edu email and routes legacy users to link email', () => {
+    // Authenticated non-.edu users must not be able to check out at the student
+    // price; the CTA tells them it's academic-only instead.
+    authState.authenticated = true;
+    authState.plan = 'free';
+    authState.authType = 'email';
+    render(<PricingPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Start Student' }));
+    // No navigation to checkout/login; an error toast is shown instead.
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('Free / Pro / Team / Institutions each have a CTA', () => {

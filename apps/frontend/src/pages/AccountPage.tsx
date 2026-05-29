@@ -355,7 +355,14 @@ export default function AccountPage() {
 
   if (!profile) return null;
 
-  const planLabel = profile.user.plan === 'free' ? 'Free' : profile.user.plan === 'pro' ? 'Pro' : 'Team';
+  const planLabel =
+    profile.user.plan === 'free'
+      ? 'Free'
+      : profile.user.plan === 'student'
+        ? 'Student'
+        : profile.user.plan === 'pro'
+          ? 'Pro'
+          : 'Team';
   const isEmailAuth = profile.authType === 'email';
 
   return (

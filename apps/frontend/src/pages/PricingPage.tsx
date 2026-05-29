@@ -16,6 +16,10 @@ import { trackEvent } from '../utils/analytics';
 import toast from 'react-hot-toast';
 
 const PRICE_IDS = {
+  student: {
+    monthly: import.meta.env.VITE_STRIPE_STUDENT_MONTHLY_PRICE_ID || '',
+    annual: import.meta.env.VITE_STRIPE_STUDENT_ANNUAL_PRICE_ID || '',
+  },
   pro: {
     monthly: import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID || '',
     annual: import.meta.env.VITE_STRIPE_PRO_ANNUAL_PRICE_ID || '',
@@ -48,10 +52,10 @@ export default function PricingPage() {
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false);
   const [_pendingTier, setPendingTier] = useState<'pro' | 'team' | null>(null);
   const navigate = useNavigate();
-  const { authenticated, plan, authType } = useAuthStore();
+  const { authenticated, plan, authType, email } = useAuthStore();
   usePageMeta(
     'Pricing — QualCanvas',
-    'Free, Pro ($12/mo), Team ($29/seat/mo), and Institutions plans. 40% off .edu. Compare against NVivo, ATLAS.ti, Dedoose.',
+    'Free, Student ($5/mo, .edu), Pro ($15/mo), Team ($39/seat/mo), and Institutions plans. 40% off .edu on Pro/Team. Compare against NVivo, ATLAS.ti, Dedoose.',
   );
 
   useEffect(() => {
@@ -59,7 +63,7 @@ export default function PricingPage() {
     trackEvent('marketing_page_viewed', { page: '/pricing' });
   }, []);
 
-  const handleUpgrade = async (tier: 'pro' | 'team') => {
+  const handleUpgrade = async (tier: 'student' | 'pro' | 'team') => {
     trackEvent('cta_clicked', {
       cta_label: `Start ${tier}`,
       location: 'pricing_card',
@@ -98,6 +102,31 @@ export default function PricingPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Student is the verified-academic tier ($5/mo). The CTA gates on a .edu
+  // email: unauthenticated visitors are sent to register (where they'll sign
+  // up with their .edu address); authenticated non-.edu users are told it's
+  // academic-only rather than silently allowed to check out at the student
+  // price. The backend separately refuses to stack the 40% .edu coupon on the
+  // student price (already-academic pricing).
+  const handleStudentSelect = () => {
+    if (!authenticated) {
+      trackEvent('cta_clicked', { cta_label: 'Start student', location: 'pricing_card', target_route: '/login' });
+      trackEvent('signup_started', { source_page: '/pricing', plan: 'student' });
+      navigate('/login?mode=register');
+      return;
+    }
+    if (authType === 'legacy') {
+      toast('Link an email to your account to upgrade.');
+      navigate('/account');
+      return;
+    }
+    if (!(email || '').toLowerCase().endsWith('.edu')) {
+      toast.error('The Student plan requires a verified .edu email address.');
+      return;
+    }
+    handleUpgrade('student');
   };
 
   const handleFreeSelect = () => {
@@ -172,13 +201,13 @@ export default function PricingPage() {
               }`}
             >
               Annual
-              <span className="ml-1.5 text-xs text-ochre-700 dark:text-ochre-400 font-semibold">Save 25%</span>
+              <span className="ml-1.5 text-xs text-ochre-700 dark:text-ochre-400 font-semibold">Save 20%</span>
             </button>
           </div>
         </div>
 
-        {/* ─── 4 tier cards ─── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* ─── 5 tier cards ─── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <TierCardV2
             name="Free"
             price="$0"
@@ -200,9 +229,38 @@ export default function PricingPage() {
           />
 
           <TierCardV2
+            name="Student"
+            price={period === 'annual' ? '$4' : '$5'}
+            pricePeriod={period === 'annual' ? 'per month, billed annually ($48/yr)' : '$5 / month'}
+            audience="Verified .edu — for students"
+            features={[
+              '5 canvases',
+              'AI auto-code',
+              'All 12 analysis tools',
+              'Ethics + cases',
+              '~5 hrs transcription / mo',
+            ]}
+            isCurrent={plan === 'student'}
+            footnote="Requires a verified .edu email."
+            cta={
+              plan === 'student' ? (
+                currentPlanCta
+              ) : (
+                <button
+                  onClick={handleStudentSelect}
+                  disabled={loading}
+                  className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2 disabled:opacity-50"
+                >
+                  {loading ? 'Loading…' : 'Start Student'}
+                </button>
+              )
+            }
+          />
+
+          <TierCardV2
             name="Pro"
-            price={period === 'annual' ? '$9' : '$12'}
-            pricePeriod={period === 'annual' ? 'per month, billed annually ($108/yr)' : '$12 / month'}
+            price={period === 'annual' ? '$12' : '$15'}
+            pricePeriod={period === 'annual' ? 'per month, billed annually ($144/yr)' : '$15 / month'}
             audience="For working researchers"
             features={[
               'Unlimited canvases',
@@ -237,8 +295,8 @@ export default function PricingPage() {
 
           <TierCardV2
             name="Team"
-            price={period === 'annual' ? '$22' : '$29'}
-            pricePeriod={period === 'annual' ? 'per seat / month, billed annually' : '$29 / seat / month'}
+            price={period === 'annual' ? '$32' : '$39'}
+            pricePeriod={period === 'annual' ? 'per seat / month, billed annually ($384/yr)' : '$39 / seat / month'}
             audience="For research groups"
             features={[
               'Everything in Pro',
@@ -296,8 +354,10 @@ export default function PricingPage() {
 
         {/* .edu discount strip */}
         <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          <span className="font-medium text-gray-900 dark:text-white">40% off Pro and Team with a .edu email.</span>{' '}
-          Applied automatically at checkout.
+          <span className="font-medium text-gray-900 dark:text-white">Students: $5/mo on the Student plan.</span>{' '}
+          Faculty and staff get{' '}
+          <span className="font-medium text-gray-900 dark:text-white">40% off Pro and Team with a .edu email</span>,
+          applied automatically at checkout.
         </div>
       </div>
 
@@ -311,57 +371,71 @@ export default function PricingPage() {
           </DisplayHeading>
         </div>
         <ComparisonTable
-          columns={['Feature', 'Free', 'Pro', 'Team', 'Institutions']}
+          columns={['Feature', 'Free', 'Student', 'Pro', 'Team', 'Institutions']}
           groups={[
             {
               heading: 'Workspace',
               rows: [
-                { feature: 'Canvases', values: ['1', 'Unlimited', 'Unlimited', 'Unlimited'] },
-                { feature: 'Transcripts per canvas', values: ['2', 'Unlimited', 'Unlimited', 'Unlimited'] },
-                { feature: 'Words per transcript', values: ['5,000', '50,000', '50,000', '50,000'] },
-                { feature: 'Codes', values: ['5', 'Unlimited', 'Unlimited', 'Unlimited'] },
+                { feature: 'Canvases', values: ['1', '5', 'Unlimited', 'Unlimited', 'Unlimited'] },
+                {
+                  feature: 'Transcripts per canvas',
+                  values: ['2', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
+                },
+                { feature: 'Words per transcript', values: ['5,000', '50,000', '50,000', '50,000', '50,000'] },
+                { feature: 'Codes', values: ['5', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'] },
               ],
             },
             {
               heading: 'Coding & analysis',
               rows: [
-                { feature: 'Auto-code (AI-assisted)', values: ['—', '✓', '✓', '✓'] },
-                { feature: 'Analysis tools', values: ['2', 'All 12', 'All 12', 'All 12'] },
-                { feature: 'Cases + cross-case', values: ['—', '✓', '✓', '✓'] },
-                { feature: 'Intercoder reliability (κ + α)', values: ['—', '—', '✓', '✓'] },
+                { feature: 'Auto-code (AI-assisted)', values: ['—', '✓', '✓', '✓', '✓'] },
+                { feature: 'Analysis tools', values: ['2', 'All 12', 'All 12', 'All 12', 'All 12'] },
+                { feature: 'Cases + cross-case', values: ['—', '✓', '✓', '✓', '✓'] },
+                { feature: 'Intercoder reliability (κ + α)', values: ['—', '—', '—', '✓', '✓'] },
               ],
             },
             {
               heading: 'Collaboration',
               rows: [
-                { feature: 'Share codes', values: ['—', '5', 'Unlimited', 'Unlimited'] },
-                { feature: 'Team management', values: ['—', '—', '✓', '✓'] },
-                { feature: 'SSO + SCIM', values: ['—', '—', '—', '✓'] },
+                { feature: 'Share codes', values: ['—', '2', '5', 'Unlimited', 'Unlimited'] },
+                { feature: 'Team management', values: ['—', '—', '—', '✓', '✓'] },
+                { feature: 'SSO + SCIM', values: ['—', '—', '—', '—', '✓'] },
               ],
             },
             {
               heading: 'Ethics + compliance',
               rows: [
-                { feature: 'Ethics + consent tracking', values: ['—', '✓', '✓', '✓'] },
-                { feature: 'Audit log', values: ['90 days', '90 days', '90 days', 'Custom'] },
-                { feature: 'DPA available', values: ['—', '✓', '✓', '✓'] },
-                { feature: 'BAA available', values: ['—', '—', '—', '✓'] },
-                { feature: 'EU residency option', values: ['—', '—', '—', '✓'] },
+                { feature: 'Ethics + consent tracking', values: ['—', '✓', '✓', '✓', '✓'] },
+                { feature: 'Audit log', values: ['90 days', '90 days', '90 days', '90 days', 'Custom'] },
+                { feature: 'DPA available', values: ['—', '✓', '✓', '✓', '✓'] },
+                { feature: 'BAA available', values: ['—', '—', '—', '—', '✓'] },
+                { feature: 'EU residency option', values: ['—', '—', '—', '—', '✓'] },
               ],
             },
             {
               heading: 'Export + import',
               rows: [
-                { feature: 'CSV export', values: ['✓', '✓', '✓', '✓'] },
-                { feature: 'PNG / HTML / Markdown', values: ['—', '✓', '✓', '✓'] },
-                { feature: 'QDPX (NVivo / ATLAS.ti)', values: ['—', '✓', '✓', '✓'] },
+                { feature: 'CSV export', values: ['✓', '✓', '✓', '✓', '✓'] },
+                { feature: 'PNG / HTML / Markdown', values: ['—', '✓', '✓', '✓', '✓'] },
+                { feature: 'QDPX (NVivo / ATLAS.ti)', values: ['—', '✓', '✓', '✓', '✓'] },
+              ],
+            },
+            {
+              heading: 'Transcription + AI',
+              rows: [
+                { feature: 'AI text analysis', values: ['—', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'] },
+                { feature: 'Audio transcription / mo', values: ['—', '~5 hrs', '~10 hrs', '~50 hrs pooled', 'Custom'] },
+                { feature: 'Bring your own AI key', values: ['—', '✓', '✓', '✓', '✓'] },
               ],
             },
             {
               heading: 'Support',
               rows: [
-                { feature: 'Email response', values: ['Best effort', '48h', '24h priority', 'Dedicated'] },
-                { feature: '.edu discount', values: ['—', '40%', '40%', 'Custom'] },
+                {
+                  feature: 'Email response',
+                  values: ['Best effort', 'Best effort', '48h', '24h priority', 'Dedicated'],
+                },
+                { feature: '.edu pricing', values: ['—', 'Built in', '40% off', '40% off', 'Custom'] },
               ],
             },
           ]}
@@ -372,7 +446,7 @@ export default function PricingPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
         <CompetitorRow
           eyebrow="How we compare"
-          qualcanvas={{ pricing: '$12/mo · published', note: 'On this page. 40% off .edu.' }}
+          qualcanvas={{ pricing: '$5–15/mo · published', note: 'On this page. $5 students, 40% off .edu.' }}
           competitors={[
             { name: 'NVivo', pricing: '~$1,200/yr · gated', href: 'https://shop.lumivero.com', vsSlug: 'nvivo' },
             {
@@ -427,7 +501,7 @@ export default function PricingPage() {
             {
               question: 'What payment methods do you accept?',
               answer:
-                'All major credit cards via Stripe. Annual billing saves 25%. Wire transfer available on the Institutions plan.',
+                'All major credit cards via Stripe. Annual billing saves ~20% (about two months free). Wire transfer available on the Institutions plan.',
             },
             {
               question: 'Can I cancel anytime?',
@@ -437,7 +511,7 @@ export default function PricingPage() {
             {
               question: 'How does the academic discount work?',
               answer:
-                'Sign up with a .edu email and 40% off Pro or Team is applied automatically at checkout via a Stripe coupon. No paperwork.',
+                'Students get the dedicated Student plan at $5/mo — sign up with a verified .edu email. Faculty and staff on Pro or Team get 40% off automatically at checkout via a Stripe coupon when they use a .edu email. No paperwork either way.',
             },
             {
               question: 'What happens to my data if I downgrade?',
