@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
 import { useCanvasComputedNodes } from '../../../stores/canvasStore';
@@ -24,23 +24,55 @@ interface GeoMapResult {
   totalUnmapped: number;
 }
 
+// Format a latitude/longitude with hemisphere suffix (e.g. "51.51°N", "0.13°W").
+function fmtLat(lat: number): string {
+  return `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'}`;
+}
+function fmtLng(lng: number): string {
+  return `${Math.abs(lng).toFixed(2)}°${lng >= 0 ? 'E' : 'W'}`;
+}
+
 function GeoMapNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as GeoMapNodeData;
   const computedNodes = useCanvasComputedNodes();
   const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
 
-  if (!node) return null;
-  const result = node.result as unknown as GeoMapResult;
-  const points = result?.points || [];
+  const result = (node?.result as unknown as GeoMapResult) ?? undefined;
+  const points = useMemo(() => result?.points ?? [], [result]);
 
-  // Simple placeholder map visualization using a div with positioned markers
-  // Normalize lat/lng to relative positions within the container
-  const latMin = points.length ? Math.min(...points.map((p) => p.latitude)) : 0;
-  const latMax = points.length ? Math.max(...points.map((p) => p.latitude)) : 0;
-  const lngMin = points.length ? Math.min(...points.map((p) => p.longitude)) : 0;
-  const lngMax = points.length ? Math.max(...points.map((p) => p.longitude)) : 0;
-  const latRange = latMax - latMin || 1;
-  const lngRange = lngMax - lngMin || 1;
+  // Project points into the plot box. We fit to the data's bounding box (with
+  // padding) and LABEL the corner coordinates, so the spatial spread is
+  // readable AND the true scale is explicit — the previous version normalized
+  // to the bounds with no labels, which made distant and nearby points look
+  // identical. Single / colocated points (zero-range axis) are centered.
+  const projected = useMemo(() => {
+    if (points.length === 0) {
+      return {
+        markers: [] as (GeoPoint & { x: number; y: number })[],
+        bounds: null as null | { latMin: number; latMax: number; lngMin: number; lngMax: number },
+      };
+    }
+    const lats = points.map((p) => p.latitude);
+    const lngs = points.map((p) => p.longitude);
+    const latPad = (Math.max(...lats) - Math.min(...lats)) * 0.1 || 0.1;
+    const lngPad = (Math.max(...lngs) - Math.min(...lngs)) * 0.1 || 0.1;
+    const latMin = Math.min(...lats) - latPad;
+    const latMax = Math.max(...lats) + latPad;
+    const lngMin = Math.min(...lngs) - lngPad;
+    const lngMax = Math.max(...lngs) + lngPad;
+    const latRange = latMax - latMin || 1;
+    const lngRange = lngMax - lngMin || 1;
+    const markers = points.map((p) => ({
+      ...p,
+      x: ((p.longitude - lngMin) / lngRange) * 100,
+      y: (1 - (p.latitude - latMin) / latRange) * 100, // invert Y: north = up
+    }));
+    return { markers, bounds: { latMin, latMax, lngMin, lngMax } };
+  }, [points]);
+
+  if (!node) return null;
+
+  const maxCodings = points.reduce((m, p) => Math.max(m, p.codingCount), 0);
 
   return (
     <ComputedNodeShell
@@ -61,31 +93,46 @@ function GeoMapNode({ data, id, selected }: NodeProps) {
             <div className="text-xs text-gray-500 mb-2">
               {result.totalMapped} mapped / {result.totalUnmapped} unmapped transcripts
             </div>
-            {/* Simple map placeholder */}
-            <div className="relative w-full h-48 bg-gray-100 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
-              {/* Grid lines for reference */}
-              <div className="absolute inset-0 grid grid-cols-4 grid-rows-4 pointer-events-none">
-                {Array.from({ length: 15 }).map((_, i) => (
-                  <div key={i} className="border border-gray-200/30 dark:border-gray-700/30" />
-                ))}
+            {/* Coordinate plot: points at their true relative position, with a
+                labeled lat/lng extent so the scale is unambiguous. */}
+            <div className="relative w-full h-48 overflow-hidden rounded border border-gray-200 bg-gradient-to-b from-sky-50 to-emerald-50 dark:border-gray-700 dark:from-slate-900 dark:to-slate-800">
+              {/* Graticule (centre lines) */}
+              <div className="pointer-events-none absolute inset-0">
+                <div className="absolute bottom-0 left-1/2 top-0 border-l border-gray-300/40 dark:border-gray-600/40" />
+                <div className="absolute left-0 right-0 top-1/2 border-t border-gray-300/40 dark:border-gray-600/40" />
               </div>
+              {/* Corner coordinate labels */}
+              {projected.bounds && (
+                <>
+                  <span className="absolute left-1 top-1 text-[8px] text-gray-500 dark:text-gray-400">
+                    {fmtLat(projected.bounds.latMax)}, {fmtLng(projected.bounds.lngMin)}
+                  </span>
+                  <span className="absolute right-1 top-1 text-[8px] text-gray-500 dark:text-gray-400">
+                    {fmtLng(projected.bounds.lngMax)}
+                  </span>
+                  <span className="absolute bottom-1 left-1 text-[8px] text-gray-500 dark:text-gray-400">
+                    {fmtLat(projected.bounds.latMin)}
+                  </span>
+                </>
+              )}
               {/* Data points */}
-              {points.map((point) => {
-                const x = ((point.longitude - lngMin) / lngRange) * 85 + 5; // 5-90% range
-                const y = 90 - ((point.latitude - latMin) / latRange) * 85; // invert Y for lat
-                const size = Math.min(20, 8 + point.codingCount * 2);
+              {projected.markers.map((point) => {
+                const size = Math.min(22, 9 + point.codingCount * 2);
+                const isMax = maxCodings > 0 && point.codingCount === maxCodings;
                 return (
                   <div
                     key={point.transcriptId}
-                    className="absolute flex items-center justify-center rounded-full bg-emerald-500/80 text-white text-[8px] font-bold shadow-sm cursor-default"
+                    className={`absolute flex items-center justify-center rounded-full text-[8px] font-bold text-white shadow-sm ring-1 ring-white/60 ${
+                      isMax ? 'bg-emerald-600' : 'bg-emerald-500/85'
+                    }`}
                     style={{
-                      left: `${x}%`,
-                      top: `${y}%`,
+                      left: `${point.x}%`,
+                      top: `${point.y}%`,
                       width: size,
                       height: size,
                       transform: 'translate(-50%, -50%)',
                     }}
-                    title={`${point.locationName || point.title}\n${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}\n${point.codingCount} coding${point.codingCount !== 1 ? 's' : ''}`}
+                    title={`${point.locationName || point.title}\n${fmtLat(point.latitude)}, ${fmtLng(point.longitude)}\n${point.codingCount} coding${point.codingCount !== 1 ? 's' : ''}`}
                   >
                     {point.codingCount > 0 ? point.codingCount : ''}
                   </div>
@@ -99,10 +146,10 @@ function GeoMapNode({ data, id, selected }: NodeProps) {
                   key={point.transcriptId}
                   className="flex items-center gap-1 text-[10px] text-gray-600 dark:text-gray-400"
                 >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                  <span className="h-2 w-2 flex-shrink-0 rounded-full bg-emerald-500" />
                   <span className="truncate">{point.locationName || point.title}</span>
-                  <span className="text-gray-400 ml-auto flex-shrink-0">
-                    ({point.latitude.toFixed(2)}, {point.longitude.toFixed(2)})
+                  <span className="ml-auto flex-shrink-0 text-gray-400">
+                    {fmtLat(point.latitude)}, {fmtLng(point.longitude)}
                   </span>
                 </div>
               ))}
