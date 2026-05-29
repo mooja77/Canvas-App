@@ -10,6 +10,8 @@ interface AiSuggestPanelProps {
   onBulkAccept: (ids: string[]) => void;
   onBulkReject: (ids: string[]) => void;
   onClose: () => void;
+  /** Jump to + highlight this suggestion's source span in its transcript. */
+  onVerify?: (suggestion: AiSuggestion) => void;
 }
 
 export default function AiSuggestPanel({
@@ -20,6 +22,7 @@ export default function AiSuggestPanel({
   onBulkAccept,
   onBulkReject,
   onClose,
+  onVerify,
 }: AiSuggestPanelProps) {
   const questions = useCanvasQuestions();
 
@@ -37,20 +40,25 @@ export default function AiSuggestPanel({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-purple-100 px-3 py-2 dark:border-purple-800">
         <div className="flex items-center gap-2">
-          <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" />
+          <svg
+            className="h-4 w-4 text-purple-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z"
+            />
           </svg>
-          <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
-            AI Suggestions
-          </span>
+          <span className="text-sm font-medium text-purple-700 dark:text-purple-300">AI Suggestions</span>
           <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-600 dark:bg-purple-900/40 dark:text-purple-400">
             {suggestions.length}
           </span>
         </div>
-        <button
-          onClick={onClose}
-          className="rounded p-0.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-        >
+        <button onClick={onClose} className="rounded p-0.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
           </svg>
@@ -68,15 +76,10 @@ export default function AiSuggestPanel({
       {/* Suggestion list */}
       <div className="flex-1 overflow-y-auto">
         {suggestions.map((suggestion) => {
-          const existingCode = suggestion.questionId
-            ? questions.find((q) => q.id === suggestion.questionId)
-            : null;
+          const existingCode = suggestion.questionId ? questions.find((q) => q.id === suggestion.questionId) : null;
 
           return (
-            <div
-              key={suggestion.id}
-              className="border-b border-gray-50 px-3 py-2 last:border-0 dark:border-gray-800"
-            >
+            <div key={suggestion.id} className="border-b border-gray-50 px-3 py-2 last:border-0 dark:border-gray-800">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
@@ -97,9 +100,16 @@ export default function AiSuggestPanel({
                       </span>
                     )}
                   </div>
-                  <p className="mt-0.5 text-[10px] text-gray-400 dark:text-gray-500 line-clamp-2 italic">
-                    &ldquo;{suggestion.codedText.slice(0, 80)}{suggestion.codedText.length > 80 ? '...' : ''}&rdquo;
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onVerify?.(suggestion)}
+                    disabled={!onVerify}
+                    title="Locate this quote in the transcript"
+                    className="mt-0.5 block w-full text-left text-[10px] text-gray-400 dark:text-gray-500 line-clamp-2 italic hover:text-purple-500 hover:underline disabled:cursor-default disabled:hover:no-underline disabled:hover:text-gray-400"
+                  >
+                    &ldquo;{suggestion.codedText.slice(0, 80)}
+                    {suggestion.codedText.length > 80 ? '...' : ''}&rdquo;
+                  </button>
                   <div className="mt-0.5 flex items-center gap-1">
                     <div className="h-1 w-12 rounded-full bg-gray-100 dark:bg-gray-700">
                       <div
@@ -107,12 +117,32 @@ export default function AiSuggestPanel({
                         style={{ width: `${Math.round(suggestion.confidence * 100)}%` }}
                       />
                     </div>
-                    <span className="text-[9px] text-gray-400">
-                      {Math.round(suggestion.confidence * 100)}%
-                    </span>
+                    <span className="text-[9px] text-gray-400">{Math.round(suggestion.confidence * 100)}%</span>
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-1">
+                  {onVerify && (
+                    <button
+                      onClick={() => onVerify(suggestion)}
+                      className="rounded p-1 text-gray-400 hover:bg-purple-50 hover:text-purple-500 dark:hover:bg-purple-900/20"
+                      title="Locate in transcript"
+                    >
+                      <svg
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"
+                        />
+                      </svg>
+                    </button>
+                  )}
                   <button
                     onClick={() => onAccept(suggestion.id)}
                     className="rounded p-1 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20"
