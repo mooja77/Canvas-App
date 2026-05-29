@@ -35,6 +35,8 @@ jobs:
           # to prevent silent regressions if Vite's mode resolution or working
           # directory changes.
           VITE_API_URL: https://canvas-app-production.up.railway.app/api
+          VITE_STRIPE_STUDENT_MONTHLY_PRICE_ID: ${{ secrets.VITE_STRIPE_STUDENT_MONTHLY_PRICE_ID }}
+          VITE_STRIPE_STUDENT_ANNUAL_PRICE_ID: ${{ secrets.VITE_STRIPE_STUDENT_ANNUAL_PRICE_ID }}
           VITE_STRIPE_PRO_MONTHLY_PRICE_ID: ${{ secrets.VITE_STRIPE_PRO_MONTHLY_PRICE_ID }}
           VITE_STRIPE_PRO_ANNUAL_PRICE_ID: ${{ secrets.VITE_STRIPE_PRO_ANNUAL_PRICE_ID }}
           VITE_STRIPE_TEAM_MONTHLY_PRICE_ID: ${{ secrets.VITE_STRIPE_TEAM_MONTHLY_PRICE_ID }}
