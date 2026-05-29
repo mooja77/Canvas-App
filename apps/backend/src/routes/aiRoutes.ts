@@ -423,6 +423,70 @@ aiRoutes.get('/canvas/:id/ai/suggestions', async (req: Request, res: Response, n
   }
 });
 
+// ─── GET /canvas/:id/ai/disclosure ───
+// IRB-ready AI disclosure: what role did AI play in this canvas's coding?
+// Reviewers and IRBs increasingly require this in a methods appendix.
+// Reports how many codings originated from AI suggestions vs. humans, the
+// accept/reject breakdown of suggestions, and which models were used — plus a
+// ready-to-paste methods paragraph. All figures are computed from stored
+// provenance (CanvasTextCoding.source, AiSuggestion.status, AiUsage), so the
+// disclosure is reproducible, not self-reported.
+aiRoutes.get('/canvas/:id/ai/disclosure', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    const userId = getAuthUserId(req);
+    const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+
+    const [totalCodings, aiCodings, suggestionGroups, usageGroups] = await Promise.all([
+      prisma.canvasTextCoding.count({ where: { canvasId: canvas.id } }),
+      prisma.canvasTextCoding.count({ where: { canvasId: canvas.id, source: 'ai' } }),
+      prisma.aiSuggestion.groupBy({ by: ['status'], where: { canvasId: canvas.id }, _count: true }),
+      prisma.aiUsage.groupBy({ by: ['provider', 'model'], where: { canvasId: canvas.id }, _count: true }),
+    ]);
+
+    const suggestionsByStatus = (status: string) => suggestionGroups.find((g) => g.status === status)?._count ?? 0;
+    const accepted = suggestionsByStatus('accepted');
+    const rejected = suggestionsByStatus('rejected');
+    const pending = suggestionsByStatus('pending');
+    const totalSuggestions = accepted + rejected + pending;
+    const humanCodings = totalCodings - aiCodings;
+    const aiPercent = totalCodings > 0 ? Math.round((aiCodings / totalCodings) * 1000) / 10 : 0;
+    const acceptanceRate = accepted + rejected > 0 ? Math.round((accepted / (accepted + rejected)) * 1000) / 10 : null;
+    const models = usageGroups
+      .map((g) => `${g.provider}/${g.model}`)
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .sort();
+
+    // A conservative, honest methods paragraph the researcher can adapt.
+    const modelList = models.length ? models.join(', ') : 'an AI assistant';
+    const markdown = [
+      `## AI Disclosure`,
+      ``,
+      `Qualitative coding in this project was conducted with AI assistance using ${modelList}.`,
+      `AI-generated code suggestions were presented for review; the researcher accepted, modified, or`,
+      `rejected each suggestion. Of ${totalCodings} coded segment(s) in the final dataset,`,
+      `${aiCodings} (${aiPercent}%) originated from an accepted AI suggestion and ${humanCodings} were`,
+      `created manually. Across ${totalSuggestions} AI suggestion(s), ${accepted} were accepted and`,
+      `${rejected} rejected${acceptanceRate !== null ? ` (${acceptanceRate}% acceptance of reviewed suggestions)` : ''}.`,
+      `All AI suggestions were anchored to specific source text and reviewed by the researcher before`,
+      `inclusion. AI was used as an assistive tool; final analytic decisions rest with the researcher.`,
+    ].join('\n');
+
+    res.json({
+      success: true,
+      data: {
+        generatedAt: new Date().toISOString(),
+        codings: { total: totalCodings, aiOriginated: aiCodings, humanOriginated: humanCodings, aiPercent },
+        suggestions: { total: totalSuggestions, accepted, rejected, pending, acceptanceRate },
+        models,
+        markdown,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── PUT /canvas/:id/ai/suggestions/:sid ───
 aiRoutes.put(
   '/canvas/:id/ai/suggestions/:sid',
@@ -457,7 +521,7 @@ aiRoutes.put(
           questionId = question.id;
         }
 
-        // Create the coding
+        // Create the coding — tagged AI-originated for the disclosure export.
         await prisma.canvasTextCoding.create({
           data: {
             canvasId: req.params.id,
@@ -466,6 +530,7 @@ aiRoutes.put(
             startOffset: suggestion.startOffset,
             endOffset: suggestion.endOffset,
             codedText: suggestion.codedText,
+            source: 'ai',
           },
         });
       }
@@ -528,6 +593,7 @@ aiRoutes.post(
               startOffset: suggestion.startOffset,
               endOffset: suggestion.endOffset,
               codedText: suggestion.codedText,
+              source: 'ai',
             },
           });
         }

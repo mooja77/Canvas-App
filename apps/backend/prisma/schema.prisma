@@ -261,6 +261,9 @@ model CanvasTextCoding {
   codedText    String
   note         String?
   annotation   String?
+  // Provenance for AI disclosure: "human" (default) or "ai" (created by
+  // accepting an AI suggestion). Powers the IRB-ready AI-disclosure export.
+  source       String           @default("human")
   createdAt    DateTime         @default(now())
   canvas       CodingCanvas     @relation(fields: [canvasId], references: [id], onDelete: Cascade)
   transcript   CanvasTranscript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)

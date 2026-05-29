@@ -246,6 +246,10 @@ export const canvasApi = {
   bulkActionAiSuggestions: (canvasId: string, data: { suggestionIds: string[]; action: 'accepted' | 'rejected' }) =>
     canvasClient.post(`/canvas/${canvasId}/ai/suggestions/bulk-action`, data),
 
+  // IRB-ready AI disclosure: AI's role in this canvas's coding (counts +
+  // ready-to-paste methods paragraph), computed from stored provenance.
+  getAiDisclosure: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}/ai/disclosure`),
+
   // ─── Research Assistant ───
   embedCanvasData: (canvasId: string) => canvasClient.post(`/canvas/${canvasId}/ai/embed`),
 
