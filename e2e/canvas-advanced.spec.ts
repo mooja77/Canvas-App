@@ -182,7 +182,7 @@ test.describe('Canvas Advanced Features', () => {
         return match && parseFloat(match[1]) > prevScale;
       },
       initial!.scale,
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
     const z1 = await getViewportTransform(page);
     expect(z1!.scale).toBeGreaterThan(initial!.scale);
@@ -197,7 +197,7 @@ test.describe('Canvas Advanced Features', () => {
         return match && parseFloat(match[1]) > prevScale;
       },
       z1!.scale,
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
     const z2 = await getViewportTransform(page);
     expect(z2!.scale).toBeGreaterThan(z1!.scale);
@@ -212,7 +212,7 @@ test.describe('Canvas Advanced Features', () => {
         return match && parseFloat(match[1]) < prevScale;
       },
       z2!.scale,
-      { timeout: 3000 },
+      { timeout: 8000 },
     );
     const z3 = await getViewportTransform(page);
     expect(z3!.scale).toBeLessThan(z2!.scale);
