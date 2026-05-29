@@ -430,6 +430,14 @@ export default function CommandPalette({
         description: 'AI writes a publishable methods paragraph from your codings + intercoder + AI usage',
         action: openModal('methods-statement'),
       },
+      {
+        id: 'modal-methodology-guide',
+        category: 'action',
+        icon: <IconReport />,
+        label: 'Methodology guide (choose your approach)',
+        description: 'Step-by-step workflow for reflexive TA, grounded theory, framework, IPA, and more',
+        action: openModal('methodology-guide'),
+      },
     );
 
     // ── Analysis nodes ──
