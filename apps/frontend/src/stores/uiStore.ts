@@ -56,6 +56,11 @@ interface UIState {
   // Help menu. Sprint F replaced auto-firing with on-demand surfacing.
   showFullProductTour: boolean;
 
+  // Transient "verify in context" highlight. When a user clicks Locate on an
+  // AI suggestion, this points the matching TranscriptNode at the exact span
+  // so the researcher can confirm the AI anchored to real text. Not persisted.
+  verifyHighlight: { transcriptId: string; startOffset: number; endOffset: number } | null;
+
   toggleDarkMode: () => void;
   completeOnboarding: () => void;
   resetOnboarding: () => void;
@@ -74,6 +79,7 @@ interface UIState {
   dismissJitTooltip: (id: string) => void;
   openFullProductTour: () => void;
   closeFullProductTour: () => void;
+  setVerifyHighlight: (h: { transcriptId: string; startOffset: number; endOffset: number } | null) => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -93,6 +99,7 @@ export const useUIStore = create<UIState>()(
       onboardingChecklistDismissed: false,
       dismissedJitTooltips: [],
       showFullProductTour: false,
+      verifyHighlight: null,
 
       toggleDarkMode: () =>
         set((s) => {
@@ -135,12 +142,14 @@ export const useUIStore = create<UIState>()(
         })),
       openFullProductTour: () => set({ showFullProductTour: true, onboardingComplete: false }),
       closeFullProductTour: () => set({ showFullProductTour: false, onboardingComplete: true }),
+      setVerifyHighlight: (h) => set({ verifyHighlight: h }),
     }),
     {
       name: 'qualcanvas-ui',
       partialize: (state) => {
+        // zoomTier and verifyHighlight are transient — never persist them.
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { zoomTier, ...persisted } = state;
+        const { zoomTier, verifyHighlight, ...persisted } = state;
         return persisted;
       },
     },

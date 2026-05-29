@@ -2111,6 +2111,24 @@ export default function CanvasWorkspace() {
     [nodes, setNodes],
   );
 
+  // "Verify in context": Locate an AI suggestion's source span. Sets the
+  // transient highlight (read by the matching TranscriptNode), focuses that
+  // node, and auto-clears the highlight after a few seconds.
+  const verifyClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleVerifySuggestion = useCallback(
+    (s: { transcriptId: string; startOffset: number; endOffset: number }) => {
+      useUIStore.getState().setVerifyHighlight({
+        transcriptId: s.transcriptId,
+        startOffset: s.startOffset,
+        endOffset: s.endOffset,
+      });
+      handleFocusNode(`transcript-${s.transcriptId}`);
+      if (verifyClearTimer.current) clearTimeout(verifyClearTimer.current);
+      verifyClearTimer.current = setTimeout(() => useUIStore.getState().setVerifyHighlight(null), 6000);
+    },
+    [handleFocusNode],
+  );
+
   // ── Drag-and-drop file import handlers ──
   const handleFileDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -2998,6 +3016,7 @@ export default function CanvasWorkspace() {
           onBulkAccept={(ids) => aiSuggestions.bulkAction(ids, 'accepted')}
           onBulkReject={(ids) => aiSuggestions.bulkAction(ids, 'rejected')}
           onClose={aiSuggestions.clearSuggestions}
+          onVerify={handleVerifySuggestion}
         />
       )}
 

@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef, useMemo, useState } from 'react';
+import { memo, useCallback, useRef, useMemo, useState, useEffect } from 'react';
 import { useNodeCollapsed } from './useNodeCollapsed';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
@@ -42,24 +42,45 @@ export interface TranscriptNodeData {
   [key: string]: unknown;
 }
 
-// Compute overlapping highlight segments from codings
-function computeOverlappingSegments(text: string, codings: CanvasTextCoding[], colorMap: Map<string, string>) {
-  if (codings.length === 0)
-    return [{ start: 0, end: text.length, questionColors: [] as string[], codingIds: [] as string[] }];
+interface TranscriptSegment {
+  start: number;
+  end: number;
+  questionColors: string[];
+  codingIds: string[];
+  /** True when this segment falls inside an active "verify in context" range. */
+  inVerify: boolean;
+}
 
-  // Collect all boundary points
+// Compute overlapping highlight segments from codings, plus an optional
+// transient "verify in context" range (from an AI suggestion's Locate action).
+function computeOverlappingSegments(
+  text: string,
+  codings: CanvasTextCoding[],
+  colorMap: Map<string, string>,
+  verifyRange?: { start: number; end: number } | null,
+): TranscriptSegment[] {
+  const vStart = verifyRange ? Math.max(0, Math.min(verifyRange.start, text.length)) : -1;
+  const vEnd = verifyRange ? Math.max(0, Math.min(verifyRange.end, text.length)) : -1;
+  const hasVerify = vEnd > vStart;
+
+  if (codings.length === 0 && !hasVerify)
+    return [{ start: 0, end: text.length, questionColors: [], codingIds: [], inVerify: false }];
+
+  // Collect all boundary points (coding edges + verify-range edges)
   const boundaries = new Set<number>();
   boundaries.add(0);
   boundaries.add(text.length);
   for (const c of codings) {
-    const start = Math.max(0, Math.min(c.startOffset, text.length));
-    const end = Math.max(0, Math.min(c.endOffset, text.length));
-    boundaries.add(start);
-    boundaries.add(end);
+    boundaries.add(Math.max(0, Math.min(c.startOffset, text.length)));
+    boundaries.add(Math.max(0, Math.min(c.endOffset, text.length)));
+  }
+  if (hasVerify) {
+    boundaries.add(vStart);
+    boundaries.add(vEnd);
   }
 
   const sorted = Array.from(boundaries).sort((a, b) => a - b);
-  const segments: { start: number; end: number; questionColors: string[]; codingIds: string[] }[] = [];
+  const segments: TranscriptSegment[] = [];
 
   for (let i = 0; i < sorted.length - 1; i++) {
     const start = sorted[i];
@@ -79,7 +100,8 @@ function computeOverlappingSegments(text: string, codings: CanvasTextCoding[], c
       }
     }
 
-    segments.push({ start, end, questionColors: colors, codingIds: ids });
+    const inVerify = hasVerify && start >= vStart && end <= vEnd;
+    segments.push({ start, end, questionColors: colors, codingIds: ids, inVerify });
   }
 
   return segments;
@@ -90,11 +112,13 @@ function HighlightedTranscript({
   codings,
   questions,
   onSegmentClick,
+  verifyRange,
 }: {
   text: string;
   codings: CanvasTextCoding[];
   questions: { id: string; color: string }[];
   onSegmentClick: (codingIds: string[], event: React.MouseEvent) => void;
+  verifyRange?: { start: number; end: number } | null;
 }) {
   const colorMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -102,14 +126,33 @@ function HighlightedTranscript({
     return map;
   }, [questions]);
 
-  const segments = useMemo(() => computeOverlappingSegments(text, codings, colorMap), [text, codings, colorMap]);
+  const segments = useMemo(
+    () => computeOverlappingSegments(text, codings, colorMap, verifyRange),
+    [text, codings, colorMap, verifyRange],
+  );
 
+  // Scroll the verified span into view when it appears/changes.
+  const firstVerifyRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (verifyRange && firstVerifyRef.current) {
+      firstVerifyRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [verifyRange]);
+
+  let verifyAssigned = false;
   return (
     <>
       {segments.map((seg, i) => {
         const slice = text.slice(seg.start, seg.end);
+        const isFirstVerify = seg.inVerify && !verifyAssigned;
+        if (isFirstVerify) verifyAssigned = true;
+        const verifyRef = isFirstVerify ? firstVerifyRef : undefined;
         if (seg.questionColors.length === 0) {
-          return <span key={i}>{slice}</span>;
+          return (
+            <span key={i} ref={verifyRef} className={seg.inVerify ? 'qc-verify-highlight' : undefined}>
+              {slice}
+            </span>
+          );
         }
 
         // Layer multiple background colors with reduced opacity
@@ -119,7 +162,8 @@ function HighlightedTranscript({
         return (
           <span
             key={i}
-            className="rounded-sm relative cursor-pointer coded-segment-hover"
+            ref={verifyRef}
+            className={`rounded-sm relative cursor-pointer coded-segment-hover${seg.inVerify ? ' qc-verify-highlight' : ''}`}
             title={`${layerCount} code${layerCount > 1 ? 's' : ''} - click to view`}
             onClick={(e) => {
               e.stopPropagation();
@@ -178,6 +222,22 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
   const zoomTier = useUIStore((s) => s.zoomTier);
   const isReduced = zoomTier === 'reduced';
   const isMinimal = zoomTier === 'minimal';
+
+  // "Verify in context": when an AI suggestion's Locate action targets this
+  // transcript, highlight the exact span and (if collapsed) expand to show it.
+  const verifyHighlight = useUIStore((s) => s.verifyHighlight);
+  const verifyRange = useMemo(
+    () =>
+      verifyHighlight && verifyHighlight.transcriptId === nodeData.transcriptId
+        ? { start: verifyHighlight.startOffset, end: verifyHighlight.endOffset }
+        : null,
+    [verifyHighlight, nodeData.transcriptId],
+  );
+  useEffect(() => {
+    if (verifyRange && collapsed) toggleCollapsed();
+    // Only react to a new verify target, not to collapse toggles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verifyRange]);
 
   const codings = useMemo(
     () => allCodings.filter((c: CanvasTextCoding) => c.transcriptId === nodeData.transcriptId),
@@ -459,6 +519,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
                   codings={codings}
                   questions={questions}
                   onSegmentClick={handleSegmentClick}
+                  verifyRange={verifyRange}
                 />
               </div>
             </div>
