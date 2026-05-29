@@ -560,6 +560,9 @@ model AiSuggestion {
   endOffset     Int
   codedText     String
   confidence    Float            @default(0)
+  // The model's rationale for this suggestion, shown in the review panel so
+  // researchers see *why* a code was proposed (human-in-the-loop trust).
+  reasoning     String?
   status        String           @default("pending") // pending | accepted | rejected
   createdAt     DateTime         @default(now())
   canvas        CodingCanvas     @relation(fields: [canvasId], references: [id], onDelete: Cascade)

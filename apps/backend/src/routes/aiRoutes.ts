@@ -129,6 +129,7 @@ aiRoutes.post(
               endOffset,
               codedText,
               confidence: s.confidence || 0,
+              reasoning: s.reasoning ?? null,
               status: 'pending',
             },
           }),
@@ -273,6 +274,7 @@ aiRoutes.post(
         codedText: string;
         anchorBefore?: string;
         confidence: number;
+        reasoning?: string;
       }>;
       try {
         const parsed = JSON.parse(result.content);
@@ -302,6 +304,7 @@ aiRoutes.post(
             endOffset: span.end,
             codedText: c.codedText,
             confidence: c.confidence ?? 0,
+            reasoning: c.reasoning ?? null,
           };
         })
         .filter((c): c is NonNullable<typeof c> => c !== null);
@@ -318,6 +321,7 @@ aiRoutes.post(
               endOffset: c.endOffset,
               codedText: c.codedText,
               confidence: c.confidence || 0,
+              reasoning: c.reasoning ?? null,
               status: 'pending',
             },
           }),
