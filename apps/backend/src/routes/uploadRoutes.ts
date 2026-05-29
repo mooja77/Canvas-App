@@ -13,6 +13,7 @@ import { createJob } from '../lib/jobs.js';
 import { registerJobHandler } from '../lib/jobs.js';
 import { transcribeAudio, getLocalUploadPath } from '../utils/transcription.js';
 import { isValidSignature } from '../utils/magicBytes.js';
+import { decryptApiKey } from '../utils/encryption.js';
 
 export const uploadRoutes = Router();
 
@@ -201,6 +202,10 @@ uploadRoutes.post(
         storageKey: fileUpload.storageKey,
         canvasId: req.params.id,
         language,
+        // Carry the enqueuing user so the worker can transcribe on their own
+        // OpenAI key (correct billing/quota) instead of silently using the
+        // server key. Undefined for legacy access-code users (no UserAiConfig).
+        userId,
       };
 
       res.json({ success: true, data: { jobId: transcriptionJob.id } });
@@ -284,7 +289,7 @@ registerJobHandler('transcribe', async (job, updateProgress) => {
   const meta = (job as any)._meta;
   if (!meta) throw new Error('Missing job metadata');
 
-  const { jobDbId, storageKey, canvasId, language } = meta;
+  const { jobDbId, storageKey, canvasId, language, userId } = meta;
 
   // Short-circuit if the canvas has been deleted (hard or soft) between
   // enqueue and execution. Otherwise the job burns AI cost and writes a
@@ -313,7 +318,29 @@ registerJobHandler('transcribe', async (job, updateProgress) => {
     const filePath = getLocalUploadPath(storageKey);
     updateProgress(20);
 
-    const result = await transcribeAudio(filePath, language);
+    // Whisper transcription is OpenAI-only. If the enqueuing user configured
+    // an OpenAI key, transcribe on their key/quota; if they configured a
+    // different provider (Anthropic/Google), that key can't drive Whisper, so
+    // we fall back to the server key. Previously the user's key was ignored
+    // entirely, silently charging the server account or failing.
+    let openaiKey: string | undefined;
+    if (userId) {
+      const aiConfig = await prisma.userAiConfig.findUnique({ where: { userId } });
+      if (aiConfig && aiConfig.provider === 'openai') {
+        try {
+          openaiKey = decryptApiKey(aiConfig.apiKeyEncrypted, aiConfig.apiKeyIv, aiConfig.apiKeyTag);
+        } catch {
+          // Decryption failed — fall through to the server key.
+        }
+      }
+    }
+    if (!openaiKey && !process.env.OPENAI_API_KEY) {
+      throw new Error(
+        'Transcription requires an OpenAI API key. Add one under your provider (OpenAI) in AI settings, or ask an admin to configure a server key.',
+      );
+    }
+
+    const result = await transcribeAudio(filePath, language, openaiKey);
     updateProgress(90);
 
     // Save result to DB
