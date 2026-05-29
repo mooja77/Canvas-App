@@ -1300,3 +1300,61 @@ export function computeCohenKappa(
     segments: segmentComparisons,
   };
 }
+
+// ─── Document Portrait ───
+// MAXQDA-style "document portrait": each transcript is a horizontal strip and
+// every coding is positioned proportionally along it by character offset,
+// colored by its code. Gives an at-a-glance picture of how (and where) a
+// document is coded.
+
+interface DocumentPortraitTranscript {
+  id: string;
+  title: string;
+  content: string;
+}
+
+interface DocumentPortraitCoding {
+  transcriptId: string;
+  questionId: string;
+  startOffset: number;
+  endOffset: number;
+}
+
+export function computeDocumentPortrait(
+  transcripts: DocumentPortraitTranscript[],
+  codings: DocumentPortraitCoding[],
+  questions: { id: string; color: string | null }[],
+  config: { transcriptId?: string; questionIds?: string[] } = {},
+) {
+  const colorMap = new Map(questions.map((q) => [q.id, q.color || '#3B82F6']));
+  const questionFilter = config.questionIds?.length ? new Set(config.questionIds) : null;
+
+  // If a specific transcript is configured, portrait just that one; otherwise
+  // portrait every transcript that has codings.
+  const targetTranscripts = config.transcriptId ? transcripts.filter((t) => t.id === config.transcriptId) : transcripts;
+
+  const strips = targetTranscripts
+    .map((t) => {
+      const length = t.content?.length ?? 0;
+      if (length === 0) return null;
+      const segments = codings
+        .filter((c) => c.transcriptId === t.id && (!questionFilter || questionFilter.has(c.questionId)))
+        .map((c) => {
+          // Clamp offsets into [0, length] so a stale coding can't produce an
+          // out-of-range strip; ensure end >= start.
+          const start = Math.max(0, Math.min(c.startOffset, length));
+          const end = Math.max(start, Math.min(c.endOffset, length));
+          return {
+            startPercent: (start / length) * 100,
+            endPercent: (end / length) * 100,
+            questionId: c.questionId,
+            color: colorMap.get(c.questionId) || '#3B82F6',
+          };
+        })
+        .sort((a, b) => a.startPercent - b.startPercent);
+      return { transcriptId: t.id, transcriptTitle: t.title, segments };
+    })
+    .filter((s): s is NonNullable<typeof s> => s !== null && s.segments.length > 0);
+
+  return { strips, totalTranscripts: strips.length };
+}

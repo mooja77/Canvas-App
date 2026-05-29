@@ -11,14 +11,28 @@ import {
   computeSentiment,
   computeTreemap,
   computeCohenKappa,
+  computeDocumentPortrait,
 } from './textAnalysis.js';
 
 // ─── Test Data Fixtures ───
 
 const transcripts = [
-  { id: 't1', title: 'Interview A', content: 'The program was really good and helped many people. It was a great success for our community.' },
-  { id: 't2', title: 'Interview B', content: 'There were some problems with funding. The situation was bad and people were frustrated.' },
-  { id: 't3', title: 'Interview C', content: 'Overall the experience was positive. We saw improvement in several areas over time.', caseId: 'case1' },
+  {
+    id: 't1',
+    title: 'Interview A',
+    content: 'The program was really good and helped many people. It was a great success for our community.',
+  },
+  {
+    id: 't2',
+    title: 'Interview B',
+    content: 'There were some problems with funding. The situation was bad and people were frustrated.',
+  },
+  {
+    id: 't3',
+    title: 'Interview C',
+    content: 'Overall the experience was positive. We saw improvement in several areas over time.',
+    caseId: 'case1',
+  },
 ];
 
 const questions = [
@@ -28,12 +42,47 @@ const questions = [
 ];
 
 const codings = [
-  { id: 'c1', transcriptId: 't1', questionId: 'q1', startOffset: 0, endOffset: 45, codedText: 'The program was really good and helped many' },
+  {
+    id: 'c1',
+    transcriptId: 't1',
+    questionId: 'q1',
+    startOffset: 0,
+    endOffset: 45,
+    codedText: 'The program was really good and helped many',
+  },
   { id: 'c2', transcriptId: 't1', questionId: 'q3', startOffset: 20, endOffset: 45, codedText: 'good and helped many' },
-  { id: 'c3', transcriptId: 't2', questionId: 'q2', startOffset: 0, endOffset: 40, codedText: 'There were some problems with funding' },
-  { id: 'c4', transcriptId: 't2', questionId: 'q2', startOffset: 42, endOffset: 85, codedText: 'The situation was bad and people were frustrated' },
-  { id: 'c5', transcriptId: 't3', questionId: 'q1', startOffset: 0, endOffset: 40, codedText: 'Overall the experience was positive' },
-  { id: 'c6', transcriptId: 't3', questionId: 'q3', startOffset: 40, endOffset: 82, codedText: 'We saw improvement in several areas over time' },
+  {
+    id: 'c3',
+    transcriptId: 't2',
+    questionId: 'q2',
+    startOffset: 0,
+    endOffset: 40,
+    codedText: 'There were some problems with funding',
+  },
+  {
+    id: 'c4',
+    transcriptId: 't2',
+    questionId: 'q2',
+    startOffset: 42,
+    endOffset: 85,
+    codedText: 'The situation was bad and people were frustrated',
+  },
+  {
+    id: 'c5',
+    transcriptId: 't3',
+    questionId: 'q1',
+    startOffset: 0,
+    endOffset: 40,
+    codedText: 'Overall the experience was positive',
+  },
+  {
+    id: 'c6',
+    transcriptId: 't3',
+    questionId: 'q3',
+    startOffset: 40,
+    endOffset: 82,
+    codedText: 'We saw improvement in several areas over time',
+  },
 ];
 
 const cases = [
@@ -98,7 +147,7 @@ describe('computeCooccurrence', () => {
     // c1 (q1: 0-45) and c2 (q3: 20-45) overlap on t1
     const result = computeCooccurrence(codings, ['q1', 'q3']);
     expect(result.pairs.length).toBeGreaterThanOrEqual(1);
-    const pair = result.pairs.find(p => p.questionIds.includes('q1') && p.questionIds.includes('q3'));
+    const pair = result.pairs.find((p) => p.questionIds.includes('q1') && p.questionIds.includes('q3'));
     expect(pair).toBeDefined();
     expect(pair!.count).toBeGreaterThan(0);
   });
@@ -166,7 +215,7 @@ describe('computeStats', () => {
   it('groups by question with correct counts', () => {
     const result = computeStats(codings, questions, transcripts, 'question');
     expect(result.total).toBe(codings.length);
-    const q2Item = result.items.find(i => i.id === 'q2');
+    const q2Item = result.items.find((i) => i.id === 'q2');
     expect(q2Item).toBeDefined();
     expect(q2Item!.count).toBe(2); // c3 and c4
   });
@@ -174,7 +223,7 @@ describe('computeStats', () => {
   it('groups by transcript', () => {
     const result = computeStats(codings, questions, transcripts, 'transcript');
     expect(result.total).toBe(codings.length);
-    const t1Item = result.items.find(i => i.id === 't1');
+    const t1Item = result.items.find((i) => i.id === 't1');
     expect(t1Item).toBeDefined();
     expect(t1Item!.count).toBe(2); // c1 and c2
   });
@@ -190,7 +239,7 @@ describe('computeStats', () => {
   it('coverage uses only relevant transcripts for question grouping', () => {
     // q2 only has codings in t2, so coverage denominator should only use t2's length
     const result = computeStats(codings, questions, transcripts, 'question');
-    const q2Item = result.items.find(i => i.id === 'q2');
+    const q2Item = result.items.find((i) => i.id === 'q2');
     expect(q2Item).toBeDefined();
     // q2 codings cover 0-40 and 42-85 of t2 (length 88) = 83 chars / 88 chars
     expect(q2Item!.coverage).toBeGreaterThan(0);
@@ -223,7 +272,7 @@ describe('computeComparison', () => {
   it('computes coverage per transcript per question', () => {
     const result = computeComparison(codings, transcripts, questions, ['t1']);
     const profile = result.transcripts[0].profile;
-    const q1Profile = profile.find(p => p.questionId === 'q1');
+    const q1Profile = profile.find((p) => p.questionId === 'q1');
     expect(q1Profile).toBeDefined();
     expect(q1Profile!.count).toBe(1);
     expect(q1Profile!.coverage).toBeGreaterThan(0);
@@ -270,7 +319,7 @@ describe('computeWordFrequency', () => {
 
   it('respects custom stop words', () => {
     const result = computeWordFrequency(codings, undefined, undefined, ['program']);
-    const hasProgram = result.words.some(w => w.text === 'program');
+    const hasProgram = result.words.some((w) => w.text === 'program');
     expect(hasProgram).toBe(false);
   });
 
@@ -322,7 +371,7 @@ describe('computeClusters', () => {
   it('filters by question IDs', () => {
     const result = computeClusters(codings, 2, ['q2']);
     const totalSegments = result.clusters.reduce((sum, c) => sum + c.segments.length, 0);
-    expect(totalSegments).toBeLessThanOrEqual(codings.filter(c => c.questionId === 'q2').length);
+    expect(totalSegments).toBeLessThanOrEqual(codings.filter((c) => c.questionId === 'q2').length);
   });
 });
 
@@ -330,9 +379,7 @@ describe('computeClusters', () => {
 
 describe('computeCodingQuery', () => {
   it('returns base question codings with no additional conditions', () => {
-    const result = computeCodingQuery(codings, transcripts, [
-      { questionId: 'q1', operator: 'AND' },
-    ]);
+    const result = computeCodingQuery(codings, transcripts, [{ questionId: 'q1', operator: 'AND' }]);
     expect(result.matches.length).toBe(2); // c1 and c5
   });
 
@@ -353,7 +400,7 @@ describe('computeCodingQuery', () => {
       { questionId: 'q3', operator: 'NOT' },
     ]);
     // c1 overlaps with q3, should be excluded. c5 does not overlap with q3.
-    const t1Matches = result.matches.filter(m => m.transcriptId === 't1');
+    const t1Matches = result.matches.filter((m) => m.transcriptId === 't1');
     expect(t1Matches).toHaveLength(0);
   });
 
@@ -372,9 +419,7 @@ describe('computeCodingQuery', () => {
   });
 
   it('caps results at max', () => {
-    const result = computeCodingQuery(codings, transcripts, [
-      { questionId: 'q1', operator: 'AND' },
-    ]);
+    const result = computeCodingQuery(codings, transcripts, [{ questionId: 'q1', operator: 'AND' }]);
     expect(result.matches.length).toBeLessThanOrEqual(100);
   });
 });
@@ -384,7 +429,14 @@ describe('computeCodingQuery', () => {
 describe('computeSentiment', () => {
   it('scores positive text as positive', () => {
     const posCodings = [
-      { id: 'p1', transcriptId: 't1', questionId: 'q1', startOffset: 0, endOffset: 30, codedText: 'This is excellent amazing wonderful great' },
+      {
+        id: 'p1',
+        transcriptId: 't1',
+        questionId: 'q1',
+        startOffset: 0,
+        endOffset: 30,
+        codedText: 'This is excellent amazing wonderful great',
+      },
     ];
     const result = computeSentiment(posCodings, transcripts, questions, 'all');
     expect(result.overall.positive).toBe(1);
@@ -394,7 +446,14 @@ describe('computeSentiment', () => {
 
   it('scores negative text as negative', () => {
     const negCodings = [
-      { id: 'n1', transcriptId: 't2', questionId: 'q2', startOffset: 0, endOffset: 30, codedText: 'This is terrible horrible awful bad' },
+      {
+        id: 'n1',
+        transcriptId: 't2',
+        questionId: 'q2',
+        startOffset: 0,
+        endOffset: 30,
+        codedText: 'This is terrible horrible awful bad',
+      },
     ];
     const result = computeSentiment(negCodings, transcripts, questions, 'all');
     expect(result.overall.negative).toBe(1);
@@ -404,7 +463,14 @@ describe('computeSentiment', () => {
 
   it('handles negation correctly', () => {
     const negatedCodings = [
-      { id: 'neg1', transcriptId: 't1', questionId: 'q1', startOffset: 0, endOffset: 20, codedText: 'This is not good at all' },
+      {
+        id: 'neg1',
+        transcriptId: 't1',
+        questionId: 'q1',
+        startOffset: 0,
+        endOffset: 20,
+        codedText: 'This is not good at all',
+      },
     ];
     const result = computeSentiment(negatedCodings, transcripts, questions, 'all');
     // "not good" should flip to negative
@@ -467,19 +533,16 @@ describe('computeTreemap', () => {
 
   it('preserves parent-child relationships', () => {
     const result = computeTreemap(codings, questionsWithParent, 'count');
-    const q3Node = result.nodes.find(n => n.id === 'q3');
+    const q3Node = result.nodes.find((n) => n.id === 'q3');
     expect(q3Node).toBeDefined();
     expect(q3Node!.parentId).toBe('q1');
   });
 
   it('filters out zero-size nodes', () => {
     // Create a question with no codings
-    const extraQuestions = [
-      ...questionsWithParent,
-      { id: 'q4', text: 'Empty', color: '#000', parentQuestionId: null },
-    ];
+    const extraQuestions = [...questionsWithParent, { id: 'q4', text: 'Empty', color: '#000', parentQuestionId: null }];
     const result = computeTreemap(codings, extraQuestions, 'count');
-    const q4Node = result.nodes.find(n => n.id === 'q4');
+    const q4Node = result.nodes.find((n) => n.id === 'q4');
     expect(q4Node).toBeUndefined();
   });
 
@@ -519,7 +582,7 @@ describe('computeCohenKappa', () => {
     const result = computeCohenKappa(codingsA, codingsB, segments);
     expect(result.kappa).toBeCloseTo(1.0, 5);
     expect(result.agreement).toBe(1);
-    expect(result.segments.every(s => s.agree)).toBe(true);
+    expect(result.segments.every((s) => s.agree)).toBe(true);
   });
 
   it('returns kappa <= 0 for no agreement', () => {
@@ -568,5 +631,54 @@ describe('computeCohenKappa', () => {
     expect(result.kappa).toBe(0);
     expect(result.agreement).toBe(0);
     expect(result.segments).toHaveLength(0);
+  });
+});
+
+describe('computeDocumentPortrait', () => {
+  it('positions codings proportionally along each transcript and colors by code', () => {
+    const result = computeDocumentPortrait(transcripts, codings, questions);
+    // t1 (len 91) has c1 (0-45) and c2 (20-45); t2 and t3 also have codings.
+    expect(result.totalTranscripts).toBe(3);
+    const t1 = result.strips.find((s) => s.transcriptId === 't1')!;
+    expect(t1.transcriptTitle).toBe('Interview A');
+    expect(t1.segments).toHaveLength(2);
+    // sorted by startPercent; c1 starts at 0%
+    expect(t1.segments[0].startPercent).toBeCloseTo(0, 5);
+    expect(t1.segments[0].endPercent).toBeGreaterThan(0);
+    expect(t1.segments[0].endPercent).toBeLessThanOrEqual(100);
+    expect(t1.segments[0].color).toBe('#FF0000'); // q1
+  });
+
+  it('filters to a single transcript when transcriptId is configured', () => {
+    const result = computeDocumentPortrait(transcripts, codings, questions, { transcriptId: 't2' });
+    expect(result.strips).toHaveLength(1);
+    expect(result.strips[0].transcriptId).toBe('t2');
+  });
+
+  it('filters segments by questionIds when provided', () => {
+    const result = computeDocumentPortrait(transcripts, codings, questions, { questionIds: ['q1'] });
+    const allSegments = result.strips.flatMap((s) => s.segments);
+    expect(allSegments.length).toBeGreaterThan(0);
+    expect(allSegments.every((seg) => seg.questionId === 'q1')).toBe(true);
+  });
+
+  it('clamps offsets beyond the transcript length to 100%', () => {
+    const overrun = [{ transcriptId: 't1', questionId: 'q1', startOffset: 0, endOffset: 99999 }];
+    const result = computeDocumentPortrait(transcripts, overrun, questions, { transcriptId: 't1' });
+    expect(result.strips[0].segments[0].endPercent).toBeCloseTo(100, 5);
+  });
+
+  it('skips transcripts with no codings or empty content', () => {
+    const empty = [{ id: 'tx', title: 'Empty', content: '' }];
+    expect(
+      computeDocumentPortrait(empty, codings, questions).strips.find((s) => s.transcriptId === 'tx'),
+    ).toBeUndefined();
+    expect(computeDocumentPortrait(transcripts, [], questions).strips).toHaveLength(0);
+  });
+
+  it('falls back to a default color for unknown codes', () => {
+    const orphan = [{ transcriptId: 't1', questionId: 'zzz', startOffset: 0, endOffset: 10 }];
+    const result = computeDocumentPortrait(transcripts, orphan, questions, { transcriptId: 't1' });
+    expect(result.strips[0].segments[0].color).toBe('#3B82F6');
   });
 });
