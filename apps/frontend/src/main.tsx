@@ -11,11 +11,30 @@ import './i18n';
 import './index.css';
 import './brand-v2.css';
 
-// Initialize Sentry error tracking in production
+// Initialize Sentry error tracking in production.
+// NOTE: Session Replay is intentionally NOT enabled. This app renders
+// participant transcript content, which can be special-category data under
+// GDPR; recording DOM sessions (even masked) is a consent decision we don't
+// make by default. Revisit behind explicit opt-in. We capture errors +
+// lightweight performance traces only, and never default PII.
 if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
     dsn: import.meta.env.VITE_SENTRY_DSN,
+    environment: 'production',
+    // Tag every event with the deployed commit so errors map to a release
+    // (passed from CI as github.sha). Falls back to undefined if unset.
+    release: import.meta.env.VITE_GIT_SHA || undefined,
     sendDefaultPii: false,
+    integrations: [Sentry.browserTracingIntegration()],
+    // Sample performance traces lightly; all errors are still captured.
+    tracesSampleRate: 0.1,
+    // Filter out well-known benign browser noise so the issue stream stays
+    // signal-rich (these are not actionable application errors).
+    ignoreErrors: [
+      'ResizeObserver loop limit exceeded',
+      'ResizeObserver loop completed with undelivered notifications.',
+      'Non-Error promise rejection captured',
+    ],
   });
 }
 

@@ -40,6 +40,12 @@ jobs:
           VITE_STRIPE_TEAM_MONTHLY_PRICE_ID: ${{ secrets.VITE_STRIPE_TEAM_MONTHLY_PRICE_ID }}
           VITE_STRIPE_TEAM_ANNUAL_PRICE_ID: ${{ secrets.VITE_STRIPE_TEAM_ANNUAL_PRICE_ID }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          # Frontend error monitoring. The DSN is public-by-design (it ships in
+          # the client bundle); main.tsx only inits Sentry when this is present,
+          # so without it frontend errors were never captured. VITE_GIT_SHA tags
+          # every event with the deployed commit for release tracking.
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_GIT_SHA: ${{ github.sha }}
       - name: Publish to Cloudflare Pages
         run: |
           # wrangler auto-detects the git commit message and sends it to the
