@@ -313,6 +313,32 @@ describe('Plan enforcement — comprehensive limits', () => {
     expect(freeLimits.intercoderEnabled).toBe(false);
   });
 
+  // ─── STUDENT PLAN: near-Pro power, capped, no collaborators, no ICR ───
+
+  it('Student plan resolves to its own entitlements (not the free fallback)', async () => {
+    const { getPlanLimits } = await import('../../config/plans.js');
+    const student = getPlanLimits('student');
+
+    // AI + auto-code on (text-AI is cheap) — the differentiator for the $5 tier
+    expect(student.aiEnabled).toBe(true);
+    expect(student.autoCodeEnabled).toBe(true);
+    // Full analysis + premium export, ethics/cases like Pro
+    expect(student.allowedAnalysisTypes.length).toBeGreaterThanOrEqual(13);
+    expect(student.allowedExportFormats).toContain('qdpx');
+    expect(student.ethicsEnabled).toBe(true);
+    expect(student.casesEnabled).toBe(true);
+    // Capped for the individual-student shape: finite canvases, no collaborators, no ICR
+    expect(student.maxCanvases).toBe(5);
+    expect(student.maxCollaborators).toBe(0);
+    expect(student.intercoderEnabled).toBe(false);
+    // Modest metered transcription (BYO-key for more); strictly less than Pro
+    expect(student.transcriptionMinutesPerMonth).toBe(300);
+    expect(student.transcriptionMinutesPerMonth).toBeLessThan(getPlanLimits('pro').transcriptionMinutesPerMonth);
+
+    // Must NOT collapse to the free fallback
+    expect(student).not.toEqual(getPlanLimits('free'));
+  });
+
   // ─── PLAN UPGRADE MID-SESSION ───
 
   it('Plan upgrade mid-session updates limits immediately (auth reads from DB)', async () => {

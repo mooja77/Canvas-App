@@ -1,4 +1,4 @@
-export type PlanTier = 'free' | 'pro' | 'team';
+export type PlanTier = 'free' | 'student' | 'pro' | 'team';
 
 export interface PlanLimits {
   maxCanvases: number;
@@ -48,6 +48,45 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     repositoryEnabled: false,
     integrationsEnabled: false,
   },
+  // Verified-student tier ($5/mo). Near-Pro power for the academic land-grab —
+  // the segment AI-native competitors (Dovetail/Marvin/CoLoop) don't serve.
+  // Capped canvases + no collaborators keep it individual; AI is full (text-AI
+  // costs pennies) with a modest transcription allowance + BYO-key for more.
+  student: {
+    maxCanvases: 5,
+    maxTranscriptsPerCanvas: Infinity,
+    maxWordsPerTranscript: 50000,
+    maxCodes: Infinity,
+    autoCodeEnabled: true,
+    allowedAnalysisTypes: [
+      'search',
+      'cooccurrence',
+      'matrix',
+      'stats',
+      'comparison',
+      'wordcloud',
+      'cluster',
+      'codingquery',
+      'sentiment',
+      'treemap',
+      'documentportrait',
+      'timeline',
+      'geomap',
+    ],
+    allowedExportFormats: ['csv', 'png', 'html', 'md', 'qdpx'],
+    maxShares: 2,
+    ethicsEnabled: true,
+    casesEnabled: true,
+    intercoderEnabled: false,
+    aiEnabled: true,
+    aiRequestsPerDay: 1000,
+    fileUploadEnabled: true,
+    maxStorageMb: 500,
+    transcriptionMinutesPerMonth: 300, // 5 hrs; BYO-key for more
+    maxCollaborators: 0,
+    repositoryEnabled: true,
+    integrationsEnabled: false,
+  },
   pro: {
     maxCanvases: Infinity,
     maxTranscriptsPerCanvas: Infinity,
@@ -78,7 +117,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: 1000,
     fileUploadEnabled: true,
     maxStorageMb: 500,
-    transcriptionMinutesPerMonth: 60,
+    transcriptionMinutesPerMonth: 600, // 10 hrs; BYO-key for unlimited
     maxCollaborators: 3,
     repositoryEnabled: true,
     integrationsEnabled: false,
