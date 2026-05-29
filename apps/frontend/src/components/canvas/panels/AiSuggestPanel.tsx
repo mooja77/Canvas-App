@@ -110,6 +110,12 @@ export default function AiSuggestPanel({
                     &ldquo;{suggestion.codedText.slice(0, 80)}
                     {suggestion.codedText.length > 80 ? '...' : ''}&rdquo;
                   </button>
+                  {suggestion.reasoning && (
+                    <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2">
+                      <span className="font-medium text-gray-400 dark:text-gray-500">Why: </span>
+                      {suggestion.reasoning}
+                    </p>
+                  )}
                   <div className="mt-0.5 flex items-center gap-1">
                     <div className="h-1 w-12 rounded-full bg-gray-100 dark:bg-gray-700">
                       <div

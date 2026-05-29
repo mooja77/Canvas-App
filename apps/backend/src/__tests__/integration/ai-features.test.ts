@@ -282,6 +282,10 @@ describe('AI features integration tests', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data).toHaveLength(2);
     expect(res.body.data[0].confidence).toBe(0.92);
+    // The model's rationale is persisted (shown in the review panel as "Why").
+    expect(mockPrisma.aiSuggestion.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ reasoning: 'Direct mention of resilience' }) }),
+    );
   });
 
   // ─── 2. POST /canvas/:id/ai/suggest-codes — LLM provider failure returns 500 ───

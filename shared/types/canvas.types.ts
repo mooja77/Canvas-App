@@ -96,10 +96,19 @@ export interface CanvasRelation {
 // ─── Computed Nodes ───
 
 export type ComputedNodeType =
-  | 'search' | 'cooccurrence' | 'matrix'
-  | 'stats' | 'comparison' | 'wordcloud' | 'cluster'
-  | 'codingquery' | 'sentiment' | 'treemap'
-  | 'documentportrait' | 'timeline' | 'geomap';
+  | 'search'
+  | 'cooccurrence'
+  | 'matrix'
+  | 'stats'
+  | 'comparison'
+  | 'wordcloud'
+  | 'cluster'
+  | 'codingquery'
+  | 'sentiment'
+  | 'treemap'
+  | 'documentportrait'
+  | 'timeline'
+  | 'geomap';
 
 export interface CanvasComputedNode {
   id: string;
@@ -113,13 +122,36 @@ export interface CanvasComputedNode {
 }
 
 // Type-specific configs
-export interface SearchConfig { pattern: string; mode: 'keyword' | 'regex'; transcriptIds?: string[]; }
-export interface CooccurrenceConfig { questionIds: string[]; minOverlap?: number; }
-export interface MatrixConfig { questionIds?: string[]; caseIds?: string[]; }
-export interface StatsConfig { groupBy: 'question' | 'transcript'; questionIds?: string[]; }
-export interface ComparisonConfig { transcriptIds: string[]; questionIds?: string[]; }
-export interface WordCloudConfig { questionId?: string; maxWords?: number; stopWords?: string[]; }
-export interface ClusterConfig { k: number; questionIds?: string[]; }
+export interface SearchConfig {
+  pattern: string;
+  mode: 'keyword' | 'regex';
+  transcriptIds?: string[];
+}
+export interface CooccurrenceConfig {
+  questionIds: string[];
+  minOverlap?: number;
+}
+export interface MatrixConfig {
+  questionIds?: string[];
+  caseIds?: string[];
+}
+export interface StatsConfig {
+  groupBy: 'question' | 'transcript';
+  questionIds?: string[];
+}
+export interface ComparisonConfig {
+  transcriptIds: string[];
+  questionIds?: string[];
+}
+export interface WordCloudConfig {
+  questionId?: string;
+  maxWords?: number;
+  stopWords?: string[];
+}
+export interface ClusterConfig {
+  k: number;
+  questionIds?: string[];
+}
 
 // Type-specific results
 export interface SearchResult {
@@ -135,7 +167,7 @@ export interface SearchResult {
 export interface CooccurrenceResult {
   pairs: {
     questionIds: string[];
-    segments: { transcriptId: string; text: string; startOffset: number; endOffset: number; }[];
+    segments: { transcriptId: string; text: string; startOffset: number; endOffset: number }[];
     count: number;
   }[];
 }
@@ -144,12 +176,12 @@ export interface MatrixResult {
   rows: {
     caseId: string;
     caseName: string;
-    cells: { questionId: string; excerpts: string[]; count: number; }[];
+    cells: { questionId: string; excerpts: string[]; count: number }[];
   }[];
 }
 
 export interface StatsResult {
-  items: { id: string; label: string; count: number; percentage: number; coverage: number; }[];
+  items: { id: string; label: string; count: number; percentage: number; coverage: number }[];
   total: number;
 }
 
@@ -157,19 +189,19 @@ export interface ComparisonResult {
   transcripts: {
     id: string;
     title: string;
-    profile: { questionId: string; count: number; coverage: number; }[];
+    profile: { questionId: string; count: number; coverage: number }[];
   }[];
 }
 
 export interface WordCloudResult {
-  words: { text: string; count: number; }[];
+  words: { text: string; count: number }[];
 }
 
 export interface ClusterResult {
   clusters: {
     id: number;
     label: string;
-    segments: { codingId: string; text: string; }[];
+    segments: { codingId: string; text: string }[];
     keywords: string[];
   }[];
 }
@@ -215,6 +247,7 @@ export interface AiSuggestion {
   endOffset: number;
   codedText: string;
   confidence: number;
+  reasoning?: string | null;
   status: 'pending' | 'accepted' | 'rejected';
   createdAt: string;
 }
