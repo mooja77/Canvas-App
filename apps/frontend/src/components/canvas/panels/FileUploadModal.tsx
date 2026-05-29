@@ -1,12 +1,13 @@
 import { useState, useRef, useCallback } from 'react';
 import { useCanvasStore } from '../../../stores/canvasStore';
-import { parseTranscriptFile, isSupportedTranscriptFile, type ParsedEntry } from '../../../utils/transcriptFiles';
+import {
+  parseTranscriptFile,
+  isSupportedTranscriptFile,
+  getExt,
+  type ParsedEntry,
+} from '../../../utils/transcriptFiles';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
-
-interface Props {
-  onClose: () => void;
-}
 
 function readFileText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -15,6 +16,23 @@ function readFileText(file: File): Promise<string> {
     reader.onerror = () => reject(new Error('read failed'));
     reader.readAsText(file);
   });
+}
+
+// .docx is a binary (zipped XML) format, so we read it as an ArrayBuffer and
+// extract plain text with mammoth. mammoth is lazy-imported so it only loads
+// the (sizeable) parser when a researcher actually uploads a Word doc.
+async function extractFileText(file: File): Promise<string> {
+  if (getExt(file.name) === 'docx') {
+    const mammoth = (await import('mammoth')).default;
+    const arrayBuffer = await file.arrayBuffer();
+    const { value } = await mammoth.extractRawText({ arrayBuffer });
+    return value;
+  }
+  return readFileText(file);
+}
+
+interface Props {
+  onClose: () => void;
 }
 
 export default function FileUploadModal({ onClose }: Props) {
@@ -39,7 +57,7 @@ export default function FileUploadModal({ onClose }: Props) {
     }
     if (rejected > 0) toast(`Skipped ${rejected} unsupported file${rejected > 1 ? 's' : ''}`);
 
-    Promise.all(supported.map((f) => readFileText(f).then((text) => ({ name: f.name, text }))))
+    Promise.all(supported.map((f) => extractFileText(f).then((text) => ({ name: f.name, text }))))
       .then((read) => {
         const collected: ParsedEntry[] = [];
         const names: string[] = [];
@@ -114,9 +132,9 @@ export default function FileUploadModal({ onClose }: Props) {
             Upload File
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Import transcripts from .txt, .csv, or subtitle files (.vtt / .srt from Zoom, Otter, Teams) — select or drop
-            multiple at once to import a whole folder of interviews. CSV files should have title in column 1 and content
-            in column 2.
+            Import transcripts from Word (.docx), .txt, .csv, or subtitle files (.vtt / .srt from Zoom, Otter, Teams) —
+            select or drop multiple at once to import a whole folder of interviews. CSV files should have title in
+            column 1 and content in column 2.
           </p>
         </div>
 
@@ -155,11 +173,13 @@ export default function FileUploadModal({ onClose }: Props) {
               >
                 Browse files
               </button>
-              <p className="mt-2 text-xs text-gray-400">Supports .txt, .csv, .vtt, .srt — select multiple at once</p>
+              <p className="mt-2 text-xs text-gray-400">
+                Supports .docx, .txt, .csv, .vtt, .srt — select multiple at once
+              </p>
               <input
                 ref={inputRef}
                 type="file"
-                accept=".txt,.csv,.vtt,.srt"
+                accept=".docx,.txt,.csv,.vtt,.srt"
                 multiple
                 onChange={handleFileSelect}
                 className="hidden"
