@@ -52,7 +52,7 @@ export default function FileUploadModal({ onClose }: Props) {
     const supported = files.filter((f) => isSupportedTranscriptFile(f.name));
     const rejected = files.length - supported.length;
     if (supported.length === 0) {
-      toast.error('Supported formats: .txt, .csv, .vtt, .srt');
+      toast.error('Supported formats: .docx, .txt, .csv, .vtt, .srt');
       return;
     }
     if (rejected > 0) toast(`Skipped ${rejected} unsupported file${rejected > 1 ? 's' : ''}`);
