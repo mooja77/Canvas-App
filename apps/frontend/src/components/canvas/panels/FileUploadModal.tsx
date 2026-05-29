@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useCanvasStore } from '../../../stores/canvasStore';
 import { parseCsvRecords } from '../../../utils/csv';
+import { parseSubtitles, isSubtitleExt } from '../../../utils/subtitles';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
 
@@ -28,7 +29,7 @@ export default function FileUploadModal({ onClose }: Props) {
   const { addTranscript, refreshCanvas } = useCanvasStore();
   const [entries, setEntries] = useState<ParsedEntry[]>([]);
   const [fileName, setFileName] = useState('');
-  const [fileType, setFileType] = useState<'txt' | 'csv' | null>(null);
+  const [fileType, setFileType] = useState<'txt' | 'csv' | 'vtt' | 'srt' | null>(null);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -36,13 +37,13 @@ export default function FileUploadModal({ onClose }: Props) {
 
   const processFile = useCallback((file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase();
-    if (ext !== 'txt' && ext !== 'csv') {
-      toast.error('Only .txt and .csv files are supported');
+    if (ext !== 'txt' && ext !== 'csv' && !isSubtitleExt(ext)) {
+      toast.error('Supported formats: .txt, .csv, .vtt, .srt');
       return;
     }
 
     setFileName(file.name);
-    setFileType(ext as 'txt' | 'csv');
+    setFileType(ext as 'txt' | 'csv' | 'vtt' | 'srt');
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -52,16 +53,26 @@ export default function FileUploadModal({ onClose }: Props) {
         return;
       }
 
-      if (ext === 'txt') {
-        const title = file.name.replace(/\.txt$/i, '');
-        setEntries([{ title, content: text.trim() }]);
-      } else {
+      if (ext === 'csv') {
         const parsed = parseCsv(text);
         if (parsed.length === 0) {
           toast.error('No valid entries found in CSV');
           return;
         }
         setEntries(parsed);
+      } else if (isSubtitleExt(ext)) {
+        // Zoom / Otter / Teams / YouTube caption export → clean transcript.
+        const content = parseSubtitles(text);
+        if (!content) {
+          toast.error('No caption text found in the subtitle file');
+          return;
+        }
+        const title = file.name.replace(/\.(vtt|srt)$/i, '');
+        setEntries([{ title, content }]);
+      } else {
+        // .txt
+        const title = file.name.replace(/\.txt$/i, '');
+        setEntries([{ title, content: text.trim() }]);
       }
     };
     reader.readAsText(file);
@@ -119,7 +130,8 @@ export default function FileUploadModal({ onClose }: Props) {
             Upload File
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Import transcripts from .txt or .csv files. CSV files should have title in column 1 and content in column 2.
+            Import transcripts from .txt, .csv, or subtitle files (.vtt / .srt from Zoom, Otter, Teams). CSV files
+            should have title in column 1 and content in column 2.
           </p>
         </div>
 
@@ -158,8 +170,14 @@ export default function FileUploadModal({ onClose }: Props) {
               >
                 Browse files
               </button>
-              <p className="mt-2 text-xs text-gray-400">Supports .txt and .csv</p>
-              <input ref={inputRef} type="file" accept=".txt,.csv" onChange={handleFileSelect} className="hidden" />
+              <p className="mt-2 text-xs text-gray-400">Supports .txt, .csv, .vtt, .srt</p>
+              <input
+                ref={inputRef}
+                type="file"
+                accept=".txt,.csv,.vtt,.srt"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
             </div>
           ) : (
             <div>
