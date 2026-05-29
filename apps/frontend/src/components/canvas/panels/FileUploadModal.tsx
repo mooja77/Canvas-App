@@ -1,26 +1,19 @@
 import { useState, useRef, useCallback } from 'react';
 import { useCanvasStore } from '../../../stores/canvasStore';
-import { parseCsvRecords } from '../../../utils/csv';
-import { parseSubtitles, isSubtitleExt } from '../../../utils/subtitles';
+import { parseTranscriptFile, isSupportedTranscriptFile, type ParsedEntry } from '../../../utils/transcriptFiles';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
-
-interface ParsedEntry {
-  title: string;
-  content: string;
-}
 
 interface Props {
   onClose: () => void;
 }
 
-function parseCsv(text: string): ParsedEntry[] {
-  return parseCsvRecords(text).map((fields, i) => {
-    if (fields.length < 2 || !fields[1]) {
-      return { title: `Row ${i + 1}`, content: fields[0] || '' };
-    }
-    const title = fields[0] || `Row ${i + 1}`;
-    return { title, content: fields[1] };
+function readFileText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve((e.target?.result as string) ?? '');
+    reader.onerror = () => reject(new Error('read failed'));
+    reader.readAsText(file);
   });
 }
 
@@ -28,69 +21,60 @@ export default function FileUploadModal({ onClose }: Props) {
   useEscapeToClose(onClose);
   const { addTranscript, refreshCanvas } = useCanvasStore();
   const [entries, setEntries] = useState<ParsedEntry[]>([]);
-  const [fileName, setFileName] = useState('');
-  const [fileType, setFileType] = useState<'txt' | 'csv' | 'vtt' | 'srt' | null>(null);
+  const [fileNames, setFileNames] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const processFile = useCallback((file: File) => {
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    if (ext !== 'txt' && ext !== 'csv' && !isSubtitleExt(ext)) {
+  // Accept one or many files at once (drop a whole folder of interviews). Each
+  // supported file is read + parsed into one or more transcript entries; the
+  // results are pooled into a single review list before import.
+  const processFiles = useCallback((files: File[]) => {
+    const supported = files.filter((f) => isSupportedTranscriptFile(f.name));
+    const rejected = files.length - supported.length;
+    if (supported.length === 0) {
       toast.error('Supported formats: .txt, .csv, .vtt, .srt');
       return;
     }
+    if (rejected > 0) toast(`Skipped ${rejected} unsupported file${rejected > 1 ? 's' : ''}`);
 
-    setFileName(file.name);
-    setFileType(ext as 'txt' | 'csv' | 'vtt' | 'srt');
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      if (!text?.trim()) {
-        toast.error('File is empty');
-        return;
-      }
-
-      if (ext === 'csv') {
-        const parsed = parseCsv(text);
-        if (parsed.length === 0) {
-          toast.error('No valid entries found in CSV');
+    Promise.all(supported.map((f) => readFileText(f).then((text) => ({ name: f.name, text }))))
+      .then((read) => {
+        const collected: ParsedEntry[] = [];
+        const names: string[] = [];
+        let emptyCount = 0;
+        for (const { name, text } of read) {
+          const parsed = parseTranscriptFile(name, text);
+          if (parsed.length === 0) {
+            emptyCount++;
+            continue;
+          }
+          collected.push(...parsed);
+          names.push(name);
+        }
+        if (collected.length === 0) {
+          toast.error('No transcript content found in the selected file(s)');
           return;
         }
-        setEntries(parsed);
-      } else if (isSubtitleExt(ext)) {
-        // Zoom / Otter / Teams / YouTube caption export → clean transcript.
-        const content = parseSubtitles(text);
-        if (!content) {
-          toast.error('No caption text found in the subtitle file');
-          return;
-        }
-        const title = file.name.replace(/\.(vtt|srt)$/i, '');
-        setEntries([{ title, content }]);
-      } else {
-        // .txt
-        const title = file.name.replace(/\.txt$/i, '');
-        setEntries([{ title, content: text.trim() }]);
-      }
-    };
-    reader.readAsText(file);
+        if (emptyCount > 0) toast(`Skipped ${emptyCount} empty file${emptyCount > 1 ? 's' : ''}`);
+        setEntries(collected);
+        setFileNames(names);
+      })
+      .catch(() => toast.error('Failed to read one or more files'));
   }, []);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file) processFile(file);
+      processFiles(Array.from(e.dataTransfer.files));
     },
-    [processFile],
+    [processFiles],
   );
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
+    processFiles(Array.from(e.target.files ?? []));
   };
 
   const handleImport = async () => {
@@ -130,8 +114,9 @@ export default function FileUploadModal({ onClose }: Props) {
             Upload File
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Import transcripts from .txt, .csv, or subtitle files (.vtt / .srt from Zoom, Otter, Teams). CSV files
-            should have title in column 1 and content in column 2.
+            Import transcripts from .txt, .csv, or subtitle files (.vtt / .srt from Zoom, Otter, Teams) — select or drop
+            multiple at once to import a whole folder of interviews. CSV files should have title in column 1 and content
+            in column 2.
           </p>
         </div>
 
@@ -163,18 +148,19 @@ export default function FileUploadModal({ onClose }: Props) {
                   d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
                 />
               </svg>
-              <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Drag and drop a file here, or</p>
+              <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Drag and drop files here, or</p>
               <button
                 onClick={() => inputRef.current?.click()}
                 className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
               >
                 Browse files
               </button>
-              <p className="mt-2 text-xs text-gray-400">Supports .txt, .csv, .vtt, .srt</p>
+              <p className="mt-2 text-xs text-gray-400">Supports .txt, .csv, .vtt, .srt — select multiple at once</p>
               <input
                 ref={inputRef}
                 type="file"
                 accept=".txt,.csv,.vtt,.srt"
+                multiple
                 onChange={handleFileSelect}
                 className="hidden"
               />
@@ -182,21 +168,19 @@ export default function FileUploadModal({ onClose }: Props) {
           ) : (
             <div>
               <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{fileName}</span>
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-                    {fileType?.toUpperCase()}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="truncate text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {fileNames.length === 1 ? fileNames[0] : `${fileNames.length} files`}
                   </span>
                 </div>
                 <button
                   onClick={() => {
                     setEntries([]);
-                    setFileName('');
-                    setFileType(null);
+                    setFileNames([]);
                   }}
-                  className="text-xs text-gray-400 hover:text-gray-600"
+                  className="shrink-0 text-xs text-gray-400 hover:text-gray-600"
                 >
-                  Choose different file
+                  Clear
                 </button>
               </div>
 
