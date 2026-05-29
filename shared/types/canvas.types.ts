@@ -5,6 +5,7 @@ export interface CodingCanvas {
   dashboardAccessId: string;
   name: string;
   description?: string;
+  researchParadigm?: string | null;
   deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;

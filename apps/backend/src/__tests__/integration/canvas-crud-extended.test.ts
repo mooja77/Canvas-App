@@ -201,6 +201,23 @@ describe('Canvas CRUD extended tests', () => {
     expect(res.body.data.description).toBe('New description');
   });
 
+  it('PUT /canvas/:canvasId persists researchParadigm (Methodology wizard)', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.codingCanvas.update.mockResolvedValue({ ...mockCanvas, researchParadigm: 'reflexive-ta' });
+
+    const res = await request(app)
+      .put(`/api/canvas/${canvasId}`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ researchParadigm: 'reflexive-ta' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.researchParadigm).toBe('reflexive-ta');
+    // The field survives validation and reaches the update payload.
+    expect(mockPrisma.codingCanvas.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ researchParadigm: 'reflexive-ta' }) }),
+    );
+  });
+
   it('PUT /canvas/:canvasId updates both name and description', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
     mockPrisma.codingCanvas.update.mockResolvedValue({
