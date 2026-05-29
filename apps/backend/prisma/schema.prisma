@@ -147,6 +147,9 @@ model CodingCanvas {
   ethicsApprovalId  String?
   ethicsStatus      String               @default("pending")
   dataRetentionDate DateTime?
+  // Chosen qualitative paradigm (from the Methodology wizard), e.g.
+  // "reflexive-ta". Tailors guidance + feeds the methods-statement/disclosure.
+  researchParadigm  String?
   deletedAt         DateTime?
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt

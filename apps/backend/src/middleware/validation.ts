@@ -75,6 +75,8 @@ export const createCanvasSchema = z.object({
 export const updateCanvasSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   description: z.string().max(1000).optional(),
+  // Methodology-wizard paradigm key (e.g. "reflexive-ta"); nullable to clear.
+  researchParadigm: z.string().max(64).nullable().optional(),
 });
 
 export const createTranscriptSchema = z.object({
