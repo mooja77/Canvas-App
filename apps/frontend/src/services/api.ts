@@ -103,7 +103,8 @@ export const canvasApi = {
 
   getCanvas: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}`),
 
-  updateCanvas: (canvasId: string, data: Partial<CreateCanvasInput>) => canvasClient.put(`/canvas/${canvasId}`, data),
+  updateCanvas: (canvasId: string, data: Partial<CreateCanvasInput> & { researchParadigm?: string | null }) =>
+    canvasClient.put(`/canvas/${canvasId}`, data),
 
   deleteCanvas: (canvasId: string) => canvasClient.delete(`/canvas/${canvasId}`),
 

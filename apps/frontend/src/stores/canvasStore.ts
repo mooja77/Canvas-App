@@ -61,6 +61,7 @@ interface CanvasState {
   // Actions
   fetchCanvases: () => Promise<void>;
   createCanvas: (name: string, description?: string) => Promise<CodingCanvas>;
+  setResearchParadigm: (paradigm: string | null) => Promise<void>;
   deleteCanvas: (id: string) => Promise<void>;
   openCanvas: (id: string) => Promise<void>;
   closeCanvas: () => void;
@@ -190,6 +191,16 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
       const canvas = res.data.data;
       set((s) => ({ canvases: [canvas, ...s.canvases] }));
       return canvas;
+    },
+
+    setResearchParadigm: async (paradigm) => {
+      const { activeCanvasId } = get();
+      if (!activeCanvasId) return;
+      await canvasApi.updateCanvas(activeCanvasId, { researchParadigm: paradigm });
+      set((s) => ({
+        activeCanvas: s.activeCanvas ? { ...s.activeCanvas, researchParadigm: paradigm } : s.activeCanvas,
+        canvases: s.canvases.map((c) => (c.id === activeCanvasId ? { ...c, researchParadigm: paradigm } : c)),
+      }));
     },
 
     deleteCanvas: async (id) => {
