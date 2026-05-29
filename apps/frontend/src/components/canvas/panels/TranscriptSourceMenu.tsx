@@ -41,7 +41,7 @@ const SOURCE_OPTIONS = [
   {
     key: 'file',
     label: 'Upload File',
-    description: 'Import .txt or .csv files',
+    description: 'Import .txt, .csv, or .vtt/.srt captions',
     icon: (
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
         <path
