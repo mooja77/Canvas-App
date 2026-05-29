@@ -148,6 +148,12 @@ describe('Template + onboarding routes', () => {
     expect(res.body.data.id).toBe(newCanvasId);
     expect(mockPrisma.canvasQuestion.create).toHaveBeenCalledTimes(2);
     expect(mockPrisma.canvasTranscript.create).toHaveBeenCalledTimes(1);
+    // The starter template pre-aligns the canvas's research paradigm so the
+    // Methodology wizard + methods-statement know the approach (UXR Pain-Points
+    // → reflexive thematic analysis).
+    expect(mockPrisma.codingCanvas.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ researchParadigm: 'reflexive-ta' }) }),
+    );
   });
 
   it('POST /canvas/templates/:id/instantiate skips sample transcript when includeSampleData=false', async () => {

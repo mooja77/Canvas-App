@@ -29,6 +29,18 @@ templateRoutes.get('/canvas/templates', async (req, res, next) => {
   }
 });
 
+// Map seeded starter templates to the qualitative paradigm they exemplify, so
+// instantiating one pre-aligns the Methodology wizard + methods-statement.
+// Keyed by template name (stable for the seeded set); unmapped templates leave
+// the paradigm unset. Paradigm keys match apps/frontend/src/data/methodologyParadigms.ts.
+const TEMPLATE_PARADIGM: Record<string, string> = {
+  'Thematic Analysis (Braun & Clarke)': 'reflexive-ta',
+  'Grounded Theory': 'grounded-theory',
+  'UXR Pain-Points': 'reflexive-ta',
+  'Support-Ticket Mining': 'content-analysis',
+  'NPS Theme Extraction': 'content-analysis',
+};
+
 // POST /canvas/templates/:templateId/instantiate — create a canvas from a template
 // Mirrors POST /canvas but seeds transcript / codes / memos in one transaction.
 templateRoutes.post('/canvas/templates/:templateId/instantiate', checkCanvasLimit(), async (req, res, next) => {
@@ -63,6 +75,7 @@ templateRoutes.post('/canvas/templates/:templateId/instantiate', checkCanvasLimi
           name,
           description,
           ...(userId ? { userId } : {}),
+          ...(TEMPLATE_PARADIGM[template.name] ? { researchParadigm: TEMPLATE_PARADIGM[template.name] } : {}),
         },
       });
 
