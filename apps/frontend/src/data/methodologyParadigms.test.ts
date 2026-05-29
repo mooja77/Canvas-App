@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { METHODOLOGY_PARADIGMS, getParadigm } from './methodologyParadigms';
+import { METHODOLOGY_PARADIGMS, getParadigm, getIcrStance } from './methodologyParadigms';
 
 describe('METHODOLOGY_PARADIGMS', () => {
   it('covers the main qualitative paradigms', () => {
@@ -41,5 +41,21 @@ describe('METHODOLOGY_PARADIGMS', () => {
   it('getParadigm resolves by key and returns undefined for unknown', () => {
     expect(getParadigm('ipa')?.name).toContain('IPA');
     expect(getParadigm('nope')).toBeUndefined();
+  });
+
+  it('getIcrStance flags interpretivist paradigms as inappropriate for ICR', () => {
+    expect(getIcrStance('reflexive-ta')).toBe('inappropriate');
+    expect(getIcrStance('ipa')).toBe('inappropriate');
+    expect(getIcrStance('phenomenology')).toBe('inappropriate');
+    expect(getIcrStance('content-analysis')).toBe('expected');
+    expect(getIcrStance('grounded-theory')).toBe('optional');
+    expect(getIcrStance(null)).toBeNull();
+    expect(getIcrStance('unknown')).toBeNull();
+  });
+
+  it('every paradigm has a defined ICR stance', () => {
+    for (const p of METHODOLOGY_PARADIGMS) {
+      expect(['inappropriate', 'optional', 'expected']).toContain(getIcrStance(p.key));
+    }
   });
 });

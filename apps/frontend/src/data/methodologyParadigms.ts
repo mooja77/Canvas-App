@@ -332,3 +332,25 @@ export const METHODOLOGY_PARADIGMS: MethodologyParadigm[] = [
 export function getParadigm(key: string): MethodologyParadigm | undefined {
   return METHODOLOGY_PARADIGMS.find((p) => p.key === key);
 }
+
+// Whether intercoder-reliability metrics are conventionally appropriate for a
+// paradigm. Interpretivist approaches (reflexive TA, IPA, phenomenology,
+// discourse/narrative) treat coder divergence as legitimate interpretation,
+// not error, so ICR is "inappropriate". Deductive content analysis "expects"
+// it; the rest are "optional". Used to surface guidance on the ICR panel.
+export type IcrStance = 'inappropriate' | 'optional' | 'expected';
+
+const ICR_STANCE: Record<string, IcrStance> = {
+  'reflexive-ta': 'inappropriate',
+  'grounded-theory': 'optional',
+  framework: 'optional',
+  ipa: 'inappropriate',
+  'content-analysis': 'expected',
+  'discourse-narrative': 'inappropriate',
+  phenomenology: 'inappropriate',
+  'mixed-methods': 'optional',
+};
+
+export function getIcrStance(key: string | null | undefined): IcrStance | null {
+  return key ? (ICR_STANCE[key] ?? null) : null;
+}

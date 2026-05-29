@@ -3,6 +3,7 @@ import { useActiveCanvas } from '../../../stores/canvasStore';
 import { canvasApi } from '../../../services/api';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { getParadigm, getIcrStance } from '../../../data/methodologyParadigms';
 
 interface IntercoderPanelProps {
   onClose: () => void;
@@ -35,6 +36,12 @@ function interpretKappa(k: number): { label: string; color: string } {
 export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
+  // Surface methodological guidance: ICR is inappropriate for interpretivist
+  // paradigms (reflexive TA, IPA, …) where coder divergence is interpretation,
+  // not error. Read from the canvas's chosen paradigm (Methodology wizard).
+  const paradigmKey = activeCanvas?.researchParadigm ?? null;
+  const paradigm = paradigmKey ? getParadigm(paradigmKey) : undefined;
+  const icrStance = getIcrStance(paradigmKey);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedTranscriptId, setSelectedTranscriptId] = useState('');
   const [result, setResult] = useState<IntercoderResult | null>(null);
@@ -131,6 +138,19 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
             </svg>
           </button>
         </div>
+
+        {/* Methodology guidance — ICR appropriateness depends on the paradigm. */}
+        {paradigm && icrStance === 'inappropriate' && (
+          <div className="mx-5 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-300">
+            <span className="font-semibold">Heads up — {paradigm.name}:</span> {paradigm.icrNote} You can still run a
+            comparison below if you have a specific reason, but it isn&rsquo;t expected for this approach.
+          </div>
+        )}
+        {paradigm && icrStance === 'expected' && (
+          <div className="mx-5 mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-900/20 dark:text-emerald-300">
+            <span className="font-semibold">{paradigm.name}:</span> {paradigm.icrNote}
+          </div>
+        )}
 
         {/* Config */}
         <div className="border-b border-gray-100 dark:border-gray-700/50 px-5 py-3 space-y-3">
