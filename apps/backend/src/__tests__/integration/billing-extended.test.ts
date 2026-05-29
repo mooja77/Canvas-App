@@ -694,6 +694,33 @@ describe('Stripe Billing – Extended Tests', () => {
       expect(createCall.discounts).toBeUndefined();
       delete process.env.STRIPE_ACADEMIC_COUPON_ID;
     });
+
+    it('does not stack the academic coupon on the Student plan (.edu)', async () => {
+      // Student is already academically priced ($5); the 40% .edu coupon must
+      // not stack on top of it (would drop to ~$3). Coupon is Pro/Team only.
+      process.env.STRIPE_ACADEMIC_COUPON_ID = 'coupon_academic';
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: userId,
+        email: 'student@university.edu',
+        name: 'Student',
+        role: 'researcher',
+        plan: 'free',
+        stripeCustomerId: 'cus_student_1',
+      });
+      mockStripe.checkout.sessions.create.mockResolvedValue({
+        url: 'https://checkout.stripe.com/session/student',
+      });
+
+      await request(app)
+        .post('/api/billing/create-checkout')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ priceId: 'price_student_monthly', plan: 'student' });
+
+      const createCall = mockStripe.checkout.sessions.create.mock.calls[0][0];
+      expect(createCall.discounts).toBeUndefined();
+      expect(createCall.metadata).toEqual(expect.objectContaining({ plan: 'student' }));
+      delete process.env.STRIPE_ACADEMIC_COUPON_ID;
+    });
   });
 
   describe('POST /api/billing/create-portal', () => {
