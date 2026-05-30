@@ -24,6 +24,7 @@ const ProjectDashboard = lazy(() => import('./ProjectDashboard'));
 const EthicsCompliancePanel = lazy(() => import('./EthicsCompliancePanel'));
 const IntercoderReliabilityModal = lazy(() => import('./IntercoderReliabilityModal'));
 const IntercoderPanel = lazy(() => import('./IntercoderPanel'));
+const AgreementModal = lazy(() => import('./AgreementModal'));
 const CodeWeightingPanel = lazy(() => import('./CodeWeightingPanel'));
 const CrossCaseAnalysisModal = lazy(() => import('./CrossCaseAnalysisModal'));
 const ResearchAssistantPanel = lazy(() => import('./ResearchAssistantPanel'));
@@ -176,6 +177,7 @@ export default function CanvasToolbar({
   const [showEthics, setShowEthics] = useState(false);
   const [showIntercoder, setShowIntercoder] = useState(false);
   const [showIntercoderPanel, setShowIntercoderPanel] = useState(false);
+  const [showAgreement, setShowAgreement] = useState(false);
   const [showWeighting, setShowWeighting] = useState(false);
   const [showCrossCase, setShowCrossCase] = useState(false);
   const [showResearchAssistant, setShowResearchAssistant] = useState(false);
@@ -677,6 +679,29 @@ export default function CanvasToolbar({
                 }
                 label="Kappa (Intercoder)"
                 onClick={() => setShowIntercoderPanel(true)}
+              />
+              <DropdownItem
+                icon={
+                  <svg
+                    className="h-4 w-4 text-gray-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                    />
+                  </svg>
+                }
+                label="AI agreement (vs you)"
+                onClick={() =>
+                  requireAiConfig
+                    ? requireAiConfig('AI agreement', () => setShowAgreement(true))
+                    : setShowAgreement(true)
+                }
               />
               <DropdownItem
                 icon={
@@ -1244,6 +1269,7 @@ export default function CanvasToolbar({
         {showEthics && <EthicsCompliancePanel onClose={() => setShowEthics(false)} />}
         {showIntercoder && <IntercoderReliabilityModal onClose={() => setShowIntercoder(false)} />}
         {showIntercoderPanel && <IntercoderPanel onClose={() => setShowIntercoderPanel(false)} />}
+        {showAgreement && <AgreementModal onClose={() => setShowAgreement(false)} />}
         {showWeighting && <CodeWeightingPanel onClose={() => setShowWeighting(false)} />}
         {showCrossCase && <CrossCaseAnalysisModal onClose={() => setShowCrossCase(false)} />}
         {showResearchAssistant && <ResearchAssistantPanel onClose={() => setShowResearchAssistant(false)} />}
