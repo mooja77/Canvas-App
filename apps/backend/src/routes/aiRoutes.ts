@@ -19,6 +19,7 @@ import { resolveAiConfig } from '../middleware/aiConfig.js';
 import { calculateCostCents } from '../utils/aiCost.js';
 import { aiCacheGet, aiCacheSet, aiCacheKey } from '../utils/aiCache.js';
 import { findCoding } from '../utils/findCoding.js';
+import { computeAiAgreement } from '../eval/aiAgreement.js';
 
 export const aiRoutes = Router();
 
@@ -498,6 +499,74 @@ aiRoutes.get('/canvas/:id/ai/disclosure', async (req: Request, res: Response, ne
         suggestions: { total: totalSuggestions, accepted, rejected, pending, acceptanceRate },
         models,
         markdown,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /canvas/:id/ai/agreement ───
+// "AI vs me" trust metric: treats the AI as a second coder and scores its
+// suggestions against this canvas's coded set (span-IoU matching, same as the
+// eval harness), plus a confidence-calibration breakdown. Lets a researcher
+// see, on their OWN data, how well the AI agrees with them — the in-product
+// counterpart to the offline eval harness.
+aiRoutes.get('/canvas/:id/ai/agreement', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    const userId = getAuthUserId(req);
+    const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+
+    const [finalCodings, suggestions, questions] = await Promise.all([
+      prisma.canvasTextCoding.findMany({
+        where: { canvasId: canvas.id },
+        select: { questionId: true, startOffset: true, endOffset: true },
+      }),
+      prisma.aiSuggestion.findMany({
+        where: { canvasId: canvas.id },
+        select: { questionId: true, startOffset: true, endOffset: true, confidence: true },
+      }),
+      prisma.canvasQuestion.findMany({ where: { canvasId: canvas.id }, select: { id: true, text: true } }),
+    ]);
+
+    const result = computeAiAgreement(finalCodings, suggestions);
+
+    // Map per-code question ids back to their display names.
+    const nameById = new Map(questions.map((q) => [q.id, q.text]));
+    const perCode = result.agreement.perCode.map((c) => ({
+      questionId: c.code,
+      code: nameById.get(c.code) ?? c.code,
+      precision: c.precision,
+      recall: c.recall,
+      f1: c.f1,
+      tp: c.tp,
+      fp: c.fp,
+      fn: c.fn,
+    }));
+
+    // Not enough signal to be meaningful — tell the client rather than show a
+    // confident-looking 0%/100%.
+    const ready = result.goldCount > 0 && result.predictedCount > 0;
+
+    res.json({
+      success: true,
+      data: {
+        generatedAt: new Date().toISOString(),
+        ready,
+        basis:
+          'AI suggestions scored against this canvas’s final coded segments by code + span overlap (IoU ≥ 0.5). Precision = of the AI’s suggestions, how many match a coded segment; recall = of the coded segments, how many the AI also suggested.',
+        codedSegments: result.goldCount,
+        suggestions: result.predictedCount,
+        skippedSuggestions: result.skipped,
+        precision: result.agreement.precision,
+        recall: result.agreement.recall,
+        f1: result.agreement.f1,
+        tp: result.agreement.tp,
+        fp: result.agreement.fp,
+        fn: result.agreement.fn,
+        perCode,
+        calibration: result.calibration,
       },
     });
   } catch (err) {

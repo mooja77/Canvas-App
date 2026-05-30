@@ -251,6 +251,46 @@ export const canvasApi = {
   // ready-to-paste methods paragraph), computed from stored provenance.
   getAiDisclosure: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}/ai/disclosure`),
 
+  // "AI vs me" agreement: scores the AI's suggestions against this canvas's
+  // coded set (precision/recall/F1 + per-code + confidence calibration), so a
+  // researcher can see how well the AI agrees with them on their own data.
+  getAiAgreement: (canvasId: string) =>
+    canvasClient.get<{
+      success: boolean;
+      data: {
+        generatedAt: string;
+        ready: boolean;
+        basis: string;
+        codedSegments: number;
+        suggestions: number;
+        skippedSuggestions: number;
+        precision: number;
+        recall: number;
+        f1: number;
+        tp: number;
+        fp: number;
+        fn: number;
+        perCode: {
+          questionId: string;
+          code: string;
+          precision: number;
+          recall: number;
+          f1: number;
+          tp: number;
+          fp: number;
+          fn: number;
+        }[];
+        calibration: {
+          band: string;
+          min: number;
+          max: number;
+          count: number;
+          matched: number;
+          matchedRate: number | null;
+        }[];
+      };
+    }>(`/canvas/${canvasId}/ai/agreement`),
+
   // ─── Research Assistant ───
   embedCanvasData: (canvasId: string) => canvasClient.post(`/canvas/${canvasId}/ai/embed`),
 
