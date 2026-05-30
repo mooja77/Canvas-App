@@ -2,6 +2,13 @@ import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { getPlanLimits } from '../config/plans.js';
 import { resolveUserOpenAiKey, transcriptionMinutesUsedThisMonth } from '../utils/transcriptionMetering.js';
+import {
+  isHostedAiEnabled,
+  hostedDailyCeilingCents,
+  hostedUserMonthlyCapCents,
+  globalSpendTodayCents,
+  userSpendThisMonthCents,
+} from '../utils/hostedAiBudget.js';
 
 interface PlanLimitError {
   success: false;
@@ -326,6 +333,52 @@ export function checkTranscriptionMinutes() {
           : `Monthly transcription limit reached (${cap} min). Add your own OpenAI key for unlimited transcription, or upgrade your plan.`,
         'transcriptionMinutesPerMonth',
         used,
+        cap,
+      );
+    }
+    next();
+  };
+}
+
+/**
+ * Hosted-AI guardrails (see utils/hostedAiBudget.ts). A NO-OP unless hosted AI
+ * is enabled (server key present + HOSTED_AI_ENABLED=true) — so by default this
+ * changes nothing. When on, it bounds the platform's OpenAI spend before a
+ * hosted text-AI call runs:
+ *   - legacy users (no req.userId) skip (can't meter per-user);
+ *   - users on their own OpenAI key bypass (their cost, not ours);
+ *   - if the global daily ceiling is hit -> 503 "hosted AI paused" (retryable);
+ *   - if the user's monthly hosted spend hits the cap -> 403 with an upgrade /
+ *     bring-your-own-key hint.
+ */
+export function checkHostedAiBudget() {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!isHostedAiEnabled()) return next();
+
+    const userId = req.userId;
+    if (!userId) return next();
+
+    const ownKey = await resolveUserOpenAiKey(userId);
+    if (ownKey) return next();
+
+    if ((await globalSpendTodayCents()) >= hostedDailyCeilingCents()) {
+      return res.status(503).json({
+        success: false,
+        error:
+          'Hosted AI is paused for today (daily budget reached). Add your own OpenAI key in AI settings to keep going.',
+        code: 'HOSTED_AI_PAUSED',
+        retryable: true,
+      });
+    }
+
+    const userMonth = await userSpendThisMonthCents(userId);
+    const cap = hostedUserMonthlyCapCents();
+    if (userMonth >= cap) {
+      return limitResponse(
+        res,
+        'Monthly hosted-AI limit reached. Add your own OpenAI key for unlimited AI, or upgrade your plan.',
+        'hostedAiMonthlyCents',
+        userMonth,
         cap,
       );
     }

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
-import { checkAiAccess } from '../middleware/planLimits.js';
+import { checkAiAccess, checkHostedAiBudget } from '../middleware/planLimits.js';
 import { validate } from '../middleware/validation.js';
 import {
   suggestCodesSchema,
@@ -54,6 +54,7 @@ interface InlineSuggestion {
 aiRoutes.post(
   '/canvas/:id/ai/suggest-codes',
   checkAiAccess(),
+  checkHostedAiBudget(),
   resolveAiConfig(),
   validate(suggestCodesSchema),
   async (req: Request, res: Response, next: NextFunction) => {
@@ -162,6 +163,7 @@ aiRoutes.post(
 aiRoutes.post(
   '/canvas/:id/ai/auto-code-transcript',
   checkAiAccess(),
+  checkHostedAiBudget(),
   resolveAiConfig(),
   validate(autoCodeTranscriptSchema),
   async (req: Request, res: Response, next: NextFunction) => {
@@ -709,6 +711,7 @@ aiRoutes.post(
 aiRoutes.post(
   '/canvas/:id/ai/suggest-codes-inline',
   checkAiAccess(),
+  checkHostedAiBudget(),
   resolveAiConfig(),
   validate(suggestCodesSchema),
   async (req: Request, res: Response, next: NextFunction) => {
@@ -820,6 +823,7 @@ aiRoutes.post(
 aiRoutes.post(
   '/canvas/:id/ai/methods-statement',
   checkAiAccess(),
+  checkHostedAiBudget(),
   resolveAiConfig(),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
