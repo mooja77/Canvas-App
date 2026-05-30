@@ -16,7 +16,11 @@ import type {
 import { registerProvider, registerProviderFactory } from './llm.js';
 import { withLlmRetry } from './llm-retry.js';
 
-const DEFAULT_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
+// Default model when the caller doesn't specify one. AI is a paid-tier-only
+// feature (Free has aiEnabled: false), so this default only ever serves paying
+// users — use a capable model, not the cheapest. Set AI_MODEL to point at the
+// newest/best model as they ship (no code change). gpt-4o is the floor.
+const DEFAULT_MODEL = process.env.AI_MODEL || 'gpt-4o';
 const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small';
 
 /** Create an OpenAI LlmProvider with a specific client and default model */

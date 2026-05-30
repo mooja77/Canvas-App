@@ -27,7 +27,7 @@ So the missing pieces are **(a)** a server key, **(b)** cost guardrails beyond t
 
 ## Proposed design
 
-1. **Server key + model**: set `OPENAI_API_KEY` on Railway; default hosted model `gpt-4o-mini` (cheap, JSON-mode capable, good enough for coding suggestions — and the eval harness lets us verify/upgrade later). BYO key still takes precedence (and bypasses our cost).
+1. **Server key + model**: set `OPENAI_API_KEY` on Railway. **Model policy: use a capable model, not the cheapest — AI is a paid-tier-only feature, so this only ever serves paying users.** The code default is now `gpt-4o` (the floor); set `AI_MODEL` to point at the newest/best model as they ship, no code change. (A first eval pass found `gpt-4o` ≈ `gpt-4o-mini` on a tiny micro-fixture — the eval set must grow before it can actually rank models; the harness is the tool to pick/upgrade the model on evidence.) BYO key still takes precedence (and bypasses our cost).
 2. **Gate**: a `hosted_ai` plan entitlement (default on for Student/Pro/Team, off for Free) so hosted AI is a paid benefit; Free stays BYO-only or no-AI. Reuse `aiEnabled`.
 3. **Guardrails (the important part):**
    - Keep `aiRequestsPerDay` (already enforced). Consider lowering the initial hosted ceiling (e.g. 100/day) until real usage is observed.
@@ -47,7 +47,7 @@ So the missing pieces are **(a)** a server key, **(b)** cost guardrails beyond t
 
 1. **Go / no-go** on hosting AI at all (vs staying BYO-only).
 2. **Spend ceiling** — the global daily $ cap for the circuit-breaker, and the per-user monthly soft cap.
-3. **Model** — default `gpt-4o-mini`, or a stronger model (cost ↑, quality measurable via the eval harness).
+3. **Model** — default is now `gpt-4o` (capable, paid-only); set `AI_MODEL` to the newest model you want once the eval set is big enough to confirm it's worth the cost. (Standing rule: prefer newer/better models, billed only to paying users.)
 4. **Tiers** — include hosted AI in Student+Pro+Team (recommended, matches the pricing model), or only Pro+Team.
 
 ## Out of scope here
