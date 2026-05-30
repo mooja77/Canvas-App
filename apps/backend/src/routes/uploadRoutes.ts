@@ -5,7 +5,7 @@ import { randomBytes } from 'crypto';
 import path from 'path';
 import { prisma } from '../lib/prisma.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
-import { checkFileUploadAccess } from '../middleware/planLimits.js';
+import { checkFileUploadAccess, checkTranscriptionMinutes } from '../middleware/planLimits.js';
 import { validateParams, canvasIdParam, canvasIdJobIdParams } from '../middleware/validation.js';
 import { storage } from '../lib/storage.js';
 import '../lib/storage-local.js'; // register local fallback
@@ -13,7 +13,7 @@ import { createJob } from '../lib/jobs.js';
 import { registerJobHandler } from '../lib/jobs.js';
 import { transcribeAudio, getLocalUploadPath } from '../utils/transcription.js';
 import { isValidSignature } from '../utils/magicBytes.js';
-import { decryptApiKey } from '../utils/encryption.js';
+import { resolveUserOpenAiKey, TRANSCRIPTION_CENTS_PER_MINUTE } from '../utils/transcriptionMetering.js';
 
 export const uploadRoutes = Router();
 
@@ -162,6 +162,7 @@ uploadRoutes.post(
 uploadRoutes.post(
   '/canvas/:id/transcribe',
   validateParams(canvasIdParam),
+  checkTranscriptionMinutes(),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dashboardAccessId = getAuthId(req);
@@ -320,20 +321,11 @@ registerJobHandler('transcribe', async (job, updateProgress) => {
 
     // Whisper transcription is OpenAI-only. If the enqueuing user configured
     // an OpenAI key, transcribe on their key/quota; if they configured a
-    // different provider (Anthropic/Google), that key can't drive Whisper, so
-    // we fall back to the server key. Previously the user's key was ignored
-    // entirely, silently charging the server account or failing.
-    let openaiKey: string | undefined;
-    if (userId) {
-      const aiConfig = await prisma.userAiConfig.findUnique({ where: { userId } });
-      if (aiConfig && aiConfig.provider === 'openai') {
-        try {
-          openaiKey = decryptApiKey(aiConfig.apiKeyEncrypted, aiConfig.apiKeyIv, aiConfig.apiKeyTag);
-        } catch {
-          // Decryption failed — fall through to the server key.
-        }
-      }
-    }
+    // different provider (Anthropic/Google) or no key, fall back to the server
+    // key. resolveUserOpenAiKey is the same resolution the metering middleware
+    // uses, so "BYO bypasses the cap" and "BYO is billed to the user" stay in
+    // lockstep.
+    const openaiKey = await resolveUserOpenAiKey(userId);
     if (!openaiKey && !process.env.OPENAI_API_KEY) {
       throw new Error(
         'Transcription requires an OpenAI API key. Add one under your provider (OpenAI) in AI settings, or ask an admin to configure a server key.',
@@ -354,16 +346,21 @@ registerJobHandler('transcribe', async (job, updateProgress) => {
       },
     });
 
-    // Track AI usage
+    // Track AI usage. userId is recorded so the monthly transcription meter can
+    // attribute minutes per user. BYO-key transcriptions cost us nothing (the
+    // user is billed by OpenAI) and must not consume the metered pool, so they
+    // are recorded at cost 0; server-key minutes are billed at ~$0.006/min.
+    const usedOwnKey = Boolean(openaiKey);
     await prisma.aiUsage.create({
       data: {
+        userId,
         canvasId,
         feature: 'transcribe',
         provider: 'openai',
         model: 'whisper-1',
         inputTokens: 0,
         outputTokens: 0,
-        costCents: Math.ceil(result.duration / 60) * 0.6, // $0.006/min
+        costCents: usedOwnKey ? 0 : Math.ceil(result.duration / 60) * TRANSCRIPTION_CENTS_PER_MINUTE,
       },
     });
 

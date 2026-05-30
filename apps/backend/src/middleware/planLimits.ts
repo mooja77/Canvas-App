@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { getPlanLimits } from '../config/plans.js';
+import { resolveUserOpenAiKey, transcriptionMinutesUsedThisMonth } from '../utils/transcriptionMetering.js';
 
 interface PlanLimitError {
   success: false;
@@ -286,6 +287,48 @@ export function checkAiAccess() {
       }
     }
 
+    next();
+  };
+}
+
+/**
+ * Check the monthly audio-transcription allowance.
+ *
+ * Transcription is the one genuinely metered cost in the pricing model (Whisper
+ * ~$0.006/min). The allowance is per calendar month and per plan
+ * (`transcriptionMinutesPerMonth`). Three carve-outs, in order:
+ *   1. Legacy access-code users (no req.userId) can't be metered per-user via
+ *      AiUsage — skip, like checkAiAccess (closed grandfathered cohort).
+ *   2. Users with a working BYO OpenAI key pay OpenAI directly, so they bypass
+ *      the platform's metered pool entirely.
+ *   3. An Infinity cap (defensive; no current plan uses it) skips the check.
+ * Otherwise the user is blocked once this month's server-key minutes reach the
+ * cap. Free's cap is 0, so Free has no platform transcription unless they BYO.
+ */
+export function checkTranscriptionMinutes() {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.userId;
+    if (!userId) return next();
+
+    const ownKey = await resolveUserOpenAiKey(userId);
+    if (ownKey) return next();
+
+    const limits = getPlanLimits(getUserPlan(req));
+    const cap = limits.transcriptionMinutesPerMonth;
+    if (cap === Infinity) return next();
+
+    const used = await transcriptionMinutesUsedThisMonth(userId);
+    if (used >= cap) {
+      return limitResponse(
+        res,
+        cap === 0
+          ? 'Audio transcription is available on the Student, Pro, and Team plans — or add your own OpenAI key in AI settings.'
+          : `Monthly transcription limit reached (${cap} min). Add your own OpenAI key for unlimited transcription, or upgrade your plan.`,
+        'transcriptionMinutesPerMonth',
+        used,
+        cap,
+      );
+    }
     next();
   };
 }

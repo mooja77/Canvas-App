@@ -71,6 +71,7 @@ vi.mock('../../middleware/planLimits.js', () => ({
   checkRepositoryAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkIntegrationsAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkFileUploadAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  checkTranscriptionMinutes: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkExportFormat: () => (_req: Request, _res: Response, next: NextFunction) => next(),
 }));
 
