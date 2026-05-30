@@ -59,3 +59,6 @@ logs/
 node_modules/
 e2e/.auth/
 test-results/
+
+# AI eval harness run reports (generated)
+eval-reports/
