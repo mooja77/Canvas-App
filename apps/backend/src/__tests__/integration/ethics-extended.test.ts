@@ -73,6 +73,7 @@ vi.mock('../../middleware/planLimits.js', () => ({
   checkAnalysisType: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAnalysisTypeOnRun: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAiAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  checkHostedAiBudget: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkEthicsAccess: () => (_req: Request, res: Response, next: NextFunction) => {
     if (ethicsAccessBlocked) {
       return res.status(403).json({
@@ -165,12 +166,17 @@ describe('Ethics extended integration tests', () => {
   it('GET /canvas/:canvasId/ethics returns ethics config with consent records', async () => {
     const now = new Date();
     mockPrisma.consentRecord.findMany.mockResolvedValue([
-      { id: 'cr-1', canvasId, participantId: 'P001', consentType: 'informed', consentStatus: 'granted', createdAt: now },
+      {
+        id: 'cr-1',
+        canvasId,
+        participantId: 'P001',
+        consentType: 'informed',
+        consentStatus: 'granted',
+        createdAt: now,
+      },
     ]);
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}/ethics`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}/ethics`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -187,13 +193,10 @@ describe('Ethics extended integration tests', () => {
       dataRetentionDate: null,
     });
 
-    const res = await request(app)
-      .put(`/api/canvas/${canvasId}/ethics`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        ethicsApprovalId: 'IRB-2024-001',
-        ethicsStatus: 'approved',
-      });
+    const res = await request(app).put(`/api/canvas/${canvasId}/ethics`).set('Authorization', `Bearer ${jwt}`).send({
+      ethicsApprovalId: 'IRB-2024-001',
+      ethicsStatus: 'approved',
+    });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -233,15 +236,12 @@ describe('Ethics extended integration tests', () => {
       createdAt: now,
     });
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/consent`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        participantId: 'P002',
-        consentType: 'informed',
-        ethicsProtocol: 'IRB-2024-001',
-        notes: 'Verbal consent obtained',
-      });
+    const res = await request(app).post(`/api/canvas/${canvasId}/consent`).set('Authorization', `Bearer ${jwt}`).send({
+      participantId: 'P002',
+      consentType: 'informed',
+      ethicsProtocol: 'IRB-2024-001',
+      notes: 'Verbal consent obtained',
+    });
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
@@ -256,13 +256,10 @@ describe('Ethics extended integration tests', () => {
     err.code = 'P2002';
     mockPrisma.consentRecord.create.mockRejectedValue(err);
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/consent`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        participantId: 'P001',
-        consentType: 'informed',
-      });
+    const res = await request(app).post(`/api/canvas/${canvasId}/consent`).set('Authorization', `Bearer ${jwt}`).send({
+      participantId: 'P001',
+      consentType: 'informed',
+    });
 
     expect(res.status).toBe(409);
     expect(res.body.success).toBe(false);
@@ -273,13 +270,18 @@ describe('Ethics extended integration tests', () => {
   it('GET /canvas/:canvasId/consent lists all consent records', async () => {
     const now = new Date();
     mockPrisma.consentRecord.findMany.mockResolvedValue([
-      { id: 'cr-1', canvasId, participantId: 'P001', consentType: 'informed', consentStatus: 'granted', createdAt: now },
+      {
+        id: 'cr-1',
+        canvasId,
+        participantId: 'P001',
+        consentType: 'informed',
+        consentStatus: 'granted',
+        createdAt: now,
+      },
       { id: 'cr-2', canvasId, participantId: 'P002', consentType: 'written', consentStatus: 'granted', createdAt: now },
     ]);
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}/consent`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}/consent`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -418,14 +420,26 @@ describe('Ethics extended integration tests', () => {
   it('GET /audit-log returns audit trail entries for the authenticated user', async () => {
     const now = new Date();
     mockPrisma.auditLog.findMany.mockResolvedValue([
-      { id: 'al-1', action: 'ethics.update', resource: 'canvas', resourceId: canvasId, actorId: dashboardAccessId, timestamp: now },
-      { id: 'al-2', action: 'consent.create', resource: 'consent', resourceId: 'cr-1', actorId: dashboardAccessId, timestamp: now },
+      {
+        id: 'al-1',
+        action: 'ethics.update',
+        resource: 'canvas',
+        resourceId: canvasId,
+        actorId: dashboardAccessId,
+        timestamp: now,
+      },
+      {
+        id: 'al-2',
+        action: 'consent.create',
+        resource: 'consent',
+        resourceId: 'cr-1',
+        actorId: dashboardAccessId,
+        timestamp: now,
+      },
     ]);
     mockPrisma.auditLog.count.mockResolvedValue(2);
 
-    const res = await request(app)
-      .get('/api/audit-log')
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get('/api/audit-log').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -436,13 +450,18 @@ describe('Ethics extended integration tests', () => {
   // ─── 13. GET /audit-log — supports filtering by action ───
   it('GET /audit-log filters by action parameter', async () => {
     mockPrisma.auditLog.findMany.mockResolvedValue([
-      { id: 'al-1', action: 'consent.create', resource: 'consent', resourceId: 'cr-1', actorId: dashboardAccessId, timestamp: new Date() },
+      {
+        id: 'al-1',
+        action: 'consent.create',
+        resource: 'consent',
+        resourceId: 'cr-1',
+        actorId: dashboardAccessId,
+        timestamp: new Date(),
+      },
     ]);
     mockPrisma.auditLog.count.mockResolvedValue(1);
 
-    const res = await request(app)
-      .get('/api/audit-log?action=consent.create')
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get('/api/audit-log?action=consent.create').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.entries).toHaveLength(1);
@@ -453,9 +472,7 @@ describe('Ethics extended integration tests', () => {
   it('GET /canvas/:canvasId/ethics returns 403 for Free plan users', async () => {
     ethicsAccessBlocked = true;
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}/ethics`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}/ethics`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(403);
     expect(res.body.success).toBe(false);

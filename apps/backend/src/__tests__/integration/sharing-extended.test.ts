@@ -98,6 +98,7 @@ vi.mock('../../middleware/planLimits.js', () => ({
   checkAnalysisType: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAnalysisTypeOnRun: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAiAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  checkHostedAiBudget: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkEthicsAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
 }));
 
@@ -186,9 +187,7 @@ describe('Sharing extended integration tests', () => {
       createdAt: new Date(),
     });
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/share`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post(`/api/canvas/${canvasId}/share`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(201);
     expect(res.body.data.shareCode).toMatch(/^SHARE-/);
@@ -205,8 +204,7 @@ describe('Sharing extended integration tests', () => {
       expiresAt: pastDate,
     });
 
-    const res = await request(app)
-      .get('/api/canvas/shared/SHARE-EXPIRED99');
+    const res = await request(app).get('/api/canvas/shared/SHARE-EXPIRED99');
 
     expect(res.status).toBe(410);
     expect(res.body.success).toBe(false);
@@ -225,17 +223,20 @@ describe('Sharing extended integration tests', () => {
 
     const sourceCanvas = {
       ...mockCanvas,
-      transcripts: [
-        { id: 'tr-src-1', title: 'Interview 1', content: 'Content here', sortOrder: 0, caseId: null },
-      ],
-      questions: [
-        { id: 'q-src-1', text: 'Resilience', color: '#FF0000', sortOrder: 0, parentQuestionId: null },
-      ],
-      memos: [
-        { id: 'm-src-1', title: 'Note', content: 'A memo', color: '#FFFF00' },
-      ],
+      transcripts: [{ id: 'tr-src-1', title: 'Interview 1', content: 'Content here', sortOrder: 0, caseId: null }],
+      questions: [{ id: 'q-src-1', text: 'Resilience', color: '#FF0000', sortOrder: 0, parentQuestionId: null }],
+      memos: [{ id: 'm-src-1', title: 'Note', content: 'A memo', color: '#FFFF00' }],
       codings: [
-        { id: 'c-src-1', transcriptId: 'tr-src-1', questionId: 'q-src-1', startOffset: 0, endOffset: 10, codedText: 'Content he', note: null, annotation: null },
+        {
+          id: 'c-src-1',
+          transcriptId: 'tr-src-1',
+          questionId: 'q-src-1',
+          startOffset: 0,
+          endOffset: 10,
+          codedText: 'Content he',
+          note: null,
+          annotation: null,
+        },
       ],
       cases: [],
       relations: [],
@@ -270,9 +271,7 @@ describe('Sharing extended integration tests', () => {
       return fn(tx);
     });
 
-    const res = await request(app)
-      .post(`/api/canvas/clone/${shareCode}`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post(`/api/canvas/clone/${shareCode}`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
@@ -311,7 +310,9 @@ describe('Sharing extended integration tests', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockPrisma.$transaction.mockImplementation(async (fn: any) => {
       const tx = {
-        codingCanvas: { create: vi.fn().mockResolvedValue({ id: 'canvas-count-clone', name: 'Clone', dashboardAccessId }) },
+        codingCanvas: {
+          create: vi.fn().mockResolvedValue({ id: 'canvas-count-clone', name: 'Clone', dashboardAccessId }),
+        },
         canvasTranscript: { create: vi.fn() },
         canvasQuestion: { create: vi.fn(), update: vi.fn() },
         canvasMemo: { create: vi.fn() },
@@ -329,9 +330,7 @@ describe('Sharing extended integration tests', () => {
       return fn(tx);
     });
 
-    const res = await request(app)
-      .post(`/api/canvas/clone/${shareCode}`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post(`/api/canvas/clone/${shareCode}`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(201);
     expect(shareUpdateCalled).toBe(true);
@@ -356,9 +355,7 @@ describe('Sharing extended integration tests', () => {
     // Now try to clone with the revoked code
     mockPrisma.canvasShare.findUnique.mockResolvedValue(null);
 
-    const cloneRes = await request(app)
-      .post('/api/canvas/clone/SHARE-REVOKE01')
-      .set('Authorization', `Bearer ${jwt}`);
+    const cloneRes = await request(app).post('/api/canvas/clone/SHARE-REVOKE01').set('Authorization', `Bearer ${jwt}`);
 
     expect(cloneRes.status).toBe(404);
   });
@@ -374,9 +371,7 @@ describe('Sharing extended integration tests', () => {
     // Clone route calls codingCanvas.findUnique for the source canvas
     mockPrisma.codingCanvas.findUnique.mockResolvedValueOnce(null); // source canvas not found
 
-    const res = await request(app)
-      .post('/api/canvas/clone/SHARE-DELETED01')
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post('/api/canvas/clone/SHARE-DELETED01').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(404);
   });
@@ -387,7 +382,14 @@ describe('Sharing extended integration tests', () => {
     mockPrisma.canvasCollaborator.count.mockResolvedValue(0);
     mockPrisma.user.findUnique
       .mockResolvedValueOnce({ ...mockUser }) // auth lookup
-      .mockResolvedValueOnce({ id: targetUserId, name: 'Editor User', email: 'editor@example.com', plan: 'pro', role: 'researcher', dashboardAccess: null }); // target user
+      .mockResolvedValueOnce({
+        id: targetUserId,
+        name: 'Editor User',
+        email: 'editor@example.com',
+        plan: 'pro',
+        role: 'researcher',
+        dashboardAccess: null,
+      }); // target user
     mockPrisma.canvasCollaborator.upsert.mockResolvedValue({
       id: 'collab-1',
       canvasId,
@@ -412,7 +414,14 @@ describe('Sharing extended integration tests', () => {
     mockPrisma.canvasCollaborator.count.mockResolvedValue(0);
     mockPrisma.user.findUnique
       .mockResolvedValueOnce({ ...mockUser })
-      .mockResolvedValueOnce({ id: targetUserId, name: 'Viewer User', email: 'viewer@example.com', plan: 'pro', role: 'researcher', dashboardAccess: null });
+      .mockResolvedValueOnce({
+        id: targetUserId,
+        name: 'Viewer User',
+        email: 'viewer@example.com',
+        plan: 'pro',
+        role: 'researcher',
+        dashboardAccess: null,
+      });
     mockPrisma.canvasCollaborator.upsert.mockResolvedValue({
       id: 'collab-2',
       canvasId,
@@ -500,9 +509,7 @@ describe('Sharing extended integration tests', () => {
       { id: 'u2', name: 'Viewer', email: 'viewer@test.com' },
     ]);
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}/collaborators`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}/collaborators`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
