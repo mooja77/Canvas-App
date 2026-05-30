@@ -1,0 +1,21 @@
+{
+  "name": "service-access",
+  "description": "Harder hand-curated fixture: 5 codes over a multi-theme service-access narrative, with two segments sharing a code (Access barrier) and adjacent themes that are easy to confuse (Institutional vs Informal support, Uncertainty vs Disengagement). Gold spans are author-curated. Bigger/harder than sample-emotions so a live run reveals real model weaknesses, not just an easy win.",
+  "transcriptTitle": "Interview 04 (excerpt)",
+  "transcriptContent": "When I first tried to book an appointment, the website kept crashing and I gave up for weeks. Eventually a social worker called me back, which finally got things moving. But the waiting list was months long, and nobody explained what would happen next. I almost stopped trying altogether. My sister kept pushing me to follow up, and that support is the only reason I stayed in the system.",
+  "codebook": [
+    { "id": "c-access", "text": "Access barrier" },
+    { "id": "c-inst", "text": "Institutional support" },
+    { "id": "c-uncert", "text": "Uncertainty" },
+    { "id": "c-diseng", "text": "Disengagement" },
+    { "id": "c-informal", "text": "Informal support" }
+  ],
+  "goldCodings": [
+    { "code": "Access barrier", "codedText": "the website kept crashing and I gave up for weeks" },
+    { "code": "Institutional support", "codedText": "a social worker called me back, which finally got things moving" },
+    { "code": "Access barrier", "codedText": "the waiting list was months long" },
+    { "code": "Uncertainty", "codedText": "nobody explained what would happen next" },
+    { "code": "Disengagement", "codedText": "I almost stopped trying altogether" },
+    { "code": "Informal support", "codedText": "My sister kept pushing me to follow up" }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "_note": "Synthetic recorded output for --dry-run, crafted to show a realistic IMPERFECT result on the harder fixture: some partial-overlap matches, a wrong-code false positive (Uncertainty on a waiting-list span that is really an Access barrier), two missed gold codings (Informal support; the second Access barrier), and one hallucinated span dropped at anchor. Replace with real model output via --live for a meaningful baseline.",
+  "codings": [
+    { "code": "Access barrier", "codedText": "the website kept crashing and I gave up for weeks", "confidence": 0.9 },
+    {
+      "code": "Institutional support",
+      "codedText": "a social worker called me back, which finally",
+      "confidence": 0.84
+    },
+    { "code": "Uncertainty", "codedText": "nobody explained what would happen next", "confidence": 0.8 },
+    { "code": "Disengagement", "codedText": "I almost stopped trying", "confidence": 0.7 },
+    { "code": "Uncertainty", "codedText": "the waiting list was months long", "confidence": 0.52 },
+    { "code": "Access barrier", "codedText": "I never heard back from anyone", "confidence": 0.6 }
+  ]
+}
