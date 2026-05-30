@@ -1,0 +1,25 @@
+{
+  "_note": "Synthetic recorded output for --dry-run, modelling a CONSERVATIVE model that codes the obvious distress lines but skips the two subtler positives (the quiet autonomy statement and the understated recognition line) — the recall failure mode this fixture probes. Gives ~R 0.67. Replace via --live for a real number.",
+  "codings": [
+    {
+      "code": "Burnout / exhaustion",
+      "codedText": "By Thursday I'm completely drained, I can barely focus on anything",
+      "confidence": 0.92
+    },
+    {
+      "code": "Workload",
+      "codedText": "The workload just keeps climbing and no one seems to notice how much we're carrying",
+      "confidence": 0.85
+    },
+    {
+      "code": "Intent to leave",
+      "codedText": "I've started thinking about whether I can keep doing this for another year",
+      "confidence": 0.8
+    },
+    {
+      "code": "Work-life boundary",
+      "codedText": "I don't really switch off in the evenings anymore",
+      "confidence": 0.74
+    }
+  ]
+}

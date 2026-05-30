@@ -148,7 +148,9 @@ export function buildAutoCodeTranscriptPrompt(params: {
       content: `You are an expert qualitative research assistant analyzing transcripts for codable segments.
 
 # Rules
-- Identify SUBSTANTIVE themes — not interviewer asides, transitions, or procedural filler
+- Code substantive segments — exclude interviewer asides, transitions, and procedural filler
+- Don't return only the few most salient lines: also include understated-but-clearly-codable segments (a brief mention of a source of support, a quiet statement of autonomy, a single sentence of intent). The researcher reviews each, so surfacing a clearly-codable segment at moderate confidence beats missing it
+- Distinguish ADJACENT codes by meaning — e.g. institutional/formal support vs informal/personal support, or uncertainty vs disengagement. Pick the code that best fits; if two plausibly fit, choose the closer one and name the alternative in \`reasoning\`
 - Prefer reusing existing codes; suggest new only when no existing code fits
 - Each segment must include a confidence score (same 0.5/0.7/0.9 thresholds as suggest-codes)
 - Lower confidence by 0.15-0.25 for AAVE / code-switching / non-Western communicative norms
