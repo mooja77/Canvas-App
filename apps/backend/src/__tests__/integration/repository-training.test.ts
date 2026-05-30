@@ -76,6 +76,7 @@ vi.mock('../../middleware/planLimits.js', () => ({
   checkRepositoryAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkIntegrationsAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkFileUploadAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  checkTranscriptionMinutes: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkExportFormat: () => (_req: Request, _res: Response, next: NextFunction) => next(),
 }));
 
@@ -163,9 +164,7 @@ describe('Repository and Training integration tests', () => {
       { id: repoId, userId, name: 'My Repo', _count: { insights: 3 } },
     ]);
 
-    const res = await request(app)
-      .get('/api/repositories')
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get('/api/repositories').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -194,10 +193,7 @@ describe('Repository and Training integration tests', () => {
 
   // ─── 3. POST /repositories rejects empty name ───
   it('POST /api/repositories rejects empty name', async () => {
-    const res = await request(app)
-      .post('/api/repositories')
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({ name: '' });
+    const res = await request(app).post('/api/repositories').set('Authorization', `Bearer ${jwt}`).send({ name: '' });
 
     expect(res.status).toBe(400);
   });
@@ -221,9 +217,7 @@ describe('Repository and Training integration tests', () => {
     });
     mockPrisma.researchRepository.delete.mockResolvedValue({ id: repoId });
 
-    const res = await request(app)
-      .delete(`/api/repositories/${repoId}`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).delete(`/api/repositories/${repoId}`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -251,9 +245,7 @@ describe('Repository and Training integration tests', () => {
       name: 'My Repo',
     });
 
-    const res = await request(app)
-      .delete(`/api/repositories/${repoId}`)
-      .set('Authorization', `Bearer ${otherJwt}`);
+    const res = await request(app).delete(`/api/repositories/${repoId}`).set('Authorization', `Bearer ${otherJwt}`);
 
     expect(res.status).toBe(403);
     expect(mockPrisma.researchRepository.delete).not.toHaveBeenCalled();
@@ -296,9 +288,7 @@ describe('Repository and Training integration tests', () => {
       { id: 'insight-2', repositoryId: repoId, title: 'Finding 2', content: 'text' },
     ]);
 
-    const res = await request(app)
-      .get(`/api/repositories/${repoId}/insights`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/repositories/${repoId}/insights`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -435,9 +425,7 @@ describe('Repository and Training integration tests', () => {
       },
     ]);
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}/training`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}/training`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
