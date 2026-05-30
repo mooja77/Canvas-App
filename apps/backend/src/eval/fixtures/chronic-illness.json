@@ -1,0 +1,31 @@
+{
+  "name": "chronic-illness",
+  "description": "Living-with-chronic-illness narrative. Probes adjacent codes (medical mistrust vs being dismissed; social isolation vs identity change) and understated lines (a quiet adaptation strategy, an aside about a friendship lost).",
+  "transcriptTitle": "Interview 14 (excerpt)",
+  "transcriptContent": "Some mornings the pain is so bad I can't get out of bed, and I never know which day it'll be. For years the doctors told me it was all in my head, so now I second-guess whether anything they say is true. I've learned to pace myself, doing the important things early before the fatigue hits. A few friends just drifted away when I kept cancelling. I'm not the same person I was before the diagnosis, and I'm still working out who I am now.",
+  "codebook": [
+    { "id": "c-symptom", "text": "Symptom burden" },
+    { "id": "c-uncertainty", "text": "Symptom unpredictability" },
+    { "id": "c-mistrust", "text": "Medical mistrust" },
+    { "id": "c-adaptation", "text": "Adaptation strategy" },
+    { "id": "c-isolation", "text": "Social isolation" },
+    { "id": "c-identity", "text": "Identity change" }
+  ],
+  "goldCodings": [
+    { "code": "Symptom burden", "codedText": "Some mornings the pain is so bad I can't get out of bed" },
+    { "code": "Symptom unpredictability", "codedText": "I never know which day it'll be" },
+    {
+      "code": "Medical mistrust",
+      "codedText": "the doctors told me it was all in my head, so now I second-guess whether anything they say is true"
+    },
+    {
+      "code": "Adaptation strategy",
+      "codedText": "I've learned to pace myself, doing the important things early before the fatigue hits"
+    },
+    { "code": "Social isolation", "codedText": "A few friends just drifted away when I kept cancelling" },
+    {
+      "code": "Identity change",
+      "codedText": "I'm not the same person I was before the diagnosis, and I'm still working out who I am now"
+    }
+  ]
+}

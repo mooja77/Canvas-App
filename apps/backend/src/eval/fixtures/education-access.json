@@ -1,0 +1,31 @@
+{
+  "name": "education-access",
+  "description": "First-generation university student narrative. Probes adjacent-code discrimination (financial strain vs material hardship; belonging vs mentorship) and a couple of understated lines (a quiet belonging statement, an offhand mention of a mentor) that conservative models skip.",
+  "transcriptTitle": "Interview 11 (excerpt)",
+  "transcriptContent": "Nobody in my family had been to university, so I was figuring out everything on my own. I was working twenty hours a week just to cover rent and food, which left almost nothing for textbooks. For a long time I felt like I didn't really belong here, like everyone else knew a code I didn't. One lecturer noticed I was struggling and started checking in on me, and that changed how I saw myself. There were a couple of terms where I genuinely thought about dropping out.",
+  "codebook": [
+    { "id": "c-firstgen", "text": "First-generation status" },
+    { "id": "c-financial", "text": "Financial strain" },
+    { "id": "c-material", "text": "Material hardship" },
+    { "id": "c-belonging", "text": "Belonging" },
+    { "id": "c-mentorship", "text": "Mentorship" },
+    { "id": "c-dropout", "text": "Dropout consideration" }
+  ],
+  "goldCodings": [
+    {
+      "code": "First-generation status",
+      "codedText": "Nobody in my family had been to university, so I was figuring out everything on my own"
+    },
+    { "code": "Financial strain", "codedText": "I was working twenty hours a week just to cover rent and food" },
+    { "code": "Material hardship", "codedText": "which left almost nothing for textbooks" },
+    {
+      "code": "Belonging",
+      "codedText": "I felt like I didn't really belong here, like everyone else knew a code I didn't"
+    },
+    { "code": "Mentorship", "codedText": "One lecturer noticed I was struggling and started checking in on me" },
+    {
+      "code": "Dropout consideration",
+      "codedText": "There were a couple of terms where I genuinely thought about dropping out"
+    }
+  ]
+}
