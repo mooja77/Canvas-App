@@ -114,8 +114,11 @@ async function getPredicted(fixture: Fixture, live: boolean): Promise<RawModelOu
     }
     return JSON.parse(readFileSync(recPath, 'utf8')) as RawModelOutput;
   }
-  // Live: reuse the REAL auto-code prompt + provider abstraction.
+  // Live: reuse the REAL auto-code prompt + provider abstraction. The provider
+  // factories self-register on import (side effect), so import the OpenAI
+  // module before resolving one.
   const { buildAutoCodeTranscriptPrompt } = await import('../utils/aiPrompts.js');
+  await import('../lib/llm-openai.js');
   const { createProvider, getDefaultProvider } = await import('../lib/llm.js');
   const apiKey = process.env.OPENAI_API_KEY;
   const provider = apiKey
