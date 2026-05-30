@@ -1,0 +1,26 @@
+{
+  "_note": "Synthetic recorded output for --dry-run: a model that merges symptom burden + unpredictability into one span (missing the unpredictability code) and skips the understated adaptation line. ~P 0.83 / R 0.67. Replace via --live for a real number.",
+  "codings": [
+    {
+      "code": "Symptom burden",
+      "codedText": "Some mornings the pain is so bad I can't get out of bed",
+      "confidence": 0.9
+    },
+    {
+      "code": "Medical mistrust",
+      "codedText": "the doctors told me it was all in my head, so now I second-guess whether anything they say is true",
+      "confidence": 0.85
+    },
+    {
+      "code": "Social isolation",
+      "codedText": "A few friends just drifted away when I kept cancelling",
+      "confidence": 0.8
+    },
+    {
+      "code": "Identity change",
+      "codedText": "I'm not the same person I was before the diagnosis, and I'm still working out who I am now",
+      "confidence": 0.83
+    },
+    { "code": "Symptom burden", "codedText": "I never know which day it'll be", "confidence": 0.5 }
+  ]
+}

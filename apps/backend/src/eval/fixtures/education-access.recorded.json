@@ -1,0 +1,31 @@
+{
+  "_note": "Synthetic recorded output for --dry-run: a model that gets the salient codes but blurs the financial-strain vs material-hardship adjacency (codes the textbook line as Financial strain rather than Material hardship). ~P 0.83 / R 0.83. Replace via --live for a real number.",
+  "codings": [
+    {
+      "code": "First-generation status",
+      "codedText": "Nobody in my family had been to university, so I was figuring out everything on my own",
+      "confidence": 0.9
+    },
+    {
+      "code": "Financial strain",
+      "codedText": "I was working twenty hours a week just to cover rent and food",
+      "confidence": 0.86
+    },
+    { "code": "Financial strain", "codedText": "which left almost nothing for textbooks", "confidence": 0.6 },
+    {
+      "code": "Belonging",
+      "codedText": "I felt like I didn't really belong here, like everyone else knew a code I didn't",
+      "confidence": 0.84
+    },
+    {
+      "code": "Mentorship",
+      "codedText": "One lecturer noticed I was struggling and started checking in on me",
+      "confidence": 0.8
+    },
+    {
+      "code": "Dropout consideration",
+      "codedText": "There were a couple of terms where I genuinely thought about dropping out",
+      "confidence": 0.82
+    }
+  ]
+}
