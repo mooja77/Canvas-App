@@ -1,0 +1,34 @@
+{
+  "name": "workplace-wellbeing",
+  "description": "Third hand-curated fixture: 6 codes over a workplace-wellbeing narrative with several SUBTLE codable segments (a quiet autonomy statement, an understated recognition line) that a conservative model tends to skip — designed to probe recall, not just the obvious burnout lines.",
+  "transcriptTitle": "Interview 07 (excerpt)",
+  "transcriptContent": "By Thursday I'm completely drained, I can barely focus on anything. The workload just keeps climbing and no one seems to notice how much we're carrying. What keeps me going is that my manager actually trusts me to run my own projects, I'm not micromanaged. When the director mentioned my report in the all-hands, that small thing meant a lot. Still, I've started thinking about whether I can keep doing this for another year. I don't really switch off in the evenings anymore.",
+  "codebook": [
+    { "id": "c-burnout", "text": "Burnout / exhaustion" },
+    { "id": "c-workload", "text": "Workload" },
+    { "id": "c-autonomy", "text": "Autonomy" },
+    { "id": "c-recognition", "text": "Recognition" },
+    { "id": "c-intent", "text": "Intent to leave" },
+    { "id": "c-boundary", "text": "Work-life boundary" }
+  ],
+  "goldCodings": [
+    {
+      "code": "Burnout / exhaustion",
+      "codedText": "By Thursday I'm completely drained, I can barely focus on anything"
+    },
+    {
+      "code": "Workload",
+      "codedText": "The workload just keeps climbing and no one seems to notice how much we're carrying"
+    },
+    { "code": "Autonomy", "codedText": "my manager actually trusts me to run my own projects, I'm not micromanaged" },
+    {
+      "code": "Recognition",
+      "codedText": "When the director mentioned my report in the all-hands, that small thing meant a lot"
+    },
+    {
+      "code": "Intent to leave",
+      "codedText": "I've started thinking about whether I can keep doing this for another year"
+    },
+    { "code": "Work-life boundary", "codedText": "I don't really switch off in the evenings anymore" }
+  ]
+}
