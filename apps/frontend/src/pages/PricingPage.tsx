@@ -212,7 +212,7 @@ export default function PricingPage() {
             name="Free"
             price="$0"
             audience="For trying it out"
-            features={['1 canvas', '5 codes', 'CSV export', 'Stats + wordcloud']}
+            features={['2 canvases', '10 codes', 'CSV export', '4 analysis tools']}
             isCurrent={plan === 'free'}
             cta={
               plan === 'free' ? (
@@ -376,20 +376,20 @@ export default function PricingPage() {
             {
               heading: 'Workspace',
               rows: [
-                { feature: 'Canvases', values: ['1', '5', 'Unlimited', 'Unlimited', 'Unlimited'] },
+                { feature: 'Canvases', values: ['2', '5', 'Unlimited', 'Unlimited', 'Unlimited'] },
                 {
                   feature: 'Transcripts per canvas',
-                  values: ['2', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
+                  values: ['5', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'],
                 },
-                { feature: 'Words per transcript', values: ['5,000', '50,000', '50,000', '50,000', '50,000'] },
-                { feature: 'Codes', values: ['5', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'] },
+                { feature: 'Words per transcript', values: ['10,000', '50,000', '50,000', '50,000', '50,000'] },
+                { feature: 'Codes', values: ['10', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'] },
               ],
             },
             {
               heading: 'Coding & analysis',
               rows: [
                 { feature: 'Auto-code (AI-assisted)', values: ['—', '✓', '✓', '✓', '✓'] },
-                { feature: 'Analysis tools', values: ['2', 'All 12', 'All 12', 'All 12', 'All 12'] },
+                { feature: 'Analysis tools', values: ['4', 'All 12', 'All 12', 'All 12', 'All 12'] },
                 { feature: 'Cases + cross-case', values: ['—', '✓', '✓', '✓', '✓'] },
                 { feature: 'Intercoder reliability (κ + α)', values: ['—', '—', '—', '✓', '✓'] },
               ],
@@ -579,8 +579,8 @@ export default function PricingPage() {
               Downgrading will limit your account to the Free plan limits:
             </p>
             <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 mb-6 list-disc list-inside">
-              <li>1 canvas, 2 transcripts, 5 codes</li>
-              <li>Stats &amp; word cloud analysis only</li>
+              <li>2 canvases, 5 transcripts, 10 codes</li>
+              <li>Stats, word cloud, sentiment &amp; search analysis only</li>
               <li>No sharing, auto-code, or ethics panel</li>
             </ul>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
