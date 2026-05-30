@@ -1,0 +1,16 @@
+{
+  "name": "sample-emotions",
+  "description": "Hand-curated micro-fixture for the eval harness. Three codes over one short interview snippet. Gold spans are author-curated (not model output). Deliberately tiny so the scoring pipeline is exercised end-to-end without depending on dataset size; real fixtures should be larger and provenance-documented.",
+  "transcriptTitle": "Interview 01 (excerpt)",
+  "transcriptContent": "I felt really anxious before the exam, my heart was racing. My friends helped me study, which made a difference. Afterwards I tried to stay calm and take deep breaths to cope.",
+  "codebook": [
+    { "id": "c-anx", "text": "Anxiety" },
+    { "id": "c-sup", "text": "Social support" },
+    { "id": "c-cope", "text": "Coping" }
+  ],
+  "goldCodings": [
+    { "code": "Anxiety", "codedText": "I felt really anxious before the exam, my heart was racing" },
+    { "code": "Social support", "codedText": "My friends helped me study, which made a difference" },
+    { "code": "Coping", "codedText": "I tried to stay calm and take deep breaths to cope" }
+  ]
+}

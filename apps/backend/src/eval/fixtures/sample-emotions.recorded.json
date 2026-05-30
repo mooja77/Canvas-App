@@ -1,0 +1,35 @@
+{
+  "_note": "Recorded/synthetic model output for --dry-run, in the shape the auto-code-transcript route parses (parsed.codings[]). Lets the eval pipeline run without a live key. Crafted to give a known score vs the gold: 3 true positives (one exact, two partial-overlap), 1 wrong-code false positive, 1 hallucination dropped at anchor time -> precision 0.75, recall 1.0.",
+  "codings": [
+    {
+      "code": "Anxiety",
+      "codedText": "I felt really anxious before the exam, my heart was racing",
+      "confidence": 0.93,
+      "reasoning": "Explicit anxiety language plus a somatic marker (racing heart)."
+    },
+    {
+      "code": "Social support",
+      "codedText": "My friends helped me study, which made",
+      "confidence": 0.81,
+      "reasoning": "Peers providing instrumental study help."
+    },
+    {
+      "code": "Coping",
+      "codedText": "stay calm and take deep breaths",
+      "confidence": 0.78,
+      "reasoning": "Active emotion-regulation strategy."
+    },
+    {
+      "code": "Anxiety",
+      "codedText": "My friends helped me study",
+      "confidence": 0.4,
+      "reasoning": "Low-confidence mislabel of a support passage as anxiety (false positive)."
+    },
+    {
+      "code": "Coping",
+      "codedText": "I went for a run every morning",
+      "confidence": 0.55,
+      "reasoning": "Hallucinated span not present in the transcript (dropped at anchor)."
+    }
+  ]
+}
