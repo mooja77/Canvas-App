@@ -96,6 +96,75 @@ export function computeKappa(
   return (overallPo - overallPe) / (1 - overallPe);
 }
 
+// ─── Multi-coder adapter ───────────────────────────────────────────────
+//
+// Qualitative codings are spans (start/end offsets) tagged with a code, not
+// tidy per-item category labels. To run Krippendorff's α (or Fleiss' κ) over
+// N coders we first reduce to a presence/absence decision per coding unit:
+// for each transcript SEGMENT × each CODE, did this coder apply that code to
+// (any span overlapping) that segment? '1' = present, '0' = absent. That yields
+// one nominal observation per (segment, code, coder), which is exactly the
+// KrippendorffInput shape. This mirrors how the existing Cohen's-κ path in
+// textAnalysis.ts discretises agreement, but generalises to ≥2 coders.
+
+interface AdapterCoding {
+  transcriptId: string;
+  questionId: string;
+  startOffset: number;
+  endOffset: number;
+}
+
+interface AdapterSegment {
+  transcriptId: string;
+  startOffset: number;
+  endOffset: number;
+}
+
+export interface SegmentCoderInput {
+  segments: AdapterSegment[];
+  coders: { coderId: string; codings: AdapterCoding[] }[];
+}
+
+function spanOverlapsSegment(coding: AdapterCoding, segment: AdapterSegment): boolean {
+  return (
+    coding.transcriptId === segment.transcriptId &&
+    coding.startOffset < segment.endOffset &&
+    coding.endOffset > segment.startOffset
+  );
+}
+
+/**
+ * Reduce span-based codings to presence/absence observations suitable for
+ * computeKrippendorffAlpha(). One observation per (segment × code × coder),
+ * value '1' if the coder applied that code to the segment, '0' otherwise.
+ *
+ * The code set is the union of every code any coder used — so a code one coder
+ * applied and another omitted correctly registers as a disagreement, not an
+ * absent dimension.
+ */
+export function buildSegmentCodeObservations(input: SegmentCoderInput): KrippendorffInput[] {
+  const { segments, coders } = input;
+
+  // Union of all codes used by any coder.
+  const codeIds = new Set<string>();
+  for (const coder of coders) {
+    for (const c of coder.codings) codeIds.add(c.questionId);
+  }
+
+  const observations: KrippendorffInput[] = [];
+  segments.forEach((segment, segIndex) => {
+    for (const codeId of codeIds) {
+      const unitId = `${segIndex}::${codeId}`;
+      for (const coder of coders) {
+        const present = coder.codings.some((c) => c.questionId === codeId && spanOverlapsSegment(c, segment));
+        observations.push({ unitId, coderId: coder.coderId, value: present ? '1' : '0' });
+      }
+    }
+  });
+
+  return observations;
+}
+
 // ─── Krippendorff's α ──────────────────────────────────────────────────
 //
 // Sprint D of V3 plan (2026-05-13). Methods reviewers prefer α over Cohen's

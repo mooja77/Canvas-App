@@ -1,30 +1,33 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
+import { useAuthStore } from '../../../stores/authStore';
 import { canvasApi } from '../../../services/api';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import { getParadigm, getIcrStance } from '../../../data/methodologyParadigms';
+import { chooseAgreementMethod } from './agreementMethod';
 
 interface IntercoderPanelProps {
   onClose: () => void;
 }
 
-interface SegmentResult {
-  transcriptId: string;
-  startOffset: number;
-  endOffset: number;
-  coderA: string[];
-  coderB: string[];
-  agree: boolean;
+interface AgreementResult {
+  method: string;
+  alpha: number;
+  nCoders: number;
+  nUnits: number;
+  nObservations: number;
+  nSegments: number;
 }
 
-interface IntercoderResult {
-  kappa: number;
-  agreement: number;
-  segments: SegmentResult[];
+interface Coder {
+  id: string;
+  name: string;
+  email: string;
 }
 
-function interpretKappa(k: number): { label: string; color: string } {
+// α and κ share the same conventional agreement bands.
+function interpretScore(k: number): { label: string; color: string } {
   if (k < 0) return { label: 'Poor', color: '#EF4444' };
   if (k <= 0.2) return { label: 'Slight', color: '#F97316' };
   if (k <= 0.4) return { label: 'Fair', color: '#F59E0B' };
@@ -36,75 +39,113 @@ function interpretKappa(k: number): { label: string; color: string } {
 export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
+  const currentUserId = useAuthStore((s) => s.userId);
+  const currentUserEmail = useAuthStore((s) => s.email);
+
   // Surface methodological guidance: ICR is inappropriate for interpretivist
   // paradigms (reflexive TA, IPA, …) where coder divergence is interpretation,
   // not error. Read from the canvas's chosen paradigm (Methodology wizard).
   const paradigmKey = activeCanvas?.researchParadigm ?? null;
   const paradigm = paradigmKey ? getParadigm(paradigmKey) : undefined;
   const icrStance = getIcrStance(paradigmKey);
-  const [selectedUserId, setSelectedUserId] = useState('');
+
+  const [selectedCoderIds, setSelectedCoderIds] = useState<string[]>([]);
   const [selectedTranscriptId, setSelectedTranscriptId] = useState('');
-  const [result, setResult] = useState<IntercoderResult | null>(null);
+  const [result, setResult] = useState<AgreementResult | null>(null);
   const [computing, setComputing] = useState(false);
 
   const canvasId = activeCanvas?.id;
   const transcripts = activeCanvas?.transcripts ?? [];
-  const rawQuestions = activeCanvas?.questions;
-  const questions = useMemo(() => rawQuestions ?? [], [rawQuestions]);
 
-  // Collaborators would come from the canvas shares / collaborators
-  // For now we'll load them from the collaborators endpoint
-  const [collaborators, setCollaborators] = useState<{ id: string; name: string; email: string }[]>([]);
-  const [collabLoaded, setCollabLoaded] = useState(false);
+  // Coders = the current user ("You") plus any collaborators on the canvas.
+  // Codings are attributed by coderUserId (migration 0031), so a genuine ≥2-coder
+  // agreement statistic can be computed across the selected people.
+  const [collaborators, setCollaborators] = useState<Coder[]>([]);
 
-  useMemo(() => {
-    if (canvasId && !collabLoaded) {
-      canvasApi
-        .getCollaborators(canvasId)
-        .then((res) => {
-          const data = res.data.data || [];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const users = data.map((c: any) => ({
-            id: c.userId || c.user?.id || c.id,
-            name: c.user?.name || c.name || 'Unknown',
-            email: c.user?.email || c.email || '',
-          }));
-          setCollaborators(users);
-          setCollabLoaded(true);
-        })
-        .catch(() => {
-          setCollabLoaded(true);
-        });
+  useEffect(() => {
+    if (!canvasId) return;
+    let cancelled = false;
+    canvasApi
+      .getCollaborators(canvasId)
+      .then((res) => {
+        if (cancelled) return;
+        const data = res.data.data || [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const users: Coder[] = data.map((c: any) => ({
+          id: c.userId || c.user?.id || c.id,
+          name: c.user?.name || c.name || 'Unknown',
+          email: c.user?.email || c.email || '',
+        }));
+        setCollaborators(users);
+      })
+      .catch(() => {
+        /* no collaborators / not permitted — leave list empty */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canvasId]);
+
+  const coders: Coder[] = useMemo(() => {
+    const list: Coder[] = [];
+    if (currentUserId) {
+      list.push({ id: currentUserId, name: 'You', email: currentUserEmail ?? '' });
     }
-  }, [canvasId, collabLoaded]);
+    for (const c of collaborators) {
+      if (c.id && c.id !== currentUserId) list.push(c);
+    }
+    return list;
+  }, [currentUserId, currentUserEmail, collaborators]);
+
+  const toggleCoder = (id: string) => {
+    setResult(null);
+    setSelectedCoderIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const choice = chooseAgreementMethod(selectedCoderIds.length);
 
   const handleCompute = async () => {
-    if (!canvasId || !selectedUserId || !selectedTranscriptId) return;
+    if (!canvasId || !selectedTranscriptId || !choice.canCompute) return;
     setComputing(true);
     try {
-      const res = await canvasApi.computeIntercoder(canvasId, {
-        userId: selectedUserId,
+      const res = await canvasApi.computeMultiCoderAgreement(canvasId, {
         transcriptId: selectedTranscriptId,
+        userIds: selectedCoderIds,
       });
       setResult(res.data.data);
     } catch (err: unknown) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      toast.error((err as any)?.response?.data?.error || 'Failed to compute intercoder reliability');
+      toast.error((err as any)?.response?.data?.error || 'Failed to compute intercoder agreement');
     } finally {
       setComputing(false);
     }
   };
 
-  const interp = result ? interpretKappa(result.kappa) : null;
+  const interp = result ? interpretScore(result.alpha) : null;
 
-  // Build a question lookup for displaying code names
-  const questionMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const q of questions) map[q.id] = q.text;
-    return map;
-  }, [questions]);
-
-  const selectedTranscript = transcripts.find((t) => t.id === selectedTranscriptId);
+  const handleExport = () => {
+    if (!result) return;
+    const names = selectedCoderIds.map((id) => coders.find((c) => c.id === id)?.name ?? id).join(', ');
+    const transcriptTitle = transcripts.find((t) => t.id === selectedTranscriptId)?.title ?? selectedTranscriptId;
+    const lines = [
+      'Intercoder Agreement Report',
+      `Method: ${result.method}`,
+      `Coders (${result.nCoders}): ${names}`,
+      `Transcript: ${transcriptTitle}`,
+      '',
+      `Score: ${result.alpha.toFixed(3)} (${interpretScore(result.alpha).label})`,
+      `Coding units: ${result.nUnits}`,
+      `Observations: ${result.nObservations}`,
+      `Segments: ${result.nSegments}`,
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `intercoder-agreement-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div
@@ -122,10 +163,10 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
         <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-5 py-3">
           <div>
             <h3 id="intercoder-panel-title" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Intercoder Reliability (User Comparison)
+              Intercoder Agreement
             </h3>
             <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              Compare your codings with a collaborator using Cohen's Kappa
+              Cohen&rsquo;s κ for two coders, Krippendorff&rsquo;s α for three or more
             </p>
           </div>
           <button
@@ -154,28 +195,37 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
 
         {/* Config */}
         <div className="border-b border-gray-100 dark:border-gray-700/50 px-5 py-3 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Collaborator
-              </label>
-              <select
-                value={selectedUserId}
-                onChange={(e) => {
-                  setSelectedUserId(e.target.value);
-                  setResult(null);
-                }}
-                className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
-              >
-                <option value="">Select collaborator...</option>
-                {collaborators.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.email})
-                  </option>
-                ))}
-              </select>
+          <div>
+            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">
+              Coders to compare
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {coders.map((c) => {
+                const checked = selectedCoderIds.includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    aria-pressed={checked}
+                    onClick={() => toggleCoder(c.id)}
+                    className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                      checked
+                        ? 'border-indigo-300 bg-indigo-100 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
             </div>
-            <div>
+            <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
+              {choice.canCompute ? `${selectedCoderIds.length} selected — ${choice.label}` : choice.label}
+            </p>
+          </div>
+
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
               <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">Transcript</label>
               <select
                 value={selectedTranscriptId}
@@ -193,14 +243,12 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
                 ))}
               </select>
             </div>
-          </div>
-          <div className="flex justify-end">
             <button
               onClick={handleCompute}
-              disabled={!selectedUserId || !selectedTranscriptId || computing}
+              disabled={!choice.canCompute || !selectedTranscriptId || computing}
               className="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              {computing ? 'Computing...' : 'Compute Kappa'}
+              {computing ? 'Computing...' : 'Compute agreement'}
             </button>
           </div>
         </div>
@@ -223,18 +271,18 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
                 />
               </svg>
               <p className="text-xs text-gray-400 dark:text-gray-500">
-                {collaborators.length === 0
-                  ? 'No collaborators found. Add collaborators to this canvas first.'
-                  : 'Select a collaborator and transcript, then click "Compute Kappa"'}
+                {coders.length < 2
+                  ? 'Add collaborators to this canvas to compare coders.'
+                  : 'Select two or more coders and a transcript, then click "Compute agreement".'}
               </p>
             </div>
           ) : (
             <>
-              {/* Kappa score */}
+              {/* Score */}
               <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
-                <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">Cohen's Kappa</div>
+                <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">{result.method}</div>
                 <div className="text-3xl font-bold" style={{ color: interp!.color }}>
-                  {result.kappa.toFixed(3)}
+                  {result.alpha.toFixed(3)}
                 </div>
                 <div
                   className="mt-1 inline-block rounded-full px-3 py-0.5 text-[10px] font-semibold"
@@ -244,114 +292,30 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
                 </div>
                 <div className="mt-3 flex justify-center gap-6 text-[10px] text-gray-500 dark:text-gray-400">
                   <span>
-                    Agreement: <strong>{(result.agreement * 100).toFixed(1)}%</strong>
+                    Coders: <strong>{result.nCoders}</strong>
                   </span>
                   <span>
-                    Segments: <strong>{result.segments.length}</strong>
+                    Units: <strong>{result.nUnits}</strong>
+                  </span>
+                  <span>
+                    Segments: <strong>{result.nSegments}</strong>
                   </span>
                 </div>
               </div>
 
-              {/* Per-segment comparison table */}
-              {result.segments.length > 0 && selectedTranscript && (
-                <div>
-                  <h4 className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2">
-                    Segment Comparison
-                  </h4>
-                  <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-                    <div className="max-h-64 overflow-y-auto">
-                      <table className="w-full text-xs">
-                        <thead className="sticky top-0 bg-gray-50 dark:bg-gray-700/50">
-                          <tr>
-                            <th className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">
-                              Segment
-                            </th>
-                            <th className="px-3 py-2 text-center text-gray-500 dark:text-gray-400 font-medium">You</th>
-                            <th className="px-3 py-2 text-center text-gray-500 dark:text-gray-400 font-medium">
-                              Collaborator
-                            </th>
-                            <th className="px-3 py-2 text-center text-gray-500 dark:text-gray-400 font-medium">
-                              Match
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {result.segments.slice(0, 100).map((seg, idx) => {
-                            const text = selectedTranscript.content.slice(
-                              seg.startOffset,
-                              Math.min(seg.endOffset, seg.startOffset + 60),
-                            );
-                            return (
-                              <tr
-                                key={idx}
-                                className={`border-t border-gray-100 dark:border-gray-700/50 ${
-                                  seg.agree ? 'bg-green-50/30 dark:bg-green-900/10' : 'bg-red-50/30 dark:bg-red-900/10'
-                                }`}
-                              >
-                                <td
-                                  className="px-3 py-1.5 text-gray-700 dark:text-gray-300 max-w-[200px] truncate"
-                                  title={text}
-                                >
-                                  {text}
-                                  {seg.endOffset - seg.startOffset > 60 ? '...' : ''}
-                                </td>
-                                <td className="px-3 py-1.5 text-center text-[10px]">
-                                  {seg.coderA.map((qId) => questionMap[qId] || qId.slice(0, 6)).join(', ') || '-'}
-                                </td>
-                                <td className="px-3 py-1.5 text-center text-[10px]">
-                                  {seg.coderB.map((qId) => questionMap[qId] || qId.slice(0, 6)).join(', ') || '-'}
-                                </td>
-                                <td className="px-3 py-1.5 text-center">
-                                  {seg.agree ? (
-                                    <svg
-                                      className="w-4 h-4 text-green-500 mx-auto"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      strokeWidth={2}
-                                      stroke="currentColor"
-                                    >
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                    </svg>
-                                  ) : (
-                                    <svg
-                                      className="w-4 h-4 text-red-500 mx-auto"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      strokeWidth={2}
-                                      stroke="currentColor"
-                                    >
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                    </svg>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                  {result.segments.length > 100 && (
-                    <p className="text-[10px] text-gray-400 mt-1">
-                      Showing first 100 of {result.segments.length} segments
-                    </p>
-                  )}
-                </div>
-              )}
-
               {/* Interpretation guide */}
               <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 p-3">
                 <h4 className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 mb-2">
-                  Kappa Interpretation Guide
+                  Interpretation Guide
                 </h4>
                 <div className="grid grid-cols-3 gap-1 text-[10px]">
                   {[
                     { range: '< 0', label: 'Poor', color: '#EF4444' },
-                    { range: '0.00-0.20', label: 'Slight', color: '#F97316' },
-                    { range: '0.21-0.40', label: 'Fair', color: '#F59E0B' },
-                    { range: '0.41-0.60', label: 'Moderate', color: '#EAB308' },
-                    { range: '0.61-0.80', label: 'Substantial', color: '#22C55E' },
-                    { range: '0.81-1.00', label: 'Almost Perfect', color: '#10B981' },
+                    { range: '0.00–0.20', label: 'Slight', color: '#F97316' },
+                    { range: '0.21–0.40', label: 'Fair', color: '#F59E0B' },
+                    { range: '0.41–0.60', label: 'Moderate', color: '#EAB308' },
+                    { range: '0.61–0.80', label: 'Substantial', color: '#22C55E' },
+                    { range: '0.81–1.00', label: 'Almost Perfect', color: '#10B981' },
                   ].map((g) => (
                     <div key={g.label} className="flex items-center gap-1.5">
                       <div className="h-2 w-2 rounded-full" style={{ backgroundColor: g.color }} />
@@ -365,6 +329,18 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
             </>
           )}
         </div>
+
+        {/* Footer */}
+        {result && (
+          <div className="border-t border-gray-100 dark:border-gray-700/50 px-5 py-2 flex justify-end">
+            <button
+              onClick={handleExport}
+              className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+            >
+              Export Report
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

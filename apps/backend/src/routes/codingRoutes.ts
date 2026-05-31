@@ -29,6 +29,7 @@ import { sha256 } from '../utils/hashing.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import { checkCodeLimit, checkAutoCode, checkCaseAccess } from '../middleware/planLimits.js';
 import { searchTranscripts, computeCohenKappa } from '../utils/textAnalysis.js';
+import { buildSegmentCodeObservations, computeKrippendorffAlpha } from '../utils/intercoder.js';
 
 export const codingRoutes = Router();
 
@@ -214,7 +215,8 @@ codingRoutes.post(
   async (req, res, next) => {
     try {
       const dashboardAccessId = getAuthId(req);
-      await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+      const coderUserId = getAuthUserId(req);
+      await getOwnedCanvas(req.params.id, dashboardAccessId, coderUserId);
       const { transcriptId, questionId, startOffset, endOffset, codedText, note } = req.body;
 
       const [transcript, question] = await Promise.all([
@@ -229,7 +231,16 @@ codingRoutes.post(
       }
 
       const coding = await prisma.canvasTextCoding.create({
-        data: { canvasId: req.params.id, transcriptId, questionId, startOffset, endOffset, codedText, note },
+        data: {
+          canvasId: req.params.id,
+          transcriptId,
+          questionId,
+          startOffset,
+          endOffset,
+          codedText,
+          note,
+          coderUserId,
+        },
       });
 
       const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
@@ -673,6 +684,84 @@ codingRoutes.post('/canvas/:id/intercoder', validateParams(canvasIdParam), async
     const result = computeCohenKappa(codingsA, codingsB, segments);
 
     res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Multi-coder agreement (Krippendorff's α over real coder attribution) ───
+//
+// Unlike the legacy /intercoder route (which fabricated two coders by splitting
+// one canvas's codings at the timestamp midpoint), this uses the coderUserId
+// recorded on each coding (migration 0031) to compute genuine ≥2-coder
+// agreement. α generalises to any number of coders and tolerates the unbalanced
+// designs typical of qualitative work.
+codingRoutes.post('/canvas/:id/intercoder/agreement', validateParams(canvasIdParam), async (req, res, next) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+
+    const { transcriptId, userIds } = req.body;
+    if (!transcriptId || typeof transcriptId !== 'string') {
+      throw new AppError('transcriptId is required', 400);
+    }
+    if (!Array.isArray(userIds) || userIds.length < 2) {
+      throw new AppError('At least 2 coders are required to compute agreement', 400);
+    }
+
+    const transcript = await prisma.canvasTranscript.findUnique({ where: { id: transcriptId } });
+    if (!transcript || transcript.canvasId !== req.params.id) {
+      throw new AppError('Transcript not found in this canvas', 404);
+    }
+
+    // Pull every coding on this transcript authored by one of the selected coders.
+    const allCodings = await prisma.canvasTextCoding.findMany({
+      where: { canvasId: req.params.id, transcriptId, coderUserId: { in: userIds } },
+    });
+
+    // Paragraph-level segmentation (mirrors the legacy route + the frontend modal).
+    const content = transcript.content;
+    const parts = content.split(/\n\s*\n/);
+    const segments: { transcriptId: string; startOffset: number; endOffset: number }[] = [];
+    let offset = 0;
+    for (const part of parts) {
+      const trimmed = part.trim();
+      if (trimmed.length > 0) {
+        const start = content.indexOf(trimmed, offset);
+        segments.push({ transcriptId, startOffset: start, endOffset: start + trimmed.length });
+        offset = start + trimmed.length;
+      }
+    }
+    if (segments.length === 0) {
+      segments.push({ transcriptId, startOffset: 0, endOffset: content.length });
+    }
+
+    const coders = userIds.map((coderId: string) => ({
+      coderId,
+      codings: allCodings
+        .filter((c) => c.coderUserId === coderId)
+        .map((c) => ({
+          transcriptId: c.transcriptId,
+          questionId: c.questionId,
+          startOffset: c.startOffset,
+          endOffset: c.endOffset,
+        })),
+    }));
+
+    const observations = buildSegmentCodeObservations({ segments, coders });
+    const alphaResult = computeKrippendorffAlpha(observations);
+
+    res.json({
+      success: true,
+      data: {
+        method: "Krippendorff's α",
+        alpha: alphaResult.alpha,
+        nCoders: alphaResult.n_coders,
+        nUnits: alphaResult.n_units,
+        nObservations: alphaResult.n_observations,
+        nSegments: segments.length,
+      },
+    });
   } catch (err) {
     next(err);
   }

@@ -53,22 +53,23 @@ model User {
   onboardingState       String?   @default("{}")
   onboardingCompletedAt DateTime?
 
-  subscription     Subscription?
-  codingCanvases   CodingCanvas[]
-  dashboardAccess  DashboardAccess?
-  repositories     ResearchRepository[]
-  integrations     Integration[]
-  aiConfig         UserAiConfig?
-  ownedTeams       Team[]               @relation("TeamOwner")
-  teamMemberships  TeamMember[]
-  notifications    Notification[]
-  reportSchedules  ReportSchedule[]
-  calendarEvents   CalendarEvent[]
-  emailPreference  EmailPreference?
-  emailDeliveries  EmailDelivery[]
-  trainingAttempts TrainingAttempt[]
-  canvasTemplates  CanvasTemplate[]
-  fileUploads      FileUpload[]
+  subscription      Subscription?
+  codingCanvases    CodingCanvas[]
+  dashboardAccess   DashboardAccess?
+  repositories      ResearchRepository[]
+  integrations      Integration[]
+  aiConfig          UserAiConfig?
+  ownedTeams        Team[]               @relation("TeamOwner")
+  teamMemberships   TeamMember[]
+  notifications     Notification[]
+  reportSchedules   ReportSchedule[]
+  calendarEvents    CalendarEvent[]
+  emailPreference   EmailPreference?
+  emailDeliveries   EmailDelivery[]
+  trainingAttempts  TrainingAttempt[]
+  canvasTemplates   CanvasTemplate[]
+  fileUploads       FileUpload[]
+  canvasTextCodings CanvasTextCoding[]
 
   @@index([email])
   @@index([stripeCustomerId])
@@ -267,15 +268,21 @@ model CanvasTextCoding {
   // Provenance for AI disclosure: "human" (default) or "ai" (created by
   // accepting an AI suggestion). Powers the IRB-ready AI-disclosure export.
   source       String           @default("human")
+  // Which researcher created this coding. Nullable: legacy codings predate
+  // attribution and AI/script-created codings may have no human coder. Enables
+  // genuine multi-coder intercoder reliability (Cohen's κ / Krippendorff's α).
+  coderUserId  String?
   createdAt    DateTime         @default(now())
   canvas       CodingCanvas     @relation(fields: [canvasId], references: [id], onDelete: Cascade)
   transcript   CanvasTranscript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
   question     CanvasQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  coder        User?            @relation(fields: [coderUserId], references: [id], onDelete: SetNull)
 
   @@index([canvasId])
   @@index([transcriptId])
   @@index([questionId])
   @@index([canvasId, transcriptId])
+  @@index([coderUserId])
 }
 
 model CanvasNodePosition {
