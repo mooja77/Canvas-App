@@ -214,7 +214,8 @@ codingRoutes.post(
   async (req, res, next) => {
     try {
       const dashboardAccessId = getAuthId(req);
-      await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+      const coderUserId = getAuthUserId(req);
+      await getOwnedCanvas(req.params.id, dashboardAccessId, coderUserId);
       const { transcriptId, questionId, startOffset, endOffset, codedText, note } = req.body;
 
       const [transcript, question] = await Promise.all([
@@ -229,7 +230,16 @@ codingRoutes.post(
       }
 
       const coding = await prisma.canvasTextCoding.create({
-        data: { canvasId: req.params.id, transcriptId, questionId, startOffset, endOffset, codedText, note },
+        data: {
+          canvasId: req.params.id,
+          transcriptId,
+          questionId,
+          startOffset,
+          endOffset,
+          codedText,
+          note,
+          coderUserId,
+        },
       });
 
       const rawIp = req.ip || req.socket.remoteAddress || 'unknown';

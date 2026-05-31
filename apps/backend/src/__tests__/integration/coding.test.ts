@@ -543,4 +543,27 @@ describe('Coding integration tests', () => {
     expect(res.status).toBe(403);
     expect(res.body.success).toBe(false);
   });
+
+  // ─── Coder attribution: a created coding records the authenticated coder ───
+  it('POST /canvas/:id/codings records the authenticated user as coderUserId', async () => {
+    const transcriptId = 'transcript-c1';
+    const questionId = 'question-c1';
+
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ id: transcriptId, canvasId });
+    mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: questionId, canvasId });
+    mockPrisma.canvasTextCoding.create.mockResolvedValue({ id: 'coding-attr-1', canvasId });
+
+    await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId,
+      questionId,
+      startOffset: 0,
+      endOffset: 15,
+      codedText: 'patterns emerge',
+    });
+
+    expect(mockPrisma.canvasTextCoding.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ coderUserId: userId }) }),
+    );
+  });
 });
