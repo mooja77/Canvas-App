@@ -566,4 +566,42 @@ describe('Coding integration tests', () => {
       expect.objectContaining({ data: expect.objectContaining({ coderUserId: userId }) }),
     );
   });
+
+  // ─── Multi-coder agreement (Krippendorff's α over real attribution) ───
+  it('POST /canvas/:id/intercoder/agreement computes α from per-coder codings', async () => {
+    const transcriptId = 'transcript-c1';
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
+      id: transcriptId,
+      canvasId,
+      // two paragraphs => two segments
+      content: 'First paragraph about access barriers.\n\nSecond paragraph about something else entirely.',
+    });
+    // Two coders, perfect agreement: both code paragraph 1 with q1, neither codes paragraph 2.
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
+      { transcriptId, questionId: 'q1', startOffset: 0, endOffset: 20, coderUserId: 'coder-1' },
+      { transcriptId, questionId: 'q1', startOffset: 0, endOffset: 20, coderUserId: 'coder-2' },
+    ]);
+
+    const res = await request(app)
+      .post(`/api/canvas/${canvasId}/intercoder/agreement`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ transcriptId, userIds: ['coder-1', 'coder-2'] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.alpha).toBeCloseTo(1.0, 4);
+    expect(res.body.data.nCoders).toBe(2);
+  });
+
+  it('POST /canvas/:id/intercoder/agreement requires at least 2 coders', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    const res = await request(app)
+      .post(`/api/canvas/${canvasId}/intercoder/agreement`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ transcriptId: 'transcript-c1', userIds: ['coder-1'] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
 });

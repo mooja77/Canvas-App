@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeKrippendorffAlpha, computeFleissKappa } from './intercoder.js';
+import { computeKrippendorffAlpha, computeFleissKappa, buildSegmentCodeObservations } from './intercoder.js';
 
 describe("Krippendorff's α", () => {
   it('returns α=1 for perfect agreement', () => {
@@ -115,5 +115,66 @@ describe("Fleiss' κ", () => {
     expect(result.kappa).toBe(0);
     expect(result.n_units).toBe(0);
     expect(result.n_coders).toBe(0);
+  });
+});
+
+describe('buildSegmentCodeObservations (multi-coder adapter)', () => {
+  const seg = (startOffset: number, endOffset: number) => ({ transcriptId: 't1', startOffset, endOffset });
+  const coding = (questionId: string, startOffset: number, endOffset: number) => ({
+    transcriptId: 't1',
+    questionId,
+    startOffset,
+    endOffset,
+  });
+
+  it('emits one observation per (segment × code × coder)', () => {
+    // 2 segments, 1 code, 2 coders => 2 × 1 × 2 = 4 observations
+    const obs = buildSegmentCodeObservations({
+      segments: [seg(0, 10), seg(10, 20)],
+      coders: [
+        { coderId: 'a', codings: [coding('q1', 0, 5)] },
+        { coderId: 'b', codings: [coding('q1', 0, 5)] },
+      ],
+    });
+    expect(obs).toHaveLength(4);
+  });
+
+  it('marks a code present (1) when a coder overlaps the segment, absent (0) otherwise', () => {
+    const obs = buildSegmentCodeObservations({
+      segments: [seg(0, 10)],
+      coders: [
+        { coderId: 'a', codings: [coding('q1', 2, 6)] }, // overlaps -> present
+        { coderId: 'b', codings: [coding('q1', 50, 60)] }, // no overlap -> absent
+      ],
+    });
+    expect(obs.find((o) => o.coderId === 'a')?.value).toBe('1');
+    expect(obs.find((o) => o.coderId === 'b')?.value).toBe('0');
+  });
+
+  it('feeds Krippendorff α: full agreement across 2 coders on 1 code yields α = 1', () => {
+    const obs = buildSegmentCodeObservations({
+      segments: [seg(0, 10), seg(10, 20)],
+      coders: [
+        { coderId: 'a', codings: [coding('q1', 0, 5)] }, // codes seg1 only
+        { coderId: 'b', codings: [coding('q1', 0, 5)] }, // codes seg1 only
+      ],
+    });
+    const result = computeKrippendorffAlpha(obs);
+    expect(result.alpha).toBeCloseTo(1.0, 4);
+    expect(result.n_coders).toBe(2);
+  });
+
+  it('includes every code any coder used as a unit dimension', () => {
+    const obs = buildSegmentCodeObservations({
+      segments: [seg(0, 10)],
+      coders: [
+        { coderId: 'a', codings: [coding('q1', 0, 5)] },
+        { coderId: 'b', codings: [coding('q2', 0, 5)] },
+      ],
+    });
+    // 1 segment × 2 distinct codes × 2 coders = 4 observations
+    expect(obs).toHaveLength(4);
+    // one unit per (segment, code)
+    expect(new Set(obs.map((o) => o.unitId)).size).toBe(2);
   });
 });

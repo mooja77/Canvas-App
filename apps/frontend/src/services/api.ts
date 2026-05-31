@@ -336,6 +336,10 @@ export const canvasApi = {
   computeIntercoder: (canvasId: string, data: { userId: string; transcriptId: string }) =>
     canvasClient.post(`/canvas/${canvasId}/intercoder`, data),
 
+  // Multi-coder agreement (Krippendorff's α) over real coder attribution.
+  computeMultiCoderAgreement: (canvasId: string, data: { transcriptId: string; userIds: string[] }) =>
+    canvasClient.post(`/canvas/${canvasId}/intercoder/agreement`, data),
+
   // ─── Collaboration ───
   getCollaborators: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}/collaborators`),
 
