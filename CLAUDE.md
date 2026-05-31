@@ -12,8 +12,8 @@ Qualitative coding canvas for researchers. React 18 + Vite frontend, Express + P
 ## Commands
 
 - `npm install` then `npm run db:migrate` then `npm run db:seed` then `npm run dev`
-- `npm test` — run all 409 tests (234 backend + 131 frontend + 44 E2E)
-- `npm run test:e2e` — run 44 Playwright E2E tests (set `E2E_TEST=true` env var for test mode)
+- `npm test` — run all 407 tests (234 backend + 131 frontend + 42 E2E)
+- `npm run test:e2e` — run 42 Playwright E2E tests (set `E2E_TEST=true` env var for test mode)
 - `npm run typecheck` — type-check backend + frontend
 - `npm run lint` — ESLint across all packages
 - `npm run build` — full production build
