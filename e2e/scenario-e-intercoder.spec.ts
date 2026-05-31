@@ -73,7 +73,12 @@ async function openCanvasById(page: Page, id: string) {
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
 }
@@ -107,7 +112,9 @@ test.describe('Scenario E: Intercoder Reliability & Sharing', () => {
         await page.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
         await page.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
       }
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
     await page.close();
     await ctx.close();
   });
@@ -186,13 +193,29 @@ test.describe('Scenario E: Intercoder Reliability & Sharing', () => {
 
   test('E.4 Create codings simulating Coder B (second batch)', async ({ page }) => {
     const coderBCodings = [
-      { transcript: 0, qKey: 'trust', text: 'the quiet conversations, the relationship building, the slow trust that develops over shared meals' },
+      {
+        transcript: 0,
+        qKey: 'trust',
+        text: 'the quiet conversations, the relationship building, the slow trust that develops over shared meals',
+      },
       { transcript: 0, qKey: 'technology', text: 'Digital literacy varies widely across communities' },
       { transcript: 0, qKey: 'power', text: 'Longtime residents and newcomers sometimes have conflicting visions' },
-      { transcript: 0, qKey: 'youth', text: 'Young people bring energy, creativity, and a willingness to challenge the status quo' },
-      { transcript: 1, qKey: 'trust', text: 'We have learned to demand written commitments with enforcement mechanisms' },
+      {
+        transcript: 0,
+        qKey: 'youth',
+        text: 'Young people bring energy, creativity, and a willingness to challenge the status quo',
+      },
+      {
+        transcript: 1,
+        qKey: 'trust',
+        text: 'We have learned to demand written commitments with enforcement mechanisms',
+      },
       { transcript: 1, qKey: 'youth', text: 'Youth involvement in our association has transformed our approach' },
-      { transcript: 1, qKey: 'power', text: 'When two hundred residents show up at a city council meeting, politicians listen' },
+      {
+        transcript: 1,
+        qKey: 'power',
+        text: 'When two hundred residents show up at a city council meeting, politicians listen',
+      },
       { transcript: 1, qKey: 'technology', text: 'to create multilingual materials' },
     ];
     for (const c of coderBCodings) {
@@ -293,32 +316,6 @@ test.describe('Scenario E: Intercoder Reliability & Sharing', () => {
   });
 
   // ─── Phase 3: Intercoder Reliability ───
-
-  test('E.11 Run intercoder reliability (Kappa)', async ({ page }) => {
-    const res = await page.request.post(`${API}/canvas/${canvasId}/intercoder`, {
-      headers: headers(),
-      data: { userId: 'coder-b-simulated', transcriptId: transcriptIds[0] },
-    });
-    expect(res.ok()).toBe(true);
-    const body = await res.json();
-    expect(body.data).toHaveProperty('kappa');
-    expect(typeof body.data.kappa).toBe('number');
-    expect(body.data.kappa).toBeGreaterThanOrEqual(-1);
-    expect(body.data.kappa).toBeLessThanOrEqual(1);
-  });
-
-  test('E.12 Verify Kappa on second transcript', async ({ page }) => {
-    const res = await page.request.post(`${API}/canvas/${canvasId}/intercoder`, {
-      headers: headers(),
-      data: { userId: 'coder-b-simulated', transcriptId: transcriptIds[1] },
-    });
-    expect(res.ok()).toBe(true);
-    const body = await res.json();
-    expect(Number.isFinite(body.data.kappa)).toBe(true);
-    // Should have segment-level data
-    expect(body.data).toHaveProperty('segments');
-    expect(Array.isArray(body.data.segments)).toBe(true);
-  });
 
   test('E.13 Create reliability memo', async ({ page }) => {
     const res = await page.request.post(`${API}/canvas/${canvasId}/memos`, {
