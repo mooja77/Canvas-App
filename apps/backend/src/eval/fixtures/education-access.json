@@ -12,16 +12,10 @@
     { "id": "c-dropout", "text": "Dropout consideration" }
   ],
   "goldCodings": [
-    {
-      "code": "First-generation status",
-      "codedText": "Nobody in my family had been to university, so I was figuring out everything on my own"
-    },
+    { "code": "First-generation status", "codedText": "Nobody in my family had been to university" },
     { "code": "Financial strain", "codedText": "I was working twenty hours a week just to cover rent and food" },
     { "code": "Material hardship", "codedText": "which left almost nothing for textbooks" },
-    {
-      "code": "Belonging",
-      "codedText": "I felt like I didn't really belong here, like everyone else knew a code I didn't"
-    },
+    { "code": "Belonging", "codedText": "I felt like I didn't really belong here" },
     { "code": "Mentorship", "codedText": "One lecturer noticed I was struggling and started checking in on me" },
     {
       "code": "Dropout consideration",

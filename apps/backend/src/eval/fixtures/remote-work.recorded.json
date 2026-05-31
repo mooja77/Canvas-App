@@ -1,0 +1,17 @@
+{
+  "_note": "Synthetic recorded output for --dry-run: catches the obvious benefit/cost lines but misses the understated reduced-visibility line. ~P 1.0 / R 0.8. Replace via --live for a real number.",
+  "codings": [
+    { "code": "Flexibility benefit", "codedText": "I save almost two hours a day not commuting", "confidence": 0.9 },
+    { "code": "Blurred boundaries", "codedText": "I end up checking email at ten at night", "confidence": 0.84 },
+    {
+      "code": "Isolation",
+      "codedText": "I don't speak to another adult until my partner gets home",
+      "confidence": 0.8
+    },
+    {
+      "code": "Preference for remote",
+      "codedText": "I'd take this over the open-plan office any day",
+      "confidence": 0.85
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "family-caregiving",
+  "description": "Dementia family-caregiver narrative. Tight complete-clause gold spans. Probes emotionally adjacent codes (role loss vs identity erosion; ambivalence) and a sibling-absence aside.",
+  "transcriptTitle": "Interview 25 (excerpt)",
+  "transcriptContent": "I moved back in with my mother when the dementia got worse, and most days I feel like I've lost the person she was. I love her, but some mornings I resent that my own life is on hold. There's no one I can really hand this over to, even for an afternoon. My brothers call to check in but they never actually visit. I don't even know who I am outside of being her carer anymore.",
+  "codebook": [
+    { "id": "c-roleloss", "text": "Loss of the person" },
+    { "id": "c-ambivalence", "text": "Ambivalence" },
+    { "id": "c-respite", "text": "Lack of respite" },
+    { "id": "c-sibling", "text": "Sibling absence" },
+    { "id": "c-identity", "text": "Identity erosion" }
+  ],
+  "goldCodings": [
+    { "code": "Loss of the person", "codedText": "I feel like I've lost the person she was" },
+    { "code": "Ambivalence", "codedText": "I love her, but some mornings I resent that my own life is on hold" },
+    { "code": "Lack of respite", "codedText": "There's no one I can really hand this over to" },
+    { "code": "Sibling absence", "codedText": "My brothers call to check in but they never actually visit" },
+    { "code": "Identity erosion", "codedText": "I don't even know who I am outside of being her carer anymore" }
+  ]
+}
