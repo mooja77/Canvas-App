@@ -1,0 +1,19 @@
+{
+  "_note": "Synthetic recorded output for --dry-run: gets most codes, but conflates coping-after-loss into purpose (misses the coping line) and over-splits one line. ~P 0.83 / R 0.83. Replace via --live for a real number.",
+  "codings": [
+    {
+      "code": "Purpose",
+      "codedText": "it became the thing that gave my weeks a shape and a purpose",
+      "confidence": 0.85
+    },
+    { "code": "Belonging", "codedText": "The other volunteers became like a second family to me", "confidence": 0.88 },
+    {
+      "code": "Taking on leadership",
+      "codedText": "they asked me to coordinate the Saturday shifts",
+      "confidence": 0.82
+    },
+    { "code": "Emotional toll", "codedText": "I go home and just cry", "confidence": 0.8 },
+    { "code": "Commitment", "codedText": "I can't imagine stopping now", "confidence": 0.86 },
+    { "code": "Coping after loss", "codedText": "I started volunteering at the food bank", "confidence": 0.55 }
+  ]
+}

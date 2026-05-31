@@ -1,0 +1,22 @@
+{
+  "name": "community-program",
+  "description": "Volunteering / civic-participation narrative. Tight complete-clause gold spans (lesson from round 2). Probes coping-vs-purpose and belonging-vs-commitment adjacency, plus an emotional-toll line amid positive ones.",
+  "transcriptTitle": "Interview 18 (excerpt)",
+  "transcriptContent": "I started volunteering at the food bank mostly to fill my evenings after the divorce. Over time it became the thing that gave my weeks a shape and a purpose. The other volunteers became like a second family to me. Eventually they asked me to coordinate the Saturday shifts, which I never expected. Some weeks the need is so overwhelming that I go home and just cry. But I can't imagine stopping now.",
+  "codebook": [
+    { "id": "c-coping", "text": "Coping after loss" },
+    { "id": "c-purpose", "text": "Purpose" },
+    { "id": "c-belonging", "text": "Belonging" },
+    { "id": "c-leadership", "text": "Taking on leadership" },
+    { "id": "c-toll", "text": "Emotional toll" },
+    { "id": "c-commitment", "text": "Commitment" }
+  ],
+  "goldCodings": [
+    { "code": "Coping after loss", "codedText": "to fill my evenings after the divorce" },
+    { "code": "Purpose", "codedText": "it became the thing that gave my weeks a shape and a purpose" },
+    { "code": "Belonging", "codedText": "The other volunteers became like a second family to me" },
+    { "code": "Taking on leadership", "codedText": "they asked me to coordinate the Saturday shifts" },
+    { "code": "Emotional toll", "codedText": "I go home and just cry" },
+    { "code": "Commitment", "codedText": "I can't imagine stopping now" }
+  ]
+}

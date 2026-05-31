@@ -1,0 +1,20 @@
+{
+  "name": "remote-work",
+  "description": "Remote-work experience narrative. Tight complete-clause gold spans. Probes benefit-vs-cost adjacency (flexibility vs blurred boundaries) and an understated visibility/career line.",
+  "transcriptTitle": "Interview 21 (excerpt)",
+  "transcriptContent": "Working from home, I save almost two hours a day not commuting, which I pour back into my kids. The downside is my laptop is always right there, so I end up checking email at ten at night. I've noticed I'm out of the loop on the decisions that get made in the hallway. Some days I don't speak to another adult until my partner gets home. Still, I'd take this over the open-plan office any day.",
+  "codebook": [
+    { "id": "c-flex", "text": "Flexibility benefit" },
+    { "id": "c-boundary", "text": "Blurred boundaries" },
+    { "id": "c-visibility", "text": "Reduced visibility" },
+    { "id": "c-isolation", "text": "Isolation" },
+    { "id": "c-preference", "text": "Preference for remote" }
+  ],
+  "goldCodings": [
+    { "code": "Flexibility benefit", "codedText": "I save almost two hours a day not commuting" },
+    { "code": "Blurred boundaries", "codedText": "I end up checking email at ten at night" },
+    { "code": "Reduced visibility", "codedText": "I'm out of the loop on the decisions that get made in the hallway" },
+    { "code": "Isolation", "codedText": "I don't speak to another adult until my partner gets home" },
+    { "code": "Preference for remote", "codedText": "I'd take this over the open-plan office any day" }
+  ]
+}
