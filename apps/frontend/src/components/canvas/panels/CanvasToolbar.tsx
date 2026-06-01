@@ -677,7 +677,7 @@ export default function CanvasToolbar({
                     />
                   </svg>
                 }
-                label="Kappa (Intercoder)"
+                label="Intercoder agreement (κ / α)"
                 onClick={() => setShowIntercoderPanel(true)}
               />
               <DropdownItem
