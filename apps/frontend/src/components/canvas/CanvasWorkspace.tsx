@@ -504,13 +504,28 @@ export default function CanvasWorkspace() {
     return map;
   }, [nodePositions]);
 
+  // Individual slices of the active canvas, referenced separately so buildNodes
+  // and buildEdges only change identity when THEIR inputs change. The store
+  // updates activeCanvas immutably per-field, so e.g. adding a coding produces a
+  // new `codings` array but leaves `transcripts`/`questions`/etc refs intact —
+  // keeping buildNodes stable so the sync effect rebuilds only edges, not all
+  // nodes (the full buildNodes runs an O(n²) de-overlap pass). See the effect.
+  const activeCanvasId = activeCanvas?.id;
+  const acTranscripts = activeCanvas?.transcripts;
+  const acQuestions = activeCanvas?.questions;
+  const acMemos = activeCanvas?.memos;
+  const acCases = activeCanvas?.cases;
+  const acComputedNodes = activeCanvas?.computedNodes;
+  const acCodings = activeCanvas?.codings;
+  const acRelations = activeCanvas?.relations;
+
   // Build nodes from canvas data
   const buildNodes = useCallback((): Node[] => {
-    if (!activeCanvas) return [];
+    if (!activeCanvasId) return [];
 
     const result: Node[] = [];
 
-    activeCanvas.transcripts.forEach((t: CanvasTranscript, i: number) => {
+    (acTranscripts ?? []).forEach((t: CanvasTranscript, i: number) => {
       const nodeId = `transcript-${t.id}`;
       const posData = posMap.get(nodeId);
       const pos = posData ? { x: posData.x, y: posData.y } : { x: 50, y: 50 + i * 500 };
@@ -553,7 +568,7 @@ export default function CanvasWorkspace() {
       });
     });
 
-    activeCanvas.questions.forEach((q: CanvasQuestion, i: number) => {
+    (acQuestions ?? []).forEach((q: CanvasQuestion, i: number) => {
       const nodeId = `question-${q.id}`;
       const posData = posMap.get(nodeId);
       const pos = posData ? { x: posData.x, y: posData.y } : { x: 550, y: 50 + i * 280 };
@@ -579,7 +594,7 @@ export default function CanvasWorkspace() {
       });
     });
 
-    activeCanvas.memos.forEach((m: CanvasMemo, i: number) => {
+    (acMemos ?? []).forEach((m: CanvasMemo, i: number) => {
       const nodeId = `memo-${m.id}`;
       const posData = posMap.get(nodeId);
       const pos = posData ? { x: posData.x, y: posData.y } : { x: 900, y: 50 + i * 300 };
@@ -605,7 +620,7 @@ export default function CanvasWorkspace() {
     });
 
     // Case nodes
-    (activeCanvas.cases ?? []).forEach((c: CanvasCase, i: number) => {
+    (acCases ?? []).forEach((c: CanvasCase, i: number) => {
       const nodeId = `case-${c.id}`;
       const posData = posMap.get(nodeId);
       const pos = posData ? { x: posData.x, y: posData.y } : { x: -400, y: 50 + i * 300 };
@@ -629,7 +644,7 @@ export default function CanvasWorkspace() {
     });
 
     // Computed nodes — 2-column grid to reduce vertical extent
-    (activeCanvas.computedNodes ?? []).forEach((cn: CanvasComputedNode, i: number) => {
+    (acComputedNodes ?? []).forEach((cn: CanvasComputedNode, i: number) => {
       const nodeId = `computed-${cn.id}`;
       const posData = posMap.get(nodeId);
       const col = i % 2;
@@ -778,7 +793,12 @@ export default function CanvasWorkspace() {
 
     return result;
   }, [
-    activeCanvas,
+    activeCanvasId,
+    acTranscripts,
+    acQuestions,
+    acMemos,
+    acCases,
+    acComputedNodes,
     posMap,
     groups,
     updateGroup,
@@ -794,12 +814,12 @@ export default function CanvasWorkspace() {
 
   // Build edges from codings and relations
   const buildEdges = useCallback((): Edge[] => {
-    if (!activeCanvas) return [];
+    if (!activeCanvasId) return [];
     // Defensive: a partial canvas payload (e.g. restored from offline cache
     // before all fields landed) could have undefined arrays. Matches the
     // nullish-coalesce pattern used for relations below.
-    const questions = activeCanvas.questions ?? [];
-    const codings = activeCanvas.codings ?? [];
+    const questions = acQuestions ?? [];
+    const codings = acCodings ?? [];
     const questionColorMap = new Map<string, string>();
     questions.forEach((q: CanvasQuestion) => questionColorMap.set(q.id, q.color));
 
@@ -836,7 +856,7 @@ export default function CanvasWorkspace() {
     });
 
     // Relation edges
-    const relationEdges: Edge[] = (activeCanvas.relations ?? []).map((r: CanvasRelation) => ({
+    const relationEdges: Edge[] = (acRelations ?? []).map((r: CanvasRelation) => ({
       id: `relation-${r.id}`,
       source: `${r.fromType}-${r.fromId}`,
       target: `${r.toType}-${r.toId}`,
@@ -848,7 +868,7 @@ export default function CanvasWorkspace() {
     }));
 
     return [...codingEdges, ...relationEdges];
-  }, [activeCanvas]);
+  }, [activeCanvasId, acQuestions, acCodings, acRelations]);
 
   // Search-dim + muted decoration applied as a cheap derived layer over the
   // structural `nodes`. This is what we hand to React Flow. Keeping it separate
@@ -894,10 +914,19 @@ export default function CanvasWorkspace() {
     runFitRef.current = runFit;
   }, [runFit]);
 
-  // Sync nodes/edges when canvas data changes — preserve local positions, only fitView on canvas switch
+  // Sync nodes/edges when canvas data changes — preserve local positions, only fitView on canvas switch.
+  //
+  // On the same canvas, nodes and edges are rebuilt INDEPENDENTLY, each only
+  // when its builder's identity changed. buildNodes depends on the node-relevant
+  // slices and buildEdges on codings/questions/relations (see their deps), so a
+  // coding add — the hot path while coding — recomputes only edges and skips the
+  // full node rebuild (which runs an O(n²) de-overlap pass and reconciles every
+  // node in React Flow). The refs below track the builder used for the last sync.
   const loadedCanvasIdRef = useRef<string | null>(null);
+  const lastBuiltNodesFnRef = useRef(buildNodes);
+  const lastBuiltEdgesFnRef = useRef(buildEdges);
   useEffect(() => {
-    const canvasId = activeCanvas?.id ?? null;
+    const canvasId = activeCanvasId ?? null;
     const isNewCanvas = canvasId !== loadedCanvasIdRef.current;
 
     if (isNewCanvas) {
@@ -907,6 +936,8 @@ export default function CanvasWorkspace() {
       const newEdges = buildEdges();
       setNodes(newNodes);
       setEdges(newEdges);
+      lastBuiltNodesFnRef.current = buildNodes;
+      lastBuiltEdgesFnRef.current = buildEdges;
       // Capture initial state so first undo has a baseline
       pushHistory(newNodes, newEdges);
       if (canvasId) {
@@ -916,8 +947,20 @@ export default function CanvasWorkspace() {
           runFitRef.current('initial');
         }, 200);
       }
-    } else {
-      // Same canvas — update node data but preserve local positions
+      return;
+    }
+
+    // Same canvas — rebuild edges only if their inputs changed.
+    if (buildEdges !== lastBuiltEdgesFnRef.current) {
+      lastBuiltEdgesFnRef.current = buildEdges;
+      setEdges(buildEdges());
+    }
+
+    // Same canvas — rebuild nodes only if node-relevant data changed; otherwise
+    // a coding add (edges-only) would needlessly re-run the full node rebuild.
+    if (buildNodes !== lastBuiltNodesFnRef.current) {
+      lastBuiltNodesFnRef.current = buildNodes;
+      // Update node data but preserve local positions
       const freshNodes = buildNodes();
       setNodes((currentNodes: Node[]) => {
         const prevById = new Map(currentNodes.map((n) => [n.id, n]));
@@ -961,9 +1004,8 @@ export default function CanvasWorkspace() {
           };
         });
       });
-      setEdges(buildEdges());
     }
-  }, [activeCanvas, buildNodes, buildEdges, setNodes, setEdges, clearHistory, pushHistory]);
+  }, [activeCanvasId, buildNodes, buildEdges, setNodes, setEdges, clearHistory, pushHistory]);
 
   // Refit on viewport change (browser window resize, orientationchange).
   // Sidebar/navigator toggles intentionally do NOT trigger a refit — those
