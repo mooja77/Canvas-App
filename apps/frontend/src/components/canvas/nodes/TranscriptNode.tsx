@@ -26,7 +26,6 @@ import toast from 'react-hot-toast';
 export interface TranscriptNodeData {
   transcriptId: string;
   title: string;
-  content: string;
   caseId?: string | null;
   collapsed?: boolean;
   zoomLevel?: number;
@@ -254,6 +253,11 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
     [allTranscripts, nodeData.transcriptId],
   );
 
+  // Transcript text is read from the store (single source of truth) rather than
+  // duplicated into node.data — see buildNodes. Offsets are computed against
+  // this same content, so using it keeps coding placement correct.
+  const content = transcript?.content ?? '';
+
   const caseName = useMemo(() => {
     const caseId = transcript?.caseId;
     if (!caseId) return null;
@@ -261,7 +265,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
   }, [transcript?.caseId, allCases]);
 
   // Word count
-  const wordCount = useMemo(() => nodeData.content.split(/\s+/).filter(Boolean).length, [nodeData.content]);
+  const wordCount = useMemo(() => content.split(/\s+/).filter(Boolean).length, [content]);
 
   const handleMouseUp = useCallback(() => {
     const sel = window.getSelection();
@@ -454,7 +458,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
 
       {/* Always-visible coverage bar at bottom of header */}
       {(() => {
-        const contentLen = nodeData.content.length;
+        const contentLen = content.length;
         if (contentLen === 0) return null;
         // Calculate coded character coverage using a boolean array approach
         const covered = new Uint8Array(contentLen);
@@ -485,19 +489,14 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
           <div className="relative">
             {showCodingStripes && codings.length > 0 && (
               <CodingStripesOverlay
-                contentLength={nodeData.content.length}
+                contentLength={content.length}
                 codings={codings}
                 questions={questions}
                 containerHeight={300}
               />
             )}
             {codings.length > 0 && (
-              <CodingDensityBar
-                contentLength={nodeData.content.length}
-                codings={codings}
-                questions={questions}
-                height={300}
-              />
+              <CodingDensityBar contentLength={content.length} codings={codings} questions={questions} height={300} />
             )}
             <div
               ref={textRef}
@@ -515,7 +514,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
             >
               <div className="whitespace-pre-wrap text-xs leading-relaxed text-gray-700 dark:text-gray-300 select-text">
                 <HighlightedTranscript
-                  text={nodeData.content}
+                  text={content}
                   codings={codings}
                   questions={questions}
                   onSegmentClick={handleSegmentClick}

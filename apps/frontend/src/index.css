@@ -121,6 +121,14 @@
   pointer-events: none;
 }
 
+/* Edge level-of-detail: on a dense graph zoomed far out (< ~12%), edges are an
+   unreadable haze yet React Flow still repaints every path each pan frame.
+   The `.canvas-hide-edges` class (added by CanvasWorkspace via
+   shouldHideEdgesAtZoom) drops them entirely until the user zooms back in. */
+.canvas-hide-edges .react-flow__edges {
+  display: none;
+}
+
 /* Node entrance */
 @keyframes nodeEnter {
   from { opacity: 0; transform: scale(0.92); }

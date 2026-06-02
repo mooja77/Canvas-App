@@ -15,6 +15,20 @@ export function isDenseEdgeGraph(edgeCount: number): boolean {
   return edgeCount > DENSE_EDGE_THRESHOLD;
 }
 
+/**
+ * Below this zoom, a dense graph's edges are an unreadable haze — but React
+ * Flow still paints every edge path on each pan frame (viewport culling can't
+ * help when the whole graph fits the screen). Hiding them at extreme zoom-out
+ * is a pure pan/zoom win and arguably makes node clusters clearer; zooming back
+ * in restores them. Only applied to dense graphs so small canvases are
+ * unaffected.
+ */
+export const LOW_ZOOM_EDGE_HIDE_BELOW = 0.12;
+
+export function shouldHideEdgesAtZoom(zoom: number, edgeCount: number): boolean {
+  return zoom < LOW_ZOOM_EDGE_HIDE_BELOW && isDenseEdgeGraph(edgeCount);
+}
+
 export function getCodingIdsFromEdgeData(edgeData: Record<string, unknown> | undefined): string[] {
   if (!edgeData) return [];
 
