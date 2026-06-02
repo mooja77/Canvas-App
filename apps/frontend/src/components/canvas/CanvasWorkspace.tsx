@@ -34,7 +34,7 @@ import QuickAddMenu from './panels/QuickAddMenu';
 import CanvasTabBar from './panels/CanvasTabBar';
 import AiSuggestPanel from './panels/AiSuggestPanel';
 import AiSetupGuide from './panels/AiSetupGuide';
-import { getCodingIdsFromEdgeData } from './canvasEdgeUtils';
+import { getCodingIdsFromEdgeData, isDenseEdgeGraph } from './canvasEdgeUtils';
 import { numericValue } from './canvasGeometry';
 import { edgeTypes, nodeTypes } from './canvasFlowTypes';
 import AlignmentGuideOverlay from './AlignmentGuideOverlay';
@@ -817,6 +817,10 @@ export default function CanvasWorkspace() {
       else codingGroups.set(key, [c]);
     });
 
+    // On dense graphs, edges drop their ambient animated dot + midpoint badge to
+    // keep pan/zoom smooth (hover still shows the full tooltip). See isDenseEdgeGraph.
+    const dense = isDenseEdgeGraph(codingGroups.size);
+
     const codingEdges: Edge[] = Array.from(codingGroups.entries()).map(([key, codings]) => {
       const first = codings[0];
       return {
@@ -831,6 +835,7 @@ export default function CanvasWorkspace() {
           questionColor: questionColorMap.get(first.questionId) || '#3B82F6',
           count: codings.length,
           codings,
+          dense,
         },
       };
     });
