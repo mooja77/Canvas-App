@@ -19,6 +19,9 @@ interface CodingEdgeData {
   questionColor: string;
   count?: number;
   codings?: CanvasTextCoding[];
+  /** Set by buildEdges when the canvas has many edges — suppresses the per-edge
+   *  ambient animation + midpoint badge so large graphs stay smooth. */
+  dense?: boolean;
 }
 
 export default function CodingEdge({
@@ -44,6 +47,7 @@ export default function CodingEdge({
 
   const count = edgeData?.count ?? 1;
   const codings = edgeData?.codings;
+  const dense = edgeData?.dense ?? false;
 
   const pathParams = { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition };
   const [edgePath, labelX, labelY] =
@@ -87,14 +91,15 @@ export default function CodingEdge({
           does NOT stop, and a moving dot per edge is exactly the kind of
           continuous motion that affects vestibular-sensitive users. The
           midpoint annotation badge below still marks the edge. */}
-      {!hovered && zoomTier === 'full' && !reducedMotion && (
+      {!hovered && zoomTier === 'full' && !reducedMotion && !dense && (
         <circle r={3} fill={color} opacity={0.5}>
           <animateMotion dur="3s" repeatCount="indefinite" path={edgePath} />
         </circle>
       )}
 
-      {/* Annotation badge at edge midpoint — visible at full zoom when NOT hovered */}
-      {!hovered && zoomTier === 'full' && edgeData && (
+      {/* Annotation badge at edge midpoint — visible at full zoom when NOT hovered.
+          Suppressed on dense graphs (hover still shows the full tooltip). */}
+      {!hovered && zoomTier === 'full' && edgeData && !dense && (
         <EdgeLabelRenderer>
           <div
             className="nodrag nopan pointer-events-auto absolute"
