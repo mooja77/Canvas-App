@@ -34,7 +34,7 @@ import QuickAddMenu from './panels/QuickAddMenu';
 import CanvasTabBar from './panels/CanvasTabBar';
 import AiSuggestPanel from './panels/AiSuggestPanel';
 import AiSetupGuide from './panels/AiSetupGuide';
-import { getCodingIdsFromEdgeData, isDenseEdgeGraph } from './canvasEdgeUtils';
+import { getCodingIdsFromEdgeData, isDenseEdgeGraph, shouldHideEdgesAtZoom } from './canvasEdgeUtils';
 import { decorateNodes } from './canvasNodeDecoration';
 import { numericValue } from './canvasGeometry';
 import { edgeTypes, nodeTypes } from './canvasFlowTypes';
@@ -94,6 +94,12 @@ const initialEdges: Edge[] = [];
 // Stable references for ReactFlow props (avoids re-renders from inline objects)
 const SNAP_GRID: [number, number] = [20, 20];
 const PRO_OPTIONS = { hideAttribution: true };
+
+// Above this node count the MiniMap is both unhelpful (rects too tiny to aim
+// at) and costly (it renders + re-renders a rect for EVERY node on each node
+// change — it is not subject to onlyRenderVisibleElements culling). Hide it on
+// very large canvases. Set high so typical projects keep their overview map.
+const MINIMAP_MAX_NODES = 250;
 
 // ReactFlow's built-in fitView prop handles the first-mount fit before
 // our 200ms setTimeout-driven runFit('initial') can run. Without it, the
@@ -520,7 +526,9 @@ export default function CanvasWorkspace() {
         data: {
           transcriptId: t.id,
           title: t.title,
-          content: t.content,
+          // NOTE: full transcript text is intentionally NOT carried in node.data
+          // (it's read from the store by transcriptId in TranscriptNode). Keeping
+          // it out keeps node objects small and cheap to diff on every setNodes.
           caseId: t.caseId,
           collapsed: posData?.collapsed ?? false,
           expandedWidth: posData?.width,
@@ -2388,7 +2396,8 @@ export default function CanvasWorkspace() {
                 connectionRadius={36}
                 className={
                   'bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-[#0f1117] dark:via-[#131620] dark:to-[#0f1117]' +
-                  (viewportState.zoom < 0.4 && selectedNodes.length > 20 ? ' canvas-low-zoom-bulk' : '')
+                  (viewportState.zoom < 0.4 && selectedNodes.length > 20 ? ' canvas-low-zoom-bulk' : '') +
+                  (shouldHideEdgesAtZoom(viewportState.zoom, edges.length) ? ' canvas-hide-edges' : '')
                 }
                 connectionLineComponent={ConnectionLine}
                 onlyRenderVisibleElements
@@ -2418,7 +2427,7 @@ export default function CanvasWorkspace() {
                 )}
                 {/* Minimap hidden on mobile — at phone widths it overlapped
                     bottom-right canvas content, covering nodes. */}
-                {!focusMode && !isMobile && (
+                {!focusMode && !isMobile && nodes.length <= MINIMAP_MAX_NODES && (
                   <MiniMap
                     nodeColor={minimapColor}
                     maskColor={darkMode ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.06)'}
