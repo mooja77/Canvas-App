@@ -64,6 +64,7 @@ if (process.env.NODE_ENV !== 'test') {
 import express from 'express';
 import { createServer } from 'http';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -152,6 +153,13 @@ app.use(
     credentials: true,
   }),
 );
+
+// Response compression (gzip). The canvas GET ships full transcript text +
+// up to 10k codings as JSON; uncompressed that's a large payload on every open.
+// gzip cuts JSON/text ~80%+. Defaults skip responses <1KB and honour the
+// `x-no-compression` request header; there are no streaming/SSE endpoints to
+// exclude. Placed before routes so it wraps every response.
+app.use(compression());
 
 // Logging
 app.use(morgan(isProduction ? 'combined' : 'dev'));
