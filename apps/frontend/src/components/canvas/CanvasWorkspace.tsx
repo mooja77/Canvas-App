@@ -35,6 +35,7 @@ import CanvasTabBar from './panels/CanvasTabBar';
 import AiSuggestPanel from './panels/AiSuggestPanel';
 import AiSetupGuide from './panels/AiSetupGuide';
 import { getCodingIdsFromEdgeData, isDenseEdgeGraph } from './canvasEdgeUtils';
+import { decorateNodes } from './canvasNodeDecoration';
 import { numericValue } from './canvasGeometry';
 import { edgeTypes, nodeTypes } from './canvasFlowTypes';
 import AlignmentGuideOverlay from './AlignmentGuideOverlay';
@@ -501,16 +502,13 @@ export default function CanvasWorkspace() {
   const buildNodes = useCallback((): Node[] => {
     if (!activeCanvas) return [];
 
-    const isSearching = highlightedNodeIds.size > 0;
     const result: Node[] = [];
 
     activeCanvas.transcripts.forEach((t: CanvasTranscript, i: number) => {
       const nodeId = `transcript-${t.id}`;
       const posData = posMap.get(nodeId);
       const pos = posData ? { x: posData.x, y: posData.y } : { x: 50, y: 50 + i * 500 };
-      const dimmed = isSearching && !highlightedNodeIds.has(nodeId);
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
-      if (dimmed) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
       if (posData?.height && !posData.collapsed) style.height = posData.height;
       result.push({
@@ -551,9 +549,7 @@ export default function CanvasWorkspace() {
       const nodeId = `question-${q.id}`;
       const posData = posMap.get(nodeId);
       const pos = posData ? { x: posData.x, y: posData.y } : { x: 550, y: 50 + i * 280 };
-      const dimmed = isSearching && !highlightedNodeIds.has(nodeId);
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
-      if (dimmed) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
       // Code nodes auto-fit their text height — never clip. Apply width only and
       // let height follow content (a stored height that was too small used to
@@ -579,9 +575,7 @@ export default function CanvasWorkspace() {
       const nodeId = `memo-${m.id}`;
       const posData = posMap.get(nodeId);
       const pos = posData ? { x: posData.x, y: posData.y } : { x: 900, y: 50 + i * 300 };
-      const dimmed = isSearching && !highlightedNodeIds.has(nodeId);
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
-      if (dimmed) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
       if (posData?.height && !posData.collapsed) style.height = posData.height;
       result.push({
@@ -608,7 +602,6 @@ export default function CanvasWorkspace() {
       const posData = posMap.get(nodeId);
       const pos = posData ? { x: posData.x, y: posData.y } : { x: -400, y: 50 + i * 300 };
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
-      if (isSearching) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
       if (posData?.height && !posData.collapsed) style.height = posData.height;
       result.push({
@@ -635,7 +628,6 @@ export default function CanvasWorkspace() {
       const row = Math.floor(i / 2);
       const pos = posData ? { x: posData.x, y: posData.y } : { x: 1250 + col * 400, y: 50 + row * 420 };
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
-      if (isSearching) style.opacity = 0.15;
       if (posData?.width) style.width = posData.width;
       if (posData?.height && !posData.collapsed) style.height = posData.height;
       result.push({
@@ -718,13 +710,10 @@ export default function CanvasWorkspace() {
       });
     });
 
-    // Apply muted styling to bypassed nodes
-    for (const node of result) {
-      if (mutedNodeIds.has(node.id)) {
-        node.style = { ...node.style, opacity: 0.3, border: '2px dashed #9ca3af' };
-        node.data = { ...node.data, muted: true };
-      }
-    }
+    // Search-dim and muted styling are applied as a cheap derived layer
+    // (decorateNodes, passed to React Flow below) rather than here, so that
+    // searching — which changes highlightedNodeIds on every keystroke — does
+    // not re-run this whole rebuild (incl. the O(n²) de-overlap pass).
 
     // ── F1: de-overlap fallback-positioned nodes ──────────────────────
     // Any node without a persisted position is placed above on a fixed
@@ -782,7 +771,6 @@ export default function CanvasWorkspace() {
     return result;
   }, [
     activeCanvas,
-    highlightedNodeIds,
     posMap,
     groups,
     updateGroup,
@@ -793,7 +781,6 @@ export default function CanvasWorkspace() {
     rerouteNodes,
     aiSuggestions,
     requireAiConfig,
-    mutedNodeIds,
     inlineAiSuggesterEnabled,
   ]);
 
@@ -854,6 +841,17 @@ export default function CanvasWorkspace() {
 
     return [...codingEdges, ...relationEdges];
   }, [activeCanvas]);
+
+  // Search-dim + muted decoration applied as a cheap derived layer over the
+  // structural `nodes`. This is what we hand to React Flow. Keeping it separate
+  // from buildNodes means a search keystroke (which only changes
+  // highlightedNodeIds) recomputes this O(n) map instead of re-running the full
+  // node rebuild; unaffected nodes keep their object identity so memoized node
+  // components skip re-rendering, and the idle case returns `nodes` unchanged.
+  const decoratedNodes = useMemo(
+    () => decorateNodes(nodes, { highlightedNodeIds, mutedNodeIds }),
+    [nodes, highlightedNodeIds, mutedNodeIds],
+  );
 
   // Fit/framing — see docs/canvas-ux/fit-framing-algorithm.md. Replaces the
   // old static INITIAL_FIT_VIEW_OPTIONS / MANUAL_FIT_VIEW_OPTIONS pair which
@@ -2355,7 +2353,7 @@ export default function CanvasWorkspace() {
               onDrop={handleFileDrop}
             >
               <ReactFlow
-                nodes={nodes}
+                nodes={decoratedNodes}
                 edges={edges}
                 onNodesChange={handleNodesChange}
                 onEdgesChange={onEdgesChange}
