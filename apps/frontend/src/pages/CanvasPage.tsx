@@ -32,6 +32,7 @@ export default function CanvasPage() {
   const [showPlanWelcome, setShowPlanWelcome] = useState(false);
   const canvases = useCanvasStore((s) => s.canvases);
   const fetchCanvases = useCanvasStore((s) => s.fetchCanvases);
+  const closeCanvas = useCanvasStore((s) => s.closeCanvas);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   usePageMeta(
@@ -143,12 +144,13 @@ export default function CanvasPage() {
       <header className="flex-shrink-0 h-12 border-b border-gray-200/80 dark:border-gray-700/80 flex items-center justify-between px-4 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md">
         <div className="flex items-center gap-3">
           {/* Logo doubles as a home button — clicking returns to the canvas
-              list from anywhere (navigating to /canvas clears the active canvas
-              via CodingCanvas's route effect). */}
-          <button
-            type="button"
-            onClick={() => navigate('/canvas')}
-            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+              list from anywhere. Mirrors the toolbar Back link: a real
+              navigation to /canvas (with closeCanvas) reliably lands on the
+              list, where an SPA navigate could leave a transient loading state. */}
+          <a
+            href="/canvas"
+            onClick={closeCanvas}
+            className="flex items-center gap-2 no-underline cursor-pointer hover:opacity-80 transition-opacity"
             title="Back to your canvases"
             aria-label="Back to your canvases"
           >
@@ -168,7 +170,7 @@ export default function CanvasPage() {
               </svg>
             </div>
             <span className="font-semibold text-gray-900 dark:text-white text-sm tracking-tight">Canvas</span>
-          </button>
+          </a>
         </div>
 
         <div className="flex items-center gap-2">
