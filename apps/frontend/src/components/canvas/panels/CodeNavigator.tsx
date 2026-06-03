@@ -8,16 +8,11 @@ import {
   useSelectedQuestionId,
 } from '../../../stores/canvasStore';
 import { useCodeBookmarks } from '../../../hooks/useCodeBookmarks';
+import { buildCodeTree, type CodeTreeItem } from './codeTree';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@qualcanvas/shared';
 
 interface CodeNavigatorProps {
   onFocusNode: (nodeId: string) => void;
-}
-
-interface TreeItem {
-  question: CanvasQuestion;
-  children: TreeItem[];
-  codingCount: number;
 }
 
 export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
@@ -36,57 +31,23 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
   const [showFavorites, setShowFavorites] = useState(true);
   const { bookmarkedIds, toggleBookmark, isBookmarked } = useCodeBookmarks();
 
-  // Build question tree
-  const tree = useMemo(() => {
-    const codingCounts = new Map<string, number>();
-    codings.forEach((c: CanvasTextCoding) => {
-      codingCounts.set(c.questionId, (codingCounts.get(c.questionId) || 0) + 1);
-    });
-
-    const map = new Map<string, TreeItem>();
-    const roots: TreeItem[] = [];
-
-    questions.forEach((q: CanvasQuestion) => {
-      map.set(q.id, {
-        question: q,
-        children: [],
-        codingCount: codingCounts.get(q.id) || 0,
-      });
-    });
-
-    questions.forEach((q: CanvasQuestion) => {
-      const item = map.get(q.id)!;
-      if (q.parentQuestionId && map.has(q.parentQuestionId)) {
-        map.get(q.parentQuestionId)!.children.push(item);
-      } else {
-        roots.push(item);
-      }
-    });
-
-    // Sort
-    const sortFn = (a: TreeItem, b: TreeItem) => {
-      if (sortMode === 'count') return b.codingCount - a.codingCount;
-      return a.question.text.localeCompare(b.question.text);
-    };
-    roots.sort(sortFn);
-    roots.forEach((r) => r.children.sort(sortFn));
-
-    return roots;
-  }, [questions, codings, sortMode]);
+  // Build question tree with rolled-up coding counts (parent families sum their
+  // descendants — see buildCodeTree).
+  const tree = useMemo(() => buildCodeTree(questions, codings, sortMode), [questions, codings, sortMode]);
 
   // Filter tree by search
   const filteredTree = useMemo(() => {
     if (!search.trim()) return tree;
     const q = search.toLowerCase();
-    const filterItem = (item: TreeItem): TreeItem | null => {
+    const filterItem = (item: CodeTreeItem): CodeTreeItem | null => {
       const matchesSearch = item.question.text.toLowerCase().includes(q);
-      const filteredChildren = item.children.map(filterItem).filter(Boolean) as TreeItem[];
+      const filteredChildren = item.children.map(filterItem).filter(Boolean) as CodeTreeItem[];
       if (matchesSearch || filteredChildren.length > 0) {
         return { ...item, children: filteredChildren };
       }
       return null;
     };
-    return tree.map(filterItem).filter(Boolean) as TreeItem[];
+    return tree.map(filterItem).filter(Boolean) as CodeTreeItem[];
   }, [tree, search]);
 
   // Total coding count
@@ -139,7 +100,7 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
     setExpandedIds(new Set());
   }, []);
 
-  const renderTreeItem = (item: TreeItem, depth: number = 0) => {
+  const renderTreeItem = (item: CodeTreeItem, depth: number = 0) => {
     const isExpanded = expandedIds.has(item.question.id);
     const isSelected = selectedQuestionId === item.question.id;
     const hasChildren = item.children.length > 0;

@@ -47,7 +47,7 @@ vi.mock('../../../stores/canvasStore', () => ({
       setSelectedQuestionId: vi.fn(),
       updateQuestion: vi.fn(),
       deleteQuestion: vi.fn(),
-    })
+    }),
   ),
   useCanvasQuestions: () => mockQuestions,
   useCanvasCodings: () => mockCodings,
@@ -88,10 +88,7 @@ describe('CodeNavigator', () => {
       makeQuestion({ id: 'q2', text: 'Theme B', color: '#00ff00' }),
       makeQuestion({ id: 'q3', text: 'Theme C', color: '#0000ff' }),
     );
-    mockCodings.push(
-      makeCoding({ id: 'c1', questionId: 'q1' }),
-      makeCoding({ id: 'c2', questionId: 'q2' }),
-    );
+    mockCodings.push(makeCoding({ id: 'c1', questionId: 'q1' }), makeCoding({ id: 'c2', questionId: 'q2' }));
 
     render(<CodeNavigator onFocusNode={onFocusNode} />);
 
@@ -117,9 +114,34 @@ describe('CodeNavigator', () => {
     // Counts rendered as text in the tree items
     // q1 has 3 codings, q2 has 1
     const countElements = screen.getAllByText(/^\d+$/);
-    const counts = countElements.map(el => el.textContent);
+    const counts = countElements.map((el) => el.textContent);
     expect(counts).toContain('3');
     expect(counts).toContain('1');
+  });
+
+  it('parent family shows the rolled-up count of its sub-codes (not 0)', () => {
+    mockQuestions.push(
+      makeQuestion({ id: 'fam', text: 'CF1 Family' }),
+      makeQuestion({ id: 's1', text: 'Sub One', parentQuestionId: 'fam' }),
+      makeQuestion({ id: 's2', text: 'Sub Two', parentQuestionId: 'fam' }),
+    );
+    // No direct codings on the family; 3 on s1 + 1 on s2 = 4 under the family.
+    mockCodings.push(
+      makeCoding({ id: 'c1', questionId: 's1' }),
+      makeCoding({ id: 'c2', questionId: 's1' }),
+      makeCoding({ id: 'c3', questionId: 's1' }),
+      makeCoding({ id: 'c4', questionId: 's2' }),
+    );
+
+    render(<CodeNavigator onFocusNode={onFocusNode} />);
+
+    // Children are collapsed by default, so the only visible code-count is the
+    // family's rolled-up total. It must read 4, never 0.
+    expect(screen.getByText('CF1 Family')).toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
+    expect(screen.queryByText('Sub One')).not.toBeInTheDocument(); // collapsed
+    const rowCounts = screen.getAllByText(/^\d+$/).map((el) => el.textContent);
+    expect(rowCounts).not.toContain('0'); // family no longer shows 0
   });
 
   it('filter input hides non-matching codes', () => {
@@ -163,7 +185,7 @@ describe('CodeNavigator', () => {
 
     // Get all code name elements — they appear as truncated spans
     const codeNames = screen.getAllByText(/^(High|Mid|Low)$/);
-    const nameOrder = codeNames.map(el => el.textContent);
+    const nameOrder = codeNames.map((el) => el.textContent);
 
     // Default sort is by count descending: High (5), Mid (3), Low (1)
     expect(nameOrder).toEqual(['High', 'Mid', 'Low']);
