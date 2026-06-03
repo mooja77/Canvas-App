@@ -133,6 +133,14 @@ function QuestionNode({ data, id, selected }: NodeProps) {
               </div>
             )}
           </div>
+          {/* Code name — kept visible even when collapsed so the canvas stays
+              readable (collapsing hides the body/details, not the code's
+              identity). Hidden only at minimal zoom, matching the body LOD. */}
+          {collapsed && !isMinimal && (
+            <span className="truncate text-xs font-medium text-gray-900 dark:text-gray-100" title={nodeData.text}>
+              {nodeData.text}
+            </span>
+          )}
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {(nodeData as any).muted && (
             <span className="shrink-0 rounded bg-gray-400/80 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white">
