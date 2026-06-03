@@ -63,6 +63,18 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
       }
     });
 
+    // Roll up coding counts so a parent family reflects its descendants, not
+    // just its own (usually 0) direct codings — mirrors the code sidebar
+    // (see codeTree.buildCodeTree). Uses the source own-count map as the base
+    // to avoid double-counting mutated values.
+    const rollUp = (item: TreeItem): number => {
+      let total = codingCounts.get(item.question.id) || 0;
+      for (const child of item.children) total += rollUp(child);
+      item.codingCount = total;
+      return total;
+    };
+    roots.forEach(rollUp);
+
     return roots;
   }, [questions, codingCounts]);
 
