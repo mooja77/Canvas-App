@@ -39,5 +39,13 @@ export default function CodingCanvas() {
     );
   }
 
-  return <CanvasListPanel />;
+  // The list lives inside CanvasPage's `<main className="overflow-hidden">`
+  // (which is correct for the React Flow workspace, since it pans internally).
+  // The list, however, can be taller than the viewport — so it needs its own
+  // scroll container, or lower canvases get clipped with no way to reach them.
+  return (
+    <div className="h-full overflow-y-auto">
+      <CanvasListPanel />
+    </div>
+  );
 }

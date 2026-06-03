@@ -142,7 +142,16 @@ export default function CanvasPage() {
       {/* Minimal header */}
       <header className="flex-shrink-0 h-12 border-b border-gray-200/80 dark:border-gray-700/80 flex items-center justify-between px-4 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+          {/* Logo doubles as a home button — clicking returns to the canvas
+              list from anywhere (navigating to /canvas clears the active canvas
+              via CodingCanvas's route effect). */}
+          <button
+            type="button"
+            onClick={() => navigate('/canvas')}
+            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+            title="Back to your canvases"
+            aria-label="Back to your canvases"
+          >
             <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg flex items-center justify-center shadow-sm">
               <svg
                 className="w-4 h-4 text-white"
@@ -159,7 +168,7 @@ export default function CanvasPage() {
               </svg>
             </div>
             <span className="font-semibold text-gray-900 dark:text-white text-sm tracking-tight">Canvas</span>
-          </div>
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
