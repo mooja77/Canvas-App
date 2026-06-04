@@ -311,7 +311,13 @@ test.describe.serial('Visual Regression — Component Snapshots', () => {
     // The command palette should be a dialog or modal with a search input
     const palette = page.locator('[role="dialog"], [data-command-palette], .command-palette').first();
     await expect(palette).toBeVisible({ timeout: 5000 });
-    await expect(palette).toHaveScreenshot('command-palette.png', SCREENSHOT_OPTS);
+    // The palette overlay is full-viewport, so the canvas minimap shows through the
+    // backdrop. Mask it: this is a *command palette* snapshot and must not depend on
+    // canvas content (e.g. node sizes), which would make it spuriously brittle.
+    await expect(palette).toHaveScreenshot('command-palette.png', {
+      ...SCREENSHOT_OPTS,
+      mask: [page.locator('.react-flow__minimap')],
+    });
   });
 
   test('11 - Share modal', async ({ page }) => {

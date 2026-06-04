@@ -13,6 +13,44 @@ function contextMenuButton(page: Page, name: string | RegExp) {
   return page.locator('.context-menu-enter button').filter({ hasText: name }).first();
 }
 
+// Right-click genuinely empty canvas so onPaneContextMenu (not onNodeContextMenu)
+// fires. A fixed coordinate is brittle: node sizes change (e.g. transcript nodes
+// now render a tall, readable body), so a hardcoded point can land on a node and
+// open the node menu instead. This scans for an empty pane point that also leaves
+// room for the (unclamped) pane menu to render fully below-right of the cursor.
+async function rightClickEmptyPane(page: Page) {
+  const pane = page.locator('.react-flow__pane');
+  await pane.waitFor({ state: 'visible', timeout: 5000 });
+  const box = await pane.boundingBox();
+  if (!box) {
+    await pane.click({ button: 'right', position: { x: 400, y: 300 } });
+    return;
+  }
+  const nodeBoxes: Array<{ x: number; y: number; width: number; height: number }> = [];
+  const nodes = page.locator('.react-flow__node');
+  const count = await nodes.count();
+  for (let i = 0; i < count; i++) {
+    const nb = await nodes.nth(i).boundingBox();
+    if (nb) nodeBoxes.push(nb);
+  }
+  const MENU_W = 220;
+  const MENU_H = 340;
+  const PAD = 6;
+  for (let y = box.y + 12; y < box.y + box.height - MENU_H; y += 24) {
+    for (let x = box.x + 12; x < box.x + box.width - MENU_W; x += 24) {
+      const onNode = nodeBoxes.some(
+        (n) => x >= n.x - PAD && x <= n.x + n.width + PAD && y >= n.y - PAD && y <= n.y + n.height + PAD,
+      );
+      if (!onNode) {
+        await pane.click({ button: 'right', position: { x: x - box.x, y: y - box.y } });
+        return;
+      }
+    }
+  }
+  // Fallback: original coordinate (better a known click than none).
+  await pane.click({ button: 'right', position: { x: 400, y: 300 } });
+}
+
 async function openCanvas(page: Page) {
   await page.addInitScript(() => {
     const s = JSON.parse(localStorage.getItem('qualcanvas-ui') || '{"state":{},"version":0}');
@@ -69,37 +107,37 @@ test.describe('Deep Canvas: Context Menus', () => {
 
   test('1 - Right-click empty canvas shows context menu', async ({ page }) => {
     await openCanvas(page);
-    await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 400, y: 300 } });
+    await rightClickEmptyPane(page);
     await expect(page.getByText('Add Transcript').first()).toBeVisible({ timeout: 3000 });
   });
 
   test('2 - Context menu has Add Question', async ({ page }) => {
     await openCanvas(page);
-    await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 400, y: 300 } });
+    await rightClickEmptyPane(page);
     await expect(page.getByText('Add Question').or(page.getByText('Add Code')).first()).toBeVisible({ timeout: 3000 });
   });
 
   test('3 - Context menu has Add Memo', async ({ page }) => {
     await openCanvas(page);
-    await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 400, y: 300 } });
+    await rightClickEmptyPane(page);
     await expect(page.getByText('Add Memo').first()).toBeVisible({ timeout: 3000 });
   });
 
   test('4 - Context menu has Select All', async ({ page }) => {
     await openCanvas(page);
-    await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 400, y: 300 } });
+    await rightClickEmptyPane(page);
     await expect(page.getByText('Select All').first()).toBeVisible({ timeout: 3000 });
   });
 
   test('5 - Context menu has Fit View', async ({ page }) => {
     await openCanvas(page);
-    await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 400, y: 300 } });
+    await rightClickEmptyPane(page);
     await expect(page.getByText('Fit View').first()).toBeVisible({ timeout: 3000 });
   });
 
   test('6 - Escape closes context menu', async ({ page }) => {
     await openCanvas(page);
-    await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 400, y: 300 } });
+    await rightClickEmptyPane(page);
     await expect(page.getByText('Add Transcript').first()).toBeVisible({ timeout: 3000 });
     await page.keyboard.press('Escape');
     await expect(page.getByText('Add Transcript').first())
@@ -163,16 +201,18 @@ test.describe('Deep Canvas: Context Menus', () => {
 
   test('13 - Context menu closes on outside click', async ({ page }) => {
     await openCanvas(page);
-    await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 400, y: 300 } });
+    await rightClickEmptyPane(page);
     await expect(page.getByText('Add Transcript').first()).toBeVisible({ timeout: 3000 });
-    await page.locator('.react-flow__pane').click({ position: { x: 200, y: 200 } });
-    // Menu should close
-    expect(true).toBe(true);
+    // Left-click anywhere outside the menu to dismiss it. force:true so the click
+    // still lands even if a node sits under this point (the menu closes on any
+    // mousedown outside it, node or pane alike).
+    await page.locator('.react-flow__pane').click({ position: { x: 200, y: 200 }, force: true });
+    await expect(page.getByText('Add Transcript').first()).not.toBeVisible({ timeout: 2000 });
   });
 
   test('14 - Shortcut badge visible in context menu', async ({ page }) => {
     await openCanvas(page);
-    await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 400, y: 300 } });
+    await rightClickEmptyPane(page);
     // Look for Ctrl+A or F shortcut badge
     const badge = page.locator('text=/Ctrl\\+A|⌘A/').or(page.getByText('F').last());
     const visible = await badge.isVisible({ timeout: 2000 }).catch(() => false);
@@ -185,7 +225,7 @@ test.describe('Deep Canvas: Context Menus', () => {
       if (msg.type() === 'error') errors.push(msg.text());
     });
     await openCanvas(page);
-    await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 400, y: 300 } });
+    await rightClickEmptyPane(page);
     await page.keyboard.press('Escape');
     expect(errors.filter((e) => !e.includes('favicon'))).toHaveLength(0);
   });
