@@ -181,6 +181,12 @@ export default function CanvasWorkspace() {
 
   // AI coding assistant
   const aiSuggestions = useAiSuggestions();
+  // useAiSuggestions() returns a NEW object literal every render, so depending on
+  // the whole `aiSuggestions` in buildNodes churned buildNodes' identity on every
+  // render — which defeated the sync effect's identity guard and rebuilt every node
+  // ~70×/sec (a continuous render loop that also clobbered collapse toggles). Pull
+  // out the one stable callback buildNodes actually needs.
+  const aiSuggestCodes = aiSuggestions.suggestCodes;
   const [showAiAutoCode, setShowAiAutoCode] = useState(false);
   // Sprint H — inline AI suggester anchor. When the inline_ai_suggester
   // flag is on, the QuickCodePopover "AI" button opens this instead of
@@ -233,6 +239,43 @@ export default function CanvasWorkspace() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // Toggle a node's collapsed flag through the CONTROLLED node state (useNodesState),
+  // which is what flows into the `nodes={decoratedNodes}` prop. The per-node header
+  // button used to write via useReactFlow().setNodes (the React Flow store), but with
+  // controlled nodes that write is reverted by the prop on the next render — so the
+  // header "Expand"/"Collapse" did nothing. Routing it here (injected into node.data
+  // as onToggleCollapsed) makes it stick, and the collapse-digest effect persists it.
+  const toggleNodeCollapsedById = useCallback(
+    (nodeId: string) => {
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id !== nodeId) return n;
+          const nextCollapsed = !(n.data as Record<string, unknown>).collapsed;
+          const next: Node = { ...n, data: { ...n.data, collapsed: nextCollapsed } };
+          // Transcript/memo nodes are fixed-height + internally scrollable, so their
+          // explicit style.height must track collapsed state symmetrically (mirroring
+          // buildNodes, which sets a height only when expanded):
+          //  - collapsing: drop the height so the node shrinks to its header (otherwise
+          //    it stays pinned at the expanded height within the session).
+          //  - expanding: give it a readable default if it has none / a leftover
+          //    collapsed size, so the body doesn't grow to the entire transcript.
+          if (n.id.startsWith('transcript-') || n.id.startsWith('memo-')) {
+            const style = { ...((n.style ?? {}) as Record<string, unknown>) };
+            if (nextCollapsed) {
+              delete style.height;
+            } else {
+              const h = typeof style.height === 'number' ? (style.height as number) : undefined;
+              if (!h || h < 120) style.height = n.id.startsWith('transcript-') ? 360 : 240;
+            }
+            next.style = style;
+          }
+          return next;
+        }),
+      );
+    },
+    [setNodes],
+  );
   const nodesRef = useRef<Node[]>(initialNodes);
   const edgesRef = useRef<Edge[]>(initialEdges);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -532,7 +575,13 @@ export default function CanvasWorkspace() {
       const pos = posData ? { x: posData.x, y: posData.y } : { x: 50, y: 50 + i * 500 };
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
       if (posData?.width) style.width = posData.width;
-      if (posData?.height && !posData.collapsed) style.height = posData.height;
+      // Expanded transcripts need a readable, scrollable height. A persisted
+      // height below ~120px is a leftover collapsed size (header ≈ 56px) — using
+      // it would render the body as an unreadable sliver, so fall back to a
+      // sensible default. (Self-heals canvases staged with collapsed heights.)
+      if (!posData?.collapsed) {
+        style.height = posData?.height && posData.height >= 120 ? posData.height : 360;
+      }
       result.push({
         id: nodeId,
         type: 'transcript',
@@ -542,6 +591,7 @@ export default function CanvasWorkspace() {
         data: {
           transcriptId: t.id,
           title: t.title,
+          onToggleCollapsed: toggleNodeCollapsedById,
           // NOTE: full transcript text is intentionally NOT carried in node.data
           // (it's read from the store by transcriptId in TranscriptNode). Keeping
           // it out keeps node objects small and cheap to diff on every setNodes.
@@ -562,7 +612,7 @@ export default function CanvasWorkspace() {
                 });
               });
             } else {
-              requireAiConfig('AI Code Suggestions', () => aiSuggestions.suggestCodes(tId, text, start, end));
+              requireAiConfig('AI Code Suggestions', () => aiSuggestCodes(tId, text, start, end));
             }
           },
         },
@@ -588,6 +638,7 @@ export default function CanvasWorkspace() {
           questionId: q.id,
           text: q.text,
           color: q.color,
+          onToggleCollapsed: toggleNodeCollapsedById,
           collapsed: posData?.collapsed ?? false,
           expandedWidth: posData?.width,
           expandedHeight: posData?.height,
@@ -601,7 +652,11 @@ export default function CanvasWorkspace() {
       const pos = posData ? { x: posData.x, y: posData.y } : { x: 900, y: 50 + i * 300 };
       const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
       if (posData?.width) style.width = posData.width;
-      if (posData?.height && !posData.collapsed) style.height = posData.height;
+      // Match transcripts: an expanded memo needs a readable height; a sub-120px
+      // persisted height is a leftover collapsed size, so default it instead.
+      if (!posData?.collapsed) {
+        style.height = posData?.height && posData.height >= 120 ? posData.height : 240;
+      }
       result.push({
         id: nodeId,
         type: 'memo',
@@ -613,6 +668,7 @@ export default function CanvasWorkspace() {
           title: m.title,
           content: m.content,
           color: m.color,
+          onToggleCollapsed: toggleNodeCollapsedById,
           collapsed: posData?.collapsed ?? false,
           expandedWidth: posData?.width,
           expandedHeight: posData?.height,
@@ -636,6 +692,7 @@ export default function CanvasWorkspace() {
         style,
         data: {
           caseId: c.id,
+          onToggleCollapsed: toggleNodeCollapsedById,
           collapsed: posData?.collapsed ?? false,
           expandedWidth: posData?.width,
           expandedHeight: posData?.height,
@@ -662,6 +719,7 @@ export default function CanvasWorkspace() {
         style,
         data: {
           computedNodeId: cn.id,
+          onToggleCollapsed: toggleNodeCollapsedById,
           collapsed: posData?.collapsed ?? false,
           expandedWidth: posData?.width,
           expandedHeight: posData?.height,
@@ -808,9 +866,10 @@ export default function CanvasWorkspace() {
     removeStickyNote,
     nodeColorMap,
     rerouteNodes,
-    aiSuggestions,
+    aiSuggestCodes,
     requireAiConfig,
     inlineAiSuggesterEnabled,
+    toggleNodeCollapsedById,
   ]);
 
   // Build edges from codings and relations

@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom';
 import { NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { useCanvasStore } from '../../../stores/canvasStore';
-import { useUIStore } from '../../../stores/uiStore';
 import CrossCanvasRefBadge from '../CrossCanvasRefBadge';
 import ConfirmDialog from '../ConfirmDialog';
 
@@ -143,8 +142,6 @@ function MemoNode({ data, id, selected }: NodeProps) {
   const { collapsed, toggleCollapsed } = useNodeCollapsed(id, nodeData.collapsed);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const zoomTier = useUIStore((s) => s.zoomTier);
-
   // Auto-resize textarea
   useEffect(() => {
     if (editing && textareaRef.current) {
@@ -249,8 +246,9 @@ function MemoNode({ data, id, selected }: NodeProps) {
         </div>
       </div>
 
-      {/* Memo body - collapsible */}
-      {!collapsed && zoomTier === 'full' && (
+      {/* Memo body — shown whenever expanded, at ANY zoom (previously full-zoom
+          only, so expanding at the overview zoom showed just the first line). */}
+      {!collapsed && (
         <div className="px-3 pb-2 flex-1 min-h-0 overflow-y-auto">
           {editing ? (
             <div className="nodrag space-y-1.5">
@@ -384,13 +382,6 @@ function MemoNode({ data, id, selected }: NodeProps) {
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Reduced zoom: title + first line */}
-      {!collapsed && zoomTier === 'reduced' && (
-        <div className="px-3 pb-1.5">
-          <p className="text-[10px] text-gray-600/70 truncate">{nodeData.content.split('\n')[0]}</p>
         </div>
       )}
 
