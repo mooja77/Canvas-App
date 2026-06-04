@@ -38,7 +38,7 @@ const STEPS: Step[] = [
   {
     title: 'Welcome to your project',
     body: (n) =>
-      `This quick walkthrough runs right here on your real canvas — ${n.transcripts} interviews, ${n.codes} codes and ${n.codings} coded segments. Watch the panels open and nodes light up as we go. You can pause, jump around, leave and come back anytime.`,
+      `This quick walkthrough runs right here on your real canvas — ${n.transcripts} interview${n.transcripts === 1 ? '' : 's'}, ${n.codes} code${n.codes === 1 ? '' : 's'} and ${n.codings} coded segment${n.codings === 1 ? '' : 's'}. Watch the panels open and nodes light up as we go. You can pause, jump around, leave and come back anytime.`,
   },
   {
     title: 'Your interviews',
@@ -76,8 +76,19 @@ const STEPS: Step[] = [
       setSelectedQuestionId(null);
       const cd = c.firstCoding;
       if (cd) {
-        setVerifyHighlight({ transcriptId: cd.transcriptId, startOffset: cd.startOffset, endOffset: cd.endOffset });
+        // Centre the transcript first, then set the highlight once the node is
+        // mounted and the focus zoom has settled — otherwise the focus
+        // re-render can re-collapse it before it auto-expands to the excerpt.
         c.focus(`transcript-${cd.transcriptId}`);
+        window.setTimeout(
+          () =>
+            setVerifyHighlight({
+              transcriptId: cd.transcriptId,
+              startOffset: cd.startOffset,
+              endOffset: cd.endOffset,
+            }),
+          900,
+        );
       }
     },
   },
