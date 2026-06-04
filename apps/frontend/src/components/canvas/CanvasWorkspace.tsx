@@ -253,14 +253,21 @@ export default function CanvasWorkspace() {
           if (n.id !== nodeId) return n;
           const nextCollapsed = !(n.data as Record<string, unknown>).collapsed;
           const next: Node = { ...n, data: { ...n.data, collapsed: nextCollapsed } };
-          // Transcript/memo nodes are fixed-height + internally scrollable. If one
-          // was stored collapsed it has no height, so expanding it would let the
-          // body grow to the entire transcript (a multi-thousand-pixel node). Give
-          // it a readable default height on expand; the save effect then persists it.
-          if (nextCollapsed === false && (n.id.startsWith('transcript-') || n.id.startsWith('memo-'))) {
+          // Transcript/memo nodes are fixed-height + internally scrollable, so their
+          // explicit style.height must track collapsed state symmetrically (mirroring
+          // buildNodes, which sets a height only when expanded):
+          //  - collapsing: drop the height so the node shrinks to its header (otherwise
+          //    it stays pinned at the expanded height within the session).
+          //  - expanding: give it a readable default if it has none / a leftover
+          //    collapsed size, so the body doesn't grow to the entire transcript.
+          if (n.id.startsWith('transcript-') || n.id.startsWith('memo-')) {
             const style = { ...((n.style ?? {}) as Record<string, unknown>) };
-            const h = typeof style.height === 'number' ? (style.height as number) : undefined;
-            if (!h || h < 120) style.height = n.id.startsWith('transcript-') ? 360 : 240;
+            if (nextCollapsed) {
+              delete style.height;
+            } else {
+              const h = typeof style.height === 'number' ? (style.height as number) : undefined;
+              if (!h || h < 120) style.height = n.id.startsWith('transcript-') ? 360 : 240;
+            }
             next.style = style;
           }
           return next;
