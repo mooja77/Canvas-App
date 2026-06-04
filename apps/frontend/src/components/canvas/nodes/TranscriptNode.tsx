@@ -218,10 +218,6 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { collapsed, toggleCollapsed } = useNodeCollapsed(id, nodeData.collapsed);
 
-  const zoomTier = useUIStore((s) => s.zoomTier);
-  const isReduced = zoomTier === 'reduced';
-  const isMinimal = zoomTier === 'minimal';
-
   // "Verify in context": when an AI suggestion's Locate action targets this
   // transcript, highlight the exact span and (if collapsed) expand to show it.
   const verifyHighlight = useUIStore((s) => s.verifyHighlight);
@@ -482,8 +478,11 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
         );
       })()}
 
-      {/* Body - collapsible with transition */}
-      {!collapsed && zoomTier === 'full' && (
+      {/* Body — shown whenever the node is expanded, at ANY zoom. Previously
+          this was gated to full zoom only, so expanding a transcript at the
+          normal overview zoom showed no text ("expand does nothing"). Collapse
+          is the user's explicit compact control; expanded always means readable. */}
+      {!collapsed && (
         <div className="flex-1 min-h-0 overflow-hidden transition-[max-height] duration-200 flex flex-col">
           {/* Scrollable text body with optional coding stripes + density bar */}
           <div className="relative">
@@ -544,21 +543,6 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
           </div>
         </div>
       )}
-
-      {/* Reduced zoom: title + coding count */}
-      {!collapsed && isReduced && (
-        <div className="px-3 py-2 flex items-center justify-between">
-          <span className="text-[10px] text-blue-500 dark:text-blue-400 font-medium">
-            {codings.length} coding{codings.length !== 1 ? 's' : ''}
-          </span>
-          <span className="text-[10px] text-gray-300 dark:text-gray-600 tabular-nums">
-            {wordCount.toLocaleString()} word{wordCount !== 1 ? 's' : ''}
-          </span>
-        </div>
-      )}
-
-      {/* Minimal zoom: colored rectangle with truncated title */}
-      {!collapsed && isMinimal && <div className="px-2 py-1 text-[9px] text-gray-400 truncate">{codings.length}c</div>}
 
       {/* Source handle — visible when there's a pending selection */}
       <Handle
