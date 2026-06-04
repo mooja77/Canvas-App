@@ -26,6 +26,7 @@ import CodingDetailPanel from './panels/CodingDetailPanel';
 import CanvasSearchOverlay from './panels/CanvasSearchOverlay';
 import CommandPalette from './panels/CommandPalette';
 import FullProductTour from '../help/FullProductTour';
+import WiseshiftWalkthrough from './WiseshiftWalkthrough';
 import CanvasContextMenu from './panels/CanvasContextMenu';
 import NodeContextMenu from './panels/NodeContextMenu';
 import EdgeContextMenu from './panels/EdgeContextMenu';
@@ -3091,6 +3092,10 @@ export default function CanvasWorkspace() {
 
       {/* Full product tour — opens on demand from Help menu only (Sprint F) */}
       <FullProductTour />
+
+      {/* WISESHIFT guided walkthrough — runs on the real canvas; self-gates to
+          the WISESHIFT WP3 canvases (no-op elsewhere). */}
+      <WiseshiftWalkthrough onFocusNode={handleFocusNode} />
 
       {/* Sprint H — inline AI code suggester popover */}
       {inlineSuggester && activeCanvas && (
