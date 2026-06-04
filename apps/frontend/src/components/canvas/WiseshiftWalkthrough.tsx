@@ -38,7 +38,7 @@ const STEPS: Step[] = [
   {
     title: 'Welcome to your project',
     body: (n) =>
-      `This quick walkthrough runs right here on your real canvas — ${n.transcripts} interviews, ${n.codes} codes and ${n.codings} coded segments. Watch the panels open and nodes light up as we go. You can pause, jump around, leave and come back anytime.`,
+      `This quick walkthrough runs right here on your real canvas — ${n.transcripts} interview${n.transcripts === 1 ? '' : 's'}, ${n.codes} code${n.codes === 1 ? '' : 's'} and ${n.codings} coded segment${n.codings === 1 ? '' : 's'}. Watch the panels open and nodes light up as we go. You can pause, jump around, leave and come back anytime.`,
   },
   {
     title: 'Your interviews',
