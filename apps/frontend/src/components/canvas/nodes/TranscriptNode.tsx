@@ -484,8 +484,12 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
           is the user's explicit compact control; expanded always means readable. */}
       {!collapsed && (
         <div className="flex-1 min-h-0 overflow-hidden transition-[max-height] duration-200 flex flex-col">
-          {/* Scrollable text body with optional coding stripes + density bar */}
-          <div className="relative">
+          {/* Scrollable text body with optional coding stripes + density bar.
+              This wrapper must carry the flex sizing (flex-1 min-h-0 flex flex-col)
+              so the inner overflow-y-auto scroller is bounded by the node height and
+              actually SCROLLS — otherwise it grows to the full transcript and the
+              outer overflow-hidden just clips it, hiding most of the text. */}
+          <div className="relative flex-1 min-h-0 flex flex-col">
             {showCodingStripes && codings.length > 0 && (
               <CodingStripesOverlay
                 contentLength={content.length}
