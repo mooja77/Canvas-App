@@ -1493,35 +1493,41 @@ export default function CanvasWorkspace() {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       setNodes((currentNodes: Node[]) => {
-        const positions = currentNodes.map((n: Node) => {
-          const data = (n.data ?? {}) as Record<string, unknown>;
-          const style = (n.style ?? {}) as Record<string, unknown>;
-          const collapsed = data.collapsed as boolean | undefined;
-          const width = numericValue(style.width) ?? numericValue(data.expandedWidth) ?? n.measured?.width ?? undefined;
-          const height = collapsed
-            ? (numericValue(data.expandedHeight) ??
-              numericValue(style.height) ??
-              numericValue(style.minHeight) ??
-              n.measured?.height ??
-              undefined)
-            : (numericValue(style.height) ??
-              numericValue(style.minHeight) ??
-              numericValue(data.expandedHeight) ??
-              n.measured?.height ??
-              undefined);
+        const positions = currentNodes
+          .map((n: Node) => {
+            const data = (n.data ?? {}) as Record<string, unknown>;
+            const style = (n.style ?? {}) as Record<string, unknown>;
+            const collapsed = data.collapsed as boolean | undefined;
+            // numericValue() drops NaN/Infinity (incl. from n.measured), so a bad
+            // dimension never serializes to JSON null and trips the strict schema.
+            const width =
+              numericValue(style.width) ?? numericValue(data.expandedWidth) ?? numericValue(n.measured?.width);
+            const height = collapsed
+              ? (numericValue(data.expandedHeight) ??
+                numericValue(style.height) ??
+                numericValue(style.minHeight) ??
+                numericValue(n.measured?.height))
+              : (numericValue(style.height) ??
+                numericValue(style.minHeight) ??
+                numericValue(data.expandedHeight) ??
+                numericValue(n.measured?.height));
 
-          return {
-            id: '',
-            canvasId: '',
-            nodeId: n.id,
-            nodeType: n.type || 'unknown',
-            x: n.position.x,
-            y: n.position.y,
-            width,
-            height,
-            collapsed,
-          };
-        });
+            return {
+              id: '',
+              canvasId: '',
+              nodeId: n.id,
+              nodeType: n.type || 'unknown',
+              x: numericValue(n.position?.x),
+              y: numericValue(n.position?.y),
+              width,
+              height,
+              collapsed,
+            };
+          })
+          // x/y are required numbers. Drop any node with a non-finite position
+          // instead of letting it fail the entire batched save ("Layout save
+          // failed") — the node keeps its in-memory position and the rest persist.
+          .filter((p): p is typeof p & { x: number; y: number } => p.x !== undefined && p.y !== undefined);
         saveLayout(positions);
         return currentNodes;
       });
