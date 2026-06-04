@@ -76,8 +76,19 @@ const STEPS: Step[] = [
       setSelectedQuestionId(null);
       const cd = c.firstCoding;
       if (cd) {
-        setVerifyHighlight({ transcriptId: cd.transcriptId, startOffset: cd.startOffset, endOffset: cd.endOffset });
+        // Centre the transcript first, then set the highlight once the node is
+        // mounted and the focus zoom has settled — otherwise the focus
+        // re-render can re-collapse it before it auto-expands to the excerpt.
         c.focus(`transcript-${cd.transcriptId}`);
+        window.setTimeout(
+          () =>
+            setVerifyHighlight({
+              transcriptId: cd.transcriptId,
+              startOffset: cd.startOffset,
+              endOffset: cd.endOffset,
+            }),
+          900,
+        );
       }
     },
   },
