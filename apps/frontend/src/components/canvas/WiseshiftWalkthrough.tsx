@@ -60,35 +60,11 @@ const STEPS: Step[] = [
   {
     title: 'See a code’s passages',
     body: (n) =>
-      `Selecting a code opens its coded-segments panel on the right — every excerpt tagged to “${n.topCodeText ?? 'this code'}”, with the source interview, so you can review them in one place.`,
+      `Selecting a code opens its coded-segments panel on the right — every excerpt tagged to “${n.topCodeText ?? 'this code'}”, with the source interview. Each one is a verbatim passage tied back to its exact spot in the transcript; zoom into a transcript to see the coded spans highlighted inline.`,
     run: (c) => {
       if (c.topCode) {
         setSelectedQuestionId(c.topCode.id);
         c.focus(`question-${c.topCode.id}`);
-      }
-    },
-  },
-  {
-    title: 'The excerpt, in context',
-    body: () =>
-      'Here’s one coded excerpt highlighted in its transcript — the node expands and scrolls straight to it. This is how every coding ties a verbatim passage back to the exact spot in the interview.',
-    run: (c) => {
-      setSelectedQuestionId(null);
-      const cd = c.firstCoding;
-      if (cd) {
-        // Centre the transcript first, then set the highlight once the node is
-        // mounted and the focus zoom has settled — otherwise the focus
-        // re-render can re-collapse it before it auto-expands to the excerpt.
-        c.focus(`transcript-${cd.transcriptId}`);
-        window.setTimeout(
-          () =>
-            setVerifyHighlight({
-              transcriptId: cd.transcriptId,
-              startOffset: cd.startOffset,
-              endOffset: cd.endOffset,
-            }),
-          900,
-        );
       }
     },
   },
