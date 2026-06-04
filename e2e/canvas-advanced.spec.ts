@@ -170,6 +170,16 @@ test.describe('Canvas Advanced Features', () => {
   // ─── Multiple Zoom Operations ───
 
   test('multiple zoom in/out cycles work without snapping', async ({ page }) => {
+    // Create headroom first. After auto-fit the canvas can sit right up against
+    // maxZoom (the fitted scale varies with node sizes — e.g. taller transcript
+    // nodes), so a *second* consecutive zoom-in would hit the ceiling and not
+    // increase, timing out the wait below. Zoom out a few steps (no assertions —
+    // hitting minZoom is harmless) so both directions have room to move.
+    for (let i = 0; i < 3; i++) {
+      await page.getByRole('button', { name: 'Zoom Out' }).click();
+      await page.waitForTimeout(250);
+    }
+
     const initial = await getViewportTransform(page);
 
     // Zoom in
