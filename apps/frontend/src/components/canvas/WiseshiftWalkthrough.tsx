@@ -43,7 +43,7 @@ const STEPS: Step[] = [
   {
     title: 'Your interviews',
     body: () =>
-      'Each interview is a transcript node. We just centred one — every coded passage in it links out to the code it was tagged with. Zoom in on any transcript to read the cleaned text with the coded spans highlighted.',
+      'Each interview is a transcript node. We just centred one — every coded passage in it links out to the code it was tagged with. Expand a transcript (or zoom in) to read the cleaned text with the coded spans highlighted.',
     run: (c) => {
       const t = c.firstCoding?.transcriptId;
       if (t) c.focus(`transcript-${t}`);
@@ -60,7 +60,7 @@ const STEPS: Step[] = [
   {
     title: 'See a code’s passages',
     body: (n) =>
-      `Selecting a code opens its coded-segments panel on the right — every excerpt tagged to “${n.topCodeText ?? 'this code'}”, with the source interview. Each one is a verbatim passage tied back to its exact spot in the transcript; zoom into a transcript to see the coded spans highlighted inline.`,
+      `Selecting a code opens its coded-segments panel on the right — every excerpt tagged to “${n.topCodeText ?? 'this code'}”, with the source interview. Each one is a verbatim passage tied back to its exact spot in the transcript; expand or zoom into a transcript to see the coded spans highlighted inline.`,
     run: (c) => {
       if (c.topCode) {
         setSelectedQuestionId(c.topCode.id);
@@ -79,8 +79,8 @@ const STEPS: Step[] = [
   {
     title: 'Is the coding reliable?',
     body: () =>
-      'This is the live intercoder check. Your PACE transcript was coded by a second coder, and Krippendorff’s α came out around 0.85 — “almost perfect” agreement. Pick both coders + PACE and Compute to re-run it anytime the coding changes.',
-    run: () => openModal('intercoder'),
+      'This is the live intercoder check. Your interviews were coded by a second coder — pick both coders and a transcript, then Compute, to get Cohen’s κ (two coders) or Krippendorff’s α (three or more). The PACE interview, for example, comes out around α = 0.83 — “almost perfect” agreement. Re-run it anytime the coding changes.',
+    run: () => openModal('intercoder-panel'),
   },
   {
     title: 'That’s your project',
