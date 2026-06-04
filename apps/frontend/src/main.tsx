@@ -90,6 +90,21 @@ const updateSW = registerSW({
     });
   },
   onNeedRefresh() {
+    // Surface the update at most once per tab session. In 'prompt' mode the new
+    // worker sits "waiting" and a manual reload (F5) does NOT activate it, so
+    // registerSW re-fires onNeedRefresh on every page load while it waits —
+    // which made this toast pop on every load ("always says new version
+    // available"). The waiting worker still activates on its own once all tabs
+    // close, so users who ignore the toast pick up the update next session;
+    // clicking Reload applies it immediately. We intentionally do NOT auto-
+    // activate mid-session (would risk chunk-load errors against the running
+    // page) — see the registerType:'prompt' rationale in vite.config.ts.
+    try {
+      if (sessionStorage.getItem('qc-sw-update-prompted') === '1') return;
+      sessionStorage.setItem('qc-sw-update-prompted', '1');
+    } catch {
+      // sessionStorage can throw (private mode / blocked storage) — show once.
+    }
     trackEvent('service_worker_update_available');
     toast(
       (t) =>
@@ -116,6 +131,15 @@ const updateSW = registerSW({
               className: 'rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700',
             },
             'Reload',
+          ),
+          React.createElement(
+            'button',
+            {
+              onClick: () => toast.dismiss(t.id),
+              className:
+                'rounded-md px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+            },
+            'Later',
           ),
         ),
       { duration: Infinity, id: 'sw-update' },
