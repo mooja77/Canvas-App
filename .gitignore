@@ -62,3 +62,6 @@ test-results/
 
 # AI eval harness run reports (generated)
 eval-reports/
+
+# Local-only prod credentials (never commit)
+recordings/.jody-creds.json

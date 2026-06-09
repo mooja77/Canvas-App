@@ -8,13 +8,16 @@ interface RichExportModalProps {
   onClose: () => void;
 }
 
-type ExportFormat = 'html' | 'markdown';
+type ExportFormat = 'docx' | 'html' | 'markdown';
 type GroupBy = 'code' | 'source' | 'case';
 
 export default function RichExportModal({ onClose }: RichExportModalProps) {
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
-  const [format, setFormat] = useState<ExportFormat>('html');
+  // Word first — it's the format researchers actually need for supervisors,
+  // committees, and repositories.
+  const [format, setFormat] = useState<ExportFormat>('docx');
+  const [exporting, setExporting] = useState(false);
   const [groupBy, setGroupBy] = useState<GroupBy>('code');
   const [includeCodebook, setIncludeCodebook] = useState(true);
   const [includeExcerpts, setIncludeExcerpts] = useState(true);
@@ -324,20 +327,205 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
     return md;
   };
 
-  const handleExport = () => {
-    const content = format === 'html' ? generateHTML() : generateMarkdown();
-    const mimeType = format === 'html' ? 'text/html' : 'text/markdown';
-    const ext = format === 'html' ? 'html' : 'md';
-    const filename = `${activeCanvas?.name || 'report'}-analysis-report.${ext}`;
+  // Real .docx via the `docx` package, mirroring the HTML report's sections.
+  // Dynamically imported so the library only loads when a Word export runs.
+  const generateDocxBlob = async (): Promise<Blob> => {
+    const docx = await import('docx');
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle } =
+      docx;
 
-    const blob = new Blob([content], { type: `${mimeType};charset=utf-8;` });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`Report downloaded as ${ext.toUpperCase()}`);
+    const name = activeCanvas?.name || 'Untitled Canvas';
+    const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const children: InstanceType<typeof Paragraph | typeof Table>[] = [];
+
+    const heading = (text: string) =>
+      children.push(new Paragraph({ text, heading: HeadingLevel.HEADING_1, spacing: { before: 360, after: 160 } }));
+    const sub = (text: string) =>
+      children.push(new Paragraph({ text, heading: HeadingLevel.HEADING_2, spacing: { before: 240, after: 120 } }));
+    const cell = (text: string, bold = false) =>
+      new TableCell({
+        width: { size: 25, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({ children: [new TextRun({ text, bold, size: 20 })] })],
+      });
+    const table = (header: string[], rows: string[][]) =>
+      children.push(
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 2, color: 'DDDDDD' },
+            bottom: { style: BorderStyle.SINGLE, size: 2, color: 'DDDDDD' },
+            left: { style: BorderStyle.NONE },
+            right: { style: BorderStyle.NONE },
+            insideHorizontal: { style: BorderStyle.SINGLE, size: 2, color: 'EEEEEE' },
+            insideVertical: { style: BorderStyle.NONE },
+          },
+          rows: [
+            new TableRow({ children: header.map((h) => cell(h, true)) }),
+            ...rows.map((r) => new TableRow({ children: r.map((c) => cell(c)) })),
+          ],
+        }),
+      );
+
+    children.push(new Paragraph({ text: name, heading: HeadingLevel.TITLE }));
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: `Generated on ${date} by QualCanvas`, italics: true, color: '6B7280' })],
+        spacing: { after: 240 },
+      }),
+    );
+
+    if (includeSummary) {
+      let totalCoded = 0;
+      let totalChars = 0;
+      transcriptCoverage.forEach((v) => {
+        totalCoded += v.coded;
+        totalChars += v.total;
+      });
+      const overallPct = totalChars > 0 ? Math.round((totalCoded / totalChars) * 100) : 0;
+      heading('Project Summary');
+      table(
+        ['Sources', 'Codes', 'Excerpts', 'Coverage'],
+        [[String(transcripts.length), String(questions.length), String(codings.length), `${overallPct}%`]],
+      );
+    }
+
+    if (includeCoverage && transcripts.length > 0) {
+      heading('Source Coverage');
+      table(
+        ['Source', 'Words', 'Coverage', 'Codes applied'],
+        transcripts.map((t: CanvasTranscript) => {
+          const cov = transcriptCoverage.get(t.id);
+          const wordCount = t.content.split(/\s+/).filter(Boolean).length;
+          const codeCount = new Set(
+            codings.filter((c: CanvasTextCoding) => c.transcriptId === t.id).map((c) => c.questionId),
+          ).size;
+          return [t.title, wordCount.toLocaleString(), `${cov?.pct ?? 0}%`, String(codeCount)];
+        }),
+      );
+    }
+
+    if (includeCodebook) {
+      heading('Codebook');
+      table(
+        ['Code', 'Parent theme', 'Frequency'],
+        questions.map((q: CanvasQuestion) => {
+          const count = codings.filter((c: CanvasTextCoding) => c.questionId === q.id).length;
+          const parentQ = q.parentQuestionId ? questionMap.get(q.parentQuestionId) : null;
+          return [q.text, parentQ?.text || '—', String(count)];
+        }),
+      );
+    }
+
+    const excerpt = (quote: string, source: string, annotation?: string | null) => {
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: `“${quote}”` })],
+          indent: { left: 360 },
+          spacing: { before: 120, after: 40 },
+        }),
+      );
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: `— ${source}`, italics: true, color: '6B7280', size: 18 })],
+          indent: { left: 360 },
+          spacing: { after: annotation ? 40 : 120 },
+        }),
+      );
+      if (annotation) {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: `Note: ${annotation}`, italics: true, color: '92400E', size: 18 })],
+            indent: { left: 720 },
+            spacing: { after: 120 },
+          }),
+        );
+      }
+    };
+
+    if (includeExcerpts) {
+      heading('Coded Excerpts');
+      if (groupBy === 'code') {
+        questions.forEach((q: CanvasQuestion) => {
+          const qCodings = codings.filter((c: CanvasTextCoding) => c.questionId === q.id);
+          if (qCodings.length === 0) return;
+          sub(`${q.text} (${qCodings.length})`);
+          qCodings.forEach((c: CanvasTextCoding) =>
+            excerpt(c.codedText, transcriptMap.get(c.transcriptId)?.title || 'Unknown', c.annotation),
+          );
+        });
+      } else if (groupBy === 'source') {
+        transcripts.forEach((t: CanvasTranscript) => {
+          const tCodings = codings.filter((c: CanvasTextCoding) => c.transcriptId === t.id);
+          if (tCodings.length === 0) return;
+          sub(`${t.title} (${tCodings.length} excerpt${tCodings.length !== 1 ? 's' : ''})`);
+          tCodings.forEach((c: CanvasTextCoding) =>
+            excerpt(c.codedText, `[${questionMap.get(c.questionId)?.text || 'Unknown'}]`, c.annotation),
+          );
+        });
+      } else {
+        const uncased = transcripts.filter((t) => !t.caseId);
+        const caseGroups = cases.map((c) => ({
+          case: c,
+          transcripts: transcripts.filter((t: CanvasTranscript) => t.caseId === c.id),
+        }));
+        [...caseGroups, { case: null as CanvasCase | null, transcripts: uncased }].forEach((group) => {
+          if (group.transcripts.length === 0) return;
+          const tIds = new Set(group.transcripts.map((t) => t.id));
+          const caseCodings = codings.filter((c: CanvasTextCoding) => tIds.has(c.transcriptId));
+          if (caseCodings.length === 0) return;
+          sub(
+            `${group.case?.name || 'Uncategorized'} (${caseCodings.length} excerpt${caseCodings.length !== 1 ? 's' : ''})`,
+          );
+          caseCodings.forEach((c: CanvasTextCoding) =>
+            excerpt(
+              c.codedText,
+              `${transcriptMap.get(c.transcriptId)?.title || 'Unknown'} · [${questionMap.get(c.questionId)?.text || 'Unknown'}]`,
+              c.annotation,
+            ),
+          );
+        });
+      }
+    }
+
+    if (includeMemos && memos.length > 0) {
+      heading('Research Memos');
+      memos.forEach((m: CanvasMemo) => {
+        sub(m.title || 'Memo');
+        children.push(new Paragraph({ text: m.content, spacing: { after: 160 } }));
+      });
+    }
+
+    const doc = new Document({ sections: [{ children }] });
+    return Packer.toBlob(doc);
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      let blob: Blob;
+      let ext: string;
+      if (format === 'docx') {
+        blob = await generateDocxBlob();
+        ext = 'docx';
+      } else {
+        const content = format === 'html' ? generateHTML() : generateMarkdown();
+        const mimeType = format === 'html' ? 'text/html' : 'text/markdown';
+        ext = format === 'html' ? 'html' : 'md';
+        blob = new Blob([content], { type: `${mimeType};charset=utf-8;` });
+      }
+      const filename = `${activeCanvas?.name || 'report'}-analysis-report.${ext}`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(format === 'docx' ? 'Word report downloaded' : `Report downloaded as ${ext.toUpperCase()}`);
+    } catch {
+      toast.error('Export failed — please try again');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handlePreview = () => {
@@ -407,18 +595,25 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
             </label>
             <div className="flex gap-2 mt-1.5">
               <button
+                onClick={() => setFormat('docx')}
+                className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${format === 'docx' ? 'border-brand-400 bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400 dark:border-brand-600' : 'border-gray-200 dark:border-gray-600 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+              >
+                <div className="font-semibold">Word</div>
+                <div className="text-[10px] mt-0.5 opacity-70">.docx — for supervisors & repositories</div>
+              </button>
+              <button
                 onClick={() => setFormat('html')}
                 className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${format === 'html' ? 'border-brand-400 bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400 dark:border-brand-600' : 'border-gray-200 dark:border-gray-600 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
               >
-                <div className="font-semibold">HTML</div>
-                <div className="text-[10px] mt-0.5 opacity-70">Opens in Word, browser, print-ready</div>
+                <div className="font-semibold">Web page</div>
+                <div className="text-[10px] mt-0.5 opacity-70">HTML — opens in a browser, print-ready</div>
               </button>
               <button
                 onClick={() => setFormat('markdown')}
                 className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${format === 'markdown' ? 'border-brand-400 bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400 dark:border-brand-600' : 'border-gray-200 dark:border-gray-600 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
               >
-                <div className="font-semibold">Markdown</div>
-                <div className="text-[10px] mt-0.5 opacity-70">Plain text, GitHub-compatible</div>
+                <div className="font-semibold">Plain text</div>
+                <div className="text-[10px] mt-0.5 opacity-70">Markdown — for notes & version control</div>
               </button>
             </div>
           </div>
@@ -511,7 +706,8 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
           {format !== 'html' && <div />}
           <button
             onClick={handleExport}
-            className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-xs font-medium text-white hover:bg-brand-700 transition-colors"
+            disabled={exporting}
+            className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-xs font-medium text-white hover:bg-brand-700 transition-colors disabled:opacity-60"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path
@@ -520,7 +716,7 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
                 d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
               />
             </svg>
-            Download Report
+            {exporting ? 'Preparing…' : 'Download Report'}
           </button>
         </div>
       </div>

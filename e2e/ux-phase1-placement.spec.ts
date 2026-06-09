@@ -242,7 +242,7 @@ test.describe('UX Phase 1 — Placement & Navigation', () => {
     await page.waitForTimeout(200);
 
     // The second item should now have the selected class (bg-blue-50)
-    const secondItem = page.locator('button').filter({ hasText: 'Research Question' }).first();
+    const secondItem = page.locator('[data-testid="quick-add-menu"] button').filter({ hasText: 'Code' }).first();
     const secondClass = await secondItem.getAttribute('class');
     expect(secondClass).toContain('bg-blue-50');
 
@@ -255,7 +255,7 @@ test.describe('UX Phase 1 — Placement & Navigation', () => {
     await openCanvasById(page, canvasId);
 
     await page.locator('[data-tour="canvas-btn-question"]').click();
-    const input = page.locator('input[placeholder*="research question"]');
+    const input = page.locator('input[placeholder*="new code"]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Data Analysis');
     await page.keyboard.press('Enter');

@@ -391,7 +391,7 @@ export default function CanvasToolbar({
               <input
                 type="text"
                 className="input h-8 w-64 text-sm"
-                placeholder="Type your research question..."
+                placeholder="Name a new code..."
                 value={questionText}
                 onChange={(e) => setQuestionText(e.target.value)}
                 onKeyDown={(e) => {
@@ -441,7 +441,7 @@ export default function CanvasToolbar({
                 data-tour="canvas-btn-question"
                 onClick={() => setShowQuestionInput(true)}
                 className="flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
-                title="Add a research question (code) to organize your coding"
+                title="Add a code — a label you apply to passages of your transcripts"
               >
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path
@@ -920,7 +920,7 @@ export default function CanvasToolbar({
             <FeatureTooltip
               feature="exportSeen"
               title="Export your work"
-              body="Export to HTML, Markdown, Excel, PNG, or QDPX for NVivo / ATLAS.ti."
+              body="Export a Word report, Excel workbook, image, or QDPX for NVivo / ATLAS.ti."
             >
               <ToolbarDropdown
                 ariaLabel="Export and import"
@@ -971,7 +971,7 @@ export default function CanvasToolbar({
                       />
                     </svg>
                   }
-                  label="Export Report (HTML/MD)"
+                  label="Export Report (Word, web, text)"
                   onClick={() => setShowRichExport(true)}
                 />
                 <DropdownItem
@@ -1009,7 +1009,7 @@ export default function CanvasToolbar({
                       />
                     </svg>
                   }
-                  label={exportingDisclosure ? 'Generating...' : 'AI Disclosure (.md)'}
+                  label={exportingDisclosure ? 'Generating...' : 'AI Disclosure statement'}
                   onClick={handleExportAiDisclosure}
                 />
                 {/* QDPX Export — rendered inline to use QdpxExportButton's own state */}
@@ -1032,7 +1032,7 @@ export default function CanvasToolbar({
                       />
                     </svg>
                   }
-                  label="QDPX Import"
+                  label="Import QDPX (NVivo / ATLAS.ti)"
                   onClick={() => setShowQdpxImport(true)}
                 />
               </ToolbarDropdown>
@@ -1165,7 +1165,7 @@ export default function CanvasToolbar({
                       />
                     </svg>
                   }
-                  label="Export Report (HTML/MD)"
+                  label="Export Report (Word, web, text)"
                   onClick={() => setShowRichExport(true)}
                 />
                 <DropdownItem

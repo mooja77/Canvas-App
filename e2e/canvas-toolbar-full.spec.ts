@@ -195,8 +195,8 @@ test.describe('Canvas Toolbar Full', () => {
     await openExportDropdown(page);
 
     await expect(page.getByText('Export PNG').first()).toBeVisible({ timeout: 3000 });
-    await expect(page.getByText('Export Report (HTML/MD)').first()).toBeVisible({ timeout: 3000 });
-    await expect(page.getByText('QDPX Import').first()).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Export Report (Word, web, text)').first()).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Import QDPX (NVivo / ATLAS.ti)').first()).toBeVisible({ timeout: 3000 });
 
     // Close
     await page.locator('.react-flow__pane').click();

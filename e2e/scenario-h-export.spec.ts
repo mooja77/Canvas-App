@@ -363,9 +363,9 @@ test.describe.serial('Scenario H: Export & Interoperability', () => {
     }
     // Verify all export options are visible
     await expect(page.getByText('Export PNG').first()).toBeVisible({ timeout: 3000 });
-    await expect(page.getByText('Export Report (HTML/MD)').first()).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Export Report (Word, web, text)').first()).toBeVisible({ timeout: 3000 });
     await expect(page.getByText(/Export QDPX|QDPX/).first()).toBeVisible({ timeout: 3000 });
-    await expect(page.getByText('QDPX Import').first()).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Import QDPX (NVivo / ATLAS.ti)').first()).toBeVisible({ timeout: 3000 });
     await expect(page.getByText(/Export Excel/i).first()).toBeVisible({ timeout: 3000 });
   });
 

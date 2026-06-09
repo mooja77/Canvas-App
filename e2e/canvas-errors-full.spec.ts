@@ -53,7 +53,12 @@ async function openCanvasById(page: Page, canvasId: string) {
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
   await page.waitForSelector('.react-flow__node', { timeout: 10000 }).catch(() => {});
@@ -64,7 +69,6 @@ async function openCanvasById(page: Page, canvasId: string) {
 // ═══════════════════════════════════════════════════════════════════
 
 test.describe('Canvas Error Handling', () => {
-
   test('1 - /canvas without auth redirects to /login', async ({ browser }) => {
     // Create a fresh context with explicitly empty storage state (no auth)
     const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
@@ -110,7 +114,10 @@ test.describe('Canvas Error Handling', () => {
     const canvasList = page.locator('[data-tour="canvas-list"]');
     const reactFlowPane = page.locator('.react-flow__pane');
 
-    const hasError = await errorText.first().isVisible({ timeout: 5000 }).catch(() => false);
+    const hasError = await errorText
+      .first()
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
     const hasList = await canvasList.isVisible({ timeout: 3000 }).catch(() => false);
     const hasPane = await reactFlowPane.isVisible({ timeout: 3000 }).catch(() => false);
 
@@ -123,13 +130,14 @@ test.describe('Canvas Error Handling', () => {
 
     // Click "New Canvas" to open the create form
     const newCanvasBtn = page.getByRole('button', { name: /New Canvas|Get Started/i }).first();
-    if (!await newCanvasBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (!(await newCanvasBtn.isVisible({ timeout: 3000 }).catch(() => false))) {
       // Try the data-tour button
       const tourBtn = page.locator('[data-tour="canvas-new-btn"]');
       if (await tourBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await tourBtn.click();
       } else {
-        test.skip(); return;
+        test.skip();
+        return;
       }
     } else {
       await newCanvasBtn.click();
@@ -159,7 +167,7 @@ test.describe('Canvas Error Handling', () => {
     await codeBtn.click();
 
     // The input should appear
-    const codeInput = page.locator('input[placeholder*="research question"]');
+    const codeInput = page.locator('input[placeholder*="new code"]');
     await expect(codeInput).toBeVisible({ timeout: 3000 });
 
     // Rapidly type and submit codes (the actual rapid action)
@@ -192,7 +200,8 @@ test.describe('Canvas Error Handling', () => {
 
     // Seed a transcript so we have at least one node
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers, data: { title: 'Refresh Test', content: 'Some content for refresh testing.' },
+      headers,
+      data: { title: 'Refresh Test', content: 'Some content for refresh testing.' },
     });
 
     try {
@@ -206,7 +215,10 @@ test.describe('Canvas Error Handling', () => {
       await page.waitForLoadState('networkidle');
 
       // Re-enter the canvas if needed
-      const paneVisible = await page.locator('.react-flow__pane').isVisible({ timeout: 3000 }).catch(() => false);
+      const paneVisible = await page
+        .locator('.react-flow__pane')
+        .isVisible({ timeout: 3000 })
+        .catch(() => false);
       if (!paneVisible) {
         await page.goto(`/canvas/${canvasId}`);
         await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
@@ -233,11 +245,19 @@ test.describe('Canvas Error Handling', () => {
       if (msg.type() === 'error') {
         const text = msg.text();
         // Ignore known non-critical errors
-        if (text.includes('WebSocket') || text.includes('Socket') ||
-            text.includes('favicon') || text.includes('.map') ||
-            text.includes('DevTools') || text.includes('net::ERR') ||
-            text.includes('Failed to load resource') || text.includes('404') ||
-            text.includes('Stripe') || text.includes('Google')) return;
+        if (
+          text.includes('WebSocket') ||
+          text.includes('Socket') ||
+          text.includes('favicon') ||
+          text.includes('.map') ||
+          text.includes('DevTools') ||
+          text.includes('net::ERR') ||
+          text.includes('Failed to load resource') ||
+          text.includes('404') ||
+          text.includes('Stripe') ||
+          text.includes('Google')
+        )
+          return;
         errors.push(text);
       }
     });
@@ -254,9 +274,7 @@ test.describe('Canvas Error Handling', () => {
       await page.waitForLoadState('networkidle');
     }
 
-    const criticalErrors = errors.filter(e =>
-      !e.includes('ResizeObserver') && !e.includes('Non-Error')
-    );
+    const criticalErrors = errors.filter((e) => !e.includes('ResizeObserver') && !e.includes('Non-Error'));
     expect(criticalErrors).toEqual([]);
   });
 
@@ -277,11 +295,15 @@ test.describe('Canvas Error Handling', () => {
     // The setup wizard should NOT be visible since the user has canvases
     const wizardHeading = page.getByText(/Welcome to QualCanvas|Get Started|setup/i);
     // Also check for the actual SetupWizard component indicators
-    const wizardModal = page.locator('[data-testid="setup-wizard"]')
+    const wizardModal = page
+      .locator('[data-testid="setup-wizard"]')
       .or(page.getByRole('heading', { name: /Welcome|Setup/i }));
 
     // Wait briefly to ensure the wizard would have appeared if it was going to
-    const wizardVisible = await wizardModal.first().isVisible({ timeout: 3000 }).catch(() => false);
+    const wizardVisible = await wizardModal
+      .first()
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
 
     // The canvas list or a canvas should be shown instead
     const canvasList = page.locator('[data-tour="canvas-list"]');

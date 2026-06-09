@@ -42,6 +42,12 @@
   banner.id = 'cookie-consent-banner';
   banner.setAttribute('role', 'region');
   banner.setAttribute('aria-label', 'Cookie consent');
+  // In the canvas workspace the full-width bar covered the status bar (which
+  // holds the coding stats). Use a compact floating card there instead;
+  // marketing pages keep the standard full-width banner.
+  if (window.location.pathname.indexOf('/canvas') === 0) {
+    banner.className = 'cc-compact';
+  }
   banner.innerHTML =
     '<div class="cc-inner">' +
       '<p>We use cookies for analytics and to improve your experience. ' +

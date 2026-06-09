@@ -17,7 +17,9 @@ interface QuickAddMenuProps {
 
 const ALL_ITEMS: { id: string; label: string; category: string; color: string; computedType?: ComputedNodeType }[] = [
   { id: 'transcript', label: 'Transcript', category: 'Core', color: '#3B82F6' },
-  { id: 'question', label: 'Research Question', category: 'Core', color: '#8B5CF6' },
+  // Internally these are CanvasQuestion rows, but to researchers they're
+  // codes — "research question" means something different in qual methods.
+  { id: 'question', label: 'Code', category: 'Core', color: '#8B5CF6' },
   { id: 'memo', label: 'Memo', category: 'Core', color: '#F59E0B' },
   { id: 'sticky', label: 'Sticky Note', category: 'Core', color: '#FBBF24' },
   { id: 'search', label: 'Text Search', category: 'Analysis', color: '#059669', computedType: 'search' },
@@ -60,7 +62,7 @@ function getRecentNodeIds(): string[] {
 }
 
 function pushRecentNodeId(id: string): void {
-  const recent = getRecentNodeIds().filter(r => r !== id);
+  const recent = getRecentNodeIds().filter((r) => r !== id);
   recent.unshift(id);
   localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
 }
@@ -82,43 +84,39 @@ export default function QuickAddMenu({
   const inputRef = useRef<HTMLInputElement>(null);
   const itemRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
 
-  const baseItems = allowedItems
-    ? ALL_ITEMS.filter(i => allowedItems.includes(i.id))
-    : ALL_ITEMS;
+  const baseItems = allowedItems ? ALL_ITEMS.filter((i) => allowedItems.includes(i.id)) : ALL_ITEMS;
 
   // Build filtered + categorized flat list for keyboard nav
-  const filtered = filter
-    ? baseItems.filter(i => fuzzyMatch(i.label, filter))
-    : baseItems;
+  const filtered = filter ? baseItems.filter((i) => fuzzyMatch(i.label, filter)) : baseItems;
 
   // Build the display sections: Recent (when no filter) + normal categories
   const recentIds = getRecentNodeIds();
   const showRecent = !filter && recentIds.length > 0;
   const recentItems = showRecent
     ? recentIds
-        .map(id => baseItems.find(item => item.id === id))
-        .filter((item): item is typeof ALL_ITEMS[number] => item !== undefined)
+        .map((id) => baseItems.find((item) => item.id === id))
+        .filter((item): item is (typeof ALL_ITEMS)[number] => item !== undefined)
     : [];
 
   // Build flat list of all visible items (for keyboard navigation indexing)
-  const flatItems: typeof ALL_ITEMS[number][] = [];
-  const sections: { label: string; items: typeof ALL_ITEMS[number][] }[] = [];
+  const flatItems: (typeof ALL_ITEMS)[number][] = [];
+  const sections: { label: string; items: (typeof ALL_ITEMS)[number][] }[] = [];
 
   if (showRecent && recentItems.length > 0) {
     sections.push({ label: 'Recent', items: recentItems });
     flatItems.push(...recentItems);
   }
 
-  const categories = [...new Set(filtered.map(i => i.category))];
+  const categories = [...new Set(filtered.map((i) => i.category))];
   for (const cat of categories) {
-    const catItems = filtered.filter(i => i.category === cat);
+    const catItems = filtered.filter((i) => i.category === cat);
     sections.push({ label: cat, items: catItems });
     flatItems.push(...catItems);
   }
 
   // Clamp selectedIndex when list changes
   useEffect(() => {
-    setSelectedIndex(prev => {
+    setSelectedIndex((prev) => {
       if (flatItems.length === 0) return 0;
       return Math.min(prev, flatItems.length - 1);
     });
@@ -132,15 +130,18 @@ export default function QuickAddMenu({
     }
   }, [selectedIndex]);
 
-  const handleSelect = useCallback((item: typeof ALL_ITEMS[0]) => {
-    pushRecentNodeId(item.id);
-    if (item.id === 'transcript') onAddTranscript();
-    else if (item.id === 'question') onAddQuestion();
-    else if (item.id === 'memo') onAddMemo();
-    else if (item.id === 'sticky') onAddStickyNote?.();
-    else if (item.computedType) onAddComputedNode(item.computedType, item.label);
-    onClose();
-  }, [onAddTranscript, onAddQuestion, onAddMemo, onAddStickyNote, onAddComputedNode, onClose]);
+  const handleSelect = useCallback(
+    (item: (typeof ALL_ITEMS)[0]) => {
+      pushRecentNodeId(item.id);
+      if (item.id === 'transcript') onAddTranscript();
+      else if (item.id === 'question') onAddQuestion();
+      else if (item.id === 'memo') onAddMemo();
+      else if (item.id === 'sticky') onAddStickyNote?.();
+      else if (item.computedType) onAddComputedNode(item.computedType, item.label);
+      onClose();
+    },
+    [onAddTranscript, onAddQuestion, onAddMemo, onAddStickyNote, onAddComputedNode, onClose],
+  );
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -152,10 +153,10 @@ export default function QuickAddMenu({
         onClose();
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex(prev => (prev + 1) % (flatItems.length || 1));
+        setSelectedIndex((prev) => (prev + 1) % (flatItems.length || 1));
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex(prev => (prev - 1 + (flatItems.length || 1)) % (flatItems.length || 1));
+        setSelectedIndex((prev) => (prev - 1 + (flatItems.length || 1)) % (flatItems.length || 1));
       } else if (e.key === 'Enter') {
         e.preventDefault();
         if (flatItems.length > 0 && selectedIndex < flatItems.length) {
@@ -169,8 +170,8 @@ export default function QuickAddMenu({
       document.removeEventListener('mousedown', handleClick);
       document.removeEventListener('keydown', handleKey);
     };
-  // flatItems changes on every render so we use flatItems.length + filter as proxies
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // flatItems changes on every render so we use flatItems.length + filter as proxies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose, filter, flatItems.length, selectedIndex, handleSelect]);
 
   // Track flat index across sections
@@ -179,6 +180,7 @@ export default function QuickAddMenu({
   return createPortal(
     <div
       ref={ref}
+      data-testid="quick-add-menu"
       className="fixed z-[9999] w-56 rounded-xl border border-gray-200/60 bg-white/95 shadow-lg backdrop-blur-xl dark:border-gray-700 dark:bg-gray-800/95"
       style={{ left: x, top: y }}
     >
@@ -189,33 +191,34 @@ export default function QuickAddMenu({
           className="w-full rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700 outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
           placeholder="Search nodes..."
           value={filter}
-          onChange={e => { setFilter(e.target.value); setSelectedIndex(0); }}
+          onChange={(e) => {
+            setFilter(e.target.value);
+            setSelectedIndex(0);
+          }}
         />
       </div>
 
       <div className="max-h-64 overflow-y-auto pb-1">
-        {sections.map(section => {
+        {sections.map((section) => {
           const sectionEl = (
             <div key={section.label}>
               <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
                 {section.label}
               </div>
-              {section.items.map(item => {
+              {section.items.map((item) => {
                 const idx = flatIndex++;
                 const isSelected = idx === selectedIndex;
                 return (
                   <button
                     key={`${section.label}-${item.id}`}
-                    ref={el => {
+                    ref={(el) => {
                       if (el) itemRefs.current.set(idx, el);
                       else itemRefs.current.delete(idx);
                     }}
                     onClick={() => handleSelect(item)}
                     onMouseEnter={() => setSelectedIndex(idx)}
                     className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-300 ${
-                      isSelected
-                        ? 'bg-blue-50 dark:bg-blue-900/30'
-                        : 'hover:bg-gray-50 dark:hover:bg-gray-750'
+                      isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-750'
                     }`}
                   >
                     <div className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
@@ -227,9 +230,7 @@ export default function QuickAddMenu({
           );
           return sectionEl;
         })}
-        {flatItems.length === 0 && (
-          <p className="px-3 py-2 text-xs text-gray-400">No matching nodes</p>
-        )}
+        {flatItems.length === 0 && <p className="px-3 py-2 text-xs text-gray-400">No matching nodes</p>}
       </div>
     </div>,
     document.body,

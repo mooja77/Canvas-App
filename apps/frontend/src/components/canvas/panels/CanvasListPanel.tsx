@@ -667,6 +667,7 @@ export default function CanvasListPanel() {
                     <span
                       className="flex items-center gap-1"
                       title={`${canvas._count.transcripts} transcript${canvas._count.transcripts === 1 ? '' : 's'}`}
+                      aria-label={`${canvas._count.transcripts} transcript${canvas._count.transcripts === 1 ? '' : 's'}`}
                     >
                       <svg
                         className="h-3 w-3 text-blue-400"
@@ -686,6 +687,7 @@ export default function CanvasListPanel() {
                     <span
                       className="flex items-center gap-1"
                       title={`${canvas._count.questions} code${canvas._count.questions === 1 ? '' : 's'}`}
+                      aria-label={`${canvas._count.questions} code${canvas._count.questions === 1 ? '' : 's'}`}
                     >
                       <svg
                         className="h-3 w-3 text-purple-400"
@@ -705,6 +707,7 @@ export default function CanvasListPanel() {
                     <span
                       className="flex items-center gap-1"
                       title={`${canvas._count.codings} coding${canvas._count.codings === 1 ? '' : 's'}`}
+                      aria-label={`${canvas._count.codings} coding${canvas._count.codings === 1 ? '' : 's'}`}
                     >
                       <svg
                         className="h-3 w-3 text-emerald-400"
