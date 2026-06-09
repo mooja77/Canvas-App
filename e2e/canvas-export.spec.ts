@@ -138,8 +138,8 @@ test.describe('Canvas Export & Tools', () => {
     await openCanvasById(page, canvasId);
     await openExportDropdown(page);
     await expect(page.getByText('Export PNG').first()).toBeVisible({ timeout: 3000 });
-    await expect(page.getByText('Export Report (HTML/MD)').first()).toBeVisible({ timeout: 3000 });
-    await expect(page.getByText('QDPX Import').first()).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Export Report (Word, web, text)').first()).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText('Import QDPX (NVivo / ATLAS.ti)').first()).toBeVisible({ timeout: 3000 });
   });
 
   test('2 - Export PNG triggers download', async ({ page }) => {
@@ -162,7 +162,7 @@ test.describe('Canvas Export & Tools', () => {
   test('3 - Export Report opens report dialog', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await openExportDropdown(page);
-    await page.getByText('Export Report (HTML/MD)').first().click();
+    await page.getByText('Export Report (Word, web, text)').first().click();
     // The RichExportModal should appear
     const modal = page.locator('[role="dialog"]').or(page.locator('.modal-backdrop'));
     const visible = await modal
@@ -193,7 +193,7 @@ test.describe('Canvas Export & Tools', () => {
   test('5 - QDPX Import opens modal', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await openExportDropdown(page);
-    await page.getByText('QDPX Import').first().click();
+    await page.getByText('Import QDPX (NVivo / ATLAS.ti)').first().click();
     // Should open QdpxImportModal
     await expect(page.getByRole('heading', { name: 'Import QDPX File' })).toBeVisible({ timeout: 5000 });
     await expect(page.getByText(/Click to select a \.qdpx or \.zip file/i)).toBeVisible({ timeout: 3000 });

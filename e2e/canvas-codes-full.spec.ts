@@ -165,7 +165,7 @@ test.describe('Code Management', () => {
     await expect(codeBtn).toBeVisible({ timeout: 5000 });
     await codeBtn.click();
 
-    const input = page.locator('input[placeholder="Type your research question..."]');
+    const input = page.locator('input[placeholder="Name a new code..."]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Test Code Alpha');
     await input.press('Enter');
@@ -227,7 +227,7 @@ test.describe('Code Management', () => {
     const count0 = await questionNodes.count();
 
     await codeBtn.click();
-    let input = page.locator('input[placeholder="Type your research question..."]');
+    let input = page.locator('input[placeholder="Name a new code..."]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Multi Code One');
     await input.press('Enter');
@@ -238,7 +238,7 @@ test.describe('Code Management', () => {
     const count1 = await questionNodes.count();
 
     await codeBtn.click();
-    input = page.locator('input[placeholder="Type your research question..."]');
+    input = page.locator('input[placeholder="Name a new code..."]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Multi Code Two');
     await input.press('Enter');
@@ -302,7 +302,7 @@ test.describe('Code Management', () => {
     const beforeCount = await page.locator('.react-flow__node[data-id^="question-"]').count();
 
     await codeBtn.click();
-    const input = page.locator('input[placeholder="Type your research question..."]');
+    const input = page.locator('input[placeholder="Name a new code..."]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Code To Delete');
     await input.press('Enter');
@@ -390,14 +390,14 @@ test.describe('Code Management', () => {
     const beforeCount = await questionCountViaApi(page, fixtureCanvasId);
 
     await codeBtn.click();
-    let input = page.locator('input[placeholder="Type your research question..."]');
+    let input = page.locator('input[placeholder="Name a new code..."]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Duplicate Name');
     await input.press('Enter');
     await expect.poll(() => questionCountViaApi(page, fixtureCanvasId), { timeout: 10000 }).toBe(beforeCount + 1);
 
     await codeBtn.click();
-    input = page.locator('input[placeholder="Type your research question..."]');
+    input = page.locator('input[placeholder="Name a new code..."]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Duplicate Name');
     await input.press('Enter');
@@ -418,7 +418,7 @@ test.describe('Code Management', () => {
 
     const codeBtn = page.locator('[data-tour="canvas-btn-question"]');
     await codeBtn.click();
-    const input = page.locator('input[placeholder="Type your research question..."]');
+    const input = page.locator('input[placeholder="Name a new code..."]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Count Test Code');
     await input.press('Enter');

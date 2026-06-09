@@ -370,7 +370,7 @@ test.describe('Workspace Tests', () => {
   test('13 - add code via toolbar', async ({ page }) => {
     await openCanvasById(page, canvasId);
     await page.locator('[data-tour="canvas-btn-question"]').click();
-    const input = page.locator('input[placeholder*="research question"]');
+    const input = page.locator('input[placeholder*="new code"]');
     await expect(input).toBeVisible({ timeout: 3000 });
     await input.fill('Professional Development');
     await page.keyboard.press('Enter');
