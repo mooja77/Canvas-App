@@ -3,6 +3,41 @@ import { useUIStore, type FeatureDiscovery } from '../stores/uiStore';
 
 // Small, auto-dismissing popover that teaches one feature on first encounter.
 // Each feature fires at most once per browser (persisted in uiStore).
+//
+// Tooltips queue: only ONE is visible at a time. Without this, a brand-new
+// user's first canvas showed several at once (e.g. the Tools and Export tips,
+// on adjacent toolbar buttons) physically overlapping into an unreadable
+// stack. Each instance requests a module-level lock; the next in line shows
+// when the current one is dismissed.
+let tooltipLockHeld = false;
+const tooltipWaiters: Array<() => void> = [];
+
+function acquireTooltipLock(onAcquired: () => void): () => void {
+  let granted = false;
+  const tryGrant = () => {
+    granted = true;
+    tooltipLockHeld = true;
+    onAcquired();
+  };
+  if (!tooltipLockHeld) tryGrant();
+  else tooltipWaiters.push(tryGrant);
+  // Release: pass the lock to the next waiter (or free it). Idempotent — it
+  // can be called from both dismiss() and the effect cleanup. Also handles
+  // cancellation while still queued.
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    if (!granted) {
+      const i = tooltipWaiters.indexOf(tryGrant);
+      if (i >= 0) tooltipWaiters.splice(i, 1);
+      return;
+    }
+    const next = tooltipWaiters.shift();
+    if (next) next();
+    else tooltipLockHeld = false;
+  };
+}
 interface Props {
   feature: keyof FeatureDiscovery;
   title: string;
@@ -30,11 +65,23 @@ export default function FeatureTooltip({
   const markSeen = useUIStore((s) => s.markFeatureSeen);
   const [visible, setVisible] = useState(false);
 
+  const [release, setRelease] = useState<(() => void) | null>(null);
+
   useEffect(() => {
     if (disabledForE2e || !enabled || seen) return;
-    // Slight delay so the trigger element is laid out.
-    const show = window.setTimeout(() => setVisible(true), 300);
-    return () => window.clearTimeout(show);
+    let releaseLock: (() => void) | null = null;
+    // Slight delay so the trigger element is laid out, then wait our turn —
+    // only one feature tip shows at a time (see queue above).
+    const show = window.setTimeout(() => {
+      releaseLock = acquireTooltipLock(() => {
+        setVisible(true);
+        setRelease(() => releaseLock);
+      });
+    }, 300);
+    return () => {
+      window.clearTimeout(show);
+      releaseLock?.();
+    };
   }, [disabledForE2e, enabled, seen]);
 
   useEffect(() => {
@@ -47,6 +94,8 @@ export default function FeatureTooltip({
   const dismiss = () => {
     setVisible(false);
     markSeen(feature);
+    release?.();
+    setRelease(null);
   };
 
   if (disabledForE2e) {

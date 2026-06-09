@@ -25,6 +25,7 @@ import { useContainerSize } from '../../hooks/useContainerSize';
 import CodingDetailPanel from './panels/CodingDetailPanel';
 import CanvasSearchOverlay from './panels/CanvasSearchOverlay';
 import CommandPalette from './panels/CommandPalette';
+import HelpMenu from './panels/HelpMenu';
 import FullProductTour from '../help/FullProductTour';
 import WiseshiftWalkthrough from './WiseshiftWalkthrough';
 import CanvasContextMenu from './panels/CanvasContextMenu';
@@ -2744,10 +2745,12 @@ export default function CanvasWorkspace() {
                       </svg>
                     </div>
 
-                    {/* Heading */}
-                    <h3 className="text-xl font-semibold text-gray-400 dark:text-gray-500">Your workspace is ready</h3>
-                    <p className="mt-2 text-sm text-gray-300 dark:text-gray-600 max-w-sm mx-auto leading-relaxed">
-                      Start by adding your interview transcripts, then create research questions to begin coding.
+                    {/* Heading — readable grays: this screen's whole job is to
+                        orient a brand-new user, so it must meet contrast, not
+                        whisper (was gray-400/gray-300 ≈ 1.6–2.8:1). */}
+                    <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Your workspace is ready</h3>
+                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
+                      Start by adding your interview transcripts, then create codes to label what matters in them.
                     </p>
 
                     {/* Steps */}
@@ -2769,8 +2772,8 @@ export default function CanvasWorkspace() {
                           </svg>
                         </div>
                         <div>
-                          <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Step 1</p>
-                          <p className="text-[11px] text-gray-300 dark:text-gray-600">Add transcripts</p>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Step 1</p>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400">Add transcripts</p>
                         </div>
                       </div>
                       <div className="flex flex-col items-center gap-2">
@@ -2790,8 +2793,8 @@ export default function CanvasWorkspace() {
                           </svg>
                         </div>
                         <div>
-                          <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Step 2</p>
-                          <p className="text-[11px] text-gray-300 dark:text-gray-600">Create questions</p>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Step 2</p>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400">Create codes</p>
                         </div>
                       </div>
                       <div className="flex flex-col items-center gap-2">
@@ -2807,14 +2810,14 @@ export default function CanvasWorkspace() {
                           </svg>
                         </div>
                         <div>
-                          <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Step 3</p>
-                          <p className="text-[11px] text-gray-300 dark:text-gray-600">Select text & code</p>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Step 3</p>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400">Select text & code</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Hint */}
-                    <p className="mt-6 text-[11px] text-gray-300 dark:text-gray-600">
+                    <p className="mt-6 text-[11px] text-gray-500 dark:text-gray-400">
                       Drop .txt/.csv files to import &middot; Double-click canvas to quick-add &middot; Press{' '}
                       <kbd className="rounded bg-gray-100 dark:bg-gray-700 px-1 py-0.5 font-mono text-[10px]">
                         Ctrl+K
@@ -3040,6 +3043,7 @@ export default function CanvasWorkspace() {
                     {scrollMode === 'zoom' ? 'Wheel zooms' : 'Wheel pans'}
                   </button>
                   <span className="tabular-nums">{zoomLevel}%</span>
+                  <HelpMenu onShowShortcuts={() => setShowShortcuts(true)} />
                 </div>
               </div>
             )}

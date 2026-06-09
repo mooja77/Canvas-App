@@ -565,6 +565,11 @@ export default function LoginPage() {
             </button>
             {showAccessCode && (
               <form onSubmit={handleAccessCodeLogin} className="mt-4 space-y-3">
+                {/* Orient non-technical users: with two sign-in forms stacked
+                    on one page, say plainly who this second one is for. */}
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Access codes are used for workshops, demos, and legacy accounts. Most users sign in with email above.
+                </p>
                 <label
                   htmlFor="access-code-input"
                   className="block text-sm font-medium text-gray-700 dark:text-gray-300"

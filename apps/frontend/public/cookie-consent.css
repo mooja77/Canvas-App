@@ -137,3 +137,31 @@
     justify-content: flex-end;
   }
 }
+
+/* Compact variant for the canvas workspace — a floating card bottom-left so
+   the canvas status bar (coding stats, zoom) stays visible. */
+#cookie-consent-banner.cc-compact {
+  left: 16px;
+  right: auto;
+  bottom: 44px; /* clear of the ~32px status bar */
+  max-width: 400px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+#cookie-consent-banner.cc-compact .cc-inner {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+#cookie-consent-banner.cc-compact .cc-buttons {
+  align-self: flex-end;
+}
+
+@media (prefers-color-scheme: dark) {
+  #cookie-consent-banner.cc-compact {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
