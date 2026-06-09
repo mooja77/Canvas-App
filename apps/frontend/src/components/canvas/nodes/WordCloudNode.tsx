@@ -16,11 +16,10 @@ function WordCloudNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as WordCloudNodeData;
   const computedNodes = useCanvasComputedNodes();
   const questions = useCanvasQuestions();
-  const updateComputedNode = useCanvasStore(s => s.updateComputedNode);
+  const updateComputedNode = useCanvasStore((s) => s.updateComputedNode);
   const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [editing, setEditing] = useState(false);
   const [selectedQId, setSelectedQId] = useState<string>('');
-
 
   const config = node?.config as unknown as WordCloudConfig | undefined;
   const result = node?.result as unknown as WordCloudResult | undefined;
@@ -35,12 +34,14 @@ function WordCloudNode({ data, id, selected }: NodeProps) {
   const wordLayout = useMemo(() => {
     if (!result?.words?.length) return [];
     const words = result.words.slice(0, 50);
-    const maxCount = Math.max(...words.map(w => w.count));
-    const minCount = Math.min(...words.map(w => w.count));
+    const maxCount = Math.max(...words.map((w) => w.count));
+    const minCount = Math.min(...words.map((w) => w.count));
 
     const fontScale = (count: number) => {
       if (maxCount === minCount) return 20;
-      const t = (Math.log(count) - Math.log(Math.max(1, minCount))) / (Math.log(Math.max(2, maxCount)) - Math.log(Math.max(1, minCount)));
+      const t =
+        (Math.log(count) - Math.log(Math.max(1, minCount))) /
+        (Math.log(Math.max(2, maxCount)) - Math.log(Math.max(1, minCount)));
       return 10 + Math.min(1, Math.max(0, t)) * 22;
     };
 
@@ -54,12 +55,21 @@ function WordCloudNode({ data, id, selected }: NodeProps) {
       const radius = 5 + i * 3;
       const x = cx + radius * Math.cos(angle);
       const y = cy + radius * Math.sin(angle);
+      // Clamp by the word's rendered half-WIDTH, not a fixed margin: the text
+      // is middle-anchored, so a fixed 30px clamp let the biggest words (the
+      // headline finding!) run off the SVG edge. Estimate width from font
+      // size, shrink the font if a long word can't fit the box at all.
+      let fontSize = fontScale(word.count);
+      const maxFit = (width - 12) / (0.6 * Math.max(1, word.text.length));
+      fontSize = Math.min(fontSize, maxFit);
+      const halfW = (0.6 * fontSize * word.text.length) / 2;
+      const halfH = fontSize / 2;
       return {
         text: word.text,
         count: word.count,
-        fontSize: fontScale(word.count),
-        x: Math.max(30, Math.min(width - 30, x)),
-        y: Math.max(15, Math.min(height - 15, y)),
+        fontSize,
+        x: Math.max(halfW + 4, Math.min(width - halfW - 4, x)),
+        y: Math.max(halfH + 4, Math.min(height - halfH - 4, y)),
         color: CLOUD_COLORS[i % CLOUD_COLORS.length],
       };
     });
@@ -69,7 +79,11 @@ function WordCloudNode({ data, id, selected }: NodeProps) {
 
   const icon = (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z"
+      />
     </svg>
   );
 
@@ -80,22 +94,35 @@ function WordCloudNode({ data, id, selected }: NodeProps) {
       label={node.label}
       icon={icon}
       color="#6366F1"
-      onConfigure={() => { setSelectedQId(config?.questionId || ''); setEditing(true); }}
+      onConfigure={() => {
+        setSelectedQId(config?.questionId || '');
+        setEditing(true);
+      }}
       selected={selected}
       collapsed={(data as unknown as Record<string, unknown>).collapsed as boolean}
       zoomLevel={(data as unknown as Record<string, unknown>).zoomLevel as number}
     >
       {editing && (
         <div className="border-b border-gray-100 dark:border-gray-700 px-3 py-2 space-y-2">
-          <select className="input h-7 text-xs w-full" value={selectedQId} onChange={e => setSelectedQId(e.target.value)}>
+          <select
+            className="input h-7 text-xs w-full"
+            value={selectedQId}
+            onChange={(e) => setSelectedQId(e.target.value)}
+          >
             <option value="">All questions</option>
             {questions.map((q: CanvasQuestion) => (
-              <option key={q.id} value={q.id}>{q.text}</option>
+              <option key={q.id} value={q.id}>
+                {q.text}
+              </option>
             ))}
           </select>
           <div className="flex gap-2">
-            <button onClick={handleSaveConfig} className="btn-primary h-7 px-2 text-xs">Save</button>
-            <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+            <button onClick={handleSaveConfig} className="btn-primary h-7 px-2 text-xs">
+              Save
+            </button>
+            <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">
+              Cancel
+            </button>
           </div>
         </div>
       )}

@@ -83,9 +83,13 @@ export default function AddComputedNodeMenu() {
 
   const handleAdd = async (type: ComputedNodeType, label: string) => {
     try {
-      await addComputedNode(type, label);
+      const node = await addComputedNode(type, label);
       toast.success(`${label} node added`);
       setOpen(false);
+      // Pan the camera to the new node — it spawns at a default layout slot
+      // that is often outside the current viewport, and a success toast over
+      // an unchanged canvas reads as "nothing happened".
+      window.dispatchEvent(new CustomEvent('qualcanvas:focus-node', { detail: { nodeId: `computed-${node.id}` } }));
     } catch {
       toast.error('Failed to add node');
     }

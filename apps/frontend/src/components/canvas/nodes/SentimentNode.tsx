@@ -134,11 +134,12 @@ function SentimentNode({ data, id, selected }: NodeProps) {
             {/* Overall bar */}
             <div className="mb-2">
               <div className="flex items-center justify-between text-[10px] text-gray-500 mb-1">
-                <span>
+                <span title="Average sentiment across coded segments, from −1 (most negative) to +1 (most positive)">
                   Avg score:{' '}
                   <strong className={result.overall.averageScore >= 0 ? 'text-green-600' : 'text-red-600'}>
                     {result.overall.averageScore.toFixed(2)}
-                  </strong>
+                  </strong>{' '}
+                  <span className="text-gray-400">(−1 to +1)</span>
                 </span>
                 <span>
                   {segmentCount} segment{segmentCount !== 1 ? 's' : ''}
