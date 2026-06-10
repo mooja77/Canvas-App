@@ -340,6 +340,32 @@ export default function CanvasWorkspace() {
     return () => window.removeEventListener('qualcanvas:open-canvas-modal', handler);
   }, []);
 
+  // Focus-node requests from components outside this tree (e.g. the Analyze
+  // menu after adding a computed node). Without this, a new analysis node can
+  // spawn entirely off-viewport: the toast says "added" while the screen shows
+  // nothing — to a non-technical user the feature simply looks broken. The
+  // node lands in React state a render after the store update, so poll
+  // nodesRef briefly rather than assuming it's already there.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const nodeId = (e as CustomEvent<{ nodeId: string }>).detail?.nodeId;
+      if (!nodeId) return;
+      let attempts = 0;
+      const tryFocus = () => {
+        const node = nodesRef.current.find((n) => n.id === nodeId);
+        if (node && rfInstanceRef.current) {
+          rfInstanceRef.current.setCenter(node.position.x + 150, node.position.y + 100, { zoom: 0.8, duration: 500 });
+          setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === nodeId })));
+          return;
+        }
+        if (++attempts < 10) setTimeout(tryFocus, 200);
+      };
+      tryFocus();
+    };
+    window.addEventListener('qualcanvas:focus-node', handler);
+    return () => window.removeEventListener('qualcanvas:focus-node', handler);
+  }, [setNodes]);
+
   const [contextMenu, setContextMenu] = useState<{ show: boolean; x: number; y: number } | null>(null);
   const [nodeContextMenu, setNodeContextMenu] = useState<{
     show: boolean;
