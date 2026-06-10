@@ -20,7 +20,10 @@ import { useMobile } from '../../hooks/useMobile';
 export default function OnboardingChecklist() {
   const navigate = useNavigate();
   const isMobile = useMobile();
-  const [collapsed, setCollapsed] = useState(false);
+  // null = "no explicit choice yet" → default open only while nothing is done;
+  // once the user has completed a step the card starts collapsed so it stops
+  // crowding the canvas (this was always the stated intent).
+  const [collapsed, setCollapsed] = useState<boolean | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const activeCanvas = useCanvasStore((s) => s.activeCanvas);
   const plan = useAuthStore((s) => s.plan);
@@ -45,7 +48,7 @@ export default function OnboardingChecklist() {
       },
       {
         id: 'create-theme',
-        label: 'Group 2+ codes into a theme',
+        label: 'Create at least 2 codes',
         done: questions.length >= 2,
         action: null,
       },
@@ -64,9 +67,12 @@ export default function OnboardingChecklist() {
       isPro
         ? {
             id: 'invite-collaborator',
-            label: 'Invite a collaborator',
+            label: 'Invite a coder',
             done: false,
-            action: () => navigate('/account'),
+            // The invite flow lives in the canvas Share modal (PR #134) —
+            // /account has no invite UI.
+            action: () =>
+              window.dispatchEvent(new CustomEvent('qualcanvas:open-canvas-modal', { detail: { modal: 'share' } })),
           }
         : {
             id: 'upgrade-sharing',
@@ -79,16 +85,20 @@ export default function OnboardingChecklist() {
 
   const completedCount = tasks.filter((t) => t.done).length;
   const allDone = completedCount === tasks.length;
+  const isCollapsed = collapsed ?? completedCount > 0;
 
   // Auto-hide once everything is done; user has finished the activation arc.
   // Also hidden on mobile so it doesn't crowd the phone-width canvas (#9).
   if (dismissed || allDone || isMobile) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-72 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg">
+    // bottom-12 keeps the card clear of the canvas status bar — at bottom-4 it
+    // sat on top of Help / notifications / zoom and swallowed their clicks
+    // (round-5 audit; exactly the controls a first-time user needs).
+    <div className="fixed bottom-12 right-4 z-40 w-72 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg">
       <button
         type="button"
-        onClick={() => setCollapsed((v) => !v)}
+        onClick={() => setCollapsed(!isCollapsed)}
         className="w-full flex items-center justify-between px-4 py-3 text-left"
       >
         <div>
@@ -114,7 +124,7 @@ export default function OnboardingChecklist() {
             </svg>
           </button>
           <svg
-            className={`h-4 w-4 text-gray-400 transition-transform ${collapsed ? '' : 'rotate-180'}`}
+            className={`h-4 w-4 text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
             fill="none"
             viewBox="0 0 24 24"
             strokeWidth={1.5}
@@ -125,7 +135,7 @@ export default function OnboardingChecklist() {
         </div>
       </button>
 
-      {!collapsed && (
+      {!isCollapsed && (
         <ul className="border-t border-gray-100 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
           {tasks.map((task) => (
             <li key={task.id} className="px-4 py-2">
