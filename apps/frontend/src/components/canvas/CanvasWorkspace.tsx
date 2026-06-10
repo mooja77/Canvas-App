@@ -57,6 +57,7 @@ import NotificationBell from '../NotificationBell';
 import CollabCursors from './CollabCursors';
 import ConfirmDialog from './ConfirmDialog';
 import { ErrorBoundary } from '../ErrorBoundary';
+import { apiErrorMessage } from '../../services/api';
 import { useCanvasStore, useActiveCanvas, usePendingSelection, useSelectedQuestionId } from '../../stores/canvasStore';
 import { useCanvasKeyboard } from '../../hooks/useCanvasKeyboard';
 import { useCanvasHistory } from '../../hooks/useCanvasHistory';
@@ -126,6 +127,9 @@ const FIT_DURATION_MS: Record<FitIntent, number> = {
 export default function CanvasWorkspace() {
   // Granular selector hooks for read-only data
   const activeCanvas = useActiveCanvas();
+  // Read-only collaborator: the server rejects all writes, so the UI must not
+  // offer them — no dragging, connecting, quick-add, or file-drop import.
+  const isViewer = activeCanvas?.myRole === 'viewer';
   const pendingSelection = usePendingSelection();
   const selectedQuestionId = useSelectedQuestionId();
   const [scrollMode, setScrollModeState] = useState(() => useUIStore.getState().scrollMode);
@@ -1184,8 +1188,8 @@ export default function CanvasWorkspace() {
           );
           window.getSelection()?.removeAllRanges();
           toast.success('Text coded successfully');
-        } catch {
-          toast.error('Failed to create coding');
+        } catch (err) {
+          toast.error(apiErrorMessage(err, 'Failed to create coding'));
         }
         return;
       }
@@ -1300,8 +1304,8 @@ export default function CanvasWorkspace() {
     try {
       await mergeQuestions(mergeConfirm.sourceId, mergeConfirm.targetId);
       toast.success('Questions merged successfully');
-    } catch {
-      toast.error('Failed to merge questions');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Failed to merge questions'));
     }
     setMergeConfirm({ show: false, sourceId: '', targetId: '', sourceName: '', targetName: '' });
   };
@@ -1316,8 +1320,8 @@ export default function CanvasWorkspace() {
     try {
       await addRelation(fromType as 'case' | 'question', fromId, toType as 'case' | 'question', toId, label);
       toast.success('Relation created');
-    } catch {
-      toast.error('Failed to create relation');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Failed to create relation'));
     }
     setRelationLabel({ show: false, source: '', target: '' });
   };
@@ -1356,8 +1360,8 @@ export default function CanvasWorkspace() {
       }
       toast.success('Node deleted');
       setTimeout(() => pushHistorySnapshot(), 300);
-    } catch {
-      toast.error('Failed to delete node');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Failed to delete node'));
     }
     setDeleteConfirm(null);
   };
@@ -1752,7 +1756,7 @@ export default function CanvasWorkspace() {
       const last = lastPaneClickRef.current;
       const dx = Math.abs(event.clientX - last.x);
       const dy = Math.abs(event.clientY - last.y);
-      if (now - last.time < 400 && dx < 10 && dy < 10) {
+      if (now - last.time < 400 && dx < 10 && dy < 10 && !isViewer) {
         const viewport = rfInstanceRef.current?.getViewport();
         const flowX = viewport ? (event.clientX - viewport.x) / viewport.zoom : event.clientX;
         const flowY = viewport ? (event.clientY - viewport.y) / viewport.zoom : event.clientY;
@@ -1762,7 +1766,7 @@ export default function CanvasWorkspace() {
       }
       lastPaneClickRef.current = { time: now, x: event.clientX, y: event.clientY };
     },
-    [contextMenu, nodeContextMenu, edgeContextMenu, quickAddMenu],
+    [contextMenu, nodeContextMenu, edgeContextMenu, quickAddMenu, isViewer],
   );
 
   // Node counts for status bar
@@ -1799,8 +1803,8 @@ export default function CanvasWorkspace() {
       await addMemo('New memo — click to edit');
       toast.success('Memo added');
       setTimeout(() => pushHistorySnapshot(), 300);
-    } catch {
-      toast.error('Failed to add memo');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Failed to add memo'));
     }
   };
 
@@ -1816,8 +1820,8 @@ export default function CanvasWorkspace() {
       else if (node.type === 'memo')
         await addMemo(d.content as string, d.title ? d.title + ' (copy)' : undefined, d.color as string);
       toast.success('Node duplicated');
-    } catch {
-      toast.error('Failed to duplicate');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Failed to duplicate'));
     }
   }, [nodeContextMenu, nodes, addTranscript, addQuestion, addMemo]);
 
@@ -1877,8 +1881,8 @@ export default function CanvasWorkspace() {
       }
       setEdgeContextMenu(null);
       toast.success('Deleted');
-    } catch {
-      toast.error('Failed to delete');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Failed to delete'));
     }
   }, [edgeContextMenu, edges, deleteCoding, deleteRelation]);
 
@@ -1946,8 +1950,8 @@ export default function CanvasWorkspace() {
         }
         toast.success('Question added');
         setTimeout(() => pushHistorySnapshot(), 300);
-      } catch {
-        toast.error('Failed to add question');
+      } catch (err) {
+        toast.error(apiErrorMessage(err, 'Failed to add question'));
       }
     },
     [
@@ -1973,8 +1977,8 @@ export default function CanvasWorkspace() {
         }
         toast.success('Memo added');
         setTimeout(() => pushHistorySnapshot(), 300);
-      } catch {
-        toast.error('Failed to add memo');
+      } catch (err) {
+        toast.error(apiErrorMessage(err, 'Failed to add memo'));
       }
     },
     [addMemo, saveLayout, pushHistorySnapshot],
@@ -1991,8 +1995,8 @@ export default function CanvasWorkspace() {
         }
         toast.success(`${label} node added`);
         setTimeout(() => pushHistorySnapshot(), 300);
-      } catch {
-        toast.error('Failed to add node');
+      } catch (err) {
+        toast.error(apiErrorMessage(err, 'Failed to add node'));
       }
     },
     [addComputedNode, saveLayout, pushHistorySnapshot],
@@ -2306,6 +2310,11 @@ export default function CanvasWorkspace() {
       dragCounterRef.current = 0;
       setIsDraggingFile(false);
 
+      if (isViewer) {
+        toast.error('You have view-only access to this canvas — ask the owner for coder access to add data.');
+        return;
+      }
+
       const files = Array.from(e.dataTransfer.files);
 
       // Check for PNG with embedded canvas data
@@ -2390,7 +2399,7 @@ export default function CanvasWorkspace() {
         toast.success(`Imported ${imported} transcript${imported > 1 ? 's' : ''}`);
       }
     },
-    [addTranscript, refreshCanvas],
+    [addTranscript, refreshCanvas, isViewer],
   );
 
   const tabCanvases = useCanvasStore.getState().canvases;
@@ -2519,7 +2528,9 @@ export default function CanvasWorkspace() {
                 edgeTypes={edgeTypes}
                 snapToGrid={snapToGrid}
                 snapGrid={SNAP_GRID}
-                edgesReconnectable
+                nodesDraggable={!isViewer}
+                nodesConnectable={!isViewer}
+                edgesReconnectable={!isViewer}
                 zoomOnScroll={scrollMode === 'zoom'}
                 panOnScroll={scrollMode === 'pan'}
                 zoomOnDoubleClick={false}

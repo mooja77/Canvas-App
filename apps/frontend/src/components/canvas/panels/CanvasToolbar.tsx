@@ -150,6 +150,10 @@ export default function CanvasToolbar({
 }: CanvasToolbarProps) {
   const { t } = useTranslation();
   const activeCanvas = useActiveCanvas();
+  // Role-aware rendering: viewers get a read-only toolbar (no data entry,
+  // no AI/Analyze); only the owner sees Share (share + invite are owner-only).
+  const isViewer = activeCanvas?.myRole === 'viewer';
+  const isOwner = !activeCanvas?.myRole || activeCanvas.myRole === 'owner';
   const showCodingStripes = useShowCodingStripes();
   // F8 — on phone-class viewports we collapse Survey / Share / Export into the
   // existing "More" overflow so the toolbar no longer wraps to 3 rows.
@@ -385,98 +389,115 @@ export default function CanvasToolbar({
           {/* Divider */}
           <div className="shrink-0 h-5 w-px bg-gray-200/80 dark:bg-gray-700/80" />
 
-          {/* Data buttons — always visible */}
-          {showQuestionInput ? (
-            <div className="flex items-center gap-2 animate-fade-in">
-              <input
-                type="text"
-                className="input h-8 w-64 text-sm"
-                placeholder="Name a new code..."
-                value={questionText}
-                onChange={(e) => setQuestionText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAddQuestion();
-                  if (e.key === 'Escape') setShowQuestionInput(false);
-                }}
-                autoFocus
-              />
-              <button
-                onClick={handleAddQuestion}
-                disabled={!questionText.trim() || addingQuestion}
-                className="btn-primary h-8 px-3 text-xs"
-              >
-                {addingQuestion ? 'Adding...' : 'Add'}
-              </button>
-              <button
-                onClick={() => setShowQuestionInput(false)}
-                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
-                title="Cancel"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-1">
-              <TranscriptSourceMenu />
-              {/* F8 — Survey import folds into the More menu on mobile. */}
-              {!isMobile && (
+          {/* Data buttons — hidden for read-only viewers */}
+          {!isViewer &&
+            (showQuestionInput ? (
+              <div className="flex items-center gap-2 animate-fade-in">
+                <input
+                  type="text"
+                  className="input h-8 w-64 text-sm"
+                  placeholder="Name a new code..."
+                  value={questionText}
+                  onChange={(e) => setQuestionText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddQuestion();
+                    if (e.key === 'Escape') setShowQuestionInput(false);
+                  }}
+                  autoFocus
+                />
                 <button
-                  onClick={() => setShowSurveyImport(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-teal-50 px-2.5 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300 dark:hover:bg-teal-900/50 transition-colors"
-                  title="Import survey responses from CSV"
+                  onClick={handleAddQuestion}
+                  disabled={!questionText.trim() || addingQuestion}
+                  className="btn-primary h-8 px-3 text-xs"
+                >
+                  {addingQuestion ? 'Adding...' : 'Add'}
+                </button>
+                <button
+                  onClick={() => setShowQuestionInput(false)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
+                  title="Cancel"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-1">
+                <TranscriptSourceMenu />
+                {/* F8 — Survey import folds into the More menu on mobile. */}
+                {!isMobile && (
+                  <button
+                    onClick={() => setShowSurveyImport(true)}
+                    className="flex items-center gap-1.5 rounded-lg bg-teal-50 px-2.5 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300 dark:hover:bg-teal-900/50 transition-colors"
+                    title="Import survey responses from CSV"
+                  >
+                    <svg
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+                      />
+                    </svg>
+                    {t('toolbar.survey')}
+                  </button>
+                )}
+                <button
+                  data-tour="canvas-btn-question"
+                  onClick={() => setShowQuestionInput(true)}
+                  className="flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
+                  title="Add a code — a label you apply to passages of your transcripts"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+                      d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
                     />
                   </svg>
-                  {t('toolbar.survey')}
+                  {t('toolbar.code')}
                 </button>
-              )}
-              <button
-                data-tour="canvas-btn-question"
-                onClick={() => setShowQuestionInput(true)}
-                className="flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
-                title="Add a code — a label you apply to passages of your transcripts"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
-                  />
-                </svg>
-                {t('toolbar.code')}
-              </button>
-              <button
-                data-tour="canvas-btn-memo"
-                onClick={handleAddMemo}
-                disabled={addingMemo}
-                className="flex items-center gap-1.5 rounded-lg bg-yellow-50 px-2.5 py-1.5 text-xs font-medium text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300 dark:hover:bg-yellow-900/50 disabled:opacity-50 transition-colors"
-                title="Add a research memo or note"
-              >
-                {addingMemo ? (
-                  <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                ) : (
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
-                    />
-                  </svg>
-                )}
-                {t('toolbar.memo')}
-              </button>
-            </div>
-          )}
+                <button
+                  data-tour="canvas-btn-memo"
+                  onClick={handleAddMemo}
+                  disabled={addingMemo}
+                  className="flex items-center gap-1.5 rounded-lg bg-yellow-50 px-2.5 py-1.5 text-xs font-medium text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300 dark:hover:bg-yellow-900/50 disabled:opacity-50 transition-colors"
+                  title="Add a research memo or note"
+                >
+                  {addingMemo ? (
+                    <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+                      />
+                    </svg>
+                  )}
+                  {t('toolbar.memo')}
+                </button>
+              </div>
+            ))}
         </div>
 
         {/* ── Right side: dropdown menus + icon buttons + analyze ── */}
@@ -484,41 +505,62 @@ export default function CanvasToolbar({
             than pushing Analyze off the right edge (mobile audit). */}
         <div className="flex flex-wrap items-center gap-1.5">
           {/* AI dropdown (purple) */}
-          <ToolbarDropdown
-            data-tour="canvas-btn-ai"
-            label="AI"
-            icon={
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
-                />
-              </svg>
-            }
-            className="flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
-          >
-            <DropdownItem
-              data-tour="canvas-btn-autocode"
+          {!isViewer && (
+            <ToolbarDropdown
+              data-tour="canvas-btn-ai"
+              label="AI"
               icon={
-                <svg
-                  className="h-4 w-4 text-emerald-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"
+                    d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
                   />
                 </svg>
               }
-              label="Auto-Code"
-              onClick={() => setShowAutoCode(true)}
-            />
-            {onAiAutoCode && (
+              className="flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 transition-colors"
+            >
+              <DropdownItem
+                data-tour="canvas-btn-autocode"
+                icon={
+                  <svg
+                    className="h-4 w-4 text-emerald-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"
+                    />
+                  </svg>
+                }
+                label="Auto-Code"
+                onClick={() => setShowAutoCode(true)}
+              />
+              {onAiAutoCode && (
+                <DropdownItem
+                  icon={
+                    <svg
+                      className="h-4 w-4 text-purple-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
+                      />
+                    </svg>
+                  }
+                  label="AI Code"
+                  onClick={onAiAutoCode}
+                />
+              )}
               <DropdownItem
                 icon={
                   <svg
@@ -531,59 +573,42 @@ export default function CanvasToolbar({
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
+                      d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"
                     />
                   </svg>
                 }
-                label="AI Code"
-                onClick={onAiAutoCode}
+                label="AI Chat"
+                onClick={() =>
+                  requireAiConfig
+                    ? requireAiConfig('AI Research Assistant', () => setShowResearchAssistant(true))
+                    : setShowResearchAssistant(true)
+                }
               />
-            )}
-            <DropdownItem
-              icon={
-                <svg
-                  className="h-4 w-4 text-purple-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"
-                  />
-                </svg>
-              }
-              label="AI Chat"
-              onClick={() =>
-                requireAiConfig
-                  ? requireAiConfig('AI Research Assistant', () => setShowResearchAssistant(true))
-                  : setShowResearchAssistant(true)
-              }
-            />
-            <DropdownItem
-              icon={
-                <svg
-                  className="h-4 w-4 text-amber-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-                  />
-                </svg>
-              }
-              label="Summarize"
-              onClick={() =>
-                requireAiConfig ? requireAiConfig('AI Summarization', () => setShowSummary(true)) : setShowSummary(true)
-              }
-            />
-          </ToolbarDropdown>
+              <DropdownItem
+                icon={
+                  <svg
+                    className="h-4 w-4 text-amber-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                    />
+                  </svg>
+                }
+                label="Summarize"
+                onClick={() =>
+                  requireAiConfig
+                    ? requireAiConfig('AI Summarization', () => setShowSummary(true))
+                    : setShowSummary(true)
+                }
+              />
+            </ToolbarDropdown>
+          )}
 
           {/* Tools dropdown */}
           <FeatureTooltip
@@ -1065,8 +1090,9 @@ export default function CanvasToolbar({
           {/* Divider — F8: hidden on mobile alongside Export/Share. */}
           {!isMobile && <div className="h-5 w-px bg-gray-200/80 dark:bg-gray-700/80" />}
 
-          {/* Share — F8: folded into More on mobile. */}
-          {!isMobile && (
+          {/* Share — F8: folded into More on mobile. Owner-only: share codes
+              and coder invites are owner operations (server 403s others). */}
+          {!isMobile && isOwner && (
             <button
               onClick={() => setShowShare(true)}
               className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
@@ -1110,46 +1136,54 @@ export default function CanvasToolbar({
                 controls into this overflow menu so phone users keep access. */}
             {isMobile && (
               <>
-                <DropdownLabel>Share</DropdownLabel>
-                <DropdownItem
-                  icon={
-                    <svg
-                      className="h-4 w-4 text-gray-500"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
-                      />
-                    </svg>
-                  }
-                  label="Share canvas"
-                  onClick={() => setShowShare(true)}
-                />
-                <DropdownLabel>Import</DropdownLabel>
-                <DropdownItem
-                  icon={
-                    <svg
-                      className="h-4 w-4 text-teal-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
-                      />
-                    </svg>
-                  }
-                  label={t('toolbar.survey')}
-                  onClick={() => setShowSurveyImport(true)}
-                />
+                {isOwner && (
+                  <>
+                    <DropdownLabel>Share</DropdownLabel>
+                    <DropdownItem
+                      icon={
+                        <svg
+                          className="h-4 w-4 text-gray-500"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+                          />
+                        </svg>
+                      }
+                      label="Share canvas"
+                      onClick={() => setShowShare(true)}
+                    />
+                  </>
+                )}
+                {!isViewer && (
+                  <>
+                    <DropdownLabel>Import</DropdownLabel>
+                    <DropdownItem
+                      icon={
+                        <svg
+                          className="h-4 w-4 text-teal-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+                          />
+                        </svg>
+                      }
+                      label={t('toolbar.survey')}
+                      onClick={() => setShowSurveyImport(true)}
+                    />
+                  </>
+                )}
                 <DropdownLabel>Export</DropdownLabel>
                 {onExportPNG && (
                   <DropdownItem
@@ -1274,8 +1308,8 @@ export default function CanvasToolbar({
           {/* Divider */}
           <div className="h-5 w-px bg-gray-200/80 dark:bg-gray-700/80" />
 
-          {/* Analyze button (existing AddComputedNodeMenu) */}
-          <AddComputedNodeMenu />
+          {/* Analyze button (existing AddComputedNodeMenu) — hidden for viewers */}
+          {!isViewer && <AddComputedNodeMenu />}
         </div>
       </div>
 

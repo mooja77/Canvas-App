@@ -95,6 +95,15 @@ canvasClient.interceptors.response.use(
   },
 );
 
+/**
+ * The server's error messages are written for end users ("You have view-only
+ * access…", "Your plan allows…") — prefer them over a generic fallback so a
+ * failed action explains itself.
+ */
+export const apiErrorMessage = (err: unknown, fallback: string): string =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (err as any)?.response?.data?.error || fallback;
+
 export const canvasApi = {
   // ─── Canvas CRUD ───
   getCanvases: () => canvasClient.get('/canvas'),

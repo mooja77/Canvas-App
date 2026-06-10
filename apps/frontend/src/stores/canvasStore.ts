@@ -511,8 +511,11 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
     },
 
     saveLayout: async (positions) => {
-      const { activeCanvasId } = get();
+      const { activeCanvasId, activeCanvas } = get();
       if (!activeCanvasId) return;
+      // Viewers can't persist layout (server 403s) — silently skip instead of
+      // toasting "Layout save failed" at someone who is read-only by design.
+      if (activeCanvas?.myRole === 'viewer') return;
       set({ savingLayout: true });
       try {
         await canvasApi.saveLayout(activeCanvasId, {
@@ -526,8 +529,9 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
             collapsed: p.collapsed,
           })),
         });
-      } catch {
-        toast.error('Layout save failed');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (err: any) {
+        toast.error(err?.response?.data?.error || 'Layout save failed');
       } finally {
         set({ savingLayout: false });
       }
@@ -780,6 +784,8 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
 // ─── Granular selector hooks (prevent unnecessary re-renders) ───
 
 export const useActiveCanvas = () => useCanvasStore((s) => s.activeCanvas);
+/** True when the current user has read-only (viewer) access to the active canvas. */
+export const useIsViewer = () => useCanvasStore((s) => s.activeCanvas?.myRole === 'viewer');
 export const useActiveCanvasId = () => useCanvasStore((s) => s.activeCanvasId);
 export const useCanvasTranscripts = () => useCanvasStore((s) => s.activeCanvas?.transcripts ?? []);
 export const useCanvasQuestions = () => useCanvasStore((s) => s.activeCanvas?.questions ?? []);

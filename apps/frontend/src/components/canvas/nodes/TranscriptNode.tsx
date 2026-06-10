@@ -207,6 +207,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
   const allCases = useCanvasCases();
   const pendingSelection = usePendingSelection();
   const showCodingStripes = useShowCodingStripes();
+  const isViewer = useCanvasStore((s) => s.activeCanvas?.myRole === 'viewer');
   const setPendingSelection = useCanvasStore((s) => s.setPendingSelection);
   const deleteTranscript = useCanvasStore((s) => s.deleteTranscript);
   const codeInVivo = useCanvasStore((s) => s.codeInVivo);
@@ -264,6 +265,9 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
   const wordCount = useMemo(() => content.split(/\s+/).filter(Boolean).length, [content]);
 
   const handleMouseUp = useCallback(() => {
+    // Viewers can select text to read/copy, but coding is a write — don't
+    // offer the QuickCode popover for an action the server will reject.
+    if (isViewer) return;
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !textRef.current) {
       return;
@@ -305,7 +309,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
       x: rect.left + rect.width / 2,
       y: rect.top,
     });
-  }, [nodeData.transcriptId, setPendingSelection]);
+  }, [nodeData.transcriptId, setPendingSelection, isViewer]);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
