@@ -62,6 +62,7 @@ import { errorHandler } from '../../middleware/errorHandler.js';
 import { signUserToken } from '../../utils/jwt.js';
 import { getOwnedCanvas } from '../../utils/routeHelpers.js';
 import { AppError } from '../../middleware/errorHandler.js';
+import { viewerWriteGuard } from '../../middleware/viewerGuard.js';
 
 function createApp() {
   const app = express();
@@ -278,5 +279,97 @@ describe('Collaborator access integration', () => {
       .set('Authorization', `Bearer ${strangerJwt}`);
 
     expect(res.status).toBe(403);
+  });
+});
+
+// ─── viewerWriteGuard — read-only enforcement for role 'viewer' ───
+describe('viewerWriteGuard', () => {
+  const viewer = {
+    id: 'user-viewer-1',
+    email: 'viewer@example.com',
+    name: 'Viewer',
+    role: 'researcher',
+    plan: 'pro',
+    sessionsInvalidAt: null,
+    trialEndsAt: null,
+    dashboardAccess: { id: 'da-viewer-1' },
+  };
+  let viewerJwt: string;
+  let editorJwt: string;
+  let app: express.Express;
+
+  // Dummy canvas-scoped router behind the guard — lets us test the
+  // middleware's method/path semantics without mounting real routes.
+  function createGuardedApp() {
+    const a = express();
+    a.use(express.json());
+    const dummy = express.Router();
+    dummy.get('/canvas/:id/things', (_req, res) => res.json({ ok: 'read' }));
+    dummy.post('/canvas/:id/things', (_req, res) => res.json({ ok: 'write' }));
+    dummy.post('/canvas/clone/SOMECODE', (_req, res) => res.json({ ok: 'clone' }));
+    a.use('/api', auth, viewerWriteGuard, dummy);
+    a.use(errorHandler);
+    return a;
+  }
+
+  beforeAll(() => {
+    viewerJwt = signUserToken(viewer.id, 'researcher', 'pro');
+    editorJwt = signUserToken(collaborator.id, 'researcher', 'pro');
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    app = createGuardedApp();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockPrisma.user.findUnique.mockImplementation(async (args: any) => {
+      const pool = [...allUsers, viewer];
+      const found = pool.find((u) => u.id === args?.where?.id || u.email === args?.where?.email);
+      return found ? { ...found } : null;
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockPrisma.canvasCollaborator.findUnique.mockImplementation(async (args: any) => {
+      const key = args?.where?.canvasId_userId;
+      if (key?.canvasId !== canvasId) return null;
+      if (key.userId === viewer.id) return { id: 'cc-v', canvasId, userId: viewer.id, role: 'viewer' };
+      if (key.userId === collaborator.id) return { id: 'cc-1', canvasId, userId: collaborator.id, role: 'editor' };
+      return null;
+    });
+  });
+
+  it('blocks viewer writes with a friendly message', async () => {
+    const res = await request(app)
+      .post(`/api/canvas/${canvasId}/things`)
+      .set('Authorization', `Bearer ${viewerJwt}`)
+      .send({});
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/view-only/i);
+  });
+
+  it('allows viewer reads', async () => {
+    const res = await request(app).get(`/api/canvas/${canvasId}/things`).set('Authorization', `Bearer ${viewerJwt}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe('read');
+  });
+
+  it('allows editor writes', async () => {
+    const res = await request(app)
+      .post(`/api/canvas/${canvasId}/things`)
+      .set('Authorization', `Bearer ${editorJwt}`)
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe('write');
+  });
+
+  it('does not touch clone/public path shapes', async () => {
+    const res = await request(app)
+      .post('/api/canvas/clone/SOMECODE')
+      .set('Authorization', `Bearer ${viewerJwt}`)
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe('clone');
   });
 });

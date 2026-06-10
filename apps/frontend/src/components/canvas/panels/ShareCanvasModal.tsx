@@ -26,6 +26,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
   const [collaborators, setCollaborators] = useState<CollaboratorInfo[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('editor');
   const [inviting, setInviting] = useState(false);
   const [confirmRemoveUserId, setConfirmRemoveUserId] = useState<string | null>(null);
 
@@ -54,7 +55,6 @@ export default function ShareCanvasModal({ onClose }: Props) {
     }
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- loaders are not memoized, activeCanvasId is the true trigger
   useEffect(() => {
     loadShares();
     loadCollaborators();
@@ -65,9 +65,13 @@ export default function ShareCanvasModal({ onClose }: Props) {
     if (!activeCanvasId || !email) return;
     setInviting(true);
     try {
-      await canvasApi.addCollaborator(activeCanvasId, { email, role: 'editor' });
+      await canvasApi.addCollaborator(activeCanvasId, { email, role: inviteRole });
       setInviteEmail('');
-      toast.success('Coder invited — this canvas now appears in their canvas list');
+      toast.success(
+        inviteRole === 'viewer'
+          ? 'Viewer invited — they can open this canvas but not change it'
+          : 'Coder invited — this canvas now appears in their canvas list',
+      );
       loadCollaborators();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
@@ -161,6 +165,15 @@ export default function ShareCanvasModal({ onClose }: Props) {
                 aria-label="Coder's email address"
                 className="input h-9 flex-1 text-sm"
               />
+              <select
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value as 'editor' | 'viewer')}
+                aria-label="Access level"
+                className="input h-9 w-32 text-sm"
+              >
+                <option value="editor">Coder</option>
+                <option value="viewer">Viewer</option>
+              </select>
               <button
                 onClick={handleInvite}
                 disabled={inviting || !inviteEmail.trim()}
@@ -169,6 +182,9 @@ export default function ShareCanvasModal({ onClose }: Props) {
                 {inviting ? 'Inviting...' : 'Invite'}
               </button>
             </div>
+            <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+              Coders can code alongside you. Viewers can look but not change anything.
+            </p>
             {collaborators.length > 0 && (
               <div className="mt-2 space-y-1.5">
                 {collaborators.map((c) => (
@@ -177,7 +193,18 @@ export default function ShareCanvasModal({ onClose }: Props) {
                     className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-700"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm text-gray-800 dark:text-gray-200">{c.userName}</p>
+                      <p className="truncate text-sm text-gray-800 dark:text-gray-200">
+                        {c.userName}
+                        <span
+                          className={`ml-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium align-middle ${
+                            c.role === 'viewer'
+                              ? 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                              : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300'
+                          }`}
+                        >
+                          {c.role === 'viewer' ? 'Viewer' : 'Coder'}
+                        </span>
+                      </p>
                       <p className="truncate text-[11px] text-gray-400">{c.userEmail}</p>
                     </div>
                     <button

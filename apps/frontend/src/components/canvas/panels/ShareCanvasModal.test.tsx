@@ -185,6 +185,25 @@ describe('ShareCanvasModal', () => {
     expect(mockCanvasApi.getCollaborators).toHaveBeenCalledTimes(2);
   });
 
+  it('invites a viewer when the Viewer access level is selected', async () => {
+    mockCanvasApi.addCollaborator.mockResolvedValue({ data: { data: { userId: 'u3' } } });
+
+    render(<ShareCanvasModal onClose={onClose} />);
+
+    fireEvent.change(screen.getByLabelText("Coder's email address"), {
+      target: { value: 'supervisor@uni.edu' },
+    });
+    fireEvent.change(screen.getByLabelText('Access level'), { target: { value: 'viewer' } });
+    fireEvent.click(screen.getByText('Invite'));
+
+    await waitFor(() => {
+      expect(mockCanvasApi.addCollaborator).toHaveBeenCalledWith('canvas-1', {
+        email: 'supervisor@uni.edu',
+        role: 'viewer',
+      });
+    });
+  });
+
   it('surfaces the server message when the invited email has no account', async () => {
     mockCanvasApi.addCollaborator.mockRejectedValue({
       response: { data: { error: 'No QualCanvas account found with that email.' } },
