@@ -340,7 +340,7 @@ export const canvasApi = {
   // ─── Collaboration ───
   getCollaborators: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}/collaborators`),
 
-  addCollaborator: (canvasId: string, data: { userId: string; role?: string }) =>
+  addCollaborator: (canvasId: string, data: { email?: string; userId?: string; role?: string }) =>
     canvasClient.post(`/canvas/${canvasId}/collaborators`, data),
 
   removeCollaborator: (canvasId: string, userId: string) =>

@@ -7,6 +7,9 @@ const { mockCanvasApi, mockToast } = vi.hoisted(() => ({
     getShares: vi.fn(),
     shareCanvas: vi.fn(),
     revokeShare: vi.fn(),
+    getCollaborators: vi.fn(),
+    addCollaborator: vi.fn(),
+    removeCollaborator: vi.fn(),
   },
   mockToast: { success: vi.fn(), error: vi.fn() },
 }));
@@ -58,8 +61,9 @@ describe('ShareCanvasModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default: return empty shares
+    // Default: return empty shares + collaborators
     mockCanvasApi.getShares.mockResolvedValue({ data: { data: [] } });
+    mockCanvasApi.getCollaborators.mockResolvedValue({ data: { data: [] } });
   });
 
   it('renders share dialog with title', async () => {
@@ -157,6 +161,68 @@ describe('ShareCanvasModal', () => {
 
     await waitFor(() => {
       expect(screen.getByText('No share codes yet')).toBeInTheDocument();
+    });
+  });
+
+  it('invites a coder by email', async () => {
+    mockCanvasApi.addCollaborator.mockResolvedValue({ data: { data: { userId: 'u2' } } });
+
+    render(<ShareCanvasModal onClose={onClose} />);
+
+    fireEvent.change(screen.getByLabelText("Coder's email address"), {
+      target: { value: 'colleague@uni.edu' },
+    });
+    fireEvent.click(screen.getByText('Invite'));
+
+    await waitFor(() => {
+      expect(mockCanvasApi.addCollaborator).toHaveBeenCalledWith('canvas-1', {
+        email: 'colleague@uni.edu',
+        role: 'editor',
+      });
+      expect(mockToast.success).toHaveBeenCalled();
+    });
+    // List reloads after a successful invite
+    expect(mockCanvasApi.getCollaborators).toHaveBeenCalledTimes(2);
+  });
+
+  it('surfaces the server message when the invited email has no account', async () => {
+    mockCanvasApi.addCollaborator.mockRejectedValue({
+      response: { data: { error: 'No QualCanvas account found with that email.' } },
+    });
+
+    render(<ShareCanvasModal onClose={onClose} />);
+
+    fireEvent.change(screen.getByLabelText("Coder's email address"), {
+      target: { value: 'nobody@uni.edu' },
+    });
+    fireEvent.click(screen.getByText('Invite'));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith('No QualCanvas account found with that email.');
+    });
+  });
+
+  it('lists collaborators and removes one after confirmation', async () => {
+    mockCanvasApi.getCollaborators.mockResolvedValue({
+      data: {
+        data: [{ id: 'c1', userId: 'u2', role: 'editor', userName: 'Jody P', userEmail: 'jody@uni.edu' }],
+      },
+    });
+    mockCanvasApi.removeCollaborator.mockResolvedValue({});
+
+    render(<ShareCanvasModal onClose={onClose} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Jody P')).toBeInTheDocument();
+      expect(screen.getByText('jody@uni.edu')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByLabelText('Remove coder Jody P'));
+    expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Confirm'));
+
+    await waitFor(() => {
+      expect(mockCanvasApi.removeCollaborator).toHaveBeenCalledWith('canvas-1', 'u2');
     });
   });
 });

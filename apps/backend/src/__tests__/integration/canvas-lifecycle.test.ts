@@ -15,6 +15,9 @@ const { mockPrisma } = vi.hoisted(() => {
     subscription: {
       findUnique: vi.fn(),
     },
+    canvasCollaborator: {
+      findUnique: vi.fn(),
+    },
     codingCanvas: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -175,12 +178,12 @@ describe('Canvas lifecycle integration tests', () => {
 
   // ─── GET /canvas — list canvases ───
   it('GET /canvas lists canvases including the created one', async () => {
-    mockPrisma.codingCanvas.findMany.mockResolvedValue([{ ...mockCanvas, _count: { transcripts: 0, questions: 0, codings: 0 } }]);
+    mockPrisma.codingCanvas.findMany.mockResolvedValue([
+      { ...mockCanvas, _count: { transcripts: 0, questions: 0, codings: 0 } },
+    ]);
     mockPrisma.codingCanvas.count.mockResolvedValue(1);
 
-    const res = await request(app)
-      .get('/api/canvas')
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get('/api/canvas').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -202,9 +205,7 @@ describe('Canvas lifecycle integration tests', () => {
       computedNodes: [],
     });
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -281,16 +282,13 @@ describe('Canvas lifecycle integration tests', () => {
       codedText: 'Some inter',
     });
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/codings`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        transcriptId,
-        questionId,
-        startOffset: 0,
-        endOffset: 10,
-        codedText: 'Some inter',
-      });
+    const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId,
+      questionId,
+      startOffset: 0,
+      endOffset: 10,
+      codedText: 'Some inter',
+    });
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
@@ -311,9 +309,7 @@ describe('Canvas lifecycle integration tests', () => {
       computedNodes: [],
     });
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.transcripts).toHaveLength(1);
@@ -375,9 +371,7 @@ describe('Canvas lifecycle integration tests', () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
     mockPrisma.codingCanvas.delete.mockResolvedValue({ ...mockCanvas });
 
-    const res = await request(app)
-      .delete(`/api/canvas/${canvasId}`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).delete(`/api/canvas/${canvasId}`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -387,9 +381,7 @@ describe('Canvas lifecycle integration tests', () => {
   it('GET /canvas/:canvasId after delete returns 404', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue(null);
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(404);
     expect(res.body.success).toBe(false);
@@ -426,9 +418,7 @@ describe('Canvas lifecycle integration tests', () => {
       computedNodes: [],
     });
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}`)
-      .set('Authorization', `Bearer ${otherJwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}`).set('Authorization', `Bearer ${otherJwt}`);
 
     expect(res.status).toBe(403);
     expect(res.body.success).toBe(false);
@@ -446,16 +436,13 @@ describe('Canvas lifecycle integration tests', () => {
       canvasId,
     });
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/codings`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        transcriptId: 'transcript-other',
-        questionId: 'question-1',
-        startOffset: 0,
-        endOffset: 10,
-        codedText: 'text',
-      });
+    const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId: 'transcript-other',
+      questionId: 'question-1',
+      startOffset: 0,
+      endOffset: 10,
+      codedText: 'text',
+    });
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/transcript not found/i);
@@ -473,16 +460,13 @@ describe('Canvas lifecycle integration tests', () => {
       canvasId: 'other-canvas',
     });
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/codings`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        transcriptId: 'transcript-1',
-        questionId: 'question-other',
-        startOffset: 0,
-        endOffset: 10,
-        codedText: 'text',
-      });
+    const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId: 'transcript-1',
+      questionId: 'question-other',
+      startOffset: 0,
+      endOffset: 10,
+      codedText: 'text',
+    });
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/question not found/i);

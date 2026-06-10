@@ -5,6 +5,7 @@ import type { CalendarEventInput } from '../../../services/api';
 import { useAuthStore } from '../../../stores/authStore';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import ConfirmDialog from '../ConfirmDialog';
 
 interface CalendarPanelProps {
   onClose: () => void;
@@ -95,6 +96,7 @@ export default function CalendarPanel({ onClose }: CalendarPanelProps) {
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Form state
   const [formTitle, setFormTitle] = useState('');
@@ -187,13 +189,19 @@ export default function CalendarPanel({ onClose }: CalendarPanelProps) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this event?')) return;
+    setConfirmDeleteId(id);
+  };
+
+  const handleConfirmedDelete = async () => {
+    if (!confirmDeleteId) return;
     try {
-      await calendarApi.deleteEvent(id);
+      await calendarApi.deleteEvent(confirmDeleteId);
       toast.success('Event deleted');
       loadEvents();
     } catch {
       toast.error('Failed to delete event');
+    } finally {
+      setConfirmDeleteId(null);
     }
   };
 
@@ -591,6 +599,16 @@ export default function CalendarPanel({ onClose }: CalendarPanelProps) {
               ))}
             </div>
           </>
+        )}
+
+        {confirmDeleteId && (
+          <ConfirmDialog
+            title="Delete Event"
+            message="Delete this event? This cannot be undone."
+            confirmLabel="Delete"
+            onConfirm={handleConfirmedDelete}
+            onCancel={() => setConfirmDeleteId(null)}
+          />
         )}
       </div>
     </div>

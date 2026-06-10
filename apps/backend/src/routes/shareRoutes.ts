@@ -16,7 +16,7 @@ export const canvasPublicRoutes = Router();
 shareRoutes.post('/canvas/:id/share', validateParams(canvasIdParam), checkShareLimit(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req), { requireOwner: true });
 
     const shareCode = `SHARE-${nanoid(8)
       .toUpperCase()
@@ -39,7 +39,7 @@ shareRoutes.post('/canvas/:id/share', validateParams(canvasIdParam), checkShareL
 shareRoutes.get('/canvas/:id/shares', validateParams(canvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req), { requireOwner: true });
 
     const shares = await prisma.canvasShare.findMany({
       where: { canvasId: req.params.id },
@@ -55,7 +55,7 @@ shareRoutes.get('/canvas/:id/shares', validateParams(canvasIdParam), async (req,
 shareRoutes.delete('/canvas/:id/share/:shareId', validateParams(canvasShareIdParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req), { requireOwner: true });
 
     const share = await prisma.canvasShare.findUnique({ where: { id: req.params.shareId } });
     if (!share || share.canvasId !== req.params.id) {

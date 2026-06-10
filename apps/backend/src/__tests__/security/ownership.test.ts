@@ -16,6 +16,9 @@ const { mockPrisma } = vi.hoisted(() => {
     subscription: {
       findUnique: vi.fn(),
     },
+    canvasCollaborator: {
+      findUnique: vi.fn(),
+    },
     codingCanvas: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -172,9 +175,7 @@ describe('Ownership and access control tests', () => {
       computedNodes: [],
     });
 
-    const res = await request(app)
-      .get(`/api/canvas/${userBCanvasId}`)
-      .set('Authorization', `Bearer ${userAJwt}`);
+    const res = await request(app).get(`/api/canvas/${userBCanvasId}`).set('Authorization', `Bearer ${userAJwt}`);
 
     expect(res.status).toBe(403);
     expect(res.body.success).toBe(false);
@@ -213,9 +214,7 @@ describe('Ownership and access control tests', () => {
     authAsUserA();
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...userBCanvas });
 
-    const res = await request(app)
-      .delete(`/api/canvas/${userBCanvasId}`)
-      .set('Authorization', `Bearer ${userAJwt}`);
+    const res = await request(app).delete(`/api/canvas/${userBCanvasId}`).set('Authorization', `Bearer ${userAJwt}`);
 
     expect(res.status).toBe(403);
     expect(res.body.success).toBe(false);
@@ -239,9 +238,7 @@ describe('Ownership and access control tests', () => {
 
   // ─── No auth header → 401 ───
   it('POST /canvas with no auth header returns 401', async () => {
-    const res = await request(app)
-      .post('/api/canvas')
-      .send({ name: 'No Auth Canvas' });
+    const res = await request(app).post('/api/canvas').send({ name: 'No Auth Canvas' });
 
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);
@@ -276,8 +273,7 @@ describe('Ownership and access control tests', () => {
 
   // ─── GET without auth → 401 ───
   it('GET /canvas without auth returns 401', async () => {
-    const res = await request(app)
-      .get('/api/canvas');
+    const res = await request(app).get('/api/canvas');
 
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);

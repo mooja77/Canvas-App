@@ -624,30 +624,39 @@ export default function CanvasListPanel() {
               /* Grid card */
               <div>
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate text-sm pr-2">{canvas.name}</h3>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConfirmDelete({ id: canvas.id, name: canvas.name });
-                    }}
-                    className="shrink-0 rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-600 dark:text-gray-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Delete canvas"
-                    aria-label={`Delete canvas ${canvas.name}`}
-                  >
-                    <svg
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
+                  <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate text-sm pr-2">
+                    {canvas.name}
+                    {canvas.sharedWithMe && (
+                      <span className="ml-2 inline-block rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300 align-middle">
+                        Shared with you
+                      </span>
+                    )}
+                  </h3>
+                  {!canvas.sharedWithMe && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmDelete({ id: canvas.id, name: canvas.name });
+                      }}
+                      className="shrink-0 rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-600 dark:text-gray-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete canvas"
+                      aria-label={`Delete canvas ${canvas.name}`}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
-                      />
-                    </svg>
-                  </button>
+                      <svg
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                        />
+                      </svg>
+                    </button>
+                  )}
                 </div>
                 {canvas.description && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate mb-2">{canvas.description}</p>
@@ -682,7 +691,7 @@ export default function CanvasListPanel() {
                           d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
                         />
                       </svg>
-                      {canvas._count.transcripts}
+                      {canvas._count.transcripts} transcript{canvas._count.transcripts === 1 ? '' : 's'}
                     </span>
                     <span
                       className="flex items-center gap-1"
@@ -702,7 +711,7 @@ export default function CanvasListPanel() {
                           d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
                         />
                       </svg>
-                      {canvas._count.questions}
+                      {canvas._count.questions} code{canvas._count.questions === 1 ? '' : 's'}
                     </span>
                     <span
                       className="flex items-center gap-1"
@@ -718,7 +727,7 @@ export default function CanvasListPanel() {
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                       </svg>
-                      {canvas._count.codings}
+                      {canvas._count.codings} coding{canvas._count.codings === 1 ? '' : 's'}
                     </span>
                   </div>
                 )}
@@ -730,7 +739,14 @@ export default function CanvasListPanel() {
               /* List row */
               <>
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">{canvas.name}</h3>
+                  <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {canvas.name}
+                    {canvas.sharedWithMe && (
+                      <span className="ml-2 inline-block rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300 align-middle">
+                        Shared with you
+                      </span>
+                    )}
+                  </h3>
                   {canvas.description && (
                     <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400 truncate">{canvas.description}</p>
                   )}
@@ -741,7 +757,7 @@ export default function CanvasListPanel() {
                           {canvas._count.transcripts} transcript{canvas._count.transcripts !== 1 ? 's' : ''}
                         </span>
                         <span>
-                          {canvas._count.questions} question{canvas._count.questions !== 1 ? 's' : ''}
+                          {canvas._count.questions} code{canvas._count.questions !== 1 ? 's' : ''}
                         </span>
                         <span>
                           {canvas._count.codings} coding{canvas._count.codings !== 1 ? 's' : ''}
@@ -751,23 +767,25 @@ export default function CanvasListPanel() {
                     <span>Updated {relativeDate(canvas.updatedAt)}</span>
                   </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setConfirmDelete({ id: canvas.id, name: canvas.name });
-                  }}
-                  className="ml-4 shrink-0 rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                  title="Delete canvas"
-                  aria-label={`Delete canvas ${canvas.name}`}
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
-                    />
-                  </svg>
-                </button>
+                {!canvas.sharedWithMe && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmDelete({ id: canvas.id, name: canvas.name });
+                    }}
+                    className="ml-4 shrink-0 rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                    title="Delete canvas"
+                    aria-label={`Delete canvas ${canvas.name}`}
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                      />
+                    </svg>
+                  </button>
+                )}
               </>
             )}
           </div>

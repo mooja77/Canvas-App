@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { canvasApi } from '../../../services/api';
 import toast from 'react-hot-toast';
+import ConfirmDialog from '../ConfirmDialog';
 
 interface IntegrationInfo {
   id: string;
@@ -35,12 +36,13 @@ const PROVIDERS = [
 export default function IntegrationSettingsPanel() {
   const [integrations, setIntegrations] = useState<IntegrationInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmDisconnectId, setConfirmDisconnectId] = useState<string | null>(null);
 
   const loadIntegrations = async () => {
     try {
       const res = await canvasApi.getIntegrations();
       setIntegrations(res.data.integrations);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       if (err.response?.status !== 403) {
         toast.error('Failed to load integrations');
@@ -63,18 +65,20 @@ export default function IntegrationSettingsPanel() {
     });
   };
 
-  const handleDisconnect = async (integrationId: string) => {
-    if (!confirm('Disconnect this integration?')) return;
+  const handleConfirmedDisconnect = async () => {
+    if (!confirmDisconnectId) return;
     try {
-      await canvasApi.disconnectIntegration(integrationId);
+      await canvasApi.disconnectIntegration(confirmDisconnectId);
       toast.success('Integration disconnected');
       loadIntegrations();
     } catch {
       toast.error('Failed to disconnect integration');
+    } finally {
+      setConfirmDisconnectId(null);
     }
   };
 
-  const connectedProviders = new Set(integrations.map(i => i.provider));
+  const connectedProviders = new Set(integrations.map((i) => i.provider));
 
   if (loading) {
     return (
@@ -88,15 +92,13 @@ export default function IntegrationSettingsPanel() {
     <div className="space-y-4">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Integrations</h3>
-        <p className="text-sm text-gray-500 mt-1">
-          Connect external services to import data into your canvases.
-        </p>
+        <p className="text-sm text-gray-500 mt-1">Connect external services to import data into your canvases.</p>
       </div>
 
       <div className="space-y-3">
         {PROVIDERS.map((provider) => {
           const connected = connectedProviders.has(provider.id);
-          const integration = integrations.find(i => i.provider === provider.id);
+          const integration = integrations.find((i) => i.provider === provider.id);
 
           return (
             <div
@@ -118,7 +120,7 @@ export default function IntegrationSettingsPanel() {
 
               {connected ? (
                 <button
-                  onClick={() => integration && handleDisconnect(integration.id)}
+                  onClick={() => integration && setConfirmDisconnectId(integration.id)}
                   className="px-3 py-1.5 text-xs text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
                 >
                   Disconnect
@@ -135,6 +137,16 @@ export default function IntegrationSettingsPanel() {
           );
         })}
       </div>
+
+      {confirmDisconnectId && (
+        <ConfirmDialog
+          title="Disconnect Integration"
+          message="Disconnect this integration? You can reconnect it at any time."
+          confirmLabel="Disconnect"
+          onConfirm={handleConfirmedDisconnect}
+          onCancel={() => setConfirmDisconnectId(null)}
+        />
+      )}
     </div>
   );
 }

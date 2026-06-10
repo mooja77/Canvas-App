@@ -35,12 +35,18 @@ interface PendingSelection {
 
 interface CanvasState {
   // Canvas list
-  canvases: (CodingCanvas & { _count?: { transcripts: number; questions: number; codings: number } })[];
+  canvases: (CodingCanvas & {
+    _count?: { transcripts: number; questions: number; codings: number };
+    sharedWithMe?: boolean;
+  })[];
   loading: boolean;
   error: string | null;
 
   // Trash
-  trashedCanvases: (CodingCanvas & { _count?: { transcripts: number; questions: number; codings: number } })[];
+  trashedCanvases: (CodingCanvas & {
+    _count?: { transcripts: number; questions: number; codings: number };
+    sharedWithMe?: boolean;
+  })[];
   trashLoading: boolean;
 
   // Active canvas
