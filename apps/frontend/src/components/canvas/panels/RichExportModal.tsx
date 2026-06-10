@@ -175,7 +175,7 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
           html += `<h3><span class="code-dot" style="background:${q.color}"></span> ${escHTML(q.text)} <span style="color:#9ca3af;font-weight:400">(${qCodings.length})</span></h3>`;
           qCodings.forEach((c: CanvasTextCoding) => {
             const t = transcriptMap.get(c.transcriptId);
-            html += `<div class="excerpt">&ldquo;${escHTML(c.codedText)}&rdquo;<div class="source">${escHTML(t?.title || 'Unknown')} (chars ${c.startOffset}–${c.endOffset})</div></div>`;
+            html += `<div class="excerpt">&ldquo;${escHTML(c.codedText)}&rdquo;<div class="source">${escHTML(t?.title || 'Unknown')}</div></div>`;
             if (c.annotation) html += `<div class="annotation">${escHTML(c.annotation)}</div>`;
           });
         });

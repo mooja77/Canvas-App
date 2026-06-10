@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('../services/api', () => ({
+  canvasApi: { saveLayout: vi.fn().mockResolvedValue({}) },
+}));
+
 import { useCanvasStore } from './canvasStore';
+import { canvasApi } from '../services/api';
 
 // Helper to reset store between tests
 function resetStore() {
@@ -106,14 +112,12 @@ describe('canvasStore', () => {
     });
 
     it('useCanvasTranscripts returns empty array when no active canvas', () => {
-      const selector = (s: ReturnType<typeof useCanvasStore.getState>) =>
-        s.activeCanvas?.transcripts ?? [];
+      const selector = (s: ReturnType<typeof useCanvasStore.getState>) => s.activeCanvas?.transcripts ?? [];
       expect(selector(useCanvasStore.getState())).toEqual([]);
     });
 
     it('useCanvasQuestions returns empty array when no active canvas', () => {
-      const selector = (s: ReturnType<typeof useCanvasStore.getState>) =>
-        s.activeCanvas?.questions ?? [];
+      const selector = (s: ReturnType<typeof useCanvasStore.getState>) => s.activeCanvas?.questions ?? [];
       expect(selector(useCanvasStore.getState())).toEqual([]);
     });
 
@@ -127,6 +131,28 @@ describe('canvasStore', () => {
     it('useCanvasLoading returns loading value', () => {
       const selector = (s: ReturnType<typeof useCanvasStore.getState>) => s.loading;
       expect(selector(useCanvasStore.getState())).toBe(false);
+    });
+  });
+
+  describe('saveLayout role guard', () => {
+    it('silently skips persistence for read-only viewers', async () => {
+      useCanvasStore.setState({
+        activeCanvasId: 'c1',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        activeCanvas: { id: 'c1', myRole: 'viewer' } as any,
+      });
+      await useCanvasStore.getState().saveLayout([]);
+      expect(canvasApi.saveLayout).not.toHaveBeenCalled();
+    });
+
+    it('persists layout for owners', async () => {
+      useCanvasStore.setState({
+        activeCanvasId: 'c1',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        activeCanvas: { id: 'c1', myRole: 'owner' } as any,
+      });
+      await useCanvasStore.getState().saveLayout([]);
+      expect(canvasApi.saveLayout).toHaveBeenCalledWith('c1', { positions: [] });
     });
   });
 });

@@ -58,6 +58,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
   useEffect(() => {
     loadShares();
     loadCollaborators();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loaders are not memoized, activeCanvasId is the true trigger
   }, [activeCanvasId]);
 
   const handleInvite = async () => {
