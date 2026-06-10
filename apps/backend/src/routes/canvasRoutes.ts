@@ -190,8 +190,23 @@ canvasRoutes.get('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async
     });
     if (!canvas) return next(new AppError('Canvas not found', 404));
 
+    // Tell the client what it may do with this canvas: 'owner', or the
+    // collaborator's role ('editor' | 'viewer'). Viewers get a read-only
+    // workspace; writes are enforced server-side by viewerWriteGuard.
+    const userId = getAuthUserId(req);
+    const isOwner = canvas.dashboardAccessId === dashboardAccessId || (userId && canvas.userId === userId);
+    let myRole = 'owner';
+    if (!isOwner && userId) {
+      const collab = await prisma.canvasCollaborator.findUnique({
+        where: { canvasId_userId: { canvasId: canvas.id, userId } },
+        select: { role: true },
+      });
+      myRole = collab?.role || 'viewer';
+    }
+
     const data = {
       ...canvas,
+      myRole,
       cases: canvas.cases.map((c) => ({ ...c, attributes: safeJsonParse(c.attributes) })),
       computedNodes: canvas.computedNodes.map((n) => ({
         ...n,

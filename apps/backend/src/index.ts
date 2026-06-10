@@ -74,6 +74,7 @@ import { fileURLToPath } from 'url';
 
 import { Router } from 'express';
 import { auth } from './middleware/auth.js';
+import { viewerWriteGuard } from './middleware/viewerGuard.js';
 import { auditLog } from './middleware/auditLog.js';
 import { csrfProtection } from './middleware/csrf.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -329,29 +330,29 @@ v1Router.use(billingRoutes);
 v1Router.use(eventsRoutes);
 
 // Protected canvas routes
-v1Router.use(auth, auditLog, canvasRoutes);
+v1Router.use(auth, viewerWriteGuard, auditLog, canvasRoutes);
 
 // Protected ethics & compliance routes
-v1Router.use(auth, auditLog, ethicsRoutes);
+v1Router.use(auth, viewerWriteGuard, auditLog, ethicsRoutes);
 
 // Protected AI routes
-v1Router.use(auth, auditLog, aiRoutes);
+v1Router.use(auth, viewerWriteGuard, auditLog, aiRoutes);
 
 // Protected research assistant & summary routes
-v1Router.use(auth, auditLog, chatRoutes);
-v1Router.use(auth, auditLog, summaryRoutes);
+v1Router.use(auth, viewerWriteGuard, auditLog, chatRoutes);
+v1Router.use(auth, viewerWriteGuard, auditLog, summaryRoutes);
 
 // Protected upload & transcription routes
-v1Router.use(auth, auditLog, uploadRoutes);
+v1Router.use(auth, viewerWriteGuard, auditLog, uploadRoutes);
 
 // Protected collaboration routes
 v1Router.use(auth, auditLog, collaborationRoutes);
 
 // Protected document & region coding routes
-v1Router.use(auth, auditLog, documentRoutes);
+v1Router.use(auth, viewerWriteGuard, auditLog, documentRoutes);
 
 // Protected training center routes
-v1Router.use(auth, auditLog, trainingRoutes);
+v1Router.use(auth, viewerWriteGuard, auditLog, trainingRoutes);
 
 // Protected template + onboarding routes
 v1Router.use(auth, auditLog, templateRoutes);
@@ -360,7 +361,7 @@ v1Router.use(auth, auditLog, templateRoutes);
 v1Router.use(auth, auditLog, auditRoutes);
 
 // Protected QDPX export/import routes
-v1Router.use(auth, auditLog, qdpxRoutes);
+v1Router.use(auth, viewerWriteGuard, auditLog, qdpxRoutes);
 
 // Protected repository routes
 v1Router.use(auth, auditLog, repositoryRoutes);

@@ -3038,7 +3038,16 @@ export default function CanvasWorkspace() {
                       GRID
                     </span>
                   )}
-                  <span>{savingLayout ? 'Saving...' : 'Saved'}</span>
+                  {activeCanvas?.myRole === 'viewer' ? (
+                    <span
+                      className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+                      title="You have view-only access — ask the canvas owner for coder access to make changes"
+                    >
+                      View only
+                    </span>
+                  ) : (
+                    <span>{savingLayout ? 'Saving...' : 'Saved'}</span>
+                  )}
                   <NotificationBell />
                   {collaboration.isConnected && collaboration.collaborators.length > 0 && (
                     <PresenceAvatars

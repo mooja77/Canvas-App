@@ -304,6 +304,8 @@ export interface CanvasDetail extends CodingCanvas {
   cases: CanvasCase[];
   relations: CanvasRelation[];
   computedNodes: CanvasComputedNode[];
+  /** The requesting user's relationship to this canvas: 'owner', 'editor', or 'viewer'. */
+  myRole?: 'owner' | 'editor' | 'viewer';
 }
 
 // ─── Input Types ───
