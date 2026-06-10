@@ -73,8 +73,8 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const users: Coder[] = data.map((c: any) => ({
           id: c.userId || c.user?.id || c.id,
-          name: c.user?.name || c.name || 'Unknown',
-          email: c.user?.email || c.email || '',
+          name: c.userName || c.user?.name || c.name || 'Unknown',
+          email: c.userEmail || c.user?.email || c.email || '',
         }));
         setCollaborators(users);
       })
@@ -272,9 +272,23 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
               </svg>
               <p className="text-xs text-gray-400 dark:text-gray-500">
                 {coders.length < 2
-                  ? 'Add collaborators to this canvas to compare coders.'
+                  ? 'You need a second coder on this canvas to compare coding.'
                   : 'Select two or more coders and a transcript, then click "Compute agreement".'}
               </p>
+              {coders.length < 2 && (
+                <button
+                  onClick={() => {
+                    // Hand off to the Share modal, which owns the invite flow.
+                    onClose();
+                    window.dispatchEvent(
+                      new CustomEvent('qualcanvas:open-canvas-modal', { detail: { modal: 'share' } }),
+                    );
+                  }}
+                  className="mt-3 rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 transition-colors"
+                >
+                  Invite a coder
+                </button>
+              )}
             </div>
           ) : (
             <>

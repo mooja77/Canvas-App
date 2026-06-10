@@ -15,6 +15,9 @@ const { mockPrisma } = vi.hoisted(() => {
     subscription: {
       findUnique: vi.fn(),
     },
+    canvasCollaborator: {
+      findUnique: vi.fn(),
+    },
     codingCanvas: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -194,9 +197,7 @@ describe('Sharing integration tests', () => {
       createdAt: new Date(),
     });
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/share`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post(`/api/canvas/${canvasId}/share`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
@@ -212,9 +213,7 @@ describe('Sharing integration tests', () => {
       { id: 'share-2', canvasId, shareCode: 'SHARE-CODE2', createdAt: new Date() },
     ]);
 
-    const res = await request(app)
-      .get(`/api/canvas/${canvasId}/shares`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get(`/api/canvas/${canvasId}/shares`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -267,12 +266,8 @@ describe('Sharing integration tests', () => {
 
     const sourceCanvas = {
       ...mockCanvas,
-      transcripts: [
-        { id: 'tr-src', title: 'Source Transcript', content: 'Hello world', sortOrder: 0, caseId: null },
-      ],
-      questions: [
-        { id: 'q-src', text: 'Source Question', color: '#000000', sortOrder: 0, parentQuestionId: null },
-      ],
+      transcripts: [{ id: 'tr-src', title: 'Source Transcript', content: 'Hello world', sortOrder: 0, caseId: null }],
+      questions: [{ id: 'q-src', text: 'Source Question', color: '#000000', sortOrder: 0, parentQuestionId: null }],
       memos: [],
       codings: [],
       cases: [],
@@ -308,9 +303,7 @@ describe('Sharing integration tests', () => {
       return fn(tx);
     });
 
-    const res = await request(app)
-      .post(`/api/canvas/clone/${shareCode}`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post(`/api/canvas/clone/${shareCode}`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
@@ -328,9 +321,7 @@ describe('Sharing integration tests', () => {
       expiresAt: pastDate,
     });
 
-    const res = await request(app)
-      .post(`/api/canvas/clone/${shareCode}`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post(`/api/canvas/clone/${shareCode}`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(410);
     expect(res.body.success).toBe(false);
@@ -340,9 +331,7 @@ describe('Sharing integration tests', () => {
   it('POST /canvas/clone/:code returns 404 for invalid share code', async () => {
     mockPrisma.canvasShare.findUnique.mockResolvedValue(null);
 
-    const res = await request(app)
-      .post('/api/canvas/clone/INVALID-CODE')
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post('/api/canvas/clone/INVALID-CODE').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(404);
     expect(res.body.success).toBe(false);
@@ -370,8 +359,7 @@ describe('Sharing integration tests', () => {
       computedNodes: [{ id: 'cn-1', nodeType: 'stats', config: '{}', result: '{}' }],
     });
 
-    const res = await request(app)
-      .get(`/api/canvas/shared/${shareCode}`);
+    const res = await request(app).get(`/api/canvas/shared/${shareCode}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -383,8 +371,7 @@ describe('Sharing integration tests', () => {
   it('GET /canvas/shared/:code returns 404 for invalid share code', async () => {
     mockPrisma.canvasShare.findUnique.mockResolvedValue(null);
 
-    const res = await request(app)
-      .get('/api/canvas/shared/NONEXISTENT');
+    const res = await request(app).get('/api/canvas/shared/NONEXISTENT');
 
     expect(res.status).toBe(404);
     expect(res.body.success).toBe(false);
@@ -407,9 +394,7 @@ describe('Sharing integration tests', () => {
 
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/share`)
-      .set('Authorization', `Bearer ${otherJwt}`);
+    const res = await request(app).post(`/api/canvas/${canvasId}/share`).set('Authorization', `Bearer ${otherJwt}`);
 
     expect(res.status).toBe(403);
     expect(res.body.success).toBe(false);
@@ -427,8 +412,7 @@ describe('Sharing integration tests', () => {
       expiresAt: pastDate,
     });
 
-    const res = await request(app)
-      .get(`/api/canvas/shared/${shareCode}`);
+    const res = await request(app).get(`/api/canvas/shared/${shareCode}`);
 
     expect(res.status).toBe(410);
     expect(res.body.success).toBe(false);

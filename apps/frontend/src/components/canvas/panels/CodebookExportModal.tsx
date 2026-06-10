@@ -248,7 +248,7 @@ export default function CodebookExportModal({ onClose }: CodebookExportModalProp
                 {entries.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-3 py-8 text-center text-gray-400">
-                      No codes yet. Add questions and create codings first.
+                      No codes yet. Create codes and code some transcript text first.
                     </td>
                   </tr>
                 ) : (

@@ -8,15 +8,31 @@ import { validateParams, canvasIdParam, canvasIdUserIdParams } from '../middlewa
 export const collaborationRoutes = Router();
 
 // ─── POST /api/canvas/:id/collaborators — Invite a collaborator ───
+// Accepts either an email (the Share-modal invite flow — researchers know
+// their colleague's email, not their internal user id) or a raw userId.
 collaborationRoutes.post('/canvas/:id/collaborators', validateParams(canvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     const userId = getAuthUserId(req);
-    const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+    const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId, { requireOwner: true });
 
-    const { userId: targetUserId, role } = req.body;
+    const { userId: bodyUserId, email, role } = req.body;
+    let targetUserId: string | undefined = typeof bodyUserId === 'string' ? bodyUserId : undefined;
+    if (!targetUserId && typeof email === 'string' && email.trim()) {
+      const byEmail = await prisma.user.findUnique({
+        where: { email: email.trim().toLowerCase() },
+        select: { id: true },
+      });
+      if (!byEmail) {
+        throw new AppError(
+          'No QualCanvas account found with that email. Ask your colleague to sign up first, then invite them.',
+          404,
+        );
+      }
+      targetUserId = byEmail.id;
+    }
     if (!targetUserId) {
-      throw new AppError('userId is required', 400);
+      throw new AppError('email or userId is required', 400);
     }
 
     const validRoles = ['editor', 'viewer'];
@@ -111,7 +127,7 @@ collaborationRoutes.delete(
     try {
       const dashboardAccessId = getAuthId(req);
       const userId = getAuthUserId(req);
-      const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+      const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId, { requireOwner: true });
 
       const targetUserId = req.params.userId;
 

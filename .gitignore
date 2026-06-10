@@ -64,4 +64,4 @@ test-results/
 eval-reports/
 
 # Local-only prod credentials (never commit)
-recordings/.jody-creds.json
+recordings/.*-creds.json

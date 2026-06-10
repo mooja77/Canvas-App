@@ -10,6 +10,9 @@ const { mockPrisma } = vi.hoisted(() => {
     subscription: {
       findUnique: vi.fn(),
     },
+    canvasCollaborator: {
+      findUnique: vi.fn(),
+    },
     codingCanvas: {
       findUnique: vi.fn(),
     },

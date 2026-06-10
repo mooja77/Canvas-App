@@ -47,8 +47,11 @@ canvasRoutes.get('/canvas', async (req, res, next) => {
     const rawOffset = parseInt(req.query.offset as string, 10);
     const skip = Math.max(Number.isFinite(rawOffset) ? rawOffset : 0, 0);
 
-    // Show canvases owned via dashboardAccess OR userId, excluding soft-deleted
-    const ownerFilter = userId ? { OR: [{ dashboardAccessId }, { userId }] } : { dashboardAccessId };
+    // Show canvases owned via dashboardAccess OR userId, plus canvases the
+    // user was invited to as a collaborator, excluding soft-deleted
+    const ownerFilter = userId
+      ? { OR: [{ dashboardAccessId }, { userId }, { collaborators: { some: { userId } } }] }
+      : { dashboardAccessId };
     const where = { ...ownerFilter, deletedAt: null };
 
     const [canvases, total] = await Promise.all([
@@ -63,7 +66,14 @@ canvasRoutes.get('/canvas', async (req, res, next) => {
       }),
       prisma.codingCanvas.count({ where }),
     ]);
-    res.json({ success: true, data: canvases, total, limit: take, offset: skip });
+
+    // Flag canvases the user can open but doesn't own so the list UI can
+    // show a "Shared with you" badge.
+    const flagged = canvases.map((c) => ({
+      ...c,
+      sharedWithMe: !(c.dashboardAccessId === dashboardAccessId || (userId && c.userId === userId)),
+    }));
+    res.json({ success: true, data: flagged, total, limit: take, offset: skip });
   } catch (err) {
     next(err);
   }
@@ -160,6 +170,11 @@ canvasRoutes.post('/canvas', validate(createCanvasSchema), checkCanvasLimit(), a
 canvasRoutes.get('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
+    // Shared access check (owner or collaborator). The previous inline
+    // dashboardAccessId-only comparison locked out invited collaborators.
+    // allowDeleted preserves the route's historical behavior of serving
+    // trashed canvases.
+    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req), { allowDeleted: true });
     const canvas = await prisma.codingCanvas.findUnique({
       where: { id: req.params.canvasId },
       include: {
@@ -174,7 +189,6 @@ canvasRoutes.get('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async
       },
     });
     if (!canvas) return next(new AppError('Canvas not found', 404));
-    if (canvas.dashboardAccessId !== dashboardAccessId) return next(new AppError('Access denied', 403));
 
     const data = {
       ...canvas,
@@ -218,7 +232,7 @@ canvasRoutes.put(
 canvasRoutes.delete('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
+    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req), { requireOwner: true });
     await prisma.codingCanvas.update({
       where: { id: req.params.canvasId },
       data: { deletedAt: new Date() },
@@ -235,6 +249,7 @@ canvasRoutes.post('/canvas/:canvasId/restore', validateParams(canvasCanvasIdPara
     const dashboardAccessId = getAuthId(req);
     const canvas = await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req), {
       allowDeleted: true,
+      requireOwner: true,
     });
     if (!canvas.deletedAt) return next(new AppError('Canvas is not in trash', 400));
     const restored = await prisma.codingCanvas.update({
@@ -253,6 +268,7 @@ canvasRoutes.delete('/canvas/:canvasId/permanent', validateParams(canvasCanvasId
     const dashboardAccessId = getAuthId(req);
     const canvas = await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req), {
       allowDeleted: true,
+      requireOwner: true,
     });
     if (!canvas.deletedAt) return next(new AppError('Canvas must be in trash before permanent deletion', 400));
     await prisma.codingCanvas.delete({ where: { id: req.params.canvasId } });
