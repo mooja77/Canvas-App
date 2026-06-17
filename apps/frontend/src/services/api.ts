@@ -26,8 +26,10 @@ import type {
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 // withCredentials: true so the httpOnly jwt cookie (set by login endpoints)
-// rides along on every request. Safe because the deployment reverse-proxies
-// `/api` under the same origin — no cross-site cookie shipping.
+// rides along on every request. The API is served from api.qualcanvas.com — a
+// subdomain that shares the registrable domain (qualcanvas.com) with the
+// frontend — so the cookie is FIRST-PARTY and every browser (incl. Safari, which
+// blocks third-party cookies by default) accepts and sends it. See VITE_API_URL.
 export const canvasClient = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
