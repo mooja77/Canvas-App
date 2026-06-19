@@ -7,12 +7,14 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 
 interface DashboardData {
   totalUsers: number;
-  activeUsers30d: number;
+  activeUsers: number;
   newSignups7d: number;
   mrr: number;
-  planDistribution: { name: string; value: number }[];
-  topFeatures: { name: string; uses: number }[];
-  errorCount: number;
+  // Backend returns plan distribution as a { [plan]: count } map and features
+  // with a `count` field — keep these in sync with adminRoutes.ts /dashboard.
+  planDistribution: Record<string, number>;
+  topFeatures: { name: string; source?: string; count: number }[];
+  errorCount24h: number;
 }
 
 interface AdminUser {
@@ -239,16 +241,22 @@ function DashboardTab({ adminKey }: { adminKey: string }) {
   if (loading) return <LoadingSpinner />;
   if (!data) return <ErrorMessage message="Failed to load dashboard data." />;
 
+  // Backend sends planDistribution as a { plan: count } map; recharts needs an array.
+  const planChartData = Object.entries(data.planDistribution ?? {}).map(([name, value]) => ({
+    name,
+    value,
+  }));
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Users" value={data.totalUsers.toLocaleString()} />
-        <StatCard label="Active Users (30d)" value={data.activeUsers30d.toLocaleString()} />
-        <StatCard label="New Signups (7d)" value={data.newSignups7d.toLocaleString()} />
+        <StatCard label="Total Users" value={(data.totalUsers ?? 0).toLocaleString()} />
+        <StatCard label="Active Users" value={(data.activeUsers ?? 0).toLocaleString()} />
+        <StatCard label="New Signups (7d)" value={(data.newSignups7d ?? 0).toLocaleString()} />
         <StatCard
           label="MRR"
-          value={`$${data.mrr.toLocaleString()}`}
-          sub={data.errorCount > 0 ? `${data.errorCount} errors` : undefined}
+          value={`$${(data.mrr ?? 0).toLocaleString()}`}
+          sub={data.errorCount24h > 0 ? `${data.errorCount24h} errors` : undefined}
         />
       </div>
 
@@ -259,7 +267,7 @@ function DashboardTab({ adminKey }: { adminKey: string }) {
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
-                data={data.planDistribution}
+                data={planChartData}
                 dataKey="value"
                 nameKey="name"
                 cx="50%"
@@ -267,7 +275,7 @@ function DashboardTab({ adminKey }: { adminKey: string }) {
                 outerRadius={90}
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
               >
-                {data.planDistribution.map((_entry, i) => (
+                {planChartData.map((_entry, i) => (
                   <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                 ))}
               </Pie>
@@ -281,20 +289,20 @@ function DashboardTab({ adminKey }: { adminKey: string }) {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-5">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Top Features</h3>
           <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={data.topFeatures}>
+            <BarChart data={data.topFeatures ?? []}>
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="uses" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {data.errorCount > 0 && (
+      {data.errorCount24h > 0 && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center gap-3">
           <span className="inline-flex items-center justify-center w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full">
-            {data.errorCount}
+            {data.errorCount24h}
           </span>
           <span className="text-red-700 dark:text-red-300 text-sm">
             Recent errors detected. Check Health tab for details.
