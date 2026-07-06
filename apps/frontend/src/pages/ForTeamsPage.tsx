@@ -15,7 +15,7 @@ import CTAStripe from '../components/marketing/CTAStripe';
  * /for-teams — segment landing page for research-group leads (Dr. Chen).
  *
  * Spec: docs/refresh/06-pages/05-for-teams.md.
- * Sells the Team plan ($29/seat/mo): shared codebooks, intercoder κ,
+ * Sells the Team plan ($39/seat/mo): shared codebooks, intercoder κ,
  * audit trail. Logo wall starts empty/sparse — populated as permissions
  * land per docs/refresh/10 R12.
  */
@@ -23,7 +23,7 @@ export default function ForTeamsPage() {
   const navigate = useNavigate();
   usePageMeta(
     'For research groups — QualCanvas',
-    'Code together with shared codebooks, live intercoder reliability, and IRB-ready audit trails. $29/seat/mo. .edu discount.',
+    'Code together with shared codebooks, live intercoder reliability, and IRB-ready audit trails. $39/seat/mo. .edu discount.',
   );
 
   useEffect(() => {
@@ -131,7 +131,7 @@ export default function ForTeamsPage() {
             },
             {
               title: 'Per-seat billing',
-              body: '$29 / seat / month, prorated. Pause seats during fieldwork; unpause when coding starts.',
+              body: '$39 / seat / month, prorated. Pause seats during fieldwork; unpause when coding starts.',
             },
             {
               title: 'κ + α calculator',
@@ -169,7 +169,7 @@ export default function ForTeamsPage() {
             {
               question: 'How does per-seat billing work?',
               answer:
-                'Each coder you invite to a project counts as one seat. $29/seat/mo, $22/seat/mo on annual. You can pause and unpause seats month-by-month during slow fieldwork periods.',
+                'Each coder you invite to a project counts as one seat. $39/seat/mo, $32/seat/mo on annual. You can pause and unpause seats month-by-month during slow fieldwork periods.',
             },
             {
               question: 'Can students on a methods course use Team?',

@@ -436,7 +436,9 @@ export default function AccountPage() {
                           type="button"
                           onClick={async () => {
                             try {
-                              await authApi.updateProfile({ email: profile.user.email });
+                              // Use the dedicated resend endpoint — updateProfile treats any
+                              // email as a change (clears the session, sends no email).
+                              await authApi.resendVerification();
                               toast.success('Verification email sent');
                             } catch {
                               toast.error('Failed to send verification email');

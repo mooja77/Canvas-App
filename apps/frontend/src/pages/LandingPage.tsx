@@ -364,7 +364,7 @@ export default function LandingPage() {
               question: 'How is this different from NVivo or ATLAS.ti?',
               answer: (
                 <>
-                  Three things. (1) Pricing is on this page; theirs isn\'t. (2) Your codes, transcripts, and themes live
+                  Three things. (1) Pricing is on this page; theirs isn't. (2) Your codes, transcripts, and themes live
                   on a visual canvas you can see all at once — not behind menus. (3) You can export to QDPX whenever you
                   want. No lock-in. See the sourced, side-by-side breakdown on{' '}
                   <Link

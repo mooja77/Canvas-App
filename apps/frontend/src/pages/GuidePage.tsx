@@ -270,13 +270,13 @@ const SECTIONS: GuideSection[] = [
     content: (
       <>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          QualCanvas includes 10 analysis tools organized into three categories. Click the "Analyze" button in the
+          QualCanvas includes 12 analysis tools organized into three categories. Click the "Analyze" button in the
           toolbar to add analysis nodes to your canvas.
         </p>
         <Screenshot
           src="/guide/15-analyze-menu.png"
           alt="Analysis tools menu"
-          caption="10 analysis types organized by category: Text, Coding, and Frameworks"
+          caption="12 analysis types organized by category: Text, Coding, and Frameworks"
         />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-2">Available Analysis Types</h3>
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mt-4 mb-1">
@@ -562,29 +562,35 @@ const SECTIONS: GuideSection[] = [
     content: (
       <>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          QualCanvas offers three plans: Free, Pro ($12/mo), and Team ($29/mo per seat). Upgrade anytime from the
-          Pricing page or Account settings.
+          QualCanvas offers four plans: Free, Student ($5/mo), Pro ($15/mo), and Team ($39/mo per seat). Upgrade anytime
+          from the Pricing page or Account settings.
         </p>
         <Screenshot
           src="/guide/20-pricing.png"
           alt="Pricing plans"
-          caption="Free, Pro, and Team plans with feature comparison"
+          caption="Free, Student, Pro, and Team plans with feature comparison"
         />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-2">Plan Comparison</h3>
         <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
           <li>
-            <strong>Free:</strong> 1 canvas, 2 transcripts, 5 codes, stats & word cloud only.
+            <strong>Free:</strong> 2 canvases, 5 transcripts, 10 codes, and 4 analysis tools.
           </li>
           <li>
-            <strong>Pro ($12/mo):</strong> Unlimited everything, all 10 analysis tools, AI features, ethics panel, 5
+            <strong>Student ($5/mo):</strong> Verified .edu. 5 canvases, all 12 analysis tools, auto-code, ethics +
+            cases, ~5 hrs transcription.
+          </li>
+          <li>
+            <strong>Pro ($15/mo):</strong> Unlimited everything, all 12 analysis tools, AI features, ethics panel, 5
             share codes.
           </li>
           <li>
-            <strong>Team ($29/mo):</strong> Everything Pro + unlimited shares, intercoder reliability, team management.
+            <strong>Team ($39/mo per seat):</strong> Everything Pro + unlimited shares, intercoder reliability, team
+            management.
           </li>
         </ul>
         <ProTip>
-          Academic users with a .edu email get 40% off automatically at checkout. Annual billing saves 25%.
+          Students get the dedicated Student plan at $5/mo with a verified .edu email; faculty and staff get 40% off Pro
+          and Team automatically at checkout. Annual billing saves ~20%.
         </ProTip>
       </>
     ),

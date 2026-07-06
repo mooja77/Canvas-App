@@ -152,7 +152,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: 1000,
     fileUploadEnabled: true,
     maxStorageMb: 5000,
-    transcriptionMinutesPerMonth: 300,
+    transcriptionMinutesPerMonth: 3000, // ~50 hrs, matching the /pricing table (was 300 — below Pro); BYO-key for unlimited
     maxCollaborators: Infinity,
     repositoryEnabled: true,
     integrationsEnabled: true,
