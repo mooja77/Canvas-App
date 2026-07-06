@@ -35,24 +35,28 @@ export async function generateReport(
   const canvases = await prisma.codingCanvas.findMany({
     where: { ...canvasWhere, deletedAt: null },
     include: {
+      // Totals via _count (was materializing every coding twice, unbounded).
+      _count: { select: { codings: true, collaborators: true } },
+      // Only the recent window, capped — feeds the new-codings count + the
+      // 5-row activity slice, the only things the report actually needs.
       codings: {
+        where: { createdAt: { gte: since } },
         orderBy: { createdAt: 'desc' },
+        take: 200,
       },
+      // Per-question coding counts via _count instead of the full nested rows.
       questions: {
-        include: {
-          codings: true,
-        },
+        include: { _count: { select: { codings: true } } },
       },
-      collaborators: true,
     },
   });
 
   const reports: ReportData[] = canvases.map((canvas) => {
-    const newCodings = canvas.codings.filter((c) => c.createdAt >= since);
+    const newCodings = canvas.codings; // already scoped to the window
     const questionsSummary = canvas.questions
       .map((q) => ({
         text: q.text,
-        codingCount: q.codings.length,
+        codingCount: q._count.codings,
       }))
       .sort((a, b) => b.codingCount - a.codingCount)
       .slice(0, 10);
@@ -60,13 +64,13 @@ export async function generateReport(
     return {
       canvasName: canvas.name,
       newCodingsCount: newCodings.length,
-      totalCodingsCount: canvas.codings.length,
+      totalCodingsCount: canvas._count.codings,
       questionsSummary,
       recentActivity: newCodings.slice(0, 5).map((c) => ({
         action: `Coded: "${c.codedText.substring(0, 60)}${c.codedText.length > 60 ? '...' : ''}"`,
         timestamp: c.createdAt.toISOString(),
       })),
-      collaboratorCount: canvas.collaborators.length,
+      collaboratorCount: canvas._count.collaborators,
     };
   });
 
