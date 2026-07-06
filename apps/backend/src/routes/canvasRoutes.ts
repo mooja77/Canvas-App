@@ -181,7 +181,8 @@ canvasRoutes.get('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async
         transcripts: { orderBy: { sortOrder: 'asc' } },
         questions: { orderBy: { sortOrder: 'asc' } },
         memos: { orderBy: { createdAt: 'asc' } },
-        codings: { take: 10000 },
+        // Deterministic order so the 10k cap always clips the same rows.
+        codings: { take: 10000, orderBy: { createdAt: 'asc' } },
         nodePositions: true,
         cases: { orderBy: { createdAt: 'asc' } },
         relations: { orderBy: { createdAt: 'asc' } },

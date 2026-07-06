@@ -28,9 +28,11 @@ documentRoutes.post('/canvas/:id/documents', validateParams(canvasIdParam), asyn
       return next(new AppError('docType must be "image" or "pdf"', 400));
     }
 
-    // Verify the file upload exists
+    // Verify the file upload exists AND belongs to this canvas (which the caller
+    // owns, checked above) — otherwise a caller could link another tenant's
+    // fileUploadId into their own canvas. Mirrors the transcribe route's scoping.
     const fileUpload = await prisma.fileUpload.findUnique({ where: { id: fileUploadId } });
-    if (!fileUpload) {
+    if (!fileUpload || fileUpload.canvasId !== req.params.id) {
       return next(new AppError('FileUpload not found', 404));
     }
 

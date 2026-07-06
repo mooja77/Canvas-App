@@ -26,6 +26,9 @@ export function validateParams(schema: z.ZodSchema) {
         details: result.error.flatten().fieldErrors,
       });
     }
+    // Write the parsed value back (matches validate()) so any future coercion /
+    // default on a param schema reaches the handler instead of being dropped.
+    req.params = result.data as typeof req.params;
     next();
   };
 }
@@ -164,21 +167,28 @@ export const createCodingSchema = z.object({
 });
 
 export const saveLayoutSchema = z.object({
-  positions: z.array(
-    z.object({
-      nodeId: z.string().min(1),
-      nodeType: z.string().min(1),
-      x: z.number(),
-      y: z.number(),
-      width: z.number().optional(),
-      height: z.number().optional(),
-      collapsed: z.boolean().optional(),
-    }),
-  ),
+  positions: z
+    .array(
+      z.object({
+        nodeId: z.string().min(1),
+        nodeType: z.string().min(1),
+        x: z.number(),
+        y: z.number(),
+        width: z.number().optional(),
+        height: z.number().optional(),
+        collapsed: z.boolean().optional(),
+      }),
+    )
+    .max(2000), // cap the layout upsert transaction, consistent with the other bulk schemas
 });
 
 export const reassignCodingSchema = z.object({
   newQuestionId: z.string().min(1),
+});
+
+export const intercoderAgreementSchema = z.object({
+  transcriptId: z.string().min(1).max(64),
+  userIds: z.array(z.string().min(1).max(64)).min(2).max(50),
 });
 
 export const updateCodingSchema = z.object({
