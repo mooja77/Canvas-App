@@ -301,11 +301,12 @@ export default function LandingPage() {
             Free to start. Paid when your dissertation gets serious.
           </DisplayHeading>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { name: 'Free', price: '$0', bullet: '1 canvas · 5 codes · CSV export' },
-            { name: 'Pro', price: '$12', bullet: 'Unlimited · All 12 tools · Auto-code · Ethics' },
-            { name: 'Team', price: '$29', bullet: 'Everything in Pro · Intercoder κ · Per-seat' },
+            { name: 'Free', price: '$0', bullet: '2 canvases · 10 codes · CSV export' },
+            { name: 'Student', price: '$5', bullet: 'Verified .edu · All 12 tools · Auto-code' },
+            { name: 'Pro', price: '$15', bullet: 'Unlimited · All 12 tools · Auto-code · Ethics' },
+            { name: 'Team', price: '$39', bullet: 'Everything in Pro · Intercoder κ · Per-seat' },
           ].map((tier) => (
             <div
               key={tier.name}

@@ -462,7 +462,7 @@ export default function PricingPage() {
               vsSlug: 'dedoose',
             },
           ]}
-          footnote="Competitor prices verified 2026-05-14 from each vendor's public page where available; third-party sourced otherwise. See each /vs/ page for the full comparison."
+          footnote="Competitor prices verified 2026-05-14 from each vendor's public page where available; third-party sourced otherwise. See /vs for the full side-by-side comparison."
         />
       </div>
 

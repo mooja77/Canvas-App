@@ -6,7 +6,8 @@ export interface CompetitorEntry {
   pricing: string;
   /** Optional link out to the competitor's pricing page or QualCanvas /vs/ comparison. */
   href?: string;
-  /** "/vs/" link slug; if provided, shown as "See the comparison →" CTA. */
+  /** Competitor slug; if provided, shown as a "See the comparison →" CTA that
+   *  deep-links to that competitor's section on /vs (e.g. /vs#nvivo). */
   vsSlug?: string;
 }
 
@@ -73,7 +74,7 @@ export default function CompetitorRow({
               )}
               {c.vsSlug && (
                 <a
-                  href={`/vs/${c.vsSlug}`}
+                  href={`/vs#${c.vsSlug}`}
                   className="text-ochre-700 dark:text-ochre-400 hover:text-ochre-800 dark:hover:text-ochre-300 underline-offset-2 hover:underline"
                 >
                   See the comparison →

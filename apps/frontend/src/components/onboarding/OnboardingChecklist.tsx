@@ -89,7 +89,10 @@ export default function OnboardingChecklist() {
 
   // Auto-hide once everything is done; user has finished the activation arc.
   // Also hidden on mobile so it doesn't crowd the phone-width canvas (#9).
-  if (dismissed || allDone || isMobile) return null;
+  // And hidden with no canvas open (e.g. the canvas list): every task is
+  // canvas-scoped, so without an activeCanvas it reads a misleading "0 of 5"
+  // and none of the rows are actionable. It reappears inside a canvas.
+  if (dismissed || allDone || isMobile || !activeCanvas) return null;
 
   return (
     // bottom-12 keeps the card clear of the canvas status bar — at bottom-4 it

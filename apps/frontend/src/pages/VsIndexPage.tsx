@@ -66,6 +66,16 @@ export default function VsIndexPage() {
     trackEvent('marketing_page_viewed', { page: '/vs' });
   }, []);
 
+  // Deep links from /pricing land here as /vs#nvivo etc. The browser's native
+  // anchor scroll fires before React renders the sections, so scroll to the
+  // target ourselves once the content is on the page.
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const el = document.getElementById(hash);
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }, []);
+
   return (
     <PageShell>
       <article className="max-w-4xl mx-auto px-4 sm:px-6 pt-16 pb-24">
@@ -84,7 +94,8 @@ export default function VsIndexPage() {
           {TARGETS.map((t) => (
             <section
               key={t.slug}
-              className="rounded-2xl p-8 bg-white dark:bg-gray-800/60 ring-1 ring-gray-200 dark:ring-gray-700"
+              id={t.slug}
+              className="scroll-mt-24 rounded-2xl p-8 bg-white dark:bg-gray-800/60 ring-1 ring-gray-200 dark:ring-gray-700"
             >
               <div className="flex items-baseline justify-between gap-4 mb-4">
                 <h2
