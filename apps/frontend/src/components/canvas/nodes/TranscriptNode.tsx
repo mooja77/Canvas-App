@@ -3,9 +3,9 @@ import { useNodeCollapsed } from './useNodeCollapsed';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
+import { useShallow } from 'zustand/react/shallow';
 import {
   useCanvasStore,
-  useCanvasCodings,
   useCanvasQuestions,
   useCanvasTranscripts,
   useCanvasCases,
@@ -210,7 +210,6 @@ function HighlightedTranscript({
 
 function TranscriptNode({ data, id, selected }: NodeProps) {
   const textRef = useRef<HTMLDivElement>(null);
-  const allCodings = useCanvasCodings();
   const allQuestions = useCanvasQuestions();
   const allTranscripts = useCanvasTranscripts();
   const allCases = useCanvasCases();
@@ -244,9 +243,13 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [verifyRange]);
 
-  const codings = useMemo(
-    () => allCodings.filter((c: CanvasTextCoding) => c.transcriptId === nodeData.transcriptId),
-    [allCodings, nodeData.transcriptId],
+  // Subscribe to only THIS transcript's codings. useShallow returns the same
+  // array reference when the filtered slice is element-identical, so a coding
+  // change on another transcript no longer re-renders this node (and doesn't
+  // re-run the expensive computeOverlappingSegments below). Previously every
+  // node subscribed to the whole codings array and filtered locally.
+  const codings = useCanvasStore(
+    useShallow((s) => (s.activeCanvas?.codings ?? []).filter((c) => c.transcriptId === nodeData.transcriptId)),
   );
 
   const questions = useMemo(
