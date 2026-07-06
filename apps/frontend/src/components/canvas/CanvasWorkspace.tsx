@@ -1280,9 +1280,12 @@ export default function CanvasWorkspace() {
     }
 
     setSmartLinkSource(sourceInfo);
-    const viewport = rfInstanceRef.current?.getViewport();
-    const smartFlowX = viewport ? (clientX - viewport.x) / viewport.zoom : clientX;
-    const smartFlowY = viewport ? (clientY - viewport.y) / viewport.zoom : clientY;
+    // screenToFlowPosition accounts for the flow pane's on-screen offset (the
+    // CodeNavigator sidebar + toolbar); the old (clientX - viewport.x)/zoom math
+    // assumed the pane started at window (0,0), mis-placing the node.
+    const smartPos = rfInstanceRef.current?.screenToFlowPosition({ x: clientX, y: clientY });
+    const smartFlowX = smartPos?.x ?? clientX;
+    const smartFlowY = smartPos?.y ?? clientY;
     setQuickAddMenu({ x: clientX, y: clientY, flowX: smartFlowX, flowY: smartFlowY });
     // Store allowed items in a ref so QuickAddMenu can use it
     smartLinkAllowedRef.current = allowedItems || null;
@@ -1778,9 +1781,11 @@ export default function CanvasWorkspace() {
       const dx = Math.abs(event.clientX - last.x);
       const dy = Math.abs(event.clientY - last.y);
       if (now - last.time < 400 && dx < 10 && dy < 10 && !isViewer) {
-        const viewport = rfInstanceRef.current?.getViewport();
-        const flowX = viewport ? (event.clientX - viewport.x) / viewport.zoom : event.clientX;
-        const flowY = viewport ? (event.clientY - viewport.y) / viewport.zoom : event.clientY;
+        // Account for the flow pane's screen offset (sidebar/toolbar) — see the
+        // smart-link handler; manual viewport math placed the node off-cursor.
+        const flowPos = rfInstanceRef.current?.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+        const flowX = flowPos?.x ?? event.clientX;
+        const flowY = flowPos?.y ?? event.clientY;
         setQuickAddMenu({ x: event.clientX, y: event.clientY, flowX, flowY });
         lastPaneClickRef.current = { time: 0, x: 0, y: 0 };
         return;
@@ -2748,11 +2753,10 @@ export default function CanvasWorkspace() {
                   label={edgeContextMenu.label}
                   onDelete={handleEdgeDelete}
                   onAddWaypoint={(edgeId, x, y) => {
-                    const viewport = rfInstanceRef.current?.getViewport();
-                    if (viewport) {
-                      const canvasX = (x - viewport.x) / viewport.zoom;
-                      const canvasY = (y - viewport.y) / viewport.zoom;
-                      addReroute(canvasX, canvasY, edgeId);
+                    // Pane-offset-aware conversion (see the smart-link handler).
+                    const pos = rfInstanceRef.current?.screenToFlowPosition({ x, y });
+                    if (pos) {
+                      addReroute(pos.x, pos.y, edgeId);
                     }
                   }}
                   onClose={() => setEdgeContextMenu(null)}

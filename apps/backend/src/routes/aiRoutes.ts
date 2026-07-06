@@ -595,33 +595,38 @@ aiRoutes.put(
 
       const { status } = req.body;
 
-      // If accepting, create the actual coding
+      // Accepting: create the code (if needed) + the coding + mark accepted,
+      // ATOMICALLY and IDEMPOTENTLY. Without this, a double-click / retry (or a
+      // crash between the coding-create and the status-update) created a second
+      // identical coding.
       if (status === 'accepted') {
-        // Find or create the question (code)
-        let questionId = suggestion.questionId;
-        if (!questionId) {
-          // Create a new code with the suggested text
-          const question = await prisma.canvasQuestion.create({
+        if (suggestion.status === 'accepted') {
+          // Already applied — return the existing suggestion, don't re-create.
+          return res.json({ success: true, data: suggestion });
+        }
+        const accepted = await prisma.$transaction(async (tx) => {
+          let questionId = suggestion.questionId;
+          if (!questionId) {
+            const question = await tx.canvasQuestion.create({
+              data: { canvasId: req.params.id, text: suggestion.suggestedText },
+            });
+            questionId = question.id;
+          }
+          // Tagged AI-originated for the disclosure export.
+          await tx.canvasTextCoding.create({
             data: {
               canvasId: req.params.id,
-              text: suggestion.suggestedText,
+              transcriptId: suggestion.transcriptId,
+              questionId,
+              startOffset: suggestion.startOffset,
+              endOffset: suggestion.endOffset,
+              codedText: suggestion.codedText,
+              source: 'ai',
             },
           });
-          questionId = question.id;
-        }
-
-        // Create the coding — tagged AI-originated for the disclosure export.
-        await prisma.canvasTextCoding.create({
-          data: {
-            canvasId: req.params.id,
-            transcriptId: suggestion.transcriptId,
-            questionId,
-            startOffset: suggestion.startOffset,
-            endOffset: suggestion.endOffset,
-            codedText: suggestion.codedText,
-            source: 'ai',
-          },
+          return tx.aiSuggestion.update({ where: { id: req.params.sid }, data: { status } });
         });
+        return res.json({ success: true, data: accepted });
       }
 
       const updated = await prisma.aiSuggestion.update({
