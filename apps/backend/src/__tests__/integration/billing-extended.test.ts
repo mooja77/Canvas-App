@@ -39,6 +39,12 @@ const { mockStripe } = vi.hoisted(() => {
     customers: {
       create: vi.fn(),
     },
+    prices: {
+      retrieve: vi.fn(),
+    },
+    products: {
+      retrieve: vi.fn(),
+    },
     checkout: {
       sessions: { create: vi.fn() },
     },
@@ -132,6 +138,13 @@ describe('Stripe Billing – Extended Tests', () => {
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_secret';
     mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
     mockPrisma.webhookEvent.create.mockResolvedValue({});
+    // create-checkout now derives the plan from the price on Stripe (never the
+    // client body). Default: resolve a tagged QualCanvas price whose plan is
+    // inferred from the priceId these tests pass.
+    mockStripe.prices.retrieve.mockImplementation((id: string) => {
+      const plan = String(id).includes('student') ? 'student' : String(id).includes('team') ? 'team' : 'pro';
+      return Promise.resolve({ id, metadata: { app: 'qualcanvas', plan }, product: { name: `QualCanvas ${plan}` } });
+    });
   });
 
   // ─── Webhook: checkout.session.completed with Team plan ───
@@ -721,6 +734,58 @@ describe('Stripe Billing – Extended Tests', () => {
       expect(createCall.metadata).toEqual(expect.objectContaining({ plan: 'student' }));
       delete process.env.STRIPE_ACADEMIC_COUPON_ID;
     });
+
+    it('derives the plan from the price, ignoring a forged higher-tier plan in the body', async () => {
+      // Anti-escalation: paying the $5 Student price while claiming Team must
+      // NOT grant Team. The plan (and coupon eligibility) comes from the price.
+      process.env.STRIPE_ACADEMIC_COUPON_ID = 'coupon_academic';
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: userId,
+        email: 'cheat@university.edu',
+        name: 'Cheat',
+        role: 'researcher',
+        plan: 'free',
+        stripeCustomerId: 'cus_cheat',
+      });
+      mockStripe.checkout.sessions.create.mockResolvedValue({ url: 'https://checkout.stripe.com/x' });
+
+      await request(app)
+        .post('/api/billing/create-checkout')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ priceId: 'price_student_monthly', plan: 'team' });
+
+      const createCall = mockStripe.checkout.sessions.create.mock.calls[0][0];
+      // Metadata carries the derived 'student', not the forged 'team'.
+      expect(createCall.metadata).toEqual(expect.objectContaining({ plan: 'student' }));
+      // And the .edu coupon is NOT stacked (student is already academically priced).
+      expect(createCall.discounts).toBeUndefined();
+      delete process.env.STRIPE_ACADEMIC_COUPON_ID;
+    });
+
+    it('rejects an unrecognized / foreign price with 400', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: userId,
+        email: 'x@example.com',
+        name: 'X',
+        role: 'researcher',
+        plan: 'free',
+        stripeCustomerId: 'cus_x',
+      });
+      // A price from another product on the shared Stripe account (no qualcanvas tag).
+      mockStripe.prices.retrieve.mockResolvedValueOnce({
+        id: 'price_foreign',
+        metadata: {},
+        product: { name: 'Staff Hub - Basic' },
+      });
+
+      const res = await request(app)
+        .post('/api/billing/create-checkout')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ priceId: 'price_foreign', plan: 'team' });
+
+      expect(res.status).toBe(400);
+      expect(mockStripe.checkout.sessions.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('POST /api/billing/create-portal', () => {
@@ -947,8 +1012,8 @@ describe('Stripe Billing – Extended Tests', () => {
       expect(txnArgs).toHaveLength(2);
     });
 
-    // ─── invoice.payment_failed uses $transaction ───
-    it('invoice.payment_failed uses $transaction for atomic downgrade', async () => {
+    // ─── invoice.payment_failed marks past_due without demoting ───
+    it('invoice.payment_failed marks past_due and does not demote the user', async () => {
       const event = {
         id: 'evt_inv_atomic',
         type: 'invoice.payment_failed',
@@ -965,12 +1030,16 @@ describe('Stripe Billing – Extended Tests', () => {
       });
       mockPrisma.subscription.update.mockResolvedValue({});
       mockPrisma.user.update.mockResolvedValue({});
-      mockPrisma.$transaction.mockResolvedValue([{}, {}]);
 
       const { req, res } = createMockReqRes(Buffer.from('{}'));
       await handleStripeWebhook(req, res);
 
-      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.subscription.update).toHaveBeenCalledWith({
+        where: { stripeSubscriptionId: 'sub_inv_atomic' },
+        data: { status: 'past_due' },
+      });
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
     });
 
     // ─── Duplicate event across different types is idempotent ───
