@@ -35,7 +35,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { authenticated, logout, authType: _authType, setEmailAuth } = useAuthStore();
+  const { authenticated, logout, authType: _authType, setEmailAuth, setName } = useAuthStore();
   usePageMeta('Account — QualCanvas', 'Manage your QualCanvas account, profile, plan, and billing.');
 
   // Edit profile state
@@ -179,17 +179,35 @@ export default function AccountPage() {
 
   const handleSaveProfile = async () => {
     if (!editName.trim()) return;
+    const data: Record<string, string> = {};
+    if (editName.trim() !== profile?.user.name) data.name = editName.trim();
+    const emailChanging = editEmail.trim() !== profile?.user.email;
+    if (emailChanging) data.email = editEmail.trim();
+    if (Object.keys(data).length === 0) {
+      toast('No changes to save');
+      return;
+    }
+    // Changing the email is a credential change: the server invalidates the
+    // session and clears the auth cookie. Warn first so the user isn't
+    // surprised by a "session expired" bounce, then sign out cleanly.
+    if (
+      emailChanging &&
+      !window.confirm("Changing your email signs you out — you'll verify the new address and log back in. Continue?")
+    ) {
+      return;
+    }
     setSavingProfile(true);
     try {
-      const data: Record<string, string> = {};
-      if (editName.trim() !== profile?.user.name) data.name = editName.trim();
-      if (editEmail.trim() !== profile?.user.email) data.email = editEmail.trim();
-      if (Object.keys(data).length === 0) {
-        toast('No changes to save');
+      const res = await authApi.updateProfile(data);
+      if (emailChanging) {
+        toast.success('Email updated — please log in again to verify it.');
+        logout();
+        navigate('/login');
         return;
       }
-      const res = await authApi.updateProfile(data);
       setProfile((prev) => (prev ? { ...prev, user: { ...prev.user, ...res.data.data } } : prev));
+      // Keep the auth store's name in sync so the canvas header/avatar don't go stale.
+      if (data.name) setName(data.name);
       toast.success('Profile updated');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
@@ -282,8 +300,18 @@ export default function AccountPage() {
       if (win) {
         win.document.write(html);
         win.document.close();
+        toast.success('Report generated');
+      } else {
+        // Pop-up blocked (common after an await breaks the user-gesture chain):
+        // fall back to a download so the report isn't silently lost.
+        const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'qualcanvas-report.html';
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('Report downloaded (allow pop-ups to open it in a tab)');
       }
-      toast.success('Report generated');
     } catch {
       toast.error('Failed to generate report');
     } finally {

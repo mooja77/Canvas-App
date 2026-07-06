@@ -151,6 +151,9 @@ export default function CodebookExportModal({ onClose }: CodebookExportModalProp
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+    // Mark the onboarding "Export your codings to CSV" step complete (the
+    // checklist reads this flag; nothing wrote it before).
+    localStorage.setItem('qualcanvas-first-export', new Date().toISOString());
     toast.success('CSV downloaded');
   };
 

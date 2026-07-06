@@ -48,6 +48,7 @@ interface AuthState {
     emailVerified?: boolean;
   }) => void;
   setEmailVerified: (verified: boolean) => void;
+  setName: (name: string) => void;
   updatePlan: (plan: string) => void;
   setTrialState: (data: { effectivePlan: string; trialEndsAt: string | null }) => void;
   logout: () => void;
@@ -103,6 +104,8 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       setEmailVerified: (verified) => set({ emailVerified: verified }),
+
+      setName: (name) => set({ name }),
 
       updatePlan: (plan) => set({ plan }),
 

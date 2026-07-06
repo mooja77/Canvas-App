@@ -46,6 +46,19 @@ export default function SiteFooter() {
             </li>
             <li>
               <Link
+                to="/methodology"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                Methodology
+              </Link>
+            </li>
+            <li>
+              <Link to="/vs" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                Comparisons
+              </Link>
+            </li>
+            <li>
+              <Link
                 to="/changelog"
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
               >
@@ -123,6 +136,22 @@ export default function SiteFooter() {
                 Trust &amp; Security
               </Link>
             </li>
+            <li>
+              <Link
+                to="/cookies"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                Cookie Policy
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/accessibility-statement"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                Accessibility
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -134,6 +163,22 @@ export default function SiteFooter() {
             <li>
               <Link to="/cite" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                 How to cite
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/customers"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                Customers
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/for-teams"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                For teams
               </Link>
             </li>
             <li>

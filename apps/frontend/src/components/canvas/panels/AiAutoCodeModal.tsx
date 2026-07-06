@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useCanvasTranscripts } from '../../../stores/canvasStore';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface AiAutoCodeModalProps {
   onSubmit: (transcriptId: string, instructions?: string) => void;
@@ -10,33 +12,47 @@ interface AiAutoCodeModalProps {
 
 export default function AiAutoCodeModal({ onSubmit, loading, onClose }: AiAutoCodeModalProps) {
   const transcripts = useCanvasTranscripts();
-  const [selectedTranscriptId, setSelectedTranscriptId] = useState(
-    transcripts.length > 0 ? transcripts[0].id : '',
-  );
+  const [selectedTranscriptId, setSelectedTranscriptId] = useState(transcripts.length > 0 ? transcripts[0].id : '');
   const [instructions, setInstructions] = useState('');
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEscapeToClose(onClose);
+  useFocusTrap(dialogRef);
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40" onClick={onClose}>
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ai-autocode-title"
         className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl dark:bg-gray-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 mb-4">
-          <svg className="h-5 w-5 text-purple-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" />
+          <svg
+            className="h-5 w-5 text-purple-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z"
+            />
           </svg>
-          <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200">
+          <h2 id="ai-autocode-title" className="text-base font-semibold text-gray-800 dark:text-gray-200">
             AI Auto-Code Transcript
           </h2>
         </div>
 
         <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-          AI will analyze the transcript and suggest thematic codes for relevant passages. All suggestions will be reviewed before applying.
+          AI will analyze the transcript and suggest thematic codes for relevant passages. All suggestions will be
+          reviewed before applying.
         </p>
 
-        <label className="block mb-1 text-xs font-medium text-gray-600 dark:text-gray-400">
-          Transcript
-        </label>
+        <label className="block mb-1 text-xs font-medium text-gray-600 dark:text-gray-400">Transcript</label>
         <select
           value={selectedTranscriptId}
           onChange={(e) => setSelectedTranscriptId(e.target.value)}
@@ -82,7 +98,11 @@ export default function AiAutoCodeModal({ onSubmit, loading, onClose }: AiAutoCo
             ) : (
               <>
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"
+                  />
                 </svg>
                 Auto-Code
               </>

@@ -263,6 +263,7 @@ export default function InlineCodeSuggester({
         <div className="border-t border-gray-100 dark:border-gray-700 px-3 py-2">
           <input
             type="text"
+            aria-label="Create a new code"
             value={newCodeText}
             onChange={(e) => setNewCodeText(e.target.value)}
             placeholder="Or create a new code…"

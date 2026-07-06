@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { canvasApi } from '../../../services/api';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import toast from 'react-hot-toast';
 
 interface QdpxImportModalProps {
@@ -13,6 +15,9 @@ export default function QdpxImportModal({ canvasId, onClose, onImported }: QdpxI
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEscapeToClose(onClose);
+  useFocusTrap(dialogRef);
 
   const handleImport = async () => {
     if (!file) return;
@@ -25,7 +30,7 @@ export default function QdpxImportModal({ canvasId, onClose, onImported }: QdpxI
       toast.success(data.message || 'QDPX imported successfully');
       onImported();
       onClose();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to import QDPX file');
     } finally {
@@ -36,10 +41,16 @@ export default function QdpxImportModal({ canvasId, onClose, onImported }: QdpxI
   return createPortal(
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40" onClick={onClose}>
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="qdpx-import-title"
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Import QDPX File</h3>
+        <h3 id="qdpx-import-title" className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Import QDPX File
+        </h3>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
           Import a REFI-QDA Project Exchange (.qdpx) file to add codes, sources, and codings to this canvas.
         </p>
@@ -83,6 +94,6 @@ export default function QdpxImportModal({ canvasId, onClose, onImported }: QdpxI
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

@@ -162,11 +162,20 @@ function HighlightedTranscript({
           <span
             key={i}
             ref={verifyRef}
+            role="button"
+            tabIndex={0}
             className={`rounded-sm relative cursor-pointer coded-segment-hover${seg.inVerify ? ' qc-verify-highlight' : ''}`}
             title={`${layerCount} code${layerCount > 1 ? 's' : ''} - click to view`}
             onClick={(e) => {
               e.stopPropagation();
               onSegmentClick(seg.codingIds, e);
+            }}
+            onKeyDown={(e) => {
+              // Keyboard-operable coded segment (WCAG 2.1.1): reuse the click path.
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.currentTarget.click();
+              }
             }}
           >
             {/* Background layers */}
