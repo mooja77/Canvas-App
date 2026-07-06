@@ -240,12 +240,13 @@ export default function LandingPage() {
           }
           className="group block rounded-2xl ring-1 ring-gray-200 dark:ring-gray-700 hover:ring-gray-300 dark:hover:ring-gray-600 p-8 sm:p-12 transition-all duration-150 bg-white dark:bg-gray-900 hover:-translate-y-0.5"
         >
-          <Eyebrow className="mb-4">Case study</Eyebrow>
+          <Eyebrow className="mb-4">Worked example</Eyebrow>
           <DisplayHeading as="h2" size="md" className="mb-5 max-w-3xl">
             How a public-health lab coded 22 caregiving interviews in six weeks.
           </DisplayHeading>
           <p className="text-base text-gray-600 dark:text-gray-400 max-w-2xl mb-6 leading-relaxed">
-            Reflexive thematic analysis. Multi-coder, intercoder κ = 0.84. Methods paper accepted on the deadline.
+            Reflexive thematic analysis. Multi-coder, intercoder κ = 0.84. Methods paper accepted on the deadline. A
+            representative example with synthetic data.
           </p>
           <span className="text-sm font-medium text-ochre-700 dark:text-ochre-400 group-hover:underline underline-offset-4 decoration-ochre-500">
             Read the story →
