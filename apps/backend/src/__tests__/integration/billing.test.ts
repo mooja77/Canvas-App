@@ -96,11 +96,13 @@ describe('Stripe Webhook Handler', () => {
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
         items: {
-          data: [{
-            price: { id: 'price_pro_monthly' },
-            current_period_start: 1700000000,
-            current_period_end: 1702592000,
-          }],
+          data: [
+            {
+              price: { id: 'price_pro_monthly' },
+              current_period_start: 1700000000,
+              current_period_end: 1702592000,
+            },
+          ],
         },
       });
       mockPrisma.subscription.upsert.mockResolvedValue({});
@@ -147,11 +149,13 @@ describe('Stripe Webhook Handler', () => {
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
         items: {
-          data: [{
-            price: { id: 'price_pro_monthly' },
-            current_period_start: 1700000000,
-            current_period_end: 1702592000,
-          }],
+          data: [
+            {
+              price: { id: 'price_pro_monthly' },
+              current_period_start: 1700000000,
+              current_period_end: 1702592000,
+            },
+          ],
         },
       });
       mockPrisma.$transaction.mockResolvedValue([{}, {}]);
@@ -176,11 +180,15 @@ describe('Stripe Webhook Handler', () => {
           object: {
             id: 'sub_123',
             status: 'active',
-            current_period_start: 1700000000,
-            current_period_end: 1702592000,
             cancel_at_period_end: false,
             items: {
-              data: [{ price: { id: 'price_pro_annual' } }],
+              data: [
+                {
+                  price: { id: 'price_pro_annual' },
+                  current_period_start: 1700000000,
+                  current_period_end: 1702592000,
+                },
+              ],
             },
           },
         },
@@ -189,6 +197,7 @@ describe('Stripe Webhook Handler', () => {
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockPrisma.subscription.findUnique.mockResolvedValue({
         id: 'sub-record-1',
+        userId: 'user-1',
         stripeSubscriptionId: 'sub_123',
         stripePriceId: 'price_pro_monthly',
       });
@@ -296,7 +305,7 @@ describe('Stripe Webhook Handler', () => {
 
   // ─── 4. invoice.payment_failed ───
   describe('invoice.payment_failed', () => {
-    it('marks subscription as past_due', async () => {
+    it('marks subscription past_due WITHOUT demoting the user', async () => {
       const event = {
         id: 'evt_invoice_failed_1',
         type: 'invoice.payment_failed',
@@ -321,15 +330,15 @@ describe('Stripe Webhook Handler', () => {
       await handleStripeWebhook(req, res);
 
       expect(res.json).toHaveBeenCalledWith({ received: true });
-      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+      // Marks past_due only — Stripe Smart Retries usually recover the payment,
+      // so a first failure must not strip a paying user of access (no restore
+      // path existed). Final cancellation is handled by subscription.deleted.
       expect(mockPrisma.subscription.update).toHaveBeenCalledWith({
         where: { stripeSubscriptionId: 'sub_123' },
         data: { status: 'past_due' },
       });
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'user-1' },
-        data: { plan: 'free' },
-      });
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
     });
 
     it('handles invoice without subscription gracefully', async () => {

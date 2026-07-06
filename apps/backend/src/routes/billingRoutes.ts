@@ -7,6 +7,35 @@ import { AppError } from '../middleware/errorHandler.js';
 
 export const billingRoutes = Router();
 
+type QcPlan = 'student' | 'pro' | 'team';
+const QC_PLANS: readonly QcPlan[] = ['student', 'pro', 'team'];
+
+/**
+ * Resolve the QualCanvas plan tier from a Stripe Price, trusting ONLY Stripe —
+ * never client-supplied input. Our prices are tagged metadata.app='qualcanvas'
+ * + metadata.plan; we fall back to the product name for any grandfathered /
+ * untagged price. Returns null for unknown or foreign prices (this is a Stripe
+ * account shared across JMS products), so callers can reject them.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function deriveQualcanvasPlan(stripe: ReturnType<typeof getStripe>, price: any): Promise<QcPlan | null> {
+  if (!price) return null;
+  const meta = price.metadata || {};
+  if (meta.app === 'qualcanvas' && QC_PLANS.includes(meta.plan)) return meta.plan as QcPlan;
+  try {
+    let product = typeof price.product === 'object' ? price.product : null;
+    if (!product && typeof price.product === 'string') product = await stripe.products.retrieve(price.product);
+    const name = String(product?.name || '').toLowerCase();
+    if (!name.startsWith('qualcanvas')) return null;
+    if (name.includes('student')) return 'student';
+    if (name.includes('team')) return 'team';
+    if (name.includes('pro')) return 'pro';
+  } catch {
+    /* fall through to null */
+  }
+  return null;
+}
+
 // POST /api/billing/create-checkout — create a Stripe Checkout session
 billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -14,7 +43,10 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
     if (!userId) throw new AppError('Email account required for billing', 403);
 
     const stripe = getStripe();
-    const { priceId, plan } = req.body;
+    // NB: the client `plan` is deliberately ignored — the tier is derived from
+    // the price on Stripe below. Trusting req.body.plan let a user pay the $5
+    // Student price while claiming Team, and stack the .edu coupon on Student.
+    const { priceId } = req.body;
 
     if (!priceId || typeof priceId !== 'string') {
       return res.status(400).json({ success: false, error: 'Price ID is required' });
@@ -22,6 +54,19 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new AppError('User not found', 404);
+
+    // Resolve the plan from the price itself. This rejects unknown/foreign
+    // price IDs on the shared Stripe account and pins the coupon/entitlement to
+    // what the user is actually paying for.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let price: any;
+    try {
+      price = await stripe.prices.retrieve(priceId, { expand: ['product'] });
+    } catch {
+      throw new AppError('Invalid price', 400);
+    }
+    const plan = await deriveQualcanvasPlan(stripe, price);
+    if (!plan) throw new AppError('Unrecognized plan price', 400);
 
     // Create or retrieve Stripe customer
     let customerId = user.stripeCustomerId;
@@ -41,7 +86,8 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
     // Auto-apply academic discount for .edu emails.
     // The Student tier is already academically priced ($5), so it must NOT
     // stack the 40% coupon on top (that would drop it to ~$3). The coupon
-    // applies only to the full-price Pro/Team plans.
+    // applies only to the full-price Pro/Team plans. `plan` is server-derived
+    // from the price, so this can't be bypassed by a forged request body.
     const discounts: { coupon: string }[] = [];
     if (user.email.endsWith('.edu') && plan !== 'student' && process.env.STRIPE_ACADEMIC_COUPON_ID) {
       discounts.push({ coupon: process.env.STRIPE_ACADEMIC_COUPON_ID });
@@ -55,7 +101,7 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
       ...(discounts.length > 0 ? { discounts } : {}),
       success_url: `${appUrl}/account?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/pricing`,
-      metadata: { userId: user.id, plan: plan || 'pro' },
+      metadata: { userId: user.id, plan },
     });
 
     res.json({ success: true, data: { url: session.url } });
@@ -110,6 +156,8 @@ billingRoutes.get('/billing/subscription', auth, async (req: Request, res: Respo
   }
 });
 
+const nowSecs = () => Math.floor(Date.now() / 1000);
+
 // POST /api/billing/webhook — Stripe webhook handler
 // This route needs raw body, registered separately in index.ts
 export async function handleStripeWebhook(req: Request, res: Response) {
@@ -144,14 +192,17 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const session = event.data.object as any;
         const userId = session.metadata?.userId;
-        const plan = session.metadata?.plan || 'pro';
         const subscriptionId = session.subscription as string;
 
         if (userId && subscriptionId) {
-          const sub = await stripe.subscriptions.retrieve(subscriptionId);
+          const sub = await stripe.subscriptions.retrieve(subscriptionId, {
+            expand: ['items.data.price.product'],
+          });
           const item = sub.items.data[0];
-          const periodStart = item?.current_period_start ?? Math.floor(Date.now() / 1000);
-          const periodEnd = item?.current_period_end ?? Math.floor(Date.now() / 1000) + 30 * 24 * 3600;
+          // Entitlement is derived from the subscribed price, not client metadata.
+          const plan = (await deriveQualcanvasPlan(stripe, item?.price)) || session.metadata?.plan || 'pro';
+          const periodStart = item?.current_period_start ?? nowSecs();
+          const periodEnd = item?.current_period_end ?? nowSecs() + 30 * 24 * 3600;
           await prisma.$transaction([
             prisma.subscription.upsert({
               where: { userId },
@@ -187,22 +238,30 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           where: { stripeSubscriptionId: sub.id },
         });
         if (existingSub) {
+          const item = sub.items.data[0];
+          // Period fields live on the subscription ITEM in this API version;
+          // reading sub.current_period_* yields undefined → Invalid Date.
+          const periodStart = item?.current_period_start ?? nowSecs();
+          const periodEnd = item?.current_period_end ?? nowSecs() + 30 * 24 * 3600;
           await prisma.subscription.update({
             where: { stripeSubscriptionId: sub.id },
             data: {
               status: sub.status,
-              currentPeriodStart: new Date(sub.current_period_start * 1000),
-              currentPeriodEnd: new Date(sub.current_period_end * 1000),
+              currentPeriodStart: new Date(periodStart * 1000),
+              currentPeriodEnd: new Date(periodEnd * 1000),
               cancelAtPeriodEnd: sub.cancel_at_period_end || false,
-              stripePriceId: sub.items.data[0]?.price?.id || existingSub.stripePriceId,
+              stripePriceId: item?.price?.id || existingSub.stripePriceId,
             },
           });
-          // Downgrade user if subscription is no longer active
-          if (!['active', 'trialing'].includes(sub.status)) {
-            await prisma.user.update({
-              where: { id: existingSub.userId },
-              data: { plan: 'free' },
-            });
+          if (['active', 'trialing'].includes(sub.status)) {
+            // Re-derive the tier from the (possibly changed) price so a plan
+            // switch in the Customer Portal actually updates entitlements.
+            const plan = await deriveQualcanvasPlan(stripe, item?.price);
+            if (plan) {
+              await prisma.user.update({ where: { id: existingSub.userId }, data: { plan } });
+            }
+          } else {
+            await prisma.user.update({ where: { id: existingSub.userId }, data: { plan: 'free' } });
           }
         }
         break;
@@ -211,18 +270,18 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       case 'customer.subscription.deleted': {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sub = event.data.object as any;
-        const existing = await prisma.subscription.findUnique({
+        const subRow = await prisma.subscription.findUnique({
           where: { stripeSubscriptionId: sub.id },
           include: { user: true },
         });
-        if (existing) {
+        if (subRow) {
           await prisma.$transaction([
             prisma.subscription.update({
               where: { stripeSubscriptionId: sub.id },
               data: { status: 'canceled' },
             }),
             prisma.user.update({
-              where: { id: existing.userId },
+              where: { id: subRow.userId },
               data: { plan: 'free' },
             }),
           ]);
@@ -234,16 +293,19 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         // Recurring renewal succeeded — Stripe doesn't fire customer.subscription.updated
         // on routine renewals (only on plan changes), so without this handler the
         // Subscription.currentPeriodEnd would stay stuck at the original signup
-        // date. Refresh from Stripe so UI showing "renews on X" is accurate.
+        // date. Refresh from Stripe so UI showing "renews on X" is accurate, and
+        // restore the paid tier (e.g. after recovering from a past_due dunning).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const invoice = event.data.object as any;
         const subscriptionId = invoice.subscription as string;
         if (subscriptionId) {
-          const existing = await prisma.subscription.findUnique({
+          const subRow = await prisma.subscription.findUnique({
             where: { stripeSubscriptionId: subscriptionId },
           });
-          if (existing) {
-            const sub = await stripe.subscriptions.retrieve(subscriptionId);
+          if (subRow) {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId, {
+              expand: ['items.data.price.product'],
+            });
             const item = sub.items.data[0];
             if (item) {
               await prisma.subscription.update({
@@ -254,6 +316,12 @@ export async function handleStripeWebhook(req: Request, res: Response) {
                   currentPeriodEnd: new Date(item.current_period_end * 1000),
                 },
               });
+              if (['active', 'trialing'].includes(sub.status)) {
+                const plan = await deriveQualcanvasPlan(stripe, item.price);
+                if (plan) {
+                  await prisma.user.update({ where: { id: subRow.userId }, data: { plan } });
+                }
+              }
             }
           }
         }
@@ -269,22 +337,24 @@ export async function handleStripeWebhook(req: Request, res: Response) {
             where: { stripeSubscriptionId: subscriptionId },
           });
           if (failedSub) {
-            await prisma.$transaction([
-              prisma.subscription.update({
-                where: { stripeSubscriptionId: subscriptionId },
-                data: { status: 'past_due' },
-              }),
-              prisma.user.update({
-                where: { id: failedSub.userId },
-                data: { plan: 'free' },
-              }),
-            ]);
+            // Mark past_due but DO NOT demote the plan. Stripe Smart Retries
+            // usually recover the payment within days (an expired card, a
+            // temporary decline); demoting on the first failure stripped paying
+            // users of access with no restore path. Final cancellation is
+            // handled by customer.subscription.deleted.
+            await prisma.subscription.update({
+              where: { stripeSubscriptionId: subscriptionId },
+              data: { status: 'past_due' },
+            });
           }
         }
         break;
       }
     }
 
+    // Record the event only after successful handling, so a genuine failure
+    // (below) is retried by Stripe instead of short-circuiting at the dedupe
+    // check. Guarded against a concurrent duplicate delivery (unique id).
     console.log(`[Stripe Webhook] Processed: ${event.type} (${event.id})`);
     res.json({ received: true });
   } catch (err) {
