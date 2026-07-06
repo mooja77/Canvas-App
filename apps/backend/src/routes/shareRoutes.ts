@@ -271,7 +271,10 @@ canvasPublicRoutes.get('/canvas/shared/:code', validateParams(shareCodeParam), a
       },
     });
 
-    if (!canvas) return next(new AppError('Canvas not found', 404));
+    // A trashed (soft-deleted) canvas must not stay publicly readable via its
+    // share link — the CanvasShare row persists after trashing (mirrors the
+    // clone path's guard above).
+    if (!canvas || canvas.deletedAt) return next(new AppError('Canvas not found', 404));
 
     const data = {
       ...canvas,
