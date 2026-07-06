@@ -19,7 +19,9 @@ exportRoutes.get('/canvas/:id/export/excel', validateParams(canvasIdParam), asyn
       include: {
         transcripts: { orderBy: { sortOrder: 'asc' } },
         questions: { orderBy: { sortOrder: 'asc' } },
-        codings: { take: 50000 },
+        // Deterministic order so the 50k cap always clips the same (newest) rows
+        // rather than an arbitrary set.
+        codings: { take: 50000, orderBy: { createdAt: 'asc' } },
         cases: { orderBy: { createdAt: 'asc' } },
       },
     });

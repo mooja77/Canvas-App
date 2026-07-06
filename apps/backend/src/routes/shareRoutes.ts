@@ -139,105 +139,111 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
       cloneName = `${baseName} ${attempt}`;
     }
 
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const newCanvas = await tx.codingCanvas.create({
-        data: {
-          dashboardAccessId,
-          name: cloneName,
-          description: source.description,
-        },
-      });
-
-      const transcriptIdMap = new Map<string, string>();
-      const questionIdMap = new Map<string, string>();
-      const caseIdMap = new Map<string, string>();
-
-      for (const c of source.cases) {
-        const newCase = await tx.canvasCase.create({
-          data: { canvasId: newCanvas.id, name: c.name, attributes: c.attributes },
-        });
-        caseIdMap.set(c.id, newCase.id);
-      }
-
-      for (const t of source.transcripts) {
-        const newT = await tx.canvasTranscript.create({
+    const result = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const newCanvas = await tx.codingCanvas.create({
           data: {
-            canvasId: newCanvas.id,
-            title: t.title,
-            content: t.content,
-            sortOrder: t.sortOrder,
-            caseId: t.caseId ? caseIdMap.get(t.caseId) || null : null,
-            sourceType: 'cross-canvas',
-            sourceId: t.id,
+            dashboardAccessId,
+            name: cloneName,
+            description: source.description,
           },
         });
-        transcriptIdMap.set(t.id, newT.id);
-      }
 
-      for (const q of source.questions) {
-        const newQ = await tx.canvasQuestion.create({
-          data: { canvasId: newCanvas.id, text: q.text, color: q.color, sortOrder: q.sortOrder },
-        });
-        questionIdMap.set(q.id, newQ.id);
-      }
+        const transcriptIdMap = new Map<string, string>();
+        const questionIdMap = new Map<string, string>();
+        const caseIdMap = new Map<string, string>();
 
-      for (const q of source.questions) {
-        if (q.parentQuestionId && questionIdMap.has(q.parentQuestionId)) {
-          await tx.canvasQuestion.update({
-            where: { id: questionIdMap.get(q.id)! },
-            data: { parentQuestionId: questionIdMap.get(q.parentQuestionId)! },
+        for (const c of source.cases) {
+          const newCase = await tx.canvasCase.create({
+            data: { canvasId: newCanvas.id, name: c.name, attributes: c.attributes },
           });
+          caseIdMap.set(c.id, newCase.id);
         }
-      }
 
-      for (const m of source.memos) {
-        await tx.canvasMemo.create({
-          data: { canvasId: newCanvas.id, title: m.title, content: m.content, color: m.color },
-        });
-      }
-
-      for (const c of source.codings) {
-        const newTranscriptId = transcriptIdMap.get(c.transcriptId);
-        const newQuestionId = questionIdMap.get(c.questionId);
-        if (newTranscriptId && newQuestionId) {
-          await tx.canvasTextCoding.create({
+        for (const t of source.transcripts) {
+          const newT = await tx.canvasTranscript.create({
             data: {
               canvasId: newCanvas.id,
-              transcriptId: newTranscriptId,
-              questionId: newQuestionId,
-              startOffset: c.startOffset,
-              endOffset: c.endOffset,
-              codedText: c.codedText,
-              note: c.note,
-              annotation: c.annotation,
+              title: t.title,
+              content: t.content,
+              sortOrder: t.sortOrder,
+              caseId: t.caseId ? caseIdMap.get(t.caseId) || null : null,
+              sourceType: 'cross-canvas',
+              sourceId: t.id,
             },
           });
+          transcriptIdMap.set(t.id, newT.id);
         }
-      }
 
-      for (const r of source.relations) {
-        const fromId = r.fromType === 'case' ? caseIdMap.get(r.fromId) : questionIdMap.get(r.fromId);
-        const toId = r.toType === 'case' ? caseIdMap.get(r.toId) : questionIdMap.get(r.toId);
-        if (fromId && toId) {
-          await tx.canvasRelation.create({
-            data: { canvasId: newCanvas.id, fromType: r.fromType, fromId, toType: r.toType, toId, label: r.label },
+        for (const q of source.questions) {
+          const newQ = await tx.canvasQuestion.create({
+            data: { canvasId: newCanvas.id, text: q.text, color: q.color, sortOrder: q.sortOrder },
+          });
+          questionIdMap.set(q.id, newQ.id);
+        }
+
+        for (const q of source.questions) {
+          if (q.parentQuestionId && questionIdMap.has(q.parentQuestionId)) {
+            await tx.canvasQuestion.update({
+              where: { id: questionIdMap.get(q.id)! },
+              data: { parentQuestionId: questionIdMap.get(q.parentQuestionId)! },
+            });
+          }
+        }
+
+        for (const m of source.memos) {
+          await tx.canvasMemo.create({
+            data: { canvasId: newCanvas.id, title: m.title, content: m.content, color: m.color },
           });
         }
-      }
 
-      for (const n of source.computedNodes) {
-        await tx.canvasComputedNode.create({
-          data: { canvasId: newCanvas.id, nodeType: n.nodeType, label: n.label, config: n.config, result: '{}' },
+        for (const c of source.codings) {
+          const newTranscriptId = transcriptIdMap.get(c.transcriptId);
+          const newQuestionId = questionIdMap.get(c.questionId);
+          if (newTranscriptId && newQuestionId) {
+            await tx.canvasTextCoding.create({
+              data: {
+                canvasId: newCanvas.id,
+                transcriptId: newTranscriptId,
+                questionId: newQuestionId,
+                startOffset: c.startOffset,
+                endOffset: c.endOffset,
+                codedText: c.codedText,
+                note: c.note,
+                annotation: c.annotation,
+              },
+            });
+          }
+        }
+
+        for (const r of source.relations) {
+          const fromId = r.fromType === 'case' ? caseIdMap.get(r.fromId) : questionIdMap.get(r.fromId);
+          const toId = r.toType === 'case' ? caseIdMap.get(r.toId) : questionIdMap.get(r.toId);
+          if (fromId && toId) {
+            await tx.canvasRelation.create({
+              data: { canvasId: newCanvas.id, fromType: r.fromType, fromId, toType: r.toType, toId, label: r.label },
+            });
+          }
+        }
+
+        for (const n of source.computedNodes) {
+          await tx.canvasComputedNode.create({
+            data: { canvasId: newCanvas.id, nodeType: n.nodeType, label: n.label, config: n.config, result: '{}' },
+          });
+        }
+
+        await tx.canvasShare.update({
+          where: { id: share.id },
+          data: { cloneCount: { increment: 1 } },
         });
-      }
 
-      await tx.canvasShare.update({
-        where: { id: share.id },
-        data: { cloneCount: { increment: 1 } },
-      });
-
-      return newCanvas;
-    });
+        return newCanvas;
+        // Raise the interactive-transaction timeout above Prisma's 5s default —
+        // a heavily-coded source canvas copies hundreds/thousands of rows and can
+        // otherwise exceed 5s mid-clone and roll the whole thing back.
+      },
+      { timeout: 30000, maxWait: 10000 },
+    );
 
     res.status(201).json({ success: true, data: result });
   } catch (err: unknown) {

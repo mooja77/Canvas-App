@@ -71,6 +71,12 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
         where: { id: jwtPayload.accountId },
       });
       if (access) {
+        // Enforce expiry on the JWT path too — otherwise revoking/expiring a
+        // legacy access code has no effect while the holder has a valid JWT
+        // (up to JWT_EXPIRY). Mirrors the raw-access-code fallback below.
+        if (new Date() > access.expiresAt) {
+          return next(new AppError('Access code has expired', 401));
+        }
         req.dashboardAccessId = access.id;
         req.dashboardAccess = access;
         // Legacy users are grandfathered to pro

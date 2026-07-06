@@ -17,6 +17,7 @@ import {
   autoCodeSchema,
   mergeQuestionsSchema,
   reassignCodingSchema,
+  intercoderAgreementSchema,
   canvasIdParam,
   canvasQuestionParams,
   canvasMemoParams,
@@ -418,7 +419,11 @@ codingRoutes.post(
         return res.json({ success: true, data: { created: 0, matches: [] } });
       }
 
-      const codingsToCreate = matches.map((m) => ({
+      // Cap the number of codings created in one run so a broad pattern across
+      // large transcripts can't spike DB load with an unbounded transaction.
+      const AUTO_CODE_MAX = 2000;
+      const truncated = matches.length > AUTO_CODE_MAX;
+      const codingsToCreate = matches.slice(0, AUTO_CODE_MAX).map((m) => ({
         canvasId: req.params.id,
         transcriptId: m.transcriptId,
         questionId,
@@ -444,7 +449,7 @@ codingRoutes.post(
         meta: JSON.stringify({ canvasId: req.params.id, questionId, pattern, mode, matchCount: created.length }),
       });
 
-      res.status(201).json({ success: true, data: { created: created.length, codings: created } });
+      res.status(201).json({ success: true, data: { created: created.length, codings: created, truncated } });
     } catch (err) {
       next(err);
     }
@@ -608,73 +613,72 @@ codingRoutes.delete('/canvas/:id/relations/:relId', validateParams(canvasRelatio
 // recorded on each coding (migration 0031) to compute genuine ≥2-coder
 // agreement. α generalises to any number of coders and tolerates the unbalanced
 // designs typical of qualitative work.
-codingRoutes.post('/canvas/:id/intercoder/agreement', validateParams(canvasIdParam), async (req, res, next) => {
-  try {
-    const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+codingRoutes.post(
+  '/canvas/:id/intercoder/agreement',
+  validateParams(canvasIdParam),
+  validate(intercoderAgreementSchema),
+  async (req, res, next) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
 
-    const { transcriptId, userIds } = req.body;
-    if (!transcriptId || typeof transcriptId !== 'string') {
-      throw new AppError('transcriptId is required', 400);
-    }
-    if (!Array.isArray(userIds) || userIds.length < 2) {
-      throw new AppError('At least 2 coders are required to compute agreement', 400);
-    }
+      const { transcriptId, userIds } = req.body;
 
-    const transcript = await prisma.canvasTranscript.findUnique({ where: { id: transcriptId } });
-    if (!transcript || transcript.canvasId !== req.params.id) {
-      throw new AppError('Transcript not found in this canvas', 404);
-    }
-
-    // Pull every coding on this transcript authored by one of the selected coders.
-    const allCodings = await prisma.canvasTextCoding.findMany({
-      where: { canvasId: req.params.id, transcriptId, coderUserId: { in: userIds } },
-    });
-
-    // Paragraph-level segmentation (mirrors the legacy route + the frontend modal).
-    const content = transcript.content;
-    const parts = content.split(/\n\s*\n/);
-    const segments: { transcriptId: string; startOffset: number; endOffset: number }[] = [];
-    let offset = 0;
-    for (const part of parts) {
-      const trimmed = part.trim();
-      if (trimmed.length > 0) {
-        const start = content.indexOf(trimmed, offset);
-        segments.push({ transcriptId, startOffset: start, endOffset: start + trimmed.length });
-        offset = start + trimmed.length;
+      const transcript = await prisma.canvasTranscript.findUnique({ where: { id: transcriptId } });
+      if (!transcript || transcript.canvasId !== req.params.id) {
+        throw new AppError('Transcript not found in this canvas', 404);
       }
+
+      // Pull every coding on this transcript authored by one of the selected coders.
+      const allCodings = await prisma.canvasTextCoding.findMany({
+        where: { canvasId: req.params.id, transcriptId, coderUserId: { in: userIds } },
+      });
+
+      // Paragraph-level segmentation (mirrors the legacy route + the frontend modal).
+      const content = transcript.content;
+      const parts = content.split(/\n\s*\n/);
+      const segments: { transcriptId: string; startOffset: number; endOffset: number }[] = [];
+      let offset = 0;
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (trimmed.length > 0) {
+          const start = content.indexOf(trimmed, offset);
+          segments.push({ transcriptId, startOffset: start, endOffset: start + trimmed.length });
+          offset = start + trimmed.length;
+        }
+      }
+      if (segments.length === 0) {
+        segments.push({ transcriptId, startOffset: 0, endOffset: content.length });
+      }
+
+      const coders = userIds.map((coderId: string) => ({
+        coderId,
+        codings: allCodings
+          .filter((c) => c.coderUserId === coderId)
+          .map((c) => ({
+            transcriptId: c.transcriptId,
+            questionId: c.questionId,
+            startOffset: c.startOffset,
+            endOffset: c.endOffset,
+          })),
+      }));
+
+      const observations = buildSegmentCodeObservations({ segments, coders });
+      const alphaResult = computeKrippendorffAlpha(observations);
+
+      res.json({
+        success: true,
+        data: {
+          method: "Krippendorff's α",
+          alpha: alphaResult.alpha,
+          nCoders: alphaResult.n_coders,
+          nUnits: alphaResult.n_units,
+          nObservations: alphaResult.n_observations,
+          nSegments: segments.length,
+        },
+      });
+    } catch (err) {
+      next(err);
     }
-    if (segments.length === 0) {
-      segments.push({ transcriptId, startOffset: 0, endOffset: content.length });
-    }
-
-    const coders = userIds.map((coderId: string) => ({
-      coderId,
-      codings: allCodings
-        .filter((c) => c.coderUserId === coderId)
-        .map((c) => ({
-          transcriptId: c.transcriptId,
-          questionId: c.questionId,
-          startOffset: c.startOffset,
-          endOffset: c.endOffset,
-        })),
-    }));
-
-    const observations = buildSegmentCodeObservations({ segments, coders });
-    const alphaResult = computeKrippendorffAlpha(observations);
-
-    res.json({
-      success: true,
-      data: {
-        method: "Krippendorff's α",
-        alpha: alphaResult.alpha,
-        nCoders: alphaResult.n_coders,
-        nUnits: alphaResult.n_units,
-        nObservations: alphaResult.n_observations,
-        nSegments: segments.length,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
+  },
+);
