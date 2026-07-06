@@ -1332,17 +1332,38 @@ export default function CanvasWorkspace() {
     if (selected.length === 0) return;
     const node = selected[0];
 
+    // Computed-node subtypes → the same friendly names shown in the Analyze menu,
+    // so the delete dialog reads "Delete Co-occurrence" not "Delete cooccurrence".
+    const COMPUTED_NODE_LABELS: Record<string, string> = {
+      search: 'Text Search',
+      wordcloud: 'Word Cloud',
+      sentiment: 'Sentiment',
+      stats: 'Statistics',
+      cooccurrence: 'Co-occurrence',
+      codingquery: 'Coding Query',
+      cluster: 'Clustering',
+      matrix: 'Framework Matrix',
+      comparison: 'Comparison',
+      treemap: 'Theme Map',
+    };
+
     let label = 'node';
     const type = node.type || '';
+    // Friendly noun for the dialog title ("Delete transcript", "Delete Co-occurrence").
+    let typeLabel = type;
     const d = node.data as Record<string, unknown>;
     if (type === 'transcript') label = (d?.title as string) || 'transcript';
     else if (type === 'question') label = (d?.text as string) || 'question';
     else if (type === 'memo') label = (d?.title as string) || 'memo';
     else if (type === 'case') label = 'case';
     else if (type === 'group') label = (d?.title as string) || 'group';
-    else label = type + ' node';
+    else {
+      const friendly = COMPUTED_NODE_LABELS[type] || 'analysis';
+      label = friendly;
+      typeLabel = friendly;
+    }
 
-    setDeleteConfirm({ nodeId: node.id, label, type });
+    setDeleteConfirm({ nodeId: node.id, label, type: typeLabel });
   }, [nodes]);
 
   const confirmDeleteNode = async () => {

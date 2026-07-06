@@ -19,7 +19,13 @@ interface StatBlockProps {
 export default function StatBlock({ number, label, animateCountUp = true, className = '' }: StatBlockProps) {
   const reduced = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
-  const [displayed, setDisplayed] = useState<string>(() => String(number));
+  // Seed with the real (localized) final value, never a bare String(number).
+  // If the count-up never runs — reduced motion, no IntersectionObserver, or
+  // the stat is simply never scrolled into view — the honest number stays on
+  // screen instead of a misleading "0 Analysis tools".
+  const [displayed, setDisplayed] = useState<string>(() =>
+    typeof number === 'number' ? number.toLocaleString() : String(number),
+  );
 
   const numericTarget = typeof number === 'number' ? number : null;
   const shouldAnimate = !reduced && animateCountUp && numericTarget !== null;
@@ -50,11 +56,13 @@ export default function StatBlock({ number, label, animateCountUp = true, classN
       return;
     }
 
-    setDisplayed('0');
+    // NB: we deliberately do NOT reset to "0" here. The zero-and-count-up only
+    // happens once the stat actually scrolls into view (in the observer
+    // callback below), so a stat that's never reached keeps its real value.
 
     let raf = 0;
     let started = false;
-    const start = performance.now();
+    let start = 0;
     const duration = 900;
 
     const tick = (now: number) => {
@@ -69,6 +77,8 @@ export default function StatBlock({ number, label, animateCountUp = true, classN
         for (const entry of entries) {
           if (entry.isIntersecting && !started) {
             started = true;
+            setDisplayed('0');
+            start = performance.now();
             raf = requestAnimationFrame(tick);
             observer.disconnect();
             break;

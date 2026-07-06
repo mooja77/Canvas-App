@@ -672,9 +672,9 @@ export default function CanvasListPanel() {
                 )}
                 {/* Stats row */}
                 {canvas._count && (
-                  <div className="flex items-center gap-3 text-[10px] text-gray-400 dark:text-gray-500 mb-2">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-gray-400 dark:text-gray-500 mb-2">
                     <span
-                      className="flex items-center gap-1"
+                      className="flex items-center gap-1 whitespace-nowrap"
                       title={`${canvas._count.transcripts} transcript${canvas._count.transcripts === 1 ? '' : 's'}`}
                       aria-label={`${canvas._count.transcripts} transcript${canvas._count.transcripts === 1 ? '' : 's'}`}
                     >
@@ -694,7 +694,7 @@ export default function CanvasListPanel() {
                       {canvas._count.transcripts} transcript{canvas._count.transcripts === 1 ? '' : 's'}
                     </span>
                     <span
-                      className="flex items-center gap-1"
+                      className="flex items-center gap-1 whitespace-nowrap"
                       title={`${canvas._count.questions} code${canvas._count.questions === 1 ? '' : 's'}`}
                       aria-label={`${canvas._count.questions} code${canvas._count.questions === 1 ? '' : 's'}`}
                     >
@@ -714,7 +714,7 @@ export default function CanvasListPanel() {
                       {canvas._count.questions} code{canvas._count.questions === 1 ? '' : 's'}
                     </span>
                     <span
-                      className="flex items-center gap-1"
+                      className="flex items-center gap-1 whitespace-nowrap"
                       title={`${canvas._count.codings} coding${canvas._count.codings === 1 ? '' : 's'}`}
                       aria-label={`${canvas._count.codings} coding${canvas._count.codings === 1 ? '' : 's'}`}
                     >
