@@ -243,6 +243,12 @@ describe('AI features integration tests', () => {
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    // Run interactive-transaction callbacks against the same mock client, and
+    // support the array form, so handlers wrapping writes in $transaction work.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockPrisma.$transaction.mockImplementation((arg: any) =>
+      typeof arg === 'function' ? arg(mockPrisma) : Promise.all(arg),
+    );
   });
 
   // ─── 1. POST /canvas/:id/ai/suggest-codes — returns code suggestions with confidence scores ───
