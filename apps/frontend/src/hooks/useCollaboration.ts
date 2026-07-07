@@ -68,11 +68,32 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
 
     const handleDisconnect = () => {
       setIsConnected(false);
+      // Drop peer cursors so a departed collaborator's arrow doesn't stay
+      // frozen on the canvas.
+      setCursors(new Map());
+    };
+
+    // Remove cursors for collaborators no longer present. handleCursorMoved only
+    // ever added to the map; nothing pruned it, so left users' cursors lingered.
+    const pruneCursors = (users: CollaboratorPresence[]) => {
+      const present = new Set(users.map((u) => u.userId));
+      setCursors((prev) => {
+        let changed = false;
+        const next = new Map(prev);
+        for (const uid of next.keys()) {
+          if (!present.has(uid)) {
+            next.delete(uid);
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
     };
 
     const handlePresenceUpdated = (data: { canvasId: string; users: CollaboratorPresence[] }) => {
       if (data.canvasId === canvasId) {
         setCollaborators(data.users);
+        pruneCursors(data.users);
       }
     };
 
@@ -83,6 +104,7 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
     }) => {
       if (data.canvasId === canvasId) {
         setCollaborators(data.users);
+        pruneCursors(data.users);
       }
     };
 
