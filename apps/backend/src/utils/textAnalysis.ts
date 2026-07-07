@@ -521,8 +521,17 @@ function buildTfIdf(documents: string[][]): { vectors: number[][]; vocabulary: s
     }
   }
 
-  const vocabulary = Array.from(vocab.keys());
   const N = documents.length;
+  // Prune the vocabulary by minimum document frequency: drop terms that appear
+  // in only one document (noise / hapax legomena). Standard TF-IDF practice
+  // that also bounds the dense N × |vocab| matrix (unpruned it could reach GBs
+  // and OOM the process on a very large canvas).
+  const MIN_DF = N >= 5 ? 2 : 1;
+  let vocabulary = Array.from(vocab.keys()).filter((term) => (df.get(term) || 0) >= MIN_DF);
+  // Fallback: on a tiny / idiosyncratic corpus where every term is unique,
+  // pruning can empty the vocabulary — keep the full set so clustering still
+  // yields keywords.
+  if (vocabulary.length === 0) vocabulary = Array.from(vocab.keys());
 
   // Build TF-IDF vectors
   const vectors = documents.map((doc) => {
@@ -619,9 +628,15 @@ function kMeans(vectors: number[][], k: number, maxIter = KMEANS_MAX_ITERATIONS)
 }
 
 export function computeClusters(codings: CodingData[], k: number, questionIds?: string[]) {
-  const filtered = questionIds?.length ? codings.filter((c) => questionIds.includes(c.questionId)) : codings;
+  const selected = questionIds?.length ? codings.filter((c) => questionIds.includes(c.questionId)) : codings;
 
-  if (filtered.length === 0) return { clusters: [] };
+  if (selected.length === 0) return { clusters: [] };
+
+  // Cap the documents fed into the dense TF-IDF + k-means (was up to the 50k
+  // coding cap) — bounds memory and the synchronous compute on the request
+  // thread on very large canvases.
+  const MAX_CLUSTER_DOCS = 2000;
+  const filtered = selected.length > MAX_CLUSTER_DOCS ? selected.slice(0, MAX_CLUSTER_DOCS) : selected;
 
   // Tokenize each coding
   const documents = filtered.map((c) => tokenize(c.codedText));
