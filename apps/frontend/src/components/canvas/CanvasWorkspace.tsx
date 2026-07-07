@@ -1515,10 +1515,20 @@ export default function CanvasWorkspace() {
     [alignmentOnNodeDrag],
   );
 
-  const handleNodeDragStop = useCallback(() => {
-    altDragDuplicatedRef.current = false;
-    alignmentOnNodeDragStop();
-  }, [alignmentOnNodeDragStop]);
+  const handleNodeDragStop = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      altDragDuplicatedRef.current = false;
+      alignmentOnNodeDragStop();
+      // Broadcast the final position so collaborators receive the move — this
+      // emit was previously never called, so live node moves never propagated.
+      // (The receive side already applies it to the store; rendering the remote
+      // move live for peers additionally needs the same-canvas rebuild to take
+      // the remote position over the stale local one — a delicate change to
+      // hard-won drag/resize-undo logic, left as a follow-up.)
+      if (activeCanvas?.id) collaboration.emitNodeMoved(activeCanvas.id, node.id, node.position);
+    },
+    [alignmentOnNodeDragStop, collaboration, activeCanvas?.id],
+  );
 
   // Select all
   const handleSelectAll = useCallback(() => {
@@ -2178,9 +2188,36 @@ export default function CanvasWorkspace() {
             height: n.id.startsWith('question-') ? n.height : restored.height,
           };
         });
-      // Add nodes from restored state that aren't in current (were deleted)
+      // Add nodes from restored state that aren't in current (were deleted) —
+      // but only if their backing entity still exists in the store. A hard
+      // delete (Ctrl+Z right after deleting a node) would otherwise resurrect a
+      // blank ghost node for a server-deleted entity: cloneForHistory strips
+      // node.data to {}, so the re-added node renders empty (e.g. a transcript
+      // node with no transcriptId). The delete is permanent server-side, so the
+      // correct undo behaviour is to leave it gone.
+      const ac = useCanvasStore.getState().activeCanvas;
+      const entityStillExists = (nodeId: string): boolean => {
+        if (!ac) return false;
+        const dash = nodeId.indexOf('-');
+        const kind = nodeId.slice(0, dash);
+        const eid = nodeId.slice(dash + 1);
+        switch (kind) {
+          case 'transcript':
+            return ac.transcripts.some((t) => t.id === eid);
+          case 'question':
+            return ac.questions.some((q) => q.id === eid);
+          case 'memo':
+            return ac.memos.some((m) => m.id === eid);
+          case 'case':
+            return ac.cases.some((c) => c.id === eid);
+          case 'computed':
+            return ac.computedNodes.some((n) => n.id === eid);
+          default:
+            return true; // group / other client-only nodes have no backing entity
+        }
+      };
       for (const rn of state.nodes) {
-        if (!currentNodes.find((n) => n.id === rn.id)) {
+        if (!currentNodes.find((n) => n.id === rn.id) && entityStillExists(rn.id)) {
           result.push(rn);
         }
       }
