@@ -70,6 +70,8 @@ model User {
   canvasTemplates   CanvasTemplate[]
   fileUploads       FileUpload[]
   canvasTextCodings CanvasTextCoding[]
+  collaborations       CanvasCollaborator[] @relation("CollaboratorUser")
+  invitedCollaborators CanvasCollaborator[] @relation("CollaboratorInviter")
 
   @@index([email])
   @@index([stripeCustomerId])
@@ -402,6 +404,11 @@ model CanvasCollaborator {
   invitedBy String?
   createdAt DateTime     @default(now())
   canvas    CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  // Real relations so deleting a user cleans up their collaborator grants
+  // (Cascade) and nulls the inviter reference (SetNull) instead of orphaning
+  // rows that still count against the owner's seat limit.
+  user      User         @relation("CollaboratorUser", fields: [userId], references: [id], onDelete: Cascade)
+  inviter   User?        @relation("CollaboratorInviter", fields: [invitedBy], references: [id], onDelete: SetNull)
 
   @@unique([canvasId, userId])
   @@index([canvasId])
