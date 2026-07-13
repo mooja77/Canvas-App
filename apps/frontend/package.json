@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/prerender-methodology.mjs",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prerender:methodology": "node scripts/prerender-methodology.mjs"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.2.9",
