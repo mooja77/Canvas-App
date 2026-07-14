@@ -28,21 +28,92 @@
       "applicationCategory": "BusinessApplication",
       "applicationSubCategory": "Research / Qualitative Analysis",
       "operatingSystem": "Web",
-      "description": "Visual qualitative research analysis software with a spatial canvas. Code interview transcripts, link evidence to themes, real-time multi-coder collaboration with inter-rater reliability built in.",
+      "description": "Visual qualitative research analysis software with a spatial canvas. Code interview transcripts inline, nest codes into themes, and run 13 built-in analyses (word cloud, sentiment, co-occurrence, coding query, cluster, matrix and more). Free tier available. Real-time multi-coder collaboration on Pro and Team; inter-rater reliability reports on Team.",
       "featureList": [
         "Visual canvas coding",
-        "Theme nesting",
+        "Nested code and theme hierarchy",
         "Inline transcript coding",
-        "Real-time collaboration",
-        "Inter-rater reliability reports",
-        "IRB-compliant audit trail",
-        "Otter/Rev/Descript imports"
+        "AI-assisted auto-coding (paid plans)",
+        "Real-time multi-coder collaboration (Pro and Team)",
+        "Inter-rater reliability reports (Team)",
+        "Audit trail of coding decisions",
+        "Research ethics panel (paid plans)",
+        "Cases and cross-study repository search (paid plans)",
+        "13 analyses: search, word cloud, sentiment, co-occurrence, matrix, comparison, cluster, coding query, treemap, document portrait, timeline, geo map, statistics",
+        "Audio and video transcription (OpenAI Whisper)",
+        "Transcript import from .docx, .txt, .csv and .vtt/.srt captions (Zoom, Otter, Teams)",
+        "REFI-QDA (.qdpx) project import and export",
+        "Export to CSV, PNG, HTML, Markdown and QDPX",
+        "Zoom, Slack and Qualtrics integrations (Team)",
+        "Read-only share links (paid plans)"
       ],
       "offers": {
         "@type": "AggregateOffer",
+        "priceCurrency": "USD",
         "lowPrice": "0",
         "highPrice": "39",
-        "priceCurrency": "USD"
+        "offerCount": 4,
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free",
+            "price": "0",
+            "priceCurrency": "USD",
+            "url": "https://qualcanvas.com/pricing",
+            "description": "2 canvases, 5 transcripts per canvas, 10,000 words per transcript, 10 codes, CSV export, 4 analysis types. No AI, no file upload, no collaborators."
+          },
+          {
+            "@type": "Offer",
+            "name": "Student",
+            "priceCurrency": "USD",
+            "url": "https://qualcanvas.com/pricing",
+            "description": "Requires a verified .edu email. 5 canvases, unlimited transcripts and codes, AI auto-coding, all 13 analyses, all export formats, 500 MB storage, 300 transcription minutes per month. No collaborators, no inter-rater reliability. $5/month, or $4/month billed annually ($48/year).",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "5",
+              "priceCurrency": "USD",
+              "referenceQuantity": {
+                "@type": "QuantitativeValue",
+                "value": 1,
+                "unitCode": "MON"
+              }
+            }
+          },
+          {
+            "@type": "Offer",
+            "name": "Pro",
+            "priceCurrency": "USD",
+            "url": "https://qualcanvas.com/pricing",
+            "description": "Unlimited canvases, AI auto-coding, all 13 analyses, up to 3 collaborators, 5 share links, 500 MB storage, 600 transcription minutes per month. Inter-rater reliability is Team-only. $15/month, or $12/month billed annually ($144/year). 40% off with a verified .edu email.",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "15",
+              "priceCurrency": "USD",
+              "referenceQuantity": {
+                "@type": "QuantitativeValue",
+                "value": 1,
+                "unitCode": "MON"
+              }
+            }
+          },
+          {
+            "@type": "Offer",
+            "name": "Team",
+            "priceCurrency": "USD",
+            "url": "https://qualcanvas.com/pricing",
+            "description": "Per seat. Everything in Pro plus unlimited collaborators and share links, inter-rater reliability reports, Zoom/Slack/Qualtrics integrations, 5 GB storage, 3,000 transcription minutes per month. $39/seat/month, or $32/seat/month billed annually ($384/year). 40% off with a verified .edu email.",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "39",
+              "priceCurrency": "USD",
+              "referenceQuantity": {
+                "@type": "QuantitativeValue",
+                "value": 1,
+                "unitCode": "MON"
+              }
+            }
+          }
+        ]
       },
       "author": {
         "@id": "https://jmsdevlab.com/#organization"
@@ -67,7 +138,7 @@
       "@id": "https://qualcanvas.com/#website",
       "url": "https://qualcanvas.com",
       "name": "QualCanvas",
-      "description": "Visual qualitative research analysis software with a spatial canvas. Code interview transcripts, link evidence to themes, real-time multi-coder collaboration with inter-rater reliability built in.",
+      "description": "Visual qualitative research analysis software with a spatial canvas. Code interview transcripts inline, nest codes into themes, and run 13 built-in analyses. Free tier available. Real-time multi-coder collaboration on Pro and Team; inter-rater reliability reports on Team.",
       "publisher": {
         "@id": "https://jmsdevlab.com/#organization"
       }

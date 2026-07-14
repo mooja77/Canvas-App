@@ -13,8 +13,14 @@ Disallow: /verify-email
 # content can appear in Claude search, Gemini, AI Overviews, and
 # Apple Intelligence with proper attribution.
 
+# GPTBot (OpenAI): allowed — it is the TRAINING crawler. Allowing it lets
+# ChatGPT learn this app exists, which matters because ~82% of ChatGPT
+# conversations never trigger a web search. Citation crawlers (OAI-SearchBot,
+# ClaudeBot, PerplexityBot) are allowed separately; bulk-scrape/training-only
+# crawlers (CCBot, Bytespider, Amazonbot, meta-externalagent) stay blocked.
+# Estate-wide policy set 2026-07-14 — matches staffhubapp.com.
 User-agent: GPTBot
-Disallow: /
+Allow: /
 
 User-agent: CCBot
 Disallow: /
