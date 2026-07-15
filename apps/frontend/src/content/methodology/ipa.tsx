@@ -9,6 +9,13 @@ export const chapterMeta = {
     "Smith's IPA — what the double hermeneutic actually requires of the analyst, why the small sample is a design choice rather than a limitation, and the four-step procedure as it's now written.",
   readMin: 8,
   updated: 'May 2026',
+  // SEO-only overrides for the <title>/meta/og:title in the prerendered head and
+  // the SPA document title. Kept separate from `title`/`subtitle` (which render the
+  // visible H1, lede and hub card) so search snippets can front-load "IPA" without
+  // touching page content. Ranks p1 but earned 0 clicks on the old academic title.
+  seoTitle: 'Interpretative Phenomenological Analysis (IPA): 2026 Guide',
+  seoDescription:
+    'Interpretative Phenomenological Analysis (IPA), step by step: the double hermeneutic, the four-step procedure, and the mistakes that sink published IPA papers.',
 };
 
 export const sections: ChapterSection[] = [

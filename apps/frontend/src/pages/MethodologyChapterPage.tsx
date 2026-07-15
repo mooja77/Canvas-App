@@ -29,7 +29,15 @@ import EthicsInPracticeChapter, {
 
 interface ChapterEntry {
   slug: string;
-  meta: { number: string; title: string; subtitle?: string; readMin: number; updated: string };
+  meta: {
+    number: string;
+    title: string;
+    subtitle?: string;
+    readMin: number;
+    updated: string;
+    seoTitle?: string;
+    seoDescription?: string;
+  };
   sections: { id: string; label: string }[];
   Component: () => JSX.Element;
 }
@@ -83,8 +91,12 @@ export default function MethodologyChapterPage() {
   const chapter = idx === -1 ? null : CHAPTERS[idx];
 
   usePageMeta(
-    chapter ? `${chapter.meta.title} — Doing qualitative research with QualCanvas` : 'Methodology — QualCanvas',
-    chapter?.meta.subtitle ?? 'A short field guide to qualitative research with QualCanvas.',
+    chapter
+      ? (chapter.meta.seoTitle ?? `${chapter.meta.title} — Doing qualitative research with QualCanvas`)
+      : 'Methodology — QualCanvas',
+    chapter?.meta.seoDescription ??
+      chapter?.meta.subtitle ??
+      'A short field guide to qualitative research with QualCanvas.',
   );
 
   useEffect(() => {

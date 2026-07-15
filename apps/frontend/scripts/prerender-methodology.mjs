@@ -160,8 +160,11 @@ let count = 0;
 
 for (const { slug, meta, sections, html } of rendered) {
   const url = `${ORIGIN}/methodology/${slug}`;
-  const title = `${meta.title} · QualCanvas Methodology`;
-  const description = meta.subtitle;
+  // Chapters may set seoTitle/seoDescription to tune the crawler-facing head
+  // (front-load the search term, add a year, promise) without altering the
+  // visible title/subtitle that render the H1, lede and hub card.
+  const title = meta.seoTitle ?? `${meta.title} · QualCanvas Methodology`;
+  const description = meta.seoDescription ?? meta.subtitle;
 
   const toc = sections?.length
     ? `
