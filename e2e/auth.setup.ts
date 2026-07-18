@@ -2,6 +2,8 @@ import { test as setup, expect } from '@playwright/test';
 import * as fs from 'fs';
 
 const AUTH_FILE = 'e2e/.auth/user.json';
+const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 3007);
+const BACKEND_ORIGIN = `http://127.0.0.1:${BACKEND_PORT}`;
 
 setup('authenticate', async ({ page }) => {
   setup.setTimeout(60000);
@@ -9,14 +11,21 @@ setup('authenticate', async ({ page }) => {
     localStorage.setItem('jms_cookie_consent', 'rejected');
     const existing = localStorage.getItem('qualcanvas-ui');
     const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
-    state.state = { ...state.state, onboardingComplete: true, setupWizardComplete: true };
+    state.state = {
+      ...state.state,
+      onboardingComplete: true,
+      setupWizardComplete: true,
+      onboardingV2Complete: true,
+      onboardingChecklistDismissed: true,
+      showFullProductTour: false,
+    };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
   });
 
   await expect
     .poll(
       async () => {
-        const res = await page.request.get('http://localhost:3007/ready').catch(() => null);
+        const res = await page.request.get(`${BACKEND_ORIGIN}/ready`).catch(() => null);
         return res?.ok() ?? false;
       },
       { timeout: 30000, message: 'backend ready endpoint should be healthy before login' },
@@ -48,14 +57,21 @@ setup('authenticate', async ({ page }) => {
   await page.evaluate(() => {
     const existing = localStorage.getItem('qualcanvas-ui');
     const state = existing ? JSON.parse(existing) : { state: {}, version: 0 };
-    state.state = { ...state.state, onboardingComplete: true, setupWizardComplete: true };
+    state.state = {
+      ...state.state,
+      onboardingComplete: true,
+      setupWizardComplete: true,
+      onboardingV2Complete: true,
+      onboardingChecklistDismissed: true,
+      showFullProductTour: false,
+    };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(state));
   });
 
   // Browser UI auth uses an httpOnly cookie, but many legacy E2E helpers still
   // seed data through Authorization headers. Mirror the cookie token into the
   // persisted auth store only for E2E runs.
-  const jwtCookie = (await page.context().cookies('http://localhost:5174')).find((cookie) => cookie.name === 'jwt');
+  const jwtCookie = (await page.context().cookies()).find((cookie) => cookie.name === 'jwt');
   if (jwtCookie?.value) {
     await page.evaluate((token) => {
       const existing = localStorage.getItem('qualcanvas-auth');
@@ -76,7 +92,7 @@ setup('authenticate', async ({ page }) => {
   });
 
   if (jwt) {
-    const baseUrl = 'http://localhost:3007/api';
+    const baseUrl = `${BACKEND_ORIGIN}/api`;
     const headers = {
       Authorization: `Bearer ${jwt}`,
       'Content-Type': 'application/json',

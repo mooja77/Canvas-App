@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
-const API_BASE = 'http://localhost:3007/api';
+const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 3007);
+const API_BASE = `http://127.0.0.1:${BACKEND_PORT}/api`;
 
 async function apiHeaders(page: Page) {
   const jwt = await page.evaluate(() => {
@@ -91,6 +92,9 @@ export async function openCanvas(page: Page) {
       ...state.state,
       onboardingComplete: true,
       setupWizardComplete: true,
+      onboardingV2Complete: true,
+      onboardingChecklistDismissed: true,
+      showFullProductTour: false,
       scrollMode: 'zoom',
     };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(state));

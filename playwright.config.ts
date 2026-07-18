@@ -7,7 +7,11 @@ const e2eDatabaseUrl = process.env.DATABASE_URL?.startsWith('postgres')
 const e2eJwtSecret = process.env.JWT_SECRET ?? 'qualcanvas-e2e-secret';
 const e2eBackendPort = Number(process.env.E2E_BACKEND_PORT ?? 3007);
 const e2eFrontendPort = Number(process.env.E2E_FRONTEND_PORT ?? 5174);
-const e2eBaseUrl = `http://127.0.0.1:${e2eFrontendPort}`;
+// Keep the browser origin on localhost because persisted auth state and older
+// specs use that origin. Probe the explicitly-bound IPv4 listener separately
+// so CI does not depend on how its runner resolves localhost.
+const e2eBaseUrl = `http://localhost:${e2eFrontendPort}`;
+const e2eFrontendProbeUrl = `http://127.0.0.1:${e2eFrontendPort}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -87,7 +91,7 @@ export default defineConfig({
     },
     {
       command: 'npm run dev:frontend',
-      url: e2eBaseUrl,
+      url: e2eFrontendProbeUrl,
       reuseExistingServer: true,
       timeout: 180000,
       env: {
