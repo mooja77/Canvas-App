@@ -5,6 +5,7 @@ import path from 'path';
 
 const frontendPort = Number(process.env.FRONTEND_PORT ?? 5174);
 const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:3007';
+const frontendHost = process.env.FRONTEND_HOST;
 
 export default defineConfig({
   plugins: [
@@ -69,6 +70,7 @@ export default defineConfig({
     },
   },
   server: {
+    ...(frontendHost ? { host: frontendHost } : {}),
     port: frontendPort,
     proxy: {
       '/api': {

@@ -93,6 +93,7 @@ export default defineConfig({
       env: {
         VITE_E2E: 'true',
         FRONTEND_PORT: String(e2eFrontendPort),
+        FRONTEND_HOST: '127.0.0.1',
         BACKEND_URL: `http://127.0.0.1:${e2eBackendPort}`,
       },
     },
