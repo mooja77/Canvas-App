@@ -1,0 +1,36 @@
+TITLE
+Write Research Memos and Keep an Audit Trail in QualCanvas
+
+DESCRIPTION
+Write useful analytical memos and document decisions, ethics boundaries and changes over time.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Make the reasoning visible
+0:14 Create a memo beside the evidence
+0:28 Use position as part of the explanation
+0:42 Keep ethics decisions in the workflow
+0:56 Use methods and quality tools deliberately
+1:11 Export an account of the work
+1:25 A defensible study leaves a trail
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+research memo, qualitative audit trail, reflexive thematic analysis, research ethics, QualCanvas tutorial
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Analysis
+Subtitle file: subtitles/06-research-memos-audit-trail.en-IE.srt
+Thumbnail: thumbnails/06-research-memos-audit-trail.jpg

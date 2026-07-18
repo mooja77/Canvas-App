@@ -1,0 +1,36 @@
+TITLE
+Start Your First QualCanvas Project | A Calm Beginner Walkthrough
+
+DESCRIPTION
+Create a first canvas, choose a sensible starting structure and know where to get help.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Your first project, calmly
+0:13 Choose the level you actually need
+0:27 Your canvases are separate workspaces
+0:40 Pick a useful starting point
+0:53 Orient yourself before adding data
+1:09 Help is available inside the workspace
+1:24 A good first session is small
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+QualCanvas tutorial, qualitative research beginner, create research project, thematic analysis tutorial, PhD research tools
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Start here
+Subtitle file: subtitles/02-start-your-first-project.en-IE.srt
+Thumbnail: thumbnails/02-start-your-first-project.jpg

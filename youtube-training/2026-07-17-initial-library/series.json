@@ -1,0 +1,1208 @@
+{
+  "voice": "en-IE-EmilyNeural",
+  "website": "https://qualcanvas.com",
+  "trainingUrl": "https://qualcanvas.com/training",
+  "channel": "PENDING_YOUTUBE_CHANNEL_URL",
+  "language": "English (Ireland)",
+  "audience": "Not made for kids",
+  "visibility": "Public",
+  "videos": [
+    {
+      "id": "01",
+      "slug": "qualcanvas-in-two-minutes",
+      "filename": "01-qualcanvas-in-two-minutes.mp4",
+      "title": "QualCanvas in 2 Minutes | From Transcript to Defensible Theme",
+      "shortTitle": "QualCanvas in two minutes",
+      "thumbnail": "TRANSCRIPT TO THEME",
+      "category": "Start here",
+      "outcome": "Understand how QualCanvas connects transcripts, codes, themes, memos and exports in one visual workflow.",
+      "tags": [
+        "QualCanvas",
+        "qualitative research software",
+        "thematic analysis",
+        "qualitative coding",
+        "interview coding",
+        "research methods"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "From transcript to defensible theme",
+          "callout": "See the interpretation—not just a list of codes",
+          "narration": "QualCanvas is a visual workspace for qualitative researchers. It keeps transcripts, codes, analytical connections and research memos together, so you can see how an interpretation developed instead of reconstructing it at the end."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/01-landing-hero.png",
+          "title": "Built around qualitative work",
+          "callout": "Code interviews, find themes and write memos you can defend",
+          "narration": "The product is designed for interview studies, field notes, open-text survey responses and other qualitative material. The first goal is simple: bring a source into a workspace without turning your analysis into a spreadsheet."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "Keep the evidence in view",
+          "callout": "Transcript excerpts, codes and links share one canvas",
+          "narration": "On the canvas, each source remains readable. Codes sit beside the passages they describe, and the links between them make recurring patterns visible across the study."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/18-analyze-menu.png",
+          "title": "Move from coding to analysis",
+          "callout": "Search, frequency, co-occurrence, queries, clustering and frameworks",
+          "narration": "When you are ready to analyse, the tools are grouped by purpose. Explore text, inspect coding patterns, compare cases or build a framework matrix without losing the path back to the source."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/23-codebook.png",
+          "title": "Keep the codebook reviewable",
+          "callout": "Definitions, colours, hierarchy and evidence stay together",
+          "narration": "The codebook gives the project a shared vocabulary. Review definitions, counts and hierarchy, then refine the structure as your interpretation changes."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/20-export-menu.png",
+          "title": "Take the work with you",
+          "callout": "Word, web, text, Excel, image and QDPX exports",
+          "narration": "Export a report for writing, an Excel workbook for review, an image for a presentation, or QDPX for exchange with compatible qualitative-analysis tools. Your work is not trapped in the canvas."
+        },
+        {
+          "kind": "brand",
+          "title": "Start with one real transcript",
+          "callout": "Explore the guide or create a free project at qualcanvas.com",
+          "narration": "Start with one transcript and one research question. Build the interpretation in small, reviewable steps, and use the guide whenever you need the next task. Visit qualcanvas dot com to begin."
+        }
+      ]
+    },
+    {
+      "id": "02",
+      "slug": "start-your-first-project",
+      "filename": "02-start-your-first-project.mp4",
+      "title": "Start Your First QualCanvas Project | A Calm Beginner Walkthrough",
+      "shortTitle": "Start your first project",
+      "thumbnail": "YOUR FIRST PROJECT",
+      "category": "Start here",
+      "outcome": "Create a first canvas, choose a sensible starting structure and know where to get help.",
+      "tags": [
+        "QualCanvas tutorial",
+        "qualitative research beginner",
+        "create research project",
+        "thematic analysis tutorial",
+        "PhD research tools"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Your first project, calmly",
+          "callout": "One canvas · one question · one source",
+          "narration": "You do not need to configure every feature before starting. A useful first QualCanvas project needs a clear study name, one research question and one synthetic or properly approved source to practise with."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/03-pricing.png",
+          "title": "Choose the level you actually need",
+          "callout": "Start free; move up only when the study requires it",
+          "narration": "You can begin on the free plan without a card. Check the current plan limits before importing a large study, and use an institutional route when governance or team controls are part of the protocol."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/11-canvas-list.png",
+          "title": "Your canvases are separate workspaces",
+          "callout": "Name each canvas so the study and stage are obvious",
+          "narration": "The canvas list is your project home. Use a specific name that another researcher will recognise, especially when you expect several phases, samples or analytic approaches."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/12-new-canvas.png",
+          "title": "Pick a useful starting point",
+          "callout": "Create a blank canvas or begin from a methodology template",
+          "narration": "Create a blank canvas when the structure should emerge from the material. Use a template when you want a starting codebook or workflow, then edit it to match the study rather than treating it as a fixed method."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "Orient yourself before adding data",
+          "callout": "Navigator on the left · canvas in the centre · tools across the top",
+          "narration": "The left navigator tracks codes and sources. The centre is the spatial canvas. Primary actions sit across the top, while the status bar shows connection, save state, zoom and the command shortcut."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/27-help-menu.png",
+          "title": "Help is available inside the workspace",
+          "callout": "Product tour, shortcuts and the full guide",
+          "narration": "If the interface feels dense, open Help. Take the product tour, view the keyboard shortcuts or open the complete guide. Learn one outcome at a time instead of trying to memorise every menu."
+        },
+        {
+          "kind": "brand",
+          "title": "A good first session is small",
+          "callout": "Create · add one source · make one code · write one memo",
+          "narration": "A successful first session ends with one canvas, one source, one code and one short memo about what you noticed. That is enough to understand the core loop and return with confidence."
+        }
+      ]
+    },
+    {
+      "id": "03",
+      "slug": "add-interview-transcripts",
+      "filename": "03-add-interview-transcripts.mp4",
+      "title": "Add Interview Transcripts in QualCanvas | Import, Organise & Protect Data",
+      "shortTitle": "Add interview transcripts",
+      "thumbnail": "ADD A TRANSCRIPT",
+      "category": "Everyday coding",
+      "outcome": "Add a transcript, keep sources organised and apply the right privacy checks before import.",
+      "tags": [
+        "import interview transcript",
+        "qualitative data coding",
+        "transcript analysis",
+        "QualCanvas tutorial",
+        "research data privacy"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Add a transcript without losing context",
+          "callout": "Use synthetic data for practice; use approved data for real studies",
+          "narration": "A transcript is more than a block of text. Before import, confirm that the study permits this storage location, remove direct identifiers where appropriate and use synthetic material whenever you are only learning the interface."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/04-guide.png",
+          "title": "Check the supported workflow",
+          "callout": "The guide covers adding, reading and coding sources",
+          "narration": "The public guide explains the supported source workflow and current limits. Review it before a large import so file types, transcript length and plan limits do not interrupt the study."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/14-transcript-menu.png",
+          "title": "Start from the Transcript action",
+          "callout": "Paste text or choose an available import path",
+          "narration": "In the workspace, open Transcript. Choose the path that matches your material, give the source a useful title and keep participant identifiers out of the title unless the protocol explicitly allows them."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/30-sources-panel.png",
+          "title": "Use Sources to stay oriented",
+          "callout": "See what is present before opening or adding more",
+          "narration": "The Sources tab provides a compact inventory. Use it to confirm that each interview arrived once, spot naming inconsistencies and return to a particular source without searching the whole canvas."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "Read in context",
+          "callout": "The full passage remains visible beside its codes",
+          "narration": "Open the transcript node and read around each passage before coding. Qualitative meaning depends on context, so avoid creating a code from a highlighted phrase alone when the surrounding answer changes its interpretation."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/09-privacy.png",
+          "title": "Treat research data as research data",
+          "callout": "Review retention, deletion, portability and processor locations",
+          "narration": "For real participant material, align QualCanvas with the consent form, ethics approval and institutional policy. The privacy page documents retention, deletion, portability and service-provider locations; your protocol remains the controlling boundary."
+        },
+        {
+          "kind": "brand",
+          "title": "Import deliberately",
+          "callout": "Check permission · remove identifiers · name clearly · verify once",
+          "narration": "The safe habit is straightforward: check permission, remove unnecessary identifiers, name the source clearly and verify the import once. Then you are ready to code."
+        }
+      ]
+    },
+    {
+      "id": "04",
+      "slug": "code-your-first-passage",
+      "filename": "04-code-your-first-passage.mp4",
+      "title": "Create a Codebook and Code Your First Passage in QualCanvas",
+      "shortTitle": "Code your first passage",
+      "thumbnail": "CODE YOUR FIRST PASSAGE",
+      "category": "Everyday coding",
+      "outcome": "Create a meaningful code, apply it to a passage and review the developing codebook.",
+      "tags": [
+        "qualitative coding tutorial",
+        "create a codebook",
+        "thematic analysis coding",
+        "interview coding",
+        "QualCanvas"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Code meaning, not just words",
+          "callout": "Name the idea and keep the source visible",
+          "narration": "A useful code captures what a passage means in relation to the research question. It should be specific enough to guide future decisions and broad enough to recognise again."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/15-code-menu.png",
+          "title": "Create a code from the toolbar",
+          "callout": "Use a concise name, definition and colour",
+          "narration": "Open Code to create a code deliberately. Give it a short name, write a definition that distinguishes it from nearby concepts and use colour as a visual aid, not as the meaning itself."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "Select a defensible passage",
+          "callout": "Read before and after the segment before applying the code",
+          "narration": "Select the smallest passage that still carries the intended meaning. Check the sentences around it, then apply an existing code or create a new one when the concept is genuinely different."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/23-codebook.png",
+          "title": "Review the codebook as it grows",
+          "callout": "Definitions and counts expose overlap and drift",
+          "narration": "Open the codebook regularly. Codes with similar definitions may need merging; codes with very different examples may need splitting. Counts are prompts for review, not proof that a theme is important."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/22-command-palette.png",
+          "title": "Use the command palette for repeat work",
+          "callout": "Press Control or Command K and search for an action",
+          "narration": "When the canvas becomes familiar, use the command palette to reach common actions without hunting through menus. Search by the outcome you want and keep your attention on the material."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "Let connections reveal repetition",
+          "callout": "Every coded segment keeps a visible path back to its source",
+          "narration": "As coding continues, connections accumulate between sources and concepts. Use that visual structure to notice repetition, contradiction and gaps, then return to the transcript before drawing a conclusion."
+        },
+        {
+          "kind": "brand",
+          "title": "Code, compare, refine",
+          "callout": "The codebook is a working analytical instrument",
+          "narration": "Coding is iterative. Apply a code, compare examples and refine the definition. QualCanvas keeps those decisions visible, but the interpretation remains yours."
+        }
+      ]
+    },
+    {
+      "id": "05",
+      "slug": "find-patterns-analysis-tools",
+      "filename": "05-find-patterns-analysis-tools.mp4",
+      "title": "Find Patterns with QualCanvas Analysis Tools | Queries, Clusters & Frameworks",
+      "shortTitle": "Find patterns with analysis tools",
+      "thumbnail": "FIND THE PATTERN",
+      "category": "Analysis",
+      "outcome": "Choose the right analysis tool for a question and interpret outputs without treating them as automatic findings.",
+      "tags": [
+        "qualitative data analysis",
+        "code co-occurrence",
+        "framework matrix",
+        "thematic analysis tools",
+        "QualCanvas"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Ask a question before choosing a tool",
+          "callout": "An analysis view is evidence to inspect—not a conclusion",
+          "narration": "QualCanvas offers several analysis views, but the tool should follow the question. Decide whether you need to inspect language, coding patterns, cases or a developing framework before opening a chart."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/18-analyze-menu.png",
+          "title": "Analysis is grouped by purpose",
+          "callout": "Text analysis · coding analysis · frameworks and comparison",
+          "narration": "The Analyze menu separates text exploration from coding analysis and comparative frameworks. That structure helps you choose a method instead of clicking every output and keeping only the one that looks persuasive."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/26-dashboard.png",
+          "title": "Use the dashboard for orientation",
+          "callout": "Review progress and distribution before making claims",
+          "narration": "The dashboard is useful for checking coverage, code distribution and project progress. Uneven counts may reveal a sampling issue, a code that is too broad or simply a concept that appears less often."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/18-analyze-menu.png",
+          "title": "Inspect relationships between codes",
+          "callout": "Co-occurrence and Boolean queries answer different questions",
+          "narration": "Co-occurrence shows codes that overlap in passages. Coding queries let you combine conditions with and, or and not. Neither establishes causation; both help you find material worth rereading."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "Bring outputs back to the canvas",
+          "callout": "Keep the result beside transcripts, codes and memos",
+          "narration": "Analysis nodes live on the same canvas as the source material. Position a result near the relevant codes, then write a memo that records what you think it means and what could contradict it."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/23-codebook.png",
+          "title": "Check the categories behind the output",
+          "callout": "A chart is only as coherent as the codebook beneath it",
+          "narration": "Before reporting a frequency or matrix, inspect the code definitions and examples. If coders used a label inconsistently, refine or recode before treating the result as stable."
+        },
+        {
+          "kind": "brand",
+          "title": "Use tools to return to the data",
+          "callout": "Question · inspect · reread · memo · challenge",
+          "narration": "The strongest analysis loop is question, inspect, reread, memo and challenge. Use the visual outputs to locate evidence, then make the argument in your own analytical voice."
+        }
+      ]
+    },
+    {
+      "id": "06",
+      "slug": "research-memos-audit-trail",
+      "filename": "06-research-memos-audit-trail.mp4",
+      "title": "Write Research Memos and Keep an Audit Trail in QualCanvas",
+      "shortTitle": "Memos and audit trail",
+      "thumbnail": "MAKE THE REASONING VISIBLE",
+      "category": "Analysis",
+      "outcome": "Write useful analytical memos and document decisions, ethics boundaries and changes over time.",
+      "tags": [
+        "research memo",
+        "qualitative audit trail",
+        "reflexive thematic analysis",
+        "research ethics",
+        "QualCanvas tutorial"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Make the reasoning visible",
+          "callout": "A memo records what changed in your interpretation—and why",
+          "narration": "A code tells you how a passage was classified. A research memo records the analytical reasoning around that decision: what you noticed, what changed and what evidence might challenge the interpretation."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/16-memo-menu.png",
+          "title": "Create a memo beside the evidence",
+          "callout": "Write the claim, the uncertainty and the next check",
+          "narration": "Open Memo and place it near the relevant source or code. A useful memo names the emerging idea, records uncertainty and ends with a next action such as comparing another case or revisiting a definition."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "Use position as part of the explanation",
+          "callout": "Group related sources, codes, memos and outputs without hiding their links",
+          "narration": "The canvas lets you arrange reasoning spatially. Keep a memo close to the evidence it interprets, and use groups carefully so organisation supports the argument rather than replacing it."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/24-ethics.png",
+          "title": "Keep ethics decisions in the workflow",
+          "callout": "Consent, retention and AI use are analytical boundaries",
+          "narration": "The Ethics view helps keep governance questions visible. Record the boundaries that matter to the study, but remember that software prompts do not replace consent terms, ethics approval or institutional policy."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/17-tools-menu.png",
+          "title": "Use methods and quality tools deliberately",
+          "callout": "Methods statement, excerpts, codebook and agreement checks",
+          "narration": "The Tools menu gathers supporting views for methods and quality work. Use excerpts and the codebook to inspect evidence, and generate a methods statement only after confirming that it accurately describes what you did."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/20-export-menu.png",
+          "title": "Export an account of the work",
+          "callout": "Reports and disclosure files support review and handoff",
+          "narration": "Exported reports can support supervision, team review or writing. When AI was used, include the relevant disclosure and retain the human decisions behind accepted or rejected suggestions."
+        },
+        {
+          "kind": "brand",
+          "title": "A defensible study leaves a trail",
+          "callout": "Decision · reason · evidence · revision",
+          "narration": "You do not need to document every click. Document the decisions that changed the analysis: the reason, the evidence and any later revision. That is the trail another researcher can follow."
+        }
+      ]
+    },
+    {
+      "id": "07",
+      "slug": "share-and-intercoder-agreement",
+      "filename": "07-share-and-intercoder-agreement.mp4",
+      "title": "Share a QualCanvas Project and Check Intercoder Agreement",
+      "shortTitle": "Share and check agreement",
+      "thumbnail": "COLLABORATE WITH CONTROL",
+      "category": "Working together",
+      "outcome": "Share work intentionally, understand roles and use agreement metrics as a discussion aid.",
+      "tags": [
+        "intercoder agreement",
+        "qualitative research collaboration",
+        "Cohen kappa",
+        "Krippendorff alpha",
+        "QualCanvas teams"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Collaborate without losing control",
+          "callout": "Share the right workspace with the right person for the right task",
+          "narration": "Collaboration works best when access has a purpose. Decide whether someone needs to view, code, review or manage the project before sharing a canvas or inviting them into a team workflow."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/05-for-teams.png",
+          "title": "Plan the handoff before the invitation",
+          "callout": "Define roles, codebook ownership and review points",
+          "narration": "For a team study, agree who owns the codebook, when coders work independently and how disagreements will be resolved. Software can show activity; it cannot make those methodological decisions for you."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/21-share-canvas.png",
+          "title": "Share from the canvas",
+          "callout": "Use the available share controls and treat codes as credentials",
+          "narration": "Open Share from the workspace and use the available access controls. A share code or link grants access, so send it through an appropriate channel and revoke or rotate it when the collaboration ends."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/23-codebook.png",
+          "title": "Calibrate with a common codebook",
+          "callout": "Definitions and examples should be clear before independent coding",
+          "narration": "Before checking agreement, confirm that every coder worked from the same definitions and unit of analysis. A metric cannot rescue an ambiguous codebook or inconsistent passage boundaries."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/25-intercoder.png",
+          "title": "Use agreement as a prompt for discussion",
+          "callout": "Kappa or alpha summarises consistency; it does not validate the interpretation",
+          "narration": "The intercoder view can calculate agreement from comparable coding work. Treat the score as a signal: inspect the disagreements, discuss the reasoning and revise the codebook when the pattern reveals genuine ambiguity."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "Keep the discussion connected to excerpts",
+          "callout": "Resolve differences by returning to the source",
+          "narration": "When coders disagree, return to the passage and its context. Record the resolution in a memo so the next similar case is handled consistently and the methods account remains transparent."
+        },
+        {
+          "kind": "brand",
+          "title": "Agreement supports judgement",
+          "callout": "Roles · shared definitions · independent work · discussion",
+          "narration": "A sound collaboration has clear roles, shared definitions, a period of independent work and a documented discussion of differences. QualCanvas supports that process; the research team remains responsible for it."
+        }
+      ]
+    },
+    {
+      "id": "08",
+      "slug": "ai-privacy-and-control",
+      "filename": "08-ai-privacy-and-control.mp4",
+      "title": "Use AI in QualCanvas Without Giving Up Researcher Control",
+      "shortTitle": "AI privacy and control",
+      "thumbnail": "AI: YOU STAY IN CONTROL",
+      "category": "Privacy & control",
+      "outcome": "Understand what AI features do, what data is sent and what the researcher must review and disclose.",
+      "tags": [
+        "AI qualitative research",
+        "AI coding interviews",
+        "research data privacy",
+        "AI research ethics",
+        "QualCanvas AI"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "AI is optional and reviewable",
+          "callout": "No background analysis · no silent coding · no replacement for judgement",
+          "narration": "QualCanvas AI features run only when you choose an AI action. They can suggest codes, draft a summary or help sketch a framework, but they do not watch the project in the background or make an interpretation final."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/07-trust-ai.png",
+          "title": "Read the AI use policy first",
+          "callout": "Know what is sent, stored and discarded",
+          "narration": "The AI use policy explains the request path. Relevant prompt and source text are sent through the QualCanvas backend to the selected provider for that request. QualCanvas records usage metadata, not the prompt or response content."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/19-ai-menu.png",
+          "title": "Choose an action deliberately",
+          "callout": "Auto-code, AI code, chat and summarize are separate actions",
+          "narration": "The AI menu keeps each action explicit. Select only the material needed for the task, review every suggestion and keep a non-AI workflow when the consent form or ethics approval does not cover external model processing."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/07-trust-ai.png",
+          "title": "Bring your own provider key when appropriate",
+          "callout": "Provider choice and governance remain visible",
+          "narration": "You can configure a supported provider key in account settings when your institution prefers direct provider governance. Keys are encrypted at rest, and the provider relationship still needs to fit your protocol and data-processing requirements."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/24-ethics.png",
+          "title": "Treat AI use as an ethics decision",
+          "callout": "Data transmission, lawful basis, consent and disclosure all matter",
+          "narration": "Sending an excerpt to a model provider is a data-processing step. Confirm lawful basis, processor terms and participant disclosure before using AI with real research data. An available button is not ethical permission."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/20-export-menu.png",
+          "title": "Disclose the assistance",
+          "callout": "Export the AI-use record and describe the human review",
+          "narration": "Where the study uses AI, document the provider, model, feature and human decision process. QualCanvas can export an AI disclosure record, but you should verify that the final methods statement matches the actual study."
+        },
+        {
+          "kind": "brand",
+          "title": "Use AI only inside the protocol",
+          "callout": "Minimise · review · document · remain accountable",
+          "narration": "The safe pattern is minimise what you send, review every result, document the assistance and remain accountable for the interpretation. Visit qualcanvas dot com slash trust slash AI for the current policy."
+        }
+      ]
+    },
+    {
+      "id": "09",
+      "slug": "export-for-dissertation-or-handoff",
+      "filename": "09-export-for-dissertation-or-handoff.mp4",
+      "title": "Export QualCanvas Work for a Dissertation, Report or Handoff",
+      "shortTitle": "Export for writing or handoff",
+      "thumbnail": "EXPORT WITH CONTEXT",
+      "category": "Export & handoff",
+      "outcome": "Choose an export format that preserves the evidence and context needed by the next reader.",
+      "tags": [
+        "qualitative research export",
+        "QDPX export",
+        "qualitative codebook Excel",
+        "dissertation workflow",
+        "QualCanvas export"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Export for the next reader",
+          "callout": "Choose the format by what they need to verify or continue",
+          "narration": "An export is a handoff, not just a download. Decide whether the next person needs to read the argument, inspect the codebook, reuse the project in another tool or see the visual structure."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/20-export-menu.png",
+          "title": "Use the Export menu",
+          "callout": "Image · report · Excel · disclosure · QDPX",
+          "narration": "Open Export and choose the format by purpose. A canvas image is useful for slides. A report supports reading. Excel supports tabular review. QDPX supports exchange with compatible qualitative-analysis software."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/23-codebook.png",
+          "title": "Export a codebook people can interpret",
+          "callout": "Include definitions and examples—not names alone",
+          "narration": "Before handing off a codebook, review names, definitions, hierarchy and examples. A list of labels without decision rules gives the next coder very little chance of applying them consistently."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "Fit the canvas before exporting an image",
+          "callout": "Make nodes readable at normal viewing size",
+          "narration": "For a visual export, fit the relevant nodes into view and remove unnecessary empty space. Check the image at ordinary slide or document size; tiny transcript text is not useful evidence."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/04-guide.png",
+          "title": "Check format details in the guide",
+          "callout": "Supported outputs and limits can change",
+          "narration": "The guide documents the current export choices and their intended use. Review it before a deadline, especially when another application, committee or archive requires a specific format."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/09-privacy.png",
+          "title": "Protect the exported copy",
+          "callout": "An export inherits the sensitivity of the source data",
+          "narration": "Downloaded files are outside QualCanvas access controls. Store them in the approved location, limit onward sharing and apply the study's retention and deletion rules to every copy."
+        },
+        {
+          "kind": "brand",
+          "title": "A useful export preserves context",
+          "callout": "Purpose · format · readability · secure destination",
+          "narration": "Before exporting, confirm the purpose, choose the right format, test readability and send the file to an approved destination. That turns a download into a responsible handoff."
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "slug": "complete-qualitative-workflow",
+      "filename": "10-complete-qualitative-workflow.mp4",
+      "title": "The Complete QualCanvas Workflow | Transcript to Research Report",
+      "shortTitle": "Complete transcript-to-report workflow",
+      "thumbnail": "THE COMPLETE WORKFLOW",
+      "category": "Start here",
+      "outcome": "See the full sequence from project setup and coding through analysis, memoing, review and export.",
+      "tags": [
+        "complete thematic analysis workflow",
+        "qualitative research tutorial",
+        "interview analysis",
+        "coding to themes",
+        "QualCanvas walkthrough"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "The complete qualitative workflow",
+          "callout": "Set up · import · code · analyse · memo · review · export",
+          "narration": "This walkthrough connects the whole QualCanvas workflow. The exact method belongs to your study, but the practical sequence is consistent: set up carefully, keep evidence visible and document the decisions that turn coding into an argument."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/12-new-canvas.png",
+          "title": "1. Define the workspace",
+          "callout": "Name the study and choose a starting structure",
+          "narration": "Create a canvas with a name that identifies the study and phase. Begin blank or use a methodology template, then adapt every starting code or question to the actual protocol."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/14-transcript-menu.png",
+          "title": "2. Add approved source material",
+          "callout": "Import only what the protocol allows",
+          "narration": "Add transcripts or other supported sources using clear, non-identifying titles where appropriate. Verify each import and keep a source inventory before analysis expands."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "3. Code in context",
+          "callout": "Select passages, apply definitions and compare examples",
+          "narration": "Read each passage in context, apply a code that answers the research question and compare new examples with earlier ones. Refine the codebook when meanings drift or overlap."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/18-analyze-menu.png",
+          "title": "4. Explore patterns",
+          "callout": "Use the tool that matches the analytical question",
+          "narration": "Use text, coding or framework tools to locate patterns and exceptions. Treat every output as a route back to the material, not as an automatic finding."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/16-memo-menu.png",
+          "title": "5. Memo the interpretation",
+          "callout": "Record claims, uncertainty, alternatives and next checks",
+          "narration": "Write memos as the interpretation develops. Link claims to evidence, note alternative explanations and record why a code, case or theme changed."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/25-intercoder.png",
+          "title": "6. Review quality with the method in mind",
+          "callout": "Agreement metrics and audit views support—not replace—judgement",
+          "narration": "For team coding, inspect agreement and disagreements. For every study, review the codebook, ethics boundaries and analytical trail before describing the process in a methods section."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/20-export-menu.png",
+          "title": "7. Export for writing and review",
+          "callout": "Choose a readable, portable and appropriately protected format",
+          "narration": "Export the report, codebook, workbook, visual or exchange file that the next step requires. Verify the result, protect the downloaded copy and keep the original project available for trace-back."
+        },
+        {
+          "kind": "brand",
+          "title": "Keep the chain of reasoning intact",
+          "callout": "Source → code → pattern → memo → claim",
+          "narration": "The value of the workflow is the visible chain from source to code, pattern, memo and claim. QualCanvas organises that chain; the researcher remains responsible for its meaning."
+        }
+      ]
+    },
+    {
+      "id": "11",
+      "slug": "qualcanvas-for-phd-research",
+      "filename": "11-qualcanvas-for-phd-research.mp4",
+      "title": "QualCanvas for PhD and Dissertation Research | A Defensible Analysis Trail",
+      "shortTitle": "QualCanvas for PhD research",
+      "thumbnail": "DISSERTATION, DEFENSIBLE",
+      "category": "Researcher tours",
+      "outcome": "See how a doctoral researcher can organise a method, analysis trail, supervision handoff and final outputs.",
+      "tags": [
+        "PhD qualitative research",
+        "dissertation thematic analysis",
+        "doctoral research software",
+        "qualitative methods",
+        "QualCanvas"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "A dissertation needs an explainable trail",
+          "callout": "Your committee should be able to follow how the interpretation developed",
+          "narration": "For a doctoral researcher, the challenge is not only coding the material. It is retaining enough context and methodological reasoning to explain the analysis months later to a supervisor, examiner or future reader."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/08-methodology.png",
+          "title": "Start from the method—not the software",
+          "callout": "Use the methodology field guide to clarify the analytical stance",
+          "narration": "QualCanvas includes a public methodology field guide covering several approaches and ethics in practice. Use it as orientation, then follow the literature, supervision and protocol that govern your study."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "Keep chapters of evidence connected",
+          "callout": "Sources, codes and memos remain visible in one analytical space",
+          "narration": "The canvas helps you keep excerpts, categories and memos connected while the study grows. Use separate canvases or clear groups for phases when one workspace becomes harder to explain than the research itself."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/16-memo-menu.png",
+          "title": "Memo for your future self",
+          "callout": "Record why a choice made sense at the time",
+          "narration": "Write memos that capture the reason for changes in the codebook, sampling decisions and developing claims. These notes become valuable when drafting the methods and findings chapters."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/23-codebook.png",
+          "title": "Bring a reviewable codebook to supervision",
+          "callout": "Definitions and examples make feedback concrete",
+          "narration": "A supervisor can give better feedback when code names are supported by definitions and excerpts. Review the codebook together without treating code frequency as a substitute for analytical importance."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/20-export-menu.png",
+          "title": "Export for writing and examination",
+          "callout": "Reports, workbooks and visuals support different readers",
+          "narration": "Use reports for drafting, Excel for structured review and canvas images for explaining relationships. Remove or protect participant material before sharing any export outside the approved research environment."
+        },
+        {
+          "kind": "brand",
+          "title": "Write from the trail you actually made",
+          "callout": "Method · evidence · decision · revision · claim",
+          "narration": "The most defensible dissertation describes the process that actually happened. Keep the method, evidence, decisions, revisions and claims connected from the beginning, and the final writing becomes more honest and more manageable."
+        }
+      ]
+    },
+    {
+      "id": "12",
+      "slug": "methods-teaching-and-research-teams",
+      "filename": "12-methods-teaching-and-research-teams.mp4",
+      "title": "QualCanvas for Methods Teaching and Research Teams",
+      "shortTitle": "Methods teaching and research teams",
+      "thumbnail": "TEACH THE REASONING",
+      "category": "Researcher tours",
+      "outcome": "Use shared definitions, visible evidence and structured review to teach coding or coordinate a research team.",
+      "tags": [
+        "qualitative methods teaching",
+        "research team coding",
+        "intercoder reliability",
+        "qualitative coding class",
+        "QualCanvas institutions"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Teach the reasoning—not just the clicks",
+          "callout": "Visible evidence makes coding decisions discussable",
+          "narration": "In a methods course or research team, the valuable conversation is why a passage was coded in a particular way. QualCanvas keeps the excerpt, definition and developing structure visible enough to discuss together."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/06-for-institutions.png",
+          "title": "Use an institutional path for governed work",
+          "callout": "Teaching, labs and research groups need appropriate access and support",
+          "narration": "The institutions page outlines options for methods teaching, labs and governed deployments. Confirm procurement, hosting and data-processing requirements before a cohort uploads any real participant material."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/23-codebook.png",
+          "title": "Give learners a clear shared codebook",
+          "callout": "Definition, inclusion rule, exclusion rule and examples",
+          "narration": "Begin a calibration exercise with explicit definitions and passage boundaries. Ask learners to code independently before showing the class distribution, so the result reflects their decisions rather than group influence."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/25-intercoder.png",
+          "title": "Compare and discuss disagreement",
+          "callout": "Use a score to locate teaching moments",
+          "narration": "Agreement metrics can identify codes or excerpts that need discussion. Open the disagreements, ask each coder to explain the reasoning and revise the codebook only when the discussion supports a clearer rule."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/21-share-canvas.png",
+          "title": "Control access to teaching material",
+          "callout": "Use synthetic or licensed examples for classroom practice",
+          "narration": "For teaching, prefer synthetic transcripts or material licensed for classroom use. Share only with the intended cohort, and remove access when the exercise ends."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/05-for-teams.png",
+          "title": "Turn calibration into a team workflow",
+          "callout": "Roles, review points and handoffs remain explicit",
+          "narration": "The same structure supports a research team: define roles, schedule independent coding, review disagreements and document decisions. Real-time tools make coordination easier, but the team still owns the method."
+        },
+        {
+          "kind": "brand",
+          "title": "Make interpretation discussable",
+          "callout": "Shared evidence · independent judgement · documented review",
+          "narration": "Whether you are teaching a class or coordinating a lab, keep the evidence shared, the initial judgement independent and the review documented. That builds confidence without pretending qualitative interpretation is mechanical."
+        }
+      ]
+    },
+    {
+      "id": "13",
+      "slug": "import-open-text-survey-data",
+      "filename": "13-import-open-text-survey-data.mp4",
+      "title": "Import Open-Text Survey Data into QualCanvas",
+      "shortTitle": "Import open-text survey data",
+      "thumbnail": "SURVEY CSV TO CANVAS",
+      "category": "Everyday coding",
+      "outcome": "Import a CSV of open-text responses, map useful columns and prepare responses for coding without exposing respondent data.",
+      "tags": [
+        "open text survey analysis",
+        "survey CSV import",
+        "qualitative survey coding",
+        "thematic analysis survey",
+        "QualCanvas tutorial"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Bring open-text responses onto the canvas",
+          "callout": "A CSV becomes a set of traceable qualitative sources",
+          "narration": "If your survey includes open-text answers, QualCanvas can bring them into the same visual coding workflow as interview material. Start with a clean CSV exported from your survey system, and remove fields you do not need for analysis."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/31-survey-import.png",
+          "title": "Open the Survey importer",
+          "callout": "Survey → Import Survey Data, C S V",
+          "narration": "Inside a canvas, choose Survey to open the CSV importer. Select the file only after checking its first row contains clear column headings and each response occupies a consistent row."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/31-survey-import.png",
+          "title": "Map the columns deliberately",
+          "callout": "Choose a title, response content and optional case field",
+          "narration": "After the file is read, map the column that names each item, the column containing the open-text response and, when appropriate, a case field. Use a research identifier rather than a participant's real name."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/30-sources-panel.png",
+          "title": "Check the imported sources",
+          "callout": "Confirm counts, titles and readable response text",
+          "narration": "Open Sources and spot-check several imported items. Confirm the response count, make sure headings have not become content and check that line breaks and characters survived the CSV export."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "Code responses with the same audit trail",
+          "callout": "Excerpt → code → pattern → memo",
+          "narration": "Code meaningful excerpts rather than treating every row as a single idea. The source, selected passage, code and later analytical structure remain connected, which makes survey interpretations easier to review."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/24-ethics.png",
+          "title": "Minimise respondent data before import",
+          "callout": "Consent, identifiers and retention rules still apply",
+          "narration": "A CSV can quietly contain email addresses, IP fields or demographic combinations that identify someone. Remove unnecessary columns, follow your consent and retention rules, and use the Ethics panel as a project reminder rather than a substitute for approval."
+        },
+        {
+          "kind": "brand",
+          "title": "Import cleanly, then analyse visibly",
+          "callout": "Prepare · map · verify · code · protect",
+          "narration": "The reliable path is simple: prepare a minimal CSV, map the columns, verify the imported sources and then code visibly. Open the QualCanvas training centre for the next tutorial on cases and cross-case comparison."
+        }
+      ]
+    },
+    {
+      "id": "14",
+      "slug": "cases-and-cross-case-analysis",
+      "filename": "14-cases-and-cross-case-analysis.mp4",
+      "title": "Build Cases and Compare Participants in QualCanvas",
+      "shortTitle": "Cases and cross-case analysis",
+      "thumbnail": "COMPARE WITH CASES",
+      "category": "Analysis",
+      "outcome": "Create analytical cases, assign source material and compare patterns across participants, sites or groups.",
+      "tags": [
+        "cross case analysis",
+        "qualitative cases",
+        "participant comparison",
+        "case study analysis",
+        "QualCanvas cases"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Compare without flattening the context",
+          "callout": "Cases can represent participants, sites or analytical groups",
+          "narration": "Cross-case analysis is useful when your question depends on comparison. In QualCanvas, a case can represent a participant, site, organisation or another unit that your method defines. Decide that unit before building the comparison."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/32-cases.png",
+          "title": "Create and describe each case",
+          "callout": "Tools → Cases",
+          "narration": "Open Tools and choose Cases. Give each case a safe research label and a short description that explains what it represents. Avoid putting identifiable participant details into the display name."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/32-cases.png",
+          "title": "Assign the relevant source material",
+          "callout": "A useful comparison depends on consistent case membership",
+          "narration": "Link the relevant transcripts or imported responses to each case. Check the assignments carefully: a missing or duplicated source can produce a convincing-looking comparison based on the wrong membership."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/33-cross-case.png",
+          "title": "Open Cross-Case analysis",
+          "callout": "Compare code patterns across defined cases",
+          "narration": "Choose Cross-Case from the Tools menu. QualCanvas summarises how codes appear across the cases you created. Treat the view as a route back to evidence, not as an automatic conclusion."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/18-analyze-menu.png",
+          "title": "Use a framework matrix when the question is structured",
+          "callout": "Case by question is another deliberate comparison",
+          "narration": "For a structured case-by-question view, open Analyze and choose Framework Matrix. The matrix supports systematic comparison while preserving the need to inspect the original excerpts and contextual notes."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/16-memo-menu.png",
+          "title": "Memo the difference and the exception",
+          "callout": "Record rival explanations and negative cases",
+          "narration": "Write down why a difference may matter, what context could explain it and which case does not fit the emerging account. A comparison becomes analytically useful when its reasoning is documented."
+        },
+        {
+          "kind": "brand",
+          "title": "Cases organise comparison—researchers interpret it",
+          "callout": "Define · assign · compare · inspect · memo",
+          "narration": "Define the unit, assign sources consistently, compare patterns, return to the evidence and memo your reasoning. Continue in the training centre with the QDPX transfer tutorial when a project needs to move between tools."
+        }
+      ]
+    },
+    {
+      "id": "15",
+      "slug": "move-projects-with-qdpx",
+      "filename": "15-move-projects-with-qdpx.mp4",
+      "title": "Move Qualitative Projects with QDPX | QualCanvas Import and Export",
+      "shortTitle": "Move projects with QDPX",
+      "thumbnail": "MOVE WORK WITH QDPX",
+      "category": "Export & handoff",
+      "outcome": "Use QDPX to transfer a qualitative project, then verify the result in the destination tool.",
+      "tags": ["QDPX import export", "NVivo QDPX", "ATLAS ti QDPX", "qualitative data exchange", "QualCanvas export"],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Move a project without treating export as magic",
+          "callout": "QDPX is an exchange format—not a guarantee of perfect parity",
+          "narration": "QDPX is an open exchange format for qualitative projects. QualCanvas can export and import QDPX, which helps when work needs to move to or from a compatible tool. Always plan time to verify the round trip."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/20-export-menu.png",
+          "title": "Open Export and import",
+          "callout": "Choose QDPX when another qualitative tool needs the project",
+          "narration": "Open the Export and import menu. Use QDPX for project exchange, while reports, spreadsheets and images serve different handoff needs. Save the export in an approved research location."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/34-qdpx-import.png",
+          "title": "Import into an existing canvas",
+          "callout": "Select a QDPX or ZIP package of no more than twenty megabytes",
+          "narration": "For import, choose Import QDPX and select a QDPX or ZIP package within the displayed twenty-megabyte limit. Read the warning in the dialog before changing an existing canvas."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/34-qdpx-import.png",
+          "title": "Use a copy for the first transfer",
+          "callout": "Protect the source project before a merge or replacement",
+          "narration": "For the first transfer, work in a copy or fresh destination canvas. That gives you a recoverable comparison if a source type, code relation or formatting detail maps differently between applications."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/23-codebook.png",
+          "title": "Verify what arrived",
+          "callout": "Sources, excerpts, codes, definitions, hierarchy and memos",
+          "narration": "After import, compare source counts, open sample excerpts and inspect the codebook, hierarchy and memos. Features that are unique to either application may not have a one-to-one equivalent in the exchange format."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/09-privacy.png",
+          "title": "Treat the package as research data",
+          "callout": "Transfer, storage and recipient controls still apply",
+          "narration": "A QDPX package can contain participant text and analytical notes. Encrypt or otherwise protect it where your protocol requires, send it only to authorised recipients and delete temporary copies according to your retention plan."
+        },
+        {
+          "kind": "brand",
+          "title": "Exchange, then verify",
+          "callout": "Back up · transfer · inspect · reconcile · document",
+          "narration": "A responsible QDPX handoff includes a backup, a controlled transfer, structured verification and a note of anything that changed. The QualCanvas training centre includes separate tutorials for reports, spreadsheets and visual exports."
+        }
+      ]
+    },
+    {
+      "id": "16",
+      "slug": "organise-a-busy-visual-canvas",
+      "filename": "16-organise-a-busy-visual-canvas.mp4",
+      "title": "Organise a Busy QualCanvas Workspace | Layout and Shortcuts",
+      "shortTitle": "Organise a busy visual canvas",
+      "thumbnail": "TIDY THE CANVAS",
+      "category": "Workspace & scale",
+      "outcome": "Use auto-arrange, fit view, navigation, display controls and the command palette to manage a growing canvas.",
+      "tags": [
+        "QualCanvas layout",
+        "qualitative visual workspace",
+        "auto arrange canvas",
+        "research workflow shortcuts",
+        "QualCanvas command palette"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Keep a growing canvas readable",
+          "callout": "Organisation supports thinking when the project becomes busy",
+          "narration": "A visual canvas becomes more valuable as the analysis grows, but only if you can still find the relevant evidence. QualCanvas includes layout and navigation controls that help without changing your coding decisions."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "Use Fit View to recover the whole picture",
+          "callout": "Zoom out, orient yourself, then move to the relevant cluster",
+          "narration": "Choose Fit View when nodes have moved beyond the visible area. Start from the full structure, then zoom or pan toward the source, code or memo you need instead of repeatedly dragging the canvas at random."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/35-more-actions.png",
+          "title": "Use Auto-arrange as a layout tool",
+          "callout": "More canvas actions → Auto-arrange layout",
+          "narration": "Open More canvas actions and choose Auto-arrange layout when the workspace needs a clean starting point. Auto-arrange changes positions; it does not decide what your evidence means or rewrite the analytical links you created."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/22-command-palette.png",
+          "title": "Open commands with Control K",
+          "callout": "Search common actions instead of hunting through menus",
+          "narration": "Press Control K to open the command palette. Search for a canvas action, run it and return to the analysis. Keyboard shortcuts are especially useful during repeated coding and review sessions."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/30-sources-panel.png",
+          "title": "Navigate from the source list",
+          "callout": "Use Sources to return to the material behind the map",
+          "narration": "Open Sources when you need a stable route back to an interview or response. The visual layout should support the evidence trail, not replace careful reading of the source material."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/28-dark-mode.png",
+          "title": "Choose a comfortable display",
+          "callout": "Light and dark modes affect display—not the project data",
+          "narration": "Switch between light and dark display modes for the working environment that suits you. On a phone, use the canvas for quick review; detailed visual organisation is clearer on a larger screen."
+        },
+        {
+          "kind": "brand",
+          "title": "A tidy view should preserve the trail",
+          "callout": "Fit · arrange · search · navigate · review",
+          "narration": "Fit the view, arrange when useful, search for commands and keep returning to the source. Continue in the training centre with the repository tutorial for organising insights across more than one project."
+        }
+      ]
+    },
+    {
+      "id": "17",
+      "slug": "research-repository-across-projects",
+      "filename": "17-research-repository-across-projects.mp4",
+      "title": "Build a Research Repository Across QualCanvas Projects",
+      "shortTitle": "Research repository across projects",
+      "thumbnail": "INSIGHTS ACROSS PROJECTS",
+      "category": "Workspace & scale",
+      "outcome": "Create a research repository and organise carefully written insights across projects while preserving links back to the source analysis.",
+      "tags": [
+        "research repository",
+        "insight repository",
+        "qualitative research operations",
+        "cross project insights",
+        "QualCanvas repository"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Carry insight across projects without losing its origin",
+          "callout": "A repository is a curated layer above individual canvases",
+          "narration": "When research spans several projects, useful insights can disappear into separate files. The QualCanvas Research Repository provides a place to curate insight records across projects while the detailed analysis remains in each canvas."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/36-research-repository.png",
+          "title": "Open the plan-controlled Repository",
+          "callout": "Collect and organise insights across research projects",
+          "narration": "Open Research Repository from your authenticated workspace. Repository access depends on the current QualCanvas plan, so confirm availability before designing a team process around it."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/37-new-repository.png",
+          "title": "Name the repository around a durable question",
+          "callout": "Use a clear name and scope description",
+          "narration": "Choose New Repository and add a name and description. A durable customer journey, service area or research programme usually makes a better boundary than a temporary presentation deadline."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/11-canvas-list.png",
+          "title": "Keep project analysis in its canvas",
+          "callout": "The repository complements canvases; it does not replace them",
+          "narration": "Each canvas remains the home of transcripts, coding and project-level reasoning. Promote a concise insight only after reviewing its supporting evidence, context and limitations."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/16-memo-menu.png",
+          "title": "Write an insight that can stand up to reuse",
+          "callout": "Claim, evidence, context, confidence and limits",
+          "narration": "Before adding an insight, capture the claim, the evidence behind it, the context in which it applies and any uncertainty or negative cases. A memorable sentence without those boundaries can become misleading when reused."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/05-for-teams.png",
+          "title": "Agree ownership and review rules",
+          "callout": "Decide who can add, revise, retire and export insights",
+          "narration": "For a team repository, assign owners and review dates. Retire or revise an insight when later research changes the evidence, and maintain the same participant privacy controls used in the source project."
+        },
+        {
+          "kind": "brand",
+          "title": "Curate insight, not just findings",
+          "callout": "Scope · evidence · context · ownership · review",
+          "narration": "A useful repository has a clear scope, traceable evidence, contextual limits, named ownership and regular review. Visit the QualCanvas training centre for applied-research workflows that connect interviews, surveys and team handoffs."
+        }
+      ]
+    },
+    {
+      "id": "18",
+      "slug": "qualcanvas-for-ux-service-applied-research",
+      "filename": "18-qualcanvas-for-ux-service-applied-research.mp4",
+      "title": "QualCanvas for UX, Service and Applied Research",
+      "shortTitle": "UX, service and applied research",
+      "thumbnail": "EVIDENCE TO DECISION",
+      "category": "Researcher tours",
+      "outcome": "Combine interviews, open-text responses, visible analysis and research memos in an applied-research workflow.",
+      "tags": [
+        "UX research analysis",
+        "service design research",
+        "applied qualitative research",
+        "customer interview coding",
+        "QualCanvas UX research"
+      ],
+      "scenes": [
+        {
+          "kind": "brand",
+          "title": "Move from evidence to a responsible decision",
+          "callout": "Interviews and open text become a visible reasoning trail",
+          "narration": "UX, service and applied researchers often need to move quickly without losing the chain of evidence. QualCanvas brings source material, coding, patterns and research memos into one visual workspace for review and handoff."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/10-customers.png",
+          "title": "Start with the job your research must support",
+          "callout": "Product, service, policy and programme questions need different outputs",
+          "narration": "Define the decision, audience and method before opening the tool. A discovery study, service evaluation and programme review may use similar interviews, but they do not automatically support the same claim."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/14-transcript-menu.png",
+          "title": "Bring in interviews and field material",
+          "callout": "Paste, type or upload supported transcript files",
+          "narration": "Add interview transcripts, workshop notes or other approved text sources. Use fictional or de-identified labels, and keep consent and data-handling rules aligned with the environment where the research was collected."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/31-survey-import.png",
+          "title": "Add open-text survey responses",
+          "callout": "Use CSV import for consistent batches of responses",
+          "narration": "For open-text survey material, import a clean CSV and map the meaningful fields. Do not bring in identifying columns merely because the survey export included them."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/13-canvas-workspace.png",
+          "title": "Keep the evidence connected to interpretation",
+          "callout": "Source → excerpt → code → pattern → memo",
+          "narration": "Code excerpts, group related ideas and preserve links back to the source. The visual structure helps a stakeholder see how a recommendation developed, while the researcher remains responsible for context and rival explanations."
+        },
+        {
+          "kind": "ui",
+          "source": "captures/20-export-menu.png",
+          "title": "Choose a handoff for the audience",
+          "callout": "Report, workbook, image or exchange package",
+          "narration": "Use a report for narrative review, a workbook for structured checking, an image for explaining relationships or QDPX for compatible project exchange. Remove participant material that the recipient is not authorised to receive."
+        },
+        {
+          "kind": "brand",
+          "title": "Fast research can still be traceable",
+          "callout": "Frame · collect · code · challenge · memo · hand off",
+          "narration": "Frame the decision, collect only what you can govern, code visibly, challenge the emerging account, memo the reasoning and hand off the right level of evidence. Follow the full QualCanvas training path for step-by-step practice."
+        }
+      ]
+    }
+  ]
+}

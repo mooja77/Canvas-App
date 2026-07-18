@@ -59,6 +59,11 @@ export default function PrivacyPage() {
             logs, request IDs, hashed IP, billing events.
           </p>
           <p>
+            <strong>Training videos:</strong> the training centre serves preview images directly from QualCanvas and
+            does not contact YouTube until you choose Play. After that choice, the privacy-enhanced YouTube player may
+            receive your IP address, browser information and viewing activity under Google&apos;s privacy terms.
+          </p>
+          <p>
             <strong>AI provider keys:</strong> If you BYOK an OpenAI / Anthropic / Google API key, it&apos;s stored
             AES-256-GCM encrypted at rest. We never log the plaintext or proxy your AI calls through our servers in a
             way that would expose them to third parties.

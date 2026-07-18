@@ -1,0 +1,107 @@
+1
+00:00:00,080 --> 00:00:04,189
+You do not need to configure every feature before starting.
+
+2
+00:00:04,189 --> 00:00:08,298
+A useful first QualCanvas project needs a clear study name,
+
+3
+00:00:08,298 --> 00:00:12,407
+one research question and one synthetic or properly approved source
+
+4
+00:00:12,407 --> 00:00:13,640
+to practise with.
+
+5
+00:00:14,040 --> 00:00:17,709
+You can begin on the free plan without a card.
+
+6
+00:00:17,709 --> 00:00:21,377
+Check the current plan limits before importing a large study,
+
+7
+00:00:21,377 --> 00:00:25,046
+and use an institutional route when governance or team controls
+
+8
+00:00:25,046 --> 00:00:26,880
+are part of the protocol.
+
+9
+00:00:27,280 --> 00:00:30,730
+The canvas list is your project home.
+
+10
+00:00:30,730 --> 00:00:35,660
+Use a specific name that another researcher will recognise, especially
+
+11
+00:00:35,660 --> 00:00:40,096
+when you expect several phases, samples or analytic approaches.
+
+12
+00:00:40,496 --> 00:00:44,566
+Create a blank canvas when the structure should emerge from the material.
+
+13
+00:00:44,566 --> 00:00:47,957
+Use a template when you want a starting codebook or
+
+14
+00:00:47,957 --> 00:00:51,349
+workflow, then edit it to match the study rather than
+
+15
+00:00:51,349 --> 00:00:53,384
+treating it as a fixed method.
+
+16
+00:00:53,784 --> 00:00:57,160
+The left navigator tracks codes and sources.
+
+17
+00:00:57,160 --> 00:01:00,053
+The centre is the spatial canvas.
+
+18
+00:01:00,053 --> 00:01:04,876
+Primary actions sit across the top, while the status bar
+
+19
+00:01:04,876 --> 00:01:09,216
+shows connection, save state, zoom and the command shortcut.
+
+20
+00:01:09,616 --> 00:01:12,711
+If the interface feels dense, open Help.
+
+21
+00:01:12,711 --> 00:01:17,133
+Take the product tour, view the keyboard shortcuts or open
+
+22
+00:01:17,133 --> 00:01:18,460
+the complete guide.
+
+23
+00:01:18,460 --> 00:01:22,881
+Learn one outcome at a time instead of trying to
+
+24
+00:01:22,881 --> 00:01:24,208
+memorise every menu.
+
+25
+00:01:24,608 --> 00:01:28,808
+A successful first session ends with one canvas, one source,
+
+26
+00:01:28,808 --> 00:01:33,008
+one code and one short memo about what you noticed.
+
+27
+00:01:33,008 --> 00:01:38,048
+That is enough to understand the core loop and return with confidence.

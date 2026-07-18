@@ -32,6 +32,7 @@ import SubscribePage from './pages/SubscribePage';
 import { useAuthStore } from './stores/authStore';
 
 const MethodologyChapterPage = lazy(() => import('./pages/MethodologyChapterPage'));
+const TrainingPage = lazy(() => import('./pages/TrainingPage').then((module) => ({ default: module.TrainingPage })));
 const CanvasPage = lazy(() => import('./pages/CanvasPage'));
 const AccountPage = lazy(() => import('./pages/AccountPage'));
 const RepositoryPage = lazy(() => import('./pages/RepositoryPage'));
@@ -124,6 +125,14 @@ export default function App() {
           <Route path="/trust" element={<TrustPage />} />
           <Route path="/cookies" element={<CookiePolicyPage />} />
           <Route path="/guide" element={<GuidePage />} />
+          <Route
+            path="/training"
+            element={
+              <Suspense fallback={<PageSkeleton />}>
+                <TrainingPage />
+              </Suspense>
+            }
+          />
           <Route
             path="/admin"
             element={

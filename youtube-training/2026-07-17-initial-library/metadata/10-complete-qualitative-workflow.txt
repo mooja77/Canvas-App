@@ -1,0 +1,38 @@
+TITLE
+The Complete QualCanvas Workflow | Transcript to Research Report
+
+DESCRIPTION
+See the full sequence from project setup and coding through analysis, memoing, review and export.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 The complete qualitative workflow
+0:15 1. Define the workspace
+0:28 2. Add approved source material
+0:41 3. Code in context
+0:54 4. Explore patterns
+1:06 5. Memo the interpretation
+1:18 6. Review quality with the method in mind
+1:32 7. Export for writing and review
+1:47 Keep the chain of reasoning intact
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+complete thematic analysis workflow, qualitative research tutorial, interview analysis, coding to themes, QualCanvas walkthrough
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Start here
+Subtitle file: subtitles/10-complete-qualitative-workflow.en-IE.srt
+Thumbnail: thumbnails/10-complete-qualitative-workflow.jpg

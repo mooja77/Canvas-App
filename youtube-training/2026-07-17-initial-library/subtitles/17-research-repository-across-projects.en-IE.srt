@@ -1,0 +1,99 @@
+1
+00:00:00,080 --> 00:00:05,910
+When research spans several projects, useful insights can disappear into separate files.
+
+2
+00:00:05,910 --> 00:00:10,768
+The QualCanvas Research Repository provides a place to curate insight
+
+3
+00:00:10,768 --> 00:00:15,626
+records across projects while the detailed analysis remains in each
+
+4
+00:00:15,626 --> 00:00:16,112
+canvas.
+
+5
+00:00:16,512 --> 00:00:20,174
+Open Research Repository from your authenticated workspace.
+
+6
+00:00:20,174 --> 00:00:25,406
+Repository access depends on the current QualCanvas plan, so confirm
+
+7
+00:00:25,406 --> 00:00:29,592
+availability before designing a team process around it.
+
+8
+00:00:29,992 --> 00:00:34,111
+Choose New Repository and add a name and description.
+
+9
+00:00:34,111 --> 00:00:38,689
+A durable customer journey, service area or research programme usually
+
+10
+00:00:38,689 --> 00:00:42,808
+makes a better boundary than a temporary presentation deadline.
+
+11
+00:00:43,208 --> 00:00:49,181
+Each canvas remains the home of transcripts, coding and project-level reasoning.
+
+12
+00:00:49,181 --> 00:00:54,611
+Promote a concise insight only after reviewing its supporting evidence,
+
+13
+00:00:54,611 --> 00:00:56,240
+context and limitations.
+
+14
+00:00:56,640 --> 00:01:01,016
+Before adding an insight, capture the claim, the evidence behind
+
+15
+00:01:01,016 --> 00:01:05,393
+it, the context in which it applies and any uncertainty
+
+16
+00:01:05,393 --> 00:01:06,706
+or negative cases.
+
+17
+00:01:06,706 --> 00:01:11,520
+A memorable sentence without those boundaries can become misleading when reused.
+
+18
+00:01:11,920 --> 00:01:16,091
+For a team repository, assign owners and review dates.
+
+19
+00:01:16,091 --> 00:01:20,727
+Retire or revise an insight when later research changes the
+
+20
+00:01:20,727 --> 00:01:25,362
+evidence, and maintain the same participant privacy controls used in
+
+21
+00:01:25,362 --> 00:01:26,752
+the source project.
+
+22
+00:01:27,152 --> 00:01:32,703
+A useful repository has a clear scope, traceable evidence, contextual
+
+23
+00:01:32,703 --> 00:01:36,034
+limits, named ownership and regular review.
+
+24
+00:01:36,034 --> 00:01:41,585
+Visit the QualCanvas training centre for applied-research workflows that connect
+
+25
+00:01:41,585 --> 00:01:44,360
+interviews, surveys and team handoffs.

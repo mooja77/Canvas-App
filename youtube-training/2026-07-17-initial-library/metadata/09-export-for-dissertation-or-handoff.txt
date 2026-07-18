@@ -1,0 +1,36 @@
+TITLE
+Export QualCanvas Work for a Dissertation, Report or Handoff
+
+DESCRIPTION
+Choose an export format that preserves the evidence and context needed by the next reader.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Export for the next reader
+0:13 Use the Export menu
+0:33 Export a codebook people can interpret
+0:47 Fit the canvas before exporting an image
+1:02 Check format details in the guide
+1:16 Protect the exported copy
+1:29 A useful export preserves context
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+qualitative research export, QDPX export, qualitative codebook Excel, dissertation workflow, QualCanvas export
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Export & handoff
+Subtitle file: subtitles/09-export-for-dissertation-or-handoff.en-IE.srt
+Thumbnail: thumbnails/09-export-for-dissertation-or-handoff.jpg

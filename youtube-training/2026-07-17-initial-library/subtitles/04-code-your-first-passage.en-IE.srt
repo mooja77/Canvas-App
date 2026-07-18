@@ -1,0 +1,103 @@
+1
+00:00:00,080 --> 00:00:03,928
+A useful code captures what a passage means in relation
+
+2
+00:00:03,928 --> 00:00:05,468
+to the research question.
+
+3
+00:00:05,468 --> 00:00:09,316
+It should be specific enough to guide future decisions and
+
+4
+00:00:09,316 --> 00:00:11,240
+broad enough to recognise again.
+
+5
+00:00:11,640 --> 00:00:14,287
+Open Code to create a code deliberately.
+
+6
+00:00:14,287 --> 00:00:18,069
+Give it a short name, write a definition that distinguishes
+
+7
+00:00:18,069 --> 00:00:21,851
+it from nearby concepts and use colour as a visual
+
+8
+00:00:21,851 --> 00:00:24,120
+aid, not as the meaning itself.
+
+9
+00:00:24,520 --> 00:00:28,484
+Select the smallest passage that still carries the intended meaning.
+
+10
+00:00:28,484 --> 00:00:32,448
+Check the sentences around it, then apply an existing code
+
+11
+00:00:32,448 --> 00:00:36,412
+or create a new one when the concept is genuinely
+
+12
+00:00:36,412 --> 00:00:36,808
+different.
+
+13
+00:00:37,208 --> 00:00:39,078
+Open the codebook regularly.
+
+14
+00:00:39,078 --> 00:00:43,755
+Codes with similar definitions may need merging; codes with very
+
+15
+00:00:43,755 --> 00:00:46,093
+different examples may need splitting.
+
+16
+00:00:46,093 --> 00:00:51,704
+Counts are prompts for review, not proof that a theme is important.
+
+17
+00:00:52,104 --> 00:00:55,952
+When the canvas becomes familiar, use the command palette to
+
+18
+00:00:55,952 --> 00:00:58,646
+reach common actions without hunting through menus.
+
+19
+00:00:58,646 --> 00:01:02,494
+Search by the outcome you want and keep your attention
+
+20
+00:01:02,494 --> 00:01:03,648
+on the material.
+
+21
+00:01:04,048 --> 00:01:08,815
+As coding continues, connections accumulate between sources and concepts.
+
+22
+00:01:08,815 --> 00:01:14,113
+Use that visual structure to notice repetition, contradiction and gaps,
+
+23
+00:01:14,113 --> 00:01:18,880
+then return to the transcript before drawing a conclusion.
+
+24
+00:01:19,280 --> 00:01:21,113
+Coding is iterative.
+
+25
+00:01:21,113 --> 00:01:26,611
+Apply a code, compare examples and refine the definition.
+
+26
+00:01:26,611 --> 00:01:32,720
+QualCanvas keeps those decisions visible, but the interpretation remains yours.

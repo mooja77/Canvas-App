@@ -1,0 +1,107 @@
+1
+00:00:00,080 --> 00:00:05,439
+For a doctoral researcher, the challenge is not only coding the material.
+
+2
+00:00:05,439 --> 00:00:09,904
+It is retaining enough context and methodological reasoning to explain
+
+3
+00:00:09,904 --> 00:00:14,369
+the analysis months later to a supervisor, examiner or future
+
+4
+00:00:14,369 --> 00:00:14,816
+reader.
+
+5
+00:00:15,216 --> 00:00:20,165
+QualCanvas includes a public methodology field guide covering several approaches
+
+6
+00:00:20,165 --> 00:00:22,145
+and ethics in practice.
+
+7
+00:00:22,145 --> 00:00:27,094
+Use it as orientation, then follow the literature, supervision and
+
+8
+00:00:27,094 --> 00:00:29,568
+protocol that govern your study.
+
+9
+00:00:29,968 --> 00:00:34,244
+The canvas helps you keep excerpts, categories and memos connected
+
+10
+00:00:34,244 --> 00:00:35,955
+while the study grows.
+
+11
+00:00:35,955 --> 00:00:40,231
+Use separate canvases or clear groups for phases when one
+
+12
+00:00:40,231 --> 00:00:44,080
+workspace becomes harder to explain than the research itself.
+
+13
+00:00:44,480 --> 00:00:48,987
+Write memos that capture the reason for changes in the
+
+14
+00:00:48,987 --> 00:00:51,691
+codebook, sampling decisions and developing claims.
+
+15
+00:00:51,691 --> 00:00:56,648
+These notes become valuable when drafting the methods and findings chapters.
+
+16
+00:00:57,048 --> 00:01:01,666
+A supervisor can give better feedback when code names are
+
+17
+00:01:01,666 --> 00:01:03,975
+supported by definitions and excerpts.
+
+18
+00:01:03,975 --> 00:01:08,593
+Review the codebook together without treating code frequency as a
+
+19
+00:01:08,593 --> 00:01:10,440
+substitute for analytical importance.
+
+20
+00:01:10,840 --> 00:01:16,120
+Use reports for drafting, Excel for structured review and canvas
+
+21
+00:01:16,120 --> 00:01:18,232
+images for explaining relationships.
+
+22
+00:01:18,232 --> 00:01:23,512
+Remove or protect participant material before sharing any export outside
+
+23
+00:01:23,512 --> 00:01:25,624
+the approved research environment.
+
+24
+00:01:26,024 --> 00:01:30,854
+The most defensible dissertation describes the process that actually happened.
+
+25
+00:01:30,854 --> 00:01:35,684
+Keep the method, evidence, decisions, revisions and claims connected from
+
+26
+00:01:35,684 --> 00:01:40,514
+the beginning, and the final writing becomes more honest and
+
+27
+00:01:40,514 --> 00:01:41,480
+more manageable.

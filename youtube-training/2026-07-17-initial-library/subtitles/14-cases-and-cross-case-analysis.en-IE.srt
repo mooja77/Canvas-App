@@ -1,0 +1,103 @@
+1
+00:00:00,080 --> 00:00:05,226
+Cross-case analysis is useful when your question depends on comparison.
+
+2
+00:00:05,226 --> 00:00:10,372
+In QualCanvas, a case can represent a participant, site, organisation
+
+3
+00:00:10,372 --> 00:00:13,974
+or another unit that your method defines.
+
+4
+00:00:13,974 --> 00:00:17,576
+Decide that unit before building the comparison.
+
+5
+00:00:17,976 --> 00:00:20,424
+Open Tools and choose Cases.
+
+6
+00:00:20,424 --> 00:00:25,320
+Give each case a safe research label and a short
+
+7
+00:00:25,320 --> 00:00:28,258
+description that explains what it represents.
+
+8
+00:00:28,258 --> 00:00:32,664
+Avoid putting identifiable participant details into the display name.
+
+9
+00:00:33,064 --> 00:00:37,624
+Link the relevant transcripts or imported responses to each case.
+
+10
+00:00:37,624 --> 00:00:42,184
+Check the assignments carefully: a missing or duplicated source can
+
+11
+00:00:42,184 --> 00:00:46,288
+produce a convincing-looking comparison based on the wrong membership.
+
+12
+00:00:46,688 --> 00:00:49,448
+Choose Cross-Case from the Tools menu.
+
+13
+00:00:49,448 --> 00:00:54,048
+QualCanvas summarises how codes appear across the cases you created.
+
+14
+00:00:54,048 --> 00:00:58,648
+Treat the view as a route back to evidence, not
+
+15
+00:00:58,648 --> 00:01:00,488
+as an automatic conclusion.
+
+16
+00:01:00,888 --> 00:01:06,413
+For a structured case-by-question view, open Analyze and choose Framework Matrix.
+
+17
+00:01:06,413 --> 00:01:11,436
+The matrix supports systematic comparison while preserving the need to
+
+18
+00:01:11,436 --> 00:01:14,952
+inspect the original excerpts and contextual notes.
+
+19
+00:01:15,352 --> 00:01:19,463
+Write down why a difference may matter, what context could
+
+20
+00:01:19,463 --> 00:01:23,574
+explain it and which case does not fit the emerging
+
+21
+00:01:23,574 --> 00:01:23,985
+account.
+
+22
+00:01:23,985 --> 00:01:28,096
+A comparison becomes analytically useful when its reasoning is documented.
+
+23
+00:01:28,496 --> 00:01:33,042
+Define the unit, assign sources consistently, compare patterns, return to
+
+24
+00:01:33,042 --> 00:01:35,769
+the evidence and memo your reasoning.
+
+25
+00:01:35,769 --> 00:01:40,315
+Continue in the training centre with the QDPX transfer tutorial
+
+26
+00:01:40,315 --> 00:01:43,952
+when a project needs to move between tools.

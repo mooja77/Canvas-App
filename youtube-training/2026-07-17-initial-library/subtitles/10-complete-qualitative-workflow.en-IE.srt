@@ -1,0 +1,111 @@
+1
+00:00:00,080 --> 00:00:03,109
+This walkthrough connects the whole QualCanvas workflow.
+
+2
+00:00:03,109 --> 00:00:07,435
+The exact method belongs to your study, but the practical
+
+3
+00:00:07,435 --> 00:00:11,762
+sequence is consistent: set up carefully, keep evidence visible and
+
+4
+00:00:11,762 --> 00:00:15,656
+document the decisions that turn coding into an argument.
+
+5
+00:00:16,056 --> 00:00:21,019
+Create a canvas with a name that identifies the study and phase.
+
+6
+00:00:21,019 --> 00:00:25,155
+Begin blank or use a methodology template, then adapt every
+
+7
+00:00:25,155 --> 00:00:28,464
+starting code or question to the actual protocol.
+
+8
+00:00:28,864 --> 00:00:35,450
+Add transcripts or other supported sources using clear, non-identifying titles where appropriate.
+
+9
+00:00:35,450 --> 00:00:41,488
+Verify each import and keep a source inventory before analysis expands.
+
+10
+00:00:41,888 --> 00:00:46,268
+Read each passage in context, apply a code that answers
+
+11
+00:00:46,268 --> 00:00:50,648
+the research question and compare new examples with earlier ones.
+
+12
+00:00:50,648 --> 00:00:54,152
+Refine the codebook when meanings drift or overlap.
+
+13
+00:00:54,552 --> 00:00:59,517
+Use text, coding or framework tools to locate patterns and exceptions.
+
+14
+00:00:59,517 --> 00:01:04,031
+Treat every output as a route back to the material,
+
+15
+00:01:04,031 --> 00:01:06,288
+not as an automatic finding.
+
+16
+00:01:06,688 --> 00:01:09,928
+Write memos as the interpretation develops.
+
+17
+00:01:09,928 --> 00:01:15,328
+Link claims to evidence, note alternative explanations and record why
+
+18
+00:01:15,328 --> 00:01:18,568
+a code, case or theme changed.
+
+19
+00:01:18,968 --> 00:01:22,554
+For team coding, inspect agreement and disagreements.
+
+20
+00:01:22,554 --> 00:01:27,677
+For every study, review the codebook, ethics boundaries and analytical
+
+21
+00:01:27,677 --> 00:01:32,288
+trail before describing the process in a methods section.
+
+22
+00:01:32,688 --> 00:01:37,703
+Export the report, codebook, workbook, visual or exchange file that
+
+23
+00:01:37,703 --> 00:01:39,709
+the next step requires.
+
+24
+00:01:39,709 --> 00:01:44,724
+Verify the result, protect the downloaded copy and keep the
+
+25
+00:01:44,724 --> 00:01:47,232
+original project available for trace-back.
+
+26
+00:01:47,632 --> 00:01:52,209
+The value of the workflow is the visible chain from
+
+27
+00:01:52,209 --> 00:01:55,413
+source to code, pattern, memo and claim.
+
+28
+00:01:55,413 --> 00:02:00,448
+QualCanvas organises that chain; the researcher remains responsible for its meaning.

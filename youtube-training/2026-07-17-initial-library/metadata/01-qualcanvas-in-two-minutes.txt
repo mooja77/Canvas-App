@@ -1,0 +1,36 @@
+TITLE
+QualCanvas in 2 Minutes | From Transcript to Defensible Theme
+
+DESCRIPTION
+Understand how QualCanvas connects transcripts, codes, themes, memos and exports in one visual workflow.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 From transcript to defensible theme
+0:16 Built around qualitative work
+0:32 Keep the evidence in view
+0:43 Move from coding to analysis
+0:58 Keep the codebook reviewable
+1:09 Take the work with you
+1:24 Start with one real transcript
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+QualCanvas, qualitative research software, thematic analysis, qualitative coding, interview coding, research methods
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Start here
+Subtitle file: subtitles/01-qualcanvas-in-two-minutes.en-IE.srt
+Thumbnail: thumbnails/01-qualcanvas-in-two-minutes.jpg
