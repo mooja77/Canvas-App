@@ -60,7 +60,7 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
           req.dashboardAccessId = user.dashboardAccess.id;
           req.dashboardAccess = user.dashboardAccess;
         }
-        res.setHeader('X-Session-Timeout', '1800');
+        res.setHeader('X-Session-Timeout', '86400');
         return next();
       }
     }
@@ -81,7 +81,7 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
         req.dashboardAccess = access;
         // Legacy users are grandfathered to pro
         req.userPlan = 'pro';
-        res.setHeader('X-Session-Timeout', '1800');
+        res.setHeader('X-Session-Timeout', '86400');
         return next();
       }
     }
@@ -114,6 +114,6 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
   req.dashboardAccess = access;
   req.userPlan = 'pro'; // Legacy users grandfathered
 
-  res.setHeader('X-Session-Timeout', '1800');
+  res.setHeader('X-Session-Timeout', '86400');
   next();
 }

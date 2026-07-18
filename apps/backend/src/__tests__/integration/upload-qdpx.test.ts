@@ -98,9 +98,12 @@ vi.mock('bcryptjs', () => ({
 // Mock storage
 vi.mock('../../lib/storage.js', () => ({
   storage: {
+    providerName: vi.fn().mockReturnValue('s3'),
     getUploadUrl: vi.fn().mockResolvedValue({ url: 'https://s3.example.com/presigned-url' }),
     upload: vi.fn().mockResolvedValue({ size: 1024 }),
     download: vi.fn(),
+    head: vi.fn().mockResolvedValue({ size: 5000, contentType: 'audio/mpeg' }),
+    openReadStream: vi.fn(),
   },
 }));
 
@@ -217,7 +220,7 @@ describe('Upload and QDPX integration tests', () => {
       id: 'file-1',
       canvasId,
       userId,
-      storageKey: 'canvas/1/abc.mp3',
+      storageKey: `canvas/${canvasId}/${'a'.repeat(32)}.mp3`,
       originalName: 'interview.mp3',
       mimeType: 'audio/mpeg',
       sizeBytes: 5000,
@@ -229,7 +232,7 @@ describe('Upload and QDPX integration tests', () => {
       .post(`/api/canvas/${canvasId}/upload/confirm`)
       .set('Authorization', `Bearer ${jwt}`)
       .send({
-        storageKey: 'canvas/1/abc.mp3',
+        storageKey: `canvas/${canvasId}/${'a'.repeat(32)}.mp3`,
         originalName: 'interview.mp3',
         mimeType: 'audio/mpeg',
         sizeBytes: 5000,

@@ -32,7 +32,7 @@ export default function ForTeamsPage() {
 
   const handleTeamTrial = () => {
     trackEvent('cta_clicked', {
-      cta_label: 'Start your team trial',
+      cta_label: 'See Team pricing',
       location: 'for-teams_hero',
       target_route: '/pricing',
     });
@@ -58,20 +58,20 @@ export default function ForTeamsPage() {
             onClick={handleTeamTrial}
             className="inline-flex items-center justify-center bg-ochre-500 hover:bg-ochre-600 active:bg-ochre-700 text-ink-950 font-semibold px-8 py-3.5 rounded-lg shadow-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2"
           >
-            Start your team trial
+            See Team pricing
           </button>
         </div>
       </section>
 
-      {/* Logo wall — empty until permissions land per docs/refresh/10 R12 */}
+      {/* Audience list — do not imply customer endorsements without permission. */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
         <LogoWall
-          eyebrow="Used by research groups at"
+          eyebrow="Designed for"
           items={[
-            { name: 'Add your lab' },
-            { name: 'Anonymized PI lab' },
-            { name: 'Anonymized methods course' },
-            { name: 'Anonymized health-research group' },
+            { name: 'Principal investigators' },
+            { name: 'Research labs' },
+            { name: 'Methods courses' },
+            { name: 'Health-research groups' },
           ]}
         />
       </section>
@@ -174,7 +174,7 @@ export default function ForTeamsPage() {
             {
               question: 'Can students on a methods course use Team?',
               answer:
-                'Yes. The .edu discount applies — 40% off per seat. We routinely run Team plans for methods courses with 10–25 students; the per-seat structure is well-suited because students rotate in and out.',
+                'Yes. The .edu discount applies to eligible Team subscriptions. The per-seat structure supports methods courses, but instructors should confirm their participant count and data-governance requirements before purchase.',
             },
             {
               question: 'How is intercoder κ calculated?',
@@ -199,18 +199,8 @@ export default function ForTeamsPage() {
             },
             {
               question: 'What if we need SSO?',
-              answer: (
-                <>
-                  SSO + SCIM lives on the Institutions plan — see{' '}
-                  <Link
-                    className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
-                    to="/for-institutions"
-                  >
-                    /for-institutions
-                  </Link>
-                  .
-                </>
-              ),
+              answer:
+                'SAML/OIDC SSO and SCIM are not currently available. Treat either requirement as a deployment blocker and review the Institutions page for the current capability statement.',
             },
           ]}
         />
@@ -218,13 +208,13 @@ export default function ForTeamsPage() {
 
       <CTAStripe
         headline="Bring your lab."
-        sub="14-day team trial. Cancel any time. Per-seat billing pauses when you're not coding."
+        sub="Team access is billed per seat. Review the current limits and pricing before checkout."
         primary={
           <button
             onClick={handleTeamTrial}
             className="inline-flex items-center justify-center bg-ochre-400 hover:bg-ochre-300 active:bg-ochre-500 text-ink-950 font-semibold px-8 py-3.5 rounded-lg transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-300 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900"
           >
-            Start your team trial
+            See Team pricing
           </button>
         }
         secondary={

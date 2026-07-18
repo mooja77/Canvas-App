@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
+const frontendPort = Number(process.env.FRONTEND_PORT ?? 5174);
+const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:3007';
+
 export default defineConfig({
   plugins: [
     react(),
@@ -23,14 +26,16 @@ export default defineConfig({
         icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        // Keep install lightweight. Route chunks are cached on first use
+        // instead of eagerly downloading the entire application (~7 MB).
+        globPatterns: ['**/*.{html,ico,png,svg,woff,woff2}', 'assets/*.css'],
         runtimeCaching: [
           {
-            urlPattern: /^https?:\/\/localhost:\d+\/api\//,
-            handler: 'NetworkFirst',
+            urlPattern: ({ request }) => request.destination === 'script' || request.destination === 'style',
+            handler: 'StaleWhileRevalidate',
             options: {
-              cacheName: 'api-cache',
-              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
+              cacheName: 'application-assets',
+              expiration: { maxEntries: 40, maxAgeSeconds: 7 * 24 * 60 * 60 },
             },
           },
         ],
@@ -64,10 +69,10 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5174,
+    port: frontendPort,
     proxy: {
       '/api': {
-        target: 'http://localhost:3007',
+        target: backendUrl,
         changeOrigin: true,
       },
     },

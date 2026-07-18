@@ -207,6 +207,7 @@ export default function PricingPage() {
         </div>
 
         {/* ─── 5 tier cards ─── */}
+        <h2 className="sr-only">QualCanvas plans</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <TierCardV2
             name="Free"
@@ -236,7 +237,7 @@ export default function PricingPage() {
             features={[
               '5 canvases',
               'AI auto-code',
-              'All 12 analysis tools',
+              'All 13 analysis tools',
               'Ethics + cases',
               '~5 hrs transcription / mo',
             ]}
@@ -265,7 +266,7 @@ export default function PricingPage() {
             features={[
               'Unlimited canvases',
               '50,000 words / transcript',
-              'All 12 analysis tools',
+              'All 13 analysis tools',
               'Auto-code',
               'Ethics + cases',
               '5 share codes',
@@ -324,15 +325,15 @@ export default function PricingPage() {
           <TierCardV2
             name="Institutions"
             price="Custom"
-            pricePeriod="Volume + procurement-ready"
+            pricePeriod="Discuss volume needs"
             audience="For departments and faculties"
             features={[
               'Everything in Team',
-              'SSO + SCIM',
-              'DPA + BAA',
-              'Custom retention',
-              'EU residency',
-              'Research desk',
+              'Volume licensing discussion',
+              'Procurement support',
+              'DPA + sub-processor information',
+              'Institutional onboarding',
+              'Research-desk contact',
             ]}
             cta={
               <a
@@ -389,7 +390,7 @@ export default function PricingPage() {
               heading: 'Coding & analysis',
               rows: [
                 { feature: 'Auto-code (AI-assisted)', values: ['—', '✓', '✓', '✓', '✓'] },
-                { feature: 'Analysis tools', values: ['4', 'All 12', 'All 12', 'All 12', 'All 12'] },
+                { feature: 'Analysis tools', values: ['4', 'All 13', 'All 13', 'All 13', 'All 13'] },
                 { feature: 'Cases + cross-case', values: ['—', '✓', '✓', '✓', '✓'] },
                 { feature: 'Intercoder reliability (κ + α)', values: ['—', '—', '—', '✓', '✓'] },
               ],
@@ -399,17 +400,17 @@ export default function PricingPage() {
               rows: [
                 { feature: 'Share codes', values: ['—', '2', '5', 'Unlimited', 'Unlimited'] },
                 { feature: 'Team management', values: ['—', '—', '—', '✓', '✓'] },
-                { feature: 'SSO + SCIM', values: ['—', '—', '—', '—', '✓'] },
+                { feature: 'SSO + SCIM', values: ['—', '—', '—', '—', 'Not available'] },
               ],
             },
             {
               heading: 'Ethics + compliance',
               rows: [
                 { feature: 'Ethics + consent tracking', values: ['—', '✓', '✓', '✓', '✓'] },
-                { feature: 'Audit log', values: ['90 days', '90 days', '90 days', '90 days', 'Custom'] },
+                { feature: 'Audit log', values: ['90 days', '90 days', '90 days', '90 days', '90 days'] },
                 { feature: 'DPA available', values: ['—', '✓', '✓', '✓', '✓'] },
-                { feature: 'BAA available', values: ['—', '—', '—', '—', '✓'] },
-                { feature: 'EU residency option', values: ['—', '—', '—', '—', '✓'] },
+                { feature: 'BAA available', values: ['—', '—', '—', '—', 'Not available'] },
+                { feature: 'EU residency option', values: ['—', '—', '—', '—', 'Not available'] },
               ],
             },
             {
@@ -501,7 +502,7 @@ export default function PricingPage() {
             {
               question: 'What payment methods do you accept?',
               answer:
-                'All major credit cards via Stripe. Annual billing saves ~20% (about two months free). Wire transfer available on the Institutions plan.',
+                'Online subscriptions use major credit cards through Stripe. Contact the research desk to discuss institutional procurement requirements before relying on another payment method.',
             },
             {
               question: 'Can I cancel anytime?',
@@ -522,9 +523,12 @@ export default function PricingPage() {
               question: 'Do you offer institutional licensing?',
               answer: (
                 <>
-                  Yes — see the Institutions card above or book a 20-minute call with our research desk. SSO + SCIM,
-                  DPA, BAA, custom retention, EU residency. We'll send a draft DPA before the call if you want to review
-                  it first.
+                  We discuss volume access, onboarding and procurement with institutions. QualCanvas does not currently
+                  provide SAML/OIDC SSO, SCIM, a HIPAA BAA, custom automatic retention or EU data residency. Review the{' '}
+                  <a className="underline decoration-ochre-500 underline-offset-2" href="/for-institutions">
+                    institutions page
+                  </a>{' '}
+                  before treating any of those requirements as available.
                 </>
               ),
             },

@@ -470,11 +470,9 @@ describe('Stripe Billing – Extended Tests', () => {
     });
   });
 
-  // ─── Webhook: handler error returns 200 + structured log ───
-  // We acknowledge with 200 even on processing failure so Stripe doesn't
-  // retry indefinitely. The event is logged for manual review.
+  // ─── Webhook: handler errors remain retryable ───
   describe('Webhook processing error', () => {
-    it('returns 200 when processing throws an error (no Stripe retry storm)', async () => {
+    it('returns 500 when processing throws so Stripe can retry', async () => {
       const event = {
         id: 'evt_error',
         type: 'checkout.session.completed',
@@ -492,12 +490,13 @@ describe('Stripe Billing – Extended Tests', () => {
       const { req, res } = createMockReqRes(Buffer.from('{}'));
       await handleStripeWebhook(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
-        received: true,
+        received: false,
         processed: false,
-        error: 'Stripe API error',
+        error: 'Webhook processing failed',
       });
+      expect(mockPrisma.webhookEvent.create).not.toHaveBeenCalled();
     });
   });
 
@@ -1435,9 +1434,9 @@ describe('Stripe Billing – Extended Tests', () => {
     });
 
     // ─── checkout.session.completed handles subscription retrieve failure ───
-    // We acknowledge with 200 to prevent Stripe's exponential-backoff retries;
-    // the WebhookEvent dedup table already prevents reprocessing on re-delivery.
-    it('returns 200 when Stripe subscription retrieve fails (no retry storm)', async () => {
+    // Failed deliveries are deliberately not marked processed, allowing Stripe
+    // to retry after transient API failures.
+    it('returns 500 when Stripe subscription retrieval fails', async () => {
       process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
       mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
       mockPrisma.webhookEvent.create.mockResolvedValue({});
@@ -1459,12 +1458,13 @@ describe('Stripe Billing – Extended Tests', () => {
       const { req, res } = createMockReqRes(Buffer.from('{}'));
       await handleStripeWebhook(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
-        received: true,
+        received: false,
         processed: false,
-        error: 'Stripe rate limited',
+        error: 'Webhook processing failed',
       });
+      expect(mockPrisma.webhookEvent.create).not.toHaveBeenCalled();
     });
 
     // ─── checkout.session.completed with empty price falls back ───

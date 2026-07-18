@@ -87,7 +87,7 @@ import { billingRoutes, handleStripeWebhook } from './routes/billingRoutes.js';
 import { aiRoutes } from './routes/aiRoutes.js';
 import { chatRoutes } from './routes/chatRoutes.js';
 import { summaryRoutes } from './routes/summaryRoutes.js';
-import { uploadRoutes } from './routes/uploadRoutes.js';
+import { recoverTranscriptionJobs, uploadRoutes } from './routes/uploadRoutes.js';
 import { collaborationRoutes } from './routes/collaborationRoutes.js';
 import { documentRoutes } from './routes/documentRoutes.js';
 import { trainingRoutes } from './routes/trainingRoutes.js';
@@ -168,6 +168,12 @@ app.use(morgan(isProduction ? 'combined' : 'dev'));
 // Stripe webhook — needs raw body BEFORE json parsing
 app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), handleStripeWebhook);
 
+// Larger body limits must be registered before the default parser. Express
+// does not re-parse a request whose body was already consumed.
+app.use('/api/canvas/:id/transcripts', express.json({ limit: '10mb' }));
+app.use('/api/canvas/:id/import-narratives', express.json({ limit: '10mb' }));
+app.use('/api/canvas/:id/import-from-canvas', express.json({ limit: '10mb' }));
+
 // Body parsing — default limit for most routes
 app.use(express.json({ limit: '1mb' }));
 
@@ -206,11 +212,6 @@ const computeLimiter = rateLimit({
   skip: () => isTestEnv,
 });
 app.use('/api/canvas/:id/computed/:nodeId/run', computeLimiter);
-
-// Larger body limit for transcript/import routes
-app.use('/api/canvas/:id/transcripts', express.json({ limit: '10mb' }));
-app.use('/api/canvas/:id/import-narratives', express.json({ limit: '10mb' }));
-app.use('/api/canvas/:id/import-from-canvas', express.json({ limit: '10mb' }));
 
 // ─── Health check ───
 app.get('/health', async (_req, res) => {
@@ -284,12 +285,17 @@ app.get('/ready', async (_req, res) => {
     version: process.env.npm_package_version || '1.0.0',
     uptime: process.uptime(),
     checks,
-    ...(Object.keys(details).length > 0 ? { details } : {}),
+    ...(!isProduction && Object.keys(details).length > 0 ? { details } : {}),
   });
 });
 
 // ─── Basic metrics ───
-app.get('/metrics', (_req, res) => {
+app.get('/metrics', (req, res) => {
+  if (isProduction) {
+    const expected = process.env.METRICS_TOKEN;
+    const supplied = req.headers.authorization?.replace(/^Bearer\s+/i, '');
+    if (!expected || supplied !== expected) return res.status(404).json({ error: 'Not found' });
+  }
   res.json({
     uptime: process.uptime(),
     requestCount,
@@ -420,6 +426,7 @@ const server = httpServer.listen(PORT, () => {
   console.log(`QualCanvas backend running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
   // Start report scheduler in non-test environments
   if (process.env.NODE_ENV !== 'test') {
+    recoverTranscriptionJobs().catch((err) => console.error('[TranscriptionRecovery] Failed:', err));
     startReportScheduler();
     startLifecycleEmailScheduler();
     startStripeReconciliationScheduler();

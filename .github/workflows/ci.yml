@@ -3,26 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '.gitignore'
-      - '.env.example'
-      - 'docs/**'
-      - 'LICENSE'
-      - '.vscode/**'
-      - 'scripts/**'
-      - 'workers/**'
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '.gitignore'
-      - '.env.example'
-      - 'docs/**'
-      - 'LICENSE'
-      - '.vscode/**'
-      - 'scripts/**'
-      - 'workers/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -87,22 +69,10 @@ jobs:
       - run: npm test
 
   schema-drift:
-    # Reliability fix #1 — catch the "model in schema.prisma without a
-    # matching migration" class of bug. Soft-fail for now because migrations
-    # 0001-0011 were originally authored in SQLite syntax (DATETIME instead
-    # of TIMESTAMP, inline PRIMARY KEY, etc.) which is unrunnable on Postgres
-    # via `migrate deploy`. Prod was bootstrapped via `prisma db push` and
-    # the migration history was never replayed cleanly.
-    #
-    # Reconciling the migration history with Postgres syntax is its own
-    # multi-day project (touches 15 migration files + one prod-side
-    # `migrate resolve --applied 0001..0011` rolling fix). Until then, this
-    # job runs in `continue-on-error` mode — drift is visible in the run
-    # summary but doesn't block PRs. TODO: full reconciliation, then remove
-    # `continue-on-error`.
+    # Replays the complete migration history on clean PostgreSQL and compares
+    # the result with schema.prisma. This is a required release gate.
     name: Schema Drift Check
     runs-on: ubuntu-latest
-    continue-on-error: true
     env:
       DATABASE_URL: postgresql://qualcanvas:qualcanvas@localhost:55432/qualcanvas_drift?schema=public
     services:
@@ -168,7 +138,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npx prisma generate --schema=apps/backend/prisma/schema.prisma
-      - run: npx prisma db push --schema=apps/backend/prisma/schema.prisma --skip-generate
+      - run: npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma
       - run: npm run db:seed -w apps/backend
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v6

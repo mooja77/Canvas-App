@@ -27,6 +27,10 @@ const { mockPrisma } = vi.hoisted(() => {
     canvasTranscript: { count: vi.fn() },
     canvasQuestion: { count: vi.fn() },
     canvasShare: { count: vi.fn() },
+    emailPreference: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({}),
+    },
     $transaction: vi.fn(),
     $queryRawUnsafe: vi.fn(),
     $disconnect: vi.fn(),
@@ -102,6 +106,7 @@ import { errorHandler } from '../../middleware/errorHandler.js';
 import { signUserToken } from '../../utils/jwt.js';
 import { sha256 } from '../../utils/hashing.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../../lib/email.js';
+import { getStripe } from '../../lib/stripe.js';
 
 // Build a minimal Express app with the auth routes
 function createApp() {
@@ -532,8 +537,8 @@ describe('User auth integration tests', () => {
         id: 'user-1',
         email: 'test@example.com',
         emailVerified: false,
-        resetTokenHash: 'sha256hash',
-        resetTokenExpiry: futureDate,
+        verificationTokenHash: 'sha256hash',
+        verificationTokenExpiry: futureDate,
       });
       mockPrisma.user.update.mockResolvedValue({});
       (sha256 as ReturnType<typeof vi.fn>).mockReturnValue('sha256hash');
@@ -548,7 +553,7 @@ describe('User auth integration tests', () => {
       expect(res.body.message).toMatch(/verified successfully/i);
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { emailVerified: true, resetTokenHash: null, resetTokenExpiry: null },
+        data: { emailVerified: true, verificationTokenHash: null, verificationTokenExpiry: null },
       });
     });
 
@@ -558,8 +563,8 @@ describe('User auth integration tests', () => {
         id: 'user-1',
         email: 'test@example.com',
         emailVerified: false,
-        resetTokenHash: 'sha256hash',
-        resetTokenExpiry: pastDate,
+        verificationTokenHash: 'sha256hash',
+        verificationTokenExpiry: pastDate,
       });
       (sha256 as ReturnType<typeof vi.fn>).mockReturnValue('sha256hash');
 
@@ -675,6 +680,8 @@ describe('User auth integration tests', () => {
       const jwt = signUserToken('user-1', 'researcher', 'free');
       mockPrisma.user.findUnique.mockResolvedValueOnce({
         id: 'user-1',
+        email: 'test@example.com',
+        passwordHash: '$2a$12$hashedpassword',
         plan: 'free',
         role: 'researcher',
         dashboardAccess: null,
@@ -746,17 +753,82 @@ describe('User auth integration tests', () => {
 
     it('rejects deletion without password', async () => {
       const jwt = signUserToken('user-1', 'researcher', 'free');
-      mockPrisma.user.findUnique.mockResolvedValueOnce({
-        id: 'user-1',
-        plan: 'free',
-        role: 'researcher',
-        dashboardAccess: null,
-      });
+      mockPrisma.user.findUnique
+        .mockResolvedValueOnce({
+          id: 'user-1',
+          email: 'test@example.com',
+          passwordHash: '$2a$12$hashedpassword',
+          plan: 'free',
+          role: 'researcher',
+          dashboardAccess: null,
+        })
+        .mockResolvedValue({
+          id: 'user-1',
+          email: 'test@example.com',
+          passwordHash: '$2a$12$hashedpassword',
+          plan: 'free',
+          role: 'researcher',
+          dashboardAccess: null,
+        });
 
       const res = await request(app).delete('/api/auth/account').set('Authorization', `Bearer ${jwt}`).send({});
 
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/password/i);
+    });
+
+    it('cancels the subscription even when the Stripe customer id is missing', async () => {
+      const mockUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        passwordHash: '$2a$12$hashedpassword',
+        plan: 'pro',
+        role: 'researcher',
+        subscription: { stripeSubscriptionId: 'sub_123' },
+        stripeCustomerId: null,
+        dashboardAccess: null,
+      };
+      const jwt = signUserToken('user-1', 'researcher', 'pro');
+      const cancel = vi.fn().mockResolvedValue({});
+      (getStripe as ReturnType<typeof vi.fn>).mockReturnValue({ subscriptions: { cancel } });
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser }).mockResolvedValueOnce(mockUser);
+      mockPrisma.user.delete.mockResolvedValue({});
+      (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+      const res = await request(app)
+        .delete('/api/auth/account')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ password: 'password123' });
+
+      expect(res.status).toBe(200);
+      expect(cancel).toHaveBeenCalledWith('sub_123');
+      expect(mockPrisma.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } });
+    });
+
+    it('keeps the account when Stripe subscription cancellation fails', async () => {
+      const mockUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        passwordHash: '$2a$12$hashedpassword',
+        plan: 'pro',
+        role: 'researcher',
+        subscription: { stripeSubscriptionId: 'sub_123' },
+        stripeCustomerId: null,
+        dashboardAccess: null,
+      };
+      const jwt = signUserToken('user-1', 'researcher', 'pro');
+      const cancel = vi.fn().mockRejectedValue(new Error('Stripe unavailable'));
+      (getStripe as ReturnType<typeof vi.fn>).mockReturnValue({ subscriptions: { cancel } });
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser }).mockResolvedValueOnce(mockUser);
+      (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+      const res = await request(app)
+        .delete('/api/auth/account')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ password: 'password123' });
+
+      expect(res.status).toBe(500);
+      expect(mockPrisma.user.delete).not.toHaveBeenCalled();
     });
   });
 

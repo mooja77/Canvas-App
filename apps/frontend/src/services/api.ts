@@ -464,8 +464,8 @@ export const authApi = {
   register: (name: string, role?: string) => canvasClient.post('/auth/register', { name, role }),
 
   // Email auth
-  emailSignup: (email: string, password: string, name: string) =>
-    canvasClient.post('/auth/signup', { email, password, name }),
+  emailSignup: (email: string, password: string, name: string, marketingConsent = false) =>
+    canvasClient.post('/auth/signup', { email, password, name, marketingConsent }),
 
   emailLogin: (email: string, password: string) => canvasClient.post('/auth/email-login', { email, password }),
 
@@ -494,7 +494,16 @@ export const authApi = {
   changePassword: (currentPassword: string, newPassword: string) =>
     canvasClient.put('/auth/change-password', { currentPassword, newPassword }),
 
-  deleteAccount: (password: string) => canvasClient.delete('/auth/account', { data: { password } }),
+  exportAccount: () => canvasClient.get('/auth/export', { responseType: 'blob' }),
+
+  deleteAccount: (confirmation: string, hasPassword: boolean) =>
+    canvasClient.delete('/auth/account', {
+      data: hasPassword ? { password: confirmation } : { confirmation },
+    }),
+};
+
+export const publicEmailApi = {
+  subscribeNewsletter: (email: string) => canvasClient.post('/email/newsletter/subscribe', { email }),
 };
 
 // ─── AI Settings API ───

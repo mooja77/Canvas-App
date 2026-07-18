@@ -19,10 +19,7 @@ export interface Job<T = unknown> {
   updatedAt: Date;
 }
 
-type JobHandler<T = unknown> = (
-  job: Job<T>,
-  updateProgress: (progress: number) => void,
-) => Promise<T>;
+type JobHandler<T = unknown> = (job: Job<T>, updateProgress: (progress: number) => void) => Promise<T>;
 
 const jobs = new Map<string, Job>();
 const handlers = new Map<string, JobHandler>();
@@ -34,15 +31,15 @@ export function registerJobHandler<T>(type: string, handler: JobHandler<T>): voi
 
 /** Create and enqueue a new job */
 export function createJob(type: string, initialData?: Partial<Job>): Job {
-  const id = randomBytes(16).toString('hex');
+  const id = initialData?.id || randomBytes(16).toString('hex');
   const job: Job = {
-    id,
     type,
     status: 'queued',
     progress: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...initialData,
+    id,
   };
 
   jobs.set(id, job);

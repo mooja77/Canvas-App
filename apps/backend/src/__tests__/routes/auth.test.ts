@@ -22,6 +22,10 @@ const { mockPrisma } = vi.hoisted(() => {
     canvasTranscript: { count: vi.fn() },
     canvasQuestion: { count: vi.fn() },
     canvasShare: { count: vi.fn() },
+    emailPreference: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({}),
+    },
     $transaction: vi.fn(),
     $queryRawUnsafe: vi.fn(),
     $disconnect: vi.fn(),
@@ -281,6 +285,7 @@ describe('Auth routes', () => {
         plan: 'free',
         emailVerified: false,
         createdAt: new Date(),
+        passwordHash: '$2a$12$hashedpassword',
         subscription: null,
         dashboardAccess: null,
       };
@@ -423,13 +428,15 @@ describe('Auth routes', () => {
     it('rejects without password', async () => {
       const mockUser = {
         id: 'user-1',
+        email: 'test@example.com',
+        passwordHash: '$2a$12$hashedpassword',
         plan: 'free',
         role: 'researcher',
         dashboardAccess: null,
       };
       const jwt = signUserToken('user-1', 'researcher', 'free');
 
-      mockPrisma.user.findUnique.mockResolvedValueOnce(mockUser);
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
 
       const res = await request(app).delete('/api/auth/account').set('Authorization', `Bearer ${jwt}`).send({});
 

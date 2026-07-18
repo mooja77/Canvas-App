@@ -5,6 +5,9 @@ const e2eDatabaseUrl = process.env.DATABASE_URL?.startsWith('postgres')
   ? process.env.DATABASE_URL
   : defaultE2eDatabaseUrl;
 const e2eJwtSecret = process.env.JWT_SECRET ?? 'qualcanvas-e2e-secret';
+const e2eBackendPort = Number(process.env.E2E_BACKEND_PORT ?? 3007);
+const e2eFrontendPort = Number(process.env.E2E_FRONTEND_PORT ?? 5174);
+const e2eBaseUrl = `http://127.0.0.1:${e2eFrontendPort}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -15,7 +18,7 @@ export default defineConfig({
   reporter: 'list',
   timeout: 30000,
   use: {
-    baseURL: 'http://localhost:5174',
+    baseURL: e2eBaseUrl,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -72,23 +75,25 @@ export default defineConfig({
   webServer: [
     {
       command: 'npm run build -w shared && npm run dev:backend',
-      url: 'http://localhost:3007/ready',
+      url: `http://127.0.0.1:${e2eBackendPort}/ready`,
       reuseExistingServer: true,
-      timeout: 60000,
+      timeout: 180000,
       env: {
         DATABASE_URL: e2eDatabaseUrl,
         E2E_TEST: 'true',
         JWT_SECRET: e2eJwtSecret,
-        PORT: process.env.PORT ?? '3007',
+        PORT: String(e2eBackendPort),
       },
     },
     {
       command: 'npm run dev:frontend',
-      url: 'http://localhost:5174',
+      url: e2eBaseUrl,
       reuseExistingServer: true,
-      timeout: 60000,
+      timeout: 180000,
       env: {
         VITE_E2E: 'true',
+        FRONTEND_PORT: String(e2eFrontendPort),
+        BACKEND_URL: `http://127.0.0.1:${e2eBackendPort}`,
       },
     },
   ],

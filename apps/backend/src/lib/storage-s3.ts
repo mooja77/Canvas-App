@@ -10,6 +10,7 @@ import {
   HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import type { Readable } from 'stream';
 import type { StorageProvider, UploadOptions, PresignedUrlOptions } from './storage.js';
 import { setStorageProvider } from './storage.js';
 
@@ -105,6 +106,20 @@ const s3Provider: StorageProvider = {
     } catch {
       return false;
     }
+  },
+
+  async head(key: string) {
+    const result = await getClient().send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return {
+      size: result.ContentLength || 0,
+      contentType: result.ContentType,
+    };
+  },
+
+  async openReadStream(key: string) {
+    const result = await getClient().send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    if (!result.Body) throw new Error('Storage object has no body');
+    return result.Body as Readable;
   },
 };
 

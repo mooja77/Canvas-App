@@ -189,9 +189,10 @@ describe('offlineQueue', () => {
 
     await replayQueue('http://localhost:3007');
 
-    // Should have attempted 2 (stopped at failure), queue NOT cleared
+    // The completed first operation is removed; the failed operation and all
+    // later operations remain for a safe retry.
     expect(fetchSpy).toHaveBeenCalledTimes(2);
-    expect(getQueue()).toHaveLength(3); // all still in queue
+    expect(getQueue()).toHaveLength(2);
   });
 
   it('clears queue after successful replay', async () => {
