@@ -88,20 +88,36 @@ async function processSchedules(): Promise<void> {
           if (now.getDay() !== schedule.dayOfWeek) continue;
         }
 
+        const staleClaim = new Date(now.getTime() - 30 * 60 * 1000);
+        const claim = await prismaReportSchedule.updateMany({
+          where: {
+            id: schedule.id,
+            OR: [{ processingAt: null }, { processingAt: { lt: staleClaim } }],
+          },
+          data: { processingAt: now },
+        });
+        if (claim.count === 0) continue;
+
         const periodDays = FREQUENCY_DAYS[schedule.frequency] || 7;
         const { html, subject } = await generateReport(schedule.userId, schedule.canvasId, periodDays);
 
         // Send email
-        if (schedule.user?.email) {
-          await sendEmail(schedule.user.email, subject, html);
-        }
+        if (!schedule.user?.email) throw new Error('Report recipient has no email address');
+        const sent = await sendEmail(schedule.user.email, subject, html);
+        if (!sent) throw new Error('Email provider returned failure');
 
         // Update lastSent
         await prismaReportSchedule.update({
           where: { id: schedule.id },
-          data: { lastSent: now },
+          data: { lastSent: now, processingAt: null },
         });
       } catch (err) {
+        await prismaReportSchedule
+          .update({
+            where: { id: schedule.id },
+            data: { processingAt: null },
+          })
+          .catch(() => undefined);
         logError(err as Error, {
           action: 'reportScheduler.processSchedule',
           scheduleId: schedule.id,

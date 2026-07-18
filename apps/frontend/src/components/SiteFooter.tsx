@@ -27,10 +27,18 @@ export default function SiteFooter() {
     <footer className="max-w-6xl mx-auto px-4 py-10 border-t border-gray-200 dark:border-gray-800">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300 mb-3">
             Product
           </h3>
           <ul className="space-y-2 text-sm">
+            <li>
+              <Link
+                to="/training"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                Training centre
+              </Link>
+            </li>
             <li>
               <Link to="/guide" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                 Guide
@@ -69,7 +77,7 @@ export default function SiteFooter() {
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300 mb-3">
             Account
           </h3>
           <ul className="space-y-2 text-sm">
@@ -114,7 +122,7 @@ export default function SiteFooter() {
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300 mb-3">
             Legal
           </h3>
           <ul className="space-y-2 text-sm">
@@ -156,7 +164,7 @@ export default function SiteFooter() {
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300 mb-3">
             Company
           </h3>
           <ul className="space-y-2 text-sm">

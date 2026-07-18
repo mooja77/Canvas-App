@@ -5,6 +5,7 @@ import App from './App';
 import toast, { Toaster } from 'react-hot-toast';
 import { registerSW } from 'virtual:pwa-register';
 import { useUIStore } from './stores/uiStore';
+import { useThemePreferenceStore, type ThemePreference } from './stores/themePreferenceStore';
 import { useFeatureFlagsStore, applyUrlFlagOverrides } from './stores/featureFlagsStore';
 import { trackEvent } from './utils/analytics';
 import './i18n';
@@ -38,11 +39,52 @@ if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
-// Initialize dark mode from persisted state
-const darkMode = useUIStore.getState().darkMode;
-if (darkMode) {
-  document.documentElement.classList.add('dark');
+// Keep the legacy canvas theme state and the newer three-state marketing
+// preference in sync. Both previously controlled the same <html>.dark class
+// independently, so lazy-loading a public page could reset a canvas user's
+// explicit dark-mode choice back to the OS default.
+const resolveThemePreference = (preference: ThemePreference) =>
+  preference === 'dark' ||
+  (preference === 'system' && window.matchMedia?.('(prefers-color-scheme: dark)').matches === true);
+
+let syncingThemeStores = false;
+const syncThemePreferenceToUI = (preference: ThemePreference) => {
+  const shouldBeDark = resolveThemePreference(preference);
+  document.documentElement.classList.toggle('dark', shouldBeDark);
+  if (useUIStore.getState().darkMode !== shouldBeDark) {
+    syncingThemeStores = true;
+    useUIStore.setState({ darkMode: shouldBeDark });
+    syncingThemeStores = false;
+  }
+};
+
+// Preserve explicit dark mode selected before the marketing preference store
+// existed. Once the newer key exists, its system/light/dark choice is the
+// source of truth and is mirrored into the canvas store.
+if (!localStorage.getItem('qualcanvas-theme-preference') && useUIStore.getState().darkMode) {
+  useThemePreferenceStore.getState().setPreference('dark');
+} else {
+  syncThemePreferenceToUI(useThemePreferenceStore.getState().preference);
 }
+
+useThemePreferenceStore.subscribe((state, previous) => {
+  if (state.preference !== previous.preference) {
+    syncThemePreferenceToUI(state.preference);
+  }
+});
+
+useUIStore.subscribe((state, previous) => {
+  if (syncingThemeStores || state.darkMode === previous.darkMode) return;
+  const preference = useThemePreferenceStore.getState().preference;
+  if (resolveThemePreference(preference) !== state.darkMode) {
+    useThemePreferenceStore.getState().setPreference(state.darkMode ? 'dark' : 'light');
+  }
+});
+
+window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  const preference = useThemePreferenceStore.getState().preference;
+  if (preference === 'system') syncThemePreferenceToUI(preference);
+});
 
 // Apply ?flags=... overrides before reading flag state for brand v2 paint.
 applyUrlFlagOverrides();

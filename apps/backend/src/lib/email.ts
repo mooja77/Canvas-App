@@ -17,6 +17,8 @@ function getTransporter() {
     host: smtpHost,
     port: smtpPort,
     secure: smtpPort === 465,
+    disableFileAccess: true,
+    disableUrlAccess: true,
     auth: {
       user: smtpUser,
       pass: smtpPass,
@@ -26,20 +28,17 @@ function getTransporter() {
 
 /**
  * Send an email via Resend HTTP API (preferred) or SMTP.
- * Falls back to console.log when neither is configured.
+ * Returns success in local development when neither is configured, but never
+ * logs message bodies and fails closed in production.
  */
-export async function sendEmail(
-  to: string,
-  subject: string,
-  html: string,
-): Promise<boolean> {
+export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   // Prefer Resend HTTP API (avoids SMTP port blocking on some hosts)
   if (isResendConfigured) {
     try {
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
+          Authorization: `Bearer ${resendApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ from: smtpFrom, to, subject, html }),
@@ -60,11 +59,11 @@ export async function sendEmail(
   const transporter = getTransporter();
 
   if (!transporter) {
-    console.log(`[Email] Not configured — logging email instead:`);
-    console.log(`  To: ${to}`);
-    console.log(`  Subject: ${subject}`);
-    console.log(`  Body (HTML): ${html}`);
-    return true;
+    // Verification and reset bodies contain bearer links. Never write them to
+    // logs, even in development. A production instance without an email
+    // provider must fail closed so callers do not report a message as sent.
+    console.warn(`[Email] Not configured; message not sent (to=${to}, subject=${subject})`);
+    return process.env.NODE_ENV !== 'production';
   }
 
   try {
@@ -78,12 +77,9 @@ export async function sendEmail(
 
 /**
  * Send an email verification email with a branded HTML template.
- * Falls back to console.log when SMTP is not configured.
+ * Uses the shared delivery boundary when email is not configured.
  */
-export async function sendVerificationEmail(
-  to: string,
-  verifyLink: string,
-): Promise<boolean> {
+export async function sendVerificationEmail(to: string, verifyLink: string): Promise<boolean> {
   const subject = 'Verify your QualCanvas email';
 
   const html = `
@@ -148,12 +144,9 @@ export async function sendVerificationEmail(
 
 /**
  * Send a password reset email with a branded HTML template.
- * Falls back to console.log when SMTP is not configured.
+ * Uses the shared delivery boundary when email is not configured.
  */
-export async function sendPasswordResetEmail(
-  to: string,
-  resetLink: string,
-): Promise<boolean> {
+export async function sendPasswordResetEmail(to: string, resetLink: string): Promise<boolean> {
   const subject = 'Reset your QualCanvas password';
 
   const html = `
@@ -218,13 +211,9 @@ export async function sendPasswordResetEmail(
 
 /**
  * Send a team invitation email with a branded HTML template.
- * Falls back to console.log when SMTP is not configured.
+ * Uses the shared delivery boundary when email is not configured.
  */
-export async function sendTeamInviteEmail(
-  to: string,
-  teamName: string,
-  loginLink: string,
-): Promise<boolean> {
+export async function sendTeamInviteEmail(to: string, teamName: string, loginLink: string): Promise<boolean> {
   const subject = `You've been invited to join "${teamName}" on QualCanvas`;
 
   const html = `

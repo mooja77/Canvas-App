@@ -1,7 +1,8 @@
-const CLOUDFLARE_PAGES_HOST = 'qualcanvas.pages.dev';
-
 export function getAllowedOrigins(): string[] {
-  const origins: string[] = [];
+  const origins: string[] =
+    process.env.NODE_ENV === 'production'
+      ? ['https://qualcanvas.com', 'https://www.qualcanvas.com', 'https://qualcanvas.pages.dev']
+      : [];
 
   if (process.env.ALLOWED_ORIGINS) {
     origins.push(...process.env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim()));
@@ -27,15 +28,7 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
     return true;
   }
 
-  try {
-    const url = new URL(origin);
-    return (
-      url.protocol === 'https:' &&
-      (url.hostname === CLOUDFLARE_PAGES_HOST || url.hostname.endsWith(`.${CLOUDFLARE_PAGES_HOST}`))
-    );
-  } catch {
-    return false;
-  }
+  return false;
 }
 
 export function corsOrigin(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void): void {

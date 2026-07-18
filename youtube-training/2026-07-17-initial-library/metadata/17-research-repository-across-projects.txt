@@ -1,0 +1,36 @@
+TITLE
+Build a Research Repository Across QualCanvas Projects
+
+DESCRIPTION
+Create a research repository and organise carefully written insights across projects while preserving links back to the source analysis.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Carry insight across projects without losing its origin
+0:16 Open the plan-controlled Repository
+0:29 Name the repository around a durable question
+0:43 Keep project analysis in its canvas
+0:56 Write an insight that can stand up to reuse
+1:11 Agree ownership and review rules
+1:27 Curate insight, not just findings
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+research repository, insight repository, qualitative research operations, cross project insights, QualCanvas repository
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Workspace & scale
+Subtitle file: subtitles/17-research-repository-across-projects.en-IE.srt
+Thumbnail: thumbnails/17-research-repository-across-projects.jpg

@@ -23,7 +23,7 @@ interface Chapter {
   summary: string;
   slug: string;
   readMin: number;
-  status: 'draft' | 'review' | 'published';
+  status: 'draft' | 'review' | 'available';
 }
 
 const CHAPTERS: Chapter[] = [
@@ -33,7 +33,7 @@ const CHAPTERS: Chapter[] = [
     summary: 'What qualitative coding actually is. Inductive vs. deductive. Why coding is interpretive work.',
     slug: 'foundations',
     readMin: 7,
-    status: 'published',
+    status: 'available',
   },
   {
     number: '2.0',
@@ -41,7 +41,7 @@ const CHAPTERS: Chapter[] = [
     summary: "Braun & Clarke's six phases. Building a codebook. Intercoder agreement (and when it matters).",
     slug: 'thematic-analysis',
     readMin: 12,
-    status: 'published',
+    status: 'available',
   },
   {
     number: '3.0',
@@ -49,7 +49,7 @@ const CHAPTERS: Chapter[] = [
     summary: 'Open coding to theoretical coding. Memo-writing as theoretical development. Theoretical saturation.',
     slug: 'grounded-theory',
     readMin: 10,
-    status: 'published',
+    status: 'available',
   },
   {
     number: '4.0',
@@ -57,7 +57,7 @@ const CHAPTERS: Chapter[] = [
     summary: "Smith's hermeneutic approach. The double hermeneutic. Reading and re-reading.",
     slug: 'ipa',
     readMin: 8,
-    status: 'published',
+    status: 'available',
   },
   {
     number: '5.0',
@@ -65,7 +65,7 @@ const CHAPTERS: Chapter[] = [
     summary: "Cohen's κ. Krippendorff's α. When each fits. The recurring debate, and a pragmatic position.",
     slug: 'intercoder-reliability',
     readMin: 6,
-    status: 'published',
+    status: 'available',
   },
   {
     number: '6.0',
@@ -73,7 +73,7 @@ const CHAPTERS: Chapter[] = [
     summary: 'Consent as ongoing. Anonymization. Retention windows. When AI assistance becomes an ethics question.',
     slug: 'ethics-in-practice',
     readMin: 9,
-    status: 'published',
+    status: 'available',
   },
 ];
 
@@ -96,8 +96,8 @@ export default function MethodologyIndexPage() {
           Doing qualitative research with QualCanvas.
         </DisplayHeading>
         <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed max-w-2xl">
-          Six chapters · roughly 45 minutes · updated monthly. Written by the team and reviewed by credentialed
-          methodologists before publish.
+          Six chapters · roughly 45 minutes. Published as working guidance from the QualCanvas team; each chapter is
+          clearly labelled as a draft that has not yet received external methodological peer review.
         </p>
 
         {/* Chapter list */}
@@ -112,7 +112,7 @@ export default function MethodologyIndexPage() {
               </span>
               <div className="flex-1">
                 <div className="flex items-baseline justify-between gap-4 mb-2">
-                  {ch.status === 'published' ? (
+                  {ch.status === 'available' ? (
                     <Link
                       to={`/methodology/${ch.slug}`}
                       className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white hover:text-ochre-700 dark:hover:text-ochre-400 transition-colors duration-150"
@@ -125,6 +125,11 @@ export default function MethodologyIndexPage() {
                   <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">{ch.readMin} min</span>
                 </div>
                 <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">{ch.summary}</p>
+                {ch.status === 'available' && (
+                  <span className="mt-3 inline-flex items-center text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                    Working draft · not externally peer-reviewed
+                  </span>
+                )}
                 {ch.status === 'draft' && (
                   <span className="inline-flex items-center mt-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                     <span aria-hidden="true" className="mr-2 w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />

@@ -32,7 +32,7 @@ export const userAuthRoutes = Router();
 // POST /api/auth/signup — email/password registration
 userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, marketingConsent } = req.body;
 
     if (!email || typeof email !== 'string' || !email.includes('@')) {
       return res.status(400).json({ success: false, error: 'Valid email is required' });
@@ -53,8 +53,12 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
     }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const initialEmailOptIn = marketingConsent === true;
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Create user + linked DashboardAccess in a transaction
+    // Create the account, verification state, consent record and linked
+    // DashboardAccess together so registration cannot persist only a subset.
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const user = await tx.user.create({
         data: {
@@ -63,6 +67,18 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
           name: name.trim(),
           plan: 'free',
           trialEndsAt: trialEndDate(),
+          verificationTokenHash: sha256(verifyToken),
+          verificationTokenExpiry: verifyExpiry,
+          emailPreference: {
+            create: {
+              unsubscribeToken: crypto.randomBytes(24).toString('hex'),
+              lifecycle: initialEmailOptIn,
+              productUpdates: initialEmailOptIn,
+              trainingTips: initialEmailOptIn,
+              inactivityNudges: initialEmailOptIn,
+              unsubscribedAt: initialEmailOptIn ? null : new Date(),
+            },
+          },
         },
       });
 
@@ -83,16 +99,6 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
       });
 
       return user;
-    });
-
-    // Generate email verification token
-    const verifyToken = crypto.randomBytes(32).toString('hex');
-    const verifyTokenHash = sha256(verifyToken);
-    const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    await prisma.user.update({
-      where: { id: result.id },
-      data: { resetTokenHash: verifyTokenHash, resetTokenExpiry: verifyExpiry },
     });
 
     // Send verification email. Token + email go in the URL fragment (#) so
@@ -268,6 +274,12 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
             plan: 'free',
             trialEndsAt: trialEndDate(),
             emailVerified: true,
+            emailPreference: {
+              create: {
+                unsubscribeToken: crypto.randomBytes(24).toString('hex'),
+                unsubscribedAt: new Date(),
+              },
+            },
           },
         });
 
@@ -480,19 +492,19 @@ userAuthRoutes.post('/auth/verify-email', authLimiter, async (req, res, next) =>
     const tokenHash = sha256(token);
     let tokenValid = false;
     try {
-      if (user.resetTokenHash) {
-        tokenValid = crypto.timingSafeEqual(Buffer.from(user.resetTokenHash), Buffer.from(tokenHash));
+      if (user.verificationTokenHash) {
+        tokenValid = crypto.timingSafeEqual(Buffer.from(user.verificationTokenHash), Buffer.from(tokenHash));
       }
     } catch {
       tokenValid = false;
     }
-    if (!tokenValid || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+    if (!tokenValid || !user.verificationTokenExpiry || user.verificationTokenExpiry < new Date()) {
       return res.status(400).json({ success: false, error: 'Invalid or expired verification token' });
     }
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { emailVerified: true, resetTokenHash: null, resetTokenExpiry: null },
+      data: { emailVerified: true, verificationTokenHash: null, verificationTokenExpiry: null },
     });
 
     logAudit({
@@ -530,7 +542,7 @@ userAuthRoutes.post('/auth/resend-verification', auth, async (req, res, next) =>
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { resetTokenHash: verifyTokenHash, resetTokenExpiry: verifyExpiry },
+      data: { verificationTokenHash: verifyTokenHash, verificationTokenExpiry: verifyExpiry },
     });
 
     // Token + email in URL fragment (see signup handler for rationale).
@@ -609,6 +621,7 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
             trialEndsAt: user.trialEndsAt,
             emailVerified: user.emailVerified,
             createdAt: user.createdAt,
+            hasPassword: Boolean(user.passwordHash),
           },
           subscription: user.subscription
             ? {
@@ -819,16 +832,101 @@ userAuthRoutes.put('/auth/change-password', auth, async (req, res, next) => {
   }
 });
 
+// GET /api/auth/export — portable account and research-data archive
+userAuthRoutes.get('/auth/export', auth, async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    if (!userId) throw new AppError('Email account required', 403);
+
+    const [account, canvases, auditLogs, notifications, reportSchedules, calendarEvents, trainingAttempts] =
+      await Promise.all([
+        prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            email: true,
+            emailVerified: true,
+            name: true,
+            role: true,
+            plan: true,
+            createdAt: true,
+            updatedAt: true,
+            trialEndsAt: true,
+            onboardingState: true,
+            onboardingCompletedAt: true,
+            subscription: true,
+            emailPreference: {
+              select: {
+                lifecycle: true,
+                productUpdates: true,
+                trainingTips: true,
+                inactivityNudges: true,
+                unsubscribedAt: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
+          },
+        }),
+        prisma.codingCanvas.findMany({
+          where: { userId },
+          include: {
+            transcripts: true,
+            questions: true,
+            memos: true,
+            codings: true,
+            nodePositions: true,
+            cases: true,
+            relations: true,
+            computedNodes: true,
+            shares: true,
+            consentRecords: true,
+            aiSuggestions: true,
+            fileUploads: true,
+            textEmbeddings: true,
+            chatMessages: true,
+            summaries: true,
+            collaborators: true,
+            documents: true,
+            trainingDocuments: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        }),
+        prisma.auditLog.findMany({ where: { actorId: userId }, orderBy: { timestamp: 'asc' } }),
+        prisma.notification.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+        prisma.reportSchedule.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+        prisma.calendarEvent.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+        prisma.trainingAttempt.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+      ]);
+
+    if (!account) throw new AppError('User not found', 404);
+    const archive = {
+      format: 'qualcanvas-account-export',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      account,
+      canvases,
+      auditLogs,
+      notifications,
+      reportSchedules,
+      calendarEvents,
+      trainingAttempts,
+    };
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Disposition', `attachment; filename="qualcanvas-export-${stamp}.json"`);
+    res.type('application/json').send(JSON.stringify(archive, null, 2));
+  } catch (err) {
+    next(err);
+  }
+});
+
 // DELETE /api/auth/account — delete account
 userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
   try {
     const userId = req.userId;
     if (!userId) throw new AppError('Email account required', 403);
 
-    const { password } = req.body;
-    if (!password) {
-      return res.status(400).json({ success: false, error: 'Password confirmation required' });
-    }
+    const { password, confirmation } = req.body;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -836,22 +934,23 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
     });
     if (!user) throw new AppError('User not found', 404);
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) {
-      return res.status(401).json({ success: false, error: 'Password is incorrect' });
+    if (user.passwordHash) {
+      if (!password || typeof password !== 'string') {
+        return res.status(400).json({ success: false, error: 'Password confirmation required' });
+      }
+      const valid = await bcrypt.compare(password, user.passwordHash);
+      if (!valid) {
+        return res.status(401).json({ success: false, error: 'Password is incorrect' });
+      }
+    } else if (typeof confirmation !== 'string' || confirmation.trim().toLowerCase() !== user.email.toLowerCase()) {
+      return res.status(400).json({ success: false, error: 'Enter your account email to confirm deletion' });
     }
 
     // Cancel Stripe subscription if active
-    if (user.subscription && user.stripeCustomerId) {
-      try {
-        const { getStripe } = await import('../lib/stripe.js');
-        const stripe = getStripe();
-        if (user.subscription.stripeSubscriptionId) {
-          await stripe.subscriptions.cancel(user.subscription.stripeSubscriptionId);
-        }
-      } catch {
-        // Continue with deletion even if Stripe fails
-      }
+    if (user.subscription?.stripeSubscriptionId) {
+      const { getStripe } = await import('../lib/stripe.js');
+      const stripe = getStripe();
+      await stripe.subscriptions.cancel(user.subscription.stripeSubscriptionId);
     }
 
     // Cascade delete user (Prisma cascade handles related records)

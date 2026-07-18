@@ -42,6 +42,10 @@ const emailDelivery = (prisma as any).emailDelivery;
 const emailCampaign = (prisma as any).emailCampaign;
 
 const DEFAULT_APP_URL = process.env.APP_URL || 'http://localhost:5174';
+const DEFAULT_API_URL =
+  process.env.PUBLIC_API_URL ||
+  process.env.API_URL ||
+  (process.env.NODE_ENV === 'production' ? 'https://api.qualcanvas.com/api' : 'http://localhost:3007/api');
 const PRODUCT_NAME = 'QualCanvas';
 
 function escapeHtml(value: string): string {
@@ -62,14 +66,14 @@ function appLink(path: string): string {
 }
 
 function unsubscribeLink(token: string): string {
-  return appLink(`/api/email/unsubscribe/${encodeURIComponent(token)}`);
+  return `${DEFAULT_API_URL.replace(/\/$/, '')}/email/unsubscribe/${encodeURIComponent(token)}`;
 }
 
 function randomToken(): string {
   return crypto.randomBytes(24).toString('hex');
 }
 
-export async function ensureEmailPreference(userId: string) {
+export async function ensureEmailPreference(userId: string, initialOptIn = false) {
   const existing = await emailPreference.findUnique({ where: { userId } });
   if (existing) return existing;
 
@@ -77,6 +81,11 @@ export async function ensureEmailPreference(userId: string) {
     data: {
       userId,
       unsubscribeToken: randomToken(),
+      lifecycle: initialOptIn,
+      productUpdates: initialOptIn,
+      trainingTips: initialOptIn,
+      inactivityNudges: initialOptIn,
+      unsubscribedAt: initialOptIn ? null : new Date(),
     },
   });
 }

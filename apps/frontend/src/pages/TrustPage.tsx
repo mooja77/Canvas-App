@@ -30,20 +30,20 @@ export default function TrustPage() {
             ← QualCanvas
           </Link>
           <nav className="text-xs text-gray-500 space-x-4">
-            <Link to="/privacy" className="hover:text-gray-700 dark:hover:text-gray-300">
+            <Link to="/privacy" className="underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-300">
               Privacy
             </Link>
-            <Link to="/cookies" className="hover:text-gray-700 dark:hover:text-gray-300">
+            <Link to="/cookies" className="underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-300">
               Cookies
             </Link>
-            <Link to="/terms" className="hover:text-gray-700 dark:hover:text-gray-300">
+            <Link to="/terms" className="underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-300">
               Terms
             </Link>
           </nav>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-6 py-10 prose prose-sm dark:prose-invert">
+      <main className="max-w-3xl mx-auto px-6 py-10 prose prose-sm dark:prose-invert [&_a]:underline [&_a]:underline-offset-2">
         <h1 className="text-3xl font-semibold mt-0">Trust &amp; Security</h1>
         <p className="text-gray-500 dark:text-gray-400">
           QualCanvas is built for qualitative researchers handling interview transcripts, fieldnotes, and other
@@ -55,25 +55,26 @@ export default function TrustPage() {
         <table className="w-full text-sm">
           <tbody>
             <tr>
-              <td className="font-medium w-48">Uptime target</td>
-              <td>99.9% (production traffic)</td>
+              <td className="font-medium w-48">Live service check</td>
+              <td>
+                <a href="https://api.qualcanvas.com/health">API health endpoint</a>
+              </td>
             </tr>
             <tr>
-              <td className="font-medium">Last incident</td>
-              <td>None disclosed in the trailing 90 days</td>
+              <td className="font-medium">Incident history</td>
+              <td>A dedicated public incident-history page is not currently available</td>
             </tr>
             <tr>
               <td className="font-medium">Security contact</td>
               <td>
                 <a href="mailto:security@qualcanvas.com" className="text-brand-600 hover:underline">
                   security@qualcanvas.com
-                </a>{' '}
-                · 48h response target
+                </a>
               </td>
             </tr>
             <tr>
               <td className="font-medium">Compliance roadmap</td>
-              <td>SOC 2 Type I scoping (target Q3 2026)</td>
+              <td>SOC 2 certification is not currently available</td>
             </tr>
           </tbody>
         </table>
@@ -85,15 +86,15 @@ export default function TrustPage() {
             accounts live here.
           </li>
           <li>
-            <strong>CDN + edge:</strong> Cloudflare. Serves the static frontend bundle; never receives raw transcript
-            content.
+            <strong>CDN + edge:</strong> Cloudflare serves the frontend, proxies the custom API domain and provides R2
+            object storage for uploaded media.
           </li>
           <li>
             <strong>File uploads:</strong> Cloudflare R2 (S3-compatible), same Cloudflare account.
           </li>
           <li>
-            <strong>EU region:</strong> on the roadmap (target Q2 2026). Until then, EU customers should consult our DPA
-            + SCCs.
+            <strong>EU region:</strong> an EU-resident application database is not currently available. Institutions
+            with residency requirements should confirm suitability before uploading research data.
           </li>
         </ul>
 
@@ -111,7 +112,8 @@ export default function TrustPage() {
           </li>
           <li>
             <strong>Backups:</strong> Weekly <code>pg_dump</code> to a private R2 bucket scoped to a least-privilege
-            token. Monthly restore drill documented at <code>docs/runbooks/RESTORE_DRILL.md</code>.
+            token. A restore procedure is documented in <code>docs/runbooks/RESTORE_DRILL.md</code>; restore exercises
+            are not yet reported publicly as a recurring service commitment.
           </li>
         </ul>
 
@@ -122,7 +124,7 @@ export default function TrustPage() {
           <li>Legacy access-code sign-in for grandfathered users</li>
           <li>Session JWTs stored in httpOnly+SameSite cookies, rotated on password change</li>
           <li>
-            <strong>Roadmap:</strong> MFA (Q3 2026), SAML for institutional SSO (Q4 2026)
+            <strong>Not currently available:</strong> MFA and institutional SAML/OIDC SSO
           </li>
         </ul>
 
@@ -155,8 +157,8 @@ export default function TrustPage() {
         <h2>Audit logging</h2>
         <p>
           Every authenticated request to a canvas resource is recorded in our internal <code>AuditLog</code> table with
-          the action (read / write / update / delete / export), timestamp, hashed IP, and response status. We retain
-          audit events for 90 days by default.
+          the action (read / write / update / delete / export), timestamp, hashed IP, and response status. Audit events
+          remain available with the project while needed for security, support and research traceability.
         </p>
         <p>
           As the owner of a canvas, you can pull the full audit trail at any time via{' '}
@@ -204,9 +206,9 @@ export default function TrustPage() {
           bug bounty.
         </p>
 
-        <p className="mt-12 text-xs text-gray-400 dark:text-gray-500">
-          Last updated: {new Date().toISOString().slice(0, 10)}. This page is informational and does not constitute a
-          contract. For binding commitments, see the DPA + Subscription Agreement.
+        <p className="mt-12 text-xs text-gray-600 dark:text-gray-400">
+          Last updated: 2026-07-18. This page is informational and does not constitute a contract. For binding
+          commitments, see the DPA + Subscription Agreement.
         </p>
       </main>
     </div>
@@ -214,17 +216,17 @@ export default function TrustPage() {
 }
 
 const SUB_PROCESSORS = [
-  { vendor: 'Railway', purpose: 'Application + Postgres hosting', location: 'US East', dpa: 'Signed' },
-  { vendor: 'Cloudflare', purpose: 'CDN, edge, DNS, R2 storage', location: 'Global edge', dpa: 'Signed' },
-  { vendor: 'Stripe', purpose: 'Payment processing', location: 'US', dpa: 'BAA-eligible' },
-  { vendor: 'Resend', purpose: 'Transactional email', location: 'US', dpa: 'Signed' },
+  { vendor: 'Railway', purpose: 'Application + Postgres hosting', location: 'US East', dpa: 'Provider terms / DPA' },
+  { vendor: 'Cloudflare', purpose: 'CDN, edge, DNS, R2 storage', location: 'Global edge', dpa: 'Provider terms / DPA' },
+  { vendor: 'Stripe', purpose: 'Payment processing', location: 'US', dpa: 'Provider privacy and data terms' },
+  { vendor: 'Resend', purpose: 'Transactional email', location: 'US', dpa: 'Provider terms / DPA' },
   { vendor: 'Google', purpose: 'OAuth identity', location: 'Global', dpa: 'OAuth only — no data sharing' },
   {
     vendor: 'OpenAI / Anthropic / Google AI',
     purpose: 'Large language model inference',
     location: 'US',
-    dpa: 'Bring-your-own-key — calls go direct, we never proxy',
+    dpa: 'Requests are proxied by QualCanvas; provider terms apply',
   },
-  { vendor: 'Sentry', purpose: 'Error tracking', location: 'EU (DE region)', dpa: 'Signed' },
+  { vendor: 'Sentry', purpose: 'Error tracking', location: 'Configured project region', dpa: 'Provider terms / DPA' },
   { vendor: 'GitHub Actions', purpose: 'CI + backups', location: 'US', dpa: 'Signed via parent (Microsoft)' },
 ];

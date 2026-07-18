@@ -1,0 +1,36 @@
+TITLE
+Create a Codebook and Code Your First Passage in QualCanvas
+
+DESCRIPTION
+Create a meaningful code, apply it to a passage and review the developing codebook.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Code meaning, not just words
+0:11 Create a code from the toolbar
+0:24 Select a defensible passage
+0:37 Review the codebook as it grows
+0:52 Use the command palette for repeat work
+1:03 Let connections reveal repetition
+1:19 Code, compare, refine
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+qualitative coding tutorial, create a codebook, thematic analysis coding, interview coding, QualCanvas
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Everyday coding
+Subtitle file: subtitles/04-code-your-first-passage.en-IE.srt
+Thumbnail: thumbnails/04-code-your-first-passage.jpg

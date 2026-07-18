@@ -32,7 +32,7 @@ const TARGETS: VsTarget[] = [
     competitor: 'NVivo (Lumivero)',
     quickVerdict:
       'NVivo is the most-cited tool in the field. If your committee already reads NVivo papers, that lineage is real. If you are starting fresh, QualCanvas is the cleaner option: pricing is on the page, the codebook is real-time-shared, no lock-in via QDPX in both directions.',
-    pricing: '$12/mo Pro vs ~$1,200/yr NVivo',
+    pricing: '$15/mo Pro ($12/mo annual equivalent) vs ~$1,200/yr NVivo',
     pricingSource: 'usercall.co NVivo pricing guide, 2026',
     status: 'draft',
   },
@@ -41,7 +41,7 @@ const TARGETS: VsTarget[] = [
     competitor: 'ATLAS.ti',
     quickVerdict:
       'ATLAS.ti pushes "reduce analysis time 90% with OpenAI." We push "AI assists; you decide." Same software category, different register. We publish prices and a working /trust page; theirs 404. Pick by how confident you feel about a 90% time-saving claim before you ship a methods section.',
-    pricing: '$12/mo Pro vs ~$5/mo student or $99/2 years',
+    pricing: '$15/mo Pro ($12/mo annual equivalent) vs ~$5/mo student or $99/2 years',
     pricingSource: 'atlasti.com/student-licenses + usercall.co, 2026',
     status: 'draft',
   },
@@ -50,7 +50,7 @@ const TARGETS: VsTarget[] = [
     competitor: 'Dedoose',
     quickVerdict:
       "Dedoose's active-month billing is genuinely flexible. If you code in bursts (a month here, a month there) Dedoose can be cheaper. QualCanvas is steadier — pay-as-you-need, .edu discount applied automatically, real-time collab built in instead of as an upgrade.",
-    pricing: '$12/mo Pro vs $17.95 active month',
+    pricing: '$15/mo Pro ($12/mo annual equivalent) vs $17.95 active month',
     pricingSource: 'dedoose.com/home/pricing, 2026',
     status: 'draft',
   },

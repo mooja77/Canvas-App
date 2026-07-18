@@ -2,38 +2,59 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { randomBytes } from 'crypto';
+import fs from 'fs';
+import fsPromises from 'fs/promises';
+import os from 'os';
 import path from 'path';
+import { pipeline } from 'stream/promises';
 import { prisma } from '../lib/prisma.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
 import { checkFileUploadAccess, checkTranscriptionMinutes } from '../middleware/planLimits.js';
 import { validateParams, canvasIdParam, canvasIdJobIdParams } from '../middleware/validation.js';
 import { storage } from '../lib/storage.js';
+import '../lib/storage-s3.js'; // register S3/R2 when configured
 import '../lib/storage-local.js'; // register local fallback
 import { createJob } from '../lib/jobs.js';
 import { registerJobHandler } from '../lib/jobs.js';
-import { transcribeAudio, getLocalUploadPath } from '../utils/transcription.js';
+import { transcribeAudio } from '../utils/transcription.js';
 import { isValidSignature } from '../utils/magicBytes.js';
 import { resolveUserOpenAiKey, TRANSCRIPTION_CENTS_PER_MINUTE } from '../utils/transcriptionMetering.js';
 
 export const uploadRoutes = Router();
 
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const ALLOWED_MEDIA_TYPES = new Set([
+  'audio/mpeg',
+  'audio/wav',
+  'audio/mp4',
+  'audio/x-m4a',
+  'audio/ogg',
+  'audio/webm',
+  'audio/flac',
+  'video/mp4',
+  'video/webm',
+]);
+
+function validCanvasStorageKey(canvasId: string, key: string): boolean {
+  const escapedCanvasId = canvasId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^canvas/${escapedCanvasId}/[a-f0-9]{32}(?:\\.[a-z0-9]{1,10})?$`, 'i').test(key);
+}
+
+async function requireOwnedCanvas(req: Request, _res: Response, next: NextFunction) {
+  try {
+    await getOwnedCanvas(req.params.id, getAuthId(req), getAuthUserId(req));
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
 // Multer for local file uploads (dev mode / local storage)
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB max
+  limits: { fileSize: MAX_UPLOAD_BYTES },
   fileFilter: (_req, file, cb) => {
-    const allowed = [
-      'audio/mpeg',
-      'audio/wav',
-      'audio/mp4',
-      'audio/x-m4a',
-      'audio/ogg',
-      'audio/webm',
-      'audio/flac',
-      'video/mp4',
-      'video/webm',
-    ];
-    if (allowed.includes(file.mimetype)) {
+    if (ALLOWED_MEDIA_TYPES.has(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error(`File type ${file.mimetype} not supported`));
@@ -53,9 +74,19 @@ uploadRoutes.post(
       const userId = getAuthUserId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
 
+      if (storage.providerName() === 'local') {
+        return res.status(409).json({
+          success: false,
+          error: 'Presigned uploads are unavailable with local storage; use the direct upload endpoint',
+        });
+      }
+
       const { fileName, contentType } = req.body;
       if (!fileName || !contentType) {
         return res.status(400).json({ success: false, error: 'fileName and contentType required' });
+      }
+      if (!ALLOWED_MEDIA_TYPES.has(contentType)) {
+        return res.status(400).json({ success: false, error: 'Unsupported media type' });
       }
 
       const ext = path.extname(fileName);
@@ -85,6 +116,26 @@ uploadRoutes.post(
       if (!storageKey || !originalName || !mimeType) {
         return res.status(400).json({ success: false, error: 'storageKey, originalName, mimeType required' });
       }
+      if (!validCanvasStorageKey(req.params.id, storageKey)) {
+        return res.status(400).json({ success: false, error: 'Invalid storage key' });
+      }
+      if (!ALLOWED_MEDIA_TYPES.has(mimeType)) {
+        return res.status(400).json({ success: false, error: 'Unsupported media type' });
+      }
+
+      const object = await storage.head(storageKey).catch(() => null);
+      if (!object) {
+        return res.status(404).json({ success: false, error: 'Uploaded object not found' });
+      }
+      if (object.size <= 0 || object.size > MAX_UPLOAD_BYTES) {
+        return res.status(400).json({ success: false, error: 'Uploaded object exceeds the 25 MB limit' });
+      }
+      if (object.contentType && object.contentType !== mimeType) {
+        return res.status(400).json({ success: false, error: 'Uploaded object type does not match confirmation' });
+      }
+      if (typeof sizeBytes === 'number' && sizeBytes > 0 && sizeBytes !== object.size) {
+        return res.status(400).json({ success: false, error: 'Uploaded object size does not match confirmation' });
+      }
 
       const fileUpload = await prisma.fileUpload.create({
         data: {
@@ -93,7 +144,7 @@ uploadRoutes.post(
           storageKey,
           originalName,
           mimeType,
-          sizeBytes: sizeBytes || 0,
+          sizeBytes: object.size,
           status: 'uploaded',
         },
       });
@@ -111,13 +162,11 @@ uploadRoutes.post(
   '/canvas/:id/upload/direct',
   validateParams(canvasIdParam),
   checkFileUploadAccess(),
+  requireOwnedCanvas,
   upload.single('file'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const dashboardAccessId = getAuthId(req);
       const userId = getAuthUserId(req);
-      await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
-
       if (!req.file) {
         return res.status(400).json({ success: false, error: 'No file uploaded' });
       }
@@ -187,27 +236,27 @@ uploadRoutes.post(
           fileUploadId,
           canvasId: req.params.id,
           status: 'queued',
+          language: typeof language === 'string' ? language : null,
+          requestedByUserId: userId || null,
         },
       });
 
       // Enqueue background job
-      const job = createJob('transcribe', {
+      createJob('transcribe', {
         id: transcriptionJob.id,
         type: 'transcribe',
-      });
-
-      // Store metadata for the job handler
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (job as any)._meta = {
-        jobDbId: transcriptionJob.id,
-        storageKey: fileUpload.storageKey,
-        canvasId: req.params.id,
-        language,
-        // Carry the enqueuing user so the worker can transcribe on their own
-        // OpenAI key (correct billing/quota) instead of silently using the
-        // server key. Undefined for legacy access-code users (no UserAiConfig).
-        userId,
-      };
+        // Metadata must exist before createJob starts its async handler.
+        _meta: {
+          jobDbId: transcriptionJob.id,
+          storageKey: fileUpload.storageKey,
+          canvasId: req.params.id,
+          language,
+          // Carry the enqueuing user so the worker can transcribe on their own
+          // OpenAI key (correct billing/quota) instead of silently using the
+          // server key. Undefined for legacy access-code users (no UserAiConfig).
+          userId,
+        },
+      } as Partial<import('../lib/jobs.js').Job>);
 
       res.json({ success: true, data: { jobId: transcriptionJob.id } });
     } catch (err) {
@@ -307,16 +356,27 @@ registerJobHandler('transcribe', async (job, updateProgress) => {
     return;
   }
 
-  // Update DB status
-  await prisma.transcriptionJob.update({
-    where: { id: jobDbId },
-    data: { status: 'processing', progress: 10 },
+  // Atomically claim this durable DB job. Only one application instance may
+  // transcribe it, even if multiple instances recover the same queued row.
+  const claimed = await prisma.transcriptionJob.updateMany({
+    where: { id: jobDbId, status: 'queued' },
+    data: { status: 'processing', progress: 10, errorMessage: null },
   });
+  if (claimed.count === 0) return;
   updateProgress(10);
 
+  let tempDir: string | null = null;
+  let filePath: string | null = null;
   try {
-    // Get file path (for local storage, resolve path; for S3, would need to download first)
-    const filePath = getLocalUploadPath(storageKey);
+    // Materialise either local or S3/R2 storage into an isolated temporary
+    // file because the OpenAI upload API expects a filesystem-backed stream.
+    tempDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'qualcanvas-transcribe-'));
+    const ext = path
+      .extname(storageKey)
+      .replace(/[^.a-z0-9]/gi, '')
+      .slice(0, 12);
+    filePath = path.join(tempDir, `source${ext || '.media'}`);
+    await pipeline(await storage.openReadStream(storageKey), fs.createWriteStream(filePath));
     updateProgress(20);
 
     // Whisper transcription is OpenAI-only. If the enqueuing user configured
@@ -375,5 +435,38 @@ registerJobHandler('transcribe', async (job, updateProgress) => {
       },
     });
     throw err;
+  } finally {
+    if (filePath) await fsPromises.unlink(filePath).catch(() => undefined);
+    if (tempDir) await fsPromises.rmdir(tempDir).catch(() => undefined);
   }
 });
+
+/** Recover durable transcription jobs after an application restart. */
+export async function recoverTranscriptionJobs(): Promise<void> {
+  const staleBefore = new Date(Date.now() - 10 * 60 * 1000);
+  await prisma.transcriptionJob.updateMany({
+    where: { status: 'processing', updatedAt: { lt: staleBefore } },
+    data: { status: 'queued', progress: 0, errorMessage: 'Recovered after an interrupted worker' },
+  });
+
+  const queued = await prisma.transcriptionJob.findMany({
+    where: { status: 'queued' },
+    include: { fileUpload: { select: { storageKey: true } } },
+    orderBy: { createdAt: 'asc' },
+    take: 25,
+  });
+
+  for (const row of queued) {
+    createJob('transcribe', {
+      id: row.id,
+      type: 'transcribe',
+      _meta: {
+        jobDbId: row.id,
+        storageKey: row.fileUpload.storageKey,
+        canvasId: row.canvasId,
+        language: row.language || undefined,
+        userId: row.requestedByUserId || undefined,
+      },
+    } as Partial<import('../lib/jobs.js').Job>);
+  }
+}

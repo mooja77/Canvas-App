@@ -116,7 +116,20 @@ export const useAuthStore = create<AuthState>()(
         // state clears immediately regardless so the UI doesn't wait on
         // network — a failed request just leaves a stale cookie that the
         // next login will overwrite.
-        void fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+        const apiBase = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
+        void fetch(`${apiBase}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
+        // Canvas notes, reflexivity journals, code weights and cross-canvas
+        // references can contain research data. Do not leave them behind for
+        // the next account on a shared browser.
+        for (let index = localStorage.length - 1; index >= 0; index--) {
+          const key = localStorage.key(index);
+          if (
+            key &&
+            (key.startsWith('canvas-') || key === 'qualcanvas-cross-refs' || key === 'qualcanvas-offline-queue')
+          ) {
+            localStorage.removeItem(key);
+          }
+        }
         set({
           dashboardCode: null,
           name: null,

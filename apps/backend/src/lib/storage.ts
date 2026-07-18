@@ -4,6 +4,8 @@
  * Pluggable interface for file storage (S3, local disk, etc.)
  */
 
+import type { Readable } from 'stream';
+
 export interface UploadOptions {
   key: string;
   body: Buffer | NodeJS.ReadableStream;
@@ -15,6 +17,11 @@ export interface PresignedUrlOptions {
   key: string;
   contentType: string;
   expiresIn?: number; // seconds, default 3600
+}
+
+export interface StorageObjectInfo {
+  size: number;
+  contentType?: string;
 }
 
 export interface StorageProvider {
@@ -34,6 +41,12 @@ export interface StorageProvider {
 
   /** Check if a file exists */
   exists(key: string): Promise<boolean>;
+
+  /** Read verified object metadata */
+  head(key: string): Promise<StorageObjectInfo>;
+
+  /** Open an object as a streaming download */
+  openReadStream(key: string): Promise<Readable>;
 }
 
 let activeProvider: StorageProvider | null = null;
@@ -60,4 +73,7 @@ export const storage = {
   getDownloadUrl: (key: string, expiresIn?: number) => getStorageProvider().getDownloadUrl(key, expiresIn),
   delete: (key: string) => getStorageProvider().delete(key),
   exists: (key: string) => getStorageProvider().exists(key),
+  head: (key: string) => getStorageProvider().head(key),
+  openReadStream: (key: string) => getStorageProvider().openReadStream(key),
+  providerName: () => getStorageProvider().name,
 };

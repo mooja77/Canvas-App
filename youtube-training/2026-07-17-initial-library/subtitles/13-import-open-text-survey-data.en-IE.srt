@@ -1,0 +1,107 @@
+1
+00:00:00,080 --> 00:00:04,293
+If your survey includes open-text answers, QualCanvas can bring them
+
+2
+00:00:04,293 --> 00:00:08,084
+into the same visual coding workflow as interview material.
+
+3
+00:00:08,084 --> 00:00:12,297
+Start with a clean CSV exported from your survey system,
+
+4
+00:00:12,297 --> 00:00:16,088
+and remove fields you do not need for analysis.
+
+5
+00:00:16,488 --> 00:00:21,056
+Inside a canvas, choose Survey to open the CSV importer.
+
+6
+00:00:21,056 --> 00:00:25,624
+Select the file only after checking its first row contains
+
+7
+00:00:25,624 --> 00:00:30,192
+clear column headings and each response occupies a consistent row.
+
+8
+00:00:30,592 --> 00:00:34,940
+After the file is read, map the column that names
+
+9
+00:00:34,940 --> 00:00:39,288
+each item, the column containing the open-text response and, when
+
+10
+00:00:39,288 --> 00:00:41,028
+appropriate, a case field.
+
+11
+00:00:41,028 --> 00:00:45,376
+Use a research identifier rather than a participant's real name.
+
+12
+00:00:45,776 --> 00:00:49,020
+Open Sources and spot-check several imported items.
+
+13
+00:00:49,020 --> 00:00:53,655
+Confirm the response count, make sure headings have not become
+
+14
+00:00:53,655 --> 00:00:58,289
+content and check that line breaks and characters survived the
+
+15
+00:00:58,289 --> 00:00:59,216
+CSV export.
+
+16
+00:00:59,616 --> 00:01:05,798
+Code meaningful excerpts rather than treating every row as a single idea.
+
+17
+00:01:05,798 --> 00:01:10,950
+The source, selected passage, code and later analytical structure remain
+
+18
+00:01:10,950 --> 00:01:15,072
+connected, which makes survey interpretations easier to review.
+
+19
+00:01:15,472 --> 00:01:20,198
+A CSV can quietly contain email addresses, IP fields or
+
+20
+00:01:20,198 --> 00:01:22,561
+demographic combinations that identify someone.
+
+21
+00:01:22,561 --> 00:01:27,287
+Remove unnecessary columns, follow your consent and retention rules, and
+
+22
+00:01:27,287 --> 00:01:32,014
+use the Ethics panel as a project reminder rather than
+
+23
+00:01:32,014 --> 00:01:33,904
+a substitute for approval.
+
+24
+00:01:34,304 --> 00:01:38,906
+The reliable path is simple: prepare a minimal CSV, map
+
+25
+00:01:38,906 --> 00:01:43,509
+the columns, verify the imported sources and then code visibly.
+
+26
+00:01:43,509 --> 00:01:48,111
+Open the QualCanvas training centre for the next tutorial on
+
+27
+00:01:48,111 --> 00:01:49,952
+cases and cross-case comparison.

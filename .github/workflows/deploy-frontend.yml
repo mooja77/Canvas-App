@@ -1,14 +1,9 @@
 name: Deploy frontend to Cloudflare Pages
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/frontend/**'
-      - 'shared/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/deploy-frontend.yml'
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
   workflow_dispatch:
 
 concurrency:
@@ -17,9 +12,14 @@ concurrency:
 
 jobs:
   deploy:
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@v5
         with:
           node-version: 20
@@ -51,7 +51,7 @@ jobs:
           # so without it frontend errors were never captured. VITE_GIT_SHA tags
           # every event with the deployed commit for release tracking.
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
-          VITE_GIT_SHA: ${{ github.sha }}
+          VITE_GIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Publish to Cloudflare Pages
         run: |
           # wrangler auto-detects the git commit message and sends it to the
@@ -68,4 +68,4 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}

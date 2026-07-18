@@ -113,6 +113,23 @@ async function smokeFrontend(browser, frontendUrl) {
   return result;
 }
 
+async function smokeFrontendWithRetry(browser, frontendUrl, maxAttempts = 3, baseDelayMs = 5000) {
+  let result;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) {
+      // Cloudflare Pages can take a few seconds to finish propagating a new
+      // deploy across edges; a script fetch right at deploy completion can
+      // transiently 500. Retry before failing the smoke (seen 2026-07-15).
+      const delay = baseDelayMs * attempt;
+      console.error(`Frontend smoke failed for ${frontendUrl} (attempt ${attempt}/${maxAttempts - 1}), retrying in ${Math.round(delay / 1000)}s...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    result = await smokeFrontend(browser, frontendUrl);
+    if (result.ok) return result;
+  }
+  return result;
+}
+
 async function main() {
   const ready = await checkBackendReady();
   const browser = await chromium.launch({ headless: true });
@@ -120,7 +137,7 @@ async function main() {
   try {
     const frontendResults = [];
     for (const frontendUrl of frontendUrls) {
-      frontendResults.push(await smokeFrontend(browser, frontendUrl));
+      frontendResults.push(await smokeFrontendWithRetry(browser, frontendUrl));
     }
 
     const result = {

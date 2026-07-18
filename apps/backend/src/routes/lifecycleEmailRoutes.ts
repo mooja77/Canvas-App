@@ -1,9 +1,14 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { AppError } from '../middleware/errorHandler.js';
 import { validate } from '../middleware/validation.js';
 import { getAuthUserId } from '../utils/routeHelpers.js';
 import { getEmailPreferencePayload, unsubscribeByToken, updateEmailPreferences } from '../lib/lifecycleEmail.js';
+import crypto from 'crypto';
+import { prisma } from '../lib/prisma.js';
+import { sendEmail } from '../lib/email.js';
+import { sha256 } from '../utils/hashing.js';
 
 export const lifecycleEmailRoutes = Router();
 export const publicLifecycleEmailRoutes = Router();
@@ -14,6 +19,24 @@ const preferencesSchema = z.object({
   trainingTips: z.boolean().optional(),
   inactivityNudges: z.boolean().optional(),
 });
+
+const newsletterSchema = z.object({ email: z.string().email().max(254) });
+const newsletterSubscribeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test' || process.env.E2E_TEST === 'true',
+  message: { success: false, error: 'Too many subscription requests; please try again later' },
+});
+
+function publicApiUrl(): string {
+  return (
+    process.env.PUBLIC_API_URL ||
+    process.env.API_URL ||
+    (process.env.NODE_ENV === 'production' ? 'https://api.qualcanvas.com/api' : 'http://localhost:3007/api')
+  ).replace(/\/$/, '');
+}
 
 function requireUserId(req: import('express').Request): string {
   const userId = getAuthUserId(req);
@@ -46,6 +69,95 @@ publicLifecycleEmailRoutes.get('/unsubscribe/:token', async (req, res, next) => 
   </main>
 </body>
 </html>`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Public field-guide newsletter double opt-in ───
+publicLifecycleEmailRoutes.post(
+  '/newsletter/subscribe',
+  newsletterSubscribeLimiter,
+  validate(newsletterSchema),
+  async (req, res, next) => {
+    try {
+      const email = req.body.email.trim().toLowerCase();
+      const token = crypto.randomBytes(32).toString('hex');
+      const unsubscribeToken = crypto.randomBytes(24).toString('hex');
+      const existing = await prisma.newsletterSubscriber.findUnique({ where: { email } });
+
+      if (existing?.status === 'confirmed') {
+        return res.json({ success: true, message: 'Check your inbox to confirm your subscription.' });
+      }
+
+      await prisma.newsletterSubscriber.upsert({
+        where: { email },
+        create: {
+          email,
+          status: 'pending',
+          confirmTokenHash: sha256(token),
+          unsubscribeToken,
+        },
+        update: {
+          status: 'pending',
+          confirmTokenHash: sha256(token),
+          unsubscribeToken,
+          unsubscribedAt: null,
+        },
+      });
+
+      const confirmUrl = `${publicApiUrl()}/email/newsletter/confirm/${token}`;
+      const sent = await sendEmail(
+        email,
+        'Confirm your QualCanvas field-guide subscription',
+        `<p>Confirm that you want the QualCanvas methodology field guide.</p><p><a href="${confirmUrl}">Confirm subscription</a></p><p>If you did not request this, ignore this email.</p>`,
+      );
+      if (!sent) throw new AppError('Confirmation email could not be sent', 503);
+
+      res.status(202).json({ success: true, message: 'Check your inbox to confirm your subscription.' });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+publicLifecycleEmailRoutes.get('/newsletter/confirm/:token', async (req, res, next) => {
+  try {
+    const subscriber = await prisma.newsletterSubscriber.findFirst({
+      where: { confirmTokenHash: sha256(req.params.token), status: 'pending' },
+    });
+    if (!subscriber) throw new AppError('Confirmation link is invalid or has already been used', 400);
+
+    await prisma.newsletterSubscriber.update({
+      where: { id: subscriber.id },
+      data: { status: 'confirmed', confirmedAt: new Date(), confirmTokenHash: null, unsubscribedAt: null },
+    });
+    res
+      .type('html')
+      .send(
+        '<main style="max-width:640px;margin:12vh auto;font-family:system-ui;padding:32px"><h1>Subscription confirmed</h1><p>You will receive the QualCanvas methodology field guide. Every message includes an unsubscribe link.</p><p><a href="https://qualcanvas.com/methodology">Read the field guide</a></p></main>',
+      );
+  } catch (err) {
+    next(err);
+  }
+});
+
+publicLifecycleEmailRoutes.get('/newsletter/unsubscribe/:token', async (req, res, next) => {
+  try {
+    const subscriber = await prisma.newsletterSubscriber.findUnique({
+      where: { unsubscribeToken: req.params.token },
+    });
+    if (subscriber) {
+      await prisma.newsletterSubscriber.update({
+        where: { id: subscriber.id },
+        data: { status: 'unsubscribed', unsubscribedAt: new Date(), confirmTokenHash: null },
+      });
+    }
+    res
+      .type('html')
+      .send(
+        '<main style="max-width:640px;margin:12vh auto;font-family:system-ui;padding:32px"><h1>You are unsubscribed</h1><p>You will not receive further field-guide emails.</p></main>',
+      );
   } catch (err) {
     next(err);
   }

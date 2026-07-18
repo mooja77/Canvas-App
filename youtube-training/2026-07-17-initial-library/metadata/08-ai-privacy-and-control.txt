@@ -1,0 +1,36 @@
+TITLE
+Use AI in QualCanvas Without Giving Up Researcher Control
+
+DESCRIPTION
+Understand what AI features do, what data is sent and what the researcher must review and disclose.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 AI is optional and reviewable
+0:14 Read the AI use policy first
+0:32 Choose an action deliberately
+0:47 Bring your own provider key when appropriate
+1:03 Treat AI use as an ethics decision
+1:20 Disclose the assistance
+1:37 Use AI only inside the protocol
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+AI qualitative research, AI coding interviews, research data privacy, AI research ethics, QualCanvas AI
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Privacy & control
+Subtitle file: subtitles/08-ai-privacy-and-control.en-IE.srt
+Thumbnail: thumbnails/08-ai-privacy-and-control.jpg

@@ -16,22 +16,24 @@ datasource db {
 }
 
 model User {
-  id                String    @id @default(cuid())
-  email             String    @unique
-  emailVerified     Boolean   @default(false)
-  passwordHash      String
-  name              String
-  role              String    @default("researcher")
-  plan              String    @default("free")
-  stripeCustomerId  String?   @unique
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  resetTokenHash    String?
-  resetTokenExpiry  DateTime?
+  id                      String    @id @default(cuid())
+  email                   String    @unique
+  emailVerified           Boolean   @default(false)
+  passwordHash            String
+  name                    String
+  role                    String    @default("researcher")
+  plan                    String    @default("free")
+  stripeCustomerId        String?   @unique
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  resetTokenHash          String?
+  resetTokenExpiry        DateTime?
+  verificationTokenHash   String?
+  verificationTokenExpiry DateTime?
   // Any JWT issued before this timestamp is rejected by the auth middleware.
   // Set on password reset, password change, and email change so stolen or
   // shared tokens don't outlive the credential change.
-  sessionsInvalidAt DateTime?
+  sessionsInvalidAt       DateTime?
 
   // Free-tier signups get a 14-day Pro trial. Auth middleware treats this
   // user as 'pro' until trialEndsAt elapses, then they revert to free
@@ -53,23 +55,23 @@ model User {
   onboardingState       String?   @default("{}")
   onboardingCompletedAt DateTime?
 
-  subscription      Subscription?
-  codingCanvases    CodingCanvas[]
-  dashboardAccess   DashboardAccess?
-  repositories      ResearchRepository[]
-  integrations      Integration[]
-  aiConfig          UserAiConfig?
-  ownedTeams        Team[]               @relation("TeamOwner")
-  teamMemberships   TeamMember[]
-  notifications     Notification[]
-  reportSchedules   ReportSchedule[]
-  calendarEvents    CalendarEvent[]
-  emailPreference   EmailPreference?
-  emailDeliveries   EmailDelivery[]
-  trainingAttempts  TrainingAttempt[]
-  canvasTemplates   CanvasTemplate[]
-  fileUploads       FileUpload[]
-  canvasTextCodings CanvasTextCoding[]
+  subscription         Subscription?
+  codingCanvases       CodingCanvas[]
+  dashboardAccess      DashboardAccess?
+  repositories         ResearchRepository[]
+  integrations         Integration[]
+  aiConfig             UserAiConfig?
+  ownedTeams           Team[]               @relation("TeamOwner")
+  teamMemberships      TeamMember[]
+  notifications        Notification[]
+  reportSchedules      ReportSchedule[]
+  calendarEvents       CalendarEvent[]
+  emailPreference      EmailPreference?
+  emailDeliveries      EmailDelivery[]
+  trainingAttempts     TrainingAttempt[]
+  canvasTemplates      CanvasTemplate[]
+  fileUploads          FileUpload[]
+  canvasTextCodings    CanvasTextCoding[]
   collaborations       CanvasCollaborator[] @relation("CollaboratorUser")
   invitedCollaborators CanvasCollaborator[] @relation("CollaboratorInviter")
 
@@ -504,17 +506,19 @@ model FileUpload {
 }
 
 model TranscriptionJob {
-  id             String     @id @default(cuid())
-  fileUploadId   String
-  canvasId       String
-  status         String     @default("queued") // queued | processing | completed | failed
-  progress       Float      @default(0)
-  resultText     String?
-  resultSegments String? // JSON: [{start, end, text}]
-  errorMessage   String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  fileUpload     FileUpload @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
+  id                String     @id @default(cuid())
+  fileUploadId      String
+  canvasId          String
+  status            String     @default("queued") // queued | processing | completed | failed
+  progress          Float      @default(0)
+  resultText        String?
+  resultSegments    String? // JSON: [{start, end, text}]
+  errorMessage      String?
+  language          String?
+  requestedByUserId String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  fileUpload        FileUpload @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
 
   @@index([canvasId])
   @@index([status])
@@ -706,17 +710,18 @@ model Notification {
 // ─── Report Schedules ───
 
 model ReportSchedule {
-  id        String    @id @default(cuid())
-  userId    String
-  canvasId  String?
-  teamId    String?
-  frequency String    @default("weekly") // daily, weekly, monthly
-  dayOfWeek Int?      @default(1) // 0=Sun, 1=Mon, etc.
-  lastSent  DateTime?
-  enabled   Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  team      Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  userId       String
+  canvasId     String?
+  teamId       String?
+  frequency    String    @default("weekly") // daily, weekly, monthly
+  dayOfWeek    Int?      @default(1) // 0=Sun, 1=Mon, etc.
+  lastSent     DateTime?
+  processingAt DateTime?
+  enabled      Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team         Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([teamId])
@@ -728,10 +733,10 @@ model ReportSchedule {
 model EmailPreference {
   id               String    @id @default(cuid())
   userId           String    @unique
-  lifecycle        Boolean   @default(true)
-  productUpdates   Boolean   @default(true)
-  trainingTips     Boolean   @default(true)
-  inactivityNudges Boolean   @default(true)
+  lifecycle        Boolean   @default(false)
+  productUpdates   Boolean   @default(false)
+  trainingTips     Boolean   @default(false)
+  inactivityNudges Boolean   @default(false)
   unsubscribeToken String    @unique
   unsubscribedAt   DateTime?
   createdAt        DateTime  @default(now())
@@ -781,6 +786,20 @@ model EmailDelivery {
   @@index([status, createdAt])
   @@index([type])
   @@index([campaignId])
+}
+
+model NewsletterSubscriber {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  status           String    @default("pending")
+  confirmTokenHash String?
+  unsubscribeToken String    @unique
+  confirmedAt      DateTime?
+  unsubscribedAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
 }
 
 // ─── Teams ───

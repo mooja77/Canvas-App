@@ -5,6 +5,7 @@ import PageShell from '../components/marketing/PageShell';
 import Eyebrow from '../components/marketing/Eyebrow';
 import DisplayHeading from '../components/marketing/DisplayHeading';
 import HairlineRule from '../components/marketing/HairlineRule';
+import { publicEmailApi } from '../services/api';
 
 /**
  * /subscribe — methodology field-guide newsletter landing.
@@ -17,6 +18,10 @@ import HairlineRule from '../components/marketing/HairlineRule';
  */
 export default function SubscribePage() {
   const [copied, setCopied] = useState(false);
+  const [email, setEmail] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
 
   usePageMeta(
     'Subscribe to the methodology field guide — QualCanvas',
@@ -27,12 +32,26 @@ export default function SubscribePage() {
     trackEvent('marketing_page_viewed', { page: '/subscribe' });
   }, []);
 
-  const handleSubscribeClick = () => {
+  const handleSubscribe = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!consent || !email.trim()) return;
+    setSubmitting(true);
+    setMessage('');
     trackEvent('cta_clicked', {
-      cta_label: 'Subscribe by email',
+      cta_label: 'Subscribe to field guide',
       location: 'subscribe_page',
-      target_route: 'mailto_subscribe',
+      target_route: 'newsletter_subscribe',
     });
+    try {
+      const response = await publicEmailApi.subscribeNewsletter(email.trim());
+      setMessage(response.data.message || 'Check your inbox to confirm your subscription.');
+      setEmail('');
+      setConsent(false);
+    } catch {
+      setMessage('We could not start the subscription. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleRssCopy = async () => {
@@ -55,34 +74,50 @@ export default function SubscribePage() {
         </DisplayHeading>
         <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed mb-10">
           Six chapters in the field guide so far — covering thematic analysis, grounded theory, IPA, intercoder
-          reliability, and ethics in practice. Each comes out after peer review by a credentialed methodologist. Free,
-          citeable, plain English.
+          reliability, and ethics in practice. Chapters are clearly labelled working drafts until external review is
+          complete. Free, citeable, plain English.
         </p>
 
-        {/* Mailto subscribe — proper back end TODO */}
         <section className="rounded-2xl p-6 sm:p-8 bg-white dark:bg-gray-800/60 ring-1 ring-gray-200 dark:ring-gray-700">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-2">By email</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
-            Send a one-line email and we'll add you to the field-guide list. One issue a month, no other emails ever,
-            unsubscribe with a single reply.
+            Enter your email, then use the confirmation link we send. Every issue includes a one-click unsubscribe link.
           </p>
-          <a
-            href="mailto:methodology@qualcanvas.com?subject=Subscribe%20me%20to%20the%20field%20guide&body=Hi%20—%20please%20add%20me%20to%20the%20monthly%20methodology%20field%20guide.%20Thanks."
-            onClick={handleSubscribeClick}
-            className="
-              inline-flex items-center justify-center
-              bg-ochre-500 hover:bg-ochre-600 text-ink-950 font-semibold
-              px-6 py-2.5 rounded-lg
-              transition-colors duration-150
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2
-            "
-          >
-            Subscribe by email
-          </a>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-            We're switching to a proper newsletter back end in the next release. Until then, this is the simplest way —
-            and we read every reply.
-          </p>
+          <form onSubmit={handleSubscribe} className="space-y-4">
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+              Email address
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
+                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-ochre-500 focus:outline-none focus:ring-2 focus:ring-ochre-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              />
+            </label>
+            <label className="flex items-start gap-3 text-sm text-gray-600 dark:text-gray-300">
+              <input
+                type="checkbox"
+                required
+                checked={consent}
+                onChange={(event) => setConsent(event.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-ochre-600 focus:ring-ochre-500"
+              />
+              I consent to receive the QualCanvas methodology field guide by email.
+            </label>
+            <button
+              type="submit"
+              disabled={submitting || !consent}
+              className="inline-flex items-center justify-center rounded-lg bg-ochre-500 px-6 py-2.5 font-semibold text-ink-950 transition-colors hover:bg-ochre-600 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2"
+            >
+              {submitting ? 'Sending confirmation…' : 'Subscribe'}
+            </button>
+            {message && (
+              <p role="status" className="text-sm text-gray-700 dark:text-gray-200">
+                {message}
+              </p>
+            )}
+          </form>
         </section>
 
         {/* RSS */}
@@ -111,8 +146,8 @@ export default function SubscribePage() {
         </section>
 
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-10">
-          What you'll get: roughly 2,000 words per issue, written by the team, reviewed by a credentialed methodologist
-          before publish. The full TOC and read-times are on{' '}
+          What you'll get: a concise field-guide update from the QualCanvas team. The full TOC, read-times and review
+          status are on{' '}
           <a
             className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
             href="/methodology"

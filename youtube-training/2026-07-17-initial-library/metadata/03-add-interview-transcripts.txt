@@ -1,0 +1,36 @@
+TITLE
+Add Interview Transcripts in QualCanvas | Import, Organise & Protect Data
+
+DESCRIPTION
+Add a transcript, keep sources organised and apply the right privacy checks before import.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Add a transcript without losing context
+0:15 Check the supported workflow
+0:28 Start from the Transcript action
+0:42 Use Sources to stay oriented
+0:56 Read in context
+1:11 Treat research data as research data
+1:30 Import deliberately
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+import interview transcript, qualitative data coding, transcript analysis, QualCanvas tutorial, research data privacy
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Everyday coding
+Subtitle file: subtitles/03-add-interview-transcripts.en-IE.srt
+Thumbnail: thumbnails/03-add-interview-transcripts.jpg

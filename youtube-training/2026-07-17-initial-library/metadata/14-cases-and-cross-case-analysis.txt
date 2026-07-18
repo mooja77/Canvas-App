@@ -1,0 +1,36 @@
+TITLE
+Build Cases and Compare Participants in QualCanvas
+
+DESCRIPTION
+Create analytical cases, assign source material and compare patterns across participants, sites or groups.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Compare without flattening the context
+0:17 Create and describe each case
+0:32 Assign the relevant source material
+0:46 Open Cross-Case analysis
+1:00 Use a framework matrix when the question is structured
+1:15 Memo the difference and the exception
+1:28 Cases organise comparison—researchers interpret it
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+cross case analysis, qualitative cases, participant comparison, case study analysis, QualCanvas cases
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Analysis
+Subtitle file: subtitles/14-cases-and-cross-case-analysis.en-IE.srt
+Thumbnail: thumbnails/14-cases-and-cross-case-analysis.jpg

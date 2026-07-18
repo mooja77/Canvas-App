@@ -56,7 +56,9 @@ test.describe('Canvas auth-gated tools', () => {
       return raw ? JSON.parse(raw)?.state?.jwt || '' : '';
     });
     const res = await p.request.post(`${API}/canvas`, { headers: headers(), data: { name: PREFIX } });
-    canvasId = (await res.json()).data.id;
+    const body = await res.json();
+    expect(res.ok(), `Canvas setup failed (${res.status()}): ${JSON.stringify(body)}`).toBeTruthy();
+    canvasId = body.data.id;
     await p.close();
     await ctx.close();
   });

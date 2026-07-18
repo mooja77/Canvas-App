@@ -15,6 +15,7 @@ interface UserProfile {
     plan: string;
     emailVerified?: boolean;
     createdAt?: string;
+    hasPassword?: boolean;
   };
   subscription: {
     status: string;
@@ -53,6 +54,7 @@ export default function AccountPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [exportingAccount, setExportingAccount] = useState(false);
 
   // AI Settings state
   const [aiProvider, setAiProvider] = useState('openai');
@@ -243,10 +245,10 @@ export default function AccountPage() {
   };
 
   const handleDeleteAccount = async () => {
-    if (!deletePassword) return;
+    if (!deletePassword || !profile) return;
     setDeleting(true);
     try {
-      await authApi.deleteAccount(deletePassword);
+      await authApi.deleteAccount(deletePassword, profile.user.hasPassword !== false);
       toast.success('Account deleted');
       logout();
       navigate('/');
@@ -255,6 +257,26 @@ export default function AccountPage() {
       toast.error(err.response?.data?.error || 'Failed to delete account');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleExportAccount = async () => {
+    setExportingAccount(true);
+    try {
+      const response = await authApi.exportAccount();
+      const href = URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = href;
+      link.download = `qualcanvas-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(href);
+      toast.success('Account export downloaded');
+    } catch {
+      toast.error('Failed to export account data');
+    } finally {
+      setExportingAccount(false);
     }
   };
 
@@ -1124,6 +1146,25 @@ export default function AccountPage() {
           </div>
         )}
 
+        {isEmailAuth && (
+          <section className="mb-6 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-200">
+              Your data
+            </h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              Download a portable JSON archive of your account, canvases, research content, and audit history.
+            </p>
+            <button
+              type="button"
+              onClick={handleExportAccount}
+              disabled={exportingAccount}
+              className="mt-4 rounded-lg border border-brand-300 px-4 py-2 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-50 disabled:opacity-50 dark:border-brand-700 dark:text-brand-300 dark:hover:bg-brand-900/20"
+            >
+              {exportingAccount ? 'Preparing export…' : 'Download account export'}
+            </button>
+          </section>
+        )}
+
         <button
           onClick={handleLogout}
           className="w-full py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 font-medium text-sm transition-colors mb-6"
@@ -1150,11 +1191,13 @@ export default function AccountPage() {
             ) : (
               <div className="space-y-3 p-4 bg-red-50 dark:bg-red-900/10 rounded-lg">
                 <p className="text-sm text-red-700 dark:text-red-300 font-medium">
-                  Enter your password to confirm account deletion:
+                  {profile.user.hasPassword === false
+                    ? 'Enter your account email to confirm account deletion:'
+                    : 'Enter your password to confirm account deletion:'}
                 </p>
                 <input
-                  type="password"
-                  placeholder="Your password"
+                  type={profile.user.hasPassword === false ? 'email' : 'password'}
+                  placeholder={profile.user.hasPassword === false ? profile.user.email : 'Your password'}
                   value={deletePassword}
                   onChange={(e) => setDeletePassword(e.target.value)}
                   className="w-full px-3 py-2 border border-red-300 dark:border-red-700 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"

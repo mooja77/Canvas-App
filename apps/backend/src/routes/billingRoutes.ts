@@ -18,7 +18,7 @@ const QC_PLANS: readonly QcPlan[] = ['student', 'pro', 'team'];
  * account shared across JMS products), so callers can reject them.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deriveQualcanvasPlan(stripe: ReturnType<typeof getStripe>, price: any): Promise<QcPlan | null> {
+export async function deriveQualcanvasPlan(stripe: ReturnType<typeof getStripe>, price: any): Promise<QcPlan | null> {
   if (!price) return null;
   const meta = price.metadata || {};
   if (meta.app === 'qualcanvas' && QC_PLANS.includes(meta.plan)) return meta.plan as QcPlan;
@@ -179,12 +179,12 @@ export async function handleStripeWebhook(req: Request, res: Response) {
     return res.status(400).json({ error: 'Invalid signature' });
   }
 
-  // Idempotency: skip already-processed events
+  // Idempotency: only successfully processed events are persisted. A failed
+  // delivery must remain retryable by Stripe.
   const existing = await prisma.webhookEvent.findUnique({ where: { id: event.id } });
   if (existing) {
     return res.json({ received: true });
   }
-  await prisma.webhookEvent.create({ data: { id: event.id, type: event.type } });
 
   try {
     switch (event.type) {
@@ -352,20 +352,22 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       }
     }
 
-    // Record the event only after successful handling, so a genuine failure
-    // (below) is retried by Stripe instead of short-circuiting at the dedupe
-    // check. Guarded against a concurrent duplicate delivery (unique id).
+    // Record only after successful handling. The unique event id also makes
+    // concurrent successful deliveries converge safely.
+    try {
+      await prisma.webhookEvent.create({ data: { id: event.id, type: event.type } });
+    } catch (recordError) {
+      const code = (recordError as { code?: string }).code;
+      if (code !== 'P2002') throw recordError;
+    }
     console.log(`[Stripe Webhook] Processed: ${event.type} (${event.id})`);
-    res.json({ received: true });
+    return res.json({ received: true });
   } catch (err) {
-    // Acknowledge receipt with 200 so Stripe doesn't retry indefinitely with
-    // exponential backoff (up to 3 days). The event ID was already recorded
-    // in WebhookEvent above, so a re-delivery wouldn't help anyway — it'd
-    // just hit the idempotency dedupe and short-circuit. Real failures are
-    // visible in Railway logs prefixed [Stripe Webhook] FAILED.
+    // A non-2xx response tells Stripe to retry transient failures. Because the
+    // event was not persisted above, the next delivery will be processed.
     const message = err instanceof Error ? err.message : 'Unknown error';
     const stack = err instanceof Error ? err.stack : undefined;
     console.error(`[Stripe Webhook] FAILED ${event.type} (${event.id}) — ${message}`, stack);
-    res.status(200).json({ received: true, processed: false, error: message });
+    return res.status(500).json({ received: false, processed: false, error: 'Webhook processing failed' });
   }
 }

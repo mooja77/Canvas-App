@@ -110,7 +110,7 @@ export default function LandingPage() {
         <Suspense fallback={<DemoPlaceholder onStart={handleStartFree} />}>
           <InteractiveDemo />
         </Suspense>
-        <p className="text-xs text-center mt-3 text-gray-400 dark:text-gray-500">
+        <p className="text-xs text-center mt-3 text-gray-600 dark:text-gray-300">
           Highlight any span to apply a code. Your work persists for 30 days.
         </p>
       </section>
@@ -288,7 +288,7 @@ export default function LandingPage() {
             </figure>
           ))}
         </div>
-        <p className="mt-8 text-xs text-gray-400 dark:text-gray-500">
+        <p className="mt-8 text-xs text-gray-600 dark:text-gray-300">
           Names and details anonymized until participants sign release.
         </p>
       </section>
@@ -305,8 +305,8 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { name: 'Free', price: '$0', bullet: '2 canvases · 10 codes · CSV export' },
-            { name: 'Student', price: '$5', bullet: 'Verified .edu · All 12 tools · Auto-code' },
-            { name: 'Pro', price: '$15', bullet: 'Unlimited · All 12 tools · Auto-code · Ethics' },
+            { name: 'Student', price: '$5', bullet: 'Verified .edu · All 13 tools · Auto-code' },
+            { name: 'Pro', price: '$15', bullet: 'Unlimited · All 13 tools · Auto-code · Ethics' },
             { name: 'Team', price: '$39', bullet: 'Everything in Pro · Intercoder κ · Per-seat' },
           ].map((tier) => (
             <div

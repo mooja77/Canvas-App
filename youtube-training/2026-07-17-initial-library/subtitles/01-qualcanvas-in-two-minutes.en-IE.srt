@@ -1,0 +1,99 @@
+1
+00:00:00,080 --> 00:00:03,926
+QualCanvas is a visual workspace for qualitative researchers.
+
+2
+00:00:03,926 --> 00:00:08,733
+It keeps transcripts, codes, analytical connections and research memos together,
+
+3
+00:00:08,733 --> 00:00:13,540
+so you can see how an interpretation developed instead of
+
+4
+00:00:13,540 --> 00:00:15,944
+reconstructing it at the end.
+
+5
+00:00:16,344 --> 00:00:20,855
+The product is designed for interview studies, field notes, open-text
+
+6
+00:00:20,855 --> 00:00:23,561
+survey responses and other qualitative material.
+
+7
+00:00:23,561 --> 00:00:28,072
+The first goal is simple: bring a source into a
+
+8
+00:00:28,072 --> 00:00:31,680
+workspace without turning your analysis into a spreadsheet.
+
+9
+00:00:32,080 --> 00:00:35,175
+On the canvas, each source remains readable.
+
+10
+00:00:35,175 --> 00:00:39,597
+Codes sit beside the passages they describe, and the links
+
+11
+00:00:39,597 --> 00:00:43,576
+between them make recurring patterns visible across the study.
+
+12
+00:00:43,976 --> 00:00:49,142
+When you are ready to analyse, the tools are grouped by purpose.
+
+13
+00:00:49,142 --> 00:00:53,447
+Explore text, inspect coding patterns, compare cases or build a
+
+14
+00:00:53,447 --> 00:00:57,752
+framework matrix without losing the path back to the source.
+
+15
+00:00:58,152 --> 00:01:02,321
+The codebook gives the project a shared vocabulary.
+
+16
+00:01:02,321 --> 00:01:07,533
+Review definitions, counts and hierarchy, then refine the structure as
+
+17
+00:01:07,533 --> 00:01:09,096
+your interpretation changes.
+
+18
+00:01:09,496 --> 00:01:14,133
+Export a report for writing, an Excel workbook for review,
+
+19
+00:01:14,133 --> 00:01:18,771
+an image for a presentation, or QDPX for exchange with
+
+20
+00:01:18,771 --> 00:01:20,162
+compatible qualitative-analysis tools.
+
+21
+00:01:20,162 --> 00:01:23,872
+Your work is not trapped in the canvas.
+
+22
+00:01:24,272 --> 00:01:28,062
+Start with one transcript and one research question.
+
+23
+00:01:28,062 --> 00:01:32,801
+Build the interpretation in small, reviewable steps, and use the
+
+24
+00:01:32,801 --> 00:01:36,117
+guide whenever you need the next task.
+
+25
+00:01:36,117 --> 00:01:38,960
+Visit qualcanvas dot com to begin.
