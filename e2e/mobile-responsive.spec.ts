@@ -8,22 +8,28 @@ const MOBILE_WIDTH = 375;
 const MOBILE_HEIGHT = 812;
 
 test.describe('Mobile Responsive', () => {
-
   test('landing page hamburger menu appears on mobile', async ({ page }) => {
     await page.setViewportSize({ width: MOBILE_WIDTH, height: MOBILE_HEIGHT });
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
     // On mobile, a hamburger menu button should appear
-    const hamburger = page.locator('button[aria-label*="menu" i], button[aria-label*="Menu"], button[aria-label*="navigation" i]')
+    const hamburger = page
+      .locator('button[aria-label*="menu" i], button[aria-label*="Menu"], button[aria-label*="navigation" i]')
       .or(page.locator('[data-testid="mobile-menu"]'));
 
     // Desktop nav links should be hidden or the hamburger should be visible
-    const hasHamburger = await hamburger.first().isVisible({ timeout: 3000 }).catch(() => false);
+    const hasHamburger = await hamburger
+      .first()
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
 
     // Alternatively, check that desktop inline nav is hidden
     const desktopNav = page.locator('nav a[href="/pricing"]');
-    const navHidden = await desktopNav.first().isHidden({ timeout: 2000 }).catch(() => false);
+    const navHidden = await desktopNav
+      .first()
+      .isHidden({ timeout: 2000 })
+      .catch(() => false);
 
     expect(hasHamburger || navHidden).toBe(true);
   });
@@ -36,8 +42,9 @@ test.describe('Mobile Responsive', () => {
     // Find the hamburger / mobile menu button
     const hamburger = page.locator('button[aria-label="Toggle menu"]');
 
-    if (!await hamburger.isVisible({ timeout: 3000 }).catch(() => false)) {
-      test.skip(); return;
+    if (!(await hamburger.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip();
+      return;
     }
 
     // Click hamburger to open menu
@@ -45,11 +52,17 @@ test.describe('Mobile Responsive', () => {
 
     // The mobile nav menu div should appear (sm:hidden div with links)
     const mobileMenu = page.locator('.sm\\:hidden').filter({ has: page.locator('a') });
-    const menuVisible = await mobileMenu.first().isVisible({ timeout: 3000 }).catch(() => false);
+    const menuVisible = await mobileMenu
+      .first()
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
 
     // Alternatively check for guide link text appearing
     const guideLink = page.locator('a').filter({ hasText: 'Guide' });
-    const hasGuide = await guideLink.first().isVisible({ timeout: 2000 }).catch(() => false);
+    const hasGuide = await guideLink
+      .first()
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
     expect(menuVisible || hasGuide).toBe(true);
 
     // Close menu by clicking the toggle again
@@ -62,9 +75,7 @@ test.describe('Mobile Responsive', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Email input should be visible and within viewport
-    const emailInput = page.getByRole('textbox', { name: /email/i }).or(
-      page.locator('input[type="email"]')
-    );
+    const emailInput = page.getByRole('textbox', { name: /email/i }).or(page.locator('input[type="email"]'));
     await expect(emailInput.first()).toBeVisible({ timeout: 3000 });
 
     // Password input should be visible
@@ -136,6 +147,10 @@ test.describe('Mobile Responsive', () => {
     await page.goto('/guide');
     await page.waitForLoadState('domcontentloaded');
 
+    // GuidePage is lazy-loaded. Wait for the route chunk to render before
+    // measuring document geometry; DOMContentLoaded only covers index.html.
+    await expect(page.getByRole('heading', { name: /Complete Guide/i }).first()).toBeVisible({ timeout: 5000 });
+
     // Guide page has lots of content, so it should be scrollable
     const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight);
     expect(scrollHeight).toBeGreaterThan(MOBILE_HEIGHT);
@@ -172,8 +187,14 @@ test.describe('Mobile Responsive', () => {
 
     // At mobile width the canvas may show a simplified view or the pane may be visible
     // Check that page doesn't crash and content is present
-    const hasCanvas = await page.locator('.react-flow__pane').isVisible({ timeout: 5000 }).catch(() => false);
-    const hasToolbar = await page.locator('[data-tour="canvas-toolbar"]').isVisible({ timeout: 2000 }).catch(() => false);
+    const hasCanvas = await page
+      .locator('.react-flow__pane')
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
+    const hasToolbar = await page
+      .locator('[data-tour="canvas-toolbar"]')
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
     const hasContent = await page.evaluate(() => document.body.innerHTML.length > 100);
 
     // The page should render something meaningful (canvas or fallback)
