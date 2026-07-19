@@ -24,6 +24,29 @@ export interface TrainingVideo {
 
 export const youtubeChannelUrl = 'https://www.youtube.com/@QualCanvas';
 
+export const trainingPlaylists = [
+  {
+    title: 'Start with QualCanvas',
+    outcome: 'Product overview, first-project setup and the complete transcript-to-report workflow.',
+    url: 'https://www.youtube.com/playlist?list=PLCrDpx1xmA1U',
+  },
+  {
+    title: 'Everyday QualCanvas Training',
+    outcome: 'Focused help for importing, coding, memoing, organising and exporting research work.',
+    url: 'https://www.youtube.com/playlist?list=PLCIvfQECYZZc',
+  },
+  {
+    title: 'Analysis, Collaboration & Control',
+    outcome: 'Queries, cases, sharing, intercoder review, AI controls, QDPX and research repositories.',
+    url: 'https://www.youtube.com/playlist?list=PLO7hzf3lVeSU',
+  },
+  {
+    title: 'QualCanvas for Researchers, Teams & Teaching',
+    outcome: 'Role-specific tours for doctoral, teaching, team, UX and applied-research contexts.',
+    url: 'https://www.youtube.com/playlist?list=PLTEqAy8MO9D8',
+  },
+] as const;
+
 export const trainingVideos: readonly TrainingVideo[] = [
   {
     id: '01',
