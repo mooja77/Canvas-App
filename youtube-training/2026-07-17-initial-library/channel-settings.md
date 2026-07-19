@@ -44,6 +44,13 @@ QualCanvas, qualitative research, qualitative data analysis, qualitative coding,
 
 ## Playlists
 
+Live playlist URLs:
+
+- Start with QualCanvas — https://www.youtube.com/playlist?list=PLCrDpx1xmA1U
+- Everyday QualCanvas Training — https://www.youtube.com/playlist?list=PLCIvfQECYZZc
+- Analysis, Collaboration & Control — https://www.youtube.com/playlist?list=PLO7hzf3lVeSU
+- QualCanvas for Researchers, Teams & Teaching — https://www.youtube.com/playlist?list=PLTEqAy8MO9D8
+
 ### Start with QualCanvas
 
 1. QualCanvas in 2 Minutes

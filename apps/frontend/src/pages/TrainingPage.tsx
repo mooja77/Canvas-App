@@ -4,6 +4,7 @@ import { YouTubeVideoCard } from '../components/training/YouTubeVideoCard';
 import {
   firstProjectLearningPath,
   trainingCategories,
+  trainingPlaylists,
   trainingVideos,
   youtubeChannelUrl,
 } from '../data/trainingVideos';
@@ -154,6 +155,45 @@ export function TrainingPage() {
                   className="mt-4 inline-block text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
                 >
                   Open this route
+                </a>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="border-y border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+        aria-labelledby="youtube-playlists-heading"
+      >
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-400">
+              Learn on YouTube
+            </p>
+            <h2 id="youtube-playlists-heading" className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">
+              Four paths through the video library
+            </h2>
+            <p className="mt-4 leading-7 text-gray-600 dark:text-gray-300">
+              Save the path that fits your work now. Videos are added to these public playlists as each master and its
+              English captions pass YouTube publishing checks.
+            </p>
+          </div>
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            {trainingPlaylists.map((playlist) => (
+              <article
+                key={playlist.url}
+                className="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950"
+              >
+                <h3 className="font-semibold text-gray-950 dark:text-white">{playlist.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">{playlist.outcome}</p>
+                <a
+                  href={playlist.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-flex text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
+                >
+                  Open playlist on YouTube ↗
                 </a>
               </article>
             ))}
