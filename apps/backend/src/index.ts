@@ -106,6 +106,7 @@ import { adminRoutes } from './routes/adminRoutes.js';
 import { lifecycleEmailRoutes, publicLifecycleEmailRoutes } from './routes/lifecycleEmailRoutes.js';
 import { eventsRoutes } from './routes/eventsRoutes.js';
 import { prisma } from './lib/prisma.js';
+import { buildReadinessPayload } from './lib/readiness.js';
 import { initSocketServer } from './lib/socket.js';
 import { startReportScheduler, stopReportScheduler } from './jobs/reportScheduler.js';
 import { startLifecycleEmailScheduler, stopLifecycleEmailScheduler } from './jobs/lifecycleEmailScheduler.js';
@@ -280,13 +281,18 @@ app.get('/ready', async (_req, res) => {
   const anyDegraded = Object.values(checks).some((v) => v === 'error');
 
   const status = dbDown ? 'not ready' : anyDegraded ? 'degraded' : 'ready';
-  res.status(dbDown ? 503 : 200).json({
-    status,
-    version: process.env.npm_package_version || '1.0.0',
-    uptime: process.uptime(),
-    checks,
-    ...(!isProduction && Object.keys(details).length > 0 ? { details } : {}),
-  });
+  res.status(dbDown ? 503 : 200).json(
+    buildReadinessPayload(
+      {
+        status,
+        version: process.env.npm_package_version || '1.0.0',
+        uptime: process.uptime(),
+        checks,
+        details,
+      },
+      isProduction,
+    ),
+  );
 });
 
 // ─── Basic metrics ───

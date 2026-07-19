@@ -136,6 +136,10 @@ test.describe('Mobile Responsive', () => {
     await page.goto('/guide');
     await page.waitForLoadState('domcontentloaded');
 
+    // GuidePage is lazy-loaded. Wait for the route chunk to render before
+    // measuring document geometry; DOMContentLoaded only covers index.html.
+    await expect(page.getByRole('heading', { name: /Complete Guide/i }).first()).toBeVisible({ timeout: 5000 });
+
     // Guide page has lots of content, so it should be scrollable
     const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight);
     expect(scrollHeight).toBeGreaterThan(MOBILE_HEIGHT);
