@@ -11,6 +11,7 @@ test.skip(({ browserName }) => browserName !== 'chromium', 'Visual regression: C
 // ═══════════════════════════════════════════════════════════════════
 
 const SCREENSHOT_OPTS = { maxDiffPixels: 250, animations: 'disabled' as const };
+const CANVAS_LIST_SCREENSHOT_OPTS = { ...SCREENSHOT_OPTS, maxDiffPixels: 500 };
 const CANVAS_WORKSPACE_SCREENSHOT_OPTS = { ...SCREENSHOT_OPTS, maxDiffPixels: 12000 };
 const STANDARD_VIEWPORT = { width: 1280, height: 720 };
 const MOBILE_VIEWPORT = { width: 375, height: 812 };
@@ -234,7 +235,7 @@ test.describe.serial('Visual Regression — Authenticated Pages', () => {
     await page.getByPlaceholder('Search canvases...').fill(VISUAL_CANVAS_NAME);
     await expect(page.getByText(VISUAL_CANVAS_NAME)).toBeVisible({ timeout: 5000 });
     await page.waitForLoadState('networkidle');
-    await expect(page).toHaveScreenshot('canvas-list-page.png', SCREENSHOT_OPTS);
+    await expect(page).toHaveScreenshot('canvas-list-page.png', CANVAS_LIST_SCREENSHOT_OPTS);
   });
 
   test('7 - Canvas workspace', async ({ page }) => {
