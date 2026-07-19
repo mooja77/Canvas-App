@@ -1,160 +1,150 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link
-      rel="icon"
-      type="image/svg+xml"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%234f46e5'/%3E%3Ctext x='16' y='24' font-size='22' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E"
-    />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%234f46e5'/%3E%3Ctext x='16' y='24' font-size='22' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Code interview transcripts on a visual canvas. Thematic analysis, IPA, grounded theory. Free tier. .edu discount."
-    />
+    <meta name="description" content="Code interview transcripts on a visual canvas. Thematic analysis, IPA, grounded theory. Free tier. .edu discount." />
     <meta property="og:title" content="QualCanvas — Visual Coding for Interview Research" />
-    <meta
-      property="og:description"
-      content="A drag-and-drop workspace for coding interviews, spotting patterns across sessions, and building theory you can defend. Free tier, .edu discount."
-    />
+    <meta property="og:description" content="A drag-and-drop workspace for coding interviews, spotting patterns across sessions, and building theory you can defend. Free tier, .edu discount." />
     <meta property="og:site_name" content="QualCanvas" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://qualcanvas.com/" />
     <meta property="og:image" content="https://qualcanvas.com/og-image.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="QualCanvas — Visual Coding for Interview Research" />
-    <meta
-      name="twitter:description"
-      content="A drag-and-drop workspace for coding interviews and building theory. Free tier, .edu discount."
-    />
+    <meta name="twitter:description" content="A drag-and-drop workspace for coding interviews and building theory. Free tier, .edu discount." />
     <meta name="twitter:image" content="https://qualcanvas.com/og-image.png" />
     <link rel="canonical" href="https://qualcanvas.com/" />
     <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@graph": [
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://qualcanvas.com/#software",
+      "name": "QualCanvas",
+      "url": "https://qualcanvas.com",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Research / Qualitative Analysis",
+      "operatingSystem": "Web",
+      "description": "Visual qualitative research analysis software with a spatial canvas. Code interview transcripts inline, nest codes into themes, and run 13 built-in analyses (word cloud, sentiment, co-occurrence, coding query, cluster, matrix and more). Free tier available. Real-time multi-coder collaboration on Pro and Team; inter-rater reliability reports on Team.",
+      "featureList": [
+        "Visual canvas coding",
+        "Nested code and theme hierarchy",
+        "Inline transcript coding",
+        "AI-assisted auto-coding (paid plans)",
+        "Real-time multi-coder collaboration (Pro and Team)",
+        "Inter-rater reliability reports (Team)",
+        "Audit trail of coding decisions",
+        "Research ethics panel (paid plans)",
+        "Cases and cross-study repository search (paid plans)",
+        "13 analyses: search, word cloud, sentiment, co-occurrence, matrix, comparison, cluster, coding query, treemap, document portrait, timeline, geo map, statistics",
+        "Audio and video transcription (OpenAI Whisper)",
+        "Transcript import from .docx, .txt, .csv and .vtt/.srt captions (Zoom, Otter, Teams)",
+        "REFI-QDA (.qdpx) project import and export",
+        "Export to CSV, PNG, HTML, Markdown and QDPX",
+        "Zoom, Slack and Qualtrics integrations (Team)",
+        "Read-only share links (paid plans)"
+      ],
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "USD",
+        "lowPrice": "0",
+        "highPrice": "39",
+        "offerCount": 4,
+        "offers": [
           {
-            "@type": "SoftwareApplication",
-            "@id": "https://qualcanvas.com/#software",
-            "name": "QualCanvas",
-            "url": "https://qualcanvas.com",
-            "applicationCategory": "BusinessApplication",
-            "applicationSubCategory": "Research / Qualitative Analysis",
-            "operatingSystem": "Web",
-            "description": "Visual qualitative research analysis software with a spatial canvas. Code interview transcripts inline, nest codes into themes, and run 13 built-in analyses (word cloud, sentiment, co-occurrence, coding query, cluster, matrix and more). Free tier available. Real-time multi-coder collaboration on Pro and Team; inter-rater reliability reports on Team.",
-            "featureList": [
-              "Visual canvas coding",
-              "Nested code and theme hierarchy",
-              "Inline transcript coding",
-              "AI-assisted auto-coding (paid plans)",
-              "Real-time multi-coder collaboration (Pro and Team)",
-              "Inter-rater reliability reports (Team)",
-              "Audit trail of coding decisions",
-              "Research ethics panel (paid plans)",
-              "Cases and cross-study repository search (paid plans)",
-              "13 analyses: search, word cloud, sentiment, co-occurrence, matrix, comparison, cluster, coding query, treemap, document portrait, timeline, geo map, statistics",
-              "Audio and video transcription (OpenAI Whisper)",
-              "Transcript import from .docx, .txt, .csv and .vtt/.srt captions (Zoom, Otter, Teams)",
-              "REFI-QDA (.qdpx) project import and export",
-              "Export to CSV, PNG, HTML, Markdown and QDPX",
-              "Zoom, Slack and Qualtrics integrations (Team)",
-              "Read-only share links (paid plans)"
-            ],
-            "offers": {
-              "@type": "AggregateOffer",
+            "@type": "Offer",
+            "name": "Free",
+            "price": "0",
+            "priceCurrency": "USD",
+            "url": "https://qualcanvas.com/pricing",
+            "description": "2 canvases, 5 transcripts per canvas, 10,000 words per transcript, 10 codes, CSV export, 4 analysis types. No AI, no file upload, no collaborators."
+          },
+          {
+            "@type": "Offer",
+            "name": "Student",
+            "priceCurrency": "USD",
+            "url": "https://qualcanvas.com/pricing",
+            "description": "Requires a verified .edu email. 5 canvases, unlimited transcripts and codes, AI auto-coding, all 13 analyses, all export formats, 500 MB storage, 300 transcription minutes per month. No collaborators, no inter-rater reliability. $5/month, or $4/month billed annually ($48/year).",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "5",
               "priceCurrency": "USD",
-              "lowPrice": "0",
-              "highPrice": "39",
-              "offerCount": 4,
-              "offers": [
-                {
-                  "@type": "Offer",
-                  "name": "Free",
-                  "price": "0",
-                  "priceCurrency": "USD",
-                  "url": "https://qualcanvas.com/pricing",
-                  "description": "2 canvases, 5 transcripts per canvas, 10,000 words per transcript, 10 codes, CSV export, 4 analysis types. No AI, no file upload, no collaborators."
-                },
-                {
-                  "@type": "Offer",
-                  "name": "Student",
-                  "priceCurrency": "USD",
-                  "url": "https://qualcanvas.com/pricing",
-                  "description": "Requires a verified .edu email. 5 canvases, unlimited transcripts and codes, AI auto-coding, all 13 analyses, all export formats, 500 MB storage, 300 transcription minutes per month. No collaborators, no inter-rater reliability. $5/month, or $4/month billed annually ($48/year).",
-                  "priceSpecification": {
-                    "@type": "UnitPriceSpecification",
-                    "price": "5",
-                    "priceCurrency": "USD",
-                    "referenceQuantity": {
-                      "@type": "QuantitativeValue",
-                      "value": 1,
-                      "unitCode": "MON"
-                    }
-                  }
-                },
-                {
-                  "@type": "Offer",
-                  "name": "Pro",
-                  "priceCurrency": "USD",
-                  "url": "https://qualcanvas.com/pricing",
-                  "description": "Unlimited canvases, AI auto-coding, all 13 analyses, up to 3 collaborators, 5 share links, 500 MB storage, 600 transcription minutes per month. Inter-rater reliability is Team-only. $15/month, or $12/month billed annually ($144/year). 40% off with a verified .edu email.",
-                  "priceSpecification": {
-                    "@type": "UnitPriceSpecification",
-                    "price": "15",
-                    "priceCurrency": "USD",
-                    "referenceQuantity": {
-                      "@type": "QuantitativeValue",
-                      "value": 1,
-                      "unitCode": "MON"
-                    }
-                  }
-                },
-                {
-                  "@type": "Offer",
-                  "name": "Team",
-                  "priceCurrency": "USD",
-                  "url": "https://qualcanvas.com/pricing",
-                  "description": "Per seat. Everything in Pro plus unlimited collaborators and share links, inter-rater reliability reports, Zoom/Slack/Qualtrics integrations, 5 GB storage, 3,000 transcription minutes per month. $39/seat/month, or $32/seat/month billed annually ($384/year). 40% off with a verified .edu email.",
-                  "priceSpecification": {
-                    "@type": "UnitPriceSpecification",
-                    "price": "39",
-                    "priceCurrency": "USD",
-                    "referenceQuantity": {
-                      "@type": "QuantitativeValue",
-                      "value": 1,
-                      "unitCode": "MON"
-                    }
-                  }
-                }
-              ]
-            },
-            "author": {
-              "@id": "https://jmsdevlab.com/#organization"
-            },
-            "publisher": {
-              "@id": "https://jmsdevlab.com/#organization"
+              "referenceQuantity": {
+                "@type": "QuantitativeValue",
+                "value": 1,
+                "unitCode": "MON"
+              }
             }
           },
           {
-            "@type": "Organization",
-            "@id": "https://jmsdevlab.com/#organization",
-            "name": "JMS Dev Lab",
-            "url": "https://jmsdevlab.com",
-            "logo": "https://jmsdevlab.com/logo.svg",
-            "sameAs": ["https://www.f6s.com/jms-dev-lab", "https://github.com/mooja77"]
+            "@type": "Offer",
+            "name": "Pro",
+            "priceCurrency": "USD",
+            "url": "https://qualcanvas.com/pricing",
+            "description": "Unlimited canvases, AI auto-coding, all 13 analyses, up to 3 collaborators, 5 share links, 500 MB storage, 600 transcription minutes per month. Inter-rater reliability is Team-only. $15/month, or $12/month billed annually ($144/year). 40% off with a verified .edu email.",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "15",
+              "priceCurrency": "USD",
+              "referenceQuantity": {
+                "@type": "QuantitativeValue",
+                "value": 1,
+                "unitCode": "MON"
+              }
+            }
           },
           {
-            "@type": "WebSite",
-            "@id": "https://qualcanvas.com/#website",
-            "url": "https://qualcanvas.com",
-            "name": "QualCanvas",
-            "description": "Visual qualitative research analysis software with a spatial canvas. Code interview transcripts inline, nest codes into themes, and run 13 built-in analyses. Free tier available. Real-time multi-coder collaboration on Pro and Team; inter-rater reliability reports on Team.",
-            "publisher": {
-              "@id": "https://jmsdevlab.com/#organization"
+            "@type": "Offer",
+            "name": "Team",
+            "priceCurrency": "USD",
+            "url": "https://qualcanvas.com/pricing",
+            "description": "Per seat. Everything in Pro plus unlimited collaborators and share links, inter-rater reliability reports, Zoom/Slack/Qualtrics integrations, 5 GB storage, 3,000 transcription minutes per month. $39/seat/month, or $32/seat/month billed annually ($384/year). 40% off with a verified .edu email.",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "39",
+              "priceCurrency": "USD",
+              "referenceQuantity": {
+                "@type": "QuantitativeValue",
+                "value": 1,
+                "unitCode": "MON"
+              }
             }
           }
         ]
+      },
+      "author": {
+        "@id": "https://jmsdevlab.com/#organization"
+      },
+      "publisher": {
+        "@id": "https://jmsdevlab.com/#organization"
       }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://jmsdevlab.com/#organization",
+      "name": "JMS Dev Lab",
+      "url": "https://jmsdevlab.com",
+      "logo": "https://jmsdevlab.com/logo.svg",
+      "sameAs": [
+        "https://www.f6s.com/jms-dev-lab",
+        "https://github.com/mooja77"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://qualcanvas.com/#website",
+      "url": "https://qualcanvas.com",
+      "name": "QualCanvas",
+      "description": "Visual qualitative research analysis software with a spatial canvas. Code interview transcripts inline, nest codes into themes, and run 13 built-in analyses. Free tier available. Real-time multi-coder collaboration on Pro and Team; inter-rater reliability reports on Team.",
+      "publisher": {
+        "@id": "https://jmsdevlab.com/#organization"
+      }
+    }
+  ]
+}
     </script>
     <!-- Inter is now self-hosted via @fontsource-variable/inter, loaded from
          src/index.css. No Google Fonts <link> needed. -->
@@ -192,124 +182,23 @@
          crawlers, AI agents, and first-paint visitors see real content
          that matches the live React hero. Updated when Tier 2 brand
          tokens change. */
-      #marketing-root {
-        font-family:
-          'Inter Variable',
-          'Inter',
-          system-ui,
-          -apple-system,
-          sans-serif;
-        color: #0b1530;
-        background: #f4f6f8;
-        max-width: 880px;
-        margin: 0 auto;
-        padding: 64px 24px 96px;
-        line-height: 1.6;
-      }
-      #marketing-root .qc-rule {
-        width: 48px;
-        height: 2px;
-        background: #b7841f;
-        margin-bottom: 16px;
-      }
-      #marketing-root .qc-eyebrow {
-        color: #475569;
-        font-weight: 600;
-        font-size: 13px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      #marketing-root h1 {
-        font-family: Georgia, serif;
-        font-size: 56px;
-        line-height: 1.05;
-        margin: 16px 0 20px;
-        font-weight: 600;
-        letter-spacing: -0.01em;
-        color: #0b1530;
-      }
-      #marketing-root .lede {
-        font-size: 19px;
-        color: #22304a;
-        margin: 0 0 32px;
-        max-width: 640px;
-        line-height: 1.6;
-      }
-      #marketing-root h2 {
-        font-family: Georgia, serif;
-        font-size: 28px;
-        margin: 48px 0 12px;
-        font-weight: 600;
-        color: #0b1530;
-      }
-      #marketing-root .features {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 12px;
-        padding: 0;
-        list-style: none;
-        margin: 0 0 24px;
-      }
-      @media (min-width: 720px) {
-        #marketing-root .features {
-          grid-template-columns: 1fr 1fr;
-        }
-      }
-      #marketing-root .features li {
-        padding: 16px;
-        border-radius: 8px;
-        background: #ffffff;
-        border: 1px solid #e5e9ef;
-      }
-      #marketing-root .features strong {
-        display: block;
-        margin-bottom: 4px;
-        font-weight: 600;
-        color: #0b1530;
-      }
-      #marketing-root .pricing {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        margin: 0 0 32px;
-        padding: 0;
-        list-style: none;
-      }
-      #marketing-root .pricing li {
-        padding: 20px 16px;
-        border-radius: 8px;
-        background: #ffffff;
-        border: 1px solid #e5e9ef;
-        text-align: center;
-      }
-      #marketing-root .price {
-        font-family: Georgia, serif;
-        font-size: 32px;
-        font-weight: 600;
-        color: #0b1530;
-      }
-      #marketing-root .cta {
-        display: inline-block;
-        background: #b7841f;
-        color: #0b1530;
-        padding: 14px 28px;
-        border-radius: 8px;
-        font-weight: 600;
-        text-decoration: none;
-      }
-      #marketing-root .cta:hover {
-        background: #956914;
-      }
-      #marketing-root .footer-links {
-        color: #6a7891;
-        font-size: 14px;
-        margin-top: 48px;
-      }
-      #marketing-root .footer-links a {
-        color: #b7841f;
-        text-decoration: none;
-        margin-right: 16px;
-      }
+      #marketing-root { font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif; color: #0B1530; background: #F4F6F8; max-width: 880px; margin: 0 auto; padding: 64px 24px 96px; line-height: 1.6; }
+      #marketing-root .qc-rule { width: 48px; height: 2px; background: #B7841F; margin-bottom: 16px; }
+      #marketing-root .qc-eyebrow { color: #475569; font-weight: 600; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+      #marketing-root h1 { font-family: Georgia, serif; font-size: 56px; line-height: 1.05; margin: 16px 0 20px; font-weight: 600; letter-spacing: -0.01em; color: #0B1530; }
+      #marketing-root .lede { font-size: 19px; color: #22304A; margin: 0 0 32px; max-width: 640px; line-height: 1.6; }
+      #marketing-root h2 { font-family: Georgia, serif; font-size: 28px; margin: 48px 0 12px; font-weight: 600; color: #0B1530; }
+      #marketing-root .features { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 0; list-style: none; margin: 0 0 24px; }
+      @media (min-width: 720px) { #marketing-root .features { grid-template-columns: 1fr 1fr; } }
+      #marketing-root .features li { padding: 16px; border-radius: 8px; background: #ffffff; border: 1px solid #E5E9EF; }
+      #marketing-root .features strong { display: block; margin-bottom: 4px; font-weight: 600; color: #0B1530; }
+      #marketing-root .pricing { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0 0 32px; padding: 0; list-style: none; }
+      #marketing-root .pricing li { padding: 20px 16px; border-radius: 8px; background: #ffffff; border: 1px solid #E5E9EF; text-align: center; }
+      #marketing-root .price { font-family: Georgia, serif; font-size: 32px; font-weight: 600; color: #0B1530; }
+      #marketing-root .cta { display: inline-block; background: #B7841F; color: #0B1530; padding: 14px 28px; border-radius: 8px; font-weight: 600; text-decoration: none; }
+      #marketing-root .cta:hover { background: #956914; }
+      #marketing-root .footer-links { color: #6A7891; font-size: 14px; margin-top: 48px; }
+      #marketing-root .footer-links a { color: #B7841F; text-decoration: none; margin-right: 16px; }
     </style>
 
     <!-- Chat widget visibility rules. The third-party chat script
@@ -318,20 +207,30 @@
          (where it overlaps the status bar + bookmarks). -->
     <style>
       @media (max-width: 767px) {
-        #jms-chat-widget,
-        [id^='jms-chat'],
-        iframe[src*='chat/widget'] {
+        #jms-chat-widget, [id^="jms-chat"], iframe[src*="chat/widget"] {
           display: none !important;
         }
       }
-      body[data-page='canvas'] #jms-chat-widget,
-      body[data-page='canvas'] [id^='jms-chat'],
-      body[data-page='canvas'] iframe[src*='chat/widget'] {
+      body[data-page="canvas"] #jms-chat-widget,
+      body[data-page="canvas"] [id^="jms-chat"],
+      body[data-page="canvas"] iframe[src*="chat/widget"] {
         display: none !important;
       }
     </style>
+
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-NPTXDRDH');</script>
+    <!-- End Google Tag Manager -->
   </head>
   <body class="bg-gray-50 text-gray-900 antialiased">
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NPTXDRDH"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
     <!-- Prerendered marketing content. Visible to crawlers, AI search
          agents, and any visitor before the React bundle arrives.
          Removed by main.tsx once React mounts at #root. -->
@@ -339,66 +238,29 @@
       <div class="qc-rule"></div>
       <div class="qc-eyebrow">A qualitative workspace</div>
       <h1>Code interviews like you think. Visually.</h1>
-      <p class="lede">
-        QualCanvas is a visual workspace for coding transcripts, finding themes, and writing memos you can defend in
-        front of a committee.
-      </p>
+      <p class="lede">QualCanvas is a visual workspace for coding transcripts, finding themes, and writing memos you can defend in front of a committee.</p>
       <a href="/login" class="cta">Start free</a>
 
       <h2>What it does</h2>
       <ul class="features">
-        <li>
-          <strong>Visual coding canvas</strong>Highlight a span, name a code. Move it. Merge it. Split it. The way real
-          coding actually goes.
-        </li>
-        <li>
-          <strong>Intercoder reliability live</strong>Cohen's κ and Krippendorff's α calculated as your team codes.
-          Methods-paper-ready CSV export.
-        </li>
-        <li>
-          <strong>Ethics & consent built in</strong>Track consent, anonymize fields, set retention windows. The audit
-          trail your IRB will ask for is already running.
-        </li>
-        <li>
-          <strong>QDPX in and out</strong>Import from NVivo or ATLAS.ti. Export back any time. No lock-in by design.
-        </li>
+        <li><strong>Visual coding canvas</strong>Highlight a span, name a code. Move it. Merge it. Split it. The way real coding actually goes.</li>
+        <li><strong>Intercoder reliability live</strong>Cohen's κ and Krippendorff's α calculated as your team codes. Methods-paper-ready CSV export.</li>
+        <li><strong>Ethics & consent built in</strong>Track consent, anonymize fields, set retention windows. The audit trail your IRB will ask for is already running.</li>
+        <li><strong>QDPX in and out</strong>Import from NVivo or ATLAS.ti. Export back any time. No lock-in by design.</li>
       </ul>
 
       <h2>Pricing</h2>
       <ul class="pricing">
-        <li>
-          <strong>Free</strong>
-          <div class="price">$0</div>
-          2 canvases · 10 codes
-        </li>
-        <li>
-          <strong>Student</strong>
-          <div class="price">$5<small>/mo</small></div>
-          Verified .edu · all 13 tools
-        </li>
-        <li>
-          <strong>Pro</strong>
-          <div class="price">$15<small>/mo</small></div>
-          Unlimited · all 13 tools
-        </li>
-        <li>
-          <strong>Team</strong>
-          <div class="price">$39<small>/mo</small></div>
-          Intercoder κ · per seat
-        </li>
+        <li><strong>Free</strong><div class="price">$0</div>2 canvases · 10 codes</li>
+        <li><strong>Student</strong><div class="price">$5<small>/mo</small></div>Verified .edu · all 13 tools</li>
+        <li><strong>Pro</strong><div class="price">$15<small>/mo</small></div>Unlimited · all 13 tools</li>
+        <li><strong>Team</strong><div class="price">$39<small>/mo</small></div>Intercoder κ · per seat</li>
       </ul>
 
-      <p class="lede" style="margin-top: 16px; font-size: 16px">
-        <strong>40% off Pro and Team with a .edu email</strong> — applied automatically at checkout.
-      </p>
+      <p class="lede" style="margin-top: 16px; font-size: 16px;"><strong>40% off Pro and Team with a .edu email</strong> — applied automatically at checkout.</p>
 
       <h2>The method, not just the tool</h2>
-      <p>
-        Six numbered chapters at <a href="/methodology">qualcanvas.com/methodology</a>: foundations of qualitative
-        coding, thematic analysis (Braun &amp; Clarke), grounded theory (Charmaz), interpretative phenomenological
-        analysis, intercoder reliability, and ethics in practice. Cite us in your paper from
-        <a href="/cite">qualcanvas.com/cite</a> — BibTeX, APA, Chicago, RIS.
-      </p>
+      <p>Six numbered chapters at <a href="/methodology">qualcanvas.com/methodology</a>: foundations of qualitative coding, thematic analysis (Braun &amp; Clarke), grounded theory (Charmaz), interpretative phenomenological analysis, intercoder reliability, and ethics in practice. Cite us in your paper from <a href="/cite">qualcanvas.com/cite</a> — BibTeX, APA, Chicago, RIS.</p>
 
       <p class="footer-links">
         <a href="/login">Start free</a>
@@ -409,7 +271,7 @@
         <a href="/terms">Terms</a>
       </p>
 
-      <p class="footer-links" style="margin-top: 16px">
+      <p class="footer-links" style="margin-top: 16px;">
         Built by <a href="https://www.jmsdevlab.com/apps.html#qualcanvas">JMS Dev Lab</a> in Ireland.
       </p>
     </main>
