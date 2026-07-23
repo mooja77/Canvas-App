@@ -78,7 +78,7 @@ Mark each item: PASS / FAIL / SKIP (with reason).
 ## How to Use
 
 1. Open https://qualcanvas.com
-2. Create a fresh account or use CANVAS-DEMO2025
+2. Create a fresh account or use a dedicated QA code supplied through the environment
 3. Work through each section top-to-bottom
 4. Mark PASS/FAIL/SKIP in a copy of this file
 5. For any FAIL: note the exact steps and take a screenshot

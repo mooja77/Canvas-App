@@ -7,6 +7,7 @@ import { validate, validateParams } from '../middleware/validation.js';
 import { teamIdParam, createTeamSchema, inviteMemberSchema, teamIdUserIdParams } from '../middleware/validation.js';
 import { sendTeamInviteEmail } from '../lib/email.js';
 import { notifyTeamInvite } from '../utils/notifications.js';
+import { syncTeamSeatQuantity } from '../utils/teamBilling.js';
 
 export const teamRoutes = Router();
 
@@ -28,6 +29,12 @@ function requireTeamPlan(req: import('express').Request): string {
   if (!limits.intercoderEnabled) {
     throw new AppError(`Team features require a Team plan (current: ${plan})`, 403);
   }
+  return userId;
+}
+
+function requireEmailUser(req: import('express').Request): string {
+  const userId = getAuthUserId(req);
+  if (!userId) throw new AppError('Email authentication required for team features', 401);
   return userId;
 }
 
@@ -125,7 +132,10 @@ teamRoutes.post(
   validate(inviteMemberSchema),
   async (req, res, next) => {
     try {
-      const userId = requireTeamPlan(req);
+      // Admins use the owner's Team entitlement; they do not need a second
+      // independent Team subscription. Seat synchronization below validates
+      // the owner's active subscription before membership is confirmed.
+      const userId = requireEmailUser(req);
       const { teamId } = req.params;
       const { email, role } = req.body;
 
@@ -179,7 +189,16 @@ teamRoutes.post(
         throw err;
       }
 
-      // Send invitation email (best effort)
+      // Stripe Team pricing is per seat. Do not confirm membership unless the
+      // owner's subscription quantity was updated successfully.
+      try {
+        await syncTeamSeatQuantity(team.ownerId);
+      } catch (err) {
+        await prismaTeamMember.deleteMany({ where: { teamId, userId: targetUser.id } });
+        throw err;
+      }
+
+      // Send membership email (best effort)
       const appUrl = process.env.APP_URL || 'http://localhost:5174';
       await sendTeamInviteEmail(email, team.name, `${appUrl}/login`).catch((err: unknown) => {
         console.error('[TeamRoutes] Failed to send invite email:', err);
@@ -224,12 +243,26 @@ teamRoutes.delete('/teams/:teamId/members/:userId', validateParams(teamIdUserIdP
       throw new AppError('Cannot remove the team owner', 400);
     }
 
+    // Preserve the role so a failed Stripe seat update can restore the member.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const existingMember = team.members.find((member: any) => member.userId === targetUserId);
     const deleted = await prismaTeamMember.deleteMany({
       where: { teamId, userId: targetUserId },
     });
 
     if (deleted.count === 0) {
       throw new AppError('Member not found in this team', 404);
+    }
+
+    try {
+      await syncTeamSeatQuantity(team.ownerId);
+    } catch (err) {
+      if (existingMember) {
+        await prismaTeamMember.create({
+          data: { teamId, userId: targetUserId, role: existingMember.role },
+        });
+      }
+      throw err;
     }
 
     res.json({ success: true, message: 'Member removed' });
@@ -251,7 +284,16 @@ teamRoutes.delete('/teams/:teamId', validateParams(teamIdParam), async (req, res
       throw new AppError('Only the team owner can delete the team', 403);
     }
 
-    await prismaTeam.delete({ where: { id: team.id } });
+    // Reduce billing first using the membership set that will remain. If the
+    // billing update fails, preserve the team instead of claiming deletion
+    // while continuing to charge its seats.
+    await syncTeamSeatQuantity(userId, { excludeTeamId: team.id });
+    try {
+      await prismaTeam.delete({ where: { id: team.id } });
+    } catch (err) {
+      await syncTeamSeatQuantity(userId).catch(() => {});
+      throw err;
+    }
 
     res.json({ success: true, message: 'Team deleted' });
   } catch (err) {

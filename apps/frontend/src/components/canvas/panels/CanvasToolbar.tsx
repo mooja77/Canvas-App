@@ -11,6 +11,7 @@ import { canvasApi } from '../../../services/api';
 import FeatureTooltip from '../../FeatureTooltip';
 import { CollisionPopover } from '../primitives/CollisionPopover';
 import { useMobile } from '../../../hooks/useMobile';
+import { useAuthStore } from '../../../stores/authStore';
 
 const AutoCodeModal = lazy(() => import('./AutoCodeModal'));
 const CaseManagerPanel = lazy(() => import('./CaseManagerPanel'));
@@ -158,6 +159,15 @@ export default function CanvasToolbar({
   // F8 — on phone-class viewports we collapse Survey / Share / Export into the
   // existing "More" overflow so the toolbar no longer wraps to 3 rows.
   const isMobile = useMobile();
+  const effectivePlan = useAuthStore((state) => state.effectivePlan ?? state.plan ?? 'free');
+  const hasRichExports = effectivePlan !== 'free';
+  const requireRichExport = (action: () => void) => {
+    if (!hasRichExports) {
+      toast.error('This export format is available on Student, Pro, and Team plans.');
+      return;
+    }
+    action();
+  };
   const closeCanvas = useCanvasStore((s) => s.closeCanvas);
   const addQuestion = useCanvasStore((s) => s.addQuestion);
   const addMemo = useCanvasStore((s) => s.addMemo);
@@ -1000,7 +1010,7 @@ export default function CanvasToolbar({
                       </svg>
                     }
                     label="Export PNG"
-                    onClick={onExportPNG}
+                    onClick={() => requireRichExport(onExportPNG)}
                   />
                 )}
                 <DropdownItem
@@ -1020,7 +1030,7 @@ export default function CanvasToolbar({
                     </svg>
                   }
                   label="Export Report (Word, web, text)"
-                  onClick={() => setShowRichExport(true)}
+                  onClick={() => requireRichExport(() => setShowRichExport(true))}
                 />
                 <DropdownItem
                   icon={
@@ -1039,7 +1049,7 @@ export default function CanvasToolbar({
                     </svg>
                   }
                   label={exportingExcel ? 'Exporting...' : 'Export Excel (.xlsx)'}
-                  onClick={handleExportExcel}
+                  onClick={() => requireRichExport(handleExportExcel)}
                 />
                 <DropdownItem
                   icon={
@@ -1081,7 +1091,7 @@ export default function CanvasToolbar({
                     </svg>
                   }
                   label="Import QDPX (NVivo / ATLAS.ti)"
-                  onClick={() => setShowQdpxImport(true)}
+                  onClick={() => requireRichExport(() => setShowQdpxImport(true))}
                 />
               </ToolbarDropdown>
             </FeatureTooltip>
@@ -1203,7 +1213,7 @@ export default function CanvasToolbar({
                       </svg>
                     }
                     label="Export PNG"
-                    onClick={onExportPNG}
+                    onClick={() => requireRichExport(onExportPNG)}
                   />
                 )}
                 <DropdownItem
@@ -1223,7 +1233,7 @@ export default function CanvasToolbar({
                     </svg>
                   }
                   label="Export Report (Word, web, text)"
-                  onClick={() => setShowRichExport(true)}
+                  onClick={() => requireRichExport(() => setShowRichExport(true))}
                 />
                 <DropdownItem
                   icon={
@@ -1242,7 +1252,7 @@ export default function CanvasToolbar({
                     </svg>
                   }
                   label={exportingExcel ? 'Exporting...' : 'Export Excel (.xlsx)'}
-                  onClick={handleExportExcel}
+                  onClick={() => requireRichExport(handleExportExcel)}
                 />
                 <DropdownLabel>More</DropdownLabel>
               </>

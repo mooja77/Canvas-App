@@ -20,11 +20,19 @@ const QC_PLANS: readonly QcPlan[] = ['student', 'pro', 'team'];
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function deriveQualcanvasPlan(stripe: ReturnType<typeof getStripe>, price: any): Promise<QcPlan | null> {
   if (!price) return null;
-  const meta = price.metadata || {};
+  let resolvedPrice = price;
+  if (!price.metadata && !price.product && typeof price.id === 'string') {
+    try {
+      resolvedPrice = await stripe.prices.retrieve(price.id, { expand: ['product'] });
+    } catch {
+      return null;
+    }
+  }
+  const meta = resolvedPrice.metadata || {};
   if (meta.app === 'qualcanvas' && QC_PLANS.includes(meta.plan)) return meta.plan as QcPlan;
   try {
-    let product = typeof price.product === 'object' ? price.product : null;
-    if (!product && typeof price.product === 'string') product = await stripe.products.retrieve(price.product);
+    let product = typeof resolvedPrice.product === 'object' ? resolvedPrice.product : null;
+    if (!product && typeof resolvedPrice.product === 'string') product = await stripe.products.retrieve(resolvedPrice.product);
     const name = String(product?.name || '').toLowerCase();
     if (!name.startsWith('qualcanvas')) return null;
     if (name.includes('student')) return 'student';
@@ -67,6 +75,17 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
     }
     const plan = await deriveQualcanvasPlan(stripe, price);
     if (!plan) throw new AppError('Unrecognized plan price', 400);
+    if (plan === 'student' && (!user.emailVerified || !user.email.toLowerCase().endsWith('.edu'))) {
+      throw new AppError('The Student plan requires a verified .edu email address', 403);
+    }
+
+    const recordedSubscription = await prisma.subscription.findUnique({ where: { userId } });
+    if (
+      recordedSubscription &&
+      ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(recordedSubscription.status)
+    ) {
+      throw new AppError('An active subscription already exists. Manage it from the billing portal.', 409);
+    }
 
     // Create or retrieve Stripe customer
     let customerId = user.stripeCustomerId;
@@ -83,13 +102,31 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
       });
     }
 
+    // Defend against an earlier checkout that reached Stripe but whose
+    // webhook never reached us. Creating another subscription would bill the
+    // customer twice and overwrite the sole local subscription record.
+    const stripeSubscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'all',
+      limit: 100,
+    });
+    const blockingStatuses = new Set(['active', 'trialing', 'past_due', 'unpaid', 'incomplete']);
+    if (stripeSubscriptions.data.some((subscription) => blockingStatuses.has(subscription.status))) {
+      throw new AppError('An active subscription already exists. Manage it from the billing portal.', 409);
+    }
+
     // Auto-apply academic discount for .edu emails.
     // The Student tier is already academically priced ($5), so it must NOT
     // stack the 40% coupon on top (that would drop it to ~$3). The coupon
     // applies only to the full-price Pro/Team plans. `plan` is server-derived
     // from the price, so this can't be bypassed by a forged request body.
     const discounts: { coupon: string }[] = [];
-    if (user.email.endsWith('.edu') && plan !== 'student' && process.env.STRIPE_ACADEMIC_COUPON_ID) {
+    if (
+      user.emailVerified &&
+      user.email.toLowerCase().endsWith('.edu') &&
+      plan !== 'student' &&
+      process.env.STRIPE_ACADEMIC_COUPON_ID
+    ) {
       discounts.push({ coupon: process.env.STRIPE_ACADEMIC_COUPON_ID });
     }
 
@@ -200,7 +237,10 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           });
           const item = sub.items.data[0];
           // Entitlement is derived from the subscribed price, not client metadata.
-          const plan = (await deriveQualcanvasPlan(stripe, item?.price)) || session.metadata?.plan || 'pro';
+          const plan = await deriveQualcanvasPlan(stripe, item?.price);
+          if (!plan) {
+            throw new Error('Checkout referenced an unrecognized QualCanvas subscription price');
+          }
           const periodStart = item?.current_period_start ?? nowSecs();
           const periodEnd = item?.current_period_end ?? nowSecs() + 30 * 24 * 3600;
           await prisma.$transaction([

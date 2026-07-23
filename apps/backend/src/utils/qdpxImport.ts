@@ -7,6 +7,7 @@ import yauzl from 'yauzl';
 import { XMLParser } from 'fast-xml-parser';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
+import type { Prisma } from '@prisma/client';
 
 // Cap decompressed size to limit zip-bomb impact. 100MB is well above any
 // legitimate QDPX project XML while stopping 1000:1 compression ratio attacks
@@ -14,6 +15,10 @@ import { AppError } from '../middleware/errorHandler.js';
 const MAX_ENTRY_BYTES = 100 * 1024 * 1024;
 // Also cap the total decompressed bytes across all entries we inspect.
 const MAX_TOTAL_BYTES = 200 * 1024 * 1024;
+const MAX_CODES = 5_000;
+const MAX_SOURCES = 1_000;
+const MAX_CODINGS = 100_000;
+const MAX_SOURCE_WORDS = 50_000;
 
 interface QdpxCode {
   '@_guid': string;
@@ -131,71 +136,97 @@ export async function importQdpx(
   const sources = toArray<QdpxTextSource>(project.Sources?.TextSource);
   // Extract codings
   const codings = toArray<QdpxCoding>(project.Codings?.Coding);
-
-  // Map external GUIDs to internal IDs
-  const codeGuidMap = new Map<string, string>();
-  const sourceGuidMap = new Map<string, string>();
-
-  // Create questions (codes)
-  for (const code of codes) {
-    const question = await prisma.canvasQuestion.create({
-      data: {
-        canvasId,
-        text: code['@_name'] || 'Imported Code',
-        color: code['@_color'] || '#3B82F6',
-      },
-    });
-    codeGuidMap.set(code['@_guid'], question.id);
+  const selectionCount = codings.reduce((total, coding) => total + toArray(coding.TextSelection).length, 0);
+  if (codes.length > MAX_CODES || sources.length > MAX_SOURCES || selectionCount > MAX_CODINGS) {
+    throw new AppError(
+      `QDPX project is too large (maximum ${MAX_CODES} codes, ${MAX_SOURCES} sources and ${MAX_CODINGS} codings)`,
+      400,
+    );
   }
-
-  // Create transcripts (sources)
   for (const source of sources) {
-    const transcript = await prisma.canvasTranscript.create({
-      data: {
-        canvasId,
-        title: source['@_name'] || 'Imported Source',
-        content: source['@_plainTextContent'] || '',
-        sourceType: 'qdpx-import',
-      },
-    });
-    sourceGuidMap.set(source['@_guid'], transcript.id);
-  }
-
-  // Create codings
-  let codingCount = 0;
-  for (const coding of codings) {
-    const questionId = codeGuidMap.get(coding['@_codeGUID']);
-    if (!questionId) continue;
-
-    const selections = toArray<QdpxTextSelection>(coding.TextSelection);
-    for (const sel of selections) {
-      const transcriptId = sourceGuidMap.get(sel['@_sourceGUID']);
-      if (!transcriptId) continue;
-
-      const startOffset = parseInt(sel['@_startPosition'], 10) || 0;
-      const endOffset = parseInt(sel['@_endPosition'], 10) || 0;
-      if (endOffset <= startOffset) continue;
-
-      // Get the coded text from the transcript
-      const transcript = await prisma.canvasTranscript.findUnique({
-        where: { id: transcriptId },
-        select: { content: true },
-      });
-      const codedText = transcript?.content.slice(startOffset, endOffset) || '';
-
-      await prisma.canvasTextCoding.create({
-        data: {
-          canvasId,
-          transcriptId,
-          questionId,
-          startOffset,
-          endOffset,
-          codedText,
-        },
-      });
-      codingCount++;
+    const content = source['@_plainTextContent'] || '';
+    const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+    if (words > MAX_SOURCE_WORDS) {
+      throw new AppError(`QDPX source "${source['@_name'] || 'Untitled'}" exceeds 50,000 words`, 400);
     }
   }
 
-  return { codes: codes.length, sources: sources.length, codings: codingCount };
+  return prisma.$transaction(
+    async (tx: Prisma.TransactionClient) => {
+      const codeGuidMap = new Map<string, string>();
+      const sourceGuidMap = new Map<string, string>();
+      const sourceContentMap = new Map<string, string>();
+
+      for (const code of codes) {
+        const guid = code['@_guid'];
+        if (!guid || codeGuidMap.has(guid)) throw new AppError('QDPX contains a missing or duplicate code GUID', 400);
+        const question = await tx.canvasQuestion.create({
+          data: {
+            canvasId,
+            text: (code['@_name'] || 'Imported Code').slice(0, 200),
+            color: code['@_color'] || '#3B82F6',
+          },
+        });
+        codeGuidMap.set(guid, question.id);
+      }
+
+      for (const source of sources) {
+        const guid = source['@_guid'];
+        if (!guid || sourceGuidMap.has(guid)) {
+          throw new AppError('QDPX contains a missing or duplicate source GUID', 400);
+        }
+        const content = source['@_plainTextContent'] || '';
+        const transcript = await tx.canvasTranscript.create({
+          data: {
+            canvasId,
+            title: (source['@_name'] || 'Imported Source').slice(0, 200),
+            content,
+            sourceType: 'qdpx-import',
+          },
+        });
+        sourceGuidMap.set(guid, transcript.id);
+        sourceContentMap.set(guid, content);
+      }
+
+      let codingCount = 0;
+      for (const coding of codings) {
+        const questionId = codeGuidMap.get(coding['@_codeGUID']);
+        if (!questionId) continue;
+
+        for (const selection of toArray<QdpxTextSelection>(coding.TextSelection)) {
+          const sourceGuid = selection['@_sourceGUID'];
+          const transcriptId = sourceGuidMap.get(sourceGuid);
+          const sourceContent = sourceContentMap.get(sourceGuid);
+          if (!transcriptId || sourceContent === undefined) continue;
+
+          const startOffset = Number.parseInt(selection['@_startPosition'], 10);
+          const endOffset = Number.parseInt(selection['@_endPosition'], 10);
+          if (
+            !Number.isInteger(startOffset) ||
+            !Number.isInteger(endOffset) ||
+            startOffset < 0 ||
+            endOffset <= startOffset ||
+            endOffset > sourceContent.length
+          ) {
+            continue;
+          }
+
+          await tx.canvasTextCoding.create({
+            data: {
+              canvasId,
+              transcriptId,
+              questionId,
+              startOffset,
+              endOffset,
+              codedText: sourceContent.slice(startOffset, endOffset),
+            },
+          });
+          codingCount++;
+        }
+      }
+
+      return { codes: codes.length, sources: sources.length, codings: codingCount };
+    },
+    { maxWait: 10_000, timeout: 120_000 },
+  );
 }

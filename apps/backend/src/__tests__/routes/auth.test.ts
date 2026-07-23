@@ -18,7 +18,7 @@ const { mockPrisma } = vi.hoisted(() => {
     subscription: {
       findUnique: vi.fn(),
     },
-    codingCanvas: { count: vi.fn() },
+    codingCanvas: { count: vi.fn(), findMany: vi.fn() },
     canvasTranscript: { count: vi.fn() },
     canvasQuestion: { count: vi.fn() },
     canvasShare: { count: vi.fn() },
@@ -74,6 +74,10 @@ vi.mock('../../lib/stripe.js', () => ({
   }),
 }));
 
+vi.mock('../../utils/fileCleanup.js', () => ({
+  deleteStoredUploads: vi.fn().mockResolvedValue(0),
+}));
+
 import bcrypt from 'bcryptjs';
 import request from 'supertest';
 import express from 'express';
@@ -95,12 +99,13 @@ describe('Auth routes', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.codingCanvas.findMany.mockResolvedValue([]);
     app = createApp();
   });
 
   // ─── POST /auth/signup ───
   describe('POST /api/auth/signup', () => {
-    it('creates a new user and returns JWT', async () => {
+    it('creates a new user and sets an httpOnly session cookie', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
       const createdUser = {
         id: 'user-1',
@@ -124,7 +129,8 @@ describe('Auth routes', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.jwt).toBeDefined();
+      expect(res.body.data.jwt).toBeUndefined();
+      expect(res.headers['set-cookie']?.[0]).toContain('jwt=');
       expect(res.body.data.user.email).toBe('test@example.com');
       expect(res.body.data.user.plan).toBe('free');
     });
@@ -208,7 +214,7 @@ describe('Auth routes', () => {
       passwordHash: '$2a$12$hashedpassword',
     };
 
-    it('returns JWT on valid credentials', async () => {
+    it('sets an httpOnly session cookie on valid credentials', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(mockUser);
       mockPrisma.subscription.findUnique.mockResolvedValue(null);
       (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
@@ -219,7 +225,8 @@ describe('Auth routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.jwt).toBeDefined();
+      expect(res.body.data.jwt).toBeUndefined();
+      expect(res.headers['set-cookie']?.[0]).toContain('jwt=');
       expect(res.body.data.user.email).toBe('test@example.com');
     });
 
@@ -388,6 +395,7 @@ describe('Auth routes', () => {
         .mockResolvedValueOnce({ ...mockUser }) // auth middleware
         .mockResolvedValueOnce(mockUser); // delete handler
       mockPrisma.user.delete.mockResolvedValue({});
+      mockPrisma.codingCanvas.findMany.mockResolvedValue([]);
       (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
 
       const res = await request(app)

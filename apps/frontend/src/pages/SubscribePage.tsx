@@ -7,15 +7,7 @@ import DisplayHeading from '../components/marketing/DisplayHeading';
 import HairlineRule from '../components/marketing/HairlineRule';
 import { publicEmailApi } from '../services/api';
 
-/**
- * /subscribe — methodology field-guide newsletter landing.
- *
- * This is a placeholder surface until a Buttondown/ConvertKit account is wired
- * (docs/refresh/12 open decision #14). For now we direct researchers to an
- * email-to-subscribe mailto so the signal isn't lost — they hit reply, we add
- * them by hand. When the proper back end is wired this page can become a real
- * form posting to the provider.
- */
+/** /subscribe — double-opt-in methodology field-guide newsletter landing. */
 export default function SubscribePage() {
   const [copied, setCopied] = useState(false);
   const [email, setEmail] = useState('');

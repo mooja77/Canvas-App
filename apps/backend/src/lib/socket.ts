@@ -5,26 +5,43 @@ import { join, leave, leaveAll, getPresence, updateCursor } from './presence.js'
 import { prisma } from './prisma.js';
 import { corsOrigin } from '../utils/origins.js';
 
+type CanvasSocketRole = 'owner' | 'editor' | 'viewer';
+
 // Check that the user owns the canvas or is an explicit collaborator.
 // Share codes grant clone access, not live-coding access, so they don't count here.
-async function canAccessCanvas(canvasId: string, userId: string): Promise<boolean> {
+async function getCanvasAccess(canvasId: string, userId: string): Promise<CanvasSocketRole | null> {
   const canvas = await prisma.codingCanvas.findUnique({
     where: { id: canvasId },
-    select: { userId: true },
+    select: { userId: true, deletedAt: true },
   });
-  if (!canvas) return false;
-  if (canvas.userId === userId) return true;
+  if (!canvas || canvas.deletedAt) return null;
+  if (canvas.userId === userId) return 'owner';
   const collab = await prisma.canvasCollaborator.findUnique({
     where: { canvasId_userId: { canvasId, userId } },
-    select: { id: true },
+    select: { role: true },
   });
-  return !!collab;
+  return collab?.role === 'editor' || collab?.role === 'viewer' ? collab.role : null;
 }
 
 let io: Server | null = null;
 
 export function getIO(): Server | null {
   return io;
+}
+
+/** Immediately remove a user's sockets from a canvas after access is revoked. */
+export async function revokeCanvasAccess(canvasId: string, userId: string): Promise<void> {
+  if (!io) return;
+  const room = `canvas:${canvasId}`;
+  const sockets = await io.in(room).fetchSockets();
+  for (const socket of sockets) {
+    if (socket.data.userId !== userId) continue;
+    (socket.data.authorizedCanvases as Set<string> | undefined)?.delete(canvasId);
+    socket.leave(room);
+    socket.emit('canvas:access-revoked', { canvasId });
+  }
+  leave(canvasId, userId);
+  io.to(room).emit('presence:updated', { canvasId, users: getPresence(canvasId) });
 }
 
 export function initSocketServer(httpServer: HttpServer): Server {
@@ -100,8 +117,8 @@ export function initSocketServer(httpServer: HttpServer): Server {
       const { canvasId } = data;
       if (!canvasId) return;
 
-      const allowed = await canAccessCanvas(canvasId, userId);
-      if (!allowed) {
+      const access = await getCanvasAccess(canvasId, userId);
+      if (!access) {
         socket.emit('canvas:join-denied', { canvasId, reason: 'access_denied' });
         return;
       }
@@ -133,12 +150,41 @@ export function initSocketServer(httpServer: HttpServer): Server {
         canvasId,
         users: getPresence(canvasId),
         self: entry,
+        role: access,
       });
     });
 
     // Reject any broadcast for a canvas this socket has not proven access to.
     const requireAuthorized = (canvasId: string | undefined): canvasId is string => {
       return !!canvasId && authorizedCanvases.has(canvasId);
+    };
+
+    const revokeSocketCanvas = (canvasId: string) => {
+      authorizedCanvases.delete(canvasId);
+      socket.leave(`canvas:${canvasId}`);
+      leave(canvasId, userId);
+      socket.emit('canvas:access-revoked', { canvasId });
+      io!.to(`canvas:${canvasId}`).emit('presence:updated', {
+        canvasId,
+        users: getPresence(canvasId),
+      });
+    };
+
+    // Re-check the database before every document mutation. Membership can
+    // change after a socket joins, and viewers may observe but never publish
+    // state-changing events.
+    const requireCurrentAccess = async (canvasId: string | undefined, requireEditor: boolean) => {
+      if (!requireAuthorized(canvasId)) return false;
+      const access = await getCanvasAccess(canvasId, userId);
+      if (!access) {
+        revokeSocketCanvas(canvasId);
+        return false;
+      }
+      if (requireEditor && access === 'viewer') {
+        socket.emit('canvas:permission-denied', { canvasId, reason: 'viewer_read_only' });
+        return false;
+      }
+      return true;
     };
 
     // ─── canvas:leave ───
@@ -157,9 +203,16 @@ export function initSocketServer(httpServer: HttpServer): Server {
     });
 
     // ─── node:move ───
-    socket.on('node:move', (data: { canvasId: string; nodeId: string; x: number; y: number }) => {
+    socket.on('node:move', async (data: { canvasId: string; nodeId: string; x: number; y: number }) => {
       const { canvasId, nodeId, x, y } = data;
-      if (!requireAuthorized(canvasId) || !nodeId) return;
+      if (
+        !(await requireCurrentAccess(canvasId, true)) ||
+        !nodeId ||
+        nodeId.length > 200 ||
+        !Number.isFinite(x) ||
+        !Number.isFinite(y)
+      )
+        return;
 
       // Broadcast to other users in the room
       socket.to(`canvas:${canvasId}`).emit('node:moved', {
@@ -188,9 +241,9 @@ export function initSocketServer(httpServer: HttpServer): Server {
     });
 
     // ─── canvas:change (legacy generic event) ───
-    socket.on('canvas:change', (data: { canvasId: string; changeType: string; payload?: unknown }) => {
+    socket.on('canvas:change', async (data: { canvasId: string; changeType: string; payload?: unknown }) => {
       const { canvasId, changeType, payload } = data;
-      if (!requireAuthorized(canvasId) || !changeType) return;
+      if (!(await requireCurrentAccess(canvasId, true)) || !changeType || changeType.length > 100) return;
 
       socket.to(`canvas:${canvasId}`).emit('canvas:changed', {
         userId,
@@ -202,9 +255,9 @@ export function initSocketServer(httpServer: HttpServer): Server {
 
     // ─── Document sync events ───
 
-    socket.on('canvas:node-added', (data: { canvasId: string; data: unknown }) => {
+    socket.on('canvas:node-added', async (data: { canvasId: string; data: unknown }) => {
       const { canvasId } = data;
-      if (!requireAuthorized(canvasId)) return;
+      if (!(await requireCurrentAccess(canvasId, true))) return;
       socket.to(`canvas:${canvasId}`).emit('canvas:node-added', {
         userId,
         userName,
@@ -212,9 +265,9 @@ export function initSocketServer(httpServer: HttpServer): Server {
       });
     });
 
-    socket.on('canvas:node-deleted', (data: { canvasId: string; data: { nodeId: string; nodeType: string } }) => {
+    socket.on('canvas:node-deleted', async (data: { canvasId: string; data: { nodeId: string; nodeType: string } }) => {
       const { canvasId } = data;
-      if (!requireAuthorized(canvasId)) return;
+      if (!(await requireCurrentAccess(canvasId, true)) || !data.data?.nodeId) return;
       socket.to(`canvas:${canvasId}`).emit('canvas:node-deleted', {
         userId,
         userName,
@@ -224,9 +277,17 @@ export function initSocketServer(httpServer: HttpServer): Server {
 
     socket.on(
       'canvas:node-moved',
-      (data: { canvasId: string; data: { nodeId: string; position: { x: number; y: number } } }) => {
+      async (data: { canvasId: string; data: { nodeId: string; position: { x: number; y: number } } }) => {
         const { canvasId } = data;
-        if (!requireAuthorized(canvasId)) return;
+        const position = data.data?.position;
+        if (
+          !(await requireCurrentAccess(canvasId, true)) ||
+          !data.data?.nodeId ||
+          !position ||
+          !Number.isFinite(position.x) ||
+          !Number.isFinite(position.y)
+        )
+          return;
         socket.to(`canvas:${canvasId}`).emit('canvas:node-moved', {
           userId,
           userName,
@@ -235,9 +296,9 @@ export function initSocketServer(httpServer: HttpServer): Server {
       },
     );
 
-    socket.on('canvas:coding-added', (data: { canvasId: string; data: unknown }) => {
+    socket.on('canvas:coding-added', async (data: { canvasId: string; data: unknown }) => {
       const { canvasId } = data;
-      if (!requireAuthorized(canvasId)) return;
+      if (!(await requireCurrentAccess(canvasId, true))) return;
       socket.to(`canvas:${canvasId}`).emit('canvas:coding-added', {
         userId,
         userName,
@@ -245,9 +306,9 @@ export function initSocketServer(httpServer: HttpServer): Server {
       });
     });
 
-    socket.on('canvas:coding-deleted', (data: { canvasId: string; data: { codingId: string } }) => {
+    socket.on('canvas:coding-deleted', async (data: { canvasId: string; data: { codingId: string } }) => {
       const { canvasId } = data;
-      if (!requireAuthorized(canvasId)) return;
+      if (!(await requireCurrentAccess(canvasId, true)) || !data.data?.codingId) return;
       socket.to(`canvas:${canvasId}`).emit('canvas:coding-deleted', {
         userId,
         userName,
@@ -255,9 +316,9 @@ export function initSocketServer(httpServer: HttpServer): Server {
       });
     });
 
-    socket.on('canvas:transcript-updated', (data: { canvasId: string; data: { transcriptId: string } }) => {
+    socket.on('canvas:transcript-updated', async (data: { canvasId: string; data: { transcriptId: string } }) => {
       const { canvasId } = data;
-      if (!requireAuthorized(canvasId)) return;
+      if (!(await requireCurrentAccess(canvasId, true)) || !data.data?.transcriptId) return;
       socket.to(`canvas:${canvasId}`).emit('canvas:transcript-updated', {
         userId,
         userName,

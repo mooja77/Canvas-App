@@ -47,7 +47,7 @@ Each route tested for: success path, validation errors, auth failures, plan limi
 
 | Test ID | Route | Test Case | Priority |
 |---------|-------|-----------|----------|
-| AUTH-001 | POST /api/auth | Valid access code returns JWT | P0 |
+| AUTH-001 | POST /api/auth | Valid access code sets secure HTTP-only session cookie | P0 |
 | AUTH-002 | POST /api/auth | Invalid code returns 401 | P0 |
 | AUTH-003 | POST /api/auth | Rate limited after 10 attempts | P1 |
 | AUTH-004 | POST /api/auth/signup | Valid email/password creates user | P0 |
@@ -442,7 +442,7 @@ Each route tested for: success path, validation errors, auth failures, plan limi
 - Free user: `free@test.com` / `Test1234!` (1 canvas, 2 transcripts, 5 codes)
 - Pro user: `pro@test.com` / `Test1234!` (unlimited)
 - Team user: `team@test.com` / `Test1234!` (unlimited + collaboration)
-- Legacy user: access code `CANVAS-DEMO2025` (grandfathered Pro)
+- Legacy user: a dedicated test-only access code supplied through the environment (grandfathered Pro)
 
 **Canvases**
 - Empty canvas (0 content)

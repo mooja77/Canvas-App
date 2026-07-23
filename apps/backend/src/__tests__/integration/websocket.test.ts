@@ -75,7 +75,7 @@ describe('WebSocket / Socket.IO server', () => {
     mockPrisma.codingCanvas.findUnique.mockImplementation(({ where }) => {
       return Promise.resolve({ userId: 'user-1', id: where.id });
     });
-    mockPrisma.canvasCollaborator.findUnique.mockResolvedValue({ id: 'collab-1' });
+    mockPrisma.canvasCollaborator.findUnique.mockResolvedValue({ id: 'collab-1', role: 'editor' });
 
     httpServer = createServer();
     ioServer = initSocketServer(httpServer);

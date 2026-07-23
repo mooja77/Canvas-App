@@ -3,7 +3,10 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 const siteBase = (process.env.QUALCANVAS_CAPTURE_SITE || 'https://qualcanvas.com').replace(/\/$/, '');
-const accessCode = process.env.QUALCANVAS_DEMO_CODE || 'CANVAS-DEMO2025';
+const accessCode = process.env.QUALCANVAS_DEMO_CODE;
+if (!accessCode) {
+  throw new Error('QUALCANVAS_DEMO_CODE is required; never store a production access code in this script');
+}
 const packageDir = process.env.QUALCANVAS_VIDEO_PACKAGE || 'youtube-training/2026-07-17-initial-library';
 const outputDir = path.resolve(packageDir, 'captures');
 await mkdir(outputDir, { recursive: true });

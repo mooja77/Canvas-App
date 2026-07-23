@@ -761,6 +761,7 @@ model EmailCampaign {
   updatedAt   DateTime        @updatedAt
   sentAt      DateTime?
   deliveries  EmailDelivery[]
+  newsletterDeliveries NewsletterDelivery[]
 
   @@index([status])
   @@index([audience])
@@ -798,8 +799,24 @@ model NewsletterSubscriber {
   unsubscribedAt   DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+  deliveries       NewsletterDelivery[]
 
   @@index([status])
+}
+
+model NewsletterDelivery {
+  id           String               @id @default(cuid())
+  subscriberId String
+  campaignId   String
+  status       String               @default("pending") // pending, sent, failed
+  error        String?
+  createdAt    DateTime             @default(now())
+  sentAt       DateTime?
+  subscriber   NewsletterSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  campaign     EmailCampaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriberId, campaignId])
+  @@index([campaignId, status])
 }
 
 // ─── Teams ───

@@ -7,17 +7,75 @@ import { validateParams, canvasIdParam, canvasIdDocIdParams } from '../middlewar
 
 export const trainingRoutes = Router();
 
+interface TrainingCodingInput {
+  questionId: string;
+  startOffset: number;
+  endOffset: number;
+  codedText?: string;
+}
+
+function isCanvasOwner(
+  canvas: { dashboardAccessId: string; userId: string | null },
+  dashboardAccessId: string,
+  userId?: string | null,
+): boolean {
+  return canvas.dashboardAccessId === dashboardAccessId || (!!userId && canvas.userId === userId);
+}
+
+async function validateCodings(
+  canvasId: string,
+  transcriptId: string,
+  contentLength: number,
+  value: unknown,
+): Promise<TrainingCodingInput[]> {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 10_000) {
+    throw new AppError('codings must be a non-empty array with at most 10,000 entries', 400);
+  }
+  const codings = value as TrainingCodingInput[];
+  const questionIds = new Set<string>();
+  for (const coding of codings) {
+    if (
+      !coding ||
+      typeof coding.questionId !== 'string' ||
+      !Number.isInteger(coding.startOffset) ||
+      !Number.isInteger(coding.endOffset) ||
+      coding.startOffset < 0 ||
+      coding.endOffset <= coding.startOffset ||
+      coding.endOffset > contentLength
+    ) {
+      throw new AppError('Each coding must contain a valid code and transcript range', 400);
+    }
+    questionIds.add(coding.questionId);
+  }
+  const matchingQuestions = await prisma.canvasQuestion.count({
+    where: { canvasId, id: { in: [...questionIds] } },
+  });
+  if (matchingQuestions !== questionIds.size) {
+    throw new AppError('Every training code must belong to this canvas', 400);
+  }
+  return codings;
+}
+
 // ─── Training Documents ───
 
 // POST /canvas/:id/training — create training document
 trainingRoutes.post('/canvas/:id/training', validateParams(canvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    const userId = getAuthUserId(req);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, userId, { requireOwner: true });
 
     const { transcriptId, name, instructions, goldCodings, passThreshold } = req.body;
 
-    if (!transcriptId || !name || !goldCodings) {
+    if (
+      !transcriptId ||
+      typeof transcriptId !== 'string' ||
+      !name ||
+      typeof name !== 'string' ||
+      name.trim().length > 200 ||
+      (instructions !== undefined && (typeof instructions !== 'string' || instructions.length > 5000)) ||
+      (passThreshold !== undefined && (typeof passThreshold !== 'number' || passThreshold < 0 || passThreshold > 1))
+    ) {
       return next(new AppError('transcriptId, name, and goldCodings are required', 400));
     }
 
@@ -27,17 +85,15 @@ trainingRoutes.post('/canvas/:id/training', validateParams(canvasIdParam), async
       return next(new AppError('Transcript not found in this canvas', 400));
     }
 
-    if (!Array.isArray(goldCodings) || goldCodings.length === 0) {
-      return next(new AppError('goldCodings must be a non-empty array', 400));
-    }
+    const validatedGold = await validateCodings(req.params.id, transcriptId, transcript.content.length, goldCodings);
 
     const doc = await prisma.trainingDocument.create({
       data: {
         canvasId: req.params.id,
         transcriptId,
-        name,
+        name: name.trim(),
         instructions: instructions || null,
-        goldCodings: JSON.stringify(goldCodings),
+        goldCodings: JSON.stringify(validatedGold),
         passThreshold: passThreshold ?? 0.7,
       },
     });
@@ -55,7 +111,9 @@ trainingRoutes.post('/canvas/:id/training', validateParams(canvasIdParam), async
 trainingRoutes.get('/canvas/:id/training', validateParams(canvasIdParam), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    const userId = getAuthUserId(req);
+    const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+    const owner = isCanvasOwner(canvas, dashboardAccessId, userId);
 
     const docs = await prisma.trainingDocument.findMany({
       where: { canvasId: req.params.id },
@@ -67,7 +125,7 @@ trainingRoutes.get('/canvas/:id/training', validateParams(canvasIdParam), async 
       success: true,
       data: docs.map((d) => ({
         ...d,
-        goldCodings: safeJsonParse(d.goldCodings, []),
+        ...(owner ? { goldCodings: safeJsonParse(d.goldCodings, []) } : {}),
       })),
     });
   } catch (err) {
@@ -79,12 +137,17 @@ trainingRoutes.get('/canvas/:id/training', validateParams(canvasIdParam), async 
 trainingRoutes.get('/canvas/:id/training/:docId', validateParams(canvasIdDocIdParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    const userId = getAuthUserId(req);
+    const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+    const owner = isCanvasOwner(canvas, dashboardAccessId, userId);
 
     const doc = await prisma.trainingDocument.findUnique({
       where: { id: req.params.docId },
       include: {
-        attempts: { orderBy: { createdAt: 'desc' } },
+        attempts: {
+          where: owner ? undefined : { userId: userId ?? '__none__' },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
     if (!doc || doc.canvasId !== req.params.id) {
@@ -95,7 +158,7 @@ trainingRoutes.get('/canvas/:id/training/:docId', validateParams(canvasIdDocIdPa
       success: true,
       data: {
         ...doc,
-        goldCodings: safeJsonParse(doc.goldCodings, []),
+        ...(owner ? { goldCodings: safeJsonParse(doc.goldCodings, []) } : {}),
         attempts: doc.attempts.map((a) => ({
           ...a,
           codings: safeJsonParse(a.codings, []),
@@ -111,7 +174,7 @@ trainingRoutes.get('/canvas/:id/training/:docId', validateParams(canvasIdDocIdPa
 trainingRoutes.delete('/canvas/:id/training/:docId', validateParams(canvasIdDocIdParams), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req), { requireOwner: true });
 
     const doc = await prisma.trainingDocument.findUnique({ where: { id: req.params.docId } });
     if (!doc || doc.canvasId !== req.params.id) {
@@ -146,10 +209,6 @@ trainingRoutes.post(
       }
 
       const { codings } = req.body;
-      if (!codings || !Array.isArray(codings)) {
-        return next(new AppError('codings must be an array', 400));
-      }
-
       // Get transcript length for Kappa computation
       const transcript = await prisma.canvasTranscript.findUnique({
         where: { id: doc.transcriptId },
@@ -159,18 +218,19 @@ trainingRoutes.post(
         return next(new AppError('Associated transcript not found', 404));
       }
 
-      const goldCodings = safeJsonParse(doc.goldCodings, []);
+      const goldCodings = safeJsonParse(doc.goldCodings, []) as TrainingCodingInput[];
       const transcriptLength = transcript.content.length;
+      const validatedCodings = await validateCodings(req.params.id, doc.transcriptId, transcriptLength, codings);
 
       // Compute Cohen's Kappa
-      const kappaScore = computeKappa(goldCodings, codings, transcriptLength);
+      const kappaScore = computeKappa(goldCodings, validatedCodings, transcriptLength);
       const passed = kappaScore >= doc.passThreshold;
 
       const attempt = await prisma.trainingAttempt.create({
         data: {
           trainingDocumentId: doc.id,
           userId,
-          codings: JSON.stringify(codings),
+          codings: JSON.stringify(validatedCodings),
           kappaScore,
           passed,
         },
@@ -181,6 +241,7 @@ trainingRoutes.post(
         data: {
           ...attempt,
           codings: safeJsonParse(attempt.codings, []),
+          goldCodings,
         },
       });
     } catch (err) {
@@ -196,7 +257,9 @@ trainingRoutes.get(
   async (req, res, next) => {
     try {
       const dashboardAccessId = getAuthId(req);
-      await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+      const userId = getAuthUserId(req);
+      const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+      const owner = isCanvasOwner(canvas, dashboardAccessId, userId);
 
       const doc = await prisma.trainingDocument.findUnique({ where: { id: req.params.docId } });
       if (!doc || doc.canvasId !== req.params.id) {
@@ -204,7 +267,10 @@ trainingRoutes.get(
       }
 
       const attempts = await prisma.trainingAttempt.findMany({
-        where: { trainingDocumentId: req.params.docId },
+        where: {
+          trainingDocumentId: req.params.docId,
+          ...(owner ? {} : { userId: userId ?? '__none__' }),
+        },
         orderBy: { createdAt: 'desc' },
       });
 

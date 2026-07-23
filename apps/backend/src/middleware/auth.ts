@@ -48,7 +48,10 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
         // promote someone after they've cancelled. Paid users (plan='pro'
         // or 'team') ignore this overlay entirely.
         const trialActive =
-          user.plan === 'free' && user.trialEndsAt instanceof Date && user.trialEndsAt.getTime() > Date.now();
+          user.emailVerified === true &&
+          user.plan === 'free' &&
+          user.trialEndsAt instanceof Date &&
+          user.trialEndsAt.getTime() > Date.now();
         const effectivePlan = trialActive ? 'pro' : user.plan;
 
         req.userId = user.id;

@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
 
+const getE2eAccessCode = (): string => {
+  const code = process.env.E2E_ACCESS_CODE;
+  if (!code) throw new Error('E2E_ACCESS_CODE is required for access-code authentication tests');
+  return code;
+};
+
 /**
  * P0 E2E tests for authentication flows.
  *
@@ -63,13 +69,13 @@ test.describe('Login Page UI', () => {
     await expect(codeInput).toBeVisible();
   });
 
-  test('5 - access code login with CANVAS-DEMO2025 redirects to /canvas', async ({ page }) => {
+  test('5 - a valid access code redirects to /canvas', async ({ page }) => {
     // Expand access code section
     await page.getByRole('button', { name: /sign in with code/i }).click();
 
     const codeInput = page.getByPlaceholder('Enter your access code');
     await expect(codeInput).toBeVisible();
-    await codeInput.fill('CANVAS-DEMO2025');
+    await codeInput.fill(getE2eAccessCode());
 
     // Use the submit button inside the access code form (not the toggle button)
     const signInCodeBtn = page.locator('form button[type="submit"]').last();
@@ -218,7 +224,7 @@ test.describe('Navigation Guards', () => {
     // Log in via access code
     await page.getByRole('button', { name: /sign in with code/i }).click();
     const codeInput = page.getByPlaceholder('Enter your access code');
-    await codeInput.fill('CANVAS-DEMO2025');
+    await codeInput.fill(getE2eAccessCode());
 
     const signInCodeBtn = page.locator('form button[type="submit"]').last();
     await expect(signInCodeBtn).toBeEnabled();
@@ -234,19 +240,21 @@ test.describe('Navigation Guards', () => {
     await page.goto('/login');
     await page.getByRole('button', { name: /sign in with code/i }).click();
     const codeInput = page.getByPlaceholder('Enter your access code');
-    await codeInput.fill('CANVAS-DEMO2025');
+    await codeInput.fill(getE2eAccessCode());
 
     const signInCodeBtn = page.locator('form button[type="submit"]').last();
     await expect(signInCodeBtn).toBeEnabled();
     await signInCodeBtn.click();
     await page.waitForURL('**/canvas**', { timeout: 15000 });
 
-    // Now clear auth from localStorage (simulates logout) and navigate
-    await page.evaluate(() => {
-      localStorage.removeItem('qualcanvas-auth');
-    });
+    const logoutResponse = page.waitForResponse(
+      (response) => response.url().includes('/auth/logout') && response.request().method() === 'POST',
+    );
+    await page.getByRole('button', { name: /sign out/i }).click();
+    await expect((await logoutResponse).ok()).toBe(true);
 
-    // Navigate to a protected route — should redirect to login
+    // A hard navigation verifies that the server cookie, not only local UI
+    // state, was cleared.
     await page.goto('/canvas');
     await page.waitForURL('**/login**', { timeout: 10000 });
     await expect(page).toHaveURL(/\/login/);

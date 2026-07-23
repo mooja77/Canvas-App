@@ -68,6 +68,7 @@ const s3Provider: StorageProvider = {
       Bucket: bucket,
       Key: options.key,
       ContentType: options.contentType,
+      ContentLength: options.sizeBytes,
     });
 
     const url = await getSignedUrl(getClient(), command, {

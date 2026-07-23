@@ -40,6 +40,8 @@ const emailPreference = (prisma as any).emailPreference;
 const emailDelivery = (prisma as any).emailDelivery;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const emailCampaign = (prisma as any).emailCampaign;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const newsletterDelivery = (prisma as any).newsletterDelivery;
 
 const DEFAULT_APP_URL = process.env.APP_URL || 'http://localhost:5174';
 const DEFAULT_API_URL =
@@ -155,6 +157,7 @@ function baseEmailHtml(options: {
   ctaLabel?: string | null;
   ctaUrl?: string | null;
   unsubscribeToken: string;
+  footerHtml?: string;
 }): string {
   const preview = options.preview
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(options.preview)}</div>`
@@ -196,8 +199,11 @@ function baseEmailHtml(options: {
               ${cta}
               <hr style="border:none;border-top:1px solid #e3d6bf;margin:32px 0 20px;" />
               <p style="margin:0;color:#746b5d;font-size:12px;line-height:1.5;">
-                You are receiving this because you have a ${PRODUCT_NAME} account.
-                <a href="${unsubscribeLink(options.unsubscribeToken)}" style="color:#155e75;">Unsubscribe from product emails</a>.
+                ${
+                  options.footerHtml ||
+                  `You are receiving this because you have a ${PRODUCT_NAME} account.
+                <a href="${unsubscribeLink(options.unsubscribeToken)}" style="color:#155e75;">Unsubscribe from product emails</a>.`
+                }
               </p>
             </td>
           </tr>
@@ -303,19 +309,21 @@ export async function sendLifecycleEmail(
   const existing = await emailDelivery.findUnique({
     where: { userId_eventKey: { userId: user.id, eventKey: template.eventKey } },
   });
-  if (existing) return 'skipped';
+  if (existing && ['sent', 'skipped'].includes(existing.status)) return 'skipped';
 
-  const delivery = await emailDelivery.create({
-    data: {
-      userId: user.id,
-      campaignId: campaignId || null,
-      type: template.category,
-      eventKey: template.eventKey,
-      subject: template.subject,
-      status: 'pending',
-      metadata: JSON.stringify({ email: user.email }),
-    },
-  });
+  const delivery =
+    existing ||
+    (await emailDelivery.create({
+      data: {
+        userId: user.id,
+        campaignId: campaignId || null,
+        type: template.category,
+        eventKey: template.eventKey,
+        subject: template.subject,
+        status: 'pending',
+        metadata: JSON.stringify({ email: user.email }),
+      },
+    }));
 
   const html = baseEmailHtml({
     preview: template.preview,
@@ -384,30 +392,50 @@ export async function listEmailCampaigns() {
   return emailCampaign.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
-      _count: { select: { deliveries: true } },
+      _count: { select: { deliveries: true, newsletterDeliveries: true } },
     },
   });
 }
 
 export async function getEmailStats() {
-  const [campaigns, sent, failed, skipped, unsubscribed] = await Promise.all([
+  const [
+    campaigns,
+    accountSent,
+    newsletterSent,
+    accountFailed,
+    newsletterFailed,
+    skipped,
+    accountUnsubscribed,
+    newsletterUnsubscribed,
+  ] = await Promise.all([
     emailCampaign.count(),
     emailDelivery.count({ where: { status: 'sent' } }),
+    newsletterDelivery.count({ where: { status: 'sent' } }),
     emailDelivery.count({ where: { status: 'failed' } }),
+    newsletterDelivery.count({ where: { status: 'failed' } }),
     emailDelivery.count({ where: { status: 'skipped' } }),
     emailPreference.count({ where: { unsubscribedAt: { not: null } } }),
+    prisma.newsletterSubscriber.count({ where: { unsubscribedAt: { not: null } } }),
   ]);
 
-  return { campaigns, sent, failed, skipped, unsubscribed };
+  return {
+    campaigns,
+    sent: accountSent + newsletterSent,
+    failed: accountFailed + newsletterFailed,
+    skipped,
+    unsubscribed: accountUnsubscribed + newsletterUnsubscribed,
+  };
 }
 
-export async function sendCampaign(campaignId: string): Promise<{ sent: number; skipped: number; failed: number }> {
+export async function sendCampaign(
+  campaignId: string,
+): Promise<{ sent: number; skipped: number; failed: number; remaining: number }> {
   const campaign = await emailCampaign.findUnique({ where: { id: campaignId } });
   if (!campaign) throw new Error('Campaign not found');
   if (campaign.status === 'sent') throw new Error('Campaign has already been sent');
 
-  const users = await selectCampaignAudience(campaign.audience);
-  const result = { sent: 0, skipped: 0, failed: 0 };
+  const users = await selectCampaignAudience(campaign.id, campaign.audience, LIFECYCLE_BATCH_LIMIT);
+  const result = { sent: 0, skipped: 0, failed: 0, remaining: 0 };
 
   for (const user of users) {
     const template = {
@@ -424,16 +452,70 @@ export async function sendCampaign(campaignId: string): Promise<{ sent: number; 
     result[status] += 1;
   }
 
-  await emailCampaign.update({
-    where: { id: campaign.id },
-    data: { status: 'sent', sentAt: new Date() },
-  });
+  if (campaign.audience === 'all' || campaign.audience === 'newsletter') {
+    const remainingSlots = Math.max(0, LIFECYCLE_BATCH_LIMIT - users.length);
+    const registeredUsers = await prisma.user.findMany({ select: { email: true } });
+    const userEmails = new Set(registeredUsers.map((user) => user.email.toLowerCase()));
+    const subscribers = await prisma.newsletterSubscriber.findMany({
+      where: {
+        status: 'confirmed',
+        unsubscribedAt: null,
+        email: { notIn: [...userEmails] },
+        deliveries: { none: { campaignId: campaign.id, status: 'sent' } },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: remainingSlots,
+    });
+    for (const subscriber of subscribers) {
+      const existing = await newsletterDelivery.findUnique({
+        where: { subscriberId_campaignId: { subscriberId: subscriber.id, campaignId: campaign.id } },
+      });
+      const delivery =
+        existing ||
+        (await newsletterDelivery.create({
+          data: { subscriberId: subscriber.id, campaignId: campaign.id, status: 'pending' },
+        }));
+      const html = baseEmailHtml({
+        preview: campaign.previewText,
+        title: campaign.title,
+        bodyHtml: campaign.bodyHtml,
+        ctaLabel: campaign.ctaLabel,
+        ctaUrl: campaign.ctaUrl,
+        unsubscribeToken: subscriber.unsubscribeToken,
+        footerHtml: `You subscribed to the ${PRODUCT_NAME} methodology field guide.
+          <a href="${DEFAULT_API_URL.replace(/\/$/, '')}/email/newsletter/unsubscribe/${encodeURIComponent(
+            subscriber.unsubscribeToken,
+          )}" style="color:#155e75;">Unsubscribe</a>.`,
+      });
+      const sent = await sendEmail(subscriber.email, campaign.subject, html);
+      await newsletterDelivery.update({
+        where: { id: delivery.id },
+        data: sent
+          ? { status: 'sent', error: null, sentAt: new Date() }
+          : { status: 'failed', error: 'Email provider returned failure' },
+      });
+      result[sent ? 'sent' : 'failed'] += 1;
+    }
+  }
 
+  result.remaining = await countCampaignRemaining(campaign.id, campaign.audience);
+  if (result.remaining === 0 && result.failed === 0) {
+    await emailCampaign.update({
+      where: { id: campaign.id },
+      data: { status: 'sent', sentAt: new Date() },
+    });
+  }
   return result;
 }
 
-async function selectCampaignAudience(audience: string): Promise<EmailUser[]> {
-  const where: Record<string, unknown> = { emailVerified: true };
+async function selectCampaignAudience(campaignId: string, audience: string, limit: number): Promise<EmailUser[]> {
+  if (audience === 'newsletter') return [];
+  const where: Record<string, unknown> = {
+    emailVerified: true,
+    emailDeliveries: {
+      none: { eventKey: `campaign_${campaignId}`, status: { in: ['sent', 'skipped'] } },
+    },
+  };
   if (['free', 'pro', 'team'].includes(audience)) {
     where.plan = audience;
   }
@@ -441,11 +523,11 @@ async function selectCampaignAudience(audience: string): Promise<EmailUser[]> {
   const users: EmailUser[] = await prisma.user.findMany({
     where,
     orderBy: { createdAt: 'desc' },
-    take: LIFECYCLE_BATCH_LIMIT * 4,
+    take: audience.startsWith('inactive_') ? limit * 4 : limit,
     select: { id: true, email: true, name: true, plan: true, createdAt: true },
   });
 
-  if (!audience.startsWith('inactive_')) return users.slice(0, LIFECYCLE_BATCH_LIMIT);
+  if (!audience.startsWith('inactive_')) return users;
 
   const days = Number.parseInt(audience.replace('inactive_', '').replace('d', ''), 10) || 14;
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -458,8 +540,55 @@ async function selectCampaignAudience(audience: string): Promise<EmailUser[]> {
       select: { timestamp: true },
     });
     if (!lastActivity || lastActivity.timestamp < cutoff) inactive.push(user);
-    if (inactive.length >= LIFECYCLE_BATCH_LIMIT) break;
+    if (inactive.length >= limit) break;
   }
 
   return inactive;
+}
+
+async function countCampaignRemaining(campaignId: string, audience: string): Promise<number> {
+  let userCount = 0;
+  if (audience !== 'newsletter') {
+    const where: Record<string, unknown> = {
+      emailVerified: true,
+      emailDeliveries: {
+        none: { eventKey: `campaign_${campaignId}`, status: { in: ['sent', 'skipped'] } },
+      },
+    };
+    if (['free', 'pro', 'team'].includes(audience)) where.plan = audience;
+    if (audience.startsWith('inactive_')) {
+      const days = Number.parseInt(audience.replace('inactive_', '').replace('d', ''), 10) || 14;
+      const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      const candidates = await prisma.user.findMany({ where, select: { id: true } });
+      const recentlyActive =
+        candidates.length > 0
+          ? await prisma.auditLog.groupBy({
+              by: ['actorId'],
+              where: {
+                actorId: { in: candidates.map((user) => user.id) },
+                timestamp: { gte: cutoff },
+              },
+              _count: { _all: true },
+            })
+          : [];
+      const activeIds = new Set(recentlyActive.map((row) => row.actorId));
+      userCount = candidates.filter((user) => !activeIds.has(user.id)).length;
+    } else {
+      userCount = await prisma.user.count({ where });
+    }
+  }
+  const newsletterCount =
+    audience === 'all' || audience === 'newsletter'
+      ? await prisma.newsletterSubscriber.count({
+          where: {
+            status: 'confirmed',
+            unsubscribedAt: null,
+            email: {
+              notIn: (await prisma.user.findMany({ select: { email: true } })).map((user) => user.email.toLowerCase()),
+            },
+            deliveries: { none: { campaignId, status: 'sent' } },
+          },
+        })
+      : 0;
+  return userCount + newsletterCount;
 }

@@ -98,6 +98,10 @@ vi.mock('../../lib/prisma.js', () => ({
   prisma: mockPrisma,
 }));
 
+vi.mock('../../utils/fileCleanup.js', () => ({
+  deleteStoredUploads: vi.fn().mockResolvedValue(0),
+}));
+
 vi.mock('../../middleware/authLimiter.js', () => ({
   authLimiter: (_req: Request, _res: Response, next: NextFunction) => next(),
 }));
@@ -118,6 +122,7 @@ vi.mock('../../middleware/planLimits.js', () => ({
   checkWordLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkCodeLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAutoCode: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  checkIntercoderAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkCaseAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkShareLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAnalysisType: () => (_req: Request, _res: Response, next: NextFunction) => next(),

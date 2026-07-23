@@ -27,11 +27,11 @@ A standalone qualitative coding canvas for researchers. Think of it as a visual 
 cd "C:\JM Programs\QualCanvas"
 npm install
 npm run db:migrate      # creates SQLite DB + tables
-npm run db:seed         # creates demo account CANVAS-DEMO2025
+npm run db:seed         # seeds templates; optionally configures DEMO_ACCESS_CODE
 npm run dev             # starts backend (3007) + frontend (5174)
 ```
 
-Open `http://localhost:5174`. Sign in with `CANVAS-DEMO2025` or register a new account.
+Open `http://localhost:5174`. Register a local email account, or set `DEMO_ACCESS_CODE` before seeding and use that code.
 
 ---
 
@@ -165,18 +165,18 @@ QualCanvas/
 **Two ways to authenticate:**
 
 1. **Dashboard code** (plaintext) — looked up via SHA-256 index + bcrypt verify
-2. **JWT** — returned on login, passed in `x-dashboard-code` header
+2. **Session cookie** — JWT is stored only in a secure HTTP-only cookie set by the login endpoint
 
 **Login flow:**
 ```
-POST /api/auth  { dashboardCode: "CANVAS-DEMO2025" }
+POST /api/auth  { dashboardCode: "<environment-supplied demo code>" }
 → { success: true, data: { jwt, dashboardAccessId, name, role } }
 ```
 
 **Register flow:**
 ```
 POST /api/auth/register  { name: "Alice" }
-→ { success: true, data: { accessCode: "CANVAS-XXXXXXXX", jwt, ... } }
+→ { success: true, data: { accessCode: "CANVAS-XXXXXXXX", ... } } plus a secure session cookie
 ```
 
 The frontend stores auth state in Zustand (`authStore.ts`) persisted to `localStorage` under key `qualcanvas-auth`. The axios interceptor in `api.ts` injects the JWT on every request.
@@ -414,4 +414,4 @@ The backend serves the frontend static build from `../frontend/dist` when `NODE_
 - **React Flow positions** are persisted to `CanvasNodePosition` table on every layout save.
 - **No test suite** exists yet — that's a good early investment.
 - **The `setup` field on `TourChapter`** is no longer used (canvas tour was removed from WISEShift). You may want to add your own onboarding tour using `driver.js`.
-- **Demo code**: `CANVAS-DEMO2025` expires 2027-12-31.
+- **Demo code**: configured only through `DEMO_ACCESS_CODE`; rotate and revoke it like any other credential.

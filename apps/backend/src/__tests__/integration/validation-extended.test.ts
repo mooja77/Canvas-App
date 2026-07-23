@@ -80,6 +80,7 @@ vi.mock('../../middleware/planLimits.js', () => ({
   checkWordLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkCodeLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAutoCode: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  checkIntercoderAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkCaseAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkShareLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAnalysisType: () => (_req: Request, _res: Response, next: NextFunction) => next(),
@@ -162,10 +163,7 @@ describe('Validation extended — edge cases', () => {
 
   describe('Canvas name validation', () => {
     it('canvas name with only whitespace rejected (min(1) after Zod parse)', async () => {
-      const res = await request(app)
-        .post('/api/canvas')
-        .set('Authorization', `Bearer ${jwt}`)
-        .send({ name: '   ' });
+      const res = await request(app).post('/api/canvas').set('Authorization', `Bearer ${jwt}`).send({ name: '   ' });
 
       // Zod min(1) on the string allows whitespace — but let's verify behavior
       // If Zod accepts it, the create will succeed. If not, 400.
@@ -181,20 +179,14 @@ describe('Validation extended — edge cases', () => {
         name: htmlName,
       });
 
-      const res = await request(app)
-        .post('/api/canvas')
-        .set('Authorization', `Bearer ${jwt}`)
-        .send({ name: htmlName });
+      const res = await request(app).post('/api/canvas').set('Authorization', `Bearer ${jwt}`).send({ name: htmlName });
 
       expect(res.status).toBe(201);
       expect(res.body.data.name).toBe(htmlName);
     });
 
     it('empty canvas name rejected', async () => {
-      const res = await request(app)
-        .post('/api/canvas')
-        .set('Authorization', `Bearer ${jwt}`)
-        .send({ name: '' });
+      const res = await request(app).post('/api/canvas').set('Authorization', `Bearer ${jwt}`).send({ name: '' });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/validation failed/i);
@@ -235,7 +227,8 @@ describe('Validation extended — edge cases', () => {
   describe('Memo content with unicode/emoji', () => {
     it('memo content with unicode/emoji accepted', async () => {
       mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
-      const emojiContent = 'Research notes \u{1F4DD} with \u{1F30D} international chars: \u00E9\u00E0\u00FC\u00F1 \u4F60\u597D \u0410\u0411\u0412';
+      const emojiContent =
+        'Research notes \u{1F4DD} with \u{1F30D} international chars: \u00E9\u00E0\u00FC\u00F1 \u4F60\u597D \u0410\u0411\u0412';
       mockPrisma.canvasMemo.create.mockResolvedValue({
         id: 'memo-unicode-1',
         canvasId,
@@ -306,17 +299,14 @@ describe('Validation extended — edge cases', () => {
         .get(`/api/canvas/${encodeURIComponent(sqlInjection)}`)
         .set('Authorization', `Bearer ${jwt}`);
 
-      // param validation passes (string is under 64 chars), then findUnique returns null → 404
-      // The important thing: no crash, no SQL injection executed
-      expect(res.status).toBe(404);
+      // Unsafe identifier characters are rejected before any database lookup.
+      expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
     });
 
     it('canvas ID as very long string returns 400', async () => {
       const longId = 'a'.repeat(100);
-      const res = await request(app)
-        .get(`/api/canvas/${longId}`)
-        .set('Authorization', `Bearer ${jwt}`);
+      const res = await request(app).get(`/api/canvas/${longId}`).set('Authorization', `Bearer ${jwt}`);
 
       // canvasCanvasIdParam: z.string().min(1).max(64) — 100 chars exceeds max
       expect(res.status).toBe(400);
@@ -394,10 +384,7 @@ describe('Validation extended — edge cases', () => {
 
   describe('Missing required fields', () => {
     it('POST /canvas with no body returns 400', async () => {
-      const res = await request(app)
-        .post('/api/canvas')
-        .set('Authorization', `Bearer ${jwt}`)
-        .send({});
+      const res = await request(app).post('/api/canvas').set('Authorization', `Bearer ${jwt}`).send({});
 
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/validation failed/i);

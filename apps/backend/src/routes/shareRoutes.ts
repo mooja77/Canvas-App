@@ -72,6 +72,7 @@ shareRoutes.delete('/canvas/:id/share/:shareId', validateParams(canvasShareIdPar
 shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCanvasLimit(), async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
+    const userId = getAuthUserId(req);
 
     const share = await prisma.canvasShare.findUnique({ where: { shareCode: req.params.code } });
     if (!share) return next(new AppError('Share code not found', 404));
@@ -144,6 +145,7 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
         const newCanvas = await tx.codingCanvas.create({
           data: {
             dashboardAccessId,
+            userId: userId || null,
             name: cloneName,
             description: source.description,
           },

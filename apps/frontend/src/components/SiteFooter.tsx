@@ -201,7 +201,7 @@ export default function SiteFooter() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-6 border-t border-gray-200/70 dark:border-gray-800/70 text-xs text-gray-500 dark:text-gray-500">
+      <div className="flex items-center justify-between pt-6 border-t border-gray-200/70 dark:border-gray-800/70 text-xs text-gray-500 dark:text-gray-400">
         <span>&copy; {new Date().getFullYear()} QualCanvas. All rights reserved.</span>
         <span>Built for qualitative researchers</span>
       </div>

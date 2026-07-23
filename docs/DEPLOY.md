@@ -55,7 +55,7 @@ npm run dev
 | `npm run build` | Production build: shared -> backend -> frontend |
 | `npm start` | Start the compiled backend (`apps/backend/dist`) |
 | `npm run db:migrate` | Run Prisma migrations |
-| `npm run db:seed` | Seed demo data (access code: `CANVAS-DEMO2025`) |
+| `npm run db:seed` | Seed templates and, when configured, a `DEMO_ACCESS_CODE` account |
 | `npm test` | Run all unit tests (570 backend + 333 frontend) |
 | `npm run test:e2e` | Run ~564 Playwright E2E tests (Chromium, 39 spec files) |
 | `npm run test:e2e:all` | Run E2E tests across all browsers |
@@ -170,7 +170,7 @@ The Prisma schema uses `provider = "postgresql"`. In production (Railway), a Pos
 # Run migrations (creates/updates all tables)
 npx prisma migrate deploy
 
-# Seed demo data (optional — creates demo access code CANVAS-DEMO2025)
+# Seed templates (optionally configure a demo account through DEMO_ACCESS_CODE)
 npx prisma db seed
 ```
 
@@ -459,7 +459,7 @@ These are included in the backend `package.json` and installed automatically wit
 1. Visit `https://your-domain.com` — should show the landing page
 2. Visit `https://your-domain.com/health` — should return `{"status":"ok"}`
 3. Visit `https://your-domain.com/ready` — should return `{"status":"ready"}`
-4. Log in with `CANVAS-DEMO2025` (if database was seeded)
+4. Log in with the environment-supplied demo code (only if one was configured)
 5. Check `https://your-domain.com/metrics` for request counts and memory usage
 
 ### Stripe Setup

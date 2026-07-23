@@ -48,7 +48,7 @@ python youtube-training/2026-07-17-initial-library/production/qa_series.py
 Optional environment variables:
 
 - `QUALCANVAS_CAPTURE_SITE` — defaults to `https://qualcanvas.com`.
-- `QUALCANVAS_DEMO_CODE` — defaults to the documented synthetic demo access code.
+- `QUALCANVAS_DEMO_CODE` — required; supply a dedicated, revocable synthetic-demo access code at capture time.
 - `QUALCANVAS_VIDEO_PACKAGE` — overrides this package directory.
 
 For an authenticated publishing session, launch a dedicated Chrome profile with remote debugging and attach the local-only Studio controller. The controller never stores a credential and does not bypass Google or YouTube verification.

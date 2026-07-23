@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
+import { Readable } from 'node:stream';
 
 // ─── Mock Prisma before any imports that use it ───
 const { mockPrisma } = vi.hoisted(() => {
@@ -17,6 +18,7 @@ const { mockPrisma } = vi.hoisted(() => {
       findUnique: vi.fn(),
     },
     fileUpload: {
+      aggregate: vi.fn(),
       create: vi.fn(),
       findFirst: vi.fn(),
       findUnique: vi.fn(),
@@ -76,6 +78,7 @@ vi.mock('../../middleware/planLimits.js', () => ({
   checkFileUploadAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkTranscriptionMinutes: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkExportFormat: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  resolveRequestPlan: vi.fn().mockResolvedValue('pro'),
 }));
 
 vi.mock('nanoid', () => ({
@@ -101,9 +104,9 @@ vi.mock('../../lib/storage.js', () => ({
     providerName: vi.fn().mockReturnValue('s3'),
     getUploadUrl: vi.fn().mockResolvedValue({ url: 'https://s3.example.com/presigned-url' }),
     upload: vi.fn().mockResolvedValue({ size: 1024 }),
-    download: vi.fn(),
+    delete: vi.fn().mockResolvedValue(undefined),
     head: vi.fn().mockResolvedValue({ size: 5000, contentType: 'audio/mpeg' }),
-    openReadStream: vi.fn(),
+    openReadStream: vi.fn().mockImplementation(() => Promise.resolve(Readable.from([Buffer.from('ID3test')]))),
   },
 }));
 
@@ -119,6 +122,11 @@ vi.mock('../../lib/jobs.js', () => ({
 vi.mock('../../utils/transcription.js', () => ({
   transcribeAudio: vi.fn(),
   getLocalUploadPath: vi.fn(),
+}));
+
+vi.mock('../../utils/transcriptionMetering.js', () => ({
+  resolveUserOpenAiKey: vi.fn().mockResolvedValue(null),
+  TRANSCRIPTION_CENTS_PER_MINUTE: 0.6,
 }));
 
 // Mock QDPX export/import — hoisted so they can be referenced in vi.mock
@@ -184,6 +192,7 @@ describe('Upload and QDPX integration tests', () => {
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.fileUpload.aggregate.mockResolvedValue({ _sum: { sizeBytes: 0 } });
   });
 
   // ═══════════════════════════════════════
@@ -195,7 +204,7 @@ describe('Upload and QDPX integration tests', () => {
     const res = await request(app)
       .post(`/api/canvas/${canvasId}/upload/presigned`)
       .set('Authorization', `Bearer ${jwt}`)
-      .send({ fileName: 'interview.mp3', contentType: 'audio/mpeg' });
+      .send({ fileName: 'interview.mp3', contentType: 'audio/mpeg', sizeBytes: 5000 });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);

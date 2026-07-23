@@ -14,6 +14,7 @@ import { nanoid } from 'nanoid';
 import { AppError } from '../middleware/errorHandler.js';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
 import { lifecycleTemplate, sendLifecycleEmail } from '../lib/lifecycleEmail.js';
+import { deleteStoredUploads } from '../utils/fileCleanup.js';
 
 const BCRYPT_ROUNDS = 12;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -126,7 +127,6 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
     res.status(201).json({
       success: true,
       data: {
-        jwt,
         user: {
           id: result.id,
           email: result.email,
@@ -189,7 +189,8 @@ userAuthRoutes.post('/auth/email-login', authLimiter, async (req, res, next) => 
 
     // Refresh plan from subscription status
     const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
-    const currentPlan = subscription && ['active', 'trialing'].includes(subscription.status) ? user.plan : 'free';
+    const currentPlan =
+      (subscription && ['active', 'trialing'].includes(subscription.status)) || user.legacyPricing ? user.plan : 'free';
 
     // Sync plan in DB if it differs
     if (currentPlan !== user.plan) {
@@ -212,7 +213,6 @@ userAuthRoutes.post('/auth/email-login', authLimiter, async (req, res, next) => 
     res.json({
       success: true,
       data: {
-        jwt,
         user: {
           id: user.id,
           email: user.email,
@@ -255,7 +255,11 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
       return res.status(401).json({ success: false, error: 'Unable to extract email from Google token' });
     }
 
-    const { email, name: googleName, sub: googleId, email_verified: _email_verified } = payload;
+    if (payload.email_verified !== true) {
+      return res.status(401).json({ success: false, error: 'Google account email is not verified' });
+    }
+
+    const { email, name: googleName, sub: googleId } = payload;
     const normalizedEmail = email.toLowerCase().trim();
     const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
     const hashedIp = sha256(rawIp);
@@ -314,6 +318,12 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
         meta: JSON.stringify({ provider: 'google', googleId }),
       });
     } else {
+      if (!user.emailVerified) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { emailVerified: true, verificationTokenHash: null, verificationTokenExpiry: null },
+        });
+      }
       logAudit({
         action: 'auth.login',
         resource: 'user',
@@ -334,7 +344,8 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
 
     // Refresh plan from subscription status
     const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
-    const currentPlan = subscription && ['active', 'trialing'].includes(subscription.status) ? user.plan : 'free';
+    const currentPlan =
+      (subscription && ['active', 'trialing'].includes(subscription.status)) || user.legacyPricing ? user.plan : 'free';
 
     if (currentPlan !== user.plan) {
       await prisma.user.update({ where: { id: user.id }, data: { plan: currentPlan } });
@@ -346,7 +357,6 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        jwt,
         user: {
           id: user.id,
           email: user.email,
@@ -579,7 +589,7 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
 
       // Validate plan matches subscription status (auto-downgrade if expired/canceled)
       const activeSub = user.subscription && ['active', 'trialing'].includes(user.subscription.status);
-      const validPlan = activeSub ? user.plan : 'free';
+      const validPlan = activeSub || user.legacyPricing ? user.plan : 'free';
       if (validPlan !== user.plan) {
         await prisma.user.update({ where: { id: userId }, data: { plan: validPlan } });
         user.plan = validPlan;
@@ -605,7 +615,8 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
       // active trialEndsAt are effectively on Pro until expiry. The frontend
       // uses effectivePlan for UI gating (what features to show) and
       // trialEndsAt to render a countdown banner.
-      const trialActive = user.plan === 'free' && user.trialEndsAt && user.trialEndsAt.getTime() > Date.now();
+      const trialActive =
+        user.emailVerified && user.plan === 'free' && user.trialEndsAt && user.trialEndsAt.getTime() > Date.now();
       const effectivePlan = trialActive ? 'pro' : user.plan;
 
       return res.json({
@@ -684,8 +695,13 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
 
     const access = await prisma.dashboardAccess.findUnique({ where: { id: dashboardAccessId } });
     if (!access) throw new AppError('Account not found', 404);
+    if (access.userId) {
+      throw new AppError('This access-code account is already linked to an email account', 409);
+    }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const user = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const newUser = await tx.user.create({
@@ -694,14 +710,28 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
           passwordHash,
           name: name?.trim() || access.name,
           plan: 'pro', // Grandfathered
+          legacyPricing: true,
+          verificationTokenHash: sha256(verifyToken),
+          verificationTokenExpiry: verifyExpiry,
+          emailPreference: {
+            create: {
+              unsubscribeToken: crypto.randomBytes(24).toString('hex'),
+              unsubscribedAt: new Date(),
+            },
+          },
         },
       });
 
-      // Link DashboardAccess to User
-      await tx.dashboardAccess.update({
-        where: { id: dashboardAccessId },
+      // The userId:null predicate prevents two simultaneous link requests from
+      // reassigning the same legacy workspace. A failed claim rolls the newly
+      // created user back with the surrounding transaction.
+      const claimed = await tx.dashboardAccess.updateMany({
+        where: { id: dashboardAccessId, userId: null },
         data: { userId: newUser.id },
       });
+      if (claimed.count !== 1) {
+        throw new AppError('This access-code account is already linked to an email account', 409);
+      }
 
       // Link all canvases to the new user
       await tx.codingCanvas.updateMany({
@@ -712,6 +742,9 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
       return newUser;
     });
 
+    const appUrl = process.env.APP_URL || 'http://localhost:5174';
+    const verifyUrl = `${appUrl}/verify-email#token=${verifyToken}&email=${encodeURIComponent(normalizedEmail)}`;
+    await sendVerificationEmail(normalizedEmail, verifyUrl);
     await sendLifecycleEmail(user, lifecycleTemplate('welcome', user));
 
     const jwt = signUserToken(user.id, user.role, user.plan);
@@ -720,7 +753,6 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        jwt,
         user: {
           id: user.id,
           email: user.email,
@@ -742,6 +774,8 @@ userAuthRoutes.put('/auth/profile', auth, async (req, res, next) => {
     if (!userId) throw new AppError('Email account required', 403);
 
     const { name, email } = req.body;
+    const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!currentUser) throw new AppError('User not found', 404);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {};
 
@@ -758,24 +792,28 @@ userAuthRoutes.put('/auth/profile', auth, async (req, res, next) => {
         return res.status(400).json({ success: false, error: 'Valid email is required' });
       }
       const normalizedEmail = email.toLowerCase().trim();
-      const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-      if (existing && existing.id !== userId) {
-        return res.status(409).json({ success: false, error: 'Email already in use' });
+      if (normalizedEmail !== currentUser.email) {
+        const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+        if (existing && existing.id !== userId) {
+          return res.status(409).json({ success: false, error: 'Email already in use' });
+        }
+        const verifyToken = crypto.randomBytes(32).toString('hex');
+        updateData.email = normalizedEmail;
+        updateData.emailVerified = false;
+        updateData.verificationTokenHash = sha256(verifyToken);
+        updateData.verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        updateData.sessionsInvalidAt = new Date();
+        updateData.pendingVerificationToken = verifyToken;
+        emailChanged = true;
       }
-      updateData.email = normalizedEmail;
-      updateData.emailVerified = false; // Re-verify if email changed
-      emailChanged = true;
     }
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ success: false, error: 'No fields to update' });
     }
 
-    // Changing the email is a credential change — invalidate all existing
-    // sessions so stolen tokens pre-dating the email change stop working.
-    if (emailChanged) {
-      updateData.sessionsInvalidAt = new Date();
-    }
+    const pendingVerificationToken = updateData.pendingVerificationToken as string | undefined;
+    delete updateData.pendingVerificationToken;
 
     const user = await prisma.user.update({
       where: { id: userId },
@@ -783,6 +821,9 @@ userAuthRoutes.put('/auth/profile', auth, async (req, res, next) => {
     });
 
     if (emailChanged) {
+      const appUrl = process.env.APP_URL || 'http://localhost:5174';
+      const verifyUrl = `${appUrl}/verify-email#token=${pendingVerificationToken}&email=${encodeURIComponent(user.email)}`;
+      await sendVerificationEmail(user.email, verifyUrl);
       clearAuthCookie(res);
     }
 
@@ -869,7 +910,7 @@ userAuthRoutes.get('/auth/export', auth, async (req, res, next) => {
           },
         }),
         prisma.codingCanvas.findMany({
-          where: { userId },
+          where: { OR: [{ userId }, { dashboardAccess: { userId } }] },
           include: {
             transcripts: true,
             questions: true,
@@ -950,10 +991,25 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
     if (user.subscription?.stripeSubscriptionId) {
       const { getStripe } = await import('../lib/stripe.js');
       const stripe = getStripe();
-      await stripe.subscriptions.cancel(user.subscription.stripeSubscriptionId);
+      try {
+        await stripe.subscriptions.cancel(user.subscription.stripeSubscriptionId);
+      } catch (err: unknown) {
+        // A stale local record must not make a valid privacy deletion
+        // impossible when Stripe already has no such subscription.
+        const code = (err as { code?: string })?.code;
+        if (code !== 'resource_missing') throw err;
+      }
     }
 
-    // Cascade delete user (Prisma cascade handles related records)
+    const ownedCanvases = await prisma.codingCanvas.findMany({
+      where: { OR: [{ userId }, { dashboardAccess: { userId } }] },
+      select: { id: true },
+    });
+    await deleteStoredUploads({
+      OR: [{ userId }, { canvasId: { in: ownedCanvases.map((canvas) => canvas.id) } }],
+    });
+
+    // Cascade delete database records after physical media is gone.
     await prisma.user.delete({ where: { id: userId } });
 
     res.json({ success: true, message: 'Account deleted' });
@@ -975,7 +1031,10 @@ userAuthRoutes.post('/auth/admin/seed-demo', async (req, res, next) => {
     if (!process.env.ADMIN_SEED_SECRET || secret !== process.env.ADMIN_SEED_SECRET) {
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
-    const demoCode = 'CANVAS-DEMO2025';
+    const demoCode = process.env.DEMO_ACCESS_CODE;
+    if (!demoCode || demoCode.length < 16) {
+      throw new AppError('DEMO_ACCESS_CODE must be configured with at least 16 characters', 503);
+    }
     const sha256Index = sha256(demoCode);
     const bcryptHash = await bcrypt.hash(demoCode, BCRYPT_ROUNDS);
     await prisma.dashboardAccess.upsert({
