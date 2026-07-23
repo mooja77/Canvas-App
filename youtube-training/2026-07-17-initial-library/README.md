@@ -33,7 +33,15 @@ Every master uses original QualCanvas interface captures, an Irish-English neura
 - Analysis, Collaboration & Control: https://www.youtube.com/playlist?list=PLO7hzf3lVeSU
 - QualCanvas for Researchers, Teams & Teaching: https://www.youtube.com/playlist?list=PLTEqAy8MO9D8
 
-The channel uses the product owner's existing Google account and existing `@QualCanvas` channel. Its description, website links, channel keywords, Ireland setting, not-made-for-kids default, original banner, original profile image, full-video watermark and Home tab are configured. The four public playlists are intentionally empty until their masters can be uploaded and verified.
+The channel uses the product owner's existing Google account and existing `@QualCanvas` channel. Its description, website links, channel keywords, Ireland setting, not-made-for-kids default, original banner, original profile image, full-video watermark and Home tab are configured. The public playlists contain the videos that have passed upload checks and public watch-page verification.
+
+Published on 23 July 2026:
+
+1. [QualCanvas in 2 Minutes](https://youtu.be/i1s8kRRDoLE)
+2. [Start Your First QualCanvas Project](https://youtu.be/8UHG5rxYEHM)
+3. [Add Interview Transcripts in QualCanvas](https://youtu.be/X9czENGbCg8)
+4. [Create a Codebook and Code Your First Passage](https://youtu.be/hzt6Rbmf0Fg)
+5. [Find Patterns with QualCanvas Analysis Tools](https://youtu.be/rNqv14ez28M)
 
 ## Reproduce
 
@@ -76,4 +84,4 @@ Large captures, audio, intermediates, frame extracts and final masters stay loca
 
 All uploads are configured as English (Ireland), not made for kids and public only after final QA. YouTube publishing must use the owner’s existing Google account; this workflow must not create a separate Google account or duplicate an existing suitable QualCanvas channel.
 
-On 19 July 2026, YouTube Studio reported `Daily upload limit reached` and offered either one-time phone verification or waiting 24 hours. The owner's number is not currently eligible for another verification. No workaround, alternate account or duplicate channel is used: all eighteen masters remain ready for upload after YouTube resets the channel's limit. Until each public watch page and uploaded subtitle track are verified, the website correctly labels the videos `Publishing shortly`.
+On 23 July 2026, YouTube accepted and published videos 1–5, including their English (Ireland) subtitle tracks, then reported `Daily upload limit reached` while video 6 was being submitted. The owner's number is not eligible for another verification. No workaround, alternate account or duplicate channel is used. Videos 6–18 remain ready for the next 24-hour upload window, and the website labels only those queued videos `Publishing shortly`.
