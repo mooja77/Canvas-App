@@ -156,8 +156,8 @@ app.use(
   }),
 );
 
-// Response compression (gzip). The canvas GET ships full transcript text +
-// up to 10k codings as JSON; uncompressed that's a large payload on every open.
+// Response compression (gzip). Canvas responses include transcript text and
+// coding metadata; uncompressed that can be a large payload on every open.
 // gzip cuts JSON/text ~80%+. Defaults skip responses <1KB and honour the
 // `x-no-compression` request header; there are no streaming/SSE endpoints to
 // exclude. Placed before routes so it wraps every response.

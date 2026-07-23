@@ -88,6 +88,10 @@ vi.mock('../../lib/email.js', () => ({
   sendTeamInviteEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../../utils/teamBilling.js', () => ({
+  syncTeamSeatQuantity: vi.fn().mockResolvedValue(2),
+}));
+
 import request from 'supertest';
 import express from 'express';
 import { auth } from '../../middleware/auth.js';
@@ -184,9 +188,7 @@ describe('Team routes integration tests', () => {
     ];
     mockPrisma.teamMember.findMany.mockResolvedValue(memberships);
 
-    const res = await request(app)
-      .get('/api/teams')
-      .set('Authorization', `Bearer ${teamJwt}`);
+    const res = await request(app).get('/api/teams').set('Authorization', `Bearer ${teamJwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -268,9 +270,7 @@ describe('Team routes integration tests', () => {
     });
     mockPrisma.team.delete.mockResolvedValue({ id: teamId });
 
-    const res = await request(app)
-      .delete(`/api/teams/${teamId}`)
-      .set('Authorization', `Bearer ${teamJwt}`);
+    const res = await request(app).delete(`/api/teams/${teamId}`).set('Authorization', `Bearer ${teamJwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -300,9 +300,7 @@ describe('Team routes integration tests', () => {
       ownerId: userId, // different from nonOwnerUserId
     });
 
-    const res = await request(app)
-      .delete(`/api/teams/${teamId}`)
-      .set('Authorization', `Bearer ${nonOwnerJwt}`);
+    const res = await request(app).delete(`/api/teams/${teamId}`).set('Authorization', `Bearer ${nonOwnerJwt}`);
 
     expect(res.status).toBe(403);
     expect(res.body.success).toBe(false);

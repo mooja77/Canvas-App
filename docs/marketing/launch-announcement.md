@@ -86,7 +86,7 @@ The next three months: institutional features (SSO, EU region), more analysis su
 
 ### Try it
 
-[qualcanvas.com](https://qualcanvas.com) — sign up is email or Google, no credit card. The demo login `CANVAS-DEMO2025` gets you a pre-loaded canvas with a real study so you can poke at it without uploading your own data first.
+[qualcanvas.com](https://qualcanvas.com) — sign up is available by email or Google, with no credit card required for the Free plan.
 
 If you're a researcher, methodologist, or grad student, I would love your feedback. The fastest way to reach me is feedback@qualcanvas.com.
 

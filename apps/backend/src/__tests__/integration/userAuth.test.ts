@@ -23,7 +23,7 @@ const { mockPrisma } = vi.hoisted(() => {
     subscription: {
       findUnique: vi.fn(),
     },
-    codingCanvas: { count: vi.fn() },
+    codingCanvas: { count: vi.fn(), findMany: vi.fn() },
     canvasTranscript: { count: vi.fn() },
     canvasQuestion: { count: vi.fn() },
     canvasShare: { count: vi.fn() },
@@ -85,6 +85,10 @@ vi.mock('../../lib/email.js', () => ({
   sendPasswordResetEmail: vi.fn().mockResolvedValue(true),
 }));
 
+vi.mock('../../utils/fileCleanup.js', () => ({
+  deleteStoredUploads: vi.fn().mockResolvedValue(0),
+}));
+
 // Mock google-auth-library
 const { mockVerifyIdToken } = vi.hoisted(() => ({
   mockVerifyIdToken: vi.fn(),
@@ -122,6 +126,7 @@ describe('User auth integration tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.codingCanvas.findMany.mockResolvedValue([]);
     app = createApp();
     // Set GOOGLE_CLIENT_ID for Google OAuth tests
     process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
@@ -131,7 +136,7 @@ describe('User auth integration tests', () => {
   describe('POST /api/auth/signup', () => {
     const validPayload = { email: 'newuser@example.com', password: 'securepass123', name: 'Jane Doe' };
 
-    it('creates a new user with correct fields and returns 201 + JWT', async () => {
+    it('creates a new user and returns an httpOnly session cookie', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
       const createdUser = {
         id: 'user-new',
@@ -155,7 +160,8 @@ describe('User auth integration tests', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.jwt).toBeDefined();
+      expect(res.body.data.jwt).toBeUndefined();
+      expect(res.headers['set-cookie']?.[0]).toContain('jwt=');
       expect(res.body.data.user.email).toBe('newuser@example.com');
       expect(res.body.data.user.name).toBe('Jane Doe');
       expect(res.body.data.user.plan).toBe('free');
@@ -327,7 +333,7 @@ describe('User auth integration tests', () => {
       emailVerified: true,
     };
 
-    it('returns JWT and user data on valid credentials', async () => {
+    it('returns user data and an httpOnly session cookie on valid credentials', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(mockUser);
       mockPrisma.subscription.findUnique.mockResolvedValue(null);
       (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
@@ -339,7 +345,8 @@ describe('User auth integration tests', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.jwt).toBeDefined();
+      expect(res.body.data.jwt).toBeUndefined();
+      expect(res.headers['set-cookie']?.[0]).toContain('jwt=');
       expect(res.body.data.user.email).toBe('test@example.com');
       expect(res.body.data.user.plan).toBe('free');
     });
@@ -622,7 +629,8 @@ describe('User auth integration tests', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.jwt).toBeDefined();
+      expect(res.body.data.jwt).toBeUndefined();
+      expect(res.headers['set-cookie']?.[0]).toContain('jwt=');
       expect(res.body.data.user.email).toBe('google@example.com');
     });
 

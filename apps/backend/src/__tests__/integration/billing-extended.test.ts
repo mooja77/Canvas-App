@@ -35,6 +35,7 @@ const { mockStripe } = vi.hoisted(() => {
     },
     subscriptions: {
       retrieve: vi.fn(),
+      list: vi.fn(),
     },
     customers: {
       create: vi.fn(),
@@ -138,6 +139,8 @@ describe('Stripe Billing – Extended Tests', () => {
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_secret';
     mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
     mockPrisma.webhookEvent.create.mockResolvedValue({});
+    mockPrisma.subscription.findUnique.mockResolvedValue(null);
+    mockStripe.subscriptions.list.mockResolvedValue({ data: [] });
     // create-checkout now derives the plan from the price on Stripe (never the
     // client body). Default: resolve a tagged QualCanvas price whose plan is
     // inferred from the priceId these tests pass.
@@ -231,7 +234,7 @@ describe('Stripe Billing – Extended Tests', () => {
       });
     });
 
-    it('keeps user plan when status=active (no downgrade)', async () => {
+    it('refreshes the user plan from Stripe when status=active', async () => {
       const event = {
         id: 'evt_sub_active_1',
         type: 'customer.subscription.updated',
@@ -259,8 +262,10 @@ describe('Stripe Billing – Extended Tests', () => {
       const { req, res } = createMockReqRes(Buffer.from('{}'));
       await handleStripeWebhook(req, res);
 
-      // Should NOT downgrade the user when status is active
-      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-active-1' },
+        data: { plan: 'pro' },
+      });
     });
 
     it('updates price ID when subscription price changes (monthly→annual)', async () => {
@@ -333,8 +338,10 @@ describe('Stripe Billing – Extended Tests', () => {
           data: expect.objectContaining({ cancelAtPeriodEnd: true }),
         }),
       );
-      // Status is still active → should NOT downgrade user
-      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-eop-1' },
+        data: { plan: 'pro' },
+      });
     });
 
     it('downgrades user to free when status=past_due', async () => {
@@ -400,8 +407,10 @@ describe('Stripe Billing – Extended Tests', () => {
       const { req, res } = createMockReqRes(Buffer.from('{}'));
       await handleStripeWebhook(req, res);
 
-      // trialing is in the allowed list → should NOT downgrade
-      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-trial-1' },
+        data: { plan: 'pro' },
+      });
     });
   });
 
@@ -662,6 +671,7 @@ describe('Stripe Billing – Extended Tests', () => {
         name: 'Student',
         role: 'researcher',
         plan: 'pro',
+        emailVerified: true,
         stripeCustomerId: 'cus_edu_1',
       });
       mockStripe.checkout.sessions.create.mockResolvedValue({
@@ -717,6 +727,7 @@ describe('Stripe Billing – Extended Tests', () => {
         name: 'Student',
         role: 'researcher',
         plan: 'free',
+        emailVerified: true,
         stripeCustomerId: 'cus_student_1',
       });
       mockStripe.checkout.sessions.create.mockResolvedValue({
@@ -744,6 +755,7 @@ describe('Stripe Billing – Extended Tests', () => {
         name: 'Cheat',
         role: 'researcher',
         plan: 'free',
+        emailVerified: true,
         stripeCustomerId: 'cus_cheat',
       });
       mockStripe.checkout.sessions.create.mockResolvedValue({ url: 'https://checkout.stripe.com/x' });
@@ -1467,8 +1479,8 @@ describe('Stripe Billing – Extended Tests', () => {
       expect(mockPrisma.webhookEvent.create).not.toHaveBeenCalled();
     });
 
-    // ─── checkout.session.completed with empty price falls back ───
-    it('checkout.session.completed handles missing price.id gracefully', async () => {
+    // ─── checkout.session.completed with empty price fails closed ───
+    it('checkout.session.completed rejects a missing price without granting an entitlement', async () => {
       process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
       mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
       mockPrisma.webhookEvent.create.mockResolvedValue({});
@@ -1497,11 +1509,10 @@ describe('Stripe Billing – Extended Tests', () => {
       const { req, res } = createMockReqRes(Buffer.from('{}'));
       await handleStripeWebhook(req, res);
 
-      expect(mockPrisma.subscription.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          create: expect.objectContaining({ stripePriceId: '' }),
-        }),
-      );
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(mockPrisma.subscription.upsert).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.webhookEvent.create).not.toHaveBeenCalled();
     });
 
     // ─── subscription.deleted includes user in query ───

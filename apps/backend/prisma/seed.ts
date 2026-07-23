@@ -10,22 +10,26 @@ function sha256(input: string): string {
 }
 
 async function main() {
-  // Create a demo dashboard access code
-  const demoCode = 'CANVAS-DEMO2025';
-  const sha256Index = sha256(demoCode);
-  const bcryptHash = await bcrypt.hash(demoCode, 12);
+  // Demo access is opt-in and the credential must come from a secret. Never
+  // ship a working production credential in source control.
+  const demoCode = process.env.DEMO_ACCESS_CODE;
+  if (demoCode) {
+    if (demoCode.length < 16) throw new Error('DEMO_ACCESS_CODE must be at least 16 characters');
+    const sha256Index = sha256(demoCode);
+    const bcryptHash = await bcrypt.hash(demoCode, 12);
 
-  await prisma.dashboardAccess.upsert({
-    where: { accessCode: sha256Index },
-    update: {},
-    create: {
-      accessCode: sha256Index,
-      accessCodeHash: bcryptHash,
-      name: 'Demo Researcher',
-      role: 'researcher',
-      expiresAt: new Date('2027-12-31'),
-    },
-  });
+    await prisma.dashboardAccess.upsert({
+      where: { accessCode: sha256Index },
+      update: { accessCodeHash: bcryptHash },
+      create: {
+        accessCode: sha256Index,
+        accessCodeHash: bcryptHash,
+        name: 'Demo Researcher',
+        role: 'researcher',
+        expiresAt: new Date('2027-12-31'),
+      },
+    });
+  }
 
   // Seed Sprint F onboarding templates. The composite unique index
   // (name, createdBy) lets us upsert public templates where createdBy is
@@ -55,7 +59,9 @@ async function main() {
     }
   }
 
-  console.log(`Seed complete. Demo code: CANVAS-DEMO2025 (+ ${TEMPLATES.length} onboarding templates)`);
+  console.log(
+    `Seed complete. ${demoCode ? 'Demo access configured' : 'Demo access skipped'} (+ ${TEMPLATES.length} onboarding templates)`,
+  );
 }
 
 main()

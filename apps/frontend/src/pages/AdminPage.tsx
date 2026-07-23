@@ -80,7 +80,7 @@ interface EmailCampaign {
   status: string;
   createdAt: string;
   sentAt: string | null;
-  _count?: { deliveries: number };
+  _count?: { deliveries: number; newsletterDeliveries: number };
 }
 
 type TabId = 'dashboard' | 'users' | 'billing' | 'health' | 'activity' | 'features' | 'emails';
@@ -847,6 +847,7 @@ function EmailsTab({ adminKey }: { adminKey: string }) {
   const [loading, setLoading] = useState(true);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [sendMessage, setSendMessage] = useState('');
   const [form, setForm] = useState({
     title: '',
     subject: '',
@@ -899,8 +900,15 @@ function EmailsTab({ adminKey }: { adminKey: string }) {
     if (!window.confirm('Send this campaign now? This cannot be undone.')) return;
     setSendingId(id);
     setError('');
+    setSendMessage('');
     try {
-      await adminApi.sendEmailCampaign(adminKey, id);
+      const response = await adminApi.sendEmailCampaign(adminKey, id);
+      const result = response.data.data as { sent: number; skipped: number; failed: number; remaining: number };
+      setSendMessage(
+        result.remaining > 0
+          ? `Batch complete: ${result.sent} sent, ${result.failed} failed, ${result.remaining} remaining. Send again to continue.`
+          : `Campaign complete: ${result.sent} sent, ${result.skipped} skipped, ${result.failed} failed.`,
+      );
       await load();
     } catch {
       setError('Failed to send campaign');
@@ -941,7 +949,8 @@ function EmailsTab({ adminKey }: { adminKey: string }) {
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Create Product Update</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Draft a one-off announcement. It sends only when you click Send and respects product-update opt-outs.
+            Draft a one-off announcement. It sends only when you click Send and respects the selected audience&apos;s
+            opt-outs.
           </p>
         </div>
         <div className="grid md:grid-cols-2 gap-3">
@@ -970,7 +979,8 @@ function EmailsTab({ adminKey }: { adminKey: string }) {
             value={form.audience}
             onChange={(e) => setForm((f) => ({ ...f, audience: e.target.value }))}
           >
-            <option value="all">All verified users</option>
+            <option value="all">All verified users and newsletter subscribers</option>
+            <option value="newsletter">Newsletter subscribers only</option>
             <option value="free">Free users</option>
             <option value="pro">Pro users</option>
             <option value="team">Team users</option>
@@ -1002,6 +1012,15 @@ function EmailsTab({ adminKey }: { adminKey: string }) {
         </button>
       </form>
 
+      {sendMessage && (
+        <p
+          role="status"
+          className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200"
+        >
+          {sendMessage}
+        </p>
+      )}
+
       <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="font-semibold text-gray-900 dark:text-white">Campaigns</h2>
@@ -1017,7 +1036,7 @@ function EmailsTab({ adminKey }: { adminKey: string }) {
                   <p className="text-sm text-gray-500 dark:text-gray-400">{campaign.subject}</p>
                   <p className="text-xs text-gray-400 mt-1">
                     Audience: {campaign.audience} · Status: {campaign.status} · Deliveries:{' '}
-                    {campaign._count?.deliveries ?? 0}
+                    {(campaign._count?.deliveries ?? 0) + (campaign._count?.newsletterDeliveries ?? 0)}
                   </p>
                 </div>
                 <button

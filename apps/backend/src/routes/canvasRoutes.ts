@@ -14,6 +14,7 @@ import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../util
 import { checkCanvasLimit } from '../middleware/planLimits.js';
 import { getPlanLimits } from '../config/plans.js';
 import { trackJmsEvent } from '../lib/jms-events.js';
+import { deleteStoredUploads } from '../utils/fileCleanup.js';
 
 // Sub-routers
 import { transcriptRoutes } from './transcriptRoutes.js';
@@ -172,17 +173,14 @@ canvasRoutes.get('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async
     const dashboardAccessId = getAuthId(req);
     // Shared access check (owner or collaborator). The previous inline
     // dashboardAccessId-only comparison locked out invited collaborators.
-    // allowDeleted preserves the route's historical behavior of serving
-    // trashed canvases.
-    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req), { allowDeleted: true });
+    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
     const canvas = await prisma.codingCanvas.findUnique({
       where: { id: req.params.canvasId },
       include: {
         transcripts: { orderBy: { sortOrder: 'asc' } },
         questions: { orderBy: { sortOrder: 'asc' } },
         memos: { orderBy: { createdAt: 'asc' } },
-        // Deterministic order so the 10k cap always clips the same rows.
-        codings: { take: 10000, orderBy: { createdAt: 'asc' } },
+        codings: { orderBy: { createdAt: 'asc' } },
         nodePositions: true,
         cases: { orderBy: { createdAt: 'asc' } },
         relations: { orderBy: { createdAt: 'asc' } },
@@ -287,6 +285,7 @@ canvasRoutes.delete('/canvas/:canvasId/permanent', validateParams(canvasCanvasId
       requireOwner: true,
     });
     if (!canvas.deletedAt) return next(new AppError('Canvas must be in trash before permanent deletion', 400));
+    await deleteStoredUploads({ canvasId: req.params.canvasId });
     await prisma.codingCanvas.delete({ where: { id: req.params.canvasId } });
     res.json({ success: true });
   } catch (err) {

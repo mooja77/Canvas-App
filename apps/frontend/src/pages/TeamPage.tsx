@@ -246,7 +246,7 @@ export default function TeamPage() {
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Invite members by email</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        They'll get an invite link and join immediately.
+                        Registered users are added immediately and receive an email notice.
                       </p>
                     </div>
                   </li>
@@ -334,7 +334,7 @@ export default function TeamPage() {
             {canManage && (
               <div className="bg-white dark:bg-gray-800 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 p-6 mb-6">
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
-                  Invite Member
+                  Add Member
                 </h2>
                 <form onSubmit={handleInvite} className="flex gap-3">
                   <input
@@ -350,7 +350,7 @@ export default function TeamPage() {
                     disabled={inviting || !inviteEmail.trim()}
                     className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                   >
-                    {inviting ? 'Inviting...' : 'Invite'}
+                    {inviting ? 'Adding...' : 'Add member'}
                   </button>
                 </form>
               </div>

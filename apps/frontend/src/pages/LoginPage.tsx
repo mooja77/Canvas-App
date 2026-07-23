@@ -114,7 +114,7 @@ export default function LoginPage() {
         window.google.accounts.id.renderButton(googleButtonRef.current, {
           theme: 'outline',
           size: 'large',
-          width: Math.min(400, containerWidth - 16),
+          width: Math.max(240, Math.min(400, containerWidth - 16)),
           text: 'continue_with',
           shape: 'rectangular',
           logo_alignment: 'left',
@@ -292,7 +292,7 @@ export default function LoginPage() {
           {/* Google Sign-In */}
           {googleClientId && (
             <div className="mb-6">
-              <div ref={googleButtonRef} className="flex justify-center" />
+              <div ref={googleButtonRef} className="flex min-h-11 w-full justify-center" />
               <div className="relative mt-5">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-300 dark:border-gray-600" />

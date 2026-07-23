@@ -56,15 +56,6 @@ export default function IntegrationSettingsPanel() {
     loadIntegrations();
   }, []);
 
-  const handleConnect = async (provider: string) => {
-    // In a real implementation, this would redirect to the OAuth flow.
-    // For now, show a placeholder message.
-    toast('OAuth integration for ' + provider + ' is not yet configured. This is a placeholder.', {
-      icon: 'ℹ️',
-      duration: 3000,
-    });
-  };
-
   const handleConfirmedDisconnect = async () => {
     if (!confirmDisconnectId) return;
     try {
@@ -92,7 +83,9 @@ export default function IntegrationSettingsPanel() {
     <div className="space-y-4">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Integrations</h3>
-        <p className="text-sm text-gray-500 mt-1">Connect external services to import data into your canvases.</p>
+        <p className="text-sm text-gray-500 mt-1">
+          Existing connections can be removed here. New provider connections are not available yet.
+        </p>
       </div>
 
       <div className="space-y-3">
@@ -126,12 +119,9 @@ export default function IntegrationSettingsPanel() {
                   Disconnect
                 </button>
               ) : (
-                <button
-                  onClick={() => handleConnect(provider.id)}
-                  className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Connect
-                </button>
+                <span className="rounded bg-gray-100 px-3 py-1.5 text-xs text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+                  Coming later
+                </span>
               )}
             </div>
           );

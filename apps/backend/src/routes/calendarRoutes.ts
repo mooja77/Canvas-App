@@ -62,6 +62,27 @@ function requireUser(req: import('express').Request): string {
   return userId;
 }
 
+async function validateReferences(userId: string, canvasId?: string | null, teamId?: string | null): Promise<void> {
+  if (canvasId) {
+    const canvas = await prisma.codingCanvas.findFirst({
+      where: {
+        id: canvasId,
+        deletedAt: null,
+        OR: [{ userId }, { dashboardAccess: { userId } }, { collaborators: { some: { userId } } }],
+      },
+      select: { id: true },
+    });
+    if (!canvas) throw new AppError('Canvas not found or not accessible', 403);
+  }
+  if (teamId) {
+    const membership = await prisma.teamMember.findUnique({
+      where: { teamId_userId: { teamId, userId } },
+      select: { id: true },
+    });
+    if (!membership) throw new AppError('Team not found or not accessible', 403);
+  }
+}
+
 // ─── GET /api/calendar/events — list events ───
 calendarRoutes.get('/calendar/events', async (req, res, next) => {
   try {
@@ -102,6 +123,10 @@ calendarRoutes.post(
     try {
       const userId = requireUser(req);
       const { title, description, startDate, endDate, allDay, type, color, reminder, canvasId, teamId } = req.body;
+      if (endDate && new Date(endDate) < new Date(startDate)) {
+        throw new AppError('End date cannot be before start date', 400);
+      }
+      await validateReferences(userId, canvasId, teamId);
 
       const event = await prismaCalendarEvent.create({
         data: {
@@ -144,6 +169,10 @@ calendarRoutes.put(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: any = {};
       const { title, description, startDate, endDate, allDay, type, color, reminder, canvasId, teamId } = req.body;
+      await validateReferences(userId, canvasId, teamId);
+      const nextStart = startDate ? new Date(startDate) : existing.startDate;
+      const nextEnd = endDate === null ? null : endDate ? new Date(endDate) : existing.endDate;
+      if (nextEnd && nextEnd < nextStart) throw new AppError('End date cannot be before start date', 400);
 
       if (title !== undefined) data.title = title;
       if (description !== undefined) data.description = description;

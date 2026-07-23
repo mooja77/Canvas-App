@@ -28,7 +28,7 @@ import {
 import { logAudit } from '../middleware/auditLog.js';
 import { sha256 } from '../utils/hashing.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
-import { checkCodeLimit, checkAutoCode, checkCaseAccess } from '../middleware/planLimits.js';
+import { checkCodeLimit, checkAutoCode, checkCaseAccess, checkIntercoderAccess } from '../middleware/planLimits.js';
 import { searchTranscripts } from '../utils/textAnalysis.js';
 import { buildSegmentCodeObservations, computeKrippendorffAlpha } from '../utils/intercoder.js';
 
@@ -410,7 +410,7 @@ codingRoutes.post(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const where: any = { canvasId: req.params.id };
       if (transcriptIds?.length) where.id = { in: transcriptIds };
-      const transcripts = await prisma.canvasTranscript.findMany({ where, take: 100 });
+      const transcripts = await prisma.canvasTranscript.findMany({ where });
 
       const searchResult = searchTranscripts(transcripts, pattern, mode);
       const matches = searchResult.matches;
@@ -552,6 +552,21 @@ codingRoutes.post(
     try {
       const dashboardAccessId = getAuthId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+      const { fromType, fromId, toType, toId } = req.body;
+      if (fromType === toType && fromId === toId) {
+        return next(new AppError('A node cannot be related to itself', 400));
+      }
+      const [fromNode, toNode] = await Promise.all([
+        fromType === 'case'
+          ? prisma.canvasCase.findFirst({ where: { id: fromId, canvasId: req.params.id }, select: { id: true } })
+          : prisma.canvasQuestion.findFirst({ where: { id: fromId, canvasId: req.params.id }, select: { id: true } }),
+        toType === 'case'
+          ? prisma.canvasCase.findFirst({ where: { id: toId, canvasId: req.params.id }, select: { id: true } })
+          : prisma.canvasQuestion.findFirst({ where: { id: toId, canvasId: req.params.id }, select: { id: true } }),
+      ]);
+      if (!fromNode || !toNode) {
+        return next(new AppError('Relation endpoints must both belong to this canvas', 400));
+      }
       const relation = await prisma.canvasRelation.create({
         data: { canvasId: req.params.id, ...req.body },
       });
@@ -616,6 +631,7 @@ codingRoutes.delete('/canvas/:id/relations/:relId', validateParams(canvasRelatio
 codingRoutes.post(
   '/canvas/:id/intercoder/agreement',
   validateParams(canvasIdParam),
+  checkIntercoderAccess(),
   validate(intercoderAgreementSchema),
   async (req, res, next) => {
     try {

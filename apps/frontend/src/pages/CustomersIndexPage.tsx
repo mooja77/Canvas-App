@@ -16,8 +16,8 @@ import HairlineRule from '../components/marketing/HairlineRule';
  */
 export default function CustomersIndexPage() {
   usePageMeta(
-    'Research stories — QualCanvas',
-    'What researchers do with QualCanvas. Real labs, real methods, real artifacts. Anonymized when participants need it.',
+    'Worked research examples — QualCanvas',
+    'Synthetic, clearly labelled examples showing how qualitative researchers can structure work in QualCanvas.',
   );
 
   useEffect(() => {
@@ -33,8 +33,8 @@ export default function CustomersIndexPage() {
           What researchers do with QualCanvas.
         </DisplayHeading>
         <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed max-w-2xl">
-          Real labs, real methods, real artifacts. Anonymized when participants need it. New stories published as
-          research groups complete their work.
+          Clearly labelled worked examples show how the product can support a study. Customer stories will only appear
+          here after the participant has reviewed and approved them.
         </p>
 
         {/* Worked example card — sets the bar per §8.8 */}
@@ -45,32 +45,31 @@ export default function CustomersIndexPage() {
               <span className="text-xs text-gray-500 dark:text-gray-400">Synthetic · 6 min read</span>
             </div>
             <DisplayHeading as="h2" size="md" className="mb-4 max-w-3xl">
-              How a public-health lab coded 22 caregiving interviews in six weeks.
+              A synthetic public-health coding exercise with 22 caregiving interviews.
             </DisplayHeading>
             <p className="text-sm text-gray-500 dark:text-gray-400 italic mb-6">
-              A representative example with synthetic data. We use it to show the format real stories take. The first
-              real named stories publish as outreach yeses land — see participation invite below.
+              This is a fictional workflow demonstration, not a customer result or endorsement.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
               <Stat number="22" label="Transcripts coded" />
-              <Stat number="6 weeks" label="Not six months" />
-              <Stat number="κ = 0.84" label="Intercoder reliability" />
+              <Stat number="4" label="Fictional coders" />
+              <Stat number="κ = 0.84" label="Illustrative result" />
             </div>
             <div className="prose prose-sm dark:prose-invert max-w-2xl text-gray-700 dark:text-gray-300 leading-relaxed">
               <p>
-                <strong className="font-semibold text-gray-900 dark:text-white">Challenge.</strong> Three months between
-                IRB approval and a methods-paper deadline. Twenty-two interviews. Four coders. Codebook drift surfaced
-                late — initial inter-rater agreement of 0.51 would have killed the methods section.
+                <strong className="font-semibold text-gray-900 dark:text-white">Scenario.</strong> A four-person team
+                needs to code 22 synthetic interviews while keeping its code definitions and coding decisions visible to
+                everyone.
               </p>
               <p>
-                <strong className="font-semibold text-gray-900 dark:text-white">Approach.</strong> Shared codebook in
-                one place. Intercoder κ running continuously per code, per pair of coders, per transcript. Memos
-                attached to specific codes so the team could capture <em>why</em> a code was split or merged.
+                <strong className="font-semibold text-gray-900 dark:text-white">Demonstrated workflow.</strong>{' '}
+                Collaborators work in one canvas, record coding decisions in memos, and run an intercoder calculation
+                after coding is complete.
               </p>
               <p>
-                <strong className="font-semibold text-gray-900 dark:text-white">Outcome.</strong> Final κ of 0.84 across
-                the corpus. Methods paper submitted on the deadline. Reviewer 2 commented favorably on the transparency
-                of the inter-rater reporting.
+                <strong className="font-semibold text-gray-900 dark:text-white">Example output.</strong> The synthetic
+                dataset produces an illustrative κ of 0.84. It demonstrates the report format only and does not predict
+                a real study&apos;s agreement or research outcome.
               </p>
             </div>
           </div>

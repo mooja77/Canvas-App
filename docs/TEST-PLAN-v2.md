@@ -63,7 +63,7 @@
 
 ### 1.4 Test Data Strategy
 
-- **Seed script:** `npm run db:seed` creates demo account (access code `CANVAS-DEMO2025`), sample canvas, transcripts, codes, and computed nodes.
+- **Seed script:** `npm run db:seed` seeds templates and optionally configures a demo account from `DEMO_ACCESS_CODE`.
 - **Fixtures:** Static JSON fixtures for each entity type in `apps/backend/src/__tests__/fixtures/`.
 - **Factories:** Builder functions that create valid entities with overridable defaults.
 - **Personas:** Free, Pro, Team, Legacy (access-code-only), Admin users with pre-configured plan limits.
@@ -926,7 +926,7 @@ npm run db:seed
 ```
 
 Creates:
-- Demo dashboard access with code `CANVAS-DEMO2025`
+- Demo dashboard access with a dedicated code supplied through the environment
 - Sample canvas "Research Canvas" with 2 transcripts, 5 codes, and sample codings
 - Default computed nodes (stats, wordcloud)
 - No user accounts (created via registration in tests)

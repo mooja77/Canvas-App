@@ -614,11 +614,19 @@ export default function CanvasListPanel() {
         {filteredCanvases.map((canvas, index) => (
           <div
             key={canvas.id}
-            className={`card card-interactive list-item-enter cursor-pointer hover:shadow-card-hover group ${
+            role="button"
+            tabIndex={0}
+            aria-label={`Open canvas ${canvas.name}`}
+            className={`card card-interactive list-item-enter cursor-pointer hover:shadow-card-hover group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
               viewMode === 'grid' ? 'p-4' : 'flex items-center justify-between'
             }`}
             style={{ animationDelay: `${index * 50}ms` }}
             onClick={() => openCanvas(canvas.id)}
+            onKeyDown={(event) => {
+              if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+              event.preventDefault();
+              openCanvas(canvas.id);
+            }}
           >
             {viewMode === 'grid' ? (
               /* Grid card */
@@ -638,7 +646,7 @@ export default function CanvasListPanel() {
                         e.stopPropagation();
                         setConfirmDelete({ id: canvas.id, name: canvas.name });
                       }}
-                      className="shrink-0 rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-600 dark:text-gray-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="shrink-0 rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-600 dark:text-gray-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity"
                       title="Delete canvas"
                       aria-label={`Delete canvas ${canvas.name}`}
                     >

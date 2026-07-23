@@ -324,7 +324,7 @@ Standalone:
 ┌─────────────────────────────────────────────────────┐
 │                    auth middleware                    │
 │  Checks: Authorization: Bearer <jwt>                │
-│      OR: x-dashboard-code: <jwt>                    │
+│      Secure HTTP-only session cookie                │
 └──────────────┬──────────────────────┬───────────────┘
                │                      │
                ▼                      ▼
@@ -661,7 +661,7 @@ Stored in `Integration` model with OAuth tokens:
 
 | Mechanism | Details |
 |-----------|---------|
-| JWT tokens | Signed with `JWT_SECRET`, sent via `Authorization: Bearer` or `x-dashboard-code` header |
+| JWT sessions | Signed with `JWT_SECRET` and stored in secure HTTP-only cookies |
 | Password hashing | bcryptjs (cost factor default) |
 | Google OAuth | `google-auth-library` for token verification |
 | Session timeout | 30-minute inactivity timeout (communicated via `X-Session-Timeout` header) |

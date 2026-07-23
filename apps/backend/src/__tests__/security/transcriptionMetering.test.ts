@@ -141,15 +141,18 @@ describe('Transcription minute metering — checkTranscriptionMinutes', () => {
     expect(res.status).toBe(403); // Free cap 0, Anthropic key can't transcribe
   });
 
-  it('skips metering for legacy access-code users (no per-user userId)', async () => {
-    // Directly exercise the no-userId guard without standing up legacy auth.
+  it('blocks legacy access-code users because transcription requires an accountable email user', async () => {
     const next = vi.fn();
     const req = { userId: undefined } as unknown as Request;
-    const res = {} as Response;
+    const res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+    } as unknown as Response;
 
     await checkTranscriptionMinutes()(req, res, next);
 
-    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
     expect(mockPrisma.userAiConfig.findUnique).not.toHaveBeenCalled();
     expect(mockPrisma.aiUsage.aggregate).not.toHaveBeenCalled();
   });

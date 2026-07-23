@@ -59,6 +59,7 @@ import {
   checkEthicsAccess,
   checkAnalysisType,
   checkAnalysisTypeOnRun as _checkAnalysisTypeOnRun,
+  resolveRequestPlan,
 } from '../../middleware/planLimits.js';
 import { errorHandler } from '../../middleware/errorHandler.js';
 import { signUserToken, signResearcherToken } from '../../utils/jwt.js';
@@ -388,5 +389,51 @@ describe('Plan enforcement — comprehensive limits', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
+  });
+});
+
+describe('resolveRequestPlan — collaborator entitlements', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('uses the canvas owner plan for an authenticated collaborator', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({
+      userId: 'owner',
+      dashboardAccessId: 'owner-access',
+      deletedAt: null,
+      user: { plan: 'team', emailVerified: true, trialEndsAt: null },
+      dashboardAccess: null,
+      collaborators: [{ id: 'collab-1' }],
+    });
+
+    const req = {
+      params: { id: 'canvas-1' },
+      userId: 'collaborator',
+      dashboardAccessId: 'collaborator-access',
+      userPlan: 'free',
+    } as unknown as Request;
+
+    await expect(resolveRequestPlan(req)).resolves.toBe('team');
+  });
+
+  it('does not reveal or borrow an inaccessible canvas owner plan', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({
+      userId: 'owner',
+      dashboardAccessId: 'owner-access',
+      deletedAt: null,
+      user: { plan: 'team', emailVerified: true, trialEndsAt: null },
+      dashboardAccess: null,
+      collaborators: [],
+    });
+
+    const req = {
+      params: { id: 'canvas-1' },
+      userId: 'stranger',
+      dashboardAccessId: 'stranger-access',
+      userPlan: 'free',
+    } as unknown as Request;
+
+    await expect(resolveRequestPlan(req)).resolves.toBe('free');
   });
 });

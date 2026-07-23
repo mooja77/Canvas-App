@@ -3,7 +3,6 @@ import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { checkIntegrationsAccess } from '../middleware/planLimits.js';
 import { validateParams, integrationIdParam } from '../middleware/validation.js';
-import { encryptApiKey } from '../utils/encryption.js';
 
 export const integrationRoutes = Router();
 
@@ -36,64 +35,15 @@ integrationRoutes.get('/integrations', async (req, res, next) => {
   }
 });
 
-// POST /api/integrations/connect — Connect integration (OAuth skeleton)
+// POST /api/integrations/connect — intentionally unavailable until each
+// provider has a real server-side OAuth callback. Accepting arbitrary bearer
+// tokens from the browser creates a credential-exfiltration surface and gives
+// users the false impression that a functional integration exists.
 integrationRoutes.post('/integrations/connect', async (req, res, next) => {
   try {
     const userId = req.userId;
     if (!userId) throw new AppError('Email authentication required', 401);
-
-    const { provider, accessToken, refreshToken, metadata, expiresAt } = req.body;
-    if (!provider || !accessToken) {
-      throw new AppError('Provider and accessToken are required', 400);
-    }
-
-    const validProviders = ['zoom', 'slack', 'qualtrics'];
-    if (!validProviders.includes(provider)) {
-      throw new AppError(`Invalid provider. Must be one of: ${validProviders.join(', ')}`, 400);
-    }
-
-    // Encrypt the OAuth tokens at rest — they grant access to the user's
-    // Zoom / Slack / Qualtrics accounts on their behalf. A DB dump should
-    // not be enough to impersonate them.
-    const access = encryptApiKey(accessToken);
-    const refresh = refreshToken ? encryptApiKey(refreshToken) : null;
-
-    const tokenData = {
-      accessToken: access.encrypted,
-      accessTokenIv: access.iv,
-      accessTokenTag: access.tag,
-      refreshToken: refresh?.encrypted ?? null,
-      refreshTokenIv: refresh?.iv ?? null,
-      refreshTokenTag: refresh?.tag ?? null,
-    };
-
-    const integration = await prisma.integration.upsert({
-      where: { userId_provider: { userId, provider } },
-      update: {
-        ...tokenData,
-        metadata: JSON.stringify(metadata || {}),
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-      },
-      create: {
-        userId,
-        provider,
-        ...tokenData,
-        metadata: JSON.stringify(metadata || {}),
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-      },
-    });
-
-    res.json({
-      success: true,
-      integration: {
-        id: integration.id,
-        userId: integration.userId,
-        provider: integration.provider,
-        metadata: integration.metadata,
-        expiresAt: integration.expiresAt,
-        createdAt: integration.createdAt,
-      },
-    });
+    throw new AppError('External integrations are not available yet', 501);
   } catch (err) {
     next(err);
   }

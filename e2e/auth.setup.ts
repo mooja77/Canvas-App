@@ -4,8 +4,12 @@ import * as fs from 'fs';
 const AUTH_FILE = 'e2e/.auth/user.json';
 const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 3007);
 const BACKEND_ORIGIN = `http://127.0.0.1:${BACKEND_PORT}`;
+const E2E_ACCESS_CODE = process.env.E2E_ACCESS_CODE;
 
 setup('authenticate', async ({ page }) => {
+  if (!E2E_ACCESS_CODE) {
+    throw new Error('E2E_ACCESS_CODE is required for authenticated browser tests');
+  }
   setup.setTimeout(60000);
   await page.addInitScript(() => {
     localStorage.setItem('jms_cookie_consent', 'rejected');
@@ -37,7 +41,7 @@ setup('authenticate', async ({ page }) => {
   await page.getByText('Sign In with Code').first().click();
   const codeInput = page.getByPlaceholder('Enter your access code');
   await codeInput.waitFor({ state: 'visible' });
-  await codeInput.fill('CANVAS-DEMO2025');
+  await codeInput.fill(E2E_ACCESS_CODE);
 
   // Click the submit button (type="submit") inside the code form
   const signInBtn = page

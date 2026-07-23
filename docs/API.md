@@ -4,7 +4,7 @@ Base URL: `/api` (also available at `/api/v1`)
 
 ## General Information
 
-**Authentication:** All protected endpoints require the `x-dashboard-code` header containing a JWT token obtained from a login endpoint.
+**Authentication:** Login endpoints set a secure, HTTP-only session cookie. Browser clients send it with credentials enabled. JWTs are not returned in response bodies.
 
 **Dual Auth:** The API supports two authentication modes:
 - **Email auth** (modern) — JWT contains `userId`, `role`, `plan`
@@ -36,7 +36,7 @@ Base URL: `/api` (also available at `/api/v1`)
 ### POST /api/auth
 **Auth:** None
 **Rate Limited:** Yes (authLimiter)
-**Description:** Authenticate with a dashboard access code, returns JWT.
+**Description:** Authenticate with a dashboard access code and set the secure session cookie.
 **Body:**
 ```json
 { "dashboardCode": "string" }
@@ -46,7 +46,6 @@ Base URL: `/api` (also available at `/api/v1`)
 {
   "success": true,
   "data": {
-    "jwt": "string",
     "name": "string",
     "role": "researcher | policymaker | funder",
     "dashboardAccessId": "string"
@@ -60,7 +59,7 @@ Base URL: `/api` (also available at `/api/v1`)
 ### POST /api/auth/register
 **Auth:** None
 **Rate Limited:** Yes (authLimiter)
-**Description:** Create a new dashboard access account. Gated by `REGISTRATION_ENABLED=true` in production.
+**Description:** Create a new dashboard access account in local development. This endpoint is always disabled in production.
 **Body:**
 ```json
 {
@@ -74,7 +73,6 @@ Base URL: `/api` (also available at `/api/v1`)
   "success": true,
   "data": {
     "accessCode": "CANVAS-XXXXXXXX",
-    "jwt": "string",
     "name": "string",
     "role": "string",
     "dashboardAccessId": "string"
@@ -104,7 +102,6 @@ Base URL: `/api` (also available at `/api/v1`)
 {
   "success": true,
   "data": {
-    "jwt": "string",
     "user": {
       "id": "string",
       "email": "string",
@@ -136,7 +133,6 @@ Base URL: `/api` (also available at `/api/v1`)
 {
   "success": true,
   "data": {
-    "jwt": "string",
     "user": {
       "id": "string",
       "email": "string",
@@ -165,7 +161,6 @@ Base URL: `/api` (also available at `/api/v1`)
 {
   "success": true,
   "data": {
-    "jwt": "string",
     "user": { "id", "email", "name", "role", "plan", "emailVerified" }
   }
 }
@@ -285,7 +280,6 @@ Base URL: `/api` (also available at `/api/v1`)
 {
   "success": true,
   "data": {
-    "jwt": "string",
     "user": { "id", "email", "name", "role", "plan": "pro" }
   }
 }

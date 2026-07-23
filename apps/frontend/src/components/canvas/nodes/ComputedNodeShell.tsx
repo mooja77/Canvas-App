@@ -36,6 +36,7 @@ function ComputedNodeShell({
   const [running, setRunning] = useState(false);
   const isRunningGlobal = runningNodeId === computedNodeId;
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { collapsed, toggleCollapsed } = useNodeCollapsed(nodeId, collapsedProp);
 
@@ -44,8 +45,16 @@ function ComputedNodeShell({
   const handleRun = async () => {
     setRunning(true);
     setError(null);
+    setWarning(null);
     try {
-      await runComputedNode(computedNodeId);
+      const updated = await runComputedNode(computedNodeId);
+      const truncated = (updated as { result?: { _truncated?: { totalCodings: number; usedCodings: number } } })?.result
+        ?._truncated;
+      if (truncated) {
+        setWarning(
+          `Result uses ${truncated.usedCodings.toLocaleString()} of ${truncated.totalCodings.toLocaleString()} codings. Narrow the analysis to avoid sampling.`,
+        );
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Computation failed';
@@ -177,6 +186,11 @@ function ComputedNodeShell({
           {error && (
             <div className="px-3 py-1.5 text-xs text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400">
               {error}
+            </div>
+          )}
+          {warning && (
+            <div className="bg-amber-50 px-3 py-1.5 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+              {warning}
             </div>
           )}
           {(running || isRunningGlobal) && (

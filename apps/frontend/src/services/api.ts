@@ -319,7 +319,7 @@ export const canvasApi = {
     canvasClient.put(`/canvas/${canvasId}/summaries/${sid}`, data),
 
   // ─── File Upload & Transcription ───
-  getPresignedUploadUrl: (canvasId: string, data: { fileName: string; contentType: string }) =>
+  getPresignedUploadUrl: (canvasId: string, data: { fileName: string; contentType: string; sizeBytes: number }) =>
     canvasClient.post(`/canvas/${canvasId}/upload/presigned`, data),
 
   confirmUpload: (

@@ -33,7 +33,51 @@ function limitResponse(res: Response, message: string, limitName: string, curren
   return res.status(403).json(body);
 }
 
-function getUserPlan(req: Request): string {
+export async function resolveRequestPlan(req: Request): Promise<string> {
+  const canvasId = req.params.id || req.params.canvasId;
+  if (canvasId) {
+    const requesterUserId = req.userId;
+    const requesterAccessId = req.dashboardAccessId;
+    const canvas = await prisma.codingCanvas.findUnique({
+      where: { id: canvasId },
+      select: {
+        userId: true,
+        dashboardAccessId: true,
+        deletedAt: true,
+        user: { select: { plan: true, emailVerified: true, trialEndsAt: true } },
+        dashboardAccess: {
+          select: {
+            user: { select: { plan: true, emailVerified: true, trialEndsAt: true } },
+          },
+        },
+        collaborators: requesterUserId
+          ? {
+              where: { userId: requesterUserId },
+              select: { id: true },
+              take: 1,
+            }
+          : false,
+      },
+    });
+    const hasAccess =
+      canvas &&
+      !canvas.deletedAt &&
+      ((requesterUserId && canvas.userId === requesterUserId) ||
+        (requesterAccessId && canvas.dashboardAccessId === requesterAccessId) ||
+        (requesterUserId && Array.isArray(canvas.collaborators) && canvas.collaborators.length > 0));
+    if (!hasAccess) return req.userPlan || 'free';
+
+    const owner = canvas?.user ?? canvas?.dashboardAccess?.user;
+    if (owner) {
+      const trialActive =
+        owner.emailVerified &&
+        owner.plan === 'free' &&
+        owner.trialEndsAt instanceof Date &&
+        owner.trialEndsAt.getTime() > Date.now();
+      return trialActive ? 'pro' : owner.plan;
+    }
+    if (canvas) return 'pro';
+  }
   return req.userPlan || 'free';
 }
 
@@ -55,7 +99,7 @@ function ownerWhere(userId?: string, dashboardAccessId?: string) {
 /** Check canvas creation limit */
 export function checkCanvasLimit() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (limits.maxCanvases === Infinity) return next();
 
@@ -80,7 +124,7 @@ export function checkCanvasLimit() {
 /** Check transcript creation limit per canvas */
 export function checkTranscriptLimit() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (limits.maxTranscriptsPerCanvas === Infinity) return next();
 
@@ -103,7 +147,7 @@ export function checkTranscriptLimit() {
 /** Check word count limit on transcript content */
 export function checkWordLimit() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (limits.maxWordsPerTranscript === Infinity) return next();
 
@@ -127,7 +171,7 @@ export function checkWordLimit() {
 /** Check code (question) creation limit */
 export function checkCodeLimit() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (limits.maxCodes === Infinity) return next();
 
@@ -150,7 +194,7 @@ export function checkCodeLimit() {
 /** Check auto-code access */
 export function checkAutoCode() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.autoCodeEnabled) {
       return limitResponse(res, 'Auto-code is available on Pro and Team plans', 'autoCodeEnabled', 0, 0);
@@ -162,7 +206,7 @@ export function checkAutoCode() {
 /** Check if an analysis type is allowed */
 export function checkAnalysisType() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
 
     // For computed node creation, check the nodeType
@@ -183,7 +227,7 @@ export function checkAnalysisType() {
 /** Check analysis type on run endpoint (nodeType is on the existing node) */
 export function checkAnalysisTypeOnRun() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
 
     const nodeId = req.params.nodeId;
@@ -209,7 +253,7 @@ export function checkAnalysisTypeOnRun() {
 /** Check share creation limit */
 export function checkShareLimit() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (limits.maxShares === Infinity) return next();
 
@@ -235,7 +279,7 @@ export function checkShareLimit() {
 /** Check ethics panel access */
 export function checkEthicsAccess() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.ethicsEnabled) {
       return limitResponse(res, 'Ethics panel is available on Pro and Team plans', 'ethicsEnabled', 0, 0);
@@ -247,7 +291,7 @@ export function checkEthicsAccess() {
 /** Check cases/cross-case access */
 export function checkCaseAccess() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.casesEnabled) {
       return limitResponse(res, 'Cases are available on Pro and Team plans', 'casesEnabled', 0, 0);
@@ -256,23 +300,40 @@ export function checkCaseAccess() {
   };
 }
 
+/** Check real multi-coder agreement access */
+export function checkIntercoderAccess() {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const plan = await resolveRequestPlan(req);
+    const limits = getPlanLimits(plan);
+    if (!limits.intercoderEnabled) {
+      return limitResponse(res, 'Intercoder agreement is available on Team plans', 'intercoderEnabled', 0, 0);
+    }
+    next();
+  };
+}
+
 /** Check AI feature access + daily rate limit */
 export function checkAiAccess() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    // Legacy access codes do not identify a billable user and cannot be
+    // safely metered. Linking an email preserves grandfathered core access
+    // while giving hosted AI a stable owner and usage ledger.
+    if (!req.userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Link an email account before using AI features.',
+        code: 'EMAIL_ACCOUNT_REQUIRED',
+      });
+    }
+
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.aiEnabled) {
       return limitResponse(res, 'AI features are available on Pro and Team plans', 'aiEnabled', 0, 0);
     }
 
-    // Check daily rate limit. AiUsage schema only carries userId — legacy
-    // access-code users (req.userId undefined, req.dashboardAccessId set)
-    // can't be counted per-user without a schema change. They're a closed
-    // grandfathered cohort, so we skip the per-user check for them rather
-    // than fall through to a `userId: undefined` filter that would return
-    // a global count and either over-block or under-block the whole cohort.
     const userId = req.userId;
-    if (limits.aiRequestsPerDay !== Infinity && userId) {
+    if (limits.aiRequestsPerDay !== Infinity) {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
@@ -315,12 +376,18 @@ export function checkAiAccess() {
 export function checkTranscriptionMinutes() {
   return async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.userId;
-    if (!userId) return next();
+    if (!userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Link an email account before using audio transcription.',
+        code: 'EMAIL_ACCOUNT_REQUIRED',
+      });
+    }
 
     const ownKey = await resolveUserOpenAiKey(userId);
     if (ownKey) return next();
 
-    const limits = getPlanLimits(getUserPlan(req));
+    const limits = getPlanLimits(await resolveRequestPlan(req));
     const cap = limits.transcriptionMinutesPerMonth;
     if (cap === Infinity) return next();
 
@@ -356,7 +423,13 @@ export function checkHostedAiBudget() {
     if (!isHostedAiEnabled()) return next();
 
     const userId = req.userId;
-    if (!userId) return next();
+    if (!userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Link an email account before using hosted AI.',
+        code: 'EMAIL_ACCOUNT_REQUIRED',
+      });
+    }
 
     const ownKey = await resolveUserOpenAiKey(userId);
     if (ownKey) return next();
@@ -389,7 +462,7 @@ export function checkHostedAiBudget() {
 /** Check file upload access */
 export function checkFileUploadAccess() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.fileUploadEnabled) {
       return limitResponse(res, 'File upload is available on Pro and Team plans', 'fileUploadEnabled', 0, 0);
@@ -399,11 +472,11 @@ export function checkFileUploadAccess() {
 }
 
 /** Check export format access */
-export function checkExportFormat() {
+export function checkExportFormat(fixedFormat?: string) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
-    const format = (req.query.format || req.body?.format || '') as string;
+    const format = fixedFormat || ((req.query.format || req.body?.format || '') as string);
     if (format && !limits.allowedExportFormats.includes(format)) {
       return limitResponse(
         res,
@@ -420,7 +493,7 @@ export function checkExportFormat() {
 /** Check repository access */
 export function checkRepositoryAccess() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.repositoryEnabled) {
       return limitResponse(res, 'Research Repository is available on Pro and Team plans', 'repositoryEnabled', 0, 0);
@@ -432,7 +505,7 @@ export function checkRepositoryAccess() {
 /** Check integrations access */
 export function checkIntegrationsAccess() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const plan = getUserPlan(req);
+    const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.integrationsEnabled) {
       return limitResponse(res, 'Integrations are available on Team plans', 'integrationsEnabled', 0, 0);

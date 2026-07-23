@@ -85,6 +85,10 @@ vi.mock('../../lib/email.js', () => ({
   sendTeamInviteEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../../utils/teamBilling.js', () => ({
+  syncTeamSeatQuantity: vi.fn().mockResolvedValue(2),
+}));
+
 import request from 'supertest';
 import express from 'express';
 import { auth } from '../../middleware/auth.js';

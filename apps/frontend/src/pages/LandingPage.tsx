@@ -27,8 +27,7 @@ const InteractiveDemo = lazy(() => import('../components/marketing/InteractiveDe
  *   4. Bento feature grid (6 tiles, asymmetric)
  *   5. Stats strip (3 numbers)
  *   6. Featured case study card
- *   7. Testimonials (3, avatar-attributed pattern; placeholder text until
- *      real outreach yeses land per docs/refresh/10 R3)
+ *   7. Product boundaries (factual copy; no placeholder testimonials)
  *   8. Pricing teaser
  *   9. FAQ (5 questions)
  *   10. CTA stripe
@@ -182,19 +181,19 @@ export default function LandingPage() {
           <BentoCell span={2}>
             <FeatureContent
               title="Auto-code"
-              body="Apply patterns across hundreds of transcripts in seconds. Review every match before it lands. The model assists; you decide."
+              body="Ask an AI provider to suggest coding for a transcript, then accept or reject the suggestions. The model assists; you decide."
             />
           </BentoCell>
           <BentoCell span={1}>
             <FeatureContent
               title="Intercoder κ"
-              body="Cohen's κ and Krippendorff's α — calculated live as your team codes. Methods-paper-ready CSV export."
+              body="Run Cohen's κ or Krippendorff's α when two or more attributed coders have coded the same transcript."
             />
           </BentoCell>
           <BentoCell span={1}>
             <FeatureContent
               title="Ethics & consent"
-              body="Track consent, set retention windows, anonymize fields. The IRB audit trail is already running."
+              body="Record consent status, work through an ethics checklist, and review the project's request audit trail."
             />
           </BentoCell>
           <BentoCell span={1}>
@@ -205,8 +204,8 @@ export default function LandingPage() {
           </BentoCell>
           <BentoCell span={1}>
             <FeatureContent
-              title="12 live analyses"
-              body="Word cloud, co-occurrence, clustering, sentiment, treemap, framework matrix — computed as you change the data, not before."
+              title="13 analysis tools"
+              body="Run word clouds, co-occurrence, clustering, sentiment, treemaps, framework matrices and other focused analyses on demand."
             />
           </BentoCell>
           <BentoCell span={2}>
@@ -221,7 +220,7 @@ export default function LandingPage() {
       {/* ─── 5. Stats strip ─── */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-12">
-          <StatBlock number={12} label="Analysis tools" />
+          <StatBlock number={13} label="Analysis tools" />
           <StatBlock number={50000} label="Words per transcript" />
           <StatBlock number="40%" label="Discount on .edu" />
         </div>
@@ -242,11 +241,11 @@ export default function LandingPage() {
         >
           <Eyebrow className="mb-4">Worked example</Eyebrow>
           <DisplayHeading as="h2" size="md" className="mb-5 max-w-3xl">
-            How a public-health lab coded 22 caregiving interviews in six weeks.
+            A fictional public-health coding example.
           </DisplayHeading>
           <p className="text-base text-gray-600 dark:text-gray-400 max-w-2xl mb-6 leading-relaxed">
-            Reflexive thematic analysis. Multi-coder, intercoder κ = 0.84. Methods paper accepted on the deadline. A
-            representative example with synthetic data.
+            See how a multi-coder reflexive thematic analysis can be organised and reviewed. Every name, transcript and
+            result in this example is synthetic.
           </p>
           <span className="text-sm font-medium text-ochre-700 dark:text-ochre-400 group-hover:underline underline-offset-4 decoration-ochre-500">
             Read the story →
@@ -254,43 +253,36 @@ export default function LandingPage() {
         </Link>
       </section>
 
-      {/* ─── 7. Testimonials ─── */}
+      {/* ─── 7. Product boundaries ─── */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
         <div className="mb-12 max-w-3xl">
           <HairlineRule className="mb-4" />
-          <Eyebrow className="mb-3">From the field</Eyebrow>
+          <Eyebrow className="mb-3">Built for careful research</Eyebrow>
+          <DisplayHeading as="h2" size="md">
+            Clear control at each step.
+          </DisplayHeading>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             {
-              quote: 'The κ export saved me a methods-section argument with reviewer 2.',
-              who: 'Dr. K.',
-              role: 'Postdoc, social work',
+              title: 'Human review',
+              body: 'AI suggestions do not become final coding decisions until you review and accept them.',
             },
-            { quote: 'My students stopped asking me about NVivo.', who: 'Prof. M.', role: 'Methods course lead' },
             {
-              quote: "I cited QualCanvas in my dissertation methodology and my advisor didn't blink.",
-              who: 'Maya',
-              role: 'PhD candidate, sociology',
+              title: 'Portable work',
+              body: 'Export coded work to common formats, including CSV and QDPX where your plan supports them.',
             },
-          ].map((t, idx) => (
-            <figure key={idx} className="flex flex-col gap-3">
-              <blockquote
-                className="text-base font-display italic text-gray-900 dark:text-white leading-relaxed"
-                style={{ fontVariationSettings: "'wght' 500" }}
-              >
-                “{t.quote}”
-              </blockquote>
-              <figcaption className="text-sm">
-                <span className="font-medium text-gray-900 dark:text-white">{t.who}</span>
-                <span className="text-gray-500 dark:text-gray-400"> · {t.role}</span>
-              </figcaption>
-            </figure>
+            {
+              title: 'Visible limits',
+              body: 'Security, AI-provider use, data residency and unavailable institutional controls are documented before purchase.',
+            },
+          ].map((item) => (
+            <div key={item.title} className="rounded-xl border border-gray-200 p-6 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-900 dark:text-white">{item.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">{item.body}</p>
+            </div>
           ))}
         </div>
-        <p className="mt-8 text-xs text-gray-600 dark:text-gray-300">
-          Names and details anonymized until participants sign release.
-        </p>
       </section>
 
       {/* ─── 8. Pricing teaser ─── */}
@@ -382,8 +374,9 @@ export default function LandingPage() {
               question: 'Is my research data secure? Are you training a model on my transcripts?',
               answer: (
                 <>
-                  Yes; no. TLS 1.3 in transit, AES-256 at rest, EU and US residency options. Your transcripts are never
-                  used to train any model — by us or by the model provider. The full posture is on{' '}
+                  QualCanvas uses HTTPS in transit and provider-managed encryption at rest. The production database is
+                  currently hosted in the US; an EU-resident database is not available. AI actions are opt-in and
+                  provider terms apply. The full posture is on{' '}
                   <Link
                     to="/trust"
                     className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"

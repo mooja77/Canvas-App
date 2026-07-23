@@ -131,11 +131,11 @@ describe('TeamPage', () => {
     render(<TeamPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Invite Member')).toBeInTheDocument();
+      expect(screen.getByText('Add Member')).toBeInTheDocument();
     });
 
     expect(screen.getByPlaceholderText('Email address')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Invite/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Add member/i })).toBeInTheDocument();
   });
 
   it('handles invite submission', async () => {
@@ -152,7 +152,7 @@ describe('TeamPage', () => {
     const emailInput = screen.getByPlaceholderText('Email address');
     fireEvent.change(emailInput, { target: { value: 'newmember@example.com' } });
 
-    const inviteBtn = screen.getByRole('button', { name: /^Invite$/i });
+    const inviteBtn = screen.getByRole('button', { name: /^Add member$/i });
     fireEvent.click(inviteBtn);
 
     await waitFor(() => {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { canvasApi } from '../../../services/api';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../../../stores/authStore';
 
 interface QdpxExportButtonProps {
   canvasId: string;
@@ -8,8 +9,13 @@ interface QdpxExportButtonProps {
 
 export default function QdpxExportButton({ canvasId }: QdpxExportButtonProps) {
   const [exporting, setExporting] = useState(false);
+  const effectivePlan = useAuthStore((state) => state.effectivePlan ?? state.plan ?? 'free');
 
   const handleExport = async () => {
+    if (effectivePlan === 'free') {
+      toast.error('QDPX export is available on Student, Pro, and Team plans.');
+      return;
+    }
     setExporting(true);
     try {
       const res = await canvasApi.exportQdpx(canvasId);
@@ -34,7 +40,7 @@ export default function QdpxExportButton({ canvasId }: QdpxExportButtonProps) {
   return (
     <button
       onClick={handleExport}
-      disabled={exporting}
+      disabled={exporting || effectivePlan === 'free'}
       className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-100 dark:hover:bg-purple-900/50 disabled:opacity-50 transition-colors"
       title="Export for NVivo, ATLAS.ti, MAXQDA and other QDA tools (REFI-QDA / QDPX)"
     >
@@ -46,7 +52,11 @@ export default function QdpxExportButton({ canvasId }: QdpxExportButtonProps) {
           d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
         />
       </svg>
-      {exporting ? 'Exporting...' : 'Export QDPX (NVivo / ATLAS.ti)'}
+      {exporting
+        ? 'Exporting...'
+        : effectivePlan === 'free'
+          ? 'QDPX export — upgrade'
+          : 'Export QDPX (NVivo / ATLAS.ti)'}
     </button>
   );
 }

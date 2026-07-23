@@ -6,7 +6,6 @@ import { chromium, expect } from '@playwright/test';
 // authorized JS origins — users never visit it either.
 const DEFAULT_FRONTEND_URL = 'https://qualcanvas.com';
 const DEFAULT_BACKEND_URL = 'https://canvas-app-production.up.railway.app';
-const DEFAULT_ACCESS_CODE = 'CANVAS-DEMO2025';
 const IGNORED_BROWSER_EVENT = /google|googlesyndication|doubleclick|analytics|clarity|sentry/i;
 
 function readArg(name) {
@@ -27,14 +26,16 @@ const frontendUrls = splitUrls(
   readArg('frontend-urls') || process.env.SMOKE_FRONTEND_URLS || process.env.SMOKE_FRONTEND_URL || DEFAULT_FRONTEND_URL,
 );
 const backendUrl = (readArg('backend-url') || process.env.SMOKE_BACKEND_URL || DEFAULT_BACKEND_URL).replace(/\/+$/, '');
-const accessCode = readArg('access-code') || process.env.SMOKE_ACCESS_CODE || DEFAULT_ACCESS_CODE;
+const accessCode = readArg('access-code') || process.env.SMOKE_ACCESS_CODE;
 
 async function checkBackendReady(maxAttempts = 6, baseDelayMs = 5000) {
   let lastError;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) {
       const delay = Math.min(baseDelayMs * 2 ** (attempt - 1), 60000) * (1 + Math.random() * 0.3);
-      console.error(`Backend not ready (attempt ${attempt}/${maxAttempts - 1}), retrying in ${Math.round(delay / 1000)}s...`);
+      console.error(
+        `Backend not ready (attempt ${attempt}/${maxAttempts - 1}), retrying in ${Math.round(delay / 1000)}s...`,
+      );
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
     try {
@@ -79,6 +80,25 @@ async function smokeFrontend(browser, frontendUrl) {
   });
 
   await page.goto(`${frontendUrl}/login`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await expect(page.getByRole('heading', { name: /Welcome back|Sign in/i }).first()).toBeVisible({
+    timeout: 10000,
+  });
+
+  // Authenticated smoke is enabled only when CI receives a private credential.
+  // Public-source fallbacks inevitably become shared production passwords.
+  if (!accessCode) {
+    const result = {
+      ok: browserEvents.length === 0,
+      frontendUrl,
+      finalUrl: page.url(),
+      title: await page.title(),
+      authenticated: false,
+      nonAnalyticsErrors: browserEvents.slice(0, 10),
+    };
+    await page.close();
+    return result;
+  }
+
   await page.getByText('Sign In with Code').first().click();
 
   const codeInput = page.getByPlaceholder('Enter your access code');
@@ -106,6 +126,7 @@ async function smokeFrontend(browser, frontendUrl) {
     frontendUrl,
     finalUrl: page.url(),
     title: await page.title(),
+    authenticated: true,
     nonAnalyticsErrors: browserEvents.slice(0, 10),
   };
 
@@ -121,7 +142,9 @@ async function smokeFrontendWithRetry(browser, frontendUrl, maxAttempts = 3, bas
       // deploy across edges; a script fetch right at deploy completion can
       // transiently 500. Retry before failing the smoke (seen 2026-07-15).
       const delay = baseDelayMs * attempt;
-      console.error(`Frontend smoke failed for ${frontendUrl} (attempt ${attempt}/${maxAttempts - 1}), retrying in ${Math.round(delay / 1000)}s...`);
+      console.error(
+        `Frontend smoke failed for ${frontendUrl} (attempt ${attempt}/${maxAttempts - 1}), retrying in ${Math.round(delay / 1000)}s...`,
+      );
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
     result = await smokeFrontend(browser, frontendUrl);

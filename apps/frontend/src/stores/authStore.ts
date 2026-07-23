@@ -26,9 +26,9 @@ interface AuthState {
   emailVerified: boolean;
 
   // Actions
-  // `jwt` is still accepted in the action payload because login responses
-  // still include it (backend body hasn't dropped it yet) — we just don't
-  // persist it anywhere. Auth is carried by an httpOnly cookie.
+  // `jwt` remains an optional action field solely for migration compatibility
+  // with old callers. The backend no longer returns tokens in response bodies;
+  // authentication is carried only by an httpOnly cookie.
   setAuth: (data: {
     dashboardCode: string;
     jwt?: string;
@@ -117,7 +117,11 @@ export const useAuthStore = create<AuthState>()(
         // network — a failed request just leaves a stale cookie that the
         // next login will overwrite.
         const apiBase = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
-        void fetch(`${apiBase}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
+        void fetch(`${apiBase}/auth/logout`, {
+          method: 'POST',
+          credentials: 'include',
+          keepalive: true,
+        }).catch(() => {});
         // Canvas notes, reflexivity journals, code weights and cross-canvas
         // references can contain research data. Do not leave them behind for
         // the next account on a shared browser.

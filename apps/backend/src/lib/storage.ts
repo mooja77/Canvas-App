@@ -16,6 +16,7 @@ export interface UploadOptions {
 export interface PresignedUrlOptions {
   key: string;
   contentType: string;
+  sizeBytes?: number;
   expiresIn?: number; // seconds, default 3600
 }
 

@@ -724,7 +724,7 @@ const canvasClient = axios.create({
 #### 1. Auth Injection (Lines 34-51)
 - Reads JWT from `localStorage['qualcanvas-auth'].state.jwt`
 - If `authType === 'email'`: `Authorization: Bearer {jwt}`
-- If `authType === 'legacy'`: `x-dashboard-code: {jwt}`
+- All auth types use the secure HTTP-only session cookie (`withCredentials: true`)
 
 #### 2. Plan Limit Handler (Lines 54-63)
 - On 403 with `code === 'PLAN_LIMIT_EXCEEDED'`

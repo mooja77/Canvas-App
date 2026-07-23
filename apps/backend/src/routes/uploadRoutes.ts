@@ -9,7 +9,7 @@ import path from 'path';
 import { pipeline } from 'stream/promises';
 import { prisma } from '../lib/prisma.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
-import { checkFileUploadAccess, checkTranscriptionMinutes } from '../middleware/planLimits.js';
+import { checkFileUploadAccess, checkTranscriptionMinutes, resolveRequestPlan } from '../middleware/planLimits.js';
 import { validateParams, canvasIdParam, canvasIdJobIdParams } from '../middleware/validation.js';
 import { storage } from '../lib/storage.js';
 import '../lib/storage-s3.js'; // register S3/R2 when configured
@@ -19,6 +19,8 @@ import { registerJobHandler } from '../lib/jobs.js';
 import { transcribeAudio } from '../utils/transcription.js';
 import { isValidSignature } from '../utils/magicBytes.js';
 import { resolveUserOpenAiKey, TRANSCRIPTION_CENTS_PER_MINUTE } from '../utils/transcriptionMetering.js';
+import { getPlanLimits } from '../config/plans.js';
+import { AppError } from '../middleware/errorHandler.js';
 
 export const uploadRoutes = Router();
 
@@ -38,6 +40,40 @@ const ALLOWED_MEDIA_TYPES = new Set([
 function validCanvasStorageKey(canvasId: string, key: string): boolean {
   const escapedCanvasId = canvasId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`^canvas/${escapedCanvasId}/[a-f0-9]{32}(?:\\.[a-z0-9]{1,10})?$`, 'i').test(key);
+}
+
+async function ensureStorageAvailable(req: Request, additionalBytes: number): Promise<void> {
+  const plan = await resolveRequestPlan(req);
+  const maxBytes = getPlanLimits(plan).maxStorageMb * 1024 * 1024;
+  const canvas = await prisma.codingCanvas.findUnique({
+    where: { id: req.params.id },
+    select: { userId: true, dashboardAccessId: true },
+  });
+  if (!canvas) throw new AppError('Canvas not found', 404);
+
+  const aggregate = await prisma.fileUpload.aggregate({
+    where: canvas.userId
+      ? { canvas: { userId: canvas.userId } }
+      : { canvas: { dashboardAccessId: canvas.dashboardAccessId } },
+    _sum: { sizeBytes: true },
+  });
+  const usedBytes = aggregate._sum.sizeBytes ?? 0;
+  if (maxBytes !== Infinity && usedBytes + additionalBytes > maxBytes) {
+    throw new AppError(`Storage limit exceeded (${getPlanLimits(plan).maxStorageMb} MB on the ${plan} plan)`, 403);
+  }
+}
+
+async function readStoragePrefix(key: string, maxBytes = 32): Promise<Buffer> {
+  const stream = await storage.openReadStream(key);
+  const chunks: Buffer[] = [];
+  let length = 0;
+  for await (const chunk of stream) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    chunks.push(buffer.subarray(0, Math.max(0, maxBytes - length)));
+    length += buffer.length;
+    if (length >= maxBytes) break;
+  }
+  return Buffer.concat(chunks);
 }
 
 async function requireOwnedCanvas(req: Request, _res: Response, next: NextFunction) {
@@ -81,18 +117,23 @@ uploadRoutes.post(
         });
       }
 
-      const { fileName, contentType } = req.body;
-      if (!fileName || !contentType) {
-        return res.status(400).json({ success: false, error: 'fileName and contentType required' });
+      const { fileName, contentType, sizeBytes } = req.body;
+      if (!fileName || !contentType || !Number.isInteger(sizeBytes)) {
+        return res.status(400).json({ success: false, error: 'fileName, contentType and sizeBytes required' });
       }
       if (!ALLOWED_MEDIA_TYPES.has(contentType)) {
         return res.status(400).json({ success: false, error: 'Unsupported media type' });
       }
+      if (sizeBytes <= 0 || sizeBytes > MAX_UPLOAD_BYTES) {
+        return res.status(400).json({ success: false, error: 'File must be between 1 byte and 25 MB' });
+      }
+      await ensureStorageAvailable(req, sizeBytes);
 
-      const ext = path.extname(fileName);
+      const rawExt = path.extname(fileName);
+      const ext = /^\.[a-z0-9]{1,10}$/i.test(rawExt) ? rawExt.toLowerCase() : '';
       const key = `canvas/${req.params.id}/${randomBytes(16).toString('hex')}${ext}`;
 
-      const { url } = await storage.getUploadUrl({ key, contentType });
+      const { url } = await storage.getUploadUrl({ key, contentType, sizeBytes });
 
       res.json({ success: true, data: { uploadUrl: url, storageKey: key } });
     } catch (err) {
@@ -106,6 +147,7 @@ uploadRoutes.post(
 uploadRoutes.post(
   '/canvas/:id/upload/confirm',
   validateParams(canvasIdParam),
+  checkFileUploadAccess(),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dashboardAccessId = getAuthId(req);
@@ -113,7 +155,15 @@ uploadRoutes.post(
       await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
 
       const { storageKey, originalName, mimeType, sizeBytes } = req.body;
-      if (!storageKey || !originalName || !mimeType) {
+      if (
+        !storageKey ||
+        typeof storageKey !== 'string' ||
+        !originalName ||
+        typeof originalName !== 'string' ||
+        originalName.length > 255 ||
+        !mimeType ||
+        typeof mimeType !== 'string'
+      ) {
         return res.status(400).json({ success: false, error: 'storageKey, originalName, mimeType required' });
       }
       if (!validCanvasStorageKey(req.params.id, storageKey)) {
@@ -128,13 +178,36 @@ uploadRoutes.post(
         return res.status(404).json({ success: false, error: 'Uploaded object not found' });
       }
       if (object.size <= 0 || object.size > MAX_UPLOAD_BYTES) {
+        await storage.delete(storageKey).catch(() => undefined);
         return res.status(400).json({ success: false, error: 'Uploaded object exceeds the 25 MB limit' });
       }
       if (object.contentType && object.contentType !== mimeType) {
+        await storage.delete(storageKey).catch(() => undefined);
         return res.status(400).json({ success: false, error: 'Uploaded object type does not match confirmation' });
       }
       if (typeof sizeBytes === 'number' && sizeBytes > 0 && sizeBytes !== object.size) {
+        await storage.delete(storageKey).catch(() => undefined);
         return res.status(400).json({ success: false, error: 'Uploaded object size does not match confirmation' });
+      }
+      const kind: 'audio' | 'video' = mimeType.startsWith('video/') ? 'video' : 'audio';
+      const prefix = await readStoragePrefix(storageKey);
+      if (!isValidSignature(prefix, kind)) {
+        await storage.delete(storageKey).catch(() => undefined);
+        return res.status(400).json({ success: false, error: 'File contents do not match declared type' });
+      }
+      try {
+        await ensureStorageAvailable(req, object.size);
+      } catch (err) {
+        await storage.delete(storageKey).catch(() => undefined);
+        throw err;
+      }
+
+      const existing = await prisma.fileUpload.findUnique({ where: { storageKey } });
+      if (existing) {
+        if (existing.canvasId !== req.params.id) {
+          return res.status(409).json({ success: false, error: 'Storage object is already registered' });
+        }
+        return res.json({ success: true, data: existing, cached: true });
       }
 
       const fileUpload = await prisma.fileUpload.create({
@@ -177,8 +250,10 @@ uploadRoutes.post(
       if (!isValidSignature(req.file.buffer, kind)) {
         return res.status(400).json({ success: false, error: 'File contents do not match declared type' });
       }
+      await ensureStorageAvailable(req, req.file.size);
 
-      const ext = path.extname(req.file.originalname);
+      const rawExt = path.extname(req.file.originalname);
+      const ext = /^\.[a-z0-9]{1,10}$/i.test(rawExt) ? rawExt.toLowerCase() : '';
       const key = `canvas/${req.params.id}/${randomBytes(16).toString('hex')}${ext}`;
 
       const { size } = await storage.upload({
@@ -187,17 +262,23 @@ uploadRoutes.post(
         contentType: req.file.mimetype,
       });
 
-      const fileUpload = await prisma.fileUpload.create({
-        data: {
-          canvasId: req.params.id,
-          userId,
-          storageKey: key,
-          originalName: req.file.originalname,
-          mimeType: req.file.mimetype,
-          sizeBytes: size || req.file.size,
-          status: 'uploaded',
-        },
-      });
+      let fileUpload;
+      try {
+        fileUpload = await prisma.fileUpload.create({
+          data: {
+            canvasId: req.params.id,
+            userId,
+            storageKey: key,
+            originalName: req.file.originalname,
+            mimeType: req.file.mimetype,
+            sizeBytes: size || req.file.size,
+            status: 'uploaded',
+          },
+        });
+      } catch (err) {
+        await storage.delete(key).catch(() => undefined);
+        throw err;
+      }
 
       res.json({ success: true, data: fileUpload });
     } catch (err) {
@@ -228,6 +309,36 @@ uploadRoutes.post(
       });
       if (!fileUpload) {
         return res.status(404).json({ success: false, error: 'File upload not found' });
+      }
+
+      const existingJob = await prisma.transcriptionJob.findFirst({
+        where: {
+          fileUploadId,
+          canvasId: req.params.id,
+          status: { in: ['queued', 'processing', 'completed'] },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (existingJob) {
+        return res.json({ success: true, data: { jobId: existingJob.id }, cached: true });
+      }
+
+      // Platform-key jobs are serialized per user. This prevents several
+      // simultaneous requests from all passing the same monthly usage check
+      // before any of them records its minutes.
+      if (userId && !(await resolveUserOpenAiKey(userId))) {
+        const activeJob = await prisma.transcriptionJob.findFirst({
+          where: { requestedByUserId: userId, status: { in: ['queued', 'processing'] } },
+          select: { id: true },
+        });
+        if (activeJob) {
+          return res.status(409).json({
+            success: false,
+            error: 'Another transcription is already in progress. Wait for it to finish before starting the next.',
+            code: 'TRANSCRIPTION_IN_PROGRESS',
+            jobId: activeJob.id,
+          });
+        }
       }
 
       // Create transcription job record
@@ -312,7 +423,21 @@ uploadRoutes.post(
         return res.status(400).json({ success: false, error: 'Job has no result text' });
       }
 
-      const title = req.body.title || job.fileUpload.originalName.replace(/\.[^.]+$/, '');
+      const existingTranscript = await prisma.canvasTranscript.findFirst({
+        where: { canvasId: req.params.id, sourceType: 'transcription', sourceId: job.id },
+      });
+      if (existingTranscript) {
+        return res.json({ success: true, data: existingTranscript, cached: true });
+      }
+
+      const requestedTitle = req.body.title;
+      if (requestedTitle !== undefined && (typeof requestedTitle !== 'string' || requestedTitle.trim().length > 200)) {
+        return res.status(400).json({ success: false, error: 'Title must be 1-200 characters' });
+      }
+      const title =
+        typeof requestedTitle === 'string' && requestedTitle.trim()
+          ? requestedTitle.trim()
+          : job.fileUpload.originalName.replace(/\.[^.]+$/, '').slice(0, 200);
 
       const transcript = await prisma.canvasTranscript.create({
         data: {

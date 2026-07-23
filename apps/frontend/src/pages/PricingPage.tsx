@@ -301,7 +301,7 @@ export default function PricingPage() {
             audience="For research groups"
             features={[
               'Everything in Pro',
-              'Intercoder κ + α (live)',
+              'Intercoder κ + α (on demand)',
               'Unlimited share codes',
               'Team admin',
               'Priority support',

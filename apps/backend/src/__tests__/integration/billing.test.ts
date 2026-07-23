@@ -98,7 +98,7 @@ describe('Stripe Webhook Handler', () => {
         items: {
           data: [
             {
-              price: { id: 'price_pro_monthly' },
+              price: { id: 'price_pro_monthly', metadata: { app: 'qualcanvas', plan: 'pro' } },
               current_period_start: 1700000000,
               current_period_end: 1702592000,
             },
@@ -134,7 +134,7 @@ describe('Stripe Webhook Handler', () => {
       });
     });
 
-    it('defaults plan to pro when not specified in metadata', async () => {
+    it('derives the plan from the Stripe price instead of session metadata', async () => {
       const event = {
         id: 'evt_checkout_2',
         type: 'checkout.session.completed',
@@ -151,7 +151,7 @@ describe('Stripe Webhook Handler', () => {
         items: {
           data: [
             {
-              price: { id: 'price_pro_monthly' },
+              price: { id: 'price_pro_monthly', metadata: { app: 'qualcanvas', plan: 'pro' } },
               current_period_start: 1700000000,
               current_period_end: 1702592000,
             },
