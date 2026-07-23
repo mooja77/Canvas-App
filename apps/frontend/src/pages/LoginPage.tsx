@@ -267,7 +267,7 @@ export default function LoginPage() {
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
                 mode === 'login'
                   ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300'
-                  : 'text-gray-500'
+                  : 'text-gray-600 dark:text-gray-300'
               }`}
             >
               {t('auth.signIn')}
@@ -282,7 +282,7 @@ export default function LoginPage() {
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
                 mode === 'register'
                   ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300'
-                  : 'text-gray-500'
+                  : 'text-gray-600 dark:text-gray-300'
               }`}
             >
               {t('auth.signUp')}
