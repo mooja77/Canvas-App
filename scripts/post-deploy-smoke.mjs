@@ -80,9 +80,10 @@ async function smokeFrontend(browser, frontendUrl) {
   });
 
   await page.goto(`${frontendUrl}/login`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await expect(page.getByRole('heading', { name: /Welcome back|Sign in/i }).first()).toBeVisible({
+  await expect(page.getByRole('tab', { name: /^Sign In$/i })).toBeVisible({
     timeout: 10000,
   });
+  await expect(page.getByRole('textbox', { name: /Email/i })).toBeVisible({ timeout: 10000 });
 
   // Authenticated smoke is enabled only when CI receives a private credential.
   // Public-source fallbacks inevitably become shared production passwords.
@@ -136,6 +137,7 @@ async function smokeFrontend(browser, frontendUrl) {
 
 async function smokeFrontendWithRetry(browser, frontendUrl, maxAttempts = 3, baseDelayMs = 5000) {
   let result;
+  let lastError;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) {
       // Cloudflare Pages can take a few seconds to finish propagating a new
@@ -147,10 +149,16 @@ async function smokeFrontendWithRetry(browser, frontendUrl, maxAttempts = 3, bas
       );
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
-    result = await smokeFrontend(browser, frontendUrl);
-    if (result.ok) return result;
+    try {
+      result = await smokeFrontend(browser, frontendUrl);
+      if (result.ok) return result;
+      lastError = new Error(`Frontend reported browser errors: ${result.nonAnalyticsErrors.join('; ')}`);
+    } catch (error) {
+      lastError = error;
+    }
   }
-  return result;
+  if (result) return result;
+  throw lastError;
 }
 
 async function main() {
