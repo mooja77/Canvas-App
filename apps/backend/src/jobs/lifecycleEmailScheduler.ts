@@ -1,5 +1,10 @@
 import { prisma } from '../lib/prisma.js';
-import { LIFECYCLE_BATCH_LIMIT, lifecycleTemplate, sendLifecycleEmail } from '../lib/lifecycleEmail.js';
+import {
+  LIFECYCLE_BATCH_LIMIT,
+  isLifecycleSendingEnabledFor,
+  lifecycleTemplate,
+  sendLifecycleEmail,
+} from '../lib/lifecycleEmail.js';
 import { logError } from '../lib/logger.js';
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
@@ -39,6 +44,7 @@ type LifecycleSelectionInput = {
   createdAt: Date;
   deliveredEventKeys: ReadonlySet<string>;
   lastActivity: Date | null;
+  activated: boolean;
 };
 
 function daysAgo(days: number): Date {
@@ -51,10 +57,19 @@ async function deliveredEventKeys(userId: string): Promise<Set<string>> {
     where: {
       userId,
       eventKey: { in: Object.values(TIMED_EVENT_KEYS) },
+      status: { in: ['sent', 'accepted', 'delivered', 'skipped', 'failed_permanent'] },
     },
     select: { eventKey: true },
   });
   return new Set<string>(deliveries.map((delivery: { eventKey: string }) => delivery.eventKey));
+}
+
+async function hasFirstValue(userId: string): Promise<boolean> {
+  const canvas = await prisma.codingCanvas.findFirst({
+    where: { OR: [{ userId }, { dashboardAccess: { userId } }] },
+    select: { id: true },
+  });
+  return !!canvas;
 }
 
 async function lastUserActivity(userId: string): Promise<Date | null> {
@@ -68,6 +83,13 @@ async function lastUserActivity(userId: string): Promise<Date | null> {
 
 async function sendTimedTemplate(user: LifecycleUser, type: TimedLifecycleEmailType) {
   try {
+    // Selection is advisory. Re-read activation immediately before claiming an
+    // occurrence so a canvas created during the sweep suppresses stale help.
+    if (await hasFirstValue(user.id)) return;
+    if (type === 'inactivity_14d') {
+      const activity = await lastUserActivity(user.id);
+      if (!activity || activity >= daysAgo(14)) return;
+    }
     await sendLifecycleEmail(user, lifecycleTemplate(type, user));
   } catch (err) {
     logError(err as Error, { action: 'lifecycleEmail.sendTimedTemplate', userId: user.id, type });
@@ -90,6 +112,10 @@ export function selectTimedLifecycleEmail(
   now = new Date(),
 ): TimedLifecycleEmailType | null {
   const ageDays = (now.getTime() - input.createdAt.getTime()) / (24 * 60 * 60 * 1000);
+
+  // The sequence is an activation sequence, not generic engagement. Once the
+  // first canvas exists, all timed activation messages stop.
+  if (input.activated) return null;
 
   if (ageDays >= 3 && ageDays < 7 && !input.deliveredEventKeys.has(TIMED_EVENT_KEYS.training_tip_3d)) {
     return 'training_tip_3d';
@@ -130,6 +156,7 @@ export async function processLifecycleEmails(): Promise<void> {
     try {
       const now = new Date();
       const delivered = await deliveredEventKeys(user.id);
+      const activated = await hasFirstValue(user.id);
       const ageDays = (now.getTime() - user.createdAt.getTime()) / (24 * 60 * 60 * 1000);
       const lastActivity = ageDays >= 14 ? await lastUserActivity(user.id) : null;
       const due = selectTimedLifecycleEmail(
@@ -137,6 +164,7 @@ export async function processLifecycleEmails(): Promise<void> {
           createdAt: user.createdAt,
           deliveredEventKeys: delivered,
           lastActivity,
+          activated,
         },
         now,
       );
@@ -163,6 +191,14 @@ export function startLifecycleEmailScheduler(): void {
   if (!ALLOW_ALL_RECIPIENTS && RECIPIENT_ALLOWLIST.size === 0) {
     console.log(
       '[LifecycleEmailScheduler] Automation blocked: set LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST for a canary or explicitly set LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS=true.',
+    );
+    return;
+  }
+
+  const scopeProbe = ALLOW_ALL_RECIPIENTS ? 'probe@example.invalid' : Array.from(RECIPIENT_ALLOWLIST)[0];
+  if (!isLifecycleSendingEnabledFor(scopeProbe)) {
+    console.log(
+      '[LifecycleEmailScheduler] Automation blocked: LIFECYCLE_EMAIL_SEND_ENABLED must be explicitly true.',
     );
     return;
   }

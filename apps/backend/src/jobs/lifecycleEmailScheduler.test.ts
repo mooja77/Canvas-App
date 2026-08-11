@@ -14,6 +14,7 @@ function select(options: { ageDays: number; delivered?: string[]; lastActivityDa
       createdAt: daysBeforeNow(options.ageDays),
       deliveredEventKeys: new Set(options.delivered || []),
       lastActivity: options.lastActivityDaysAgo == null ? null : daysBeforeNow(options.lastActivityDaysAgo),
+      activated: false,
     },
     NOW,
   );
@@ -51,6 +52,20 @@ describe('selectTimedLifecycleEmail', () => {
         lastActivityDaysAgo: 20,
         delivered: ['inactivity_14d_v1'],
       }),
+    ).toBeNull();
+  });
+
+  it('stops the timed sequence once first value has been reached', () => {
+    expect(
+      selectTimedLifecycleEmail(
+        {
+          createdAt: daysBeforeNow(4),
+          deliveredEventKeys: new Set(),
+          lastActivity: null,
+          activated: true,
+        },
+        NOW,
+      ),
     ).toBeNull();
   });
 });

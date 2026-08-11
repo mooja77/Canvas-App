@@ -1,10 +1,14 @@
 import crypto from 'crypto';
+import { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
-import { sendEmail } from './email.js';
+import { sendEmailWithResult } from './email.js';
 
 // New lifecycle automations are intentionally capped per run so a bad selector
 // cannot create a large accidental campaign.
 export const LIFECYCLE_BATCH_LIMIT = Number.parseInt(process.env.LIFECYCLE_EMAIL_BATCH_LIMIT || '50', 10);
+export const MAX_LIFECYCLE_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 15 * 60 * 1000;
+const CLAIM_STALE_MS = 15 * 60 * 1000;
 
 type EmailCategory = 'lifecycle' | 'productUpdates' | 'trainingTips' | 'inactivityNudges';
 
@@ -69,6 +73,39 @@ function appLink(path: string): string {
 
 function unsubscribeLink(token: string): string {
   return `${DEFAULT_API_URL.replace(/\/$/, '')}/email/unsubscribe/${encodeURIComponent(token)}`;
+}
+
+function preferenceLink(): string {
+  return appLink('/account');
+}
+
+function lifecycleRecipientAllowlist(): Set<string> {
+  return new Set(
+    (process.env.LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST || '')
+      .split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+export function isLifecycleSendingEnabledFor(email: string): boolean {
+  if (process.env.LIFECYCLE_EMAIL_SEND_ENABLED !== 'true') return false;
+  if (process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true') return true;
+  return lifecycleRecipientAllowlist().has(email.trim().toLowerCase());
+}
+
+export function isPermanentEmailFailure(error: string): boolean {
+  const value = error.toLowerCase();
+  if (/http\s+(400|401|403|404|405|406|409|410|413|422)/.test(value)) return true;
+  return [
+    'invalid recipient',
+    'invalid email',
+    'address rejected',
+    'mailbox does not exist',
+    'user unknown',
+    'domain not found',
+    'provider is not configured',
+  ].some((marker) => value.includes(marker));
 }
 
 function randomToken(): string {
@@ -202,7 +239,8 @@ function baseEmailHtml(options: {
                 ${
                   options.footerHtml ||
                   `You are receiving this because you have a ${PRODUCT_NAME} account.
-                <a href="${unsubscribeLink(options.unsubscribeToken)}" style="color:#155e75;">Unsubscribe from product emails</a>.`
+                <a href="${preferenceLink()}" style="color:#155e75;">Manage email preferences</a> or
+                <a href="${unsubscribeLink(options.unsubscribeToken)}" style="color:#155e75;">unsubscribe from product emails</a>.`
                 }
               </p>
             </td>
@@ -288,8 +326,23 @@ export async function sendLifecycleEmail(
   user: EmailUser,
   template: ReturnType<typeof lifecycleTemplate>,
   campaignId?: string,
-): Promise<'sent' | 'skipped' | 'failed'> {
+): Promise<'accepted' | 'skipped' | 'failed'> {
   if (!emailPreference || !emailDelivery) {
+    return 'skipped';
+  }
+
+  if (!isLifecycleSendingEnabledFor(user.email)) return 'skipped';
+
+  // Never trust a stale selector payload for identity or verification state.
+  // This also prevents a caller from substituting an arbitrary recipient.
+  const currentUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { id: true, email: true, emailVerified: true },
+  });
+  if (
+    !currentUser?.emailVerified ||
+    currentUser.email.trim().toLowerCase() !== user.email.trim().toLowerCase()
+  ) {
     return 'skipped';
   }
 
@@ -309,21 +362,13 @@ export async function sendLifecycleEmail(
   const existing = await emailDelivery.findUnique({
     where: { userId_eventKey: { userId: user.id, eventKey: template.eventKey } },
   });
-  if (existing && ['sent', 'skipped'].includes(existing.status)) return 'skipped';
-
-  const delivery =
-    existing ||
-    (await emailDelivery.create({
-      data: {
-        userId: user.id,
-        campaignId: campaignId || null,
-        type: template.category,
-        eventKey: template.eventKey,
-        subject: template.subject,
-        status: 'pending',
-        metadata: JSON.stringify({ email: user.email }),
-      },
-    }));
+  const delivery = await claimDeliveryOccurrence(
+    existing,
+    user,
+    template,
+    campaignId,
+  );
+  if (!delivery) return 'skipped';
 
   const html = baseEmailHtml({
     preview: template.preview,
@@ -333,16 +378,114 @@ export async function sendLifecycleEmail(
     ctaUrl: template.ctaUrl,
     unsubscribeToken: pref.unsubscribeToken,
   });
-  const sent = await sendEmail(user.email, template.subject, html);
-
-  await emailDelivery.update({
-    where: { id: delivery.id },
-    data: sent
-      ? { status: 'sent', sentAt: new Date() }
-      : { status: 'failed', error: 'Email provider returned failure' },
+  const oneClickUrl = unsubscribeLink(pref.unsubscribeToken);
+  const result = await sendEmailWithResult(user.email, template.subject, html, {
+    headers: {
+      'List-Unsubscribe': `<${oneClickUrl}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
   });
 
-  return sent ? 'sent' : 'failed';
+  if (result.accepted) {
+    const acceptedAt = new Date();
+    await emailDelivery.update({
+      where: { id: delivery.id },
+      data: {
+        status: 'accepted',
+        error: null,
+        provider: result.provider,
+        providerMessageId: result.messageId || null,
+        acceptedAt,
+        sentAt: acceptedAt,
+        claimedAt: null,
+        retryAt: null,
+      },
+    });
+    return 'accepted';
+  }
+
+  const error = (result.error || 'Email provider returned failure').slice(0, 500);
+  const permanent = isPermanentEmailFailure(error) || delivery.attemptCount >= MAX_LIFECYCLE_ATTEMPTS;
+  await emailDelivery.update({
+    where: { id: delivery.id },
+    data: {
+      status: permanent ? 'failed_permanent' : 'failed_retryable',
+      error,
+      provider: result.provider,
+      claimedAt: null,
+      retryAt: permanent ? null : new Date(Date.now() + RETRY_DELAY_MS),
+    },
+  });
+
+  return 'failed';
+}
+
+async function claimDeliveryOccurrence(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  initialExisting: any,
+  user: EmailUser,
+  template: ReturnType<typeof lifecycleTemplate>,
+  campaignId?: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any | null> {
+  const now = new Date();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let existing: any = initialExisting;
+
+  if (!existing) {
+    try {
+      return await emailDelivery.create({
+        data: {
+          userId: user.id,
+          campaignId: campaignId || null,
+          type: template.category,
+          eventKey: template.eventKey,
+          subject: template.subject,
+          status: 'claimed',
+          attemptCount: 1,
+          claimedAt: now,
+          metadata: JSON.stringify({ email: user.email.toLowerCase() }),
+        },
+      });
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error;
+      existing = await emailDelivery.findUnique({
+        where: { userId_eventKey: { userId: user.id, eventKey: template.eventKey } },
+      });
+    }
+  }
+
+  if (!existing) return null;
+  if (['sent', 'accepted', 'delivered', 'skipped', 'failed_permanent'].includes(existing.status)) return null;
+  if ((existing.attemptCount || 0) >= MAX_LIFECYCLE_ATTEMPTS) return null;
+
+  const staleBefore = new Date(now.getTime() - CLAIM_STALE_MS);
+  const retryDue =
+    ['failed', 'failed_retryable'].includes(existing.status) &&
+    (!existing.retryAt || existing.retryAt <= now);
+  const staleClaim =
+    ['pending', 'claimed'].includes(existing.status) &&
+    (!existing.claimedAt || existing.claimedAt <= staleBefore);
+  if (!retryDue && !staleClaim) return null;
+
+  const claimed = await emailDelivery.updateMany({
+    where: {
+      id: existing.id,
+      status: existing.status,
+      attemptCount: existing.attemptCount || 0,
+      ...(retryDue ? { OR: [{ retryAt: null }, { retryAt: { lte: now } }] } : {}),
+      ...(staleClaim ? { OR: [{ claimedAt: null }, { claimedAt: { lte: staleBefore } }] } : {}),
+    },
+    data: {
+      status: 'claimed',
+      attemptCount: { increment: 1 },
+      claimedAt: now,
+      retryAt: null,
+      error: null,
+    },
+  });
+  if (claimed.count !== 1) return null;
+  return emailDelivery.findUnique({ where: { id: existing.id } });
 }
 
 async function createDeliveryIfMissing(
@@ -355,16 +498,21 @@ async function createDeliveryIfMissing(
 ) {
   const existing = await emailDelivery.findUnique({ where: { userId_eventKey: { userId, eventKey } } });
   if (existing) return existing;
-  return emailDelivery.create({
-    data: {
-      userId,
-      campaignId: campaignId || null,
-      type,
-      eventKey,
-      subject,
-      status,
-    },
-  });
+  try {
+    return await emailDelivery.create({
+      data: {
+        userId,
+        campaignId: campaignId || null,
+        type,
+        eventKey,
+        subject,
+        status,
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error;
+    return emailDelivery.findUnique({ where: { userId_eventKey: { userId, eventKey } } });
+  }
 }
 
 export async function createEmailCampaign(input: CampaignInput) {
@@ -400,8 +548,10 @@ export async function listEmailCampaigns() {
 export async function getEmailStats() {
   const [
     campaigns,
-    accountSent,
-    newsletterSent,
+    accountAccepted,
+    newsletterAccepted,
+    accountDelivered,
+    newsletterDelivered,
     accountFailed,
     newsletterFailed,
     skipped,
@@ -409,10 +559,12 @@ export async function getEmailStats() {
     newsletterUnsubscribed,
   ] = await Promise.all([
     emailCampaign.count(),
-    emailDelivery.count({ where: { status: 'sent' } }),
-    newsletterDelivery.count({ where: { status: 'sent' } }),
-    emailDelivery.count({ where: { status: 'failed' } }),
-    newsletterDelivery.count({ where: { status: 'failed' } }),
+    emailDelivery.count({ where: { status: { in: ['sent', 'accepted'] } } }),
+    newsletterDelivery.count({ where: { status: { in: ['sent', 'accepted'] } } }),
+    emailDelivery.count({ where: { status: 'delivered' } }),
+    newsletterDelivery.count({ where: { status: 'delivered' } }),
+    emailDelivery.count({ where: { status: { in: ['failed', 'failed_retryable', 'failed_permanent'] } } }),
+    newsletterDelivery.count({ where: { status: { in: ['failed', 'failed_retryable', 'failed_permanent'] } } }),
     emailDelivery.count({ where: { status: 'skipped' } }),
     emailPreference.count({ where: { unsubscribedAt: { not: null } } }),
     prisma.newsletterSubscriber.count({ where: { unsubscribedAt: { not: null } } }),
@@ -420,7 +572,8 @@ export async function getEmailStats() {
 
   return {
     campaigns,
-    sent: accountSent + newsletterSent,
+    accepted: accountAccepted + newsletterAccepted,
+    delivered: accountDelivered + newsletterDelivered,
     failed: accountFailed + newsletterFailed,
     skipped,
     unsubscribed: accountUnsubscribed + newsletterUnsubscribed,
@@ -429,13 +582,19 @@ export async function getEmailStats() {
 
 export async function sendCampaign(
   campaignId: string,
-): Promise<{ sent: number; skipped: number; failed: number; remaining: number }> {
+): Promise<{ accepted: number; skipped: number; failed: number; remaining: number }> {
+  if (process.env.LIFECYCLE_EMAIL_SEND_ENABLED !== 'true') {
+    throw new Error('Lifecycle email sending is disabled');
+  }
+  if (process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS !== 'true' && lifecycleRecipientAllowlist().size === 0) {
+    throw new Error('Lifecycle email sending requires an exact recipient allowlist');
+  }
   const campaign = await emailCampaign.findUnique({ where: { id: campaignId } });
   if (!campaign) throw new Error('Campaign not found');
   if (campaign.status === 'sent') throw new Error('Campaign has already been sent');
 
   const users = await selectCampaignAudience(campaign.id, campaign.audience, LIFECYCLE_BATCH_LIMIT);
-  const result = { sent: 0, skipped: 0, failed: 0, remaining: 0 };
+  const result = { accepted: 0, skipped: 0, failed: 0, remaining: 0 };
 
   for (const user of users) {
     const template = {
@@ -461,7 +620,10 @@ export async function sendCampaign(
         status: 'confirmed',
         unsubscribedAt: null,
         email: { notIn: [...userEmails] },
-        deliveries: { none: { campaignId: campaign.id, status: 'sent' } },
+        ...(process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true'
+          ? {}
+          : { email: { in: Array.from(lifecycleRecipientAllowlist()), notIn: [...userEmails] } }),
+        deliveries: { none: { campaignId: campaign.id, status: { in: ['sent', 'accepted', 'delivered'] } } },
       },
       orderBy: { createdAt: 'asc' },
       take: remainingSlots,
@@ -487,14 +649,21 @@ export async function sendCampaign(
             subscriber.unsubscribeToken,
           )}" style="color:#155e75;">Unsubscribe</a>.`,
       });
-      const sent = await sendEmail(subscriber.email, campaign.subject, html);
+      const resultFromProvider = await sendEmailWithResult(subscriber.email, campaign.subject, html, {
+        headers: {
+          'List-Unsubscribe': `<${DEFAULT_API_URL.replace(/\/$/, '')}/email/newsletter/unsubscribe/${encodeURIComponent(
+            subscriber.unsubscribeToken,
+          )}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      });
       await newsletterDelivery.update({
         where: { id: delivery.id },
-        data: sent
-          ? { status: 'sent', error: null, sentAt: new Date() }
-          : { status: 'failed', error: 'Email provider returned failure' },
+        data: resultFromProvider.accepted
+          ? { status: 'accepted', error: null, sentAt: new Date() }
+          : { status: 'failed', error: resultFromProvider.error || 'Email provider returned failure' },
       });
-      result[sent ? 'sent' : 'failed'] += 1;
+      result[resultFromProvider.accepted ? 'accepted' : 'failed'] += 1;
     }
   }
 
@@ -512,8 +681,14 @@ async function selectCampaignAudience(campaignId: string, audience: string, limi
   if (audience === 'newsletter') return [];
   const where: Record<string, unknown> = {
     emailVerified: true,
+    ...(process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true'
+      ? {}
+      : { email: { in: Array.from(lifecycleRecipientAllowlist()) } }),
     emailDeliveries: {
-      none: { eventKey: `campaign_${campaignId}`, status: { in: ['sent', 'skipped'] } },
+      none: {
+        eventKey: `campaign_${campaignId}`,
+        status: { in: ['sent', 'accepted', 'delivered', 'skipped', 'failed_permanent'] },
+      },
     },
   };
   if (['free', 'pro', 'team'].includes(audience)) {
@@ -539,7 +714,7 @@ async function selectCampaignAudience(campaignId: string, audience: string, limi
       orderBy: { timestamp: 'desc' },
       select: { timestamp: true },
     });
-    if (!lastActivity || lastActivity.timestamp < cutoff) inactive.push(user);
+    if (lastActivity && lastActivity.timestamp < cutoff) inactive.push(user);
     if (inactive.length >= limit) break;
   }
 
@@ -551,8 +726,14 @@ async function countCampaignRemaining(campaignId: string, audience: string): Pro
   if (audience !== 'newsletter') {
     const where: Record<string, unknown> = {
       emailVerified: true,
+      ...(process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true'
+        ? {}
+        : { email: { in: Array.from(lifecycleRecipientAllowlist()) } }),
       emailDeliveries: {
-        none: { eventKey: `campaign_${campaignId}`, status: { in: ['sent', 'skipped'] } },
+        none: {
+          eventKey: `campaign_${campaignId}`,
+          status: { in: ['sent', 'accepted', 'delivered', 'skipped', 'failed_permanent'] },
+        },
       },
     };
     if (['free', 'pro', 'team'].includes(audience)) where.plan = audience;
@@ -560,19 +741,23 @@ async function countCampaignRemaining(campaignId: string, audience: string): Pro
       const days = Number.parseInt(audience.replace('inactive_', '').replace('d', ''), 10) || 14;
       const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
       const candidates = await prisma.user.findMany({ where, select: { id: true } });
-      const recentlyActive =
+      const activityRows =
         candidates.length > 0
           ? await prisma.auditLog.groupBy({
               by: ['actorId'],
               where: {
                 actorId: { in: candidates.map((user) => user.id) },
-                timestamp: { gte: cutoff },
               },
+              _max: { timestamp: true },
               _count: { _all: true },
             })
           : [];
-      const activeIds = new Set(recentlyActive.map((row) => row.actorId));
-      userCount = candidates.filter((user) => !activeIds.has(user.id)).length;
+      const oldActivityIds = new Set(
+        activityRows
+          .filter((row) => row._max.timestamp && row._max.timestamp < cutoff)
+          .map((row) => row.actorId),
+      );
+      userCount = candidates.filter((user) => oldActivityIds.has(user.id)).length;
     } else {
       userCount = await prisma.user.count({ where });
     }
@@ -584,9 +769,12 @@ async function countCampaignRemaining(campaignId: string, audience: string): Pro
             status: 'confirmed',
             unsubscribedAt: null,
             email: {
+              ...(process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true'
+                ? {}
+                : { in: Array.from(lifecycleRecipientAllowlist()) }),
               notIn: (await prisma.user.findMany({ select: { email: true } })).map((user) => user.email.toLowerCase()),
             },
-            deliveries: { none: { campaignId, status: 'sent' } },
+            deliveries: { none: { campaignId, status: { in: ['sent', 'accepted', 'delivered'] } } },
           },
         })
       : 0;

@@ -13,7 +13,8 @@ import { sha256 } from '../utils/hashing.js';
 import { nanoid } from 'nanoid';
 import { AppError } from '../middleware/errorHandler.js';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
-import { lifecycleTemplate, sendLifecycleEmail } from '../lib/lifecycleEmail.js';
+import { isLifecycleSendingEnabledFor, lifecycleTemplate, sendLifecycleEmail } from '../lib/lifecycleEmail.js';
+import { logError } from '../lib/logger.js';
 import { deleteStoredUploads } from '../utils/fileCleanup.js';
 
 const BCRYPT_ROUNDS = 12;
@@ -108,7 +109,6 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
     const appUrl = process.env.APP_URL || 'http://localhost:5174';
     const verifyUrl = `${appUrl}/verify-email#token=${verifyToken}&email=${encodeURIComponent(normalizedEmail)}`;
     await sendVerificationEmail(normalizedEmail, verifyUrl);
-    await sendLifecycleEmail(result, lifecycleTemplate('welcome', result));
 
     const jwt = signUserToken(result.id, result.role, result.plan);
 
@@ -265,7 +265,6 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
     const hashedIp = sha256(rawIp);
 
     let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-    let createdGoogleUser = false;
 
     if (!user) {
       // Create new user via Google OAuth
@@ -305,8 +304,6 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
 
         return newUser;
       });
-      createdGoogleUser = true;
-
       logAudit({
         action: 'auth.signup',
         resource: 'user',
@@ -338,10 +335,6 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
 
     // user is guaranteed non-null (either found or created in transaction above)
     user = user!;
-    if (createdGoogleUser) {
-      await sendLifecycleEmail(user, lifecycleTemplate('welcome', user));
-    }
-
     // Refresh plan from subscription status
     const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
     const currentPlan =
@@ -516,6 +509,14 @@ userAuthRoutes.post('/auth/verify-email', authLimiter, async (req, res, next) =>
       where: { id: user.id },
       data: { emailVerified: true, verificationTokenHash: null, verificationTokenExpiry: null },
     });
+
+    // Optional lifecycle mail is sent only after address verification. It is
+    // fail-soft so provider or ledger failure cannot invalidate verification.
+    if (isLifecycleSendingEnabledFor(user.email)) {
+      void sendLifecycleEmail(user, lifecycleTemplate('welcome', user)).catch((error) =>
+        logError(error as Error, { action: 'lifecycleEmail.welcome', userId: user.id }),
+      );
+    }
 
     logAudit({
       action: 'auth.email_verified',
@@ -745,7 +746,6 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
     const appUrl = process.env.APP_URL || 'http://localhost:5174';
     const verifyUrl = `${appUrl}/verify-email#token=${verifyToken}&email=${encodeURIComponent(normalizedEmail)}`;
     await sendVerificationEmail(normalizedEmail, verifyUrl);
-    await sendLifecycleEmail(user, lifecycleTemplate('welcome', user));
 
     const jwt = signUserToken(user.id, user.role, user.plan);
 
