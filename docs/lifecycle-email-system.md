@@ -17,7 +17,11 @@ QualCanvas has a database-backed email engagement system for onboarding, trainin
 - Every user has `EmailPreference` toggles for lifecycle, training, inactivity, and product update emails.
 - Email footers include a public unsubscribe link.
 - Scheduler sends are capped by `LIFECYCLE_EMAIL_BATCH_LIMIT`, default `50`.
+- A sweep selects at most one timed message per user.
+- Day-3 and day-7 messages are not backfilled after their delivery windows, so enabling automation cannot dump an old sequence into established accounts.
+- Inactivity mail requires a real, old activity record; a missing activity signal is treated as unknown and is not emailed.
 - Delayed lifecycle automation is off unless `LIFECYCLE_EMAIL_AUTOMATION_ENABLED=true`.
+- Automation also requires either an exact `LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST` or the separate, explicit `LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS=true` scale-up switch.
 
 ## Admin Workflow
 
@@ -41,5 +45,9 @@ Enable delayed automated lifecycle emails only after reviewing copy and delivera
 
 ```bash
 LIFECYCLE_EMAIL_AUTOMATION_ENABLED=true
-LIFECYCLE_EMAIL_BATCH_LIMIT=50
+LIFECYCLE_EMAIL_BATCH_LIMIT=1
+LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST=approved-canary@example.com
+LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS=false
 ```
+
+Do not set `LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS=true` until the allowlisted canary has been reviewed against the delivery, bounce, complaint and unsubscribe stopping rules.
