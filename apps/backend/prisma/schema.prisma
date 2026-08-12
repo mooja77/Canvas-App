@@ -391,7 +391,7 @@ model AuditLog {
 }
 
 model WebhookEvent {
-  id        String   @id // Stripe event ID
+  id        String   @id // Provider-prefixed event ID (for example stripe:evt_... or resend:msg_...)
   type      String
   createdAt DateTime @default(now())
 }
@@ -731,36 +731,38 @@ model ReportSchedule {
 // ─── Lifecycle Email & Engagement ───
 
 model EmailPreference {
-  id               String    @id @default(cuid())
-  userId           String    @unique
-  lifecycle        Boolean   @default(false)
-  productUpdates   Boolean   @default(false)
-  trainingTips     Boolean   @default(false)
-  inactivityNudges Boolean   @default(false)
-  unsubscribeToken String    @unique
-  unsubscribedAt   DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                        String    @id @default(cuid())
+  userId                    String    @unique
+  lifecycle                 Boolean   @default(false)
+  productUpdates            Boolean   @default(false)
+  trainingTips              Boolean   @default(false)
+  inactivityNudges          Boolean   @default(false)
+  unsubscribeToken          String    @unique
+  unsubscribedAt            DateTime?
+  providerSuppressedAt      DateTime?
+  providerSuppressionReason String?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  user                      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([unsubscribeToken])
 }
 
 model EmailCampaign {
-  id          String          @id @default(cuid())
-  slug        String          @unique
-  title       String
-  subject     String
-  previewText String?
-  bodyHtml    String
-  ctaLabel    String?
-  ctaUrl      String?
-  audience    String          @default("all") // all, free, pro, team, inactive_14d, inactive_30d
-  status      String          @default("draft") // draft, sent
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  sentAt      DateTime?
-  deliveries  EmailDelivery[]
+  id                   String               @id @default(cuid())
+  slug                 String               @unique
+  title                String
+  subject              String
+  previewText          String?
+  bodyHtml             String
+  ctaLabel             String?
+  ctaUrl               String?
+  audience             String               @default("all") // all, free, pro, team, inactive_14d, inactive_30d
+  status               String               @default("draft") // draft, sent
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  sentAt               DateTime?
+  deliveries           EmailDelivery[]
   newsletterDeliveries NewsletterDelivery[]
 
   @@index([status])
@@ -768,55 +770,79 @@ model EmailCampaign {
 }
 
 model EmailDelivery {
-  id         String         @id @default(cuid())
-  userId     String
-  campaignId String?
-  type       String // welcome, onboarding_7d, inactivity_14d, product_update, training_tip
-  eventKey   String
-  subject    String
-  status     String         @default("pending") // pending, sent, skipped, failed
-  error      String?
-  metadata   String         @default("{}")
-  createdAt  DateTime       @default(now())
-  sentAt     DateTime?
-  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaign   EmailCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  id                String         @id @default(cuid())
+  userId            String
+  campaignId        String?
+  type              String // welcome, onboarding_7d, inactivity_14d, product_update, training_tip
+  eventKey          String
+  subject           String
+  status            String         @default("pending") // pending, claimed, accepted, delivered, bounced, complained, suppressed, skipped, failed_retryable, failed_permanent
+  error             String?
+  metadata          String         @default("{}")
+  attemptCount      Int            @default(0)
+  claimedAt         DateTime?
+  retryAt           DateTime?
+  provider          String?
+  providerMessageId String?
+  acceptedAt        DateTime?
+  deliveredAt       DateTime?
+  bouncedAt         DateTime?
+  complainedAt      DateTime?
+  suppressedAt      DateTime?
+  providerEventAt   DateTime?
+  createdAt         DateTime       @default(now())
+  sentAt            DateTime?
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign          EmailCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
   @@unique([userId, eventKey])
   @@index([userId, createdAt])
   @@index([status, createdAt])
+  @@index([status, retryAt, attemptCount])
   @@index([type])
   @@index([campaignId])
+  @@index([provider, providerMessageId])
 }
 
 model NewsletterSubscriber {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  status           String    @default("pending")
-  confirmTokenHash String?
-  unsubscribeToken String    @unique
-  confirmedAt      DateTime?
-  unsubscribedAt   DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  deliveries       NewsletterDelivery[]
+  id                        String               @id @default(cuid())
+  email                     String               @unique
+  status                    String               @default("pending")
+  confirmTokenHash          String?
+  unsubscribeToken          String               @unique
+  confirmedAt               DateTime?
+  unsubscribedAt            DateTime?
+  providerSuppressedAt      DateTime?
+  providerSuppressionReason String?
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+  deliveries                NewsletterDelivery[]
 
   @@index([status])
 }
 
 model NewsletterDelivery {
-  id           String               @id @default(cuid())
-  subscriberId String
-  campaignId   String
-  status       String               @default("pending") // pending, sent, failed
-  error        String?
-  createdAt    DateTime             @default(now())
-  sentAt       DateTime?
-  subscriber   NewsletterSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
-  campaign     EmailCampaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  id                String               @id @default(cuid())
+  subscriberId      String
+  campaignId        String
+  status            String               @default("pending") // pending, accepted, delivered, bounced, complained, suppressed, failed_permanent
+  error             String?
+  provider          String?
+  providerMessageId String?
+  acceptedAt        DateTime?
+  deliveredAt       DateTime?
+  bouncedAt         DateTime?
+  complainedAt      DateTime?
+  suppressedAt      DateTime?
+  providerEventAt   DateTime?
+  createdAt         DateTime             @default(now())
+  sentAt            DateTime?
+  subscriber        NewsletterSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  campaign          EmailCampaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@unique([subscriberId, campaignId])
   @@index([campaignId, status])
+  @@index([provider, providerMessageId])
 }
 
 // ─── Teams ───

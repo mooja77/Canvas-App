@@ -66,7 +66,8 @@ interface FeatureEntry {
 
 interface EmailStats {
   campaigns: number;
-  sent: number;
+  accepted: number;
+  delivered: number;
   failed: number;
   skipped: number;
   unsubscribed: number;
@@ -903,11 +904,11 @@ function EmailsTab({ adminKey }: { adminKey: string }) {
     setSendMessage('');
     try {
       const response = await adminApi.sendEmailCampaign(adminKey, id);
-      const result = response.data.data as { sent: number; skipped: number; failed: number; remaining: number };
+      const result = response.data.data as { accepted: number; skipped: number; failed: number; remaining: number };
       setSendMessage(
         result.remaining > 0
-          ? `Batch complete: ${result.sent} sent, ${result.failed} failed, ${result.remaining} remaining. Send again to continue.`
-          : `Campaign complete: ${result.sent} sent, ${result.skipped} skipped, ${result.failed} failed.`,
+          ? `Batch complete: ${result.accepted} provider-accepted, ${result.failed} failed, ${result.remaining} remaining. Send again to continue.`
+          : `Campaign complete: ${result.accepted} provider-accepted, ${result.skipped} skipped, ${result.failed} failed.`,
       );
       await load();
     } catch {
@@ -923,10 +924,11 @@ function EmailsTab({ adminKey }: { adminKey: string }) {
   return (
     <div className="space-y-6">
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           {[
             ['Campaigns', stats.campaigns],
-            ['Sent', stats.sent],
+            ['Accepted', stats.accepted],
+            ['Delivered', stats.delivered],
             ['Failed', stats.failed],
             ['Skipped', stats.skipped],
             ['Unsubscribed', stats.unsubscribed],
@@ -1044,7 +1046,7 @@ function EmailsTab({ adminKey }: { adminKey: string }) {
                   disabled={campaign.status === 'sent' || sendingId === campaign.id}
                   className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
                 >
-                  {sendingId === campaign.id ? 'Sending...' : campaign.status === 'sent' ? 'Sent' : 'Send'}
+                  {sendingId === campaign.id ? 'Sending...' : campaign.status === 'sent' ? 'Complete' : 'Send'}
                 </button>
               </div>
             ))}

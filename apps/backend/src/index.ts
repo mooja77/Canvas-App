@@ -104,6 +104,7 @@ import { notificationRoutes } from './routes/notificationRoutes.js';
 import { reportRoutes } from './routes/reportRoutes.js';
 import { adminRoutes } from './routes/adminRoutes.js';
 import { lifecycleEmailRoutes, publicLifecycleEmailRoutes } from './routes/lifecycleEmailRoutes.js';
+import { handleResendWebhook } from './lib/resendWebhook.js';
 import { eventsRoutes } from './routes/eventsRoutes.js';
 import { prisma } from './lib/prisma.js';
 import { buildReadinessPayload } from './lib/readiness.js';
@@ -168,6 +169,10 @@ app.use(morgan(isProduction ? 'combined' : 'dev'));
 
 // Stripe webhook — needs raw body BEFORE json parsing
 app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), handleStripeWebhook);
+
+// Resend delivery events are independently authenticated with Svix signatures
+// and must receive the untouched request bytes.
+app.post('/api/email/webhooks/resend', express.raw({ type: 'application/json' }), handleResendWebhook);
 
 // Larger body limits must be registered before the default parser. Express
 // does not re-parse a request whose body was already consumed.
@@ -276,6 +281,21 @@ app.get('/ready', async (_req, res) => {
   // SMTP — only if configured. We don't open a real TCP connection on
   // every probe; just verify config is present.
   checks.smtp = process.env.SMTP_HOST ? 'ok' : 'skipped';
+
+  const lifecycleRequested =
+    process.env.LIFECYCLE_EMAIL_SEND_ENABLED === 'true' || process.env.LIFECYCLE_EMAIL_AUTOMATION_ENABLED === 'true';
+  if (lifecycleRequested) {
+    const exactScope = Boolean(process.env.LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST?.trim());
+    const broadScope = process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true';
+    const providerReady = Boolean(process.env.RESEND_API_KEY || process.env.SMTP_HOST);
+    const outcomesReady = !process.env.RESEND_API_KEY || Boolean(process.env.RESEND_WEBHOOK_SECRET);
+    checks.lifecycleEmail = exactScope && !broadScope && providerReady && outcomesReady ? 'ok' : 'error';
+    if (checks.lifecycleEmail === 'error') {
+      details.lifecycleEmail = 'Lifecycle email release gates are incomplete or broad recipient scope is enabled';
+    }
+  } else {
+    checks.lifecycleEmail = 'skipped';
+  }
 
   const dbDown = checks.database === 'error';
   const anyDegraded = Object.values(checks).some((v) => v === 'error');

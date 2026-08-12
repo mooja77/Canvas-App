@@ -10,6 +10,19 @@ const resendApiKey = process.env.RESEND_API_KEY;
 const isSmtpConfigured = !!(smtpHost && smtpUser && smtpPass);
 const isResendConfigured = !!resendApiKey;
 
+export interface EmailSendResult {
+  accepted: boolean;
+  provider: 'resend' | 'smtp' | 'development' | 'none';
+  messageId?: string;
+  error?: string;
+}
+
+export interface EmailSendOptions {
+  headers?: Record<string, string>;
+  tags?: Array<{ name: string; value: string }>;
+  idempotencyKey?: string;
+}
+
 function getTransporter() {
   if (!isSmtpConfigured) return null;
 
@@ -32,6 +45,21 @@ function getTransporter() {
  * logs message bodies and fails closed in production.
  */
 export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  const result = await sendEmailWithResult(to, subject, html);
+  return result.accepted;
+}
+
+/**
+ * Send an email while preserving the distinction between provider acceptance
+ * and provider-confirmed delivery. Lifecycle callers persist this result and
+ * may later join a provider webhook to mark delivered/bounced/complained.
+ */
+export async function sendEmailWithResult(
+  to: string,
+  subject: string,
+  html: string,
+  options: EmailSendOptions = {},
+): Promise<EmailSendResult> {
   // Prefer Resend HTTP API (avoids SMTP port blocking on some hosts)
   if (isResendConfigured) {
     try {
@@ -40,18 +68,27 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
         headers: {
           Authorization: `Bearer ${resendApiKey}`,
           'Content-Type': 'application/json',
+          ...(options.idempotencyKey ? { 'Idempotency-Key': options.idempotencyKey } : {}),
         },
-        body: JSON.stringify({ from: smtpFrom, to, subject, html }),
+        body: JSON.stringify({
+          from: smtpFrom,
+          to,
+          subject,
+          html,
+          headers: options.headers,
+          tags: options.tags,
+        }),
       });
       if (!res.ok) {
         const body = await res.text();
         console.error('[Email] Resend API error:', res.status, body);
-        return false;
+        return { accepted: false, provider: 'resend', error: `HTTP ${res.status}` };
       }
-      return true;
+      const body = (await res.json().catch(() => ({}))) as { id?: string };
+      return { accepted: true, provider: 'resend', messageId: body.id };
     } catch (err) {
       console.error('[Email] Resend API request failed:', err);
-      return false;
+      return { accepted: false, provider: 'resend', error: (err as Error).message };
     }
   }
 
@@ -63,15 +100,17 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
     // logs, even in development. A production instance without an email
     // provider must fail closed so callers do not report a message as sent.
     console.warn(`[Email] Not configured; message not sent (to=${to}, subject=${subject})`);
-    return process.env.NODE_ENV !== 'production';
+    return process.env.NODE_ENV !== 'production'
+      ? { accepted: true, provider: 'development' }
+      : { accepted: false, provider: 'none', error: 'Email provider is not configured' };
   }
 
   try {
-    await transporter.sendMail({ from: smtpFrom, to, subject, html });
-    return true;
+    const info = await transporter.sendMail({ from: smtpFrom, to, subject, html, headers: options.headers });
+    return { accepted: true, provider: 'smtp', messageId: info.messageId };
   } catch (err) {
     console.error('[Email] SMTP failed:', err);
-    return false;
+    return { accepted: false, provider: 'smtp', error: (err as Error).message };
   }
 }
 

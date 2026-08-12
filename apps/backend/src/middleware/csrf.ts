@@ -13,6 +13,13 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
     return next();
   }
 
+  // RFC 8058 one-click unsubscribe POSTs originate from mailbox providers and
+  // do not carry the app's browser Origin. The opaque token is the authority;
+  // this endpoint can only reduce optional email and is intentionally exempt.
+  if (req.method === 'POST' && /^\/api\/email\/(?:newsletter\/)?unsubscribe\/[^/]+\/?$/.test(req.path)) {
+    return next();
+  }
+
   const origin = req.headers.origin;
   const allowedOrigins = getAllowedOrigins();
 
