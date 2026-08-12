@@ -39,6 +39,8 @@ describe('lifecycle email reporting', () => {
     delete process.env.LIFECYCLE_EMAIL_SEND_ENABLED;
     delete process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS;
     delete process.env.LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST;
+    delete process.env.RESEND_API_KEY;
+    delete process.env.RESEND_WEBHOOK_SECRET;
   });
 
   it('includes account and newsletter delivery totals', async () => {
@@ -48,10 +50,7 @@ describe('lifecycle email reporting', () => {
       .mockResolvedValueOnce(6)
       .mockResolvedValueOnce(2)
       .mockResolvedValueOnce(4);
-    mockPrisma.newsletterDelivery.count
-      .mockResolvedValueOnce(7)
-      .mockResolvedValueOnce(3)
-      .mockResolvedValueOnce(1);
+    mockPrisma.newsletterDelivery.count.mockResolvedValueOnce(7).mockResolvedValueOnce(3).mockResolvedValueOnce(1);
     mockPrisma.emailPreference.count.mockResolvedValue(5);
     mockPrisma.newsletterSubscriber.count.mockResolvedValue(6);
 
@@ -104,6 +103,28 @@ describe('lifecycle email reporting', () => {
       }),
     );
     expect(mockPrisma.emailDelivery.update.mock.calls[0][0].data).not.toHaveProperty('deliveredAt');
+    expect(mockSendEmailWithResult).toHaveBeenCalledWith(
+      user.email,
+      'Welcome to QualCanvas',
+      expect.any(String),
+      expect.objectContaining({
+        idempotencyKey: 'qualcanvas-lifecycle-delivery-1',
+        tags: [
+          { name: 'delivery_kind', value: 'account' },
+          { name: 'delivery_id', value: 'delivery-1' },
+        ],
+      }),
+    );
+  });
+
+  it('blocks a Resend release until signed provider outcomes are configured', () => {
+    process.env.LIFECYCLE_EMAIL_SEND_ENABLED = 'true';
+    process.env.LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST = 'canary@example.com';
+    process.env.RESEND_API_KEY = 'configured';
+    expect(isLifecycleSendingEnabledFor('canary@example.com')).toBe(false);
+
+    process.env.RESEND_WEBHOOK_SECRET = 'configured';
+    expect(isLifecycleSendingEnabledFor('canary@example.com')).toBe(true);
   });
 
   it('classifies permanent recipient and configuration failures', () => {

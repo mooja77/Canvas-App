@@ -90,8 +90,22 @@ function lifecycleRecipientAllowlist(): Set<string> {
 
 export function isLifecycleSendingEnabledFor(email: string): boolean {
   if (process.env.LIFECYCLE_EMAIL_SEND_ENABLED !== 'true') return false;
+  // Resend is the preferred provider when configured. Do not release optional
+  // email through it until signed delivery outcomes can be processed.
+  if (process.env.RESEND_API_KEY && !process.env.RESEND_WEBHOOK_SECRET) return false;
   if (process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true') return true;
   return lifecycleRecipientAllowlist().has(email.trim().toLowerCase());
+}
+
+export function lifecycleReleaseGateError(): string | null {
+  if (process.env.LIFECYCLE_EMAIL_SEND_ENABLED !== 'true') return 'Lifecycle email sending is disabled';
+  if (process.env.RESEND_API_KEY && !process.env.RESEND_WEBHOOK_SECRET) {
+    return 'Lifecycle email sending requires RESEND_WEBHOOK_SECRET when Resend is configured';
+  }
+  if (process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS !== 'true' && lifecycleRecipientAllowlist().size === 0) {
+    return 'Lifecycle email sending requires an exact recipient allowlist';
+  }
+  return null;
 }
 
 export function isPermanentEmailFailure(error: string): boolean {
@@ -131,6 +145,15 @@ export async function ensureEmailPreference(userId: string, initialOptIn = false
 
 export async function getEmailPreferencePayload(userId: string): Promise<EmailPreferencePayload> {
   const pref = await ensureEmailPreference(userId);
+  if (pref.providerSuppressedAt) {
+    return {
+      lifecycle: false,
+      productUpdates: false,
+      trainingTips: false,
+      inactivityNudges: false,
+      unsubscribedAt: pref.unsubscribedAt || pref.providerSuppressedAt,
+    };
+  }
   return {
     lifecycle: pref.lifecycle,
     productUpdates: pref.productUpdates,
@@ -145,6 +168,15 @@ export async function updateEmailPreferences(
   updates: Partial<Omit<EmailPreferencePayload, 'unsubscribedAt'>>,
 ): Promise<EmailPreferencePayload> {
   const pref = await ensureEmailPreference(userId);
+  if (pref.providerSuppressedAt) {
+    return {
+      lifecycle: false,
+      productUpdates: false,
+      trainingTips: false,
+      inactivityNudges: false,
+      unsubscribedAt: pref.unsubscribedAt || pref.providerSuppressedAt,
+    };
+  }
   const next = {
     lifecycle: updates.lifecycle ?? pref.lifecycle,
     productUpdates: updates.productUpdates ?? pref.productUpdates,
@@ -271,7 +303,7 @@ export function lifecycleTemplate(
       bodyHtml: `
         <p style="margin:0 0 18px;">Hi ${name},</p>
         <p style="margin:0 0 18px;">Welcome to ${PRODUCT_NAME}. A good first session is simple: create one canvas, upload one transcript, add 3-5 research questions, then code a few strong excerpts.</p>
-        <p style="margin:0;">If you are evaluating the trial, start with a small real project rather than sample data. You will see the value faster.</p>`,
+        <p style="margin:0;">If you are evaluating QualCanvas, start with a small real project rather than sample data so you can judge the workflow against your own research.</p>`,
     };
   }
 
@@ -287,7 +319,7 @@ export function lifecycleTemplate(
       bodyHtml: `
         <p style="margin:0 0 18px;">Hi ${name},</p>
         <p style="margin:0 0 18px;">After your first few codes, the next win is structure. Group related questions, add memos for emerging interpretations, and use the canvas view to spot weak or over-broad themes.</p>
-        <p style="margin:0;">If you are working with a team, invite collaborators before the coding scheme gets too fixed. It reduces rework later.</p>`,
+        <p style="margin:0;">If you are working with a team, invite collaborators before finalising the coding scheme so everyone can review the same structure.</p>`,
     };
   }
 
@@ -317,7 +349,7 @@ export function lifecycleTemplate(
     ctaUrl: appLink('/canvas'),
     bodyHtml: `
       <p style="margin:0 0 18px;">Hi ${name},</p>
-      <p style="margin:0 0 18px;">You have not used ${PRODUCT_NAME} for a little while. If the project is still active, a short 15-minute session is usually enough to review memos, code one more excerpt, and keep momentum.</p>
+      <p style="margin:0 0 18px;">You have not used ${PRODUCT_NAME} for a little while. If the project is still active, resume by reviewing your memos and coding one more excerpt.</p>
       <p style="margin:0;">If you are blocked, start by opening the canvas and writing one memo about what feels unclear.</p>`,
   };
 }
@@ -339,15 +371,12 @@ export async function sendLifecycleEmail(
     where: { id: user.id },
     select: { id: true, email: true, emailVerified: true },
   });
-  if (
-    !currentUser?.emailVerified ||
-    currentUser.email.trim().toLowerCase() !== user.email.trim().toLowerCase()
-  ) {
+  if (!currentUser?.emailVerified || currentUser.email.trim().toLowerCase() !== user.email.trim().toLowerCase()) {
     return 'skipped';
   }
 
   const pref = await ensureEmailPreference(user.id);
-  if (pref.unsubscribedAt || !pref[template.category]) {
+  if (pref.unsubscribedAt || pref.providerSuppressedAt || !pref[template.category]) {
     await createDeliveryIfMissing(
       user.id,
       template.eventKey,
@@ -362,12 +391,7 @@ export async function sendLifecycleEmail(
   const existing = await emailDelivery.findUnique({
     where: { userId_eventKey: { userId: user.id, eventKey: template.eventKey } },
   });
-  const delivery = await claimDeliveryOccurrence(
-    existing,
-    user,
-    template,
-    campaignId,
-  );
+  const delivery = await claimDeliveryOccurrence(existing, user, template, campaignId);
   if (!delivery) return 'skipped';
 
   const html = baseEmailHtml({
@@ -384,6 +408,11 @@ export async function sendLifecycleEmail(
       'List-Unsubscribe': `<${oneClickUrl}>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     },
+    tags: [
+      { name: 'delivery_kind', value: 'account' },
+      { name: 'delivery_id', value: delivery.id },
+    ],
+    idempotencyKey: `qualcanvas-lifecycle-${delivery.id}`,
   });
 
   if (result.accepted) {
@@ -461,11 +490,9 @@ async function claimDeliveryOccurrence(
 
   const staleBefore = new Date(now.getTime() - CLAIM_STALE_MS);
   const retryDue =
-    ['failed', 'failed_retryable'].includes(existing.status) &&
-    (!existing.retryAt || existing.retryAt <= now);
+    ['failed', 'failed_retryable'].includes(existing.status) && (!existing.retryAt || existing.retryAt <= now);
   const staleClaim =
-    ['pending', 'claimed'].includes(existing.status) &&
-    (!existing.claimedAt || existing.claimedAt <= staleBefore);
+    ['pending', 'claimed'].includes(existing.status) && (!existing.claimedAt || existing.claimedAt <= staleBefore);
   if (!retryDue && !staleClaim) return null;
 
   const claimed = await emailDelivery.updateMany({
@@ -583,12 +610,8 @@ export async function getEmailStats() {
 export async function sendCampaign(
   campaignId: string,
 ): Promise<{ accepted: number; skipped: number; failed: number; remaining: number }> {
-  if (process.env.LIFECYCLE_EMAIL_SEND_ENABLED !== 'true') {
-    throw new Error('Lifecycle email sending is disabled');
-  }
-  if (process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS !== 'true' && lifecycleRecipientAllowlist().size === 0) {
-    throw new Error('Lifecycle email sending requires an exact recipient allowlist');
-  }
+  const releaseGateError = lifecycleReleaseGateError();
+  if (releaseGateError) throw new Error(releaseGateError);
   const campaign = await emailCampaign.findUnique({ where: { id: campaignId } });
   if (!campaign) throw new Error('Campaign not found');
   if (campaign.status === 'sent') throw new Error('Campaign has already been sent');
@@ -619,11 +642,19 @@ export async function sendCampaign(
       where: {
         status: 'confirmed',
         unsubscribedAt: null,
+        providerSuppressedAt: null,
         email: { notIn: [...userEmails] },
         ...(process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true'
           ? {}
           : { email: { in: Array.from(lifecycleRecipientAllowlist()), notIn: [...userEmails] } }),
-        deliveries: { none: { campaignId: campaign.id, status: { in: ['sent', 'accepted', 'delivered'] } } },
+        deliveries: {
+          none: {
+            campaignId: campaign.id,
+            status: {
+              in: ['sent', 'accepted', 'delivered', 'bounced', 'complained', 'suppressed', 'failed_permanent'],
+            },
+          },
+        },
       },
       orderBy: { createdAt: 'asc' },
       take: remainingSlots,
@@ -656,12 +687,28 @@ export async function sendCampaign(
           )}>`,
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         },
+        tags: [
+          { name: 'delivery_kind', value: 'newsletter' },
+          { name: 'delivery_id', value: delivery.id },
+        ],
+        idempotencyKey: `qualcanvas-newsletter-${delivery.id}`,
       });
       await newsletterDelivery.update({
         where: { id: delivery.id },
         data: resultFromProvider.accepted
-          ? { status: 'accepted', error: null, sentAt: new Date() }
-          : { status: 'failed', error: resultFromProvider.error || 'Email provider returned failure' },
+          ? {
+              status: 'accepted',
+              error: null,
+              provider: resultFromProvider.provider,
+              providerMessageId: resultFromProvider.messageId || null,
+              acceptedAt: new Date(),
+              sentAt: new Date(),
+            }
+          : {
+              status: 'failed_permanent',
+              provider: resultFromProvider.provider,
+              error: resultFromProvider.error || 'Email provider returned failure',
+            },
       });
       result[resultFromProvider.accepted ? 'accepted' : 'failed'] += 1;
     }
@@ -753,9 +800,7 @@ async function countCampaignRemaining(campaignId: string, audience: string): Pro
             })
           : [];
       const oldActivityIds = new Set(
-        activityRows
-          .filter((row) => row._max.timestamp && row._max.timestamp < cutoff)
-          .map((row) => row.actorId),
+        activityRows.filter((row) => row._max.timestamp && row._max.timestamp < cutoff).map((row) => row.actorId),
       );
       userCount = candidates.filter((user) => oldActivityIds.has(user.id)).length;
     } else {
@@ -768,13 +813,21 @@ async function countCampaignRemaining(campaignId: string, audience: string): Pro
           where: {
             status: 'confirmed',
             unsubscribedAt: null,
+            providerSuppressedAt: null,
             email: {
               ...(process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true'
                 ? {}
                 : { in: Array.from(lifecycleRecipientAllowlist()) }),
               notIn: (await prisma.user.findMany({ select: { email: true } })).map((user) => user.email.toLowerCase()),
             },
-            deliveries: { none: { campaignId, status: { in: ['sent', 'accepted', 'delivered'] } } },
+            deliveries: {
+              none: {
+                campaignId,
+                status: {
+                  in: ['sent', 'accepted', 'delivered', 'bounced', 'complained', 'suppressed', 'failed_permanent'],
+                },
+              },
+            },
           },
         })
       : 0;

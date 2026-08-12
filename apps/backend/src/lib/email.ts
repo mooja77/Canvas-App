@@ -19,6 +19,8 @@ export interface EmailSendResult {
 
 export interface EmailSendOptions {
   headers?: Record<string, string>;
+  tags?: Array<{ name: string; value: string }>;
+  idempotencyKey?: string;
 }
 
 function getTransporter() {
@@ -66,8 +68,16 @@ export async function sendEmailWithResult(
         headers: {
           Authorization: `Bearer ${resendApiKey}`,
           'Content-Type': 'application/json',
+          ...(options.idempotencyKey ? { 'Idempotency-Key': options.idempotencyKey } : {}),
         },
-        body: JSON.stringify({ from: smtpFrom, to, subject, html, headers: options.headers }),
+        body: JSON.stringify({
+          from: smtpFrom,
+          to,
+          subject,
+          html,
+          headers: options.headers,
+          tags: options.tags,
+        }),
       });
       if (!res.ok) {
         const body = await res.text();

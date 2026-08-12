@@ -11,6 +11,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "eval:ai": "tsx src/eval/runAiEval.ts",
+    "lifecycle:readiness": "tsx src/scripts/lifecycleEmailReadiness.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:backup": "bash scripts/backup.sh"
@@ -45,6 +46,7 @@
     "openai": "^6.32.0",
     "socket.io": "^4.8.3",
     "stripe": "^20.4.1",
+    "svix": "^1.99.1",
     "yauzl": "^3.2.1",
     "zod": "^3.24.1"
   },
