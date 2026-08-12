@@ -10,6 +10,10 @@ import { useCanvasStore } from '../../stores/canvasStore';
 
 interface Props {
   onClose: () => void;
+  initialState?: {
+    currentStep?: number;
+    personalization?: { method?: string };
+  };
 }
 
 /**
@@ -23,27 +27,37 @@ interface Props {
  * That keeps the user in the real product as fast as possible rather than
  * forcing them through more synthetic "screens".
  */
-export default function OnboardingFlow({ onClose }: Props) {
+export default function OnboardingFlow({ onClose, initialState }: Props) {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(initialState?.currentStep === 2 ? 2 : 1);
   const [busy, setBusy] = useState(false);
-  const [preferredMethod, setPreferredMethod] = useState<string>('interviews');
+  const [preferredMethod, setPreferredMethod] = useState<string>(initialState?.personalization?.method || 'interviews');
   const startedAtRef = useRef<number>(Date.now());
   const openCanvas = useCanvasStore((s) => s.openCanvas);
   const fetchCanvases = useCanvasStore((s) => s.fetchCanvases);
+  const createCanvas = useCanvasStore((s) => s.createCanvas);
 
   useEffect(() => {
-    trackEvent('onboarding_started', { step: 1 });
-    void patchOnboardingState({ currentStep: 1, startedAt: new Date().toISOString() });
+    trackEvent('onboarding_started', { step });
+    void patchOnboardingState({ currentStep: step, startedAt: new Date().toISOString() });
+    // The initial step is intentionally captured once: mounting this component
+    // now means the surface is actually visible, not merely eligible between effects.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const finish = useCallback(
     async (mode: 'completed' | 'skipped') => {
       const totalSeconds = Math.round((Date.now() - startedAtRef.current) / 1000);
+      await patchOnboardingState({
+        completionMode: mode,
+        completedAtClient: new Date().toISOString(),
+      });
       if (mode === 'completed') {
         trackEvent('onboarding_completed_seconds', { total_seconds: totalSeconds });
-        await markOnboardingComplete();
       }
+      // A deliberate skip is also a completed onboarding decision. Persist it
+      // so another browser does not force the flow back over the workspace.
+      await markOnboardingComplete();
       onClose();
     },
     [onClose],
@@ -68,11 +82,15 @@ export default function OnboardingFlow({ onClose }: Props) {
       setBusy(true);
       try {
         if (!tmpl) {
-          // Blank canvas — defer to the existing /canvas list view so the user
-          // creates one via the normal "+ New canvas" path. This avoids us
-          // duplicating the canvas-create endpoint here.
+          // "Blank canvas" should create the blank canvas it promises. The old
+          // path closed onboarding onto an empty list and left activation for a
+          // separate, easy-to-miss action.
           trackEvent('onboarding_step_completed', { step: 2, template: 'blank' });
+          const blankCanvas = await createCanvas('Untitled research project');
+          await openCanvas(blankCanvas.id);
           await finish('completed');
+          toast.success('Blank canvas ready — add a transcript when you are ready.', { duration: 5000 });
+          navigate('/canvas');
           return;
         }
 
@@ -103,7 +121,7 @@ export default function OnboardingFlow({ onClose }: Props) {
         setBusy(false);
       }
     },
-    [busy, finish, fetchCanvases, navigate, openCanvas],
+    [busy, createCanvas, finish, fetchCanvases, navigate, openCanvas],
   );
 
   return (

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 
-const { mockPrisma } = vi.hoisted(() => {
+const { mockPrisma, mockTrackJmsEvent } = vi.hoisted(() => {
   const mockPrisma = {
     user: {
       findUnique: vi.fn(),
@@ -27,7 +27,7 @@ const { mockPrisma } = vi.hoisted(() => {
     },
     $transaction: vi.fn(),
   };
-  return { mockPrisma };
+  return { mockPrisma, mockTrackJmsEvent: vi.fn().mockResolvedValue(undefined) };
 });
 
 vi.mock('../../lib/prisma.js', () => ({
@@ -44,7 +44,7 @@ vi.mock('../../middleware/planLimits.js', () => ({
 }));
 
 vi.mock('../../lib/jms-events.js', () => ({
-  trackJmsEvent: vi.fn().mockResolvedValue(undefined),
+  trackJmsEvent: mockTrackJmsEvent,
 }));
 
 import request from 'supertest';
@@ -153,6 +153,12 @@ describe('Template + onboarding routes', () => {
     // → reflexive thematic analysis).
     expect(mockPrisma.codingCanvas.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ researchParadigm: 'reflexive-ta' }) }),
+    );
+    expect(mockTrackJmsEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'first_canvas_created',
+        properties: expect.objectContaining({ canvas_id: newCanvasId, source: 'template', template_id: templateId }),
+      }),
     );
   });
 
