@@ -146,9 +146,9 @@ export default function Screen2_TemplateGallery({ preferredMethod, onSelect, onS
           }}
           className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
-          Skip — start blank
+          Skip for now
         </button>
-        <div className="text-xs text-gray-400">2 of 5</div>
+        <div className="text-xs text-gray-400">2 of 2</div>
       </div>
     </div>
   );

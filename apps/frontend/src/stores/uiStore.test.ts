@@ -9,6 +9,10 @@ function resetStore() {
     setupWizardComplete: false,
     sidebarCollapsed: false,
     edgeStyle: 'bezier',
+    onboardingOwnerId: null,
+    onboardingV2Complete: false,
+    onboardingChecklistDismissed: false,
+    dismissedJitTooltips: [],
   });
   // Clean up DOM class
   document.documentElement.classList.remove('dark');
@@ -120,6 +124,59 @@ describe('uiStore', () => {
       useUIStore.getState().setSidebarCollapsed(true);
       useUIStore.getState().setSidebarCollapsed(false);
       expect(useUIStore.getState().sidebarCollapsed).toBe(false);
+    });
+  });
+
+  describe('account-scoped onboarding', () => {
+    it('clears onboarding state when the authenticated account changes', () => {
+      useUIStore.setState({
+        onboardingOwnerId: 'user-a',
+        onboardingV2Complete: true,
+        onboardingChecklistDismissed: true,
+        dismissedJitTooltips: ['tooltip-a'],
+        setupWizardComplete: true,
+      });
+
+      useUIStore.getState().prepareOnboardingForAccount('user-b');
+
+      const state = useUIStore.getState();
+      expect(state.onboardingOwnerId).toBe('user-b');
+      expect(state.onboardingV2Complete).toBe(false);
+      expect(state.onboardingChecklistDismissed).toBe(false);
+      expect(state.dismissedJitTooltips).toEqual([]);
+      expect(state.setupWizardComplete).toBe(false);
+    });
+
+    it('hydrates completion and dismissals for the current account', () => {
+      useUIStore.getState().hydrateOnboardingForAccount('user-a', {
+        completed: true,
+        dismissedTooltips: ['quick-code'],
+        checklistComplete: ['dismissed'],
+      });
+
+      const state = useUIStore.getState();
+      expect(state.onboardingOwnerId).toBe('user-a');
+      expect(state.onboardingV2Complete).toBe(true);
+      expect(state.onboardingChecklistDismissed).toBe(true);
+      expect(state.dismissedJitTooltips).toEqual(['quick-code']);
+    });
+
+    it('does not erase newer local dismissals when the same account hydrates', () => {
+      useUIStore.setState({
+        onboardingOwnerId: 'user-a',
+        onboardingChecklistDismissed: true,
+        dismissedJitTooltips: ['local-tooltip'],
+      });
+
+      useUIStore.getState().hydrateOnboardingForAccount('user-a', {
+        completed: false,
+        dismissedTooltips: ['server-tooltip'],
+        checklistComplete: [],
+      });
+
+      const state = useUIStore.getState();
+      expect(state.onboardingChecklistDismissed).toBe(true);
+      expect(state.dismissedJitTooltips).toEqual(['local-tooltip', 'server-tooltip']);
     });
   });
 });

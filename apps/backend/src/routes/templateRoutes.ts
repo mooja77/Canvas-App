@@ -148,6 +148,22 @@ templateRoutes.post('/canvas/templates/:templateId/instantiate', checkCanvasLimi
       },
     });
 
+    // Template instantiation is a real canvas-creation path. Keep the primary
+    // activation event aligned with POST /canvas so onboarding conversions are
+    // counted regardless of which starting point the user selects.
+    const canvasCount = await prisma.codingCanvas.count({ where: { dashboardAccessId } });
+    if (canvasCount === 1) {
+      void trackJmsEvent({
+        name: 'first_canvas_created',
+        properties: {
+          canvas_id: canvas.id,
+          dashboard_access_id: dashboardAccessId,
+          source: 'template',
+          template_id: template.id,
+        },
+      });
+    }
+
     res.status(201).json({ success: true, data: canvas });
   } catch (err: unknown) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

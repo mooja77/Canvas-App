@@ -45,6 +45,9 @@ interface UIState {
 
   // Sprint F onboarding v2 — has the user finished the 2-screen flow?
   onboardingV2Complete: boolean;
+  // Account that owns the persisted onboarding flags below. Visual
+  // preferences such as dark mode may span accounts; onboarding state may not.
+  onboardingOwnerId: string | null;
   // Whether the user has dismissed the post-onboarding checklist widget.
   // Once dismissed, it stays gone (it's nagware otherwise).
   onboardingChecklistDismissed: boolean;
@@ -75,6 +78,11 @@ interface UIState {
   dismissTrialBannerToday: () => void;
   completeOnboardingV2: () => void;
   resetOnboardingV2: () => void;
+  prepareOnboardingForAccount: (userId: string) => void;
+  hydrateOnboardingForAccount: (
+    userId: string,
+    data: { completed: boolean; dismissedTooltips?: string[]; checklistComplete?: string[] },
+  ) => void;
   dismissOnboardingChecklist: () => void;
   dismissJitTooltip: (id: string) => void;
   openFullProductTour: () => void;
@@ -96,6 +104,7 @@ export const useUIStore = create<UIState>()(
       featureDiscovery: { ...DEFAULT_FEATURE_DISCOVERY },
       lastTrialBannerDismissalDate: null,
       onboardingV2Complete: false,
+      onboardingOwnerId: null,
       onboardingChecklistDismissed: false,
       dismissedJitTooltips: [],
       showFullProductTour: false,
@@ -132,6 +141,47 @@ export const useUIStore = create<UIState>()(
           onboardingV2Complete: false,
           onboardingChecklistDismissed: false,
           dismissedJitTooltips: [],
+        }),
+      prepareOnboardingForAccount: (userId) =>
+        set((state) => {
+          if (state.onboardingOwnerId === userId) return state;
+          return {
+            onboardingOwnerId: userId,
+            onboardingComplete: false,
+            setupWizardComplete: false,
+            userProfile: null,
+            featureDiscovery: { ...DEFAULT_FEATURE_DISCOVERY },
+            onboardingV2Complete: false,
+            onboardingChecklistDismissed: false,
+            dismissedJitTooltips: [],
+            showFullProductTour: false,
+          };
+        }),
+      hydrateOnboardingForAccount: (userId, data) =>
+        set((state) => {
+          const sameOwner = state.onboardingOwnerId === userId;
+          return {
+            onboardingOwnerId: userId,
+            onboardingV2Complete: data.completed,
+            // Dismissal writes are currently local-first. For the same account,
+            // merge the server snapshot instead of erasing a newer local choice.
+            onboardingChecklistDismissed:
+              state.onboardingChecklistDismissed || (data.checklistComplete?.includes('dismissed') ?? false),
+            dismissedJitTooltips: Array.from(
+              new Set([...(sameOwner ? state.dismissedJitTooltips : []), ...(data.dismissedTooltips ?? [])]),
+            ),
+            // If an old browser-wide value belongs to another account, clear the
+            // legacy completion state while hydrating the new owner.
+            ...(!sameOwner
+              ? {
+                  onboardingComplete: false,
+                  setupWizardComplete: false,
+                  userProfile: null,
+                  featureDiscovery: { ...DEFAULT_FEATURE_DISCOVERY },
+                  showFullProductTour: false,
+                }
+              : {}),
+          };
         }),
       dismissOnboardingChecklist: () => set({ onboardingChecklistDismissed: true }),
       dismissJitTooltip: (id) =>
