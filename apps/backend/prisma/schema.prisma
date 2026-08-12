@@ -798,8 +798,10 @@ model EmailDelivery {
   @@unique([userId, eventKey])
   @@index([userId, createdAt])
   @@index([status, createdAt])
+  @@index([status, retryAt, attemptCount])
   @@index([type])
   @@index([campaignId])
+  @@index([provider, providerMessageId])
 }
 
 model NewsletterSubscriber {
