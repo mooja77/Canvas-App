@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import OnboardingFlow from './OnboardingFlow';
 
@@ -51,6 +51,11 @@ vi.mock('./Screen2_TemplateGallery', () => ({
 }));
 
 describe('OnboardingFlow', () => {
+  function LocationProbe() {
+    const location = useLocation();
+    return <output data-testid="location">{location.pathname}</output>;
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.createCanvas.mockResolvedValue({ id: 'canvas-1' });
@@ -63,6 +68,7 @@ describe('OnboardingFlow', () => {
     render(
       <MemoryRouter>
         <OnboardingFlow onClose={mocks.onClose} />
+        <LocationProbe />
       </MemoryRouter>,
     );
 
@@ -76,6 +82,7 @@ describe('OnboardingFlow', () => {
     render(
       <MemoryRouter>
         <OnboardingFlow onClose={mocks.onClose} />
+        <LocationProbe />
       </MemoryRouter>,
     );
 
@@ -86,6 +93,7 @@ describe('OnboardingFlow', () => {
     expect(mocks.openCanvas).toHaveBeenCalledWith('canvas-1');
     expect(mocks.markComplete).toHaveBeenCalledTimes(1);
     expect(mocks.onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/canvas/canvas-1'));
   });
 
   it('persists an intentional skip as a completed onboarding decision', async () => {
@@ -105,4 +113,3 @@ describe('OnboardingFlow', () => {
     expect(mocks.onClose).toHaveBeenCalledTimes(1);
   });
 });
-
