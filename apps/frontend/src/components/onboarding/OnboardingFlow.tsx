@@ -90,7 +90,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
           await openCanvas(blankCanvas.id);
           await finish('completed');
           toast.success('Blank canvas ready — add a transcript when you are ready.', { duration: 5000 });
-          navigate('/canvas');
+          navigate(`/canvas/${blankCanvas.id}`);
           return;
         }
 
@@ -110,7 +110,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
         // they've made it onto a seeded canvas).
         await finish('completed');
         toast.success('Canvas ready — try highlighting any sentence to add a code.', { duration: 5000 });
-        navigate('/canvas');
+        navigate(`/canvas/${newCanvas.id}`);
       } catch (err: unknown) {
         const message =
           err && typeof err === 'object' && 'response' in err

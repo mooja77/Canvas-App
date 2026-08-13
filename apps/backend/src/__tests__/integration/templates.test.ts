@@ -58,6 +58,9 @@ function createApp() {
   const app = express();
   app.use(express.json({ limit: '1mb' }));
   app.use('/api', auth, templateRoutes);
+  // Mirror the production collision: this generic canvas-detail route must
+  // remain after /canvas/templates or it interprets "templates" as an id.
+  app.get('/api/canvas/:canvasId', (_req, res) => res.status(404).json({ error: 'Canvas not found' }));
   app.use(errorHandler);
   return app;
 }

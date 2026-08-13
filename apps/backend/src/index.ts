@@ -361,6 +361,10 @@ v1Router.use(billingRoutes);
 // finding #7 — the frontend half (VITE_API_URL) was fixed in Sprint 0.
 v1Router.use(eventsRoutes);
 
+// Template URLs sit below /canvas/templates. Register them before the generic
+// /canvas/:canvasId route so Express does not treat "templates" as a canvas id.
+v1Router.use(auth, auditLog, templateRoutes);
+
 // Protected canvas routes
 v1Router.use(auth, viewerWriteGuard, auditLog, canvasRoutes);
 
@@ -385,9 +389,6 @@ v1Router.use(auth, viewerWriteGuard, auditLog, documentRoutes);
 
 // Protected training center routes
 v1Router.use(auth, viewerWriteGuard, auditLog, trainingRoutes);
-
-// Protected template + onboarding routes
-v1Router.use(auth, auditLog, templateRoutes);
 
 // Protected audit-trail routes (Sprint E user-facing endpoint)
 v1Router.use(auth, auditLog, auditRoutes);
