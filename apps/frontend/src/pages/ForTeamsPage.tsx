@@ -6,8 +6,6 @@ import PageShell from '../components/marketing/PageShell';
 import Eyebrow from '../components/marketing/Eyebrow';
 import DisplayHeading from '../components/marketing/DisplayHeading';
 import HairlineRule from '../components/marketing/HairlineRule';
-import PullQuote from '../components/marketing/PullQuote';
-import LogoWall from '../components/marketing/LogoWall';
 import FAQ from '../components/marketing/FAQ';
 import CTAStripe from '../components/marketing/CTAStripe';
 
@@ -16,8 +14,8 @@ import CTAStripe from '../components/marketing/CTAStripe';
  *
  * Spec: docs/refresh/06-pages/05-for-teams.md.
  * Sells the Team plan ($39/seat/mo): shared codebooks, intercoder κ,
- * audit trail. Logo wall starts empty/sparse — populated as permissions
- * land per docs/refresh/10 R12.
+ * audit trail. Carries no logo wall or testimonial: both previously showed
+ * anonymised placeholders that read as customer evidence we do not have.
  */
 export default function ForTeamsPage() {
   const navigate = useNavigate();
@@ -63,18 +61,9 @@ export default function ForTeamsPage() {
         </div>
       </section>
 
-      {/* Logo wall — empty until permissions land per docs/refresh/10 R12 */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
-        <LogoWall
-          eyebrow="Used by research groups at"
-          items={[
-            { name: 'Add your lab' },
-            { name: 'Anonymized PI lab' },
-            { name: 'Anonymized methods course' },
-            { name: 'Anonymized health-research group' },
-          ]}
-        />
-      </section>
+      {/* No logo wall and no pull quote: "Anonymized PI lab" and a
+          "representative quote" present as customer evidence we do not have.
+          Restore only with named, attributed permission. */}
 
       {/* Three concerns */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
@@ -105,13 +94,6 @@ export default function ForTeamsPage() {
             ctaHref="/trust"
           />
         </div>
-      </section>
-
-      {/* Pull quote — placeholder until real outreach yes lands */}
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
-        <PullQuote attribution={<span>Postdoc, public-health lab · representative quote</span>}>
-          We finally had a shared codebook our PIs trusted. That's not a small thing.
-        </PullQuote>
       </section>
 
       {/* Feature grid */}
@@ -174,7 +156,7 @@ export default function ForTeamsPage() {
             {
               question: 'Can students on a methods course use Team?',
               answer:
-                'Yes. The .edu discount applies — 40% off per seat. We routinely run Team plans for methods courses with 10–25 students; the per-seat structure is well-suited because students rotate in and out.',
+                'Yes. The .edu discount applies — 40% off per seat. The per-seat structure suits a methods course well, because seats can be paused and reassigned as students rotate in and out.',
             },
             {
               question: 'How is intercoder κ calculated?',
@@ -201,7 +183,8 @@ export default function ForTeamsPage() {
               question: 'What if we need SSO?',
               answer: (
                 <>
-                  SSO + SCIM lives on the Institutions plan — see{' '}
+                  SAML SSO is on the roadmap, not shipped — today it is email and password or Google sign-in. If SSO is
+                  a requirement for you, talk to the research desk about timing before you commit — see{' '}
                   <Link
                     className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
                     to="/for-institutions"

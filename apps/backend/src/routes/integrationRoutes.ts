@@ -1,16 +1,30 @@
+/**
+ * Integration credential routes — provider connections are RETIRED.
+ *
+ * There was never a real OAuth flow here. POST /integrations/connect accepted
+ * an access token supplied in the request body, encrypted it and stored it;
+ * nothing ever read it back out, and no provider integration was ever built.
+ * That endpoint is gone (410) and no new credentials can be created.
+ *
+ * List and delete deliberately REMAIN, and deliberately are NOT plan-gated.
+ * Earlier builds may have written encrypted provider tokens into the
+ * Integration table while the capability was advertised on the Team plan.
+ * Those rows belong to the user: they must be able to see that something is
+ * held and to delete it, whatever plan they are on today. Gating these behind
+ * checkIntegrationsAccess() — now false on every plan — would strand a user's
+ * own credentials with no route to revoke them.
+ */
+
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { checkIntegrationsAccess } from '../middleware/planLimits.js';
 import { validateParams, integrationIdParam } from '../middleware/validation.js';
-import { encryptApiKey } from '../utils/encryption.js';
+import { logAudit } from '../middleware/auditLog.js';
+import { sha256 } from '../utils/hashing.js';
 
 export const integrationRoutes = Router();
 
-// All integration routes require integration access
-integrationRoutes.use('/integrations', checkIntegrationsAccess());
-
-// GET /api/integrations — List user's integrations
+// GET /api/integrations — list credentials still held for this user.
 integrationRoutes.get('/integrations', async (req, res, next) => {
   try {
     const userId = req.userId;
@@ -25,81 +39,28 @@ integrationRoutes.get('/integrations', async (req, res, next) => {
         metadata: true,
         expiresAt: true,
         createdAt: true,
-        // Do NOT return accessToken or refreshToken
+        // Never select accessToken / refreshToken or their IV/tag columns.
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json({ success: true, integrations });
+    res.json({ success: true, integrations, connectionsRetired: true });
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/integrations/connect — Connect integration (OAuth skeleton)
-integrationRoutes.post('/integrations/connect', async (req, res, next) => {
-  try {
-    const userId = req.userId;
-    if (!userId) throw new AppError('Email authentication required', 401);
-
-    const { provider, accessToken, refreshToken, metadata, expiresAt } = req.body;
-    if (!provider || !accessToken) {
-      throw new AppError('Provider and accessToken are required', 400);
-    }
-
-    const validProviders = ['zoom', 'slack', 'qualtrics'];
-    if (!validProviders.includes(provider)) {
-      throw new AppError(`Invalid provider. Must be one of: ${validProviders.join(', ')}`, 400);
-    }
-
-    // Encrypt the OAuth tokens at rest — they grant access to the user's
-    // Zoom / Slack / Qualtrics accounts on their behalf. A DB dump should
-    // not be enough to impersonate them.
-    const access = encryptApiKey(accessToken);
-    const refresh = refreshToken ? encryptApiKey(refreshToken) : null;
-
-    const tokenData = {
-      accessToken: access.encrypted,
-      accessTokenIv: access.iv,
-      accessTokenTag: access.tag,
-      refreshToken: refresh?.encrypted ?? null,
-      refreshTokenIv: refresh?.iv ?? null,
-      refreshTokenTag: refresh?.tag ?? null,
-    };
-
-    const integration = await prisma.integration.upsert({
-      where: { userId_provider: { userId, provider } },
-      update: {
-        ...tokenData,
-        metadata: JSON.stringify(metadata || {}),
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-      },
-      create: {
-        userId,
-        provider,
-        ...tokenData,
-        metadata: JSON.stringify(metadata || {}),
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-      },
-    });
-
-    res.json({
-      success: true,
-      integration: {
-        id: integration.id,
-        userId: integration.userId,
-        provider: integration.provider,
-        metadata: integration.metadata,
-        expiresAt: integration.expiresAt,
-        createdAt: integration.createdAt,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
+// POST /api/integrations/connect — withdrawn.
+integrationRoutes.post('/integrations/connect', (_req, res) => {
+  res.status(410).json({
+    success: false,
+    error:
+      'Provider connections have been retired. QualCanvas does not connect to Zoom, Slack or Qualtrics; import transcripts as files instead.',
+    code: 'INTEGRATION_CONNECT_RETIRED',
+  });
 });
 
-// DELETE /api/integrations/:id — Disconnect integration
+// DELETE /api/integrations/:id — revoke and erase a stored credential.
 integrationRoutes.delete('/integrations/:id', validateParams(integrationIdParam), async (req, res, next) => {
   try {
     const userId = req.userId;
@@ -110,6 +71,18 @@ integrationRoutes.delete('/integrations/:id', validateParams(integrationIdParam)
     if (integration.userId !== userId) throw new AppError('Access denied', 403);
 
     await prisma.integration.delete({ where: { id: req.params.id } });
+
+    void logAudit({
+      action: 'integration.delete',
+      resource: 'integration',
+      resourceId: req.params.id,
+      actorType: 'researcher',
+      actorId: userId,
+      ip: sha256(req.ip || req.socket.remoteAddress || 'unknown'),
+      method: 'DELETE',
+      path: req.originalUrl,
+      meta: JSON.stringify({ provider: integration.provider }),
+    });
 
     res.json({ success: true });
   } catch (err) {

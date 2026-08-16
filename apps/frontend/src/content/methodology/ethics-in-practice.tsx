@@ -220,9 +220,11 @@ export default function EthicsInPracticeChapter() {
         <h2>In QualCanvas</h2>
 
         <p>
-          QualCanvas records consent state per participant, retention windows per dataset, and a per-action audit log of
-          AI usage (provider, model, feature, token count). The DPA template at <a href="/trust/ai">trust/ai</a> is
-          available for download and review by institutional legal or research-governance teams.
+          QualCanvas records consent state per participant, a data-retention date per project, and a per-action audit
+          log of AI usage (provider, model, feature, token count). The retention date is a record of your intention for
+          the reviewer to see — it documents the decision, it does not delete anything for you when it arrives. The DPA
+          template at <a href="/trust/ai">trust/ai</a> is available for download and review by institutional legal or
+          research-governance teams.
         </p>
 
         <p>

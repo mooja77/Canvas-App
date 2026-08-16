@@ -194,7 +194,7 @@ export default function LandingPage() {
           <BentoCell span={1}>
             <FeatureContent
               title="Ethics & consent"
-              body="Track consent, set retention windows, anonymize fields. The IRB audit trail is already running."
+              body="Track consent, record a retention date, anonymize fields. The IRB audit trail is already running."
             />
           </BentoCell>
           <BentoCell span={1}>

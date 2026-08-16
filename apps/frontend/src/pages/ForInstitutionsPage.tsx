@@ -6,8 +6,6 @@ import PageShell from '../components/marketing/PageShell';
 import Eyebrow from '../components/marketing/Eyebrow';
 import DisplayHeading from '../components/marketing/DisplayHeading';
 import HairlineRule from '../components/marketing/HairlineRule';
-import PullQuote from '../components/marketing/PullQuote';
-import LogoWall from '../components/marketing/LogoWall';
 import FAQ from '../components/marketing/FAQ';
 import CTAStripe from '../components/marketing/CTAStripe';
 
@@ -24,7 +22,7 @@ const RESEARCH_DESK = 'mailto:research@qualcanvas.com?subject=Institution%20plan
 export default function ForInstitutionsPage() {
   usePageMeta(
     'For institutions — QualCanvas',
-    'SSO + SCIM, DPA, BAA, custom retention, EU residency, dedicated research desk. Department-wide qualitative research, procurement-ready.',
+    'DPA, audit logging, consent tracking and anonymization tools, with a dedicated research desk. Department-wide qualitative research, procurement-ready.',
   );
 
   useEffect(() => {
@@ -50,8 +48,8 @@ export default function ForInstitutionsPage() {
             Department-wide qualitative research, without forking your IT review.
           </DisplayHeading>
           <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl leading-relaxed mb-8">
-            SSO and SCIM, custom retention windows, DPA, BAA, dedicated research-desk contact. Procurement-ready,
-            IRB-friendly.
+            Audit logging, consent tracking, anonymization tools, a DPA your legal team can review up front, and a
+            dedicated research-desk contact. Procurement-ready, IRB-friendly.
           </p>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <a
@@ -71,18 +69,10 @@ export default function ForInstitutionsPage() {
         </div>
       </section>
 
-      {/* Logo wall (placeholder until permissions) */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
-        <LogoWall
-          eyebrow="Departments using QualCanvas"
-          items={[
-            { name: 'Add your institution' },
-            { name: 'Anonymized university' },
-            { name: 'Anonymized faculty' },
-            { name: 'Anonymized research institute' },
-          ]}
-        />
-      </section>
+      {/* No logo wall and no pull quote here by design. Anonymised institution
+          names and "representative" quotes read as customer evidence, and we
+          have no named institution that has agreed to be cited. They go back
+          only with a real, attributed permission. */}
 
       {/* Three concerns — Dana's checklist */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
@@ -96,31 +86,24 @@ export default function ForInstitutionsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <ConcernCard
             heading="Data residency"
-            body="EU and US storage options. Storage region is named in the DPA. Weekly backups with monthly restore drills."
+            body="Application and database run in Railway's US East region today; an EU region is on the roadmap. The storage region is named in the DPA. Weekly backups with monthly restore drills."
             ctaText="Read posture →"
             ctaHref="/trust"
           />
           <ConcernCard
             heading="IRB compliance"
-            body="Audit trails, consent tracking, retention windows, anonymization tools. DPA and BAA available on request."
+            body="Audit trails, consent tracking, transcript anonymization tools, and a research-ethics panel in the app. DPA available on request."
             ctaText="Request DPA →"
             ctaHref="mailto:legal@qualcanvas.com?subject=DPA%20request"
             external
           />
           <ConcernCard
             heading="License administration"
-            body="SSO via SAML or OIDC; SCIM auto-provisioning; named-seat or unlimited. Net-30 invoicing on annual."
+            body="Named-seat or unlimited seats, managed by an owner account. Google sign-in today; SAML SSO is on the roadmap. Net-30 invoicing on annual."
             ctaText="See plan options →"
             ctaHref="/pricing"
           />
         </div>
-      </section>
-
-      {/* Pull quote */}
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
-        <PullQuote attribution={<span>Methods professor · representative quote</span>}>
-          QualCanvas was the only tool my IT director didn't immediately reject. We had the DPA signed in a week.
-        </PullQuote>
       </section>
 
       {/* Admin-feature grid */}
@@ -135,28 +118,28 @@ export default function ForInstitutionsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
             {
-              title: 'SSO + SCIM',
-              body: 'SAML 2.0 or OIDC for sign-in. SCIM 2.0 for auto-provisioning. Maps department roles to QualCanvas project roles.',
-            },
-            {
               title: 'Audit logs',
-              body: 'Every action with timestamp + user + IP. Configurable retention (default 90 days; custom up to 7 years).',
+              body: 'Every action recorded with timestamp, actor and IP, readable from the ethics panel inside the app.',
             },
             {
-              title: 'DPA + BAA',
-              body: 'Standard Contractual Clauses Module 2 (2021) DPA. HIPAA BAA available for institutions with PHI workflows.',
+              title: 'Consent tracking',
+              body: 'Consent records per participant with type, status and date, kept alongside the transcripts they cover.',
             },
             {
-              title: 'Custom retention',
-              body: 'Per-project retention windows from 30 days to 7 years. Auto-purge on schedule, with a 14-day undo grace.',
+              title: 'Anonymization',
+              body: 'Transcript anonymization tools that record what was changed, so the de-identified version stays auditable.',
             },
             {
-              title: 'EU residency',
-              body: 'Storage in eu-west-1 with EU sub-processors only. Available on the Institutions plan; documented in DPA.',
+              title: 'Project interchange',
+              body: 'REFI-QDA (.qdpx) import and export, so a department can move projects in from NVivo or ATLAS.ti — and back out again.',
             },
             {
-              title: 'AI use policy',
-              body: 'No transcript content used for model training. Per-project AI disable switch for zero-AI studies. See /trust/ai.',
+              title: 'DPA',
+              body: 'Standard Contractual Clauses Module 2 (2021). Sent as a draft before the first call so legal can review in parallel.',
+            },
+            {
+              title: 'On the roadmap',
+              body: 'SAML SSO, MFA and an EU storage region are planned, not shipped. Dates and current status on the trust page.',
             },
           ].map((f) => (
             <div
@@ -181,14 +164,15 @@ export default function ForInstitutionsPage() {
             {
               question: 'Is QualCanvas FERPA-compliant?',
               answer:
-                'QualCanvas can be configured to support FERPA-compliant workflows when used per the documented controls — audit logging on, retention windows set, AI disabled if your protocol requires it. The Institutions plan includes a DPA that names FERPA-relevant obligations.',
+                'QualCanvas provides controls that support FERPA-aligned workflows — audit logging, consent records, and transcript anonymization — and the Institutions DPA names FERPA-relevant obligations. We do not claim FERPA compliance as a certification: compliance depends on how your institution configures and uses the tool, and some controls a FERPA programme may expect, such as enforced retention windows, are not built yet. Send us your checklist and we will answer it line by line.',
             },
             {
               question: 'Where is our data stored?',
               answer: (
                 <>
-                  US East by default (Railway). EU residency (eu-west-1) available on the Institutions plan and named in
-                  the DPA. Full posture on{' '}
+                  US East (Railway) — that is the only region today, and it is named in the DPA. An EU region is on the
+                  roadmap but is not available yet; EU customers should work from the DPA and SCCs in the meantime. Full
+                  posture on{' '}
                   <Link
                     className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
                     to="/trust"
@@ -207,12 +191,12 @@ export default function ForInstitutionsPage() {
             {
               question: 'Do you support SSO and SCIM?',
               answer:
-                'Yes — on the Institutions plan. SAML 2.0 and OIDC for sign-in. SCIM 2.0 for user provisioning and deprovisioning. Standard identity-provider integrations (Okta, Microsoft Entra, Google Workspace).',
+                'Not yet, and we would rather say so before a procurement review than during one. Sign-in today is email and password or Google OAuth. SAML SSO is on the roadmap; SCIM provisioning is not built and has no date. If SSO is a hard requirement for your IT review, tell the research desk on the first call and we will be straight with you about timing rather than take the order.',
             },
             {
               question: 'Can we configure data retention?',
               answer:
-                'Yes. Per-project retention windows from 30 days to 7 years. Auto-purge runs on schedule with a 14-day undo grace. Useful for both IRB-mandated retention and FERPA-mandated deletion.',
+                'Partly, and it is worth being precise about which part. You can record a data-retention date on each project, which is stored and shown in the ethics panel for your reviewer — but it documents the decision rather than enforcing it. Scheduled auto-purge is not built: nothing is deleted automatically when that date arrives. Deletion on request is handled by the research desk and covered in the DPA. If your protocol needs enforced deletion, raise it on the first call so we can tell you honestly whether we can meet it.',
             },
             {
               question: 'What about AI training on participant transcripts?',
@@ -225,7 +209,9 @@ export default function ForInstitutionsPage() {
                   >
                     /trust/ai
                   </Link>
-                  . If your protocol requires zero-AI, the Institutions plan supports a per-project AI disable switch.
+                  . AI features are opt-in per action rather than always-on — nothing is sent to a model unless someone
+                  asks for it — but a per-project switch that hard-disables AI is not built yet. If your protocol
+                  requires an enforced zero-AI setting, raise it with the research desk.
                 </>
               ),
             },

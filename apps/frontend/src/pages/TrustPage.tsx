@@ -92,8 +92,8 @@ export default function TrustPage() {
             <strong>File uploads:</strong> Cloudflare R2 (S3-compatible), same Cloudflare account.
           </li>
           <li>
-            <strong>EU region:</strong> on the roadmap (target Q2 2026). Until then, EU customers should consult our DPA
-            + SCCs.
+            <strong>EU region:</strong> on the roadmap, not yet scheduled — an earlier Q2 2026 target was missed. Until
+            it ships, EU customers should consult our DPA + SCCs.
           </li>
         </ul>
 
@@ -216,7 +216,7 @@ export default function TrustPage() {
 const SUB_PROCESSORS = [
   { vendor: 'Railway', purpose: 'Application + Postgres hosting', location: 'US East', dpa: 'Signed' },
   { vendor: 'Cloudflare', purpose: 'CDN, edge, DNS, R2 storage', location: 'Global edge', dpa: 'Signed' },
-  { vendor: 'Stripe', purpose: 'Payment processing', location: 'US', dpa: 'BAA-eligible' },
+  { vendor: 'Stripe', purpose: 'Payment processing', location: 'US', dpa: 'Stripe DPA (standard terms)' },
   { vendor: 'Resend', purpose: 'Transactional email', location: 'US', dpa: 'Signed' },
   { vendor: 'Google', purpose: 'OAuth identity', location: 'Global', dpa: 'OAuth only — no data sharing' },
   {

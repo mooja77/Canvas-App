@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { billingApi } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -328,10 +328,10 @@ export default function PricingPage() {
             audience="For departments and faculties"
             features={[
               'Everything in Team',
-              'SSO + SCIM',
-              'DPA + BAA',
-              'Custom retention',
-              'EU residency',
+              'DPA + SCCs Module 2',
+              'Audit log + consent records',
+              'Transcript anonymization',
+              'Invoicing + wire transfer',
               'Research desk',
             ]}
             cta={
@@ -399,17 +399,15 @@ export default function PricingPage() {
               rows: [
                 { feature: 'Share codes', values: ['—', '2', '5', 'Unlimited', 'Unlimited'] },
                 { feature: 'Team management', values: ['—', '—', '—', '✓', '✓'] },
-                { feature: 'SSO + SCIM', values: ['—', '—', '—', '—', '✓'] },
               ],
             },
             {
               heading: 'Ethics + compliance',
               rows: [
                 { feature: 'Ethics + consent tracking', values: ['—', '✓', '✓', '✓', '✓'] },
-                { feature: 'Audit log', values: ['90 days', '90 days', '90 days', '90 days', 'Custom'] },
+                { feature: 'Audit log', values: ['✓', '✓', '✓', '✓', '✓'] },
+                { feature: 'Transcript anonymization', values: ['—', '✓', '✓', '✓', '✓'] },
                 { feature: 'DPA available', values: ['—', '✓', '✓', '✓', '✓'] },
-                { feature: 'BAA available', values: ['—', '—', '—', '—', '✓'] },
-                { feature: 'EU residency option', values: ['—', '—', '—', '—', '✓'] },
               ],
             },
             {
@@ -522,9 +520,17 @@ export default function PricingPage() {
               question: 'Do you offer institutional licensing?',
               answer: (
                 <>
-                  Yes — see the Institutions card above or book a 20-minute call with our research desk. SSO + SCIM,
-                  DPA, BAA, custom retention, EU residency. We'll send a draft DPA before the call if you want to review
-                  it first.
+                  Yes — see the Institutions card above or book a 20-minute call with our research desk. Volume pricing,
+                  invoicing and wire transfer, a DPA with SCCs Module 2, and a named contact. We'll send a draft DPA
+                  before the call if you want to review it first. SAML SSO and an EU storage region are on the roadmap
+                  rather than available today — the{' '}
+                  <Link
+                    className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
+                    to="/trust"
+                  >
+                    trust page
+                  </Link>{' '}
+                  has the current status.
                 </>
               ),
             },
