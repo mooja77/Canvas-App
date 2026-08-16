@@ -402,7 +402,7 @@ describe('Upload and QDPX integration tests', () => {
 
   // ─── 13. POST /canvas/:id/import/qdpx creates canvas from QDPX ───
   it('POST /canvas/:id/import/qdpx imports QDPX file', async () => {
-    mockImportQdpx.mockResolvedValue({ codes: 5, sources: 3, codings: 12 });
+    mockImportQdpx.mockResolvedValue({ codes: 5, sources: 3, codings: 12, unsupported: [], skippedCodings: 0 });
 
     // Proper ZIP local file header signature so magic-bytes validation passes.
     const zipFixture = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from(' mock qdpx')]);
@@ -417,6 +417,29 @@ describe('Upload and QDPX integration tests', () => {
     expect(res.body.sources).toBe(3);
     expect(res.body.codings).toBe(12);
     expect(mockImportQdpx).toHaveBeenCalledWith(canvasId, expect.any(Buffer));
+  });
+
+  // ─── 13b. Import discloses constructs it could not bring across ───
+  it('POST /canvas/:id/import/qdpx reports unsupported constructs and skipped codings', async () => {
+    mockImportQdpx.mockResolvedValue({
+      codes: 2,
+      sources: 1,
+      codings: 4,
+      unsupported: ['3 cases', '1 PDF source'],
+      skippedCodings: 2,
+    });
+
+    const zipFixture = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from(' mock qdpx')]);
+    const res = await request(app)
+      .post(`/api/canvas/${canvasId}/import/qdpx`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .attach('file', zipFixture, { filename: 'export.qdpx' });
+
+    expect(res.status).toBe(200);
+    // The researcher must be told, in the success response, what did not survive.
+    expect(res.body.message).toContain('not imported: 3 cases, 1 PDF source');
+    expect(res.body.message).toContain('2 coding(s) skipped');
+    expect(res.body.unsupported).toEqual(['3 cases', '1 PDF source']);
   });
 
   // ─── 14. POST /canvas/:id/import/qdpx with no file returns 400 ───

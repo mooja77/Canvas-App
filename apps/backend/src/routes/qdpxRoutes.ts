@@ -85,9 +85,21 @@ qdpxRoutes.post(
 
       const result = await importQdpx(req.params.id, req.file.buffer);
 
+      // Disclose what was dropped. An import that reports only what it created
+      // reads as lossless, and the researcher finds out otherwise much later.
+      const notes: string[] = [];
+      if (result.unsupported.length > 0) {
+        notes.push(`not imported: ${result.unsupported.join(', ')}`);
+      }
+      if (result.skippedCodings > 0) {
+        notes.push(`${result.skippedCodings} coding(s) skipped — unresolved code or source`);
+      }
+
+      const summary = `Imported ${result.codes} codes, ${result.sources} sources, ${result.codings} codings`;
+
       res.json({
         success: true,
-        message: `Imported ${result.codes} codes, ${result.sources} sources, ${result.codings} codings`,
+        message: notes.length > 0 ? `${summary}. Note — ${notes.join('; ')}.` : summary,
         ...result,
       });
     } catch (err) {

@@ -4,9 +4,9 @@
  */
 
 import yauzl from 'yauzl';
-import { XMLParser } from 'fast-xml-parser';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { parseQdpxProject, flattenCodesForInsert, describeLosses } from './qdpxParse.js';
 
 // Cap decompressed size to limit zip-bomb impact. 100MB is well above any
 // legitimate QDPX project XML while stopping 1000:1 compression ratio attacks
@@ -15,43 +15,35 @@ const MAX_ENTRY_BYTES = 100 * 1024 * 1024;
 // Also cap the total decompressed bytes across all entries we inspect.
 const MAX_TOTAL_BYTES = 200 * 1024 * 1024;
 
-interface QdpxCode {
-  '@_guid': string;
-  '@_name': string;
-  '@_color'?: string;
+/** Text-bearing entries we will read alongside the project XML. */
+const TEXT_ENTRY_RE = /\.(txt|qde|xml)$/i;
+
+interface QdpxArchive {
+  projectXml: string;
+  /** Lower-cased basename to contents, for resolving internal:// references. */
+  textFiles: Map<string, string>;
 }
 
-interface QdpxTextSource {
-  '@_guid': string;
-  '@_name': string;
-  '@_plainTextContent'?: string;
-}
-
-interface QdpxTextSelection {
-  '@_sourceGUID': string;
-  '@_startPosition': string;
-  '@_endPosition': string;
-}
-
-interface QdpxCoding {
-  '@_guid': string;
-  '@_codeGUID': string;
-  TextSelection?: QdpxTextSelection | QdpxTextSelection[];
-}
-
-function extractZipEntry(zipBuffer: Buffer, entryName: string): Promise<string> {
+/**
+ * Read a .qdpx archive: the project XML plus any plain-text source files it
+ * may reference. Size caps are enforced on every entry — a QDPX is a ZIP from
+ * an untrusted upload, and the classic attack is a small archive declaring
+ * enormous decompressed entries.
+ */
+function readQdpxArchive(zipBuffer: Buffer): Promise<QdpxArchive> {
   return new Promise((resolve, reject) => {
     yauzl.fromBuffer(zipBuffer, { lazyEntries: true }, (err, zipfile) => {
       if (err || !zipfile) return reject(err || new Error('Failed to open ZIP'));
 
-      let found = false;
+      let projectXml: string | null = null;
+      const textFiles = new Map<string, string>();
       let totalBytes = 0;
+
       zipfile.readEntry();
 
       zipfile.on('entry', (entry) => {
-        // Short-circuit based on the declared uncompressed size. yauzl exposes
-        // this in the central directory header so we can reject without ever
-        // decompressing the entry's stream.
+        // Short-circuit on the declared uncompressed size from the central
+        // directory, so an oversized entry is rejected without decompressing.
         const declaredSize = Number((entry as unknown as { uncompressedSize?: bigint | number }).uncompressedSize ?? 0);
         if (declaredSize > MAX_ENTRY_BYTES) {
           return reject(new AppError('QDPX archive entry exceeds size limit', 400));
@@ -60,142 +52,180 @@ function extractZipEntry(zipBuffer: Buffer, entryName: string): Promise<string> 
           return reject(new AppError('QDPX archive exceeds total size limit', 400));
         }
 
-        if (entry.fileName.endsWith('.qde') || entry.fileName.endsWith('.xml') || entry.fileName === entryName) {
-          found = true;
-          zipfile.openReadStream(entry, (err2, readStream) => {
-            if (err2 || !readStream) return reject(err2 || new Error('Failed to read entry'));
-            const chunks: Buffer[] = [];
-            let entryBytes = 0;
-            readStream.on('data', (chunk: Buffer) => {
-              entryBytes += chunk.length;
-              // Defense in depth: even if declaredSize was forged, stop reading
-              // once actual bytes exceed the limit.
-              if (entryBytes > MAX_ENTRY_BYTES) {
-                readStream.destroy();
-                reject(new AppError('QDPX archive entry exceeds size limit', 400));
-                return;
-              }
-              chunks.push(chunk);
-            });
-            readStream.on('end', () => {
-              totalBytes += entryBytes;
-              resolve(Buffer.concat(chunks).toString('utf-8'));
-            });
-            readStream.on('error', reject);
-          });
-        } else {
+        const isProject = entry.fileName.endsWith('.qde') || entry.fileName.endsWith('.xml');
+        if (!TEXT_ENTRY_RE.test(entry.fileName)) {
+          // Binary sources (docx/pdf/audio/video) are not imported; count their
+          // size toward the total and move on without decompressing.
           totalBytes += declaredSize;
-          zipfile.readEntry();
+          return zipfile.readEntry();
         }
+
+        zipfile.openReadStream(entry, (err2, readStream) => {
+          if (err2 || !readStream) return reject(err2 || new Error('Failed to read entry'));
+          const chunks: Buffer[] = [];
+          let entryBytes = 0;
+
+          readStream.on('data', (chunk: Buffer) => {
+            entryBytes += chunk.length;
+            // Defense in depth: even if declaredSize was forged in the header,
+            // stop once actual decompressed bytes exceed the limit.
+            if (entryBytes > MAX_ENTRY_BYTES) {
+              readStream.destroy();
+              reject(new AppError('QDPX archive entry exceeds size limit', 400));
+              return;
+            }
+            chunks.push(chunk);
+          });
+
+          readStream.on('end', () => {
+            totalBytes += entryBytes;
+            const content = Buffer.concat(chunks).toString('utf-8');
+            if (isProject && projectXml === null) projectXml = content;
+            else if (!isProject) textFiles.set(basename(entry.fileName), content);
+            zipfile.readEntry();
+          });
+
+          readStream.on('error', reject);
+        });
       });
 
       zipfile.on('end', () => {
-        if (!found) reject(new AppError('No project XML found in QDPX file', 400));
+        if (projectXml === null) return reject(new AppError('No project XML found in QDPX file', 400));
+        resolve({ projectXml, textFiles });
       });
       zipfile.on('error', reject);
     });
   });
 }
 
-function toArray<T>(val: T | T[] | undefined): T[] {
-  if (!val) return [];
-  return Array.isArray(val) ? val : [val];
+function basename(p: string): string {
+  return p.split(/[\\/]/).pop()?.toLowerCase() ?? p.toLowerCase();
 }
 
-export async function importQdpx(
-  canvasId: string,
-  zipBuffer: Buffer,
-): Promise<{ codes: number; sources: number; codings: number }> {
+/**
+ * Resolve a source's text. Conformant files may inline it in
+ * <PlainTextContent>; NVivo and others instead point at a separate archive
+ * entry with plainTextPath="internal://<name>". Match on basename, since
+ * implementations disagree about the folder ("sources/", "Sources/", none).
+ */
+function resolveSourceText(inline: string, plainTextPath: string | undefined, textFiles: Map<string, string>): string {
+  if (inline) return inline;
+  if (!plainTextPath) return '';
+  return textFiles.get(basename(plainTextPath.replace(/^internal:\/\//i, ''))) ?? '';
+}
+
+export interface QdpxImportResult {
+  codes: number;
+  sources: number;
+  codings: number;
+  /** Constructs present in the file that QualCanvas cannot represent. */
+  unsupported: string[];
+  /** Codings whose code or source could not be resolved, so were not created. */
+  skippedCodings: number;
+}
+
+export async function importQdpx(canvasId: string, zipBuffer: Buffer): Promise<QdpxImportResult> {
   // Verify canvas exists
   const canvas = await prisma.codingCanvas.findUnique({ where: { id: canvasId } });
   if (!canvas) throw new AppError('Canvas not found', 404);
 
-  // Extract and parse XML
-  const xmlContent = await extractZipEntry(zipBuffer, 'project.qde');
+  const { projectXml, textFiles } = await readQdpxArchive(zipBuffer);
 
-  const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: '@_',
-    isArray: (name) => ['Code', 'TextSource', 'Coding', 'TextSelection'].includes(name),
-    processEntities: false, // Prevent XXE attacks
-    htmlEntities: false,
-  });
+  let project;
+  try {
+    project = parseQdpxProject(projectXml);
+  } catch (err) {
+    throw new AppError(err instanceof Error ? err.message : 'Invalid QDPX project file', 400);
+  }
 
-  const parsed = parser.parse(xmlContent);
-  const project = parsed.Project || parsed['Project'];
-  if (!project) throw new AppError('Invalid QDPX: no Project element found', 400);
+  // Sources may carry their text inline or in a separate archive entry.
+  const sourceText = new Map<string, string>(
+    project.sources.map((s) => [s.guid, resolveSourceText(s.plainText, s.plainTextPath, textFiles)]),
+  );
 
-  // Extract codes
-  const codes = toArray<QdpxCode>(project.CodeBook?.Code);
-  // Extract sources
-  const sources = toArray<QdpxTextSource>(project.Sources?.TextSource);
-  // Extract codings
-  const codings = toArray<QdpxCoding>(project.Codings?.Coding);
-
-  // Map external GUIDs to internal IDs
+  // Map file GUIDs to the rows we create.
   const codeGuidMap = new Map<string, string>();
   const sourceGuidMap = new Map<string, string>();
 
-  // Create questions (codes)
-  for (const code of codes) {
+  // Codes, parents first, so each child can point at an existing parent row.
+  for (const code of flattenCodesForInsert(project.codes)) {
+    const parentQuestionId = code.parentGuid ? (codeGuidMap.get(code.parentGuid) ?? null) : null;
+
     const question = await prisma.canvasQuestion.create({
       data: {
         canvasId,
-        text: code['@_name'] || 'Imported Code',
-        color: code['@_color'] || '#3B82F6',
+        text: code.name || 'Imported Code',
+        color: code.color || '#3B82F6',
+        parentQuestionId,
       },
     });
-    codeGuidMap.set(code['@_guid'], question.id);
+    codeGuidMap.set(code.guid, question.id);
   }
 
-  // Create transcripts (sources)
-  for (const source of sources) {
+  for (const source of project.sources) {
     const transcript = await prisma.canvasTranscript.create({
       data: {
         canvasId,
-        title: source['@_name'] || 'Imported Source',
-        content: source['@_plainTextContent'] || '',
+        title: source.name || 'Imported Source',
+        content: sourceText.get(source.guid) ?? '',
         sourceType: 'qdpx-import',
       },
     });
-    sourceGuidMap.set(source['@_guid'], transcript.id);
+    sourceGuidMap.set(source.guid, transcript.id);
   }
 
-  // Create codings
   let codingCount = 0;
-  for (const coding of codings) {
-    const questionId = codeGuidMap.get(coding['@_codeGUID']);
-    if (!questionId) continue;
+  let skippedCodings = 0;
 
-    const selections = toArray<QdpxTextSelection>(coding.TextSelection);
-    for (const sel of selections) {
-      const transcriptId = sourceGuidMap.get(sel['@_sourceGUID']);
-      if (!transcriptId) continue;
+  for (const source of project.sources) {
+    const transcriptId = sourceGuidMap.get(source.guid);
+    if (!transcriptId) continue;
 
-      const startOffset = parseInt(sel['@_startPosition'], 10) || 0;
-      const endOffset = parseInt(sel['@_endPosition'], 10) || 0;
-      if (endOffset <= startOffset) continue;
+    const text = sourceText.get(source.guid) ?? '';
 
-      // Get the coded text from the transcript
-      const transcript = await prisma.canvasTranscript.findUnique({
-        where: { id: transcriptId },
-        select: { content: true },
-      });
-      const codedText = transcript?.content.slice(startOffset, endOffset) || '';
+    for (const selection of source.selections) {
+      const { startPosition, endPosition } = selection;
+      if (endPosition <= startPosition) {
+        skippedCodings += selection.codeGuids.length;
+        continue;
+      }
 
-      await prisma.canvasTextCoding.create({
-        data: {
-          canvasId,
-          transcriptId,
-          questionId,
-          startOffset,
-          endOffset,
-          codedText,
-        },
-      });
-      codingCount++;
+      // Offsets index the resolved source text. If the text could not be
+      // resolved (missing archive entry) or the range falls outside it, skip:
+      // a coding with empty codedText is worse than an honestly-reported skip.
+      const codedText = text.slice(startPosition, endPosition);
+      if (codedText === '') {
+        skippedCodings += selection.codeGuids.length;
+        continue;
+      }
+
+      for (const codeGuid of selection.codeGuids) {
+        const questionId = codeGuidMap.get(codeGuid);
+        if (!questionId) {
+          skippedCodings++;
+          continue;
+        }
+
+        await prisma.canvasTextCoding.create({
+          data: {
+            canvasId,
+            transcriptId,
+            questionId,
+            startOffset: startPosition,
+            endOffset: endPosition,
+            codedText,
+          },
+        });
+        codingCount++;
+      }
     }
   }
 
-  return { codes: codes.length, sources: sources.length, codings: codingCount };
+  return {
+    codes: project.totalCodes,
+    sources: project.sources.length,
+    codings: codingCount,
+    unsupported: describeLosses(project.unsupported),
+    skippedCodings,
+  };
 }
