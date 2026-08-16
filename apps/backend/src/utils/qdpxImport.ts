@@ -125,12 +125,11 @@ export interface QdpxImportResult {
   codings: number;
   /** Constructs present in the file that QualCanvas cannot represent. */
   unsupported: string[];
-  /** Codings whose code or source could not be resolved, so were not created. */
+  /** Codings whose code, source or text range could not be resolved. */
   skippedCodings: number;
 }
 
 export async function importQdpx(canvasId: string, zipBuffer: Buffer): Promise<QdpxImportResult> {
-  // Verify canvas exists
   const canvas = await prisma.codingCanvas.findUnique({ where: { id: canvasId } });
   if (!canvas) throw new AppError('Canvas not found', 404);
 
@@ -143,155 +142,126 @@ export async function importQdpx(canvasId: string, zipBuffer: Buffer): Promise<Q
     throw new AppError(err instanceof Error ? err.message : 'Invalid QDPX project file', 400);
   }
 
-  // Sources may carry their text inline or in a separate archive entry.
+  // Sources may carry their text inline or in a separate archive entry
+  // (plainTextPath). Resolve before validating sizes so the caps see real text.
   const sourceText = new Map<string, string>(
     project.sources.map((s) => [s.guid, resolveSourceText(s.plainText, s.plainTextPath, textFiles)]),
   );
 
-  export interface QdpxImportResult {
-    codes: number;
-    sources: number;
-    codings: number;
-    /** Constructs present in the file that QualCanvas cannot represent. */
-    unsupported: string[];
-    /** Codings whose code, source or text range could not be resolved. */
-    skippedCodings: number;
+  const flatCodes = flattenCodesForInsert(project.codes);
+  const selectionCount = project.sources.reduce(
+    (total, s) => total + s.selections.reduce((n, sel) => n + sel.codeGuids.length, 0),
+    0,
+  );
+
+  if (flatCodes.length > MAX_CODES || project.sources.length > MAX_SOURCES || selectionCount > MAX_CODINGS) {
+    throw new AppError(
+      `QDPX project is too large (maximum ${MAX_CODES} codes, ${MAX_SOURCES} sources and ${MAX_CODINGS} codings)`,
+      400,
+    );
   }
 
-  export async function importQdpx(canvasId: string, zipBuffer: Buffer): Promise<QdpxImportResult> {
-    const canvas = await prisma.codingCanvas.findUnique({ where: { id: canvasId } });
-    if (!canvas) throw new AppError('Canvas not found', 404);
-
-    const { projectXml, textFiles } = await readQdpxArchive(zipBuffer);
-
-    let project;
-    try {
-      project = parseQdpxProject(projectXml);
-    } catch (err) {
-      throw new AppError(err instanceof Error ? err.message : 'Invalid QDPX project file', 400);
+  for (const source of project.sources) {
+    const content = sourceText.get(source.guid) ?? '';
+    const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+    if (words > MAX_SOURCE_WORDS) {
+      throw new AppError(`QDPX source "${source.name || 'Untitled'}" exceeds 50,000 words`, 400);
     }
+  }
 
-    // Sources may carry their text inline or in a separate archive entry
-    // (plainTextPath). Resolve before validating sizes so the caps see real text.
-    const sourceText = new Map<string, string>(
-      project.sources.map((s) => [s.guid, resolveSourceText(s.plainText, s.plainTextPath, textFiles)]),
-    );
+  // One transaction: a QDPX import is all-or-nothing. A partial import leaves a
+  // canvas with codes but no codings and no way to tell what is missing.
+  return prisma.$transaction(
+    async (tx: Prisma.TransactionClient) => {
+      const codeGuidMap = new Map<string, string>();
+      const sourceGuidMap = new Map<string, string>();
 
-    const flatCodes = flattenCodesForInsert(project.codes);
-    const selectionCount = project.sources.reduce(
-      (total, s) => total + s.selections.reduce((n, sel) => n + sel.codeGuids.length, 0),
-      0,
-    );
-
-    if (flatCodes.length > MAX_CODES || project.sources.length > MAX_SOURCES || selectionCount > MAX_CODINGS) {
-      throw new AppError(
-        `QDPX project is too large (maximum ${MAX_CODES} codes, ${MAX_SOURCES} sources and ${MAX_CODINGS} codings)`,
-        400,
-      );
-    }
-
-    for (const source of project.sources) {
-      const content = sourceText.get(source.guid) ?? '';
-      const words = content.trim() ? content.trim().split(/\s+/).length : 0;
-      if (words > MAX_SOURCE_WORDS) {
-        throw new AppError(`QDPX source "${source.name || 'Untitled'}" exceeds 50,000 words`, 400);
+      // Parents precede children, so each parentGuid already has a row.
+      for (const code of flatCodes) {
+        if (!code.guid || codeGuidMap.has(code.guid)) {
+          throw new AppError('QDPX contains a missing or duplicate code GUID', 400);
+        }
+        const parentQuestionId = code.parentGuid ? (codeGuidMap.get(code.parentGuid) ?? null) : null;
+        const question = await tx.canvasQuestion.create({
+          data: {
+            canvasId,
+            text: (code.name || 'Imported Code').slice(0, 200),
+            color: code.color || '#3B82F6',
+            parentQuestionId,
+          },
+        });
+        codeGuidMap.set(code.guid, question.id);
       }
-    }
 
-    // One transaction: a QDPX import is all-or-nothing. A partial import leaves
-    // a canvas with codes but no codings and no way to tell what is missing.
-    return prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
-        const codeGuidMap = new Map<string, string>();
-        const sourceGuidMap = new Map<string, string>();
-
-        // Parents precede children, so each parentGuid already has a row.
-        for (const code of flatCodes) {
-          if (!code.guid || codeGuidMap.has(code.guid)) {
-            throw new AppError('QDPX contains a missing or duplicate code GUID', 400);
-          }
-          const parentQuestionId = code.parentGuid ? (codeGuidMap.get(code.parentGuid) ?? null) : null;
-          const question = await tx.canvasQuestion.create({
-            data: {
-              canvasId,
-              text: (code.name || 'Imported Code').slice(0, 200),
-              color: code.color || '#3B82F6',
-              parentQuestionId,
-            },
-          });
-          codeGuidMap.set(code.guid, question.id);
+      for (const source of project.sources) {
+        if (!source.guid || sourceGuidMap.has(source.guid)) {
+          throw new AppError('QDPX contains a missing or duplicate source GUID', 400);
         }
+        const transcript = await tx.canvasTranscript.create({
+          data: {
+            canvasId,
+            title: (source.name || 'Imported Source').slice(0, 200),
+            content: sourceText.get(source.guid) ?? '',
+            sourceType: 'qdpx-import',
+          },
+        });
+        sourceGuidMap.set(source.guid, transcript.id);
+      }
 
-        for (const source of project.sources) {
-          if (!source.guid || sourceGuidMap.has(source.guid)) {
-            throw new AppError('QDPX contains a missing or duplicate source GUID', 400);
+      let codingCount = 0;
+      let skippedCodings = 0;
+
+      for (const source of project.sources) {
+        const transcriptId = sourceGuidMap.get(source.guid);
+        if (!transcriptId) continue;
+        const text = sourceText.get(source.guid) ?? '';
+
+        for (const selection of source.selections) {
+          const { startPosition, endPosition } = selection;
+          if (endPosition <= startPosition) {
+            skippedCodings += selection.codeGuids.length;
+            continue;
           }
-          const transcript = await tx.canvasTranscript.create({
-            data: {
-              canvasId,
-              title: (source.name || 'Imported Source').slice(0, 200),
-              content: sourceText.get(source.guid) ?? '',
-              sourceType: 'qdpx-import',
-            },
-          });
-          sourceGuidMap.set(source.guid, transcript.id);
-        }
 
-        let codingCount = 0;
-        let skippedCodings = 0;
+          // Offsets index the resolved text. If the text could not be resolved
+          // (missing archive entry) or the range falls outside it, skip: a
+          // coding with empty codedText is worse than an honest skip.
+          const codedText = text.slice(startPosition, endPosition);
+          if (codedText === '') {
+            skippedCodings += selection.codeGuids.length;
+            continue;
+          }
 
-        for (const source of project.sources) {
-          const transcriptId = sourceGuidMap.get(source.guid);
-          if (!transcriptId) continue;
-          const text = sourceText.get(source.guid) ?? '';
-
-          for (const selection of source.selections) {
-            const { startPosition, endPosition } = selection;
-            if (endPosition <= startPosition) {
-              skippedCodings += selection.codeGuids.length;
+          for (const codeGuid of selection.codeGuids) {
+            const questionId = codeGuidMap.get(codeGuid);
+            if (!questionId) {
+              skippedCodings++;
               continue;
             }
 
-            // Offsets index the resolved text. If the text could not be resolved
-            // (missing archive entry) or the range falls outside it, skip: a
-            // coding with empty codedText is worse than an honest skip.
-            const codedText = text.slice(startPosition, endPosition);
-            if (codedText === '') {
-              skippedCodings += selection.codeGuids.length;
-              continue;
-            }
-
-            for (const codeGuid of selection.codeGuids) {
-              const questionId = codeGuidMap.get(codeGuid);
-              if (!questionId) {
-                skippedCodings++;
-                continue;
-              }
-
-              await tx.canvasTextCoding.create({
-                data: {
-                  canvasId,
-                  transcriptId,
-                  questionId,
-                  startOffset: startPosition,
-                  endOffset: endPosition,
-                  codedText,
-                },
-              });
-              codingCount++;
-            }
+            await tx.canvasTextCoding.create({
+              data: {
+                canvasId,
+                transcriptId,
+                questionId,
+                startOffset: startPosition,
+                endOffset: endPosition,
+                codedText,
+              },
+            });
+            codingCount++;
           }
         }
+      }
 
-        return {
-          codes: project.totalCodes,
-          sources: project.sources.length,
-          codings: codingCount,
-          unsupported: describeLosses(project.unsupported),
-          skippedCodings,
-        };
-      },
-      { timeout: 30_000 },
-    );
-  }
+      return {
+        codes: project.totalCodes,
+        sources: project.sources.length,
+        codings: codingCount,
+        unsupported: describeLosses(project.unsupported),
+        skippedCodings,
+      };
+    },
+    { timeout: 30_000 },
+  );
 }

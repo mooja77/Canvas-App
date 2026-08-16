@@ -18,14 +18,18 @@ import archiver from 'archiver';
  *     the malformed tests stop throwing.
  */
 
-const { mockPrisma } = vi.hoisted(() => ({
-  mockPrisma: {
+const { mockPrisma } = vi.hoisted(() => {
+  const mockPrisma: Record<string, unknown> = {
     codingCanvas: { findUnique: vi.fn() },
     canvasQuestion: { create: vi.fn() },
     canvasTranscript: { create: vi.fn() },
     canvasTextCoding: { create: vi.fn() },
-  },
-}));
+  };
+  // importQdpx runs its writes inside a transaction so a failed import cannot
+  // leave a half-populated canvas. Hand the callback the same mock client.
+  mockPrisma.$transaction = vi.fn(async (fn: (tx: unknown) => unknown) => fn(mockPrisma));
+  return { mockPrisma };
+});
 
 vi.mock('../../lib/prisma.js', () => ({ prisma: mockPrisma }));
 
