@@ -5,19 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/mascot.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Integrations · QualCanvas</title>
-    <meta name="description" content="Import transcripts from Otter.ai, Rev, Descript. Export themes to Word, PDF, PNG. Connect to Notion and Slack." />
+    <meta name="description" content="Transcripts in as .docx, .txt, .csv or .vtt/.srt captions. Whole projects to and from NVivo and ATLAS.ti via REFI-QDA .qdpx. Export CSV, PNG, HTML, Markdown." />
     <meta name="theme-color" content="#7c3aed" />
     <link rel="canonical" href="https://qualcanvas.com/integrations" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://qualcanvas.com/integrations" />
     <meta property="og:title" content="Integrations · QualCanvas" />
-    <meta property="og:description" content="Import transcripts from Otter.ai, Rev, Descript. Export themes to Word, PDF, PNG. Connect to Notion and Slack." />
+    <meta property="og:description" content="Transcripts in as .docx, .txt, .csv or .vtt/.srt captions. Whole projects to and from NVivo and ATLAS.ti via REFI-QDA .qdpx. Export CSV, PNG, HTML, Markdown." />
     <meta property="og:site_name" content="QualCanvas" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Integrations · QualCanvas" />
-    <meta name="twitter:description" content="Import transcripts from Otter.ai, Rev, Descript. Export themes to Word, PDF, PNG. Connect to Notion and Slack." />
+    <meta name="twitter:description" content="Transcripts in as .docx, .txt, .csv or .vtt/.srt captions. Whole projects to and from NVivo and ATLAS.ti via REFI-QDA .qdpx. Export CSV, PNG, HTML, Markdown." />
     <script type="application/ld+json">
-    {"@context":"https://schema.org","@type":"WebPage","name":"Integrations · QualCanvas","description":"Import transcripts as .docx, .txt, .csv, or .vtt/.srt captions from Zoom, Otter, and Teams. Import and export REFI-QDA (.qdpx) projects. Export to CSV, PNG, HTML, and Markdown. Connect Zoom, Slack, and Qualtrics on the Team plan.","url":"https://qualcanvas.com/integrations","isPartOf":{"@type":"SoftwareApplication","name":"QualCanvas","applicationCategory":"BusinessApplication","url":"https://qualcanvas.com","author":{"@type":"Organization","name":"JMS Dev Lab","url":"https://jmsdevlab.com"}}}
+    {"@context":"https://schema.org","@type":"WebPage","name":"Integrations · QualCanvas","description":"Import transcripts as .docx, .txt, .csv, or .vtt/.srt captions from Zoom, Otter, Teams, and YouTube. Import and export REFI-QDA (.qdpx) projects for NVivo and ATLAS.ti interchange. Export to CSV, PNG, HTML, and Markdown. File-based throughout — QualCanvas never asks for access to your other accounts.","url":"https://qualcanvas.com/integrations","isPartOf":{"@type":"SoftwareApplication","name":"QualCanvas","applicationCategory":"BusinessApplication","url":"https://qualcanvas.com","author":{"@type":"Organization","name":"JMS Dev Lab","url":"https://jmsdevlab.com"}}}
     </script>
     <style>
       body { margin: 0; background: #f9fafb; }
@@ -48,33 +48,33 @@
   <body>
     <main id="marketing-root">
 
-      <div class="ss-eyebrow">Integrations</div>
-      <h1>Works with <span class="accent">your research stack</span></h1>
-      <p class="lede">Import transcripts from your transcription tool. Export findings to your team's documentation. No file shuffling.</p>
+      <div class="ss-eyebrow">Imports and exports</div>
+      <h1>Files in, <span class="accent">files out</span></h1>
+      <p class="lede">QualCanvas moves data by file, not by account connection. Nothing here asks for access to your Zoom, Slack, or Google account — you export from the other tool and upload, or you export from QualCanvas and take it wherever you like. For research data under an ethics approval, that is usually the point.</p>
 
-      <h2>Transcription import</h2>
+      <h2>Transcript import</h2>
       <ul class="features">
-        <li><strong>Otter.ai</strong>One-click import. Speaker labels and timestamps preserved.</li>
-        <li><strong>Rev</strong>Drop a Rev .docx export — speakers, timestamps, and inline notes all parsed.</li>
-        <li><strong>Descript</strong>Export from Descript as transcript .txt; QualCanvas auto-detects speaker turns.</li>
-        <li><strong>Generic .docx / .txt</strong>Anything else: paste or upload, we'll parse what we can.</li>
+        <li><strong>Caption files (.vtt / .srt)</strong>The usual export from Zoom, Otter, Teams and YouTube. Cue numbers, timestamps and markup are stripped; <code>&lt;v Speaker&gt;</code> voice tags become "Speaker:" labels; repeated rolling-caption lines are collapsed.</li>
+        <li><strong>Word (.docx)</strong>Upload the file as-is. Text is extracted for coding; formatting, comments and tracked changes are not carried over.</li>
+        <li><strong>Plain text (.txt)</strong>Anything your tool can export as text, including Descript and Rev transcript exports.</li>
+        <li><strong>CSV</strong>One row per response — useful for survey open-ends and other short-answer data.</li>
       </ul>
+
+      <h2>Project interchange</h2>
+      <ul class="features">
+        <li><strong>REFI-QDA (.qdpx) import</strong>Reads the open REFI-QDA interchange format. Codes and their nesting, text sources and coded text segments are brought across. Tested against real exports from NVivo 12 (Windows) and ATLAS.ti 8 (macOS).</li>
+        <li><strong>REFI-QDA (.qdpx) export</strong>Take your project back out the same way. QDPX is an open standard rather than a QualCanvas format, so this is your exit route as much as your entry route.</li>
+      </ul>
+      <p style="color:#6b7280; font-size:15px; margin:-8px 0 24px;"><strong>What does not come across.</strong> Codes, their nesting, text sources and coded text segments transfer both ways. Cases, variables, sets, memos, graphs, links, uncoded quotations and non-text sources such as audio, video and PDF do not — the import counts each of these and tells you exactly what it dropped, rather than reporting a clean success. Treat a transfer as a migration to check over rather than a lossless copy, and keep your original project file until you have.</p>
 
       <h2>Export</h2>
       <ul class="features">
-        <li><strong>Word / Google Docs</strong>Theme tables export as native Word tables. Quote-by-theme appendix one-click.</li>
-        <li><strong>PDF</strong>Publication-ready theme maps. Audit trail PDFs for IRB.</li>
-        <li><strong>PNG / SVG</strong>Canvas exports for slides and posters.</li>
-        <li><strong>CSV</strong>Codebook export for mixed-methods triangulation with quantitative tools.</li>
+        <li><strong>CSV</strong>Codebook and coded-segment export, for mixed-methods triangulation with quantitative tools.</li>
+        <li><strong>PNG</strong>Canvas image export for slides, posters and supervision meetings.</li>
+        <li><strong>HTML / Markdown</strong>Readable write-ups of codes and their coded excerpts, ready to paste into a document.</li>
+        <li><strong>QDPX</strong>The full project, as above.</li>
       </ul>
-
-      <h2>Workflow integrations</h2>
-      <ul class="features">
-        <li><strong>Notion</strong>Embed canvases in Notion pages. Team members can view without a QualCanvas seat.</li>
-        <li><strong>Slack</strong>Share-to-Slack from any canvas. Comments back into Slack thread sync to canvas.</li>
-        <li><strong>Linear / Jira</strong>Link a research finding directly to a product ticket.</li>
-        <li><strong>Zapier</strong>For everything else: trigger a workflow when a new theme is created, when a study is published, etc.</li>
-      </ul>
+      <p style="color:#6b7280; font-size:15px; margin:-8px 0 24px;">CSV export is on every plan including Free. PNG, HTML, Markdown and QDPX are on the paid plans.</p>
 
       <a href="/register" class="cta">Try free</a>
 
