@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!--
+  ATLAS.ti-SHAPED FIXTURE — structure only, no third-party content.
+
+  Reproduces the structural characteristics of an ATLAS.ti 8.4.0 (macOS)
+  REFI-QDA export as published in the REFI vendor test set:
+
+    - no inline <PlainTextContent>; every TextSource points at a separate
+      archive entry via plainTextPath="internal://<guid>.txt"
+    - <Codes> wrapper, flat codebook, Description children on some codes
+    - one PlainTextSelection carrying MULTIPLE <Coding> children (codes
+      sharing a quotation)
+    - one PlainTextSelection with a Description and NO Coding (an uncoded
+      quotation, which QualCanvas cannot represent and must report)
+    - non-text sources and project-level constructs QualCanvas drops:
+      PictureSource, PDFSource, AudioSource, VideoSource, Notes, Links, Sets,
+      Graphs
+    - a code name containing an XML-escaped quote
+
+  Code names, source names and note text are neutral placeholders. The real
+  vendor file is NOT vendored: see docs/qdpx-interoperability-validation.md for
+  its provenance, SHA-256 and the command to re-validate against it.
+-->
+<Project xmlns="urn:QDA-XML:project:1.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" origin="ATLAS.ti 8.4.0 573 , macOS Version 10.14.3 (Build 18D109)" creatingUserGUID="AD68FBE7-E1EE-4A82-A279-23CC698C89EB" creationDateTime="2018-03-27T17:46:39Z" modifiedDateTime="2018-03-27T17:46:39Z" name="Structural fixture">
+    <Users>
+        <User guid="C32A2BD5-537F-4838-8B17-DF9EFBAFDF4B" name="Coder A"/>
+        <User guid="AD68FBE7-E1EE-4A82-A279-23CC698C89EB" name="Coder B"/>
+    </Users>
+    <CodeBook>
+        <Codes>
+            <Code color="#F00082" isCodable="true" name="Topic one" guid="85D17F60-7BB0-481E-B742-B4861DD669DF"/>
+            <Code color="#F00082" isCodable="true" name="Topic two" guid="0F8A1907-7E42-4739-8610-A676B4D1B69F">
+                <Description>a code carrying a description</Description>
+            </Code>
+            <Code color="#966450" isCodable="true" name="Topic three::sub-topic" guid="0983E32E-6866-431A-BD94-DAC9BB963825"/>
+            <Code color="#DC0000" isCodable="true" name="&quot;quoted topic&quot;" guid="AE6D04CE-D987-4FC8-AF97-D72CA6FFD08F"/>
+        </Codes>
+    </CodeBook>
+    <Sources>
+        <TextSource plainTextPath="internal://69A4332D-5B31-4915-B520-5275CFC21B40.txt" richTextPath="internal://B5566006-EB5F-43F0-9BC2-DBCD4D2F73F7.docx" guid="69A4332D-5B31-4915-B520-5275CFC21B40" name="Source one" creationDateTime="2018-03-27T18:01:07Z"/>
+        <TextSource plainTextPath="internal://EC0A7242-65E1-457C-B7D1-310DAE603FAB.txt" guid="EC0A7242-65E1-457C-B7D1-310DAE603FAB" name="Source two" creationDateTime="2018-03-27T18:01:07Z">
+            <PlainTextSelection startPosition="0" endPosition="24" guid="2F24EA88-C6A7-482B-8F89-893EF66D7A21" name="first passage">
+                <Coding creationDateTime="2018-03-27T19:04:42Z" guid="2284BF5B-8F78-45B6-A6EF-A128D991408B">
+                    <CodeRef targetGUID="85D17F60-7BB0-481E-B742-B4861DD669DF"/>
+                </Coding>
+                <Coding creationDateTime="2018-03-27T19:04:19Z" guid="89B9918E-4209-4FE0-BEA0-0C7FF56D67A4">
+                    <CodeRef targetGUID="AE6D04CE-D987-4FC8-AF97-D72CA6FFD08F"/>
+                </Coding>
+            </PlainTextSelection>
+            <PlainTextSelection startPosition="30" endPosition="52" guid="B49D7982-BB8E-4335-80AF-DC869CCC3F45" name="uncoded passage">
+                <Description>marked for later, never coded</Description>
+            </PlainTextSelection>
+        </TextSource>
+        <PictureSource path="internal://87EAD86F-3112-4537-8A01-01427CAE1C6D.jpg" guid="02255470-09E6-400B-9E20-97D71FBEC65D" name="An image">
+            <PictureSelection firstX="1" firstY="1" secondX="10" secondY="10" guid="7532038C-670E-471B-AA89-A1098E9A4E33" name="region">
+                <Coding guid="8205358C-5489-4F75-A86D-C7A3DF1571CE">
+                    <CodeRef targetGUID="AE6D04CE-D987-4FC8-AF97-D72CA6FFD08F"/>
+                </Coding>
+            </PictureSelection>
+        </PictureSource>
+        <PDFSource path="internal://484934BD-97FF-4F8C-9690-B9E77A9092B5.pdf" guid="03F134F1-AB05-46E6-8702-1D6930D7F7F0" name="A document"/>
+        <PDFSource path="internal://3E029F7C-B699-47C2-AE9F-95F481693CAF.pdf" guid="2065D8AB-D724-40C9-B4E9-6EB8DAB73541" name="Another document"/>
+        <AudioSource path="relative:///DF370983-F009-4D47-8615-711633FA9DE6.m4a" guid="DA744775-589A-46D3-8B26-A07ADCE1E1CA" name="A recording"/>
+        <VideoSource path="relative:///5293A7DD-8139-4811-88E4-3357E3AA64E1.mp4" guid="9D260347-8F7D-4161-89F7-DCC93CC34170" name="A clip">
+            <Transcript plainTextPath="internal://01106019-2518-43DD-BBD1-8F0252BACB30.txt" guid="0EBF03C4-768D-4937-B37E-58341FDA4CDB" name="Clip transcript">
+                <SyncPoint guid="BC57B3AA-64E1-4974-AC92-646A4F822070" position="0" timeStamp="0"/>
+            </Transcript>
+        </VideoSource>
+        <VideoSource path="relative:///DAD05D08-38E7-4F58-BF6D-9AAE714F2F50.mp4" guid="ED105492-356D-4119-A1E2-716CF018AFED" name="Another clip"/>
+    </Sources>
+    <Notes>
+        <Note guid="CE15250D-46AD-42C2-B90F-A509B8D64EC8" name="Analytic memo">
+            <PlainTextContent>a project-level memo</PlainTextContent>
+        </Note>
+        <Note guid="E41BE463-FDF3-4ED0-B668-119C53D8D687" name="Second memo">
+            <PlainTextContent>another project-level memo</PlainTextContent>
+        </Note>
+    </Notes>
+    <Links>
+        <Link direction="OneWay" originGUID="E41BE463-FDF3-4ED0-B668-119C53D8D687" targetGUID="2F24EA88-C6A7-482B-8F89-893EF66D7A21" guid="7B56978E-9D9F-4D47-B4EC-436E2F6B8BE5" name="memo to quotation"/>
+    </Links>
+    <Sets>
+        <Set guid="C29B5DB8-2ED6-406B-BFD2-68E8E273C1E9" name="Set one">
+            <MemberSource targetGUID="EC0A7242-65E1-457C-B7D1-310DAE603FAB"/>
+        </Set>
+        <Set guid="2324B638-D629-4970-B2E8-8B5BFD0A8D6B" name="Set two">
+            <MemberCode targetGUID="85D17F60-7BB0-481E-B742-B4861DD669DF"/>
+        </Set>
+    </Sets>
+    <Graphs>
+        <Graph guid="2BD17780-DA8D-4F9E-835A-5FA8CF02EF11" name="A network">
+            <Vertex firstX="1" firstY="1" guid="B169A012-304E-49AC-A753-2543F08987AF" name="node"/>
+        </Graph>
+    </Graphs>
+</Project>

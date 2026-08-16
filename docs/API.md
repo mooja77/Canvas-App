@@ -2560,19 +2560,40 @@ Base URL: `/api` (also available at `/api/v1`)
 
 ---
 
-## 26. Integrations
+## 26. Integrations (retired — erasure only)
+
+QualCanvas does **not** integrate with Zoom, Slack or Qualtrics, and never did.
+The original `POST /api/integrations/connect` was not an OAuth flow: it accepted
+an `accessToken` supplied in the request body, encrypted it and stored it, and
+nothing ever read it back out. No provider API was ever called.
+
+The capability is withdrawn. These endpoints remain for one purpose only: a user
+must be able to see whether an earlier build stored a credential for them, and
+delete it.
+
+**List and delete are deliberately NOT plan-gated.** They were previously behind
+`checkIntegrationsAccess()`, which is now `false` on every plan; leaving them
+gated would strand a user's own credentials with no route to revoke them.
+Erasing your own data is not a paid feature.
+
+`Integration.user` is `onDelete: Cascade`, so deleting an account also removes
+any stored credentials.
+
+Reachable in the UI at **Account → Legacy provider credentials** (erasure only).
 
 ### GET /api/integrations
 
 **Auth:** Required (email auth)
-**Plan:** Enforced (checkIntegrationsAccess)
-**Description:** List connected integrations. Never returns access tokens.
+**Plan:** Not gated — available on every plan, including Free
+**Description:** List credentials still stored for the caller. Token columns
+(`accessToken`, `refreshToken` and their IV/tag fields) are never selected.
 **Response (200):**
 
 ```json
 {
   "success": true,
-  "integrations": [{ "id", "provider": "zoom | slack | qualtrics", "metadata", "expiresAt", "createdAt" }]
+  "integrations": [{ "id", "provider": "zoom | slack | qualtrics", "metadata", "expiresAt", "createdAt" }],
+  "connectionsRetired": true
 }
 ```
 
@@ -2580,35 +2601,29 @@ Base URL: `/api` (also available at `/api/v1`)
 
 ### POST /api/integrations/connect
 
-**Auth:** Required (email auth)
-**Plan:** Enforced (checkIntegrationsAccess)
-**Description:** Connect an integration (OAuth token exchange).
-**Body:**
+**Auth:** Required (email auth) — authenticated first, so an unauthenticated
+caller learns nothing about account state
+**Description:** Withdrawn. Always refuses; stores nothing.
+**Response (410 Gone):**
 
 ```json
 {
-  "provider": "zoom | slack | qualtrics",
-  "accessToken": "string (required)",
-  "refreshToken": "string (optional)",
-  "metadata": { ... },
-  "expiresAt": "ISO datetime (optional)"
+  "success": false,
+  "error": "Provider connections have been retired. QualCanvas does not connect to Zoom, Slack or Qualtrics; import transcripts as files instead.",
+  "code": "INTEGRATION_CONNECT_RETIRED"
 }
 ```
 
-**Response (200):**
-
-```json
-{ "success": true, "integration": { "id", "provider", "metadata", "expiresAt", "createdAt" } }
-```
-
-**Errors:** 400 (missing fields / invalid provider)
+**Errors:** 401 (not authenticated), 410 (always, when authenticated)
 
 ---
 
 ### DELETE /api/integrations/:id
 
 **Auth:** Required (email auth)
-**Description:** Disconnect an integration.
+**Plan:** Not gated — available on every plan, including Free
+**Description:** Permanently delete a stored credential. Audit-logged as
+`integration.delete`. There is no way to create a replacement.
 **Response (200):**
 
 ```json

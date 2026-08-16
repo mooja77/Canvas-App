@@ -42,7 +42,7 @@ export default function QdpxExportButton({ canvasId }: QdpxExportButtonProps) {
       onClick={handleExport}
       disabled={exporting || effectivePlan === 'free'}
       className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-100 dark:hover:bg-purple-900/50 disabled:opacity-50 transition-colors"
-      title="Export for NVivo, ATLAS.ti, MAXQDA and other QDA tools (REFI-QDA / QDPX)"
+      title="Export in the REFI-QDA interchange format (QDPX). Tested against NVivo 12 and ATLAS.ti 8 exports."
     >
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path

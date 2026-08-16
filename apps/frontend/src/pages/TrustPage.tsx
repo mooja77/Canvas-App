@@ -228,5 +228,5 @@ const SUB_PROCESSORS = [
     dpa: 'Requests are proxied by QualCanvas; provider terms apply',
   },
   { vendor: 'Sentry', purpose: 'Error tracking', location: 'Configured project region', dpa: 'Provider terms / DPA' },
-  { vendor: 'GitHub Actions', purpose: 'CI + backups', location: 'US', dpa: 'Signed via parent (Microsoft)' },
+  { vendor: 'GitHub Actions', purpose: 'CI + backups', location: 'US', dpa: 'Provider terms / DPA' },
 ];

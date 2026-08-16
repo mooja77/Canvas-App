@@ -19,15 +19,16 @@ import archiver from 'archiver';
  */
 
 const { mockPrisma } = vi.hoisted(() => {
-  const mockPrisma: Record<string, unknown> = {
+  const mockPrisma = {
     codingCanvas: { findUnique: vi.fn() },
     canvasQuestion: { create: vi.fn() },
     canvasTranscript: { create: vi.fn() },
     canvasTextCoding: { create: vi.fn() },
+    // importQdpx runs its writes inside a transaction so a failed import cannot
+    // leave a half-populated canvas. Hand the callback the same mock client.
+    $transaction: vi.fn(),
   };
-  // importQdpx runs its writes inside a transaction so a failed import cannot
-  // leave a half-populated canvas. Hand the callback the same mock client.
-  mockPrisma.$transaction = vi.fn(async (fn: (tx: unknown) => unknown) => fn(mockPrisma));
+  mockPrisma.$transaction.mockImplementation(async (fn: (tx: typeof mockPrisma) => unknown) => fn(mockPrisma));
   return { mockPrisma };
 });
 

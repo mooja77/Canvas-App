@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
 import { authApi, billingApi, aiSettingsApi, reportApi, emailApi, type EmailPreferences } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
+import IntegrationSettingsPanel from '../components/canvas/panels/IntegrationSettingsPanel';
 import toast from 'react-hot-toast';
 
 interface UserProfile {
@@ -1162,6 +1163,15 @@ export default function AccountPage() {
             >
               {exportingAccount ? 'Preparing export…' : 'Download account export'}
             </button>
+          </section>
+        )}
+
+        {/* Legacy provider credentials. Retired capability, erasure only —
+            mounted here so a user can actually reach and delete anything an
+            earlier build stored for them. Not gated on plan. */}
+        {isEmailAuth && (
+          <section className="mb-6 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+            <IntegrationSettingsPanel />
           </section>
         )}
 
