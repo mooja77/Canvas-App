@@ -19,6 +19,7 @@
 import { prisma } from '../lib/prisma.js';
 import { stripe } from '../lib/stripe.js';
 import { logError } from '../lib/logger.js';
+import { deriveQualcanvasPlan } from '../routes/billingRoutes.js';
 
 const RECONCILE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // weekly
 const STARTUP_DELAY_MS = 5 * 60 * 1000; // 5 min after boot so cold-start isn't slow
@@ -74,20 +75,39 @@ export async function reconcileStripeSubscriptions(): Promise<ReconciliationResu
               // check the job false-flagged every other product's subscription
               // as "Stripe subscription not in DB".
               const customerId = typeof stripeSub.customer === 'string' ? stripeSub.customer : stripeSub.customer?.id;
-              const ownedByQualcanvasUser = customerId
-                ? (await prisma.user.findUnique({
+              const qualcanvasUser = customerId
+                ? await prisma.user.findUnique({
                     where: { stripeCustomerId: customerId },
-                    select: { id: true },
-                  })) !== null
-                : false;
-              if (ownedByQualcanvasUser) {
+                    select: { id: true, plan: true },
+                  })
+                : null;
+              if (qualcanvasUser) {
                 result.orphanedInStripe++;
-                logError(new Error('Stripe subscription not in DB'), {
-                  action: 'stripeReconciliation.orphanedInStripe',
-                  stripeSubId: stripeSub.id,
-                  status: stripeSub.status,
-                  customer: customerId,
-                });
+                const item = stripeSub.items.data[0];
+                const plan = item ? await deriveQualcanvasPlan(stripe, item.price) : null;
+                if (item && plan) {
+                  await prisma.$transaction([
+                    prisma.subscription.create({
+                      data: {
+                        userId: qualcanvasUser.id,
+                        stripeSubscriptionId: stripeSub.id,
+                        stripePriceId: item.price.id,
+                        status: stripeSub.status,
+                        currentPeriodStart: new Date(item.current_period_start * 1000),
+                        currentPeriodEnd: new Date(item.current_period_end * 1000),
+                        cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
+                      },
+                    }),
+                    prisma.user.update({ where: { id: qualcanvasUser.id }, data: { plan } }),
+                  ]);
+                } else {
+                  logError(new Error('QualCanvas Stripe subscription could not be mapped to a plan'), {
+                    action: 'stripeReconciliation.orphanedInStripe',
+                    stripeSubId: stripeSub.id,
+                    status: stripeSub.status,
+                    customer: customerId,
+                  });
+                }
               }
             }
             continue;
@@ -101,6 +121,7 @@ export async function reconcileStripeSubscriptions(): Promise<ReconciliationResu
 
           const item = stripeSub.items.data[0];
           if (item) {
+            updates.stripePriceId = item.price.id;
             const stripeEnd = new Date(item.current_period_end * 1000);
             const driftMs = Math.abs(stripeEnd.getTime() - dbSub.currentPeriodEnd.getTime());
             if (driftMs > PERIOD_DRIFT_THRESHOLD_MS) {
@@ -115,6 +136,12 @@ export async function reconcileStripeSubscriptions(): Promise<ReconciliationResu
               where: { id: dbSub.id },
               data: updates,
             });
+          }
+
+          const active = stripeSub.status === 'active' || stripeSub.status === 'trialing';
+          const expectedPlan = active && item ? await deriveQualcanvasPlan(stripe, item.price) : 'free';
+          if (expectedPlan) {
+            await prisma.user.update({ where: { id: dbSub.userId }, data: { plan: expectedPlan } });
           }
         } catch (err) {
           result.errors++;

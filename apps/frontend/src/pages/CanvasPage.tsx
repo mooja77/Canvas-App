@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useUIStore } from '../stores/uiStore';
 import { useCanvasStore } from '../stores/canvasStore';
-import { authApi } from '../services/api';
+import { authApi, onboardingApi, type OnboardingState } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 import CodingCanvas from '../components/canvas/CodingCanvas';
 import SetupWizard from '../components/SetupWizard';
@@ -16,15 +16,18 @@ import StatusBar from '../components/canvas/StatusBar';
 import ActivityBar, { type ActivityId } from '../components/canvas/ActivityBar';
 import ActivitySidebar from '../components/canvas/ActivitySidebar';
 import { useFeatureFlag } from '../stores/featureFlagsStore';
+import { resolveFirstRunSurface } from '../components/onboarding/firstRunSurface';
 import { SunIcon, MoonIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
 export default function CanvasPage() {
-  const { authenticated, name, logout, authType, emailVerified } = useAuthStore();
+  const { authenticated, name, logout, authType, emailVerified, userId } = useAuthStore();
   const setTrialState = useAuthStore((s) => s.setTrialState);
   const { darkMode, toggleDarkMode, setupWizardComplete, completeSetupWizard, openFullProductTour } = useUIStore();
   const onboardingV2Complete = useUIStore((s) => s.onboardingV2Complete);
   const completeOnboardingV2 = useUIStore((s) => s.completeOnboardingV2);
+  const prepareOnboardingForAccount = useUIStore((s) => s.prepareOnboardingForAccount);
+  const hydrateOnboardingForAccount = useUIStore((s) => s.hydrateOnboardingForAccount);
   const onboardingV2Enabled = useFeatureFlag('onboarding_v2');
   const activityBarV2Enabled = useFeatureFlag('activity_bar_v2');
   const [activeActivity, setActiveActivity] = useState<ActivityId | null>(null);
@@ -41,12 +44,13 @@ export default function CanvasPage() {
   );
   const [resending, setResending] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  const [showWizard, setShowWizard] = useState(false);
   const [canvasesLoaded, setCanvasesLoaded] = useState(false);
+  const [onboardingStateLoaded, setOnboardingStateLoaded] = useState(false);
+  const [persistedOnboardingState, setPersistedOnboardingState] = useState<OnboardingState['state']>(null);
 
   const showVerificationBanner = authType === 'email' && !emailVerified && !bannerDismissed;
 
-  // Fetch canvases on mount to decide whether to show setup wizard
+  // Fetch canvases before choosing the one first-run surface.
   useEffect(() => {
     if (authenticated && !canvasesLoaded) {
       fetchCanvases().finally(() => setCanvasesLoaded(true));
@@ -75,17 +79,66 @@ export default function CanvasPage() {
       });
   }, [authenticated, authType, setTrialState]);
 
-  // Show setup wizard for first-time users with no canvases.
-  // Auto-mark wizard complete for existing users who already have canvases
-  // (handles legacy users who never had the flag set).
+  // Hydrate the v2 decision from the authenticated account, not a browser-wide
+  // completion bit. Waiting for this read prevents the flow from mounting in
+  // the effect gap before the legacy wizard decides to show.
   useEffect(() => {
-    if (!canvasesLoaded) return;
-    if (!setupWizardComplete && canvases.length === 0) {
-      setShowWizard(true);
-    } else if (!setupWizardComplete && canvases.length > 0) {
-      completeSetupWizard();
+    if (!authenticated || !onboardingV2Enabled || authType !== 'email' || !userId) {
+      setOnboardingStateLoaded(true);
+      setPersistedOnboardingState(null);
+      return;
     }
-  }, [canvasesLoaded, setupWizardComplete, canvases.length, completeSetupWizard]);
+
+    let cancelled = false;
+    setOnboardingStateLoaded(false);
+    setPersistedOnboardingState(null);
+    prepareOnboardingForAccount(userId);
+
+    onboardingApi
+      .get()
+      .then((response) => {
+        if (cancelled) return;
+        const data = response.data.data;
+        const state = data.state;
+        hydrateOnboardingForAccount(userId, {
+          completed: Boolean(data.completedAt),
+          dismissedTooltips: Array.isArray(state?.dismissedTooltips)
+            ? state.dismissedTooltips.filter((value): value is string => typeof value === 'string')
+            : [],
+          checklistComplete: Array.isArray(state?.checklistComplete)
+            ? state.checklistComplete.filter((value): value is string => typeof value === 'string')
+            : [],
+        });
+        setPersistedOnboardingState(state);
+      })
+      .catch(() => {
+        // Keep the account-scoped reset and allow the visible v2 flow to work.
+        // Server writes inside the flow are already best-effort.
+      })
+      .finally(() => {
+        if (!cancelled) setOnboardingStateLoaded(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authenticated, authType, hydrateOnboardingForAccount, onboardingV2Enabled, prepareOnboardingForAccount, userId]);
+
+  // Existing users do not need either first-run surface even if they predate
+  // server onboarding timestamps. This is local presentation state only.
+  useEffect(() => {
+    if (!canvasesLoaded || canvases.length === 0) return;
+    if (onboardingV2Enabled && authType === 'email') completeOnboardingV2();
+    else if (!setupWizardComplete) completeSetupWizard();
+  }, [
+    authType,
+    canvases.length,
+    canvasesLoaded,
+    completeOnboardingV2,
+    completeSetupWizard,
+    onboardingV2Enabled,
+    setupWizardComplete,
+  ]);
 
   // Demo mode: ?demo=true triggers the guided tour
   useEffect(() => {
@@ -128,6 +181,17 @@ export default function CanvasPage() {
   };
 
   if (!authenticated) return null;
+
+  const firstRunSurface = resolveFirstRunSurface({
+    authenticated,
+    authType,
+    onboardingV2Enabled,
+    canvasesLoaded,
+    canvasCount: canvases.length,
+    onboardingStateLoaded,
+    onboardingV2Complete,
+    setupWizardComplete,
+  });
 
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
@@ -250,11 +314,10 @@ export default function CanvasPage() {
 
       {showPlanWelcome && <PlanWelcome onClose={() => setShowPlanWelcome(false)} />}
 
-      {/* Setup wizard for first-time users — replaces canvas until complete */}
-      {showWizard ? (
+      {/* Legacy setup remains only for legacy sessions or when v2 is disabled. */}
+      {firstRunSurface === 'legacy_setup' ? (
         <SetupWizard
           onComplete={() => {
-            setShowWizard(false);
             if (!planWelcomeSeen) setShowPlanWelcome(true);
           }}
         />
@@ -280,9 +343,14 @@ export default function CanvasPage() {
         </>
       )}
 
-      {/* Sprint F onboarding v2 — gated by feature flag, fires once per user */}
-      {onboardingV2Enabled && !onboardingV2Complete && canvasesLoaded && canvases.length === 0 && !showWizard && (
-        <OnboardingFlow onClose={completeOnboardingV2} />
+      {/* Account-hydrated onboarding v2 replaces the legacy wizard for email users. */}
+      {firstRunSurface === 'onboarding_v2' && (
+        <OnboardingFlow
+          initialState={
+            persistedOnboardingState as { currentStep?: number; personalization?: { method?: string } } | undefined
+          }
+          onClose={completeOnboardingV2}
+        />
       )}
     </div>
   );

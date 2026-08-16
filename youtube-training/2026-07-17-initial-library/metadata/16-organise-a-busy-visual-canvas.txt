@@ -1,0 +1,36 @@
+TITLE
+Organise a Busy QualCanvas Workspace | Layout and Shortcuts
+
+DESCRIPTION
+Use auto-arrange, fit view, navigation, display controls and the command palette to manage a growing canvas.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Keep a growing canvas readable
+0:15 Use Fit View to recover the whole picture
+0:29 Use Auto-arrange as a layout tool
+0:44 Open commands with Control K
+0:59 Navigate from the source list
+1:12 Choose a comfortable display
+1:25 A tidy view should preserve the trail
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+QualCanvas layout, qualitative visual workspace, auto arrange canvas, research workflow shortcuts, QualCanvas command palette
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Workspace & scale
+Subtitle file: subtitles/16-organise-a-busy-visual-canvas.en-IE.srt
+Thumbnail: thumbnails/16-organise-a-busy-visual-canvas.jpg

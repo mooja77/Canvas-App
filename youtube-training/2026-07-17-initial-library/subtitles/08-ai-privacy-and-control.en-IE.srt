@@ -1,0 +1,107 @@
+1
+00:00:00,080 --> 00:00:04,262
+QualCanvas AI features run only when you choose an AI action.
+
+2
+00:00:04,262 --> 00:00:08,064
+They can suggest codes, draft a summary or help sketch
+
+3
+00:00:08,064 --> 00:00:11,867
+a framework, but they do not watch the project in
+
+4
+00:00:11,867 --> 00:00:14,528
+the background or make an interpretation final.
+
+5
+00:00:14,928 --> 00:00:18,704
+The AI use policy explains the request path.
+
+6
+00:00:18,704 --> 00:00:23,424
+Relevant prompt and source text are sent through the QualCanvas
+
+7
+00:00:23,424 --> 00:00:27,200
+backend to the selected provider for that request.
+
+8
+00:00:27,200 --> 00:00:31,920
+QualCanvas records usage metadata, not the prompt or response content.
+
+9
+00:00:32,320 --> 00:00:35,213
+The AI menu keeps each action explicit.
+
+10
+00:00:35,213 --> 00:00:39,347
+Select only the material needed for the task, review every
+
+11
+00:00:39,347 --> 00:00:43,480
+suggestion and keep a non-AI workflow when the consent form
+
+12
+00:00:43,480 --> 00:00:47,200
+or ethics approval does not cover external model processing.
+
+13
+00:00:47,600 --> 00:00:52,085
+You can configure a supported provider key in account settings
+
+14
+00:00:52,085 --> 00:00:55,224
+when your institution prefers direct provider governance.
+
+15
+00:00:55,224 --> 00:00:59,708
+Keys are encrypted at rest, and the provider relationship still
+
+16
+00:00:59,708 --> 00:01:03,296
+needs to fit your protocol and data-processing requirements.
+
+17
+00:01:03,696 --> 00:01:09,320
+Sending an excerpt to a model provider is a data-processing step.
+
+18
+00:01:09,320 --> 00:01:14,433
+Confirm lawful basis, processor terms and participant disclosure before using
+
+19
+00:01:14,433 --> 00:01:16,989
+AI with real research data.
+
+20
+00:01:16,989 --> 00:01:20,568
+An available button is not ethical permission.
+
+21
+00:01:20,968 --> 00:01:25,683
+Where the study uses AI, document the provider, model, feature
+
+22
+00:01:25,683 --> 00:01:27,569
+and human decision process.
+
+23
+00:01:27,569 --> 00:01:32,285
+QualCanvas can export an AI disclosure record, but you should
+
+24
+00:01:32,285 --> 00:01:37,000
+verify that the final methods statement matches the actual study.
+
+25
+00:01:37,400 --> 00:01:41,833
+The safe pattern is minimise what you send, review every
+
+26
+00:01:41,833 --> 00:01:46,265
+result, document the assistance and remain accountable for the interpretation.
+
+27
+00:01:46,265 --> 00:01:51,584
+Visit qualcanvas dot com slash trust slash AI for the current policy.

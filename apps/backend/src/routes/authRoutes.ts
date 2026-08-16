@@ -10,7 +10,7 @@ import { nanoid } from 'nanoid';
 
 export const authRoutes = Router();
 
-// POST /api/auth — authenticate with a dashboard code, returns JWT
+// POST /api/auth — authenticate with a dashboard code
 authRoutes.post('/auth', authLimiter, async (req, res, next) => {
   try {
     const { dashboardCode } = req.body;
@@ -99,7 +99,6 @@ authRoutes.post('/auth', authLimiter, async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        jwt,
         name: access.name,
         role: access.role,
         dashboardAccessId: access.id,
@@ -110,14 +109,18 @@ authRoutes.post('/auth', authLimiter, async (req, res, next) => {
   }
 });
 
-// POST /api/auth/register — create a new dashboard access (for standalone use)
+// POST /api/auth/register — create a new dashboard access (local development only)
 authRoutes.post('/auth/register', authLimiter, async (req, res, next) => {
   try {
-    // Registration gating: require REGISTRATION_ENABLED=true in production
-    if (process.env.NODE_ENV === 'production' && process.env.REGISTRATION_ENABLED !== 'true') {
+    // Public production registration must go through /auth/signup so every
+    // account has a unique, verifiable identity and can be metered/revoked.
+    // Legacy access-code registration grants grandfathered Pro access and is
+    // therefore never safe as a public production endpoint, even if an
+    // environment variable is accidentally enabled.
+    if (process.env.NODE_ENV === 'production') {
       return res.status(403).json({
         success: false,
-        error: 'Registration is disabled. Contact an administrator for access.',
+        error: 'Legacy registration is disabled. Create an email account instead.',
       });
     }
 
@@ -163,7 +166,6 @@ authRoutes.post('/auth/register', authLimiter, async (req, res, next) => {
       success: true,
       data: {
         accessCode: code,
-        jwt,
         name: access.name,
         role: access.role,
         dashboardAccessId: access.id,

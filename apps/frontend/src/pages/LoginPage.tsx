@@ -62,6 +62,7 @@ export default function LoginPage() {
   const [showAccessCode, setShowAccessCode] = useState(false);
   const [code, setCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
 
   const { t } = useTranslation();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -113,7 +114,7 @@ export default function LoginPage() {
         window.google.accounts.id.renderButton(googleButtonRef.current, {
           theme: 'outline',
           size: 'large',
-          width: Math.min(400, containerWidth - 16),
+          width: Math.max(240, Math.min(400, containerWidth - 16)),
           text: 'continue_with',
           shape: 'rectangular',
           logo_alignment: 'left',
@@ -184,7 +185,7 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const res = await authApi.emailSignup(email.trim(), password, name.trim());
+      const res = await authApi.emailSignup(email.trim(), password, name.trim(), marketingConsent);
       const { jwt, user } = res.data.data;
       setEmailAuth({
         jwt,
@@ -225,7 +226,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 px-4 relative overflow-hidden">
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 px-4 relative overflow-hidden">
       {/* Decorative background circles */}
       <div className="absolute top-0 left-0 w-96 h-96 bg-brand-200/20 dark:bg-brand-900/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl" />
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-200/20 dark:bg-blue-900/10 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl" />
@@ -258,24 +259,30 @@ export default function LoginPage() {
           >
             <button
               role="tab"
+              id="auth-tab-login"
+              aria-controls="auth-panel-login"
               aria-selected={mode === 'login'}
+              tabIndex={mode === 'login' ? 0 : -1}
               onClick={() => setMode('login')}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
                 mode === 'login'
                   ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300'
-                  : 'text-gray-500'
+                  : 'text-gray-600 dark:text-gray-300'
               }`}
             >
               {t('auth.signIn')}
             </button>
             <button
               role="tab"
+              id="auth-tab-register"
+              aria-controls="auth-panel-register"
               aria-selected={mode === 'register'}
+              tabIndex={mode === 'register' ? 0 : -1}
               onClick={() => setMode('register')}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
                 mode === 'register'
                   ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300'
-                  : 'text-gray-500'
+                  : 'text-gray-600 dark:text-gray-300'
               }`}
             >
               {t('auth.signUp')}
@@ -285,7 +292,7 @@ export default function LoginPage() {
           {/* Google Sign-In */}
           {googleClientId && (
             <div className="mb-6">
-              <div ref={googleButtonRef} className="flex justify-center" />
+              <div ref={googleButtonRef} className="flex min-h-11 w-full justify-center" />
               <div className="relative mt-5">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-300 dark:border-gray-600" />
@@ -300,7 +307,13 @@ export default function LoginPage() {
           )}
 
           {mode === 'login' ? (
-            <form onSubmit={handleEmailLogin} className="space-y-4" role="tabpanel">
+            <form
+              id="auth-panel-login"
+              role="tabpanel"
+              aria-labelledby="auth-tab-login"
+              onSubmit={handleEmailLogin}
+              className="space-y-4"
+            >
               <div>
                 <label
                   htmlFor="login-email"
@@ -400,7 +413,13 @@ export default function LoginPage() {
               </div>
             </form>
           ) : (
-            <form onSubmit={handleEmailSignup} className="space-y-4" role="tabpanel">
+            <form
+              id="auth-panel-register"
+              role="tabpanel"
+              aria-labelledby="auth-tab-register"
+              onSubmit={handleEmailSignup}
+              className="space-y-4"
+            >
               <div>
                 <label
                   htmlFor="register-name"
@@ -507,6 +526,18 @@ export default function LoginPage() {
                   </div>
                 )}
               </div>
+              <label className="flex items-start gap-3 text-sm text-gray-600 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={marketingConsent}
+                  onChange={(event) => setMarketingConsent(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                />
+                <span>
+                  Send me optional onboarding tips, training guidance, and product updates. I can unsubscribe at any
+                  time.
+                </span>
+              </label>
               <button
                 type="submit"
                 disabled={loading}
@@ -610,6 +641,6 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

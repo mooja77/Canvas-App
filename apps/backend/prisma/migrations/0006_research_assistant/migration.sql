@@ -7,7 +7,7 @@ CREATE TABLE "TextEmbedding" (
     "chunkIndex" INTEGER NOT NULL DEFAULT 0,
     "chunkText" TEXT NOT NULL,
     "embedding" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "TextEmbedding_canvasId_fkey" FOREIGN KEY ("canvasId") REFERENCES "CodingCanvas" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -19,7 +19,7 @@ CREATE TABLE "ChatMessage" (
     "role" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "citations" TEXT NOT NULL DEFAULT '[]',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "ChatMessage_canvasId_fkey" FOREIGN KEY ("canvasId") REFERENCES "CodingCanvas" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -31,8 +31,8 @@ CREATE TABLE "Summary" (
     "sourceId" TEXT,
     "summaryText" TEXT NOT NULL,
     "summaryType" TEXT NOT NULL DEFAULT 'paraphrase',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "Summary_canvasId_fkey" FOREIGN KEY ("canvasId") REFERENCES "CodingCanvas" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 

@@ -1,0 +1,103 @@
+1
+00:00:00,080 --> 00:00:03,894
+A transcript is more than a block of text.
+
+2
+00:00:03,894 --> 00:00:08,132
+Before import, confirm that the study permits this storage location,
+
+3
+00:00:08,132 --> 00:00:12,369
+remove direct identifiers where appropriate and use synthetic material whenever
+
+4
+00:00:12,369 --> 00:00:14,912
+you are only learning the interface.
+
+5
+00:00:15,312 --> 00:00:20,090
+The public guide explains the supported source workflow and current limits.
+
+6
+00:00:20,090 --> 00:00:24,434
+Review it before a large import so file types, transcript
+
+7
+00:00:24,434 --> 00:00:28,344
+length and plan limits do not interrupt the study.
+
+8
+00:00:28,744 --> 00:00:30,870
+In the workspace, open Transcript.
+
+9
+00:00:30,870 --> 00:00:35,123
+Choose the path that matches your material, give the source
+
+10
+00:00:35,123 --> 00:00:39,375
+a useful title and keep participant identifiers out of the
+
+11
+00:00:39,375 --> 00:00:42,352
+title unless the protocol explicitly allows them.
+
+12
+00:00:42,752 --> 00:00:45,843
+The Sources tab provides a compact inventory.
+
+13
+00:00:45,843 --> 00:00:50,259
+Use it to confirm that each interview arrived once, spot
+
+14
+00:00:50,259 --> 00:00:54,675
+naming inconsistencies and return to a particular source without searching
+
+15
+00:00:54,675 --> 00:00:56,000
+the whole canvas.
+
+16
+00:00:56,400 --> 00:01:01,256
+Open the transcript node and read around each passage before coding.
+
+17
+00:01:01,256 --> 00:01:05,671
+Qualitative meaning depends on context, so avoid creating a code
+
+18
+00:01:05,671 --> 00:01:10,085
+from a highlighted phrase alone when the surrounding answer changes
+
+19
+00:01:10,085 --> 00:01:10,968
+its interpretation.
+
+20
+00:01:11,368 --> 00:01:17,306
+For real participant material, align QualCanvas with the consent form,
+
+21
+00:01:17,306 --> 00:01:20,275
+ethics approval and institutional policy.
+
+22
+00:01:20,275 --> 00:01:26,213
+The privacy page documents retention, deletion, portability and service-provider locations;
+
+23
+00:01:26,213 --> 00:01:29,776
+your protocol remains the controlling boundary.
+
+24
+00:01:30,176 --> 00:01:35,053
+The safe habit is straightforward: check permission, remove unnecessary identifiers,
+
+25
+00:01:35,053 --> 00:01:39,442
+name the source clearly and verify the import once.
+
+26
+00:01:39,442 --> 00:01:42,368
+Then you are ready to code.

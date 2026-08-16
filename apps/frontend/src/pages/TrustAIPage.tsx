@@ -18,7 +18,8 @@ import HairlineRule from '../components/marketing/HairlineRule';
  *   Browser → Backend (acts as proxy) → Provider API
  *   - Keys: per-user encrypted in UserAiConfig, or server-side env fallback.
  *   - Logs: AiUsage table stores feature, provider, model, token counts.
- *           Prompt + transcript content NEVER persisted.
+ *           AI work products and chat history are persisted so researchers
+ *           can review and audit them later.
  *   - Providers wired: OpenAI, Anthropic, Google. No others.
  *
  * Legal sign-off REQUIRED before this URL is linked from default nav or
@@ -61,8 +62,9 @@ export default function TrustAIPage() {
               <strong className="font-semibold text-gray-900 dark:text-white">No.</strong> When you ask QualCanvas to
               auto-code, summarize a theme, or sketch a framework, the QualCanvas backend forwards your prompt to the
               model provider you've chosen (OpenAI, Anthropic, or Google), receives the response, and returns it to your
-              browser. The transcript content is held in memory for the duration of the request — it is not written to
-              any QualCanvas database, log, or analytics stream.
+              browser. Source transcripts already stored in your project may be included in that request. QualCanvas
+              stores selected AI work products—such as suggestions, summaries and chat messages—so you can review them
+              later; usage analytics store feature, provider, model and token counts.
             </p>
             <p>The model providers we support contractually exclude this API traffic from training. Their policies:</p>
             <ul className="list-disc list-inside space-y-2 ml-2">
@@ -151,21 +153,23 @@ export default function TrustAIPage() {
           </h2>
           <div className="space-y-4 text-gray-700 dark:text-gray-300 leading-relaxed">
             <p>
-              <strong className="font-semibold text-gray-900 dark:text-white">Usage metadata only.</strong> For each AI
-              call we record: which feature was used (auto-code / theme / framework), which provider, which model, and
-              the token count returned by the provider. This is what we use to bill, debug, and report on AI behavior.
+              <strong className="font-semibold text-gray-900 dark:text-white">Usage and research records.</strong> For
+              each AI call we record: which feature was used (auto-code / theme / framework), which provider, which
+              model, and the token count returned by the provider. This is what we use to bill, debug, and report on AI
+              behavior.
             </p>
             <p>
               <strong className="font-semibold text-gray-900 dark:text-white">
-                We do not log the prompt or the response content.
+                We do not put full prompt text into general request or analytics logs.
               </strong>{' '}
-              The transcript text, the model's suggested codes, the summary it drafted — none of that is written to
-              QualCanvas storage beyond the request that returns it to your browser.
+              The project database can store model suggestions, summaries, chat messages, job results and the source
+              excerpts needed to make those records useful and auditable. Those records are part of your project data
+              and are included in account deletion and export workflows.
             </p>
             <p>
               When you accept or reject a suggestion, the accept/reject decision is recorded against the coded span so
               your methods statement can report it (e.g. "model accepted 14/22 suggestions; researcher revised 6"). That
-              record holds the resulting code name and the user's decision — never the full prompt context.
+              record holds the resulting content, reasoning where supplied, and the user's decision.
             </p>
             <p>On Team and Institutions tiers, this usage and decision record is visible to project admins.</p>
           </div>
@@ -191,8 +195,7 @@ Provider returns suggestions
    ↓
 Backend records usage metadata (feature + model + token count)
    ↓
-Backend returns the suggestions to the browser; prompt + response
-content are discarded from server memory
+Backend stores the project work product and returns it to the browser
    ↓
 User reviews; accepts or rejects per suggestion
    ↓
@@ -228,16 +231,16 @@ Accept/reject + final code name persisted with the span`}
               >
                 research@qualcanvas.com
               </a>
-              . On the Institutions plan we can configure a project-level "AI disabled" flag that hides the AI buttons
-              for that workspace; documenting this for your protocol is straightforward.
+              . A project-enforced AI-disable control is not currently available, so studies requiring a technical
+              prohibition should not rely on QualCanvas until that control is released.
             </p>
           </div>
         </section>
 
         <div className="mt-16 pt-8 border-t border-gray-200 dark:border-gray-800">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Last reviewed: {new Date().toISOString().slice(0, 10)}. We re-review this page quarterly and whenever the AI
-            request, key storage, or logging architecture changes. See{' '}
+            Last reviewed: 2026-07-18. We re-review this page quarterly and whenever the AI request, key storage, or
+            logging architecture changes. See{' '}
             <a
               className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
               href="/trust"

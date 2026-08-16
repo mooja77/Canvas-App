@@ -23,10 +23,14 @@ const { mockPrisma } = vi.hoisted(() => {
     subscription: {
       findUnique: vi.fn(),
     },
-    codingCanvas: { count: vi.fn() },
+    codingCanvas: { count: vi.fn(), findMany: vi.fn() },
     canvasTranscript: { count: vi.fn() },
     canvasQuestion: { count: vi.fn() },
     canvasShare: { count: vi.fn() },
+    emailPreference: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({}),
+    },
     $transaction: vi.fn(),
     $queryRawUnsafe: vi.fn(),
     $disconnect: vi.fn(),
@@ -81,6 +85,10 @@ vi.mock('../../lib/email.js', () => ({
   sendPasswordResetEmail: vi.fn().mockResolvedValue(true),
 }));
 
+vi.mock('../../utils/fileCleanup.js', () => ({
+  deleteStoredUploads: vi.fn().mockResolvedValue(0),
+}));
+
 // Mock google-auth-library
 const { mockVerifyIdToken } = vi.hoisted(() => ({
   mockVerifyIdToken: vi.fn(),
@@ -102,6 +110,7 @@ import { errorHandler } from '../../middleware/errorHandler.js';
 import { signUserToken } from '../../utils/jwt.js';
 import { sha256 } from '../../utils/hashing.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../../lib/email.js';
+import { getStripe } from '../../lib/stripe.js';
 
 // Build a minimal Express app with the auth routes
 function createApp() {
@@ -117,6 +126,7 @@ describe('User auth integration tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.codingCanvas.findMany.mockResolvedValue([]);
     app = createApp();
     // Set GOOGLE_CLIENT_ID for Google OAuth tests
     process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
@@ -126,7 +136,7 @@ describe('User auth integration tests', () => {
   describe('POST /api/auth/signup', () => {
     const validPayload = { email: 'newuser@example.com', password: 'securepass123', name: 'Jane Doe' };
 
-    it('creates a new user with correct fields and returns 201 + JWT', async () => {
+    it('creates a new user and returns an httpOnly session cookie', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
       const createdUser = {
         id: 'user-new',
@@ -150,7 +160,8 @@ describe('User auth integration tests', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.jwt).toBeDefined();
+      expect(res.body.data.jwt).toBeUndefined();
+      expect(res.headers['set-cookie']?.[0]).toContain('jwt=');
       expect(res.body.data.user.email).toBe('newuser@example.com');
       expect(res.body.data.user.name).toBe('Jane Doe');
       expect(res.body.data.user.plan).toBe('free');
@@ -322,7 +333,7 @@ describe('User auth integration tests', () => {
       emailVerified: true,
     };
 
-    it('returns JWT and user data on valid credentials', async () => {
+    it('returns user data and an httpOnly session cookie on valid credentials', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(mockUser);
       mockPrisma.subscription.findUnique.mockResolvedValue(null);
       (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
@@ -334,7 +345,8 @@ describe('User auth integration tests', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.jwt).toBeDefined();
+      expect(res.body.data.jwt).toBeUndefined();
+      expect(res.headers['set-cookie']?.[0]).toContain('jwt=');
       expect(res.body.data.user.email).toBe('test@example.com');
       expect(res.body.data.user.plan).toBe('free');
     });
@@ -532,8 +544,8 @@ describe('User auth integration tests', () => {
         id: 'user-1',
         email: 'test@example.com',
         emailVerified: false,
-        resetTokenHash: 'sha256hash',
-        resetTokenExpiry: futureDate,
+        verificationTokenHash: 'sha256hash',
+        verificationTokenExpiry: futureDate,
       });
       mockPrisma.user.update.mockResolvedValue({});
       (sha256 as ReturnType<typeof vi.fn>).mockReturnValue('sha256hash');
@@ -548,7 +560,7 @@ describe('User auth integration tests', () => {
       expect(res.body.message).toMatch(/verified successfully/i);
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { emailVerified: true, resetTokenHash: null, resetTokenExpiry: null },
+        data: { emailVerified: true, verificationTokenHash: null, verificationTokenExpiry: null },
       });
     });
 
@@ -558,8 +570,8 @@ describe('User auth integration tests', () => {
         id: 'user-1',
         email: 'test@example.com',
         emailVerified: false,
-        resetTokenHash: 'sha256hash',
-        resetTokenExpiry: pastDate,
+        verificationTokenHash: 'sha256hash',
+        verificationTokenExpiry: pastDate,
       });
       (sha256 as ReturnType<typeof vi.fn>).mockReturnValue('sha256hash');
 
@@ -617,7 +629,8 @@ describe('User auth integration tests', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.jwt).toBeDefined();
+      expect(res.body.data.jwt).toBeUndefined();
+      expect(res.headers['set-cookie']?.[0]).toContain('jwt=');
       expect(res.body.data.user.email).toBe('google@example.com');
     });
 
@@ -675,6 +688,8 @@ describe('User auth integration tests', () => {
       const jwt = signUserToken('user-1', 'researcher', 'free');
       mockPrisma.user.findUnique.mockResolvedValueOnce({
         id: 'user-1',
+        email: 'test@example.com',
+        passwordHash: '$2a$12$hashedpassword',
         plan: 'free',
         role: 'researcher',
         dashboardAccess: null,
@@ -746,17 +761,82 @@ describe('User auth integration tests', () => {
 
     it('rejects deletion without password', async () => {
       const jwt = signUserToken('user-1', 'researcher', 'free');
-      mockPrisma.user.findUnique.mockResolvedValueOnce({
-        id: 'user-1',
-        plan: 'free',
-        role: 'researcher',
-        dashboardAccess: null,
-      });
+      mockPrisma.user.findUnique
+        .mockResolvedValueOnce({
+          id: 'user-1',
+          email: 'test@example.com',
+          passwordHash: '$2a$12$hashedpassword',
+          plan: 'free',
+          role: 'researcher',
+          dashboardAccess: null,
+        })
+        .mockResolvedValue({
+          id: 'user-1',
+          email: 'test@example.com',
+          passwordHash: '$2a$12$hashedpassword',
+          plan: 'free',
+          role: 'researcher',
+          dashboardAccess: null,
+        });
 
       const res = await request(app).delete('/api/auth/account').set('Authorization', `Bearer ${jwt}`).send({});
 
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/password/i);
+    });
+
+    it('cancels the subscription even when the Stripe customer id is missing', async () => {
+      const mockUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        passwordHash: '$2a$12$hashedpassword',
+        plan: 'pro',
+        role: 'researcher',
+        subscription: { stripeSubscriptionId: 'sub_123' },
+        stripeCustomerId: null,
+        dashboardAccess: null,
+      };
+      const jwt = signUserToken('user-1', 'researcher', 'pro');
+      const cancel = vi.fn().mockResolvedValue({});
+      (getStripe as ReturnType<typeof vi.fn>).mockReturnValue({ subscriptions: { cancel } });
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser }).mockResolvedValueOnce(mockUser);
+      mockPrisma.user.delete.mockResolvedValue({});
+      (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+      const res = await request(app)
+        .delete('/api/auth/account')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ password: 'password123' });
+
+      expect(res.status).toBe(200);
+      expect(cancel).toHaveBeenCalledWith('sub_123');
+      expect(mockPrisma.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } });
+    });
+
+    it('keeps the account when Stripe subscription cancellation fails', async () => {
+      const mockUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        passwordHash: '$2a$12$hashedpassword',
+        plan: 'pro',
+        role: 'researcher',
+        subscription: { stripeSubscriptionId: 'sub_123' },
+        stripeCustomerId: null,
+        dashboardAccess: null,
+      };
+      const jwt = signUserToken('user-1', 'researcher', 'pro');
+      const cancel = vi.fn().mockRejectedValue(new Error('Stripe unavailable'));
+      (getStripe as ReturnType<typeof vi.fn>).mockReturnValue({ subscriptions: { cancel } });
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser }).mockResolvedValueOnce(mockUser);
+      (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+      const res = await request(app)
+        .delete('/api/auth/account')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ password: 'password123' });
+
+      expect(res.status).toBe(500);
+      expect(mockPrisma.user.delete).not.toHaveBeenCalled();
     });
   });
 

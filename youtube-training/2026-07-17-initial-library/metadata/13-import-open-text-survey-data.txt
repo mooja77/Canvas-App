@@ -1,0 +1,36 @@
+TITLE
+Import Open-Text Survey Data into QualCanvas
+
+DESCRIPTION
+Import a CSV of open-text responses, map useful columns and prepare responses for coding without exposing respondent data.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Bring open-text responses onto the canvas
+0:16 Open the Survey importer
+0:30 Map the columns deliberately
+0:45 Check the imported sources
+0:59 Code responses with the same audit trail
+1:15 Minimise respondent data before import
+1:34 Import cleanly, then analyse visibly
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+open text survey analysis, survey CSV import, qualitative survey coding, thematic analysis survey, QualCanvas tutorial
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Everyday coding
+Subtitle file: subtitles/13-import-open-text-survey-data.en-IE.srt
+Thumbnail: thumbnails/13-import-open-text-survey-data.jpg

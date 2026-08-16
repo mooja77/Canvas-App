@@ -1,11 +1,24 @@
 #!/usr/bin/env python3
-"""QualCanvas Live Production Test Suite — All 7 suites, ~55 tests"""
-import json, urllib.request, ssl, time
+"""QualCanvas Live Production Test Suite — All 7 suites, ~55 tests.
+
+Requires dedicated, revocable credentials in QUALCANVAS_DEMO_CODE and
+QUALCANVAS_ADMIN_KEY. Never run this mutating suite against customer data.
+"""
+import http.cookiejar
+import json
+import os
+import time
+import urllib.request
 
 API = 'https://canvas-app-production.up.railway.app/api'
 O = 'https://qualcanvas.com'
-ctx = ssl.create_default_context()
-ADMIN_KEY = '69acea2bb9099098dc517b62a446e189d344461d3d1ab2e6a164081adc1f3e1f'
+ADMIN_KEY = os.environ.get('QUALCANVAS_ADMIN_KEY')
+ACCESS_CODE = os.environ.get('QUALCANVAS_DEMO_CODE')
+if not ADMIN_KEY or not ACCESS_CODE:
+    raise RuntimeError('QUALCANVAS_ADMIN_KEY and QUALCANVAS_DEMO_CODE are required')
+
+cookie_jar = http.cookiejar.CookieJar()
+opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
 PASS = 0
 FAIL = 0
 RESULTS = []
@@ -14,11 +27,12 @@ def api(method, path, data=None, token=None, admin=False):
     url = f'{API}{path}'
     body = json.dumps(data).encode() if data else None
     headers = {'Content-Type': 'application/json', 'Origin': O}
-    if token: headers['x-dashboard-code'] = token
+    # The token argument remains for compatibility with the older call sites.
+    # Authentication is carried by the secure cookie captured during login.
     if admin: headers['x-admin-key'] = ADMIN_KEY
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req, context=ctx, timeout=30) as r:
+        with opener.open(req, timeout=30) as r:
             return json.loads(r.read())
     except urllib.error.HTTPError as e:
         return json.loads(e.read())
@@ -42,8 +56,10 @@ def cleanup(cid, token):
     api('DELETE', f'/canvas/{cid}/permanent', None, token)
 
 # Auth
-login = api('POST', '/auth', {'dashboardCode': 'CANVAS-DEMO2025'})
-JWT = login['data']['jwt']
+login = api('POST', '/auth', {'dashboardCode': ACCESS_CODE})
+if not login.get('success'):
+    raise RuntimeError(f'Production QA login failed: {login.get("error", "unknown error")}')
+JWT = None
 print(f'Auth: {login["data"]["name"]}\n')
 
 # === SUITE 1: LAYOUT PERSISTENCE ===
@@ -144,15 +160,15 @@ for i in range(10):
 api('POST', f'/canvas/{cid}/memos', {'title': 'Memo', 'content': 'Test memo.'}, JWT)
 
 try:
-    req = urllib.request.Request(f'{API}/canvas/{cid}/export/excel', headers={'x-dashboard-code': JWT, 'Origin': O})
-    with urllib.request.urlopen(req, context=ctx, timeout=15) as r:
+    req = urllib.request.Request(f'{API}/canvas/{cid}/export/excel', headers={'Origin': O})
+    with opener.open(req, timeout=15) as r:
         check('3.1 Excel export', len(r.read()) > 100)
 except Exception as e:
     check('3.1 Excel export', False, str(e))
 
 try:
-    req = urllib.request.Request(f'{API}/canvas/{cid}/export/qdpx', headers={'x-dashboard-code': JWT, 'Origin': O})
-    with urllib.request.urlopen(req, context=ctx, timeout=15) as r:
+    req = urllib.request.Request(f'{API}/canvas/{cid}/export/qdpx', headers={'Origin': O})
+    with opener.open(req, timeout=15) as r:
         check('3.2 QDPX export', len(r.read()) > 100)
 except Exception as e:
     check('3.2 QDPX export', False, str(e))

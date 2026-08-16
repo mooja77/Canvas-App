@@ -9,8 +9,8 @@ import { isLegacyE2eAuth } from './helpers';
  * 401 from /api/calendar/events. It must now show an explicit
  * email-auth-required panel instead.
  *
- * The default E2E setup project authenticates with the demo access code
- * (CANVAS-DEMO2025), i.e. legacy auth — so these tests exercise the gated
+ * The default E2E setup project authenticates with an environment-supplied
+ * test access code, i.e. legacy auth — so these tests exercise the gated
  * path directly.
  */
 
@@ -56,7 +56,9 @@ test.describe('Canvas auth-gated tools', () => {
       return raw ? JSON.parse(raw)?.state?.jwt || '' : '';
     });
     const res = await p.request.post(`${API}/canvas`, { headers: headers(), data: { name: PREFIX } });
-    canvasId = (await res.json()).data.id;
+    const body = await res.json();
+    expect(res.ok(), `Canvas setup failed (${res.status()}): ${JSON.stringify(body)}`).toBeTruthy();
+    canvasId = body.data.id;
     await p.close();
     await ctx.close();
   });

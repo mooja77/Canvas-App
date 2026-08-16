@@ -13,17 +13,17 @@ import { usePageMeta } from '../hooks/usePageMeta';
 export default function PrivacyPage() {
   usePageMeta(
     'Privacy Policy — QualCanvas',
-    'How QualCanvas collects, uses, and protects researcher data — GDPR Art. 13 compliant.',
+    'How QualCanvas collects, uses, and protects researcher data, including data-subject rights and transfers.',
   );
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-3xl mx-auto px-4 py-12">
         <Link to="/" className="text-sm text-brand-600 dark:text-brand-400 hover:underline mb-6 inline-block">
           &larr; Back to home
         </Link>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Privacy Policy</h1>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-8">
-          Last updated: {new Date().toISOString().slice(0, 10)}. See also:{' '}
+        <p className="text-xs text-gray-600 dark:text-gray-300 mb-8">
+          Last updated: 2026-07-18. See also:{' '}
           <Link to="/trust" className="text-brand-600 hover:underline">
             Trust
           </Link>{' '}
@@ -37,7 +37,7 @@ export default function PrivacyPage() {
           </Link>
         </p>
 
-        <div className="prose dark:prose-invert max-w-none space-y-5 text-sm text-gray-700 dark:text-gray-300">
+        <div className="prose dark:prose-invert max-w-none space-y-5 text-sm text-gray-700 dark:text-gray-300 [&_a]:underline [&_a]:underline-offset-2">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Who we are</h2>
           <p>
             QualCanvas is a qualitative-coding workspace for academic and applied researchers. Contact:{' '}
@@ -59,9 +59,14 @@ export default function PrivacyPage() {
             logs, request IDs, hashed IP, billing events.
           </p>
           <p>
+            <strong>Training videos:</strong> the training centre serves preview images directly from QualCanvas and
+            does not contact YouTube until you choose Play. After that choice, the privacy-enhanced YouTube player may
+            receive your IP address, browser information and viewing activity under Google&apos;s privacy terms.
+          </p>
+          <p>
             <strong>AI provider keys:</strong> If you BYOK an OpenAI / Anthropic / Google API key, it&apos;s stored
-            AES-256-GCM encrypted at rest. We never log the plaintext or proxy your AI calls through our servers in a
-            way that would expose them to third parties.
+            AES-256-GCM encrypted at rest. The backend decrypts the key only when sending your requested AI call to the
+            selected provider; the provider receives the prompt and relevant research excerpts needed for that call.
           </p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Lawful basis (GDPR Art. 6)</h2>
@@ -92,7 +97,8 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong>Erasure (Art. 17):</strong> delete your account from <em>Account &rarr; Delete account</em>. Hard
-              delete within 30 days, backups within 90 days.
+              deletion removes the live account and related project records. Encrypted backup copies expire under the
+              hosting provider&apos;s backup lifecycle.
             </li>
             <li>
               <strong>Portability (Art. 20):</strong> export to CSV, QDPX, JSON via the canvas Export menu.
@@ -114,11 +120,13 @@ export default function PrivacyPage() {
             <tbody>
               <tr className="border-b border-gray-100 dark:border-gray-800">
                 <td className="py-1">Account + research content</td>
-                <td className="py-1">Until you delete the account (then 30-day hard-delete + 90-day backup expiry)</td>
+                <td className="py-1">
+                  Until you delete the account; provider-managed encrypted backups expire separately
+                </td>
               </tr>
               <tr className="border-b border-gray-100 dark:border-gray-800">
                 <td className="py-1">Audit / access logs</td>
-                <td className="py-1">90 days rolling</td>
+                <td className="py-1">While needed for account security, support and the project audit trail</td>
               </tr>
               <tr className="border-b border-gray-100 dark:border-gray-800">
                 <td className="py-1">Billing records</td>
@@ -126,7 +134,7 @@ export default function PrivacyPage() {
               </tr>
               <tr className="border-b border-gray-100 dark:border-gray-800">
                 <td className="py-1">Error / telemetry events</td>
-                <td className="py-1">180 days in Sentry / GA4</td>
+                <td className="py-1">According to the configured Sentry and analytics workspace retention</td>
               </tr>
             </tbody>
           </table>
@@ -140,8 +148,8 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">International transfers</h2>
           <p>
             Most processing occurs in the US (Railway, Cloudflare, Stripe, Resend). For EU customers, we transfer
-            personal data under the European Commission&apos;s 2021 Standard Contractual Clauses (SCCs). An EU region
-            deployment is on the roadmap (target Q2 2026).
+            personal data under the transfer mechanisms documented by the relevant providers and our applicable
+            agreements. An EU-resident application database is not currently available.
           </p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Children</h2>
@@ -163,6 +171,6 @@ export default function PrivacyPage() {
           </p>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

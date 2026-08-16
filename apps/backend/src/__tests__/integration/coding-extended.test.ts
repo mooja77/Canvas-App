@@ -33,6 +33,7 @@ const { mockPrisma } = vi.hoisted(() => {
     },
     canvasQuestion: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
@@ -108,6 +109,7 @@ vi.mock('../../middleware/planLimits.js', () => ({
   checkWordLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkCodeLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAutoCode: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  checkIntercoderAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkCaseAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkShareLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAnalysisType: () => (_req: Request, _res: Response, next: NextFunction) => next(),
@@ -667,6 +669,7 @@ describe('Coding extended tests', () => {
 
   it('POST /canvas/:id/relations creates a relation', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasQuestion.findFirst.mockImplementation(({ where }) => Promise.resolve({ id: where.id, canvasId }));
     mockPrisma.canvasRelation.create.mockResolvedValue({
       id: 'rel-1',
       canvasId,

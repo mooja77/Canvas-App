@@ -55,6 +55,10 @@ vi.mock('../../lib/prisma.js', () => ({
   prisma: mockPrisma,
 }));
 
+vi.mock('../../utils/fileCleanup.js', () => ({
+  deleteStoredUploads: vi.fn().mockResolvedValue(0),
+}));
+
 // Mock rate limiter to be a pass-through
 vi.mock('../../middleware/authLimiter.js', () => ({
   authLimiter: (_req: Request, _res: Response, next: NextFunction) => next(),
@@ -79,6 +83,7 @@ vi.mock('../../middleware/planLimits.js', () => ({
   checkWordLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkCodeLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAutoCode: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  checkIntercoderAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkCaseAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkShareLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAnalysisType: () => (_req: Request, _res: Response, next: NextFunction) => next(),
@@ -168,9 +173,7 @@ describe('Soft delete integration tests', () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
     mockPrisma.codingCanvas.update.mockResolvedValue({ ...mockCanvas, deletedAt: new Date() });
 
-    const res = await request(app)
-      .delete(`/api/canvas/${canvasId}`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).delete(`/api/canvas/${canvasId}`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -179,7 +182,7 @@ describe('Soft delete integration tests', () => {
       expect.objectContaining({
         where: { id: canvasId },
         data: { deletedAt: expect.any(Date) },
-      })
+      }),
     );
     // Hard delete should NOT have been called
     expect(mockPrisma.codingCanvas.delete).not.toHaveBeenCalled();
@@ -195,9 +198,7 @@ describe('Soft delete integration tests', () => {
     mockPrisma.codingCanvas.findMany.mockResolvedValue([activeCanvas]);
     mockPrisma.codingCanvas.count.mockResolvedValue(1);
 
-    const res = await request(app)
-      .get('/api/canvas')
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get('/api/canvas').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -206,7 +207,7 @@ describe('Soft delete integration tests', () => {
     expect(mockPrisma.codingCanvas.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ deletedAt: null }),
-      })
+      }),
     );
   });
 
@@ -218,9 +219,7 @@ describe('Soft delete integration tests', () => {
     };
     mockPrisma.codingCanvas.findMany.mockResolvedValue([trashedItem]);
 
-    const res = await request(app)
-      .get('/api/canvas/trash')
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).get('/api/canvas/trash').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -230,7 +229,7 @@ describe('Soft delete integration tests', () => {
     expect(mockPrisma.codingCanvas.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ deletedAt: { not: null } }),
-      })
+      }),
     );
   });
 
@@ -239,9 +238,7 @@ describe('Soft delete integration tests', () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...trashedCanvas });
     mockPrisma.codingCanvas.update.mockResolvedValue({ ...mockCanvas, deletedAt: null });
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/restore`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post(`/api/canvas/${canvasId}/restore`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -249,7 +246,7 @@ describe('Soft delete integration tests', () => {
       expect.objectContaining({
         where: { id: canvasId },
         data: { deletedAt: null },
-      })
+      }),
     );
   });
 
@@ -258,9 +255,7 @@ describe('Soft delete integration tests', () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...trashedCanvas });
     mockPrisma.codingCanvas.delete.mockResolvedValue({ ...trashedCanvas });
 
-    const res = await request(app)
-      .delete(`/api/canvas/${canvasId}/permanent`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).delete(`/api/canvas/${canvasId}/permanent`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -272,9 +267,7 @@ describe('Soft delete integration tests', () => {
     // Canvas is NOT in trash (deletedAt is null)
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas, deletedAt: null });
 
-    const res = await request(app)
-      .delete(`/api/canvas/${canvasId}/permanent`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).delete(`/api/canvas/${canvasId}/permanent`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
@@ -286,9 +279,7 @@ describe('Soft delete integration tests', () => {
   it('POST /canvas/:id/restore on non-trashed canvas returns 400', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas, deletedAt: null });
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/restore`)
-      .set('Authorization', `Bearer ${jwt}`);
+    const res = await request(app).post(`/api/canvas/${canvasId}/restore`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);

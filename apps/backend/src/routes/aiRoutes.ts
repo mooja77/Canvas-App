@@ -20,6 +20,7 @@ import { calculateCostCents } from '../utils/aiCost.js';
 import { aiCacheGet, aiCacheSet, aiCacheKey } from '../utils/aiCache.js';
 import { findCoding } from '../utils/findCoding.js';
 import { computeAiAgreement } from '../eval/aiAgreement.js';
+import { sha256 } from '../utils/hashing.js';
 
 export const aiRoutes = Router();
 
@@ -179,9 +180,22 @@ aiRoutes.post(
       // tab-close mid-run + reopen doesn't re-run a 30-second LLM call.
       // Pending / running jobs return 409 so the client knows to keep polling
       // rather than double-charging the user.
-      const idempotencyKey = (req.header('x-idempotency-key') ||
+      const rawIdempotencyKey = (req.header('x-idempotency-key') ||
         req.header('idempotency-key') ||
-        req.body?.idempotencyKey) as string | undefined;
+        req.body?.idempotencyKey) as unknown;
+      if (
+        rawIdempotencyKey !== undefined &&
+        (typeof rawIdempotencyKey !== 'string' || rawIdempotencyKey.trim().length < 1 || rawIdempotencyKey.length > 200)
+      ) {
+        return res.status(400).json({ success: false, error: 'Invalid idempotency key' });
+      }
+      // AiJob.idempotencyKey is globally unique in the database. Namespace the
+      // caller's key by both user and canvas so another tenant can never replay
+      // or collide with this job.
+      const idempotencyKey =
+        typeof rawIdempotencyKey === 'string'
+          ? sha256(`ai-job:${userId}:${canvas.id}:${rawIdempotencyKey.trim()}`)
+          : undefined;
       if (idempotencyKey) {
         const existing = await prisma.aiJob.findUnique({ where: { idempotencyKey } });
         if (existing) {
@@ -376,9 +390,13 @@ aiRoutes.post(
       // Mark the AiJob row failed so retries surface the error rather than
       // hanging in 'running' forever. We don't have `job` in scope inside
       // this catch (declared inside try), so re-derive via idempotencyKey.
-      const idempotencyKey = (req.header('x-idempotency-key') ||
+      const rawIdempotencyKey = (req.header('x-idempotency-key') ||
         req.header('idempotency-key') ||
-        req.body?.idempotencyKey) as string | undefined;
+        req.body?.idempotencyKey) as unknown;
+      const idempotencyKey =
+        typeof rawIdempotencyKey === 'string' && req.userId
+          ? sha256(`ai-job:${req.userId}:${req.params.id}:${rawIdempotencyKey.trim()}`)
+          : undefined;
       if (idempotencyKey) {
         await prisma.aiJob
           .updateMany({
@@ -823,8 +841,6 @@ aiRoutes.post(
 // reliability (if a TrainingAttempt exists) and asks the LLM to write a
 // publishable methods-section paragraph. Caller can paste the response
 // directly into their manuscript. Optional `intercoder` field in the
-// request body lets the frontend pass the result of an ad-hoc Krippendorff
-// α / Cohen κ computation that isn't persisted to TrainingAttempt.
 aiRoutes.post(
   '/canvas/:id/ai/methods-statement',
   checkAiAccess(),
@@ -835,8 +851,6 @@ aiRoutes.post(
       const dashboardAccessId = getAuthId(req);
       const userId = getAuthUserId(req);
       const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
-
-      const overrideIntercoder = req.body?.intercoder as { method: string; score: number; nCoders: number } | undefined;
 
       const [transcriptCount, totalCodings, totalCodes, aiUsageRows, latestAttempt, suggestionStats] =
         await Promise.all([
@@ -867,14 +881,10 @@ aiRoutes.post(
         model: r.model,
       }));
 
-      // Prefer the caller-supplied intercoder result (covers ad-hoc Krippendorff
-      // α + Fleiss κ runs that aren't stored on TrainingAttempt). Fall back to
-      // the most recent training-document Cohen κ score for legacy data.
       const intercoderResult =
-        overrideIntercoder ??
-        (latestAttempt?.kappaScore != null
+        latestAttempt?.kappaScore != null
           ? { method: "Cohen's κ", score: latestAttempt.kappaScore, nCoders: 2 }
-          : undefined);
+          : undefined;
 
       const accepted = suggestionStats.find((s) => s.status === 'accepted')?._count.status ?? 0;
       const rejected = suggestionStats.find((s) => s.status === 'rejected')?._count.status ?? 0;

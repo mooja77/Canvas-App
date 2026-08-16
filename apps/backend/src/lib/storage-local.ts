@@ -5,6 +5,7 @@
  */
 
 import fs from 'fs/promises';
+import { createReadStream } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import type { StorageProvider, UploadOptions, PresignedUrlOptions } from './storage.js';
@@ -17,11 +18,22 @@ async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
 }
 
+function resolveStoragePath(key: string): string {
+  if (!key || path.isAbsolute(key) || key.includes('\0')) {
+    throw new Error('Invalid storage key');
+  }
+  const resolved = path.resolve(UPLOAD_DIR, key);
+  if (!resolved.startsWith(`${UPLOAD_DIR}${path.sep}`)) {
+    throw new Error('Storage key escapes upload directory');
+  }
+  return resolved;
+}
+
 const localProvider: StorageProvider = {
   name: 'local',
 
   async upload(options: UploadOptions) {
-    const filePath = path.join(UPLOAD_DIR, options.key);
+    const filePath = resolveStoragePath(options.key);
     await ensureDir(path.dirname(filePath));
 
     if (Buffer.isBuffer(options.body)) {
@@ -55,7 +67,7 @@ const localProvider: StorageProvider = {
   },
 
   async delete(key: string) {
-    const filePath = path.join(UPLOAD_DIR, key);
+    const filePath = resolveStoragePath(key);
     try {
       await fs.unlink(filePath);
     } catch {
@@ -64,13 +76,22 @@ const localProvider: StorageProvider = {
   },
 
   async exists(key: string) {
-    const filePath = path.join(UPLOAD_DIR, key);
+    const filePath = resolveStoragePath(key);
     try {
       await fs.access(filePath);
       return true;
     } catch {
       return false;
     }
+  },
+
+  async head(key: string) {
+    const stat = await fs.stat(resolveStoragePath(key));
+    return { size: stat.size };
+  },
+
+  async openReadStream(key: string) {
+    return createReadStream(resolveStoragePath(key));
   },
 };
 

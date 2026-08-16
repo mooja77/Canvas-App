@@ -997,7 +997,7 @@ describe('AI features integration tests', () => {
       );
     });
 
-    it('accepts a caller-supplied intercoder override (e.g. Krippendorff α)', async () => {
+    it('ignores a caller-supplied intercoder result that was not persisted', async () => {
       mockLlmProvider.complete.mockResolvedValue({
         content: 'Generated paragraph.',
         model: 'claude-sonnet-4',
@@ -1011,11 +1011,7 @@ describe('AI features integration tests', () => {
         .send({ intercoder: { method: "Krippendorff's α", score: 0.78, nCoders: 4 } });
 
       expect(res.status).toBe(200);
-      expect(res.body.data.metadata.intercoder).toEqual({
-        method: "Krippendorff's α",
-        score: 0.78,
-        nCoders: 4,
-      });
+      expect(res.body.data.metadata.intercoder).toBeNull();
     });
 
     it('omits intercoder when no training attempts exist and no override given', async () => {

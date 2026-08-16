@@ -15,19 +15,21 @@ describe('origin allowlist helpers', () => {
     expect(isAllowedOrigin('https://evil.example.com')).toBe(false);
   });
 
-  it('allows canonical and preview Cloudflare Pages origins over HTTPS', () => {
+  it('allows the canonical Cloudflare Pages origin but rejects unconfigured previews', () => {
+    process.env.NODE_ENV = 'production';
     expect(isAllowedOrigin('https://qualcanvas.pages.dev')).toBe(true);
-    expect(isAllowedOrigin('https://85df13c9.qualcanvas.pages.dev')).toBe(true);
+    expect(isAllowedOrigin('https://85df13c9.qualcanvas.pages.dev')).toBe(false);
   });
 
   it('rejects non-HTTPS Cloudflare Pages origins', () => {
     expect(isAllowedOrigin('http://85df13c9.qualcanvas.pages.dev')).toBe(false);
   });
 
-  it('uses the dynamic allowlist for production CORS callbacks', () => {
+  it('rejects unconfigured preview origins in production CORS callbacks', () => {
     process.env.NODE_ENV = 'production';
-    const callback = (_err: Error | null, allow?: boolean) => {
-      expect(allow).toBe(true);
+    const callback = (err: Error | null, allow?: boolean) => {
+      expect(err).toBeNull();
+      expect(allow).toBe(false);
     };
     corsOrigin('https://85df13c9.qualcanvas.pages.dev', callback);
   });

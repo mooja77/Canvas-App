@@ -6,6 +6,7 @@ import PageShell from '../components/marketing/PageShell';
 import Eyebrow from '../components/marketing/Eyebrow';
 import DisplayHeading from '../components/marketing/DisplayHeading';
 import HairlineRule from '../components/marketing/HairlineRule';
+import LogoWall from '../components/marketing/LogoWall';
 import FAQ from '../components/marketing/FAQ';
 import CTAStripe from '../components/marketing/CTAStripe';
 
@@ -21,7 +22,7 @@ export default function ForTeamsPage() {
   const navigate = useNavigate();
   usePageMeta(
     'For research groups — QualCanvas',
-    'Code together with shared codebooks, live intercoder reliability, and IRB-ready audit trails. $39/seat/mo. .edu discount.',
+    'Manage a research group, collaborate on shared canvases, calculate intercoder reliability, and review project audit trails.',
   );
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function ForTeamsPage() {
 
   const handleTeamTrial = () => {
     trackEvent('cta_clicked', {
-      cta_label: 'Start your team trial',
+      cta_label: 'See Team pricing',
       location: 'for-teams_hero',
       target_route: '/pricing',
     });
@@ -49,21 +50,30 @@ export default function ForTeamsPage() {
             Code together. Disagree productively. Ship the paper.
           </DisplayHeading>
           <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl leading-relaxed mb-8">
-            Shared codebooks, intercoder reliability calculated live, audit trails for the IRB — for research groups,
-            methods courses, and labs.
+            Manage group membership, invite collaborators to a canvas, calculate intercoder agreement, and review a
+            project audit trail — for research groups, methods courses, and labs.
           </p>
           <button
             onClick={handleTeamTrial}
             className="inline-flex items-center justify-center bg-ochre-500 hover:bg-ochre-600 active:bg-ochre-700 text-ink-950 font-semibold px-8 py-3.5 rounded-lg shadow-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2"
           >
-            Start your team trial
+            See Team pricing
           </button>
         </div>
       </section>
 
-      {/* No logo wall and no pull quote: "Anonymized PI lab" and a
-          "representative quote" present as customer evidence we do not have.
-          Restore only with named, attributed permission. */}
+      {/* Audience list — do not imply customer endorsements without permission. */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+        <LogoWall
+          eyebrow="Designed for"
+          items={[
+            { name: 'Principal investigators' },
+            { name: 'Research labs' },
+            { name: 'Methods courses' },
+            { name: 'Health-research groups' },
+          ]}
+        />
+      </section>
 
       {/* Three concerns */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
@@ -77,22 +87,30 @@ export default function ForTeamsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <ConcernCard
             heading="Shared codebook"
-            body="When one coder splits a code, every coder sees it next session. No more codebook drift discovered the week before submission."
+            body="Editors on the same canvas work with the same codes, transcripts and memos. Changes are shared through the collaborative canvas."
             ctaText="See intercoder reliability →"
             ctaHref="/methodology/intercoder-reliability"
           />
           <ConcernCard
-            heading="Live intercoder κ"
-            body="Cohen's κ and Krippendorff's α calculated per code, per pair of coders, per transcript — continuously, not in batch."
+            heading="Intercoder agreement"
+            body="Run Cohen's κ or Krippendorff's α on attributed coding work when you are ready to compare coders."
             ctaText="See the math →"
             ctaHref="/methodology/intercoder-reliability"
           />
           <ConcernCard
-            heading="IRB-ready audit trail"
-            body="Every code applied, every memo edited, every coder action logged with timestamp. Export for the methods section or the audit request."
+            heading="Project audit trail"
+            body="Authenticated project requests are logged with action and timestamp. Canvas owners can review and export the available audit data."
             ctaText="See trust posture →"
             ctaHref="/trust"
           />
+        </div>
+      </section>
+
+      {/* Factual capability note — no representative or placeholder endorsement. */}
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+        <div className="rounded-2xl border border-ochre-200 bg-ochre-50/50 p-7 text-sm leading-relaxed text-gray-700 dark:border-ochre-900 dark:bg-ochre-900/10 dark:text-gray-300">
+          Team membership and canvas access are managed separately. Add people to your team for seat management, then
+          invite the researchers who need access from each canvas&apos;s Share panel.
         </div>
       </section>
 
@@ -109,25 +127,28 @@ export default function ForTeamsPage() {
           {[
             {
               title: 'Team management',
-              body: 'Add and remove coders by email. Project-level roles (PI, coder, analyst).',
+              body: 'Add and remove registered QualCanvas users by email, with owner, admin and member team roles.',
             },
             {
               title: 'Per-seat billing',
-              body: '$39 / seat / month, prorated. Pause seats during fieldwork; unpause when coding starts.',
+              body: 'The subscription quantity follows the number of active team members. Removing a member reduces the seat count.',
             },
             {
               title: 'κ + α calculator',
-              body: 'Live intercoder reliability. CSV export shaped for methods-section reporting.',
+              body: 'Calculate Cohen’s κ or Krippendorff’s α from coding attributed to multiple researchers.',
             },
             {
-              title: 'Shared codebook',
-              body: 'One codebook per project, updated for everyone in real time. Branchable for sensitivity work.',
+              title: 'Canvas collaboration',
+              body: 'Invite registered users to a canvas as an editor or viewer and work in the same project.',
             },
             {
-              title: 'Comment threads',
-              body: 'Discuss a code or a span without leaving the canvas. Resolves preserved in the audit log.',
+              title: 'Controlled access',
+              body: 'Canvas owners can change a collaborator’s role or remove access; revoked live sessions are disconnected.',
             },
-            { title: 'Audit log', body: 'Every action with timestamp + coder. Export for IRB or methods reporting.' },
+            {
+              title: 'Audit log',
+              body: 'Review authenticated project requests with action and timestamp from the Quality panel.',
+            },
           ].map((f) => (
             <div
               key={f.title}
@@ -151,19 +172,20 @@ export default function ForTeamsPage() {
             {
               question: 'How does per-seat billing work?',
               answer:
-                'Each coder you invite to a project counts as one seat. $39/seat/mo, $32/seat/mo on annual. You can pause and unpause seats month-by-month during slow fieldwork periods.',
+                'The Team subscription quantity follows active team membership. Adding or removing a registered member updates the seat quantity with Stripe proration.',
             },
             {
               question: 'Can students on a methods course use Team?',
               answer:
-                'Yes. The .edu discount applies — 40% off per seat. The per-seat structure suits a methods course well, because seats can be paused and reassigned as students rotate in and out.',
+                'Yes. The .edu discount applies to eligible Team subscriptions. The per-seat structure supports methods courses, but instructors should confirm their participant count and data-governance requirements before purchase.',
             },
             {
               question: 'How is intercoder κ calculated?',
               answer: (
                 <>
-                  Continuously, per code, per pair of coders, per transcript. The math is Cohen's κ for nominal codes;
-                  Krippendorff's α is available for ordinal coding. The full method walk-through is at{' '}
+                  Run it on demand after multiple attributed coders have worked on the same material. Choose
+                  Cohen&apos;s κ or Krippendorff&apos;s α based on the agreement method you need. The method
+                  walk-through is at{' '}
                   <Link
                     className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
                     to="/methodology/intercoder-reliability"
@@ -177,23 +199,12 @@ export default function ForTeamsPage() {
             {
               question: 'Can we export the audit log?',
               answer:
-                'Yes. CSV download, dated. The shape matches what most IRBs and reviewers ask for — per-coder, per-action, per-timestamp.',
+                'Yes. Canvas owners can download the project audit entries currently shown by the Quality panel as CSV.',
             },
             {
               question: 'What if we need SSO?',
-              answer: (
-                <>
-                  SAML SSO is on the roadmap, not shipped — today it is email and password or Google sign-in. If SSO is
-                  a requirement for you, talk to the research desk about timing before you commit — see{' '}
-                  <Link
-                    className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
-                    to="/for-institutions"
-                  >
-                    /for-institutions
-                  </Link>
-                  .
-                </>
-              ),
+              answer:
+                'SAML/OIDC SSO and SCIM are not currently available. Treat either requirement as a deployment blocker and review the Institutions page for the current capability statement.',
             },
           ]}
         />
@@ -201,13 +212,13 @@ export default function ForTeamsPage() {
 
       <CTAStripe
         headline="Bring your lab."
-        sub="14-day team trial. Cancel any time. Per-seat billing pauses when you're not coding."
+        sub="Team access is billed per seat. Review the current limits and pricing before checkout."
         primary={
           <button
             onClick={handleTeamTrial}
             className="inline-flex items-center justify-center bg-ochre-400 hover:bg-ochre-300 active:bg-ochre-500 text-ink-950 font-semibold px-8 py-3.5 rounded-lg transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-300 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900"
           >
-            Start your team trial
+            See Team pricing
           </button>
         }
         secondary={

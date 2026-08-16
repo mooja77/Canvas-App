@@ -80,8 +80,8 @@ export default function PressPage() {
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
             <FactRow term="Launched" value="2024" />
             <FactRow term="Headquarters" value="Ireland (EU)" />
-            <FactRow term="Free tier" value="Yes (1 canvas, 5 codes)" />
-            <FactRow term="Paid tiers" value="Pro $12/mo · Team $29/seat/mo · Institutions custom" />
+            <FactRow term="Free tier" value="Yes (2 canvases, 10 codes)" />
+            <FactRow term="Paid tiers" value="Student $5/mo · Pro $15/mo · Team $39/seat/mo · Institutions custom" />
             <FactRow term="Academic discount" value="40% off Pro and Team with a .edu email" />
             <FactRow term="Integrations" value="QDPX import/export (NVivo, ATLAS.ti); CSV; PNG; HTML; Markdown" />
             <FactRow term="UI languages" value="English, Spanish, French, German" />

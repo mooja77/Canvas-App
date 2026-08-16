@@ -36,6 +36,19 @@ npm-debug.log*
 *.png
 screenshots/
 
+# Reproducible YouTube production: retain sources and lightweight deliverables,
+# keep raw captures, audio, frame extracts, work files and masters local.
+youtube-training/**/captures/
+youtube-training/**/audio/
+youtube-training/**/videos/
+youtube-training/**/production/.work/
+youtube-training/**/production/__pycache__/
+youtube-training/**/production/.youtube-profile/
+youtube-training/**/production/.preview-*.log
+youtube-training/**/qa/frames/
+youtube-training/**/qa/pilot/
+!youtube-training/**/branding/*.png
+
 # Prisma generated
 apps/backend/prisma/migrations/*.db
 

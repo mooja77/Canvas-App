@@ -78,6 +78,7 @@ vi.mock('../../middleware/planLimits.js', () => ({
   checkWordLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkCodeLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAutoCode: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  checkIntercoderAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkCaseAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkShareLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAnalysisType: () => (_req: Request, _res: Response, next: NextFunction) => next(),
@@ -149,10 +150,7 @@ describe('Input validation tests', () => {
 
   // ─── POST /canvas with empty name → 400 ───
   it('POST /canvas with empty name returns 400', async () => {
-    const res = await request(app)
-      .post('/api/canvas')
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({ name: '' });
+    const res = await request(app).post('/api/canvas').set('Authorization', `Bearer ${jwt}`).send({ name: '' });
 
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
@@ -163,10 +161,7 @@ describe('Input validation tests', () => {
   it('POST /canvas with name > 200 chars returns 400', async () => {
     const longName = 'A'.repeat(201);
 
-    const res = await request(app)
-      .post('/api/canvas')
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({ name: longName });
+    const res = await request(app).post('/api/canvas').set('Authorization', `Bearer ${jwt}`).send({ name: longName });
 
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
@@ -191,16 +186,13 @@ describe('Input validation tests', () => {
   it('POST /canvas/:id/codings with startOffset > endOffset returns 400', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
 
-    const res = await request(app)
-      .post(`/api/canvas/${canvasId}/codings`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        transcriptId: 'tid',
-        questionId: 'qid',
-        startOffset: 100,
-        endOffset: 0,
-        codedText: 'text',
-      });
+    const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId: 'tid',
+      questionId: 'qid',
+      startOffset: 100,
+      endOffset: 0,
+      codedText: 'text',
+    });
 
     // endOffset has min(1), so endOffset=0 fails validation
     expect(res.status).toBe(400);

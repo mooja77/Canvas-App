@@ -576,11 +576,11 @@ const SECTIONS: GuideSection[] = [
             <strong>Free:</strong> 2 canvases, 5 transcripts, 10 codes, and 4 analysis tools.
           </li>
           <li>
-            <strong>Student ($5/mo):</strong> Verified .edu. 5 canvases, all 12 analysis tools, auto-code, ethics +
+            <strong>Student ($5/mo):</strong> Verified .edu. 5 canvases, all 13 analysis tools, auto-code, ethics +
             cases, ~5 hrs transcription.
           </li>
           <li>
-            <strong>Pro ($15/mo):</strong> Unlimited everything, all 12 analysis tools, AI features, ethics panel, 5
+            <strong>Pro ($15/mo):</strong> Unlimited everything, all 13 analysis tools, AI features, ethics panel, 5
             share codes.
           </li>
           <li>

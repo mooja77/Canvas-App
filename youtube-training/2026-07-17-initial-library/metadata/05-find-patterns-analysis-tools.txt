@@ -1,0 +1,36 @@
+TITLE
+Find Patterns with QualCanvas Analysis Tools | Queries, Clusters & Frameworks
+
+DESCRIPTION
+Choose the right analysis tool for a question and interpret outputs without treating them as automatic findings.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Ask a question before choosing a tool
+0:14 Analysis is grouped by purpose
+0:28 Use the dashboard for orientation
+0:43 Inspect relationships between codes
+0:59 Bring outputs back to the canvas
+1:11 Check the categories behind the output
+1:25 Use tools to return to the data
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+qualitative data analysis, code co-occurrence, framework matrix, thematic analysis tools, QualCanvas
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Analysis
+Subtitle file: subtitles/05-find-patterns-analysis-tools.en-IE.srt
+Thumbnail: thumbnails/05-find-patterns-analysis-tools.jpg

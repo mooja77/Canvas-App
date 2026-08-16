@@ -17,7 +17,9 @@ export function queueOperation(op: Omit<QueuedOperation, 'id' | 'timestamp'>) {
 export function getQueue(): QueuedOperation[] {
   try {
     return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 export function clearQueue() {
@@ -28,17 +30,22 @@ export async function replayQueue(apiBase: string) {
   const queue = getQueue();
   if (queue.length === 0) return;
 
+  const remaining = [...queue];
   for (const op of queue) {
     try {
-      await fetch(`${apiBase}${op.url}`, {
+      const response = await fetch(`${apiBase}${op.url}`, {
         method: op.method,
         headers: { 'Content-Type': 'application/json' },
         body: op.body ? JSON.stringify(op.body) : undefined,
+        credentials: 'include',
       });
+      if (!response.ok) return;
+      remaining.shift();
+      if (remaining.length > 0) localStorage.setItem(QUEUE_KEY, JSON.stringify(remaining));
+      else clearQueue();
     } catch {
       // If replay fails, stop — remaining ops stay queued
       return;
     }
   }
-  clearQueue();
 }

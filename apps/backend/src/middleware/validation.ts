@@ -34,7 +34,11 @@ export function validateParams(schema: z.ZodSchema) {
 }
 
 // Reusable param schemas
-const cuid = z.string().min(1).max(64);
+const cuid = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[A-Za-z0-9_-]+$/, 'ID contains invalid characters');
 export const canvasIdParam = z.object({ id: cuid });
 export const canvasCanvasIdParam = z.object({ canvasId: cuid });
 export const canvasTranscriptParams = z.object({ id: cuid, tid: cuid });

@@ -15,10 +15,17 @@ const scheduleIdParam = z.object({ id: z.string().min(1).max(64) });
 
 const createScheduleSchema = z.object({
   canvasId: z.string().max(64).optional(),
-  teamId: z.string().max(64).optional(),
   frequency: z.enum(['daily', 'weekly', 'monthly']).default('weekly'),
   dayOfWeek: z.number().int().min(0).max(6).optional(),
 });
+
+const updateScheduleSchema = z
+  .object({
+    frequency: z.enum(['daily', 'weekly', 'monthly']).optional(),
+    dayOfWeek: z.number().int().min(0).max(6).nullable().optional(),
+    enabled: z.boolean().optional(),
+  })
+  .strict();
 
 function requireUserId(req: import('express').Request): string {
   const userId = getAuthUserId(req);
@@ -30,13 +37,17 @@ function requireUserId(req: import('express').Request): string {
 reportRoutes.post('/reports/schedule', validate(createScheduleSchema), async (req, res, next) => {
   try {
     const userId = requireUserId(req);
-    const { canvasId, teamId, frequency, dayOfWeek } = req.body;
+    const { canvasId, frequency, dayOfWeek } = req.body;
+
+    if (canvasId) {
+      const owned = await prisma.codingCanvas.findFirst({ where: { id: canvasId, userId }, select: { id: true } });
+      if (!owned) throw new AppError('Canvas not found', 404);
+    }
 
     const schedule = await prismaReportSchedule.create({
       data: {
         userId,
         canvasId: canvasId || null,
-        teamId: teamId || null,
         frequency,
         dayOfWeek: dayOfWeek ?? (frequency === 'weekly' ? 1 : null),
         enabled: true,
@@ -91,30 +102,35 @@ reportRoutes.delete('/reports/schedules/:id', validateParams(scheduleIdParam), a
 });
 
 // ─── PUT /api/reports/schedules/:id — Update schedule (enable/disable, frequency) ───
-reportRoutes.put('/reports/schedules/:id', validateParams(scheduleIdParam), async (req, res, next) => {
-  try {
-    const userId = requireUserId(req);
-    const { id } = req.params;
+reportRoutes.put(
+  '/reports/schedules/:id',
+  validateParams(scheduleIdParam),
+  validate(updateScheduleSchema),
+  async (req, res, next) => {
+    try {
+      const userId = requireUserId(req);
+      const { id } = req.params;
 
-    const schedule = await prismaReportSchedule.findUnique({ where: { id } });
-    if (!schedule) throw new AppError('Schedule not found', 404);
-    if (schedule.userId !== userId) throw new AppError('Access denied', 403);
+      const schedule = await prismaReportSchedule.findUnique({ where: { id } });
+      if (!schedule) throw new AppError('Schedule not found', 404);
+      if (schedule.userId !== userId) throw new AppError('Access denied', 403);
 
-    const updates: Record<string, unknown> = {};
-    if (req.body.frequency !== undefined) updates.frequency = req.body.frequency;
-    if (req.body.dayOfWeek !== undefined) updates.dayOfWeek = req.body.dayOfWeek;
-    if (req.body.enabled !== undefined) updates.enabled = Boolean(req.body.enabled);
+      const updates: Record<string, unknown> = {};
+      if (req.body.frequency !== undefined) updates.frequency = req.body.frequency;
+      if (req.body.dayOfWeek !== undefined) updates.dayOfWeek = req.body.dayOfWeek;
+      if (req.body.enabled !== undefined) updates.enabled = req.body.enabled;
 
-    const updated = await prismaReportSchedule.update({
-      where: { id },
-      data: updates,
-    });
+      const updated = await prismaReportSchedule.update({
+        where: { id },
+        data: updates,
+      });
 
-    res.json({ success: true, data: updated });
-  } catch (err) {
-    next(err);
-  }
-});
+      res.json({ success: true, data: updated });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // ─── POST /api/reports/generate — Generate report on-demand ───
 reportRoutes.post('/reports/generate', async (req, res, next) => {

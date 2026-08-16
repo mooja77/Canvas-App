@@ -10,6 +10,19 @@ const resendApiKey = process.env.RESEND_API_KEY;
 const isSmtpConfigured = !!(smtpHost && smtpUser && smtpPass);
 const isResendConfigured = !!resendApiKey;
 
+export interface EmailSendResult {
+  accepted: boolean;
+  provider: 'resend' | 'smtp' | 'development' | 'none';
+  messageId?: string;
+  error?: string;
+}
+
+export interface EmailSendOptions {
+  headers?: Record<string, string>;
+  tags?: Array<{ name: string; value: string }>;
+  idempotencyKey?: string;
+}
+
 function getTransporter() {
   if (!isSmtpConfigured) return null;
 
@@ -17,6 +30,8 @@ function getTransporter() {
     host: smtpHost,
     port: smtpPort,
     secure: smtpPort === 465,
+    disableFileAccess: true,
+    disableUrlAccess: true,
     auth: {
       user: smtpUser,
       pass: smtpPass,
@@ -26,33 +41,54 @@ function getTransporter() {
 
 /**
  * Send an email via Resend HTTP API (preferred) or SMTP.
- * Falls back to console.log when neither is configured.
+ * Returns success in local development when neither is configured, but never
+ * logs message bodies and fails closed in production.
  */
-export async function sendEmail(
+export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  const result = await sendEmailWithResult(to, subject, html);
+  return result.accepted;
+}
+
+/**
+ * Send an email while preserving the distinction between provider acceptance
+ * and provider-confirmed delivery. Lifecycle callers persist this result and
+ * may later join a provider webhook to mark delivered/bounced/complained.
+ */
+export async function sendEmailWithResult(
   to: string,
   subject: string,
   html: string,
-): Promise<boolean> {
+  options: EmailSendOptions = {},
+): Promise<EmailSendResult> {
   // Prefer Resend HTTP API (avoids SMTP port blocking on some hosts)
   if (isResendConfigured) {
     try {
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
+          Authorization: `Bearer ${resendApiKey}`,
           'Content-Type': 'application/json',
+          ...(options.idempotencyKey ? { 'Idempotency-Key': options.idempotencyKey } : {}),
         },
-        body: JSON.stringify({ from: smtpFrom, to, subject, html }),
+        body: JSON.stringify({
+          from: smtpFrom,
+          to,
+          subject,
+          html,
+          headers: options.headers,
+          tags: options.tags,
+        }),
       });
       if (!res.ok) {
         const body = await res.text();
         console.error('[Email] Resend API error:', res.status, body);
-        return false;
+        return { accepted: false, provider: 'resend', error: `HTTP ${res.status}` };
       }
-      return true;
+      const body = (await res.json().catch(() => ({}))) as { id?: string };
+      return { accepted: true, provider: 'resend', messageId: body.id };
     } catch (err) {
       console.error('[Email] Resend API request failed:', err);
-      return false;
+      return { accepted: false, provider: 'resend', error: (err as Error).message };
     }
   }
 
@@ -60,30 +96,29 @@ export async function sendEmail(
   const transporter = getTransporter();
 
   if (!transporter) {
-    console.log(`[Email] Not configured — logging email instead:`);
-    console.log(`  To: ${to}`);
-    console.log(`  Subject: ${subject}`);
-    console.log(`  Body (HTML): ${html}`);
-    return true;
+    // Verification and reset bodies contain bearer links. Never write them to
+    // logs, even in development. A production instance without an email
+    // provider must fail closed so callers do not report a message as sent.
+    console.warn(`[Email] Not configured; message not sent (to=${to}, subject=${subject})`);
+    return process.env.NODE_ENV !== 'production'
+      ? { accepted: true, provider: 'development' }
+      : { accepted: false, provider: 'none', error: 'Email provider is not configured' };
   }
 
   try {
-    await transporter.sendMail({ from: smtpFrom, to, subject, html });
-    return true;
+    const info = await transporter.sendMail({ from: smtpFrom, to, subject, html, headers: options.headers });
+    return { accepted: true, provider: 'smtp', messageId: info.messageId };
   } catch (err) {
     console.error('[Email] SMTP failed:', err);
-    return false;
+    return { accepted: false, provider: 'smtp', error: (err as Error).message };
   }
 }
 
 /**
  * Send an email verification email with a branded HTML template.
- * Falls back to console.log when SMTP is not configured.
+ * Uses the shared delivery boundary when email is not configured.
  */
-export async function sendVerificationEmail(
-  to: string,
-  verifyLink: string,
-): Promise<boolean> {
+export async function sendVerificationEmail(to: string, verifyLink: string): Promise<boolean> {
   const subject = 'Verify your QualCanvas email';
 
   const html = `
@@ -148,12 +183,9 @@ export async function sendVerificationEmail(
 
 /**
  * Send a password reset email with a branded HTML template.
- * Falls back to console.log when SMTP is not configured.
+ * Uses the shared delivery boundary when email is not configured.
  */
-export async function sendPasswordResetEmail(
-  to: string,
-  resetLink: string,
-): Promise<boolean> {
+export async function sendPasswordResetEmail(to: string, resetLink: string): Promise<boolean> {
   const subject = 'Reset your QualCanvas password';
 
   const html = `
@@ -218,13 +250,9 @@ export async function sendPasswordResetEmail(
 
 /**
  * Send a team invitation email with a branded HTML template.
- * Falls back to console.log when SMTP is not configured.
+ * Uses the shared delivery boundary when email is not configured.
  */
-export async function sendTeamInviteEmail(
-  to: string,
-  teamName: string,
-  loginLink: string,
-): Promise<boolean> {
+export async function sendTeamInviteEmail(to: string, teamName: string, loginLink: string): Promise<boolean> {
   const subject = `You've been invited to join "${teamName}" on QualCanvas`;
 
   const html = `

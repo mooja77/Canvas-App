@@ -664,12 +664,29 @@ export function computeClusters(codings: CodingData[], k: number, questionIds?: 
     }
     for (let d = 0; d < avgVec.length; d++) avgVec[d] /= cvecs.length;
 
-    const keywords = avgVec
+    let keywords = avgVec
       .map((score, idx) => ({ word: vocabulary[idx], score }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 5)
       .filter((k) => k.score > 0)
       .map((k) => k.word);
+
+    // MIN_DF pruning in buildTfIdf can leave a cluster's documents with no
+    // terms in the surviving vocabulary (all-zero avg vector) on small or
+    // idiosyncratic corpora. Fall back to raw term frequency within the
+    // cluster so it still gets keywords.
+    if (keywords.length === 0) {
+      const freq = new Map<string, number>();
+      for (const seg of segments) {
+        for (const term of tokenize(seg.text)) {
+          freq.set(term, (freq.get(term) || 0) + 1);
+        }
+      }
+      keywords = Array.from(freq.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([term]) => term);
+    }
 
     return {
       id,

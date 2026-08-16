@@ -1,0 +1,107 @@
+1
+00:00:00,080 --> 00:00:04,815
+UX, service and applied researchers often need to move quickly
+
+2
+00:00:04,815 --> 00:00:07,655
+without losing the chain of evidence.
+
+3
+00:00:07,655 --> 00:00:12,390
+QualCanvas brings source material, coding, patterns and research memos into
+
+4
+00:00:12,390 --> 00:00:15,704
+one visual workspace for review and handoff.
+
+5
+00:00:16,104 --> 00:00:20,765
+Define the decision, audience and method before opening the tool.
+
+6
+00:00:20,765 --> 00:00:25,425
+A discovery study, service evaluation and programme review may use
+
+7
+00:00:25,425 --> 00:00:30,086
+similar interviews, but they do not automatically support the same
+
+8
+00:00:30,086 --> 00:00:30,552
+claim.
+
+9
+00:00:30,952 --> 00:00:35,912
+Add interview transcripts, workshop notes or other approved text sources.
+
+10
+00:00:35,912 --> 00:00:40,872
+Use fictional or de-identified labels, and keep consent and data-handling
+
+11
+00:00:40,872 --> 00:00:45,832
+rules aligned with the environment where the research was collected.
+
+12
+00:00:46,232 --> 00:00:51,032
+For open-text survey material, import a clean CSV and map
+
+13
+00:00:51,032 --> 00:00:52,472
+the meaningful fields.
+
+14
+00:00:52,472 --> 00:00:57,272
+Do not bring in identifying columns merely because the survey
+
+15
+00:00:57,272 --> 00:00:58,712
+export included them.
+
+16
+00:00:59,112 --> 00:01:04,593
+Code excerpts, group related ideas and preserve links back to the source.
+
+17
+00:01:04,593 --> 00:01:09,160
+The visual structure helps a stakeholder see how a recommendation
+
+18
+00:01:09,160 --> 00:01:13,727
+developed, while the researcher remains responsible for context and rival
+
+19
+00:01:13,727 --> 00:01:14,184
+explanations.
+
+20
+00:01:14,584 --> 00:01:19,340
+Use a report for narrative review, a workbook for structured
+
+21
+00:01:19,340 --> 00:01:24,097
+checking, an image for explaining relationships or QDPX for compatible
+
+22
+00:01:24,097 --> 00:01:25,048
+project exchange.
+
+23
+00:01:25,048 --> 00:01:30,280
+Remove participant material that the recipient is not authorised to receive.
+
+24
+00:01:30,680 --> 00:01:34,973
+Frame the decision, collect only what you can govern, code
+
+25
+00:01:34,973 --> 00:01:39,265
+visibly, challenge the emerging account, memo the reasoning and hand
+
+26
+00:01:39,265 --> 00:01:41,841
+off the right level of evidence.
+
+27
+00:01:41,841 --> 00:01:45,704
+Follow the full QualCanvas training path for step-by-step practice.

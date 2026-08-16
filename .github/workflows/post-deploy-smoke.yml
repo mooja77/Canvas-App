@@ -36,3 +36,4 @@ jobs:
         env:
           SMOKE_FRONTEND_URLS: ${{ inputs.frontend_urls || 'https://qualcanvas.com' }}
           SMOKE_BACKEND_URL: ${{ inputs.backend_url || 'https://canvas-app-production.up.railway.app' }}
+          SMOKE_ACCESS_CODE: ${{ secrets.QUALCANVAS_SMOKE_ACCESS_CODE }}

@@ -1,0 +1,36 @@
+TITLE
+QualCanvas for PhD and Dissertation Research | A Defensible Analysis Trail
+
+DESCRIPTION
+See how a doctoral researcher can organise a method, analysis trail, supervision handoff and final outputs.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 A dissertation needs an explainable trail
+0:15 Start from the method—not the software
+0:29 Keep chapters of evidence connected
+0:44 Memo for your future self
+0:56 Bring a reviewable codebook to supervision
+1:10 Export for writing and examination
+1:25 Write from the trail you actually made
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+PhD qualitative research, dissertation thematic analysis, doctoral research software, qualitative methods, QualCanvas
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Researcher tours
+Subtitle file: subtitles/11-qualcanvas-for-phd-research.en-IE.srt
+Thumbnail: thumbnails/11-qualcanvas-for-phd-research.jpg

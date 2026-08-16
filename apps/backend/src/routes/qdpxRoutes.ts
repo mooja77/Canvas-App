@@ -29,7 +29,7 @@ const upload = multer({
 qdpxRoutes.get(
   '/canvas/:id/export/qdpx',
   validateParams(canvasIdParam),
-  checkExportFormat(),
+  checkExportFormat('qdpx'),
   async (req, res, next) => {
     try {
       const dashboardAccessId = getAuthId(req);
@@ -66,6 +66,7 @@ qdpxRoutes.get(
 qdpxRoutes.post(
   '/canvas/:id/import/qdpx',
   validateParams(canvasIdParam),
+  checkExportFormat('qdpx'),
   upload.single('file'),
   async (req, res, next) => {
     try {

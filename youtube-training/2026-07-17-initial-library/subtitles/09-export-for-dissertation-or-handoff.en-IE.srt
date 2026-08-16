@@ -1,0 +1,99 @@
+1
+00:00:00,080 --> 00:00:03,687
+An export is a handoff, not just a download.
+
+2
+00:00:03,687 --> 00:00:07,694
+Decide whether the next person needs to read the argument,
+
+3
+00:00:07,694 --> 00:00:11,701
+inspect the codebook, reuse the project in another tool or
+
+4
+00:00:11,701 --> 00:00:13,304
+see the visual structure.
+
+5
+00:00:13,704 --> 00:00:18,792
+Open Export and choose the format by purpose.
+
+6
+00:00:18,792 --> 00:00:23,244
+A canvas image is useful for slides.
+
+7
+00:00:23,244 --> 00:00:25,788
+A report supports reading.
+
+8
+00:00:25,788 --> 00:00:28,332
+Excel supports tabular review.
+
+9
+00:00:28,332 --> 00:00:32,784
+QDPX supports exchange with compatible qualitative-analysis software.
+
+10
+00:00:33,184 --> 00:00:38,528
+Before handing off a codebook, review names, definitions, hierarchy and examples.
+
+11
+00:00:38,528 --> 00:00:43,386
+A list of labels without decision rules gives the next
+
+12
+00:00:43,386 --> 00:00:47,272
+coder very little chance of applying them consistently.
+
+13
+00:00:47,672 --> 00:00:52,348
+For a visual export, fit the relevant nodes into view
+
+14
+00:00:52,348 --> 00:00:54,686
+and remove unnecessary empty space.
+
+15
+00:00:54,686 --> 00:00:59,362
+Check the image at ordinary slide or document size; tiny
+
+16
+00:00:59,362 --> 00:01:02,168
+transcript text is not useful evidence.
+
+17
+00:01:02,568 --> 00:01:08,053
+The guide documents the current export choices and their intended use.
+
+18
+00:01:08,053 --> 00:01:13,040
+Review it before a deadline, especially when another application, committee
+
+19
+00:01:13,040 --> 00:01:16,032
+or archive requires a specific format.
+
+20
+00:01:16,432 --> 00:01:19,674
+Downloaded files are outside QualCanvas access controls.
+
+21
+00:01:19,674 --> 00:01:24,305
+Store them in the approved location, limit onward sharing and
+
+22
+00:01:24,305 --> 00:01:28,936
+apply the study's retention and deletion rules to every copy.
+
+23
+00:01:29,336 --> 00:01:34,216
+Before exporting, confirm the purpose, choose the right format, test
+
+24
+00:01:34,216 --> 00:01:38,608
+readability and send the file to an approved destination.
+
+25
+00:01:38,608 --> 00:01:42,512
+That turns a download into a responsible handoff.

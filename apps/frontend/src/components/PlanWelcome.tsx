@@ -32,7 +32,7 @@ export default function PlanWelcome({ onClose }: { onClose: () => void }) {
         lede: 'Your Pro plan unlocks the full analysis suite and AI-assisted coding.',
         items: [
           'Unlimited canvases, transcripts, and codes',
-          'All 10 analysis tools — Sentiment, Clustering, Co-occurrence',
+          'All 13 analysis tools — Sentiment, Clustering, Co-occurrence',
           'AI-powered code suggestions and auto-coding',
           'Ethics & compliance panel',
           'Share canvases with up to 5 collaborators',
@@ -43,7 +43,7 @@ export default function PlanWelcome({ onClose }: { onClose: () => void }) {
     return {
       title: 'Welcome to QualCanvas',
       lede: 'Your free plan is ready to go.',
-      items: ['1 canvas, 2 transcripts, 5 codes', 'Statistics and Word Cloud analysis', 'CSV export'],
+      items: ['2 canvases, 5 transcripts per canvas, 10 codes', '4 core analysis tools', 'CSV export'],
       cta: { label: 'See Pro features', href: '/pricing' },
     };
   })();

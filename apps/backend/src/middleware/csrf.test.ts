@@ -75,7 +75,7 @@ describe('csrfProtection', () => {
     expect(next).toHaveBeenCalled();
   });
 
-  it('allows POST from Cloudflare Pages preview deployments', () => {
+  it('rejects POST from unconfigured Cloudflare Pages preview deployments', () => {
     process.env.ALLOWED_ORIGINS = 'https://qualcanvas.pages.dev';
     const req = mockReq({
       method: 'POST',
@@ -83,7 +83,8 @@ describe('csrfProtection', () => {
     });
     const res = mockRes();
     csrfProtection(req, res, next);
-    expect(next).toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
   });
 
   it('rejects non-HTTPS lookalike Cloudflare Pages origins', () => {

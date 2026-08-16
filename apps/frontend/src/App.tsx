@@ -4,34 +4,35 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import UpgradePrompt from './components/UpgradePrompt';
 import OfflineBanner from './components/OfflineBanner';
 import { PageSkeleton } from './components/LoadingSkeleton';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import VerifyEmailPage from './pages/VerifyEmailPage';
-import NotFoundPage from './pages/NotFoundPage';
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
-import PricingPage from './pages/PricingPage';
-import TermsPage from './pages/TermsPage';
-import PrivacyPage from './pages/PrivacyPage';
-import TrustPage from './pages/TrustPage';
-import CookiePolicyPage from './pages/CookiePolicyPage';
-import GuidePage from './pages/GuidePage';
-import CitePage from './pages/CitePage';
-import ColophonPage from './pages/ColophonPage';
-import AccessibilityStatementPage from './pages/AccessibilityStatementPage';
-import PressPage from './pages/PressPage';
-import TrustAIPage from './pages/TrustAIPage';
-import ForTeamsPage from './pages/ForTeamsPage';
-import ForInstitutionsPage from './pages/ForInstitutionsPage';
-import MethodologyIndexPage from './pages/MethodologyIndexPage';
-import CustomersIndexPage from './pages/CustomersIndexPage';
-import ChangelogPage from './pages/ChangelogPage';
-import VsIndexPage from './pages/VsIndexPage';
-import VsCompetitorRedirect from './pages/VsCompetitorRedirect';
-import SubscribePage from './pages/SubscribePage';
 import { useAuthStore } from './stores/authStore';
 
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const PricingPage = lazy(() => import('./pages/PricingPage'));
+const TermsPage = lazy(() => import('./pages/TermsPage'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
+const TrustPage = lazy(() => import('./pages/TrustPage'));
+const CookiePolicyPage = lazy(() => import('./pages/CookiePolicyPage'));
+const GuidePage = lazy(() => import('./pages/GuidePage'));
+const CitePage = lazy(() => import('./pages/CitePage'));
+const ColophonPage = lazy(() => import('./pages/ColophonPage'));
+const AccessibilityStatementPage = lazy(() => import('./pages/AccessibilityStatementPage'));
+const PressPage = lazy(() => import('./pages/PressPage'));
+const TrustAIPage = lazy(() => import('./pages/TrustAIPage'));
+const ForTeamsPage = lazy(() => import('./pages/ForTeamsPage'));
+const ForInstitutionsPage = lazy(() => import('./pages/ForInstitutionsPage'));
+const MethodologyIndexPage = lazy(() => import('./pages/MethodologyIndexPage'));
+const CustomersIndexPage = lazy(() => import('./pages/CustomersIndexPage'));
+const ChangelogPage = lazy(() => import('./pages/ChangelogPage'));
+const VsIndexPage = lazy(() => import('./pages/VsIndexPage'));
+const VsCompetitorRedirect = lazy(() => import('./pages/VsCompetitorRedirect'));
+const SubscribePage = lazy(() => import('./pages/SubscribePage'));
 const MethodologyChapterPage = lazy(() => import('./pages/MethodologyChapterPage'));
+const TrainingPage = lazy(() => import('./pages/TrainingPage').then((module) => ({ default: module.TrainingPage })));
 const CanvasPage = lazy(() => import('./pages/CanvasPage'));
 const AccountPage = lazy(() => import('./pages/AccountPage'));
 const RepositoryPage = lazy(() => import('./pages/RepositoryPage'));
@@ -50,90 +51,100 @@ export default function App() {
       <BrowserRouter>
         <OfflineBanner />
         <UpgradePrompt />
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/cite" element={<CitePage />} />
-          <Route path="/colophon" element={<ColophonPage />} />
-          <Route path="/accessibility-statement" element={<AccessibilityStatementPage />} />
-          <Route path="/press" element={<PressPage />} />
-          <Route path="/trust/ai" element={<TrustAIPage />} />
-          <Route path="/for-teams" element={<ForTeamsPage />} />
-          <Route path="/for-institutions" element={<ForInstitutionsPage />} />
-          <Route path="/methodology" element={<MethodologyIndexPage />} />
-          <Route
-            path="/methodology/:slug"
-            element={
-              <Suspense fallback={<PageSkeleton />}>
-                <MethodologyChapterPage />
-              </Suspense>
-            }
-          />
-          <Route path="/customers" element={<CustomersIndexPage />} />
-          <Route path="/changelog" element={<ChangelogPage />} />
-          <Route path="/vs" element={<VsIndexPage />} />
-          {/* Per-competitor pages aren't published yet — redirect to the /vs index so these URLs don't 404. */}
-          <Route path="/vs/:competitor" element={<VsCompetitorRedirect />} />
-          <Route path="/subscribe" element={<SubscribePage />} />
-          <Route
-            path="/account"
-            element={
-              <ProtectedRoute>
+        <Suspense fallback={<PageSkeleton />}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/cite" element={<CitePage />} />
+            <Route path="/colophon" element={<ColophonPage />} />
+            <Route path="/accessibility-statement" element={<AccessibilityStatementPage />} />
+            <Route path="/press" element={<PressPage />} />
+            <Route path="/trust/ai" element={<TrustAIPage />} />
+            <Route path="/for-teams" element={<ForTeamsPage />} />
+            <Route path="/for-institutions" element={<ForInstitutionsPage />} />
+            <Route path="/methodology" element={<MethodologyIndexPage />} />
+            <Route
+              path="/methodology/:slug"
+              element={
                 <Suspense fallback={<PageSkeleton />}>
-                  <AccountPage />
+                  <MethodologyChapterPage />
                 </Suspense>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/canvas/:canvasId?"
-            element={
-              <ProtectedRoute>
+              }
+            />
+            <Route path="/customers" element={<CustomersIndexPage />} />
+            <Route path="/changelog" element={<ChangelogPage />} />
+            <Route path="/vs" element={<VsIndexPage />} />
+            {/* Per-competitor pages aren't published yet — redirect to the /vs index so these URLs don't 404. */}
+            <Route path="/vs/:competitor" element={<VsCompetitorRedirect />} />
+            <Route path="/subscribe" element={<SubscribePage />} />
+            <Route
+              path="/account"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <AccountPage />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/canvas/:canvasId?"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <CanvasPage />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/repository"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <RepositoryPage />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/team"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <TeamPage />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/trust" element={<TrustPage />} />
+            <Route path="/cookies" element={<CookiePolicyPage />} />
+            <Route path="/guide" element={<GuidePage />} />
+            <Route
+              path="/training"
+              element={
                 <Suspense fallback={<PageSkeleton />}>
-                  <CanvasPage />
+                  <TrainingPage />
                 </Suspense>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/repository"
-            element={
-              <ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
                 <Suspense fallback={<PageSkeleton />}>
-                  <RepositoryPage />
+                  <AdminPage />
                 </Suspense>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/team"
-            element={
-              <ProtectedRoute>
-                <Suspense fallback={<PageSkeleton />}>
-                  <TeamPage />
-                </Suspense>
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/trust" element={<TrustPage />} />
-          <Route path="/cookies" element={<CookiePolicyPage />} />
-          <Route path="/guide" element={<GuidePage />} />
-          <Route
-            path="/admin"
-            element={
-              <Suspense fallback={<PageSkeleton />}>
-                <AdminPage />
-              </Suspense>
-            }
-          />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+              }
+            />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </ErrorBoundary>
   );

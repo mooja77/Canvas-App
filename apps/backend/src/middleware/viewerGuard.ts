@@ -29,6 +29,11 @@ export async function viewerWriteGuard(req: Request, _res: Response, next: NextF
 
     const match = req.path.match(/^\/canvas\/([A-Za-z0-9-]+)(\/|$)/);
     if (!match || NON_ID_SEGMENTS.has(match[1])) return next();
+    // A training attempt writes only the current user's answer record; it
+    // does not mutate the shared canvas. Viewers are valid trainees.
+    if (/^\/canvas\/[A-Za-z0-9-]+\/training\/[A-Za-z0-9-]+\/attempt$/.test(req.path)) {
+      return next();
+    }
 
     const collaborator = await prisma.canvasCollaborator.findUnique({
       where: { canvasId_userId: { canvasId: match[1], userId } },

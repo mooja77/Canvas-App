@@ -118,9 +118,7 @@ export default function AccessibilityStatementPage() {
         </div>
 
         <div className="mt-16 pt-8 border-t border-gray-200 dark:border-gray-800">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Last reviewed: {new Date().toISOString().slice(0, 10)}.
-          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Last reviewed: 2026-07-18.</p>
         </div>
       </article>
     </PageShell>

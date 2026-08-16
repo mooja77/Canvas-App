@@ -13,7 +13,9 @@ import { sha256 } from '../utils/hashing.js';
 import { nanoid } from 'nanoid';
 import { AppError } from '../middleware/errorHandler.js';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
-import { lifecycleTemplate, sendLifecycleEmail } from '../lib/lifecycleEmail.js';
+import { isLifecycleSendingEnabledFor, lifecycleTemplate, sendLifecycleEmail } from '../lib/lifecycleEmail.js';
+import { logError } from '../lib/logger.js';
+import { deleteStoredUploads } from '../utils/fileCleanup.js';
 
 const BCRYPT_ROUNDS = 12;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -32,7 +34,7 @@ export const userAuthRoutes = Router();
 // POST /api/auth/signup — email/password registration
 userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, marketingConsent } = req.body;
 
     if (!email || typeof email !== 'string' || !email.includes('@')) {
       return res.status(400).json({ success: false, error: 'Valid email is required' });
@@ -53,8 +55,12 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
     }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const initialEmailOptIn = marketingConsent === true;
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Create user + linked DashboardAccess in a transaction
+    // Create the account, verification state, consent record and linked
+    // DashboardAccess together so registration cannot persist only a subset.
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const user = await tx.user.create({
         data: {
@@ -63,6 +69,18 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
           name: name.trim(),
           plan: 'free',
           trialEndsAt: trialEndDate(),
+          verificationTokenHash: sha256(verifyToken),
+          verificationTokenExpiry: verifyExpiry,
+          emailPreference: {
+            create: {
+              unsubscribeToken: crypto.randomBytes(24).toString('hex'),
+              lifecycle: initialEmailOptIn,
+              productUpdates: initialEmailOptIn,
+              trainingTips: initialEmailOptIn,
+              inactivityNudges: initialEmailOptIn,
+              unsubscribedAt: initialEmailOptIn ? null : new Date(),
+            },
+          },
         },
       });
 
@@ -85,23 +103,12 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
       return user;
     });
 
-    // Generate email verification token
-    const verifyToken = crypto.randomBytes(32).toString('hex');
-    const verifyTokenHash = sha256(verifyToken);
-    const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    await prisma.user.update({
-      where: { id: result.id },
-      data: { resetTokenHash: verifyTokenHash, resetTokenExpiry: verifyExpiry },
-    });
-
     // Send verification email. Token + email go in the URL fragment (#) so
     // they're stripped from browser Referer headers, server access logs, and
     // any analytics that capture URLs. Frontend reads from window.location.hash.
     const appUrl = process.env.APP_URL || 'http://localhost:5174';
     const verifyUrl = `${appUrl}/verify-email#token=${verifyToken}&email=${encodeURIComponent(normalizedEmail)}`;
     await sendVerificationEmail(normalizedEmail, verifyUrl);
-    await sendLifecycleEmail(result, lifecycleTemplate('welcome', result));
 
     const jwt = signUserToken(result.id, result.role, result.plan);
 
@@ -120,7 +127,6 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
     res.status(201).json({
       success: true,
       data: {
-        jwt,
         user: {
           id: result.id,
           email: result.email,
@@ -183,7 +189,8 @@ userAuthRoutes.post('/auth/email-login', authLimiter, async (req, res, next) => 
 
     // Refresh plan from subscription status
     const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
-    const currentPlan = subscription && ['active', 'trialing'].includes(subscription.status) ? user.plan : 'free';
+    const currentPlan =
+      (subscription && ['active', 'trialing'].includes(subscription.status)) || user.legacyPricing ? user.plan : 'free';
 
     // Sync plan in DB if it differs
     if (currentPlan !== user.plan) {
@@ -206,7 +213,6 @@ userAuthRoutes.post('/auth/email-login', authLimiter, async (req, res, next) => 
     res.json({
       success: true,
       data: {
-        jwt,
         user: {
           id: user.id,
           email: user.email,
@@ -249,13 +255,16 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
       return res.status(401).json({ success: false, error: 'Unable to extract email from Google token' });
     }
 
-    const { email, name: googleName, sub: googleId, email_verified: _email_verified } = payload;
+    if (payload.email_verified !== true) {
+      return res.status(401).json({ success: false, error: 'Google account email is not verified' });
+    }
+
+    const { email, name: googleName, sub: googleId } = payload;
     const normalizedEmail = email.toLowerCase().trim();
     const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
     const hashedIp = sha256(rawIp);
 
     let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-    let createdGoogleUser = false;
 
     if (!user) {
       // Create new user via Google OAuth
@@ -268,6 +277,12 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
             plan: 'free',
             trialEndsAt: trialEndDate(),
             emailVerified: true,
+            emailPreference: {
+              create: {
+                unsubscribeToken: crypto.randomBytes(24).toString('hex'),
+                unsubscribedAt: new Date(),
+              },
+            },
           },
         });
 
@@ -289,8 +304,6 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
 
         return newUser;
       });
-      createdGoogleUser = true;
-
       logAudit({
         action: 'auth.signup',
         resource: 'user',
@@ -302,6 +315,12 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
         meta: JSON.stringify({ provider: 'google', googleId }),
       });
     } else {
+      if (!user.emailVerified) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { emailVerified: true, verificationTokenHash: null, verificationTokenExpiry: null },
+        });
+      }
       logAudit({
         action: 'auth.login',
         resource: 'user',
@@ -316,13 +335,10 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
 
     // user is guaranteed non-null (either found or created in transaction above)
     user = user!;
-    if (createdGoogleUser) {
-      await sendLifecycleEmail(user, lifecycleTemplate('welcome', user));
-    }
-
     // Refresh plan from subscription status
     const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
-    const currentPlan = subscription && ['active', 'trialing'].includes(subscription.status) ? user.plan : 'free';
+    const currentPlan =
+      (subscription && ['active', 'trialing'].includes(subscription.status)) || user.legacyPricing ? user.plan : 'free';
 
     if (currentPlan !== user.plan) {
       await prisma.user.update({ where: { id: user.id }, data: { plan: currentPlan } });
@@ -334,7 +350,6 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        jwt,
         user: {
           id: user.id,
           email: user.email,
@@ -480,20 +495,28 @@ userAuthRoutes.post('/auth/verify-email', authLimiter, async (req, res, next) =>
     const tokenHash = sha256(token);
     let tokenValid = false;
     try {
-      if (user.resetTokenHash) {
-        tokenValid = crypto.timingSafeEqual(Buffer.from(user.resetTokenHash), Buffer.from(tokenHash));
+      if (user.verificationTokenHash) {
+        tokenValid = crypto.timingSafeEqual(Buffer.from(user.verificationTokenHash), Buffer.from(tokenHash));
       }
     } catch {
       tokenValid = false;
     }
-    if (!tokenValid || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+    if (!tokenValid || !user.verificationTokenExpiry || user.verificationTokenExpiry < new Date()) {
       return res.status(400).json({ success: false, error: 'Invalid or expired verification token' });
     }
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { emailVerified: true, resetTokenHash: null, resetTokenExpiry: null },
+      data: { emailVerified: true, verificationTokenHash: null, verificationTokenExpiry: null },
     });
+
+    // Optional lifecycle mail is sent only after address verification. It is
+    // fail-soft so provider or ledger failure cannot invalidate verification.
+    if (isLifecycleSendingEnabledFor(user.email)) {
+      void sendLifecycleEmail(user, lifecycleTemplate('welcome', user)).catch((error) =>
+        logError(error as Error, { action: 'lifecycleEmail.welcome', userId: user.id }),
+      );
+    }
 
     logAudit({
       action: 'auth.email_verified',
@@ -530,7 +553,7 @@ userAuthRoutes.post('/auth/resend-verification', auth, async (req, res, next) =>
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { resetTokenHash: verifyTokenHash, resetTokenExpiry: verifyExpiry },
+      data: { verificationTokenHash: verifyTokenHash, verificationTokenExpiry: verifyExpiry },
     });
 
     // Token + email in URL fragment (see signup handler for rationale).
@@ -567,7 +590,7 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
 
       // Validate plan matches subscription status (auto-downgrade if expired/canceled)
       const activeSub = user.subscription && ['active', 'trialing'].includes(user.subscription.status);
-      const validPlan = activeSub ? user.plan : 'free';
+      const validPlan = activeSub || user.legacyPricing ? user.plan : 'free';
       if (validPlan !== user.plan) {
         await prisma.user.update({ where: { id: userId }, data: { plan: validPlan } });
         user.plan = validPlan;
@@ -593,7 +616,8 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
       // active trialEndsAt are effectively on Pro until expiry. The frontend
       // uses effectivePlan for UI gating (what features to show) and
       // trialEndsAt to render a countdown banner.
-      const trialActive = user.plan === 'free' && user.trialEndsAt && user.trialEndsAt.getTime() > Date.now();
+      const trialActive =
+        user.emailVerified && user.plan === 'free' && user.trialEndsAt && user.trialEndsAt.getTime() > Date.now();
       const effectivePlan = trialActive ? 'pro' : user.plan;
 
       return res.json({
@@ -609,6 +633,7 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
             trialEndsAt: user.trialEndsAt,
             emailVerified: user.emailVerified,
             createdAt: user.createdAt,
+            hasPassword: Boolean(user.passwordHash),
           },
           subscription: user.subscription
             ? {
@@ -671,8 +696,13 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
 
     const access = await prisma.dashboardAccess.findUnique({ where: { id: dashboardAccessId } });
     if (!access) throw new AppError('Account not found', 404);
+    if (access.userId) {
+      throw new AppError('This access-code account is already linked to an email account', 409);
+    }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const user = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const newUser = await tx.user.create({
@@ -681,14 +711,28 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
           passwordHash,
           name: name?.trim() || access.name,
           plan: 'pro', // Grandfathered
+          legacyPricing: true,
+          verificationTokenHash: sha256(verifyToken),
+          verificationTokenExpiry: verifyExpiry,
+          emailPreference: {
+            create: {
+              unsubscribeToken: crypto.randomBytes(24).toString('hex'),
+              unsubscribedAt: new Date(),
+            },
+          },
         },
       });
 
-      // Link DashboardAccess to User
-      await tx.dashboardAccess.update({
-        where: { id: dashboardAccessId },
+      // The userId:null predicate prevents two simultaneous link requests from
+      // reassigning the same legacy workspace. A failed claim rolls the newly
+      // created user back with the surrounding transaction.
+      const claimed = await tx.dashboardAccess.updateMany({
+        where: { id: dashboardAccessId, userId: null },
         data: { userId: newUser.id },
       });
+      if (claimed.count !== 1) {
+        throw new AppError('This access-code account is already linked to an email account', 409);
+      }
 
       // Link all canvases to the new user
       await tx.codingCanvas.updateMany({
@@ -699,7 +743,9 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
       return newUser;
     });
 
-    await sendLifecycleEmail(user, lifecycleTemplate('welcome', user));
+    const appUrl = process.env.APP_URL || 'http://localhost:5174';
+    const verifyUrl = `${appUrl}/verify-email#token=${verifyToken}&email=${encodeURIComponent(normalizedEmail)}`;
+    await sendVerificationEmail(normalizedEmail, verifyUrl);
 
     const jwt = signUserToken(user.id, user.role, user.plan);
 
@@ -707,7 +753,6 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        jwt,
         user: {
           id: user.id,
           email: user.email,
@@ -729,6 +774,8 @@ userAuthRoutes.put('/auth/profile', auth, async (req, res, next) => {
     if (!userId) throw new AppError('Email account required', 403);
 
     const { name, email } = req.body;
+    const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!currentUser) throw new AppError('User not found', 404);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {};
 
@@ -745,24 +792,28 @@ userAuthRoutes.put('/auth/profile', auth, async (req, res, next) => {
         return res.status(400).json({ success: false, error: 'Valid email is required' });
       }
       const normalizedEmail = email.toLowerCase().trim();
-      const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-      if (existing && existing.id !== userId) {
-        return res.status(409).json({ success: false, error: 'Email already in use' });
+      if (normalizedEmail !== currentUser.email) {
+        const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+        if (existing && existing.id !== userId) {
+          return res.status(409).json({ success: false, error: 'Email already in use' });
+        }
+        const verifyToken = crypto.randomBytes(32).toString('hex');
+        updateData.email = normalizedEmail;
+        updateData.emailVerified = false;
+        updateData.verificationTokenHash = sha256(verifyToken);
+        updateData.verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        updateData.sessionsInvalidAt = new Date();
+        updateData.pendingVerificationToken = verifyToken;
+        emailChanged = true;
       }
-      updateData.email = normalizedEmail;
-      updateData.emailVerified = false; // Re-verify if email changed
-      emailChanged = true;
     }
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ success: false, error: 'No fields to update' });
     }
 
-    // Changing the email is a credential change — invalidate all existing
-    // sessions so stolen tokens pre-dating the email change stop working.
-    if (emailChanged) {
-      updateData.sessionsInvalidAt = new Date();
-    }
+    const pendingVerificationToken = updateData.pendingVerificationToken as string | undefined;
+    delete updateData.pendingVerificationToken;
 
     const user = await prisma.user.update({
       where: { id: userId },
@@ -770,6 +821,9 @@ userAuthRoutes.put('/auth/profile', auth, async (req, res, next) => {
     });
 
     if (emailChanged) {
+      const appUrl = process.env.APP_URL || 'http://localhost:5174';
+      const verifyUrl = `${appUrl}/verify-email#token=${pendingVerificationToken}&email=${encodeURIComponent(user.email)}`;
+      await sendVerificationEmail(user.email, verifyUrl);
       clearAuthCookie(res);
     }
 
@@ -819,16 +873,101 @@ userAuthRoutes.put('/auth/change-password', auth, async (req, res, next) => {
   }
 });
 
+// GET /api/auth/export — portable account and research-data archive
+userAuthRoutes.get('/auth/export', auth, async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    if (!userId) throw new AppError('Email account required', 403);
+
+    const [account, canvases, auditLogs, notifications, reportSchedules, calendarEvents, trainingAttempts] =
+      await Promise.all([
+        prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            email: true,
+            emailVerified: true,
+            name: true,
+            role: true,
+            plan: true,
+            createdAt: true,
+            updatedAt: true,
+            trialEndsAt: true,
+            onboardingState: true,
+            onboardingCompletedAt: true,
+            subscription: true,
+            emailPreference: {
+              select: {
+                lifecycle: true,
+                productUpdates: true,
+                trainingTips: true,
+                inactivityNudges: true,
+                unsubscribedAt: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
+          },
+        }),
+        prisma.codingCanvas.findMany({
+          where: { OR: [{ userId }, { dashboardAccess: { userId } }] },
+          include: {
+            transcripts: true,
+            questions: true,
+            memos: true,
+            codings: true,
+            nodePositions: true,
+            cases: true,
+            relations: true,
+            computedNodes: true,
+            shares: true,
+            consentRecords: true,
+            aiSuggestions: true,
+            fileUploads: true,
+            textEmbeddings: true,
+            chatMessages: true,
+            summaries: true,
+            collaborators: true,
+            documents: true,
+            trainingDocuments: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        }),
+        prisma.auditLog.findMany({ where: { actorId: userId }, orderBy: { timestamp: 'asc' } }),
+        prisma.notification.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+        prisma.reportSchedule.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+        prisma.calendarEvent.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+        prisma.trainingAttempt.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+      ]);
+
+    if (!account) throw new AppError('User not found', 404);
+    const archive = {
+      format: 'qualcanvas-account-export',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      account,
+      canvases,
+      auditLogs,
+      notifications,
+      reportSchedules,
+      calendarEvents,
+      trainingAttempts,
+    };
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Disposition', `attachment; filename="qualcanvas-export-${stamp}.json"`);
+    res.type('application/json').send(JSON.stringify(archive, null, 2));
+  } catch (err) {
+    next(err);
+  }
+});
+
 // DELETE /api/auth/account — delete account
 userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
   try {
     const userId = req.userId;
     if (!userId) throw new AppError('Email account required', 403);
 
-    const { password } = req.body;
-    if (!password) {
-      return res.status(400).json({ success: false, error: 'Password confirmation required' });
-    }
+    const { password, confirmation } = req.body;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -836,25 +975,41 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
     });
     if (!user) throw new AppError('User not found', 404);
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) {
-      return res.status(401).json({ success: false, error: 'Password is incorrect' });
+    if (user.passwordHash) {
+      if (!password || typeof password !== 'string') {
+        return res.status(400).json({ success: false, error: 'Password confirmation required' });
+      }
+      const valid = await bcrypt.compare(password, user.passwordHash);
+      if (!valid) {
+        return res.status(401).json({ success: false, error: 'Password is incorrect' });
+      }
+    } else if (typeof confirmation !== 'string' || confirmation.trim().toLowerCase() !== user.email.toLowerCase()) {
+      return res.status(400).json({ success: false, error: 'Enter your account email to confirm deletion' });
     }
 
     // Cancel Stripe subscription if active
-    if (user.subscription && user.stripeCustomerId) {
+    if (user.subscription?.stripeSubscriptionId) {
+      const { getStripe } = await import('../lib/stripe.js');
+      const stripe = getStripe();
       try {
-        const { getStripe } = await import('../lib/stripe.js');
-        const stripe = getStripe();
-        if (user.subscription.stripeSubscriptionId) {
-          await stripe.subscriptions.cancel(user.subscription.stripeSubscriptionId);
-        }
-      } catch {
-        // Continue with deletion even if Stripe fails
+        await stripe.subscriptions.cancel(user.subscription.stripeSubscriptionId);
+      } catch (err: unknown) {
+        // A stale local record must not make a valid privacy deletion
+        // impossible when Stripe already has no such subscription.
+        const code = (err as { code?: string })?.code;
+        if (code !== 'resource_missing') throw err;
       }
     }
 
-    // Cascade delete user (Prisma cascade handles related records)
+    const ownedCanvases = await prisma.codingCanvas.findMany({
+      where: { OR: [{ userId }, { dashboardAccess: { userId } }] },
+      select: { id: true },
+    });
+    await deleteStoredUploads({
+      OR: [{ userId }, { canvasId: { in: ownedCanvases.map((canvas) => canvas.id) } }],
+    });
+
+    // Cascade delete database records after physical media is gone.
     await prisma.user.delete({ where: { id: userId } });
 
     res.json({ success: true, message: 'Account deleted' });
@@ -876,7 +1031,10 @@ userAuthRoutes.post('/auth/admin/seed-demo', async (req, res, next) => {
     if (!process.env.ADMIN_SEED_SECRET || secret !== process.env.ADMIN_SEED_SECRET) {
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
-    const demoCode = 'CANVAS-DEMO2025';
+    const demoCode = process.env.DEMO_ACCESS_CODE;
+    if (!demoCode || demoCode.length < 16) {
+      throw new AppError('DEMO_ACCESS_CODE must be configured with at least 16 characters', 503);
+    }
     const sha256Index = sha256(demoCode);
     const bcryptHash = await bcrypt.hash(demoCode, BCRYPT_ROUNDS);
     await prisma.dashboardAccess.upsert({

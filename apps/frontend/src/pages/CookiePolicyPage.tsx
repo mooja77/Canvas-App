@@ -17,13 +17,13 @@ export default function CookiePolicyPage() {
             ← QualCanvas
           </Link>
           <nav className="text-xs text-gray-500 space-x-4">
-            <Link to="/trust" className="hover:text-gray-700 dark:hover:text-gray-300">
+            <Link to="/trust" className="underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-300">
               Trust
             </Link>
-            <Link to="/privacy" className="hover:text-gray-700 dark:hover:text-gray-300">
+            <Link to="/privacy" className="underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-300">
               Privacy
             </Link>
-            <Link to="/terms" className="hover:text-gray-700 dark:hover:text-gray-300">
+            <Link to="/terms" className="underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-300">
               Terms
             </Link>
           </nav>
@@ -50,12 +50,7 @@ export default function CookiePolicyPage() {
             <tr className="border-b border-gray-100 dark:border-gray-800">
               <td className="py-1 font-mono text-xs">jwt</td>
               <td className="py-1">Authenticated session. HttpOnly, SameSite=Lax.</td>
-              <td className="py-1">7 days</td>
-            </tr>
-            <tr className="border-b border-gray-100 dark:border-gray-800">
-              <td className="py-1 font-mono text-xs">csrf_token</td>
-              <td className="py-1">CSRF protection on state-changing requests.</td>
-              <td className="py-1">Session</td>
+              <td className="py-1">24 hours</td>
             </tr>
             <tr className="border-b border-gray-100 dark:border-gray-800">
               <td className="py-1 font-mono text-xs">jms_cookie_consent</td>
@@ -63,7 +58,7 @@ export default function CookiePolicyPage() {
               <td className="py-1">1 year</td>
             </tr>
             <tr className="border-b border-gray-100 dark:border-gray-800">
-              <td className="py-1 font-mono text-xs">qualcanvas-*</td>
+              <td className="py-1 font-mono text-xs">qualcanvas-* / canvas-*</td>
               <td className="py-1">
                 LocalStorage for canvas UI state, feature flags, onboarding progress, offline cache.
               </td>
@@ -73,7 +68,10 @@ export default function CookiePolicyPage() {
         </table>
 
         <h2>Analytics &amp; observability</h2>
-        <p>Loaded only after you accept the consent banner. We don&apos;t share these IDs with advertisers.</p>
+        <p>
+          Google Analytics consent remains denied until you accept the banner. Cookieless Plausible analytics loads on
+          public marketing pages and does not use an advertising identifier.
+        </p>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-700">
@@ -119,9 +117,7 @@ export default function CookiePolicyPage() {
           </li>
         </ul>
 
-        <p className="mt-12 text-xs text-gray-400 dark:text-gray-500">
-          Last updated: {new Date().toISOString().slice(0, 10)}.
-        </p>
+        <p className="mt-12 text-xs text-gray-600 dark:text-gray-400">Last updated: 2026-07-18.</p>
       </main>
     </div>
   );

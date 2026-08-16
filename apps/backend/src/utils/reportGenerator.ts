@@ -37,12 +37,13 @@ export async function generateReport(
     include: {
       // Totals via _count (was materializing every coding twice, unbounded).
       _count: { select: { codings: true, collaborators: true } },
-      // Only the recent window, capped — feeds the new-codings count + the
-      // 5-row activity slice, the only things the report actually needs.
+      // Only the five rows displayed in the activity slice. The exact count is
+      // queried separately so a busy project never reports "200" when the real
+      // number is higher.
       codings: {
         where: { createdAt: { gte: since } },
         orderBy: { createdAt: 'desc' },
-        take: 200,
+        take: 5,
       },
       // Per-question coding counts via _count instead of the full nested rows.
       questions: {
@@ -51,8 +52,20 @@ export async function generateReport(
     },
   });
 
+  const recentCountRows =
+    canvases.length > 0
+      ? await prisma.canvasTextCoding.groupBy({
+          by: ['canvasId'],
+          where: {
+            canvasId: { in: canvases.map((canvas) => canvas.id) },
+            createdAt: { gte: since },
+          },
+          _count: { _all: true },
+        })
+      : [];
+  const recentCountByCanvas = new Map(recentCountRows.map((row) => [row.canvasId, row._count._all]));
+
   const reports: ReportData[] = canvases.map((canvas) => {
-    const newCodings = canvas.codings; // already scoped to the window
     const questionsSummary = canvas.questions
       .map((q) => ({
         text: q.text,
@@ -63,10 +76,10 @@ export async function generateReport(
 
     return {
       canvasName: canvas.name,
-      newCodingsCount: newCodings.length,
+      newCodingsCount: recentCountByCanvas.get(canvas.id) ?? 0,
       totalCodingsCount: canvas._count.codings,
       questionsSummary,
-      recentActivity: newCodings.slice(0, 5).map((c) => ({
+      recentActivity: canvas.codings.map((c) => ({
         action: `Coded: "${c.codedText.substring(0, 60)}${c.codedText.length > 60 ? '...' : ''}"`,
         timestamp: c.createdAt.toISOString(),
       })),

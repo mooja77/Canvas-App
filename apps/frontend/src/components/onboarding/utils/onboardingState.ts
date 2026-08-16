@@ -10,6 +10,8 @@ export interface PersistedOnboardingState {
   dismissedTooltips?: string[];
   checklistComplete?: string[];
   startedAt?: string;
+  completionMode?: 'completed' | 'skipped';
+  completedAtClient?: string;
   templateChoice?: { id: string; name: string } | null;
   personalization?: {
     researchTopic?: string;

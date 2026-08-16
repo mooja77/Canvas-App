@@ -28,6 +28,9 @@ const { mockPrisma } = vi.hoisted(() => {
     canvasTranscript: {
       findUnique: vi.fn(),
     },
+    canvasQuestion: {
+      count: vi.fn(),
+    },
     trainingDocument: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -152,6 +155,7 @@ describe('Repository and Training integration tests', () => {
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasQuestion.count.mockImplementation(({ where }) => Promise.resolve(where.id.in.length));
   });
 
   // ═══════════════════════════════════════
@@ -327,7 +331,7 @@ describe('Repository and Training integration tests', () => {
     mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
       id: transcriptId,
       canvasId,
-      content: 'Some transcript text',
+      content: 'Some transcript text with enough length for both coding ranges.',
     });
 
     const goldCodings = [

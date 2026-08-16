@@ -1,0 +1,36 @@
+TITLE
+Move Qualitative Projects with QDPX | QualCanvas Import and Export
+
+DESCRIPTION
+Use QDPX to transfer a qualitative project, then verify the result in the destination tool.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Move a project without treating export as magic
+0:17 Open Export and import
+0:33 Import into an existing canvas
+0:47 Use a copy for the first transfer
+1:01 Verify what arrived
+1:17 Treat the package as research data
+1:33 Exchange, then verify
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+QDPX import export, NVivo QDPX, ATLAS ti QDPX, qualitative data exchange, QualCanvas export
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Export & handoff
+Subtitle file: subtitles/15-move-projects-with-qdpx.en-IE.srt
+Thumbnail: thumbnails/15-move-projects-with-qdpx.jpg

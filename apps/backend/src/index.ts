@@ -87,7 +87,7 @@ import { billingRoutes, handleStripeWebhook } from './routes/billingRoutes.js';
 import { aiRoutes } from './routes/aiRoutes.js';
 import { chatRoutes } from './routes/chatRoutes.js';
 import { summaryRoutes } from './routes/summaryRoutes.js';
-import { uploadRoutes } from './routes/uploadRoutes.js';
+import { recoverTranscriptionJobs, uploadRoutes } from './routes/uploadRoutes.js';
 import { collaborationRoutes } from './routes/collaborationRoutes.js';
 import { documentRoutes } from './routes/documentRoutes.js';
 import { trainingRoutes } from './routes/trainingRoutes.js';
@@ -104,8 +104,10 @@ import { notificationRoutes } from './routes/notificationRoutes.js';
 import { reportRoutes } from './routes/reportRoutes.js';
 import { adminRoutes } from './routes/adminRoutes.js';
 import { lifecycleEmailRoutes, publicLifecycleEmailRoutes } from './routes/lifecycleEmailRoutes.js';
+import { handleResendWebhook } from './lib/resendWebhook.js';
 import { eventsRoutes } from './routes/eventsRoutes.js';
 import { prisma } from './lib/prisma.js';
+import { buildReadinessPayload } from './lib/readiness.js';
 import { initSocketServer } from './lib/socket.js';
 import { startReportScheduler, stopReportScheduler } from './jobs/reportScheduler.js';
 import { startLifecycleEmailScheduler, stopLifecycleEmailScheduler } from './jobs/lifecycleEmailScheduler.js';
@@ -156,8 +158,8 @@ app.use(
   }),
 );
 
-// Response compression (gzip). The canvas GET ships full transcript text +
-// up to 10k codings as JSON; uncompressed that's a large payload on every open.
+// Response compression (gzip). Canvas responses include transcript text and
+// coding metadata; uncompressed that can be a large payload on every open.
 // gzip cuts JSON/text ~80%+. Defaults skip responses <1KB and honour the
 // `x-no-compression` request header; there are no streaming/SSE endpoints to
 // exclude. Placed before routes so it wraps every response.
@@ -168,6 +170,16 @@ app.use(morgan(isProduction ? 'combined' : 'dev'));
 
 // Stripe webhook — needs raw body BEFORE json parsing
 app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), handleStripeWebhook);
+
+// Resend delivery events are independently authenticated with Svix signatures
+// and must receive the untouched request bytes.
+app.post('/api/email/webhooks/resend', express.raw({ type: 'application/json' }), handleResendWebhook);
+
+// Larger body limits must be registered before the default parser. Express
+// does not re-parse a request whose body was already consumed.
+app.use('/api/canvas/:id/transcripts', express.json({ limit: '10mb' }));
+app.use('/api/canvas/:id/import-narratives', express.json({ limit: '10mb' }));
+app.use('/api/canvas/:id/import-from-canvas', express.json({ limit: '10mb' }));
 
 // Body parsing — default limit for most routes
 app.use(express.json({ limit: '1mb' }));
@@ -207,11 +219,6 @@ const computeLimiter = rateLimit({
   skip: () => isTestEnv,
 });
 app.use('/api/canvas/:id/computed/:nodeId/run', computeLimiter);
-
-// Larger body limit for transcript/import routes
-app.use('/api/canvas/:id/transcripts', express.json({ limit: '10mb' }));
-app.use('/api/canvas/:id/import-narratives', express.json({ limit: '10mb' }));
-app.use('/api/canvas/:id/import-from-canvas', express.json({ limit: '10mb' }));
 
 // ─── Health check ───
 app.get('/health', async (_req, res) => {
@@ -276,21 +283,46 @@ app.get('/ready', async (_req, res) => {
   // every probe; just verify config is present.
   checks.smtp = process.env.SMTP_HOST ? 'ok' : 'skipped';
 
+  const lifecycleRequested =
+    process.env.LIFECYCLE_EMAIL_SEND_ENABLED === 'true' || process.env.LIFECYCLE_EMAIL_AUTOMATION_ENABLED === 'true';
+  if (lifecycleRequested) {
+    const exactScope = Boolean(process.env.LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST?.trim());
+    const broadScope = process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true';
+    const providerReady = Boolean(process.env.RESEND_API_KEY || process.env.SMTP_HOST);
+    const outcomesReady = !process.env.RESEND_API_KEY || Boolean(process.env.RESEND_WEBHOOK_SECRET);
+    checks.lifecycleEmail = exactScope && !broadScope && providerReady && outcomesReady ? 'ok' : 'error';
+    if (checks.lifecycleEmail === 'error') {
+      details.lifecycleEmail = 'Lifecycle email release gates are incomplete or broad recipient scope is enabled';
+    }
+  } else {
+    checks.lifecycleEmail = 'skipped';
+  }
+
   const dbDown = checks.database === 'error';
   const anyDegraded = Object.values(checks).some((v) => v === 'error');
 
   const status = dbDown ? 'not ready' : anyDegraded ? 'degraded' : 'ready';
-  res.status(dbDown ? 503 : 200).json({
-    status,
-    version: process.env.npm_package_version || '1.0.0',
-    uptime: process.uptime(),
-    checks,
-    ...(Object.keys(details).length > 0 ? { details } : {}),
-  });
+  res.status(dbDown ? 503 : 200).json(
+    buildReadinessPayload(
+      {
+        status,
+        version: process.env.npm_package_version || '1.0.0',
+        uptime: process.uptime(),
+        checks,
+        details,
+      },
+      isProduction,
+    ),
+  );
 });
 
 // ─── Basic metrics ───
-app.get('/metrics', (_req, res) => {
+app.get('/metrics', (req, res) => {
+  if (isProduction) {
+    const expected = process.env.METRICS_TOKEN;
+    const supplied = req.headers.authorization?.replace(/^Bearer\s+/i, '');
+    if (!expected || supplied !== expected) return res.status(404).json({ error: 'Not found' });
+  }
   res.json({
     uptime: process.uptime(),
     requestCount,
@@ -423,6 +455,7 @@ const server = httpServer.listen(PORT, () => {
   console.log(`QualCanvas backend running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
   // Start report scheduler in non-test environments
   if (process.env.NODE_ENV !== 'test') {
+    recoverTranscriptionJobs().catch((err) => console.error('[TranscriptionRecovery] Failed:', err));
     startReportScheduler();
     startLifecycleEmailScheduler();
     startStripeReconciliationScheduler();

@@ -16,6 +16,9 @@ export interface AuditEntry {
 }
 
 function determineActorType(req: Request): { actorType: string; actorId: string | null } {
+  if (req.userId) {
+    return { actorType: 'user', actorId: req.userId };
+  }
   if (req.dashboardAccessId) {
     return { actorType: 'researcher', actorId: req.dashboardAccessId };
   }

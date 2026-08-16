@@ -88,6 +88,7 @@ vi.mock('../../middleware/planLimits.js', () => ({
   checkWordLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkCodeLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAutoCode: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  checkIntercoderAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkCaseAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkShareLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAnalysisType: () => (_req: Request, _res: Response, next: NextFunction) => next(),
@@ -314,9 +315,8 @@ describe('Auth security — JWT and access control', () => {
       .get(`/api/canvas/${encodeURIComponent(sqlInjection)}`)
       .set('Authorization', `Bearer ${userAJwt}`);
 
-    // The request should not succeed — it may return 400/404/500 depending on
-    // how the route handles the invalid ID, but the key point is that no SQL
-    // injection occurs because Prisma uses parameterized queries
+    // Invalid identifier characters are rejected before any database lookup.
+    expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
     // Verify no actual data was dropped — the mock was never called with raw SQL
     expect(mockPrisma.$queryRawUnsafe).not.toHaveBeenCalled();

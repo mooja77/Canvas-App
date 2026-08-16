@@ -226,6 +226,7 @@ describe('auth middleware — cookie priority and session invalidation', () => {
       id: 'user-trial',
       plan: 'free',
       role: 'researcher',
+      emailVerified: true,
       sessionsInvalidAt: null,
       trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       dashboardAccess: null,

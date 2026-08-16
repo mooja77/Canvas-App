@@ -1,0 +1,36 @@
+TITLE
+QualCanvas for Methods Teaching and Research Teams
+
+DESCRIPTION
+Use shared definitions, visible evidence and structured review to teach coding or coordinate a research team.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Teach the reasoning—not just the clicks
+0:14 Use an institutional path for governed work
+0:29 Give learners a clear shared codebook
+0:44 Compare and discuss disagreement
+0:58 Control access to teaching material
+1:10 Turn calibration into a team workflow
+1:26 Make interpretation discussable
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+qualitative methods teaching, research team coding, intercoder reliability, qualitative coding class, QualCanvas institutions
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Researcher tours
+Subtitle file: subtitles/12-methods-teaching-and-research-teams.en-IE.srt
+Thumbnail: thumbnails/12-methods-teaching-and-research-teams.jpg

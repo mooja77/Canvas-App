@@ -1,0 +1,36 @@
+TITLE
+Share a QualCanvas Project and Check Intercoder Agreement
+
+DESCRIPTION
+Share work intentionally, understand roles and use agreement metrics as a discussion aid.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Collaborate without losing control
+0:13 Plan the handoff before the invitation
+0:28 Share from the canvas
+0:41 Calibrate with a common codebook
+0:55 Use agreement as a prompt for discussion
+1:09 Keep the discussion connected to excerpts
+1:23 Agreement supports judgement
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+intercoder agreement, qualitative research collaboration, Cohen kappa, Krippendorff alpha, QualCanvas teams
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Working together
+Subtitle file: subtitles/07-share-and-intercoder-agreement.en-IE.srt
+Thumbnail: thumbnails/07-share-and-intercoder-agreement.jpg

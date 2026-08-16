@@ -1,0 +1,95 @@
+1
+00:00:00,080 --> 00:00:03,548
+Collaboration works best when access has a purpose.
+
+2
+00:00:03,548 --> 00:00:07,884
+Decide whether someone needs to view, code, review or manage
+
+3
+00:00:07,884 --> 00:00:12,219
+the project before sharing a canvas or inviting them into
+
+4
+00:00:12,219 --> 00:00:13,520
+a team workflow.
+
+5
+00:00:13,920 --> 00:00:18,418
+For a team study, agree who owns the codebook, when
+
+6
+00:00:18,418 --> 00:00:22,466
+coders work independently and how disagreements will be resolved.
+
+7
+00:00:22,466 --> 00:00:27,864
+Software can show activity; it cannot make those methodological decisions for you.
+
+8
+00:00:28,264 --> 00:00:32,566
+Open Share from the workspace and use the available access controls.
+
+9
+00:00:32,566 --> 00:00:36,476
+A share code or link grants access, so send it
+
+10
+00:00:36,476 --> 00:00:40,387
+through an appropriate channel and revoke or rotate it when
+
+11
+00:00:40,387 --> 00:00:41,560
+the collaboration ends.
+
+12
+00:00:41,960 --> 00:00:46,831
+Before checking agreement, confirm that every coder worked from the
+
+13
+00:00:46,831 --> 00:00:49,754
+same definitions and unit of analysis.
+
+14
+00:00:49,754 --> 00:00:55,112
+A metric cannot rescue an ambiguous codebook or inconsistent passage boundaries.
+
+15
+00:00:55,512 --> 00:00:59,877
+The intercoder view can calculate agreement from comparable coding work.
+
+16
+00:00:59,877 --> 00:01:04,242
+Treat the score as a signal: inspect the disagreements, discuss
+
+17
+00:01:04,242 --> 00:01:08,607
+the reasoning and revise the codebook when the pattern reveals
+
+18
+00:01:08,607 --> 00:01:09,480
+genuine ambiguity.
+
+19
+00:01:09,880 --> 00:01:14,272
+When coders disagree, return to the passage and its context.
+
+20
+00:01:14,272 --> 00:01:18,664
+Record the resolution in a memo so the next similar
+
+21
+00:01:18,664 --> 00:01:23,056
+case is handled consistently and the methods account remains transparent.
+
+22
+00:01:23,456 --> 00:01:28,392
+A sound collaboration has clear roles, shared definitions, a period
+
+23
+00:01:28,392 --> 00:01:32,834
+of independent work and a documented discussion of differences.
+
+24
+00:01:32,834 --> 00:01:38,264
+QualCanvas supports that process; the research team remains responsible for it.

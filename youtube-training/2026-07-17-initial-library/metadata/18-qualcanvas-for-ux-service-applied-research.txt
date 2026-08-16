@@ -1,0 +1,36 @@
+TITLE
+QualCanvas for UX, Service and Applied Research
+
+DESCRIPTION
+Combine interviews, open-text responses, visible analysis and research memos in an applied-research workflow.
+
+QualCanvas keeps transcripts, codes, memos and analysis views connected in a visual workspace, so the reasoning behind a qualitative interpretation remains reviewable.
+
+Start QualCanvas: https://qualcanvas.com
+Training centre: https://qualcanvas.com/training
+Complete guide: https://qualcanvas.com/guide
+AI use and privacy: https://qualcanvas.com/trust/ai
+
+CHAPTERS
+0:00 Move from evidence to a responsible decision
+0:16 Start with the job your research must support
+0:30 Bring in interviews and field material
+0:46 Add open-text survey responses
+0:59 Keep the evidence connected to interpretation
+1:14 Choose a handoff for the audience
+1:30 Fast research can still be traceable
+
+This demonstration uses fictional, synthetic research material. Always follow your consent terms, ethics approval and institutional policy when working with real participant data.
+
+#QualCanvas #QualitativeResearch #ResearchMethods
+
+TAGS
+UX research analysis, service design research, applied qualitative research, customer interview coding, QualCanvas UX research
+
+UPLOAD SETTINGS
+Language: English (Ireland)
+Audience: Not made for kids
+Visibility after QA: Public
+Category: Researcher tours
+Subtitle file: subtitles/18-qualcanvas-for-ux-service-applied-research.en-IE.srt
+Thumbnail: thumbnails/18-qualcanvas-for-ux-service-applied-research.jpg

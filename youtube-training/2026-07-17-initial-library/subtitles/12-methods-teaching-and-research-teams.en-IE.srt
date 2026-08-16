@@ -1,0 +1,95 @@
+1
+00:00:00,080 --> 00:00:04,436
+In a methods course or research team, the valuable conversation
+
+2
+00:00:04,436 --> 00:00:08,793
+is why a passage was coded in a particular way.
+
+3
+00:00:08,793 --> 00:00:13,149
+QualCanvas keeps the excerpt, definition and developing structure visible enough
+
+4
+00:00:13,149 --> 00:00:14,456
+to discuss together.
+
+5
+00:00:14,856 --> 00:00:21,646
+The institutions page outlines options for methods teaching, labs and governed deployments.
+
+6
+00:00:21,646 --> 00:00:27,305
+Confirm procurement, hosting and data-processing requirements before a cohort uploads
+
+7
+00:00:27,305 --> 00:00:29,568
+any real participant material.
+
+8
+00:00:29,968 --> 00:00:34,752
+Begin a calibration exercise with explicit definitions and passage boundaries.
+
+9
+00:00:34,752 --> 00:00:39,536
+Ask learners to code independently before showing the class distribution,
+
+10
+00:00:39,536 --> 00:00:44,320
+so the result reflects their decisions rather than group influence.
+
+11
+00:00:44,720 --> 00:00:48,920
+Agreement metrics can identify codes or excerpts that need discussion.
+
+12
+00:00:48,920 --> 00:00:53,120
+Open the disagreements, ask each coder to explain the reasoning
+
+13
+00:00:53,120 --> 00:00:57,320
+and revise the codebook only when the discussion supports a
+
+14
+00:00:57,320 --> 00:00:58,160
+clearer rule.
+
+15
+00:00:58,560 --> 00:01:04,093
+For teaching, prefer synthetic transcripts or material licensed for classroom use.
+
+16
+00:01:04,093 --> 00:01:09,123
+Share only with the intended cohort, and remove access when
+
+17
+00:01:09,123 --> 00:01:10,632
+the exercise ends.
+
+18
+00:01:11,032 --> 00:01:16,353
+The same structure supports a research team: define roles, schedule
+
+19
+00:01:16,353 --> 00:01:20,078
+independent coding, review disagreements and document decisions.
+
+20
+00:01:20,078 --> 00:01:26,464
+Real-time tools make coordination easier, but the team still owns the method.
+
+21
+00:01:26,864 --> 00:01:31,517
+Whether you are teaching a class or coordinating a lab,
+
+22
+00:01:31,517 --> 00:01:36,170
+keep the evidence shared, the initial judgement independent and the
+
+23
+00:01:36,170 --> 00:01:37,100
+review documented.
+
+24
+00:01:37,100 --> 00:01:41,288
+That builds confidence without pretending qualitative interpretation is mechanical.

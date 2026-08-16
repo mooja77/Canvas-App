@@ -3,6 +3,7 @@ import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase, CanvasMemo } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useAuthStore } from '../../../stores/authStore';
 
 interface RichExportModalProps {
   onClose: () => void;
@@ -14,6 +15,7 @@ type GroupBy = 'code' | 'source' | 'case';
 export default function RichExportModal({ onClose }: RichExportModalProps) {
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
+  const effectivePlan = useAuthStore((state) => state.effectivePlan ?? state.plan ?? 'free');
   // Word first — it's the format researchers actually need for supervisors,
   // committees, and repositories.
   const [format, setFormat] = useState<ExportFormat>('docx');
@@ -500,6 +502,10 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
   };
 
   const handleExport = async () => {
+    if (effectivePlan === 'free') {
+      toast.error('Formatted reports are available on Student, Pro, and Team plans.');
+      return;
+    }
     try {
       setExporting(true);
       let blob: Blob;
@@ -529,6 +535,10 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
   };
 
   const handlePreview = () => {
+    if (effectivePlan === 'free') {
+      toast.error('Formatted reports are available on Student, Pro, and Team plans.');
+      return;
+    }
     const content = generateHTML();
     const win = window.open('', '_blank');
     if (win) {

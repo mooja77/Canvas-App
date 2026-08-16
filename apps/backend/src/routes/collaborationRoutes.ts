@@ -4,6 +4,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
 import { getPlanLimits } from '../config/plans.js';
 import { validateParams, canvasIdParam, canvasIdUserIdParams } from '../middleware/validation.js';
+import { revokeCanvasAccess } from '../lib/socket.js';
 
 export const collaborationRoutes = Router();
 
@@ -80,6 +81,9 @@ collaborationRoutes.post('/canvas/:id/collaborators', validateParams(canvasIdPar
         invitedBy: userId || dashboardAccessId,
       },
     });
+    // If this was a role change, force any existing socket to rejoin with the
+    // new authorization state before it can publish another mutation.
+    await revokeCanvasAccess(canvas.id, targetUserId);
 
     res.status(201).json({ success: true, data: collaborator });
   } catch (err) {
@@ -144,6 +148,7 @@ collaborationRoutes.delete(
       await prisma.canvasCollaborator.delete({
         where: { id: existing.id },
       });
+      await revokeCanvasAccess(canvas.id, targetUserId);
 
       res.json({ success: true, message: 'Collaborator removed' });
     } catch (err) {

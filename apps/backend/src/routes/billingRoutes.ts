@@ -18,13 +18,22 @@ const QC_PLANS: readonly QcPlan[] = ['student', 'pro', 'team'];
  * account shared across JMS products), so callers can reject them.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deriveQualcanvasPlan(stripe: ReturnType<typeof getStripe>, price: any): Promise<QcPlan | null> {
+export async function deriveQualcanvasPlan(stripe: ReturnType<typeof getStripe>, price: any): Promise<QcPlan | null> {
   if (!price) return null;
-  const meta = price.metadata || {};
+  let resolvedPrice = price;
+  if (!price.metadata && !price.product && typeof price.id === 'string') {
+    try {
+      resolvedPrice = await stripe.prices.retrieve(price.id, { expand: ['product'] });
+    } catch {
+      return null;
+    }
+  }
+  const meta = resolvedPrice.metadata || {};
   if (meta.app === 'qualcanvas' && QC_PLANS.includes(meta.plan)) return meta.plan as QcPlan;
   try {
-    let product = typeof price.product === 'object' ? price.product : null;
-    if (!product && typeof price.product === 'string') product = await stripe.products.retrieve(price.product);
+    let product = typeof resolvedPrice.product === 'object' ? resolvedPrice.product : null;
+    if (!product && typeof resolvedPrice.product === 'string')
+      product = await stripe.products.retrieve(resolvedPrice.product);
     const name = String(product?.name || '').toLowerCase();
     if (!name.startsWith('qualcanvas')) return null;
     if (name.includes('student')) return 'student';
@@ -67,6 +76,17 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
     }
     const plan = await deriveQualcanvasPlan(stripe, price);
     if (!plan) throw new AppError('Unrecognized plan price', 400);
+    if (plan === 'student' && (!user.emailVerified || !user.email.toLowerCase().endsWith('.edu'))) {
+      throw new AppError('The Student plan requires a verified .edu email address', 403);
+    }
+
+    const recordedSubscription = await prisma.subscription.findUnique({ where: { userId } });
+    if (
+      recordedSubscription &&
+      ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(recordedSubscription.status)
+    ) {
+      throw new AppError('An active subscription already exists. Manage it from the billing portal.', 409);
+    }
 
     // Create or retrieve Stripe customer
     let customerId = user.stripeCustomerId;
@@ -83,13 +103,31 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
       });
     }
 
+    // Defend against an earlier checkout that reached Stripe but whose
+    // webhook never reached us. Creating another subscription would bill the
+    // customer twice and overwrite the sole local subscription record.
+    const stripeSubscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'all',
+      limit: 100,
+    });
+    const blockingStatuses = new Set(['active', 'trialing', 'past_due', 'unpaid', 'incomplete']);
+    if (stripeSubscriptions.data.some((subscription) => blockingStatuses.has(subscription.status))) {
+      throw new AppError('An active subscription already exists. Manage it from the billing portal.', 409);
+    }
+
     // Auto-apply academic discount for .edu emails.
     // The Student tier is already academically priced ($5), so it must NOT
     // stack the 40% coupon on top (that would drop it to ~$3). The coupon
     // applies only to the full-price Pro/Team plans. `plan` is server-derived
     // from the price, so this can't be bypassed by a forged request body.
     const discounts: { coupon: string }[] = [];
-    if (user.email.endsWith('.edu') && plan !== 'student' && process.env.STRIPE_ACADEMIC_COUPON_ID) {
+    if (
+      user.emailVerified &&
+      user.email.toLowerCase().endsWith('.edu') &&
+      plan !== 'student' &&
+      process.env.STRIPE_ACADEMIC_COUPON_ID
+    ) {
       discounts.push({ coupon: process.env.STRIPE_ACADEMIC_COUPON_ID });
     }
 
@@ -179,12 +217,12 @@ export async function handleStripeWebhook(req: Request, res: Response) {
     return res.status(400).json({ error: 'Invalid signature' });
   }
 
-  // Idempotency: skip already-processed events
+  // Idempotency: only successfully processed events are persisted. A failed
+  // delivery must remain retryable by Stripe.
   const existing = await prisma.webhookEvent.findUnique({ where: { id: event.id } });
   if (existing) {
     return res.json({ received: true });
   }
-  await prisma.webhookEvent.create({ data: { id: event.id, type: event.type } });
 
   try {
     switch (event.type) {
@@ -200,7 +238,10 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           });
           const item = sub.items.data[0];
           // Entitlement is derived from the subscribed price, not client metadata.
-          const plan = (await deriveQualcanvasPlan(stripe, item?.price)) || session.metadata?.plan || 'pro';
+          const plan = await deriveQualcanvasPlan(stripe, item?.price);
+          if (!plan) {
+            throw new Error('Checkout referenced an unrecognized QualCanvas subscription price');
+          }
           const periodStart = item?.current_period_start ?? nowSecs();
           const periodEnd = item?.current_period_end ?? nowSecs() + 30 * 24 * 3600;
           await prisma.$transaction([
@@ -352,20 +393,22 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       }
     }
 
-    // Record the event only after successful handling, so a genuine failure
-    // (below) is retried by Stripe instead of short-circuiting at the dedupe
-    // check. Guarded against a concurrent duplicate delivery (unique id).
+    // Record only after successful handling. The unique event id also makes
+    // concurrent successful deliveries converge safely.
+    try {
+      await prisma.webhookEvent.create({ data: { id: event.id, type: event.type } });
+    } catch (recordError) {
+      const code = (recordError as { code?: string }).code;
+      if (code !== 'P2002') throw recordError;
+    }
     console.log(`[Stripe Webhook] Processed: ${event.type} (${event.id})`);
-    res.json({ received: true });
+    return res.json({ received: true });
   } catch (err) {
-    // Acknowledge receipt with 200 so Stripe doesn't retry indefinitely with
-    // exponential backoff (up to 3 days). The event ID was already recorded
-    // in WebhookEvent above, so a re-delivery wouldn't help anyway — it'd
-    // just hit the idempotency dedupe and short-circuit. Real failures are
-    // visible in Railway logs prefixed [Stripe Webhook] FAILED.
+    // A non-2xx response tells Stripe to retry transient failures. Because the
+    // event was not persisted above, the next delivery will be processed.
     const message = err instanceof Error ? err.message : 'Unknown error';
     const stack = err instanceof Error ? err.stack : undefined;
     console.error(`[Stripe Webhook] FAILED ${event.type} (${event.id}) — ${message}`, stack);
-    res.status(200).json({ received: true, processed: false, error: message });
+    return res.status(500).json({ received: false, processed: false, error: 'Webhook processing failed' });
   }
 }

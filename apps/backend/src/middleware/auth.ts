@@ -48,7 +48,10 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
         // promote someone after they've cancelled. Paid users (plan='pro'
         // or 'team') ignore this overlay entirely.
         const trialActive =
-          user.plan === 'free' && user.trialEndsAt instanceof Date && user.trialEndsAt.getTime() > Date.now();
+          user.emailVerified === true &&
+          user.plan === 'free' &&
+          user.trialEndsAt instanceof Date &&
+          user.trialEndsAt.getTime() > Date.now();
         const effectivePlan = trialActive ? 'pro' : user.plan;
 
         req.userId = user.id;
@@ -60,7 +63,7 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
           req.dashboardAccessId = user.dashboardAccess.id;
           req.dashboardAccess = user.dashboardAccess;
         }
-        res.setHeader('X-Session-Timeout', '1800');
+        res.setHeader('X-Session-Timeout', '86400');
         return next();
       }
     }
@@ -81,7 +84,7 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
         req.dashboardAccess = access;
         // Legacy users are grandfathered to pro
         req.userPlan = 'pro';
-        res.setHeader('X-Session-Timeout', '1800');
+        res.setHeader('X-Session-Timeout', '86400');
         return next();
       }
     }
@@ -114,6 +117,6 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
   req.dashboardAccess = access;
   req.userPlan = 'pro'; // Legacy users grandfathered
 
-  res.setHeader('X-Session-Timeout', '1800');
+  res.setHeader('X-Session-Timeout', '86400');
   next();
 }

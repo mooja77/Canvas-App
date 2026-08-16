@@ -120,11 +120,16 @@ describe('Hosted-AI budget guardrails — checkHostedAiBudget', () => {
     expect(mockPrisma.aiUsage.aggregate).not.toHaveBeenCalled(); // bypassed before any spend query
   });
 
-  it('skips legacy access-code users (no per-user userId)', async () => {
+  it('blocks legacy access-code users because hosted AI requires an accountable email user', async () => {
     const next = vi.fn();
     const req = { userId: undefined } as unknown as Request;
-    await checkHostedAiBudget()(req, {} as Response, next);
-    expect(next).toHaveBeenCalledTimes(1);
+    const res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+    } as unknown as Response;
+    await checkHostedAiBudget()(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
     expect(mockPrisma.aiUsage.aggregate).not.toHaveBeenCalled();
   });
 });

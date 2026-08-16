@@ -51,13 +51,23 @@ integrationRoutes.get('/integrations', async (req, res, next) => {
 });
 
 // POST /api/integrations/connect — withdrawn.
-integrationRoutes.post('/integrations/connect', (_req, res) => {
-  res.status(410).json({
-    success: false,
-    error:
-      'Provider connections have been retired. QualCanvas does not connect to Zoom, Slack or Qualtrics; import transcripts as files instead.',
-    code: 'INTEGRATION_CONNECT_RETIRED',
-  });
+//
+// This never was an OAuth flow: it accepted an access token from the request
+// body, encrypted it and stored it, which is a credential-exfiltration surface
+// and implied a working integration that did not exist. Authenticate first so
+// an unauthenticated caller learns nothing about account state, then refuse.
+integrationRoutes.post('/integrations/connect', async (req, res, next) => {
+  try {
+    if (!req.userId) throw new AppError('Email authentication required', 401);
+    res.status(410).json({
+      success: false,
+      error:
+        'Provider connections have been retired. QualCanvas does not connect to Zoom, Slack or Qualtrics; import transcripts as files instead.',
+      code: 'INTEGRATION_CONNECT_RETIRED',
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // DELETE /api/integrations/:id — revoke and erase a stored credential.

@@ -1,0 +1,103 @@
+1
+00:00:00,080 --> 00:00:04,316
+QDPX is an open exchange format for qualitative projects.
+
+2
+00:00:04,316 --> 00:00:09,023
+QualCanvas can export and import QDPX, which helps when work
+
+3
+00:00:09,023 --> 00:00:13,259
+needs to move to or from a compatible tool.
+
+4
+00:00:13,259 --> 00:00:17,024
+Always plan time to verify the round trip.
+
+5
+00:00:17,424 --> 00:00:20,777
+Open the Export and import menu.
+
+6
+00:00:20,777 --> 00:00:26,366
+Use QDPX for project exchange, while reports, spreadsheets and images
+
+7
+00:00:26,366 --> 00:00:28,601
+serve different handoff needs.
+
+8
+00:00:28,601 --> 00:00:33,072
+Save the export in an approved research location.
+
+9
+00:00:33,472 --> 00:00:38,238
+For import, choose Import QDPX and select a QDPX or
+
+10
+00:00:38,238 --> 00:00:41,574
+ZIP package within the displayed twenty-megabyte limit.
+
+11
+00:00:41,574 --> 00:00:46,816
+Read the warning in the dialog before changing an existing canvas.
+
+12
+00:00:47,216 --> 00:00:52,781
+For the first transfer, work in a copy or fresh destination canvas.
+
+13
+00:00:52,781 --> 00:00:57,418
+That gives you a recoverable comparison if a source type,
+
+14
+00:00:57,418 --> 00:01:01,592
+code relation or formatting detail maps differently between applications.
+
+15
+00:01:01,992 --> 00:01:06,694
+After import, compare source counts, open sample excerpts and inspect
+
+16
+00:01:06,694 --> 00:01:09,046
+the codebook, hierarchy and memos.
+
+17
+00:01:09,046 --> 00:01:13,748
+Features that are unique to either application may not have
+
+18
+00:01:13,748 --> 00:01:17,040
+a one-to-one equivalent in the exchange format.
+
+19
+00:01:17,440 --> 00:01:22,028
+A QDPX package can contain participant text and analytical notes.
+
+20
+00:01:22,028 --> 00:01:26,616
+Encrypt or otherwise protect it where your protocol requires, send
+
+21
+00:01:26,616 --> 00:01:31,205
+it only to authorised recipients and delete temporary copies according
+
+22
+00:01:31,205 --> 00:01:33,040
+to your retention plan.
+
+23
+00:01:33,440 --> 00:01:38,825
+A responsible QDPX handoff includes a backup, a controlled transfer,
+
+24
+00:01:38,825 --> 00:01:43,671
+structured verification and a note of anything that changed.
+
+25
+00:01:43,671 --> 00:01:49,056
+The QualCanvas training centre includes separate tutorials for reports, spreadsheets
+
+26
+00:01:49,056 --> 00:01:50,672
+and visual exports.

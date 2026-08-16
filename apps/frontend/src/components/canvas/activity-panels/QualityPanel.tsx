@@ -1,6 +1,8 @@
 import { useCanvasStore } from '../../../stores/canvasStore';
 import { useAuthStore } from '../../../stores/authStore';
 import { trackEvent } from '../../../utils/analytics';
+import { canvasClient } from '../../../services/api';
+import toast from 'react-hot-toast';
 
 /**
  * Sprint G — Quality panel. Single hub for the institutional / academic
@@ -18,6 +20,25 @@ export default function QualityPanel() {
 
   const openModal = (modal: string) => {
     window.dispatchEvent(new CustomEvent('qualcanvas:open-canvas-modal', { detail: { modal } }));
+  };
+
+  const downloadAuditTrail = async () => {
+    if (!activeCanvasId) return;
+    try {
+      trackEvent('audit_trail_viewed', { canvas_id: activeCanvasId });
+      const response = await canvasClient.get(`/canvas/${activeCanvasId}/audit?limit=200`);
+      const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = href;
+      link.download = `qualcanvas-audit-${activeCanvasId}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(href);
+    } catch {
+      toast.error('Could not download the audit trail');
+    }
   };
 
   if (!activeCanvasId) {
@@ -59,13 +80,7 @@ export default function QualityPanel() {
       </Section>
 
       <Section title="Audit trail">
-        <Row
-          label="View canvas audit trail"
-          onClick={() => {
-            trackEvent('audit_trail_viewed', { canvas_id: activeCanvasId });
-            window.open(`/api/v1/canvas/${activeCanvasId}/audit?limit=200`, '_blank');
-          }}
-        />
+        <Row label="Download canvas audit trail" onClick={downloadAuditTrail} />
         <p className="px-2 pt-1 text-[10px] text-gray-400 dark:text-gray-500">
           Returns up to 200 recent events as JSON.
         </p>
