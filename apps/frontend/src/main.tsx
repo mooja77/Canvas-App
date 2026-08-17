@@ -8,6 +8,7 @@ import { useUIStore } from './stores/uiStore';
 import { useThemePreferenceStore, type ThemePreference } from './stores/themePreferenceStore';
 import { useFeatureFlagsStore, applyUrlFlagOverrides } from './stores/featureFlagsStore';
 import { trackEvent } from './utils/analytics';
+import { setUpdateServiceWorker } from './utils/swUpdate';
 import './i18n';
 import './index.css';
 import './brand-v2.css';
@@ -188,6 +189,11 @@ const updateSW = registerSW({
     );
   },
 });
+
+// Hand the activator to route code. A lazy route whose chunk 404s is almost
+// always a stale-bundle symptom, and recovering means activating the waiting
+// worker before reloading — see utils/lazyRoute.ts.
+setUpdateServiceWorker(updateSW);
 
 // Remove the prerendered marketing block + its inline styles so React owns
 // the page from here on. The block only exists for first-paint visibility

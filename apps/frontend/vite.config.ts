@@ -36,7 +36,12 @@ export default defineConfig({
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'application-assets',
-              expiration: { maxEntries: 40, maxAgeSeconds: 7 * 24 * 60 * 60 },
+              // A production build emits 93 JS chunks + 2 CSS files, so the
+              // previous 40-entry cap evicted route chunks continuously and
+              // sent almost every navigation back to the network — which is
+              // what made stale-bundle chunk 404s so easy to hit. Sized above
+              // the real chunk count so the LRU stops thrashing.
+              expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 60 * 60 },
             },
           },
         ],
