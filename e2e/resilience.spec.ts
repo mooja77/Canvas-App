@@ -6,7 +6,6 @@ import { openCanvas } from './helpers';
 // ═══════════════════════════════════════════════════════════════════
 
 test.describe('Resilience', () => {
-
   test('page loads without console errors', async ({ page }) => {
     const consoleErrors: string[] = [];
     page.on('console', (msg) => {
@@ -22,13 +21,14 @@ test.describe('Resilience', () => {
     await page.waitForLoadState('networkidle');
 
     // Filter out network errors that are expected in E2E
-    const criticalErrors = consoleErrors.filter((e) =>
-      !e.includes('net::ERR') &&
-      !e.includes('Failed to load resource') &&
-      !e.includes('404') &&
-      !e.includes('favicon') &&
-      !e.includes('Stripe') &&
-      !e.includes('Google')
+    const criticalErrors = consoleErrors.filter(
+      (e) =>
+        !e.includes('net::ERR') &&
+        !e.includes('Failed to load resource') &&
+        !e.includes('404') &&
+        !e.includes('favicon') &&
+        !e.includes('Stripe') &&
+        !e.includes('Google'),
     );
 
     expect(criticalErrors).toEqual([]);
@@ -38,9 +38,7 @@ test.describe('Resilience', () => {
     await page.goto('/this-route-does-not-exist-12345');
     await page.waitForLoadState('domcontentloaded');
 
-    const notFoundText = page.getByText(/not found/i).or(
-      page.getByText(/404/i)
-    );
+    const notFoundText = page.getByText(/not found/i).or(page.getByText(/404/i));
     await expect(notFoundText.first()).toBeVisible({ timeout: 5000 });
   });
 
@@ -70,7 +68,10 @@ test.describe('Resilience', () => {
     await page.waitForLoadState('networkidle');
 
     // After reload, the app may return to canvas list. Re-enter the canvas if needed.
-    const paneVisible = await page.locator('.react-flow__pane').isVisible({ timeout: 3000 }).catch(() => false);
+    const paneVisible = await page
+      .locator('.react-flow__pane')
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
     if (!paneVisible) {
       // Click first canvas card or navigate to the canvas by ID
       if (canvasId) {
@@ -139,7 +140,8 @@ test.describe('Resilience', () => {
     });
 
     if (!canvasId) {
-      test.skip(); return;
+      test.skip(true, 'precondition not met: canvas could not be created via API');
+      return;
     }
 
     // Navigate away

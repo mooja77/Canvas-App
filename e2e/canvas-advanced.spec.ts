@@ -11,7 +11,7 @@ test.describe('Canvas Advanced Features', () => {
   test('Ctrl+Z undo shows toast after node drag', async ({ page }) => {
     const node = page.locator('.react-flow__node').first();
     if (!(await node.isVisible({ timeout: 2000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await node.isVisible({ timeout: 2000 }).catch(() => false))');
       return;
     }
     const box = await node.boundingBox();
@@ -46,7 +46,7 @@ test.describe('Canvas Advanced Features', () => {
   test('Ctrl+M mutes and unmutes a node', async ({ page }) => {
     const node = page.locator('.react-flow__node').first();
     if (!(await node.isVisible({ timeout: 2000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await node.isVisible({ timeout: 2000 }).catch(() => false))');
       return;
     }
     // Click a node to select it
@@ -55,7 +55,7 @@ test.describe('Canvas Advanced Features', () => {
     // Verify selected
     const selected = await page.locator('.react-flow__node.selected').count();
     if (selected === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: selected === 0');
       return;
     }
 
@@ -82,7 +82,7 @@ test.describe('Canvas Advanced Features', () => {
   test('right-click on node shows context menu', async ({ page }) => {
     const node = page.locator('.react-flow__node').first();
     if (!(await node.isVisible({ timeout: 2000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await node.isVisible({ timeout: 2000 }).catch(() => false))');
       return;
     }
     await node.click({ button: 'right' });
@@ -295,14 +295,14 @@ test.describe('Canvas Advanced Features', () => {
   test('clicking node shows selection indicator', async ({ page }) => {
     const node = page.locator('.react-flow__node').first();
     if (!(await node.isVisible({ timeout: 2000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await node.isVisible({ timeout: 2000 }).catch(() => false))');
       return;
     }
     await node.locator('.drag-handle').first().click({ force: true });
 
     const selected = await page.locator('.react-flow__node.selected').count();
     if (selected === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: selected === 0');
       return;
     }
     expect(selected).toBeGreaterThan(0);
@@ -316,7 +316,7 @@ test.describe('Canvas Advanced Features', () => {
       .isVisible({ timeout: 2000 })
       .catch(() => false);
     if (!hasNodes) {
-      test.skip();
+      test.skip(true, 'precondition not met: !hasNodes');
       return;
     }
 
@@ -327,7 +327,7 @@ test.describe('Canvas Advanced Features', () => {
 
     const selected = await page.locator('.react-flow__node.selected').count();
     if (selected === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: selected === 0');
       return;
     }
     expect(selected).toBeGreaterThan(0);

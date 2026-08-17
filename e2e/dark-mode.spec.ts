@@ -63,7 +63,7 @@ test.describe('Dark Mode', () => {
         .isVisible({ timeout: 3000 })
         .catch(() => false))
     ) {
-      test.skip();
+      test.skip(true, 'precondition not met');
       return;
     }
 

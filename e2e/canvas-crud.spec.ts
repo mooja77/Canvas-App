@@ -334,7 +334,7 @@ test.describe('Workspace Tests', () => {
     await openCanvasById(page, canvasId);
     const node = page.locator('.react-flow__node[data-id^="transcript-"]').first();
     if ((await node.count()) === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: (await node.count()) === 0');
       return;
     }
     await scrollNodeIntoView(page, node);
@@ -580,7 +580,7 @@ test.describe('Workspace Tests', () => {
     await scrollNodeIntoView(page, node);
     const box = await node.boundingBox();
     if (!box) {
-      test.skip();
+      test.skip(true, 'precondition not met: !box');
       return;
     }
     await page.mouse.move(box.x + box.width / 2, box.y + 10);

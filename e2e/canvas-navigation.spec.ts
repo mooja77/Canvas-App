@@ -82,7 +82,7 @@ test.describe('Canvas Navigation Features', () => {
     // Find the dark mode toggle button in the header
     const darkModeBtn = page.locator('button[aria-label*="dark mode"], button[aria-label*="light mode"]');
     if (!(await darkModeBtn.isVisible({ timeout: 2000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await darkModeBtn.isVisible({ timeout: 2000 }).catch(() => false))');
       return;
     }
 
@@ -139,7 +139,7 @@ test.describe('Canvas Navigation Features', () => {
 
     if (!isNavigatorVisible && !isNavigatorHidden) {
       // Neither button found — skip
-      test.skip();
+      test.skip(true, 'precondition not met: !isNavigatorVisible && !isNavigatorHidden');
       return;
     }
 

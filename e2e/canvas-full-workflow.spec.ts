@@ -56,7 +56,7 @@ test.describe('Canvas Full Workflow', () => {
         .isVisible({ timeout: 3000 })
         .catch(() => false))
     ) {
-      test.skip();
+      test.skip(true, 'precondition not met');
       return;
     }
 
@@ -142,7 +142,7 @@ test.describe('Canvas Full Workflow', () => {
         .isVisible({ timeout: 2000 })
         .catch(() => false))
     ) {
-      test.skip();
+      test.skip(true, 'precondition not met');
       return;
     }
 
@@ -197,7 +197,7 @@ test.describe('Canvas Full Workflow', () => {
 
     if (!isVisible) {
       // Command palette may not be implemented yet
-      test.skip();
+      test.skip(true, 'precondition not met: !isVisible');
       return;
     }
 
@@ -226,7 +226,7 @@ test.describe('Canvas Full Workflow', () => {
       .catch(() => false);
 
     if (!isVisible) {
-      test.skip();
+      test.skip(true, 'precondition not met: !isVisible');
       return;
     }
 
@@ -278,7 +278,7 @@ test.describe('Canvas Full Workflow', () => {
           .isVisible({ timeout: 1000 })
           .catch(() => false))
       ) {
-        test.skip();
+        test.skip(true, 'precondition not met');
         return;
       }
       await contextDelete.first().click();
