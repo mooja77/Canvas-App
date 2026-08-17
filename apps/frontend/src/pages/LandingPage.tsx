@@ -148,7 +148,7 @@ export default function LandingPage() {
             {
               n: '5.0',
               title: 'Export',
-              body: "Out to QDPX for NVivo and ATLAS.ti. Or to PDF. Or to your institution's preservation archive.",
+              body: "Out to QDPX for NVivo and ATLAS.ti. Or a Word report for your supervisor. Or to your institution's preservation archive.",
             },
           ].map((step) => (
             <li key={step.n} className="flex flex-col gap-3">
@@ -211,7 +211,7 @@ export default function LandingPage() {
           <BentoCell span={2}>
             <FeatureContent
               title="Export QDPX"
-              body="Take everything to NVivo or ATLAS.ti if you need to. Or hand a clean PDF to your committee. No lock-in by design."
+              body="Take everything to NVivo or ATLAS.ti if you need to. Or hand a Word report to your committee. No lock-in by design."
             />
           </BentoCell>
         </Bento>

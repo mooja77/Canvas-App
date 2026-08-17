@@ -15,8 +15,8 @@ import CTAStripe from '../components/marketing/CTAStripe';
  *
  * Spec: docs/refresh/06-pages/05-for-teams.md.
  * Sells the Team plan ($39/seat/mo): shared codebooks, intercoder κ,
- * audit trail. Logo wall starts empty/sparse — populated as permissions
- * land per docs/refresh/10 R12.
+ * audit trail. Carries no logo wall or testimonial: both previously showed
+ * anonymised placeholders that read as customer evidence we do not have.
  */
 export default function ForTeamsPage() {
   const navigate = useNavigate();

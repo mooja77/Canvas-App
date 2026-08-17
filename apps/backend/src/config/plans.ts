@@ -155,7 +155,12 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     transcriptionMinutesPerMonth: 3000, // ~50 hrs, matching the /pricing table (was 300 — below Pro); BYO-key for unlimited
     maxCollaborators: Infinity,
     repositoryEnabled: true,
-    integrationsEnabled: true,
+    // No provider integration exists. There was never an OAuth flow — the old
+    // /integrations/connect route just stored a token the caller pasted in, and
+    // nothing ever read it back out. Selling this on Team was a false claim, so
+    // the flag is off everywhere until a real authorization-code/PKCE flow ships
+    // against a provider someone has actually asked for.
+    integrationsEnabled: false,
   },
 };
 

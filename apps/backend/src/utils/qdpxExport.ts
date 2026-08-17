@@ -6,18 +6,32 @@
 import archiver from 'archiver';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { buildQdpxXml, type ExportCode } from './qdpxParse.js';
 
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+interface QuestionRow {
+  id: string;
+  text: string;
+  color: string | null;
+  parentQuestionId: string | null;
 }
 
-function formatDate(d: Date): string {
-  return d.toISOString();
+/** Rebuild the code hierarchy from flat rows so it can be written out nested. */
+function buildCodeTree(rows: QuestionRow[]): ExportCode[] {
+  const nodes = new Map<string, ExportCode>(
+    rows.map((r) => [r.id, { id: r.id, text: r.text, color: r.color, children: [] }]),
+  );
+
+  const roots: ExportCode[] = [];
+  for (const row of rows) {
+    const node = nodes.get(row.id);
+    if (!node) continue;
+
+    const parent = row.parentQuestionId ? nodes.get(row.parentQuestionId) : undefined;
+    // A code whose parent was deleted is treated as a root rather than dropped.
+    if (parent && parent !== node) parent.children.push(node);
+    else roots.push(node);
+  }
+  return roots;
 }
 
 export async function exportQdpx(canvasId: string): Promise<Buffer> {
@@ -34,45 +48,19 @@ export async function exportQdpx(canvasId: string): Promise<Buffer> {
     throw new AppError('Canvas not found', 404);
   }
 
-  // Build codebook XML (questions = codes)
-  const codesXml = canvas.questions
-    .map(
-      (q) =>
-        `    <Code guid="${escapeXml(q.id)}" name="${escapeXml(q.text)}" color="${escapeXml(q.color)}" isCodable="true" />`,
-    )
-    .join('\n');
-
-  // Build sources XML (transcripts = text sources)
-  const sourcesXml = canvas.transcripts
-    .map(
-      (t) =>
-        `    <TextSource guid="${escapeXml(t.id)}" name="${escapeXml(t.title)}" plainTextContent="${escapeXml(t.content)}" creationDateTime="${formatDate(t.createdAt)}" />`,
-    )
-    .join('\n');
-
-  // Build codings (selections)
-  const codingsXml = canvas.codings
-    .map(
-      (c) =>
-        `    <Coding guid="${escapeXml(c.id)}" codeGUID="${escapeXml(c.questionId)}">
-      <TextSelection guid="${escapeXml(c.id)}-sel" sourceGUID="${escapeXml(c.transcriptId)}" startPosition="${c.startOffset}" endPosition="${c.endOffset}" />
-    </Coding>`,
-    )
-    .join('\n');
-
-  const projectXml = `<?xml version="1.0" encoding="utf-8"?>
-<Project name="${escapeXml(canvas.name)}" origin="CanvasApp" creatingUserGUID="system" creationDateTime="${formatDate(canvas.createdAt)}" xmlns="urn:QDA-XML:project:1.0">
-  <CodeBook>
-${codesXml}
-  </CodeBook>
-  <Sources>
-${sourcesXml}
-  </Sources>
-  <Codings>
-${codingsXml}
-  </Codings>
-</Project>
-`;
+  const projectXml = buildQdpxXml({
+    name: canvas.name,
+    createdAt: canvas.createdAt,
+    codes: buildCodeTree(canvas.questions),
+    sources: canvas.transcripts.map((t) => ({ id: t.id, title: t.title, content: t.content })),
+    codings: canvas.codings.map((c) => ({
+      id: c.id,
+      transcriptId: c.transcriptId,
+      questionId: c.questionId,
+      startOffset: c.startOffset,
+      endOffset: c.endOffset,
+    })),
+  });
 
   // Create ZIP
   return new Promise<Buffer>((resolve, reject) => {

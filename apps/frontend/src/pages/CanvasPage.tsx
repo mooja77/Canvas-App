@@ -122,14 +122,7 @@ export default function CanvasPage() {
     return () => {
       cancelled = true;
     };
-  }, [
-    authenticated,
-    authType,
-    hydrateOnboardingForAccount,
-    onboardingV2Enabled,
-    prepareOnboardingForAccount,
-    userId,
-  ]);
+  }, [authenticated, authType, hydrateOnboardingForAccount, onboardingV2Enabled, prepareOnboardingForAccount, userId]);
 
   // Existing users do not need either first-run surface even if they predate
   // server onboarding timestamps. This is local presentation state only.
@@ -353,9 +346,9 @@ export default function CanvasPage() {
       {/* Account-hydrated onboarding v2 replaces the legacy wizard for email users. */}
       {firstRunSurface === 'onboarding_v2' && (
         <OnboardingFlow
-          initialState={persistedOnboardingState as
-            | { currentStep?: number; personalization?: { method?: string } }
-            | undefined}
+          initialState={
+            persistedOnboardingState as { currentStep?: number; personalization?: { method?: string } } | undefined
+          }
           onClose={completeOnboardingV2}
         />
       )}

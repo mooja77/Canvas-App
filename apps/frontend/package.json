@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/prerender-methodology.mjs && node scripts/prerender-training.mjs",
+    "build": "tsc -b && vite build && node scripts/prerender-methodology.mjs && node scripts/prerender-marketing.mjs && node scripts/prerender-training.mjs",
     "preview": "vite preview",
     "test": "vitest run",
-    "prerender:methodology": "node scripts/prerender-methodology.mjs"
+    "prerender:methodology": "node scripts/prerender-methodology.mjs",
+    "prerender:marketing": "node scripts/prerender-marketing.mjs"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.2.9",
@@ -34,6 +35,7 @@
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.4.1",
     "react-i18next": "^16.6.1",
+    "react-router": "^7.18.2",
     "react-router-dom": "^7.18.2",
     "recharts": "^2.15.0",
     "socket.io-client": "^4.8.3",

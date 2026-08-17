@@ -1,15 +1,30 @@
+/**
+ * Integration credential routes — provider connections are RETIRED.
+ *
+ * There was never a real OAuth flow here. POST /integrations/connect accepted
+ * an access token supplied in the request body, encrypted it and stored it;
+ * nothing ever read it back out, and no provider integration was ever built.
+ * That endpoint is gone (410) and no new credentials can be created.
+ *
+ * List and delete deliberately REMAIN, and deliberately are NOT plan-gated.
+ * Earlier builds may have written encrypted provider tokens into the
+ * Integration table while the capability was advertised on the Team plan.
+ * Those rows belong to the user: they must be able to see that something is
+ * held and to delete it, whatever plan they are on today. Gating these behind
+ * checkIntegrationsAccess() — now false on every plan — would strand a user's
+ * own credentials with no route to revoke them.
+ */
+
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { checkIntegrationsAccess } from '../middleware/planLimits.js';
 import { validateParams, integrationIdParam } from '../middleware/validation.js';
+import { logAudit } from '../middleware/auditLog.js';
+import { sha256 } from '../utils/hashing.js';
 
 export const integrationRoutes = Router();
 
-// All integration routes require integration access
-integrationRoutes.use('/integrations', checkIntegrationsAccess());
-
-// GET /api/integrations — List user's integrations
+// GET /api/integrations — list credentials still held for this user.
 integrationRoutes.get('/integrations', async (req, res, next) => {
   try {
     const userId = req.userId;
@@ -24,32 +39,38 @@ integrationRoutes.get('/integrations', async (req, res, next) => {
         metadata: true,
         expiresAt: true,
         createdAt: true,
-        // Do NOT return accessToken or refreshToken
+        // Never select accessToken / refreshToken or their IV/tag columns.
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json({ success: true, integrations });
+    res.json({ success: true, integrations, connectionsRetired: true });
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/integrations/connect — intentionally unavailable until each
-// provider has a real server-side OAuth callback. Accepting arbitrary bearer
-// tokens from the browser creates a credential-exfiltration surface and gives
-// users the false impression that a functional integration exists.
+// POST /api/integrations/connect — withdrawn.
+//
+// This never was an OAuth flow: it accepted an access token from the request
+// body, encrypted it and stored it, which is a credential-exfiltration surface
+// and implied a working integration that did not exist. Authenticate first so
+// an unauthenticated caller learns nothing about account state, then refuse.
 integrationRoutes.post('/integrations/connect', async (req, res, next) => {
   try {
-    const userId = req.userId;
-    if (!userId) throw new AppError('Email authentication required', 401);
-    throw new AppError('External integrations are not available yet', 501);
+    if (!req.userId) throw new AppError('Email authentication required', 401);
+    res.status(410).json({
+      success: false,
+      error:
+        'Provider connections have been retired. QualCanvas does not connect to Zoom, Slack or Qualtrics; import transcripts as files instead.',
+      code: 'INTEGRATION_CONNECT_RETIRED',
+    });
   } catch (err) {
     next(err);
   }
 });
 
-// DELETE /api/integrations/:id — Disconnect integration
+// DELETE /api/integrations/:id — revoke and erase a stored credential.
 integrationRoutes.delete('/integrations/:id', validateParams(integrationIdParam), async (req, res, next) => {
   try {
     const userId = req.userId;
@@ -60,6 +81,18 @@ integrationRoutes.delete('/integrations/:id', validateParams(integrationIdParam)
     if (integration.userId !== userId) throw new AppError('Access denied', 403);
 
     await prisma.integration.delete({ where: { id: req.params.id } });
+
+    void logAudit({
+      action: 'integration.delete',
+      resource: 'integration',
+      resourceId: req.params.id,
+      actorType: 'researcher',
+      actorId: userId,
+      ip: sha256(req.ip || req.socket.remoteAddress || 'unknown'),
+      method: 'DELETE',
+      path: req.originalUrl,
+      meta: JSON.stringify({ provider: integration.provider }),
+    });
 
     res.json({ success: true });
   } catch (err) {

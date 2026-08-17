@@ -9,30 +9,32 @@ Perfect! Now I have comprehensive data. Let me compile the detailed technical do
 ### Routes (App.tsx, lines 1-92)
 
 **Entry Point:** `apps/frontend/src/App.tsx`
+
 - Wraps app in `ErrorBoundary`, `BrowserRouter`, `OfflineBanner`, `UpgradePrompt`
 - Uses React Router v7.1.1 with lazy loading for protected routes
 - Sentry error tracking enabled in production (main.tsx lines 11-16)
 
 **Route Hierarchy:**
 
-| Path | Component | Protected | Loading | Notes |
-|------|-----------|-----------|---------|-------|
-| `/` | LandingPage | No | Direct | Public marketing page |
-| `/login` | LoginPage | No | Direct | Email + legacy access code auth |
-| `/pricing` | PricingPage | No | Direct | Tier comparison, annual/monthly toggle |
-| `/account` | AccountPage | Yes | Suspense→PageSkeleton | Profile, plan, usage, billing portal |
-| `/canvas/:canvasId?` | CanvasPage | Yes | Suspense→PageSkeleton | Main workspace with optional canvas ID deep-link |
-| `/repository` | RepositoryPage | Yes | Suspense→PageSkeleton | Repository & insights management |
-| `/team` | TeamPage | Yes | Suspense→PageSkeleton | Team management |
-| `/forgot-password` | ForgotPasswordPage | No | Direct | Email password reset flow |
-| `/reset-password` | ResetPasswordPage | No | Direct | Token-based password reset |
-| `/verify-email` | VerifyEmailPage | No | Direct | Email verification flow |
-| `/terms` | TermsPage | No | Direct | Legal |
-| `/privacy` | PrivacyPage | No | Direct | Legal |
-| `/guide` | GuidePage | No | Direct | Help/onboarding |
-| `*` | NotFoundPage | No | Direct | 404 |
+| Path                 | Component          | Protected | Loading               | Notes                                            |
+| -------------------- | ------------------ | --------- | --------------------- | ------------------------------------------------ |
+| `/`                  | LandingPage        | No        | Direct                | Public marketing page                            |
+| `/login`             | LoginPage          | No        | Direct                | Email + legacy access code auth                  |
+| `/pricing`           | PricingPage        | No        | Direct                | Tier comparison, annual/monthly toggle           |
+| `/account`           | AccountPage        | Yes       | Suspense→PageSkeleton | Profile, plan, usage, billing portal             |
+| `/canvas/:canvasId?` | CanvasPage         | Yes       | Suspense→PageSkeleton | Main workspace with optional canvas ID deep-link |
+| `/repository`        | RepositoryPage     | Yes       | Suspense→PageSkeleton | Repository & insights management                 |
+| `/team`              | TeamPage           | Yes       | Suspense→PageSkeleton | Team management                                  |
+| `/forgot-password`   | ForgotPasswordPage | No        | Direct                | Email password reset flow                        |
+| `/reset-password`    | ResetPasswordPage  | No        | Direct                | Token-based password reset                       |
+| `/verify-email`      | VerifyEmailPage    | No        | Direct                | Email verification flow                          |
+| `/terms`             | TermsPage          | No        | Direct                | Legal                                            |
+| `/privacy`           | PrivacyPage        | No        | Direct                | Legal                                            |
+| `/guide`             | GuidePage          | No        | Direct                | Help/onboarding                                  |
+| `*`                  | NotFoundPage       | No        | Direct                | 404                                              |
 
 **Protected Route Implementation (lines 24-28):**
+
 ```typescript
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const authenticated = useAuthStore(s => s.authenticated);
@@ -42,6 +44,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 ```
 
 **Lazy-Loaded Components:**
+
 - `CanvasPage` (line 19): async import from `./pages/CanvasPage`
 - `AccountPage` (line 20): async import from `./pages/AccountPage`
 - `RepositoryPage` (line 21): async import from `./pages/RepositoryPage`
@@ -50,12 +53,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 All lazy routes use `<Suspense fallback={<PageSkeleton />}>` for smooth loading states.
 
 **Error Boundary Setup (App.tsx line 32):**
+
 - Single top-level `ErrorBoundary` wraps entire app
 - Additional error boundaries wrap computed nodes in `CanvasWorkspace.tsx` (lines 104-115)
 - Fallback: Displays error message with "Try again" button
 - Logs errors via Sentry in production
 
 **Toast System (main.tsx lines 27-33):**
+
 - `react-hot-toast` with position: "bottom-right"
 - Dark mode styling: `dark:bg-gray-800 dark:text-white`
 - Border radius: 10px, padding: 12px 16px
@@ -69,6 +74,7 @@ All lazy routes use `<Suspense fallback={<PageSkeleton />}>` for smooth loading 
 **Persistence:** `qualcanvas-auth` localStorage key with rehydration validation
 
 **State Fields:**
+
 - `jwt: string | null` - JWT token
 - `name: string | null` - User's display name
 - `role: string | null` - User role (e.g., "user", "admin")
@@ -83,13 +89,13 @@ All lazy routes use `<Suspense fallback={<PageSkeleton />}>` for smooth loading 
 
 **Actions:**
 
-| Method | Parameters | Behavior |
-|--------|-----------|----------|
-| `setAuth` | `{ dashboardCode, jwt, name, role, dashboardAccessId }` | Sets legacy auth, marks as `'legacy'` authType, sets plan to `'pro'` (grandfathered) |
-| `setEmailAuth` | `{ jwt, email, userId, name, role, plan, emailVerified? }` | Sets email auth, clears legacy fields, authType `'email'` |
-| `setEmailVerified` | `boolean` | Updates email verification status |
-| `updatePlan` | `string` | Updates plan tier (synced from `X-User-Plan` response header) |
-| `logout` | none | Clears all auth state |
+| Method             | Parameters                                                 | Behavior                                                                             |
+| ------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `setAuth`          | `{ dashboardCode, jwt, name, role, dashboardAccessId }`    | Sets legacy auth, marks as `'legacy'` authType, sets plan to `'pro'` (grandfathered) |
+| `setEmailAuth`     | `{ jwt, email, userId, name, role, plan, emailVerified? }` | Sets email auth, clears legacy fields, authType `'email'`                            |
+| `setEmailVerified` | `boolean`                                                  | Updates email verification status                                                    |
+| `updatePlan`       | `string`                                                   | Updates plan tier (synced from `X-User-Plan` response header)                        |
+| `logout`           | none                                                       | Clears all auth state                                                                |
 
 **Rehydration Guard (lines 96-112):** If JWT missing but authenticated flag set, resets to logged-out state to prevent stale auth.
 
@@ -102,6 +108,7 @@ All lazy routes use `<Suspense fallback={<PageSkeleton />}>` for smooth loading 
 **State Sections:**
 
 #### Canvas List Management
+
 - `canvases: (CodingCanvas & { _count: { transcripts, questions, codings } })[]` - Array of user's canvases
 - `loading: boolean` - Fetch in progress
 - `error: string | null` - Error message
@@ -109,10 +116,12 @@ All lazy routes use `<Suspense fallback={<PageSkeleton />}>` for smooth loading 
 - `trashLoading: boolean` - Trash fetch in progress
 
 #### Active Canvas
+
 - `activeCanvasId: string | null` - Currently open canvas ID
 - `activeCanvas: CanvasDetail | null` - Full canvas data with all nested content
 
 #### Coding Workflow
+
 - `pendingSelection: PendingSelection | null` - Selected text for coding
   - `transcriptId: string`
   - `startOffset: number`
@@ -120,6 +129,7 @@ All lazy routes use `<Suspense fallback={<PageSkeleton />}>` for smooth loading 
   - `codedText: string`
 
 #### UI State
+
 - `selectedQuestionId: string | null` - Highlight detail panel for a code
 - `showCodingStripes: boolean` - Overlay coding density visualization
 - `savingLayout: boolean` - Layout save in progress
@@ -127,35 +137,40 @@ All lazy routes use `<Suspense fallback={<PageSkeleton />}>` for smooth loading 
 
 **Canvas Actions (Lines 137-194):**
 
-| Method | Signature | Notes |
-|--------|-----------|-------|
-| `fetchCanvases` | `() => Promise<void>` | GET `/canvas`, populates canvases list |
-| `createCanvas` | `(name: string, description?: string) => Promise<CodingCanvas>` | POST `/canvas`, prepends to list |
-| `deleteCanvas` | `(id: string) => Promise<void>` | DELETE `/canvas/{id}`, removes from list |
-| `openCanvas` | `(id: string) => Promise<void>` | GET `/canvas/{id}`, sets activeCanvas; clears `pendingSelection` on open; fallback to IndexedDB on error |
-| `closeCanvas` | `() => void` | Clears activeCanvasId, activeCanvas, pendingSelection, selectedQuestionId |
-| `refreshCanvas` | `() => Promise<void>` | Refetch active canvas (no-op if none open); errors are logged to console instead of thrown to avoid UI disruption |
-| `fetchTrash` | `() => Promise<void>` | GET `/canvas/trash`, populates trashedCanvases |
-| `restoreCanvas` | `(id: string) => Promise<void>` | POST `/canvas/{id}/restore`, removes from trash |
-| `permanentDeleteCanvas` | `(id: string) => Promise<void>` | DELETE `/canvas/{id}/permanent` |
+| Method                  | Signature                                                       | Notes                                                                                                             |
+| ----------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `fetchCanvases`         | `() => Promise<void>`                                           | GET `/canvas`, populates canvases list                                                                            |
+| `createCanvas`          | `(name: string, description?: string) => Promise<CodingCanvas>` | POST `/canvas`, prepends to list                                                                                  |
+| `deleteCanvas`          | `(id: string) => Promise<void>`                                 | DELETE `/canvas/{id}`, removes from list                                                                          |
+| `openCanvas`            | `(id: string) => Promise<void>`                                 | GET `/canvas/{id}`, sets activeCanvas; clears `pendingSelection` on open; fallback to IndexedDB on error          |
+| `closeCanvas`           | `() => void`                                                    | Clears activeCanvasId, activeCanvas, pendingSelection, selectedQuestionId                                         |
+| `refreshCanvas`         | `() => Promise<void>`                                           | Refetch active canvas (no-op if none open); errors are logged to console instead of thrown to avoid UI disruption |
+| `fetchTrash`            | `() => Promise<void>`                                           | GET `/canvas/trash`, populates trashedCanvases                                                                    |
+| `restoreCanvas`         | `(id: string) => Promise<void>`                                 | POST `/canvas/{id}/restore`, removes from trash                                                                   |
+| `permanentDeleteCanvas` | `(id: string) => Promise<void>`                                 | DELETE `/canvas/{id}/permanent`                                                                                   |
 
 **Transcript Actions (Lines 222-262):**
+
 ```typescript
 addTranscript(title, content) → CanvasTranscript
 updateTranscript(tid, { title?, content?, caseId? })
 deleteTranscript(tid) → removes codings for this transcript
 ```
+
 Emits `canvas:node-added`, `canvas:transcript-updated`, `canvas:node-deleted` socket events.
 
 **Question (Code) Actions (Lines 265-307):**
+
 ```typescript
 addQuestion(text, color?) → CanvasQuestion
 updateQuestion(qid, { text?, color?, parentQuestionId? })
 deleteQuestion(qid) → cascades to child questions, removes codings
 ```
+
 Questions support parent-child hierarchies for code categorization.
 
 **Memo Actions (Lines 309-345):**
+
 ```typescript
 addMemo(content, title?, color?) → CanvasMemo
 updateMemo(mid, { title?, content?, color? })
@@ -163,6 +178,7 @@ deleteMemo(mid)
 ```
 
 **Coding Actions (Lines 349-399):**
+
 ```typescript
 createCoding(transcriptId, questionId, startOffset, endOffset, codedText) → CanvasTextCoding
   // Note: clears pendingSelection after successful creation to prevent stale selection state
@@ -171,16 +187,20 @@ updateCodingAnnotation(codingId, annotation: string | null)
 reassignCoding(codingId, newQuestionId)
 setPendingSelection(PendingSelection | null)
 ```
+
 Emits `canvas:coding-added`, `canvas:coding-deleted` socket events.
 
 **Layout Actions (Lines 401-422):**
+
 ```typescript
 saveLayout(positions: CanvasNodePosition[]) → PUT `/canvas/{id}/layout`
 ```
+
 Positions include: `nodeId`, `nodeType`, `x`, `y`, `width`, `height`, `collapsed`.
 Debounces on error, shows toast.
 
 **Case Actions (Lines 428-473):**
+
 ```typescript
 addCase(name, attributes?) → CanvasCase
 updateCase(caseId, { name?, attributes? })
@@ -188,6 +208,7 @@ deleteCase(caseId) → cascades to transcript caseId links, relations
 ```
 
 **Relation Actions (Lines 478-510):**
+
 ```typescript
 addRelation(fromType: 'case' | 'question', fromId, toType, toId, label) → CanvasRelation
 updateRelation(relId, label)
@@ -195,23 +216,27 @@ deleteRelation(relId)
 ```
 
 **Computed Node Actions (Lines 515-570):**
+
 ```typescript
 addComputedNode(nodeType: ComputedNodeType, label, config?) → CanvasComputedNode
 updateComputedNode(nodeId, { label?, config? })
 deleteComputedNode(nodeId)
 runComputedNode(nodeId) → triggers analysis, sets runningNodeId state
 ```
+
 nodeType options: `'stats'`, `'wordcloud'`, `'cooccurrence'`, `'matrix'`, `'comparison'`, `'cluster'`, `'sentiment'`, `'timeline'`, `'geomap'`, `'search'`, `'codingquery'`, `'treemap'`, `'documentportrait'`.
 
 **Auto-Code Actions (Lines 573-587):**
+
 ```typescript
-autoCode(questionId, pattern, mode: 'keyword' | 'regex', transcriptIds?) 
+autoCode(questionId, pattern, mode: 'keyword' | 'regex', transcriptIds?)
   → POST `/canvas/{id}/auto-code`
   → returns { created: number }
   → emits 'canvas:coding-added' socket event
 ```
 
 **In-Vivo Coding (Lines 591-595):**
+
 ```typescript
 codeInVivo(transcriptId, startOffset, endOffset, codedText)
   → Creates question with text = codedText
@@ -219,6 +244,7 @@ codeInVivo(transcriptId, startOffset, endOffset, codedText)
 ```
 
 **Spread to Paragraph (Lines 599-618):**
+
 ```typescript
 spreadToParagraph(transcriptId, startOffset, endOffset, codedText)
   → Finds paragraph boundaries (double newlines)
@@ -226,6 +252,7 @@ spreadToParagraph(transcriptId, startOffset, endOffset, codedText)
 ```
 
 **Merge & Import (Lines 622-643):**
+
 ```typescript
 mergeQuestions(sourceId, targetId)
   → POST `/canvas/{id}/questions/merge`
@@ -239,6 +266,7 @@ importFromCanvas(sourceCanvasId, transcriptIds)
 ```
 
 **UI Toggles (Line 647):**
+
 ```typescript
 toggleCodingStripes() → Toggles showCodingStripes
 setSelectedQuestionId(id | null)
@@ -246,6 +274,7 @@ setSelectedQuestionId(id | null)
 
 **Granular Selector Hooks (Lines 650-670):**
 All are memoized to prevent unnecessary re-renders:
+
 ```typescript
 useActiveCanvas() → activeCanvas
 useActiveCanvasId() → activeCanvasId
@@ -274,6 +303,7 @@ useTrashLoading() → trashLoading
 **Persistence:** `qualcanvas-ui` with `partialize` (excludes zoomTier)
 
 **State:**
+
 - `darkMode: boolean` - Dark mode enabled (defaults to system preference)
 - `onboardingComplete: boolean` - Onboarding tour shown
 - `sidebarCollapsed: boolean` - Code navigator sidebar state
@@ -282,6 +312,7 @@ useTrashLoading() → trashLoading
 - `zoomTier: ZoomTier` - Full | reduced | minimal (node detail level)
 
 **Actions:**
+
 ```typescript
 toggleDarkMode() → Updates DOM .dark class, saves to localStorage
 completeOnboarding() → onboardingComplete = true
@@ -299,9 +330,11 @@ setZoomTier(tier: ZoomTier)
 **Persistence:** `qualcanvas-shortcuts`
 
 **State:**
+
 - `shortcuts: ShortcutMap` - Object mapping action names to key combos
 
 **Default Shortcuts (Lines 8-31):**
+
 ```
 fitView: 'f'
 zoomTo100: '1'
@@ -328,6 +361,7 @@ distributeH: 'shift+d'
 ```
 
 **Actions:**
+
 ```typescript
 getShortcut(action: string) → string
 setShortcut(action, combo) → Updates localStorage
@@ -336,6 +370,7 @@ resetAll() → Resets all shortcuts
 ```
 
 **Utility Functions:**
+
 ```typescript
 matchesShortcut(e: KeyboardEvent, combo: string) → boolean
   → Parses combo ('ctrl+shift+z'), compares to event modifiers/key
@@ -354,11 +389,13 @@ eventToCombo(e: KeyboardEvent) → string | null
 **No Persistence** — runtime state only
 
 **State:**
+
 - `configured: boolean` - AI API key configured
 - `provider: string | null` - AI provider (e.g., 'openai')
 - `loaded: boolean` - Config fetch completed
 
 **Actions:**
+
 ```typescript
 setConfigured(boolean, provider?: string)
 fetchConfig() → GET `/ai-settings`
@@ -374,6 +411,7 @@ fetchConfig() → GET `/ai-settings`
 **No Persistence** — ephemeral per-canvas
 
 **State:**
+
 - `messages: ChatMessage[]` - Conversation history
 - `loading: boolean` - Message send in progress
 - `indexing: boolean` - Canvas embedding in progress
@@ -381,6 +419,7 @@ fetchConfig() → GET `/ai-settings`
 - `error: string | null`
 
 **Actions:**
+
 ```typescript
 loadHistory(canvasId) → GET `/canvas/{id}/ai/chat/history`
 sendMessage(canvasId, message) → POST `/canvas/{id}/ai/chat`
@@ -400,6 +439,7 @@ clearMessages() → Resets state for new canvas
 **Purpose:** Orchestrates all keyboard shortcuts for canvas operations
 
 **Parameters (CanvasKeyboardOptions interface):**
+
 - UI state: `showSearch`, `showShortcuts`, `showCommandPalette`, `contextMenu`, etc.
 - State setters for dismissing modals on Escape
 - Node/edge/selection management: `nodes`, `setNodes`, `rfInstanceRef`
@@ -412,6 +452,7 @@ clearMessages() → Resets state for new canvas
 - Mute: `onToggleMute?`
 
 **Key Behaviors:**
+
 - Escape dismisses all modals
 - Shortcuts from `useShortcutStore` via `matchesShortcut()`
 - Viewport bookmarks: 5 slots (0-9 keys) save/recall `{ x, y, zoom }`
@@ -423,6 +464,7 @@ clearMessages() → Resets state for new canvas
 ### 3.2 useCanvasHistory (`useCanvasHistory.ts`, 130 lines)
 
 **Return Type (UseCanvasHistoryReturn):**
+
 ```typescript
 {
   pushState: (nodes: Node[], edges: Edge[]) => void
@@ -435,15 +477,18 @@ clearMessages() → Resets state for new canvas
 ```
 
 **Configuration:**
+
 - `MAX_HISTORY = 50` - Max snapshots retained
 - `DEBOUNCE_MS = 300` - Rapid pushes replace last entry if within threshold
 
 **Internal:**
+
 - `timelineRef: HistoryEntry[]` - Array of snapshots
 - `pointerRef: number` - Current position in timeline (-1 = empty)
 - `cloneForHistory()` - Strips callbacks, keeps layout (position, size, collapsed)
 
 **Algorithm:**
+
 - Timeline: `[snap0, snap1, snap2, ...]`
 - pushState: append after pointer, truncate redo entries
 - undo/redo: decrement/increment pointer, return snapshot
@@ -456,6 +501,7 @@ clearMessages() → Resets state for new canvas
 ```typescript
 useMobile(breakpoint = 768): boolean
 ```
+
 - Detects mobile/tablet: `window.innerWidth < breakpoint || 'ontouchstart' in window`
 - Listens to resize events, updates on change
 - Default breakpoint: 768px (iPad)
@@ -465,11 +511,13 @@ useMobile(breakpoint = 768): boolean
 ### 3.4 useCollaboration (`useCollaboration.ts`, 160+ lines)
 
 **Parameters:**
+
 ```typescript
 { canvasId: string | null, enabled?: boolean }
 ```
 
 **Return:**
+
 ```typescript
 {
   collaborators: CollaboratorPresence[]
@@ -487,17 +535,20 @@ useMobile(breakpoint = 768): boolean
 ```
 
 **Socket Events Emitted:**
+
 - `canvas:join` - Join canvas room on connect
 - `canvas:cursor-moved` - Cursor position (throttled 50ms)
 - `canvas:node-moved` - Node drag (throttled 100ms)
 
 **Socket Events Listened:**
+
 - `presence:updated` - Collaborator list
 - `presence:current` - Initial presence sync
 - `cursor:moved` - Remote cursor
 - `canvas:node-added`, `canvas:coding-added`, etc. - Refresh canvas if from other user
 
 **Throttling:**
+
 - Cursor: 50ms
 - Node moves: 100ms (10 per second max)
 
@@ -506,19 +557,23 @@ useMobile(breakpoint = 768): boolean
 ### 3.5 useSessionTimeout (`useSessionTimeout.ts`, 68 lines)
 
 **Return:**
+
 ```typescript
 { showWarning: boolean, dismissWarning: () => void }
 ```
 
 **Timers:**
+
 - `INACTIVITY_WARNING_MS = 1800000` (30 minutes)
 - `INACTIVITY_LOGOUT_MS = 2100000` (35 minutes)
 
 **Events Tracked:**
+
 - mousemove, keydown, click, scroll, touchstart
 - Throttled: 5 seconds between activity events
 
 **Behavior:**
+
 - Shows warning modal at 30 min
 - Auto-logs out at 35 min
 - Dismissing warning resets timers
@@ -531,11 +586,13 @@ useMobile(breakpoint = 768): boolean
 **Dependencies:** dagre library
 
 **Return:**
+
 ```typescript
 { applyLayout: (direction?: 'LR' | 'TB', spacing?: { node, rank }) => void }
 ```
 
 **Configuration:**
+
 - `DEFAULT_NODE_WIDTH = 280`
 - `DEFAULT_NODE_HEIGHT = 200`
 - Direction: LR (left-right) or TB (top-bottom)
@@ -543,6 +600,7 @@ useMobile(breakpoint = 768): boolean
 - Rank spacing: 100px
 
 **Algorithm:**
+
 - Uses dagre graph layout
 - Filters out 'group' nodes (don't participate in layout)
 - Reads node dimensions from `measured.width/height` or style
@@ -554,6 +612,7 @@ useMobile(breakpoint = 768): boolean
 ### 3.7 useAiSuggestions (`useAiSuggestions.ts`, 100+ lines)
 
 **Return:**
+
 ```typescript
 {
   suggestions: AiSuggestion[]
@@ -568,6 +627,7 @@ useMobile(breakpoint = 768): boolean
 ```
 
 **API Calls:**
+
 - POST `/canvas/{id}/ai/suggest-codes` - Get code suggestions for text segment
 - POST `/canvas/{id}/ai/auto-code-transcript` - Auto-code entire transcript
 - GET `/canvas/{id}/ai/suggestions?status=pending` - Fetch pending suggestions
@@ -580,11 +640,13 @@ useMobile(breakpoint = 768): boolean
 **Purpose:** ResizeObserver hook for responsive layout
 
 **Return:**
+
 ```typescript
 { width: number, height: number }
 ```
 
 **Features:**
+
 - Uses ResizeObserver (not polling)
 - Debounces via requestAnimationFrame
 - Skips state update if size unchanged
@@ -597,6 +659,7 @@ useMobile(breakpoint = 768): boolean
 **Purpose:** Provides snap-line alignment guides for node placement (Phase 3 UX).
 
 **Return:**
+
 ```typescript
 {
   guides: AlignmentGuide[]
@@ -607,6 +670,7 @@ useMobile(breakpoint = 768): boolean
 ```
 
 **Behavior:**
+
 - Computes horizontal and vertical alignment guides relative to other nodes
 - Snaps dragged node position when within threshold (default 5px)
 - Renders visual guide lines (dashed, colored) on the canvas during drag
@@ -618,6 +682,7 @@ useMobile(breakpoint = 768): boolean
 ### 3.10 useCanvasGroups (`useCanvasGroups.ts`, 100+ lines)
 
 **Return:**
+
 ```typescript
 {
   groups: CanvasGroup[]
@@ -633,6 +698,7 @@ useMobile(breakpoint = 768): boolean
 **Persistence:** `canvas-groups-{canvasId}` in localStorage
 
 **CanvasGroup interface:**
+
 ```typescript
 {
   id: string
@@ -649,6 +715,7 @@ useMobile(breakpoint = 768): boolean
 ### 3.11 useFileUpload (`useFileUpload.ts`, 53 lines)
 
 **Return:**
+
 ```typescript
 {
   uploading: boolean
@@ -660,11 +727,13 @@ useMobile(breakpoint = 768): boolean
 ```
 
 **API:**
+
 - POST `/canvas/{id}/upload/direct` with FormData
 - Tracks progress via onUploadProgress callback
 - Returns FileUpload object with id
 
 **Error Handling:**
+
 - Catches errors, shows toast, returns null
 
 ---
@@ -672,6 +741,7 @@ useMobile(breakpoint = 768): boolean
 ### 3.12 useCanvasBookmarks (`useCanvasBookmarks.ts`)
 
 **Slots:** 5 viewport bookmarks (keyed by canvas)
+
 ```typescript
 {
   bookmarks: Map<string, { x, y, zoom }>
@@ -692,6 +762,7 @@ useMobile(breakpoint = 768): boolean
   getNodeColor(nodeId) → color with fallback
 }
 ```
+
 Persists in localStorage per canvas.
 
 ---
@@ -712,6 +783,7 @@ Persists in localStorage per canvas.
 ## 4. API CLIENT (`services/api.ts`, 503 lines)
 
 **Base Client:** `canvasClient` (axios instance)
+
 ```typescript
 const canvasClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -722,19 +794,23 @@ const canvasClient = axios.create({
 ### Interceptors:
 
 #### 1. Auth Injection (Lines 34-51)
+
 - Reads JWT from `localStorage['qualcanvas-auth'].state.jwt`
 - If `authType === 'email'`: `Authorization: Bearer {jwt}`
 - All auth types use the secure HTTP-only session cookie (`withCredentials: true`)
 
 #### 2. Plan Limit Handler (Lines 54-63)
+
 - On 403 with `code === 'PLAN_LIMIT_EXCEEDED'`
 - Dispatches custom event: `window.dispatchEvent(new CustomEvent('plan-limit-exceeded', { detail }))`
 
 #### 3. Plan Sync (Lines 66-78)
+
 - Reads `X-User-Plan` response header
 - If differs from `authStore.plan`, updates via `updatePlan()`
 
 #### 4. 401 Logout (Lines 83-96)
+
 - On 401 (expired JWT), calls `logout()`
 - Redirects to `/login?expired=true`
 - Prevents redirect loop with `isRedirecting` flag (2s debounce)
@@ -742,6 +818,7 @@ const canvasClient = axios.create({
 ### API Object Exports:
 
 #### Canvas CRUD (100-123)
+
 ```typescript
 getCanvases() → GET /canvas
 createCanvas(data: CreateCanvasInput) → POST /canvas
@@ -751,6 +828,7 @@ deleteCanvas(canvasId) → DELETE /canvas/{id}
 ```
 
 #### Trash (115-123)
+
 ```typescript
 getTrash() → GET /canvas/trash
 restoreCanvas(canvasId) → POST /canvas/{id}/restore
@@ -758,6 +836,7 @@ permanentDeleteCanvas(canvasId) → DELETE /canvas/{id}/permanent
 ```
 
 #### Transcripts (125-133)
+
 ```typescript
 addTranscript(canvasId, data: CreateTranscriptInput) → POST /canvas/{id}/transcripts
 updateTranscript(canvasId, tid, data: UpdateTranscriptInput) → PUT /canvas/{id}/transcripts/{tid}
@@ -765,6 +844,7 @@ deleteTranscript(canvasId, tid) → DELETE /canvas/{id}/transcripts/{tid}
 ```
 
 #### Questions (135-143)
+
 ```typescript
 addQuestion(canvasId, data: CreateQuestionInput) → POST /canvas/{id}/questions
 updateQuestion(canvasId, qid, data: UpdateQuestionInput) → PUT /canvas/{id}/questions/{qid}
@@ -772,6 +852,7 @@ deleteQuestion(canvasId, qid) → DELETE /canvas/{id}/questions/{qid}
 ```
 
 #### Memos (145-153)
+
 ```typescript
 addMemo(canvasId, data: CreateMemoInput) → POST /canvas/{id}/memos
 updateMemo(canvasId, mid, data: UpdateMemoInput) → PUT /canvas/{id}/memos/{mid}
@@ -779,6 +860,7 @@ deleteMemo(canvasId, mid) → DELETE /canvas/{id}/memos/{mid}
 ```
 
 #### Codings (155-166)
+
 ```typescript
 createCoding(canvasId, data: CreateCodingInput) → POST /canvas/{id}/codings
 deleteCoding(canvasId, codingId) → DELETE /canvas/{id}/codings/{codingId}
@@ -787,12 +869,14 @@ updateCoding(canvasId, codingId, data: UpdateCodingInput) → PUT /canvas/{id}/c
 ```
 
 #### Layout (168-170)
+
 ```typescript
 saveLayout(canvasId, data: SaveLayoutInput) → PUT /canvas/{id}/layout
   data: { positions: { nodeId, nodeType, x, y, width, height, collapsed }[] }
 ```
 
 #### Cases (172-180)
+
 ```typescript
 createCase(canvasId, data: CreateCaseInput) → POST /canvas/{id}/cases
 updateCase(canvasId, caseId, data: UpdateCaseInput) → PUT /canvas/{id}/cases/{caseId}
@@ -800,6 +884,7 @@ deleteCase(canvasId, caseId) → DELETE /canvas/{id}/cases/{caseId}
 ```
 
 #### Relations (182-190)
+
 ```typescript
 createRelation(canvasId, data: CreateRelationInput) → POST /canvas/{id}/relations
 updateRelation(canvasId, relId, data: { label }) → PUT /canvas/{id}/relations/{relId}
@@ -807,6 +892,7 @@ deleteRelation(canvasId, relId) → DELETE /canvas/{id}/relations/{relId}
 ```
 
 #### Computed Nodes (192-203)
+
 ```typescript
 createComputedNode(canvasId, data: CreateComputedNodeInput) → POST /canvas/{id}/computed
 updateComputedNode(canvasId, nodeId, data: UpdateComputedNodeInput) → PUT /canvas/{id}/computed/{nodeId}
@@ -815,12 +901,14 @@ runComputedNode(canvasId, nodeId) → POST /canvas/{id}/computed/{nodeId}/run
 ```
 
 #### Auto-Code (205-207)
+
 ```typescript
 autoCode(canvasId, data: AutoCodeInput) → POST /canvas/{id}/auto-code
   data: { questionId, pattern, mode: 'keyword' | 'regex', transcriptIds?: [] }
 ```
 
 #### Merging & Import (209-219)
+
 ```typescript
 mergeQuestions(canvasId, sourceId, targetId) → POST /canvas/{id}/questions/merge
 importNarratives(canvasId, data: { narratives: [] }) → POST /canvas/{id}/import-narratives
@@ -828,6 +916,7 @@ importFromCanvas(canvasId, data: { sourceCanvasId, transcriptIds[] }) → POST /
 ```
 
 #### Sharing (221-235)
+
 ```typescript
 shareCanvas(canvasId) → POST /canvas/{id}/share
 getShares(canvasId) → GET /canvas/{id}/shares
@@ -837,6 +926,7 @@ getSharedCanvas(shareCode) → GET /canvas/shared/{shareCode}
 ```
 
 #### AI (237-264)
+
 ```typescript
 aiSuggestCodes(canvasId, data: SuggestCodesInput) → POST /canvas/{id}/ai/suggest-codes
 aiAutoCodeTranscript(canvasId, data: AutoCodeTranscriptInput) → POST /canvas/{id}/ai/auto-code-transcript
@@ -852,6 +942,7 @@ updateSummary(canvasId, sid, data: { summaryText }) → PUT /canvas/{id}/summari
 ```
 
 #### File Upload & Transcription (272-294)
+
 ```typescript
 getPresignedUploadUrl(canvasId, data: { fileName, contentType }) → POST /canvas/{id}/upload/presigned
 confirmUpload(canvasId, data: { storageKey, originalName, mimeType, sizeBytes }) → POST /canvas/{id}/upload/confirm
@@ -863,11 +954,13 @@ acceptTranscription(canvasId, jobId, title?) → POST /canvas/{id}/transcribe/{j
 ```
 
 #### Intercoder Reliability (296-298)
+
 ```typescript
 computeIntercoder(canvasId, data: { userId, transcriptId }) → POST /canvas/{id}/intercoder
 ```
 
 #### Collaboration (300-308)
+
 ```typescript
 getCollaborators(canvasId) → GET /canvas/{id}/collaborators
 addCollaborator(canvasId, data: { userId, role? }) → POST /canvas/{id}/collaborators
@@ -875,6 +968,7 @@ removeCollaborator(canvasId, userId) → DELETE /canvas/{id}/collaborators/{user
 ```
 
 #### Documents & Region Coding (310-327)
+
 ```typescript
 createDocument(canvasId, data: { fileUploadId, title, docType, pageCount?, metadata? }) → POST /canvas/{id}/documents
 getDocuments(canvasId) → GET /canvas/{id}/documents
@@ -885,6 +979,7 @@ deleteRegionCoding(canvasId, docId, regionId) → DELETE /canvas/{id}/documents/
 ```
 
 #### Training Center (329-346)
+
 ```typescript
 createTrainingDocument(canvasId, data: { transcriptId, name, instructions?, goldCodings, passThreshold? }) → POST /canvas/{id}/training
 getTrainingDocuments(canvasId) → GET /canvas/{id}/training
@@ -895,12 +990,14 @@ getTrainingAttempts(canvasId, docId) → GET /canvas/{id}/training/{docId}/attem
 ```
 
 #### QDPX Import/Export (348-355)
+
 ```typescript
 exportQdpx(canvasId) → GET /canvas/{id}/export/qdpx (arraybuffer response)
 importQdpx(canvasId, formData: FormData) → POST /canvas/{id}/import/qdpx
 ```
 
 #### Repository & Insights (357-374)
+
 ```typescript
 getRepositories() → GET /repositories
 createRepository(data: { name, description?, canvasIds? }) → POST /repositories
@@ -911,6 +1008,7 @@ deleteInsight(repoId, insightId) → DELETE /repositories/{repoId}/insights/{ins
 ```
 
 #### Integrations (376-384)
+
 ```typescript
 getIntegrations() → GET /integrations
 connectIntegration(data: { provider, accessToken, refreshToken?, metadata?, expiresAt? }) → POST /integrations/connect
@@ -920,12 +1018,14 @@ disconnectIntegration(integrationId) → DELETE /integrations/{integrationId}
 ### Auth API (`authApi` object, 389-433)
 
 #### Legacy Access-Code Auth
+
 ```typescript
 login(dashboardCode) → POST /auth
 register(name, role?) → POST /auth/register
 ```
 
 #### Email Auth
+
 ```typescript
 emailSignup(email, password, name) → POST /auth/signup
 emailLogin(email, password) → POST /auth/email-login
@@ -933,6 +1033,7 @@ googleLogin(credential) → POST /auth/google
 ```
 
 #### Password & Verification
+
 ```typescript
 forgotPassword(email) → POST /auth/forgot-password
 resetPassword(email, token, newPassword) → POST /auth/reset-password
@@ -941,6 +1042,7 @@ resendVerification() → POST /auth/resend-verification
 ```
 
 #### Account Management
+
 ```typescript
 getMe() → GET /auth/me
 linkAccount(email, password, name?) → POST /auth/link-account
@@ -950,6 +1052,7 @@ deleteAccount(password) → DELETE /auth/account
 ```
 
 ### AI Settings API (`aiSettingsApi`, 437-446)
+
 ```typescript
 getSettings() → GET /ai-settings
 updateSettings(data: { provider, apiKey, model?, embeddingModel? }) → PUT /ai-settings
@@ -957,6 +1060,7 @@ deleteSettings() → DELETE /ai-settings
 ```
 
 ### Team API (`teamApi`, 450-468)
+
 ```typescript
 list() → GET /teams
 create(name) → POST /teams
@@ -967,6 +1071,7 @@ deleteTeam(teamId) → DELETE /teams/{teamId}
 ```
 
 ### Billing API (`billingApi`, 472-481)
+
 ```typescript
 createCheckout(priceId, plan) → POST /billing/create-checkout
 createPortal() → POST /billing/create-portal
@@ -974,7 +1079,9 @@ getSubscription() → GET /billing/subscription
 ```
 
 ### WISEShift Bridge (`createWiseShiftBridge`, 485-502)
+
 Separate axios client for importing from WISEShift:
+
 ```typescript
 function createWiseShiftBridge(baseUrl: string, dashboardCode: string)
   → Returns client with:
@@ -1107,6 +1214,7 @@ function createWiseShiftBridge(baseUrl: string, dashboardCode: string)
     - **Renders:** Multi-page document preview
 
 All computed nodes wrapped in error boundary:
+
 ```typescript
 function withErrorBoundary(NodeComponent) {
   const WrappedNode = (props) => (
@@ -1232,6 +1340,7 @@ function withErrorBoundary(NodeComponent) {
 ### Key Panel Features:
 
 **Popover Components:**
+
 - **QuickCodePopover** (`QuickCodePopover.tsx`)
   - Appears when text selected in transcript
   - Shows available codes to assign
@@ -1256,6 +1365,7 @@ function withErrorBoundary(NodeComponent) {
 Bell icon with unread badge, renders in the app header for email-authenticated users.
 
 **Features:**
+
 - Polls `GET /notifications` every 30 seconds
 - Unread count badge (shows "99+" for >99)
 - Dropdown panel with notification list:
@@ -1273,12 +1383,14 @@ Bell icon with unread badge, renders in the app header for email-authenticated u
 **Conditional Render Fix:** The SetupWizard only renders for users with 0 canvases. If the user already has canvases (e.g., created via access code or migration), the wizard is skipped even if `setupWizardComplete` is false. This prevents the wizard from appearing for returning users who haven't seen it before but already have data.
 
 **Steps:**
+
 1. **Welcome** — Overview of QualCanvas capabilities (Import, Code, Analyze)
 2. **Methodology** — Choose a research framework (Thematic Analysis, Grounded Theory, IPA, Framework Analysis, Content Analysis, or Blank Canvas). Each template pre-populates starter codes.
 3. **Create Project** — Name the canvas, preview template codes, create canvas with template codes applied
 4. **Quick Tips** — Key shortcuts (Ctrl+K, ?, Ctrl+Z, Alt+Drag, Esc) and guided tour info
 
 **Features:**
+
 - Progress bar and step dots
 - Skip setup button on every step
 - Back/Next navigation
@@ -1294,6 +1406,7 @@ usePageMeta(title: string, description: string): void
 ```
 
 **Behavior:**
+
 - Sets `document.title` and `<meta name="description">`
 - Sets `og:title` and `og:description` meta tags
 - Sets `<link rel="canonical">` to `https://qualcanvas.com{pathname}`
@@ -1381,6 +1494,7 @@ i18n.use(initReactI18next).init({
 **Namespace:** `translation` (single flat structure)
 
 **Key Categories:**
+
 - `common.*` - Save, Cancel, Delete, Create, Close, Search, Loading, etc.
 - `canvas.*` - Coding Canvases, New Canvas, Transcript, Code, Memo, Workspaces
 - `auth.*` - Sign In, Sign Up, Sign Out, Email, Password, Forgot Password, etc.
@@ -1392,6 +1506,7 @@ i18n.use(initReactI18next).init({
 ### Language Switching
 
 **Mechanism:** i18next doesn't expose language selection UI in frontend directly visible yet. Would use:
+
 ```typescript
 import { useTranslation } from 'react-i18next';
 
@@ -1436,6 +1551,7 @@ VitePWA({
 ```
 
 **Features:**
+
 - **Auto-update:** SW checks for updates on page load
 - **Display:** Standalone (app-like, no address bar)
 - **Static caching:** `globPatterns` — JS, CSS, HTML, images, fonts
@@ -1446,6 +1562,7 @@ VitePWA({
   - Max 50 entries, expire after 300s (5 minutes)
 
 **Manifest:** `public/manifest.json` (18 lines)
+
 - Same name/short_name/theme_color
 - Orientation: any
 - Categories: productivity, education
@@ -1459,6 +1576,7 @@ VitePWA({
 **File:** `CanvasWorkspace.tsx`, ~1256 lines
 
 **Entry Flow:**
+
 ```
 CanvasPage (router)
   → CanvasWorkspace (main component)
@@ -1504,10 +1622,11 @@ CanvasPage (router)
    - Focus/presentation modes
 
 **Node Building (342-350+):**
+
 ```typescript
 buildNodes(): Node[] {
   if (!activeCanvas) return [];
-  
+
   // For each entity type: transcripts, questions, memos, cases, computed nodes
   // Create ReactFlow node with:
   // - id: `{type}-{entityId}`
@@ -1515,13 +1634,14 @@ buildNodes(): Node[] {
   // - position: from posMap (persisted layout) or default
   // - data: entity data + callbacks
   // - selected/hidden/style based on UI state
-  
+
   // Filter/highlight based on search results
   return result;
 }
 ```
 
 **Edge Building:**
+
 ```typescript
 // Coding edges: question → transcript (invisible, highlight text)
 // Relation edges: case ↔ case, question ↔ question
@@ -1529,6 +1649,7 @@ buildNodes(): Node[] {
 ```
 
 **Keyboard Handling (useCanvasKeyboard):**
+
 - Passed `CanvasKeyboardOptions` with all state/callbacks
 - Handles shortcuts from `useShortcutStore`
 - Escape dismisses modals
@@ -1536,21 +1657,25 @@ buildNodes(): Node[] {
 - Undo/redo with history hook
 
 **Layout Saving:**
+
 ```typescript
 saveTimeoutRef.debounced(() => {
-  saveLayout(nodes.map(n => ({
-    nodeId: n.id,
-    nodeType: n.type,
-    x: n.position.x,
-    y: n.position.y,
-    width: n.measured?.width || 280,
-    height: n.measured?.height || 200,
-    collapsed: n.data?.collapsed,
-  })))
-})
+  saveLayout(
+    nodes.map((n) => ({
+      nodeId: n.id,
+      nodeType: n.type,
+      x: n.position.x,
+      y: n.position.y,
+      width: n.measured?.width || 280,
+      height: n.measured?.height || 200,
+      collapsed: n.data?.collapsed,
+    })),
+  );
+});
 ```
 
 **Render Structure:**
+
 ```jsx
 <ErrorBoundary>
   <div ref={workspaceRef} className="canvas-workspace">
@@ -1570,7 +1695,6 @@ saveTimeoutRef.debounced(() => {
       <Controls />
       <MiniMap />
     </ReactFlow>
-    
     <CodeNavigator />
     <CanvasToolbar />
     <CodingDetailPanel /> {/* if selectedQuestionId */}
@@ -1589,7 +1713,6 @@ saveTimeoutRef.debounced(() => {
     <PresenceAvatars />
     <CollabCursors />
     <ConfirmDialog />
-    
     {/* Lazy-loaded modals */}
     <Suspense fallback={null}>
       {showExcerpts && <ExcerptBrowserModal />}
@@ -1611,6 +1734,7 @@ saveTimeoutRef.debounced(() => {
 **User Action Sequence:**
 
 1. **User selects text in TranscriptNode**
+
    ```
    Selection event in transcript content
    → onSelectText handler fires
@@ -1620,6 +1744,7 @@ saveTimeoutRef.debounced(() => {
    ```
 
 2. **User clicks code in popover**
+
    ```
    Click on code option
    → handleAssignCode(questionId)
@@ -1628,6 +1753,7 @@ saveTimeoutRef.debounced(() => {
    ```
 
 3. **Backend response:**
+
    ```
    Returns: CanvasTextCoding {
      id, canvasId, questionId, transcriptId,
@@ -1637,6 +1763,7 @@ saveTimeoutRef.debounced(() => {
    ```
 
 4. **Frontend updates:**
+
    ```
    canvasStore.activeCanvas.codings = [...codings, newCoding]
    setPendingSelection(null) // Clear selection
@@ -1660,19 +1787,20 @@ saveTimeoutRef.debounced(() => {
 **Socket.io Integration (`socket.ts`, 63 lines):**
 
 ```typescript
-const SOCKET_URL = import.meta.env.VITE_WS_URL || origin
+const SOCKET_URL = import.meta.env.VITE_WS_URL || origin;
 socket = io(SOCKET_URL, {
   auth: { token: jwt },
   transports: ['websocket', 'polling'],
   reconnection: true,
   reconnectionAttempts: 10,
   reconnectionDelay: 1000,
-})
+});
 ```
 
 **Collaboration Events (`useCollaboration.ts`):**
 
 **Emitted (from local user):**
+
 - `canvas:join { canvasId }` - Enter canvas room
 - `canvas:cursor-moved { x, y }` - Throttled 50ms
 - `canvas:node-moved { nodeId, position }` - Throttled 100ms
@@ -1683,6 +1811,7 @@ socket = io(SOCKET_URL, {
 - `canvas:node-deleted { canvasId, nodeId, nodeType }` - Socket event
 
 **Listened (from other users):**
+
 - `presence:updated { canvasId, users: CollaboratorPresence[] }` - Active users list
 - `presence:current { canvasId, users, self }` - Initial presence
 - `cursor:moved { userId, userName, x, y }` - Remote cursor
@@ -1692,16 +1821,19 @@ socket = io(SOCKET_URL, {
 - `canvas:node-deleted` - Refresh canvas
 
 **CollaboratorPresence:**
+
 ```typescript
 { userId, name, color, cursor?: { x, y } }
 ```
 
 **Cursors Map:**
+
 ```typescript
-Map<userId, { x, y, name, color }>
+Map<userId, { x; y; name; color }>;
 ```
 
 **Refresh Strategy:**
+
 - Local actions update state optimistically
 - Socket events from others trigger `refreshCanvas()` to sync
 - Prevents double-updates by checking `eventData.userId === localUserId`
@@ -1716,6 +1848,7 @@ Map<userId, { x, y, name, color }>
 **Proxy:** `/api` → `http://localhost:3007` (backend)
 
 **Manual Chunks:**
+
 ```typescript
 'react-vendor': ['react', 'react-dom', 'react-router-dom']
 'viz-vendor': ['@xyflow/react', 'dagre', 'recharts']
@@ -1734,11 +1867,13 @@ Map<userId, { x, y, name, color }>
 ### Error Handling
 
 **Global:**
+
 - ErrorBoundary at app level (App.tsx)
 - Catches render errors, shows error UI with "Try again"
 - Optional `onError` callback to Sentry
 
 **Component Level:**
+
 - ErrorBoundary wraps computed nodes (error isolation)
 - API errors show toast notifications
 - 401 triggers logout redirect
@@ -1746,19 +1881,19 @@ Map<userId, { x, y, name, color }>
 
 ### Key Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| react | 18.3.1 | UI framework |
-| @xyflow/react | 12.10.1 | Canvas graph library |
-| zustand | 5.0.3 | State management |
-| axios | 1.7.9 | HTTP client |
-| socket.io-client | 4.8.3 | Real-time collaboration |
-| i18next | 25.10.4 | Internationalization |
-| recharts | 2.15.0 | Data visualization (bar, pie charts) |
-| @visx/wordcloud | 3.12.0 | Word cloud visualization |
-| dagre | 0.8.5 | Graph layout algorithm |
-| tailwindcss | 3.4.17 | CSS framework |
-| react-hot-toast | 2.4.1 | Toast notifications |
+| Package          | Version | Purpose                              |
+| ---------------- | ------- | ------------------------------------ |
+| react            | 18.3.1  | UI framework                         |
+| @xyflow/react    | 12.10.1 | Canvas graph library                 |
+| zustand          | 5.0.3   | State management                     |
+| axios            | 1.7.9   | HTTP client                          |
+| socket.io-client | 4.8.3   | Real-time collaboration              |
+| i18next          | 25.10.4 | Internationalization                 |
+| recharts         | 2.15.0  | Data visualization (bar, pie charts) |
+| @visx/wordcloud  | 3.12.0  | Word cloud visualization             |
+| dagre            | 0.8.5   | Graph layout algorithm               |
+| tailwindcss      | 3.4.17  | CSS framework                        |
+| react-hot-toast  | 2.4.1   | Toast notifications                  |
 
 ---
 
@@ -1778,14 +1913,14 @@ The admin portal is a standalone page at `/admin` that provides platform monitor
 
 ### Tabs (6)
 
-| Tab | Description |
-|-----|-------------|
-| **Dashboard** | KPI stat cards (total users, active users, signups, MRR, errors), PieChart for plan distribution (Recharts), top features list |
-| **Users** | Searchable, paginated, sortable user table with email, name, plan, signup date, status, canvas count. Click a row for full user detail |
-| **Billing** | MRR, ARR, churn rate, paying vs free counts, plan breakdown table, recent transactions |
-| **Health** | System status indicator (healthy/degraded/unhealthy), uptime, DB response time, memory usage, app version, Node.js version |
-| **Activity** | Paginated audit log with action type filter, timestamps, user email lookup |
-| **Features** | Feature usage table (sorted by total usage), source type (computed_node/ai_usage), unique canvases/users counts |
+| Tab           | Description                                                                                                                            |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dashboard** | KPI stat cards (total users, active users, signups, MRR, errors), PieChart for plan distribution (Recharts), top features list         |
+| **Users**     | Searchable, paginated, sortable user table with email, name, plan, signup date, status, canvas count. Click a row for full user detail |
+| **Billing**   | MRR, ARR, churn rate, paying vs free counts, plan breakdown table, recent transactions                                                 |
+| **Health**    | System status indicator (healthy/degraded/unhealthy), uptime, DB response time, memory usage, app version, Node.js version             |
+| **Activity**  | Paginated audit log with action type filter, timestamps, user email lookup                                                             |
+| **Features**  | Feature usage table (sorted by total usage), source type (computed_node/ai_usage), unique canvases/users counts                        |
 
 ### Auto-Refresh
 
@@ -1809,6 +1944,7 @@ Full dark mode support using Tailwind `dark:` classes throughout all admin compo
 ### API Client
 
 Uses `adminApi` methods from `services/api.ts`:
+
 - `adminApi.getDashboard(key)` — `GET /api/admin/dashboard`
 - `adminApi.getUsers(key, params)` — `GET /api/admin/users`
 - `adminApi.getUserDetail(key, id)` — `GET /api/admin/users/:id`
@@ -1865,15 +2001,15 @@ All methods pass the admin key via the `x-admin-key` request header.
 
 ### New Components
 
-| Component | File | Purpose |
-|-----------|------|---------|
-| `ConnectionLine` | `components/canvas/edges/ConnectionLine.tsx` | Animated dashed connection preview during edge creation |
-| `CrossCanvasRefBadge` | `components/canvas/CrossCanvasRefBadge.tsx` | Badge/link to nodes in other canvases |
+| Component             | File                                         | Purpose                                                 |
+| --------------------- | -------------------------------------------- | ------------------------------------------------------- |
+| `ConnectionLine`      | `components/canvas/edges/ConnectionLine.tsx` | Animated dashed connection preview during edge creation |
+| `CrossCanvasRefBadge` | `components/canvas/CrossCanvasRefBadge.tsx`  | Badge/link to nodes in other canvases                   |
 
 ### New Libraries
 
-| File | Purpose |
-|------|---------|
+| File                     | Purpose                                          |
+| ------------------------ | ------------------------------------------------ |
 | `lib/crossCanvasRefs.ts` | CRUD for cross-canvas references in localStorage |
 
 ---
@@ -1884,41 +2020,41 @@ The frontend is covered by ~564 Playwright E2E tests across 39 spec files.
 
 ### Canvas-Specific E2E Suites
 
-| Suite | File | Focus |
-|-------|------|-------|
-| Canvas Transcripts | `canvas-transcripts-full.spec.ts` | Transcript CRUD, content editing, import |
-| Canvas Errors | `canvas-errors-full.spec.ts` | Error handling, network failures, recovery |
-| Canvas Lifecycle | `canvas-lifecycle-full.spec.ts` | Create, open, rename, delete, restore flows |
-| Canvas Coding | `canvas-coding-full.spec.ts` | Code creation, text coding, annotation workflows |
-| Canvas Codes | `canvas-codes-full.spec.ts` | Code management, color, merge, hierarchy |
-| Canvas Toolbar | `canvas-toolbar-full.spec.ts` | Toolbar actions, panels, mode toggles |
-| Canvas Workspace | `canvas-workspace-full.spec.ts` | Workspace layout, zoom, pan, node interactions |
+| Suite              | File                              | Focus                                            |
+| ------------------ | --------------------------------- | ------------------------------------------------ |
+| Canvas Transcripts | `canvas-transcripts-full.spec.ts` | Transcript CRUD, content editing, import         |
+| Canvas Errors      | `canvas-errors-full.spec.ts`      | Error handling, network failures, recovery       |
+| Canvas Lifecycle   | `canvas-lifecycle-full.spec.ts`   | Create, open, rename, delete, restore flows      |
+| Canvas Coding      | `canvas-coding-full.spec.ts`      | Code creation, text coding, annotation workflows |
+| Canvas Codes       | `canvas-codes-full.spec.ts`       | Code management, color, merge, hierarchy         |
+| Canvas Toolbar     | `canvas-toolbar-full.spec.ts`     | Toolbar actions, panels, mode toggles            |
+| Canvas Workspace   | `canvas-workspace-full.spec.ts`   | Workspace layout, zoom, pan, node interactions   |
 
 ### UX Phase E2E Suites (49 tests)
 
-| Suite | File | Focus |
-|-------|------|-------|
-| UX Phase 1 | `ux-phase1-placement.spec.ts` | Smart placement, fuzzy search, keyboard nav, grid dots |
-| UX Phase 2 | `ux-phase2-polish.spec.ts` | Dark mode, connection preview, arrow panning, shimmer |
-| UX Phase 3 | `ux-phase3-power.spec.ts` | Edge bundling, alignment guides, animated dots |
-| UX Phase 4 | `ux-phase4-advanced.spec.ts` | Edge toggle, paste connections, annotations, cross-refs |
+| Suite      | File                          | Focus                                                   |
+| ---------- | ----------------------------- | ------------------------------------------------------- |
+| UX Phase 1 | `ux-phase1-placement.spec.ts` | Smart placement, fuzzy search, keyboard nav, grid dots  |
+| UX Phase 2 | `ux-phase2-polish.spec.ts`    | Dark mode, connection preview, arrow panning, shimmer   |
+| UX Phase 3 | `ux-phase3-power.spec.ts`     | Edge bundling, alignment guides, animated dots          |
+| UX Phase 4 | `ux-phase4-advanced.spec.ts`  | Edge toggle, paste connections, annotations, cross-refs |
 
 ### Researcher Workflow Scenario Suites (262 tests)
 
-| Suite | File | Focus |
-|-------|------|-------|
+| Suite      | File                                     | Focus                                            |
+| ---------- | ---------------------------------------- | ------------------------------------------------ |
 | Scenario A | `scenario-a-healthcare-thematic.spec.ts` | Healthcare thematic analysis workflow (56 tests) |
-| Scenario B | `scenario-b-grounded-theory.spec.ts` | Grounded theory methodology (27 tests) |
-| Scenario C | `scenario-c-cross-case.spec.ts` | Cross-case comparison (18 tests) |
-| Scenario D | `scenario-d-ethics.spec.ts` | Ethics review workflow (20 tests) |
-| Scenario E | `scenario-e-intercoder.spec.ts` | Intercoder reliability (14 tests) |
-| Scenario F | `scenario-f-mixed-methods.spec.ts` | Mixed methods research (12 tests) |
-| Scenario G | `scenario-g-emergent-coding.spec.ts` | Emergent coding workflow (18 tests) |
-| Scenario H | `scenario-h-export.spec.ts` | Export workflows (14 tests) |
-| Scenario I | `scenario-i-workspace.spec.ts` | Workspace management (22 tests) |
-| Scenario J | `scenario-j-stress.spec.ts` | Stress/load testing (26 tests) |
-| Scenario K | `scenario-k-training.spec.ts` | Training exercises (10 tests) |
-| Scenario L | `scenario-l-visual-canvas.spec.ts` | Visual canvas operations (25 tests) |
+| Scenario B | `scenario-b-grounded-theory.spec.ts`     | Grounded theory methodology (27 tests)           |
+| Scenario C | `scenario-c-cross-case.spec.ts`          | Cross-case comparison (18 tests)                 |
+| Scenario D | `scenario-d-ethics.spec.ts`              | Ethics review workflow (20 tests)                |
+| Scenario E | `scenario-e-intercoder.spec.ts`          | Intercoder reliability (14 tests)                |
+| Scenario F | `scenario-f-mixed-methods.spec.ts`       | Mixed methods research (12 tests)                |
+| Scenario G | `scenario-g-emergent-coding.spec.ts`     | Emergent coding workflow (18 tests)              |
+| Scenario H | `scenario-h-export.spec.ts`              | Export workflows (14 tests)                      |
+| Scenario I | `scenario-i-workspace.spec.ts`           | Workspace management (22 tests)                  |
+| Scenario J | `scenario-j-stress.spec.ts`              | Stress/load testing (26 tests)                   |
+| Scenario K | `scenario-k-training.spec.ts`            | Training exercises (10 tests)                    |
+| Scenario L | `scenario-l-visual-canvas.spec.ts`       | Visual canvas operations (25 tests)              |
 
 Total test counts: 570 backend + 333 frontend + ~564 E2E = ~1,467 total.
 

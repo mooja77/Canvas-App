@@ -152,11 +152,11 @@ QualCanvas/
 
 ## 4. Ports & URLs
 
-| Service          | Dev Port | Notes                                   |
-|------------------|----------|-----------------------------------------|
-| Backend API      | 3007     | `process.env.PORT`                      |
-| Frontend (Vite)  | 5174     | proxies `/api/*` → `localhost:3007`     |
-| Production       | 3007     | backend serves frontend static build    |
+| Service         | Dev Port | Notes                                |
+| --------------- | -------- | ------------------------------------ |
+| Backend API     | 3007     | `process.env.PORT`                   |
+| Frontend (Vite) | 5174     | proxies `/api/*` → `localhost:3007`  |
+| Production      | 3007     | backend serves frontend static build |
 
 ---
 
@@ -168,12 +168,14 @@ QualCanvas/
 2. **Session cookie** — JWT is stored only in a secure HTTP-only cookie set by the login endpoint
 
 **Login flow:**
+
 ```
 POST /api/auth  { dashboardCode: "<environment-supplied demo code>" }
 → { success: true, data: { jwt, dashboardAccessId, name, role } }
 ```
 
 **Register flow:**
+
 ```
 POST /api/auth/register  { name: "Alice" }
 → { success: true, data: { accessCode: "CANVAS-XXXXXXXX", ... } } plus a secure session cookie
@@ -207,6 +209,7 @@ AuditLog (every API request, hashed IP)
 ```
 
 Key constraints:
+
 - `@@unique([dashboardAccessId, name])` on CodingCanvas
 - `@@unique([canvasId, nodeId])` on CanvasNodePosition
 - `@@unique([canvasId, name])` on CanvasCase
@@ -217,14 +220,16 @@ Key constraints:
 ## 7. API Endpoints
 
 ### Auth (public)
-| Method | Path                  | Description                    |
-|--------|-----------------------|--------------------------------|
-| POST   | `/api/auth`           | Login with dashboard code      |
-| POST   | `/api/auth/register`  | Create new account             |
+
+| Method | Path                 | Description               |
+| ------ | -------------------- | ------------------------- |
+| POST   | `/api/auth`          | Login with dashboard code |
+| POST   | `/api/auth/register` | Create new account        |
 
 ### Canvas (protected — requires auth + audit log)
+
 | Method | Path                                    | Description                          |
-|--------|-----------------------------------------|--------------------------------------|
+| ------ | --------------------------------------- | ------------------------------------ |
 | GET    | `/api/canvas`                           | List user's canvases                 |
 | POST   | `/api/canvas`                           | Create canvas                        |
 | GET    | `/api/canvas/:id`                       | Full canvas detail (all relations)   |
@@ -263,10 +268,11 @@ Key constraints:
 | DELETE | `/api/canvas/:id/share/:shareId`        | Revoke share                         |
 
 ### Public (no auth)
-| Method | Path                          | Description                 |
-|--------|-------------------------------|-----------------------------|
-| GET    | `/api/canvas/shared/:code`    | Read shared canvas          |
-| POST   | `/api/canvas/clone/:code`     | Clone shared canvas         |
+
+| Method | Path                       | Description         |
+| ------ | -------------------------- | ------------------- |
+| GET    | `/api/canvas/shared/:code` | Read shared canvas  |
+| POST   | `/api/canvas/clone/:code`  | Clone shared canvas |
 
 ---
 
@@ -274,22 +280,23 @@ Key constraints:
 
 10 analysis algorithms in `backend/src/utils/textAnalysis.ts`:
 
-| Type          | What it does                                                     |
-|---------------|------------------------------------------------------------------|
-| search        | Keyword/regex search across transcripts with context snippets    |
-| cooccurrence  | Finds overlapping codings between question pairs                 |
-| matrix        | Case × Question framework matrix with excerpts and counts        |
-| stats         | Coding counts & coverage by question or transcript               |
-| comparison    | Side-by-side transcript profiles by question                     |
-| wordcloud     | Token frequency analysis (stop words removed)                    |
-| cluster       | TF-IDF + K-Means clustering (3 random restarts)                 |
-| codingquery   | Boolean AND/OR/NOT queries across questions                      |
-| sentiment     | AFINN lexicon-based sentiment scoring (100+ words)               |
-| treemap       | Hierarchical question tree with sizing by code count             |
+| Type         | What it does                                                  |
+| ------------ | ------------------------------------------------------------- |
+| search       | Keyword/regex search across transcripts with context snippets |
+| cooccurrence | Finds overlapping codings between question pairs              |
+| matrix       | Case × Question framework matrix with excerpts and counts     |
+| stats        | Coding counts & coverage by question or transcript            |
+| comparison   | Side-by-side transcript profiles by question                  |
+| wordcloud    | Token frequency analysis (stop words removed)                 |
+| cluster      | TF-IDF + K-Means clustering (3 random restarts)               |
+| codingquery  | Boolean AND/OR/NOT queries across questions                   |
+| sentiment    | AFINN lexicon-based sentiment scoring (100+ words)            |
+| treemap      | Hierarchical question tree with sizing by code count          |
 
 All functions are pure — they take data arrays and return result objects. No side effects.
 
 To add a new computed node type:
+
 1. Add the algorithm in `textAnalysis.ts`
 2. Add a case in `canvasRoutes.ts` → `POST /:id/computed/:nodeId/run` switch
 3. Add config/result types in `shared/types/canvas.types.ts`
@@ -313,6 +320,7 @@ The QualCanvas can optionally fetch narrative responses from a running WISEShift
 7. Backend creates CanvasTranscript records with `sourceType: 'import'`
 
 **WISEShift endpoint contract** (already implemented in WISEShift):
+
 ```
 GET /api/v1/research/narratives
   Headers: x-dashboard-code: DASH-XXXXXXXX
@@ -327,6 +335,7 @@ The bridge is entirely optional — users can also paste text manually or upload
 ## 10. Environment Variables
 
 ### Backend (`apps/backend/.env`)
+
 ```env
 DATABASE_URL="file:./qualcanvas.db"
 JWT_SECRET="qualcanvas-dev-secret-change-in-production"
@@ -335,6 +344,7 @@ NODE_ENV=development
 ```
 
 **Production additions:**
+
 ```env
 NODE_ENV=production
 JWT_SECRET=<strong-random-string>
@@ -342,27 +352,29 @@ ALLOWED_ORIGINS=https://your-domain.com   # for CSRF validation
 ```
 
 ### Frontend
+
 No `.env` needed. In dev, Vite proxies `/api` to the backend. In production, the backend serves the frontend build on the same origin.
 
 ---
 
 ## 11. Security Features
 
-| Feature        | Implementation                                              |
-|----------------|-------------------------------------------------------------|
-| Auth           | JWT (24h) or SHA-256 + bcrypt dashboard codes               |
-| CSRF           | Origin header validation on POST/PUT/PATCH/DELETE            |
-| Rate limiting  | 500 requests / 15 min per IP                                |
-| Audit logging  | Every request → AuditLog table (hashed IP, action, resource)|
-| Consent        | ConsentRecord table for ethics compliance                    |
-| Headers        | Helmet (CSP disabled for canvas rendering)                   |
-| Passwords      | bcrypt 12 rounds                                            |
+| Feature       | Implementation                                               |
+| ------------- | ------------------------------------------------------------ |
+| Auth          | JWT (24h) or SHA-256 + bcrypt dashboard codes                |
+| CSRF          | Origin header validation on POST/PUT/PATCH/DELETE            |
+| Rate limiting | 500 requests / 15 min per IP                                 |
+| Audit logging | Every request → AuditLog table (hashed IP, action, resource) |
+| Consent       | ConsentRecord table for ethics compliance                    |
+| Headers       | Helmet (CSP disabled for canvas rendering)                   |
+| Passwords     | bcrypt 12 rounds                                             |
 
 ---
 
 ## 12. Deployment
 
 ### Build
+
 ```bash
 npm run build
 # Produces:
@@ -372,6 +384,7 @@ npm run build
 ```
 
 ### Run in production
+
 ```bash
 cd apps/backend
 npm start   # runs: prisma migrate deploy && node dist/index.js
@@ -380,6 +393,7 @@ npm start   # runs: prisma migrate deploy && node dist/index.js
 The backend serves the frontend static build from `../frontend/dist` when `NODE_ENV=production`. Everything runs on a single port (3007).
 
 ### Database
+
 - Dev: SQLite (file-based, zero config)
 - Production: change `datasource db` in `schema.prisma` to PostgreSQL if needed
 
@@ -388,6 +402,7 @@ The backend serves the frontend static build from `../frontend/dist` when `NODE_
 ## 13. Common Development Tasks
 
 ### Add a new endpoint
+
 1. Add Zod schema in `middleware/validation.ts`
 2. Add route handler in `routes/canvasRoutes.ts`
 3. Add method in `frontend/src/services/api.ts` → `canvasApi`
@@ -395,11 +410,13 @@ The backend serves the frontend static build from `../frontend/dist` when `NODE_
 5. Use in component via `useCanvasStore()`
 
 ### Modify the database
+
 1. Edit `apps/backend/prisma/schema.prisma`
 2. Run `npm run db:migrate` (creates migration + applies)
 3. Re-seed if needed: `npm run db:seed`
 
 ### Add a new node type to the canvas
+
 1. Create component in `frontend/src/components/canvas/nodes/`
 2. Register in `CanvasWorkspace.tsx` node type map
 3. If it's a computed type, also add the algorithm in `textAnalysis.ts`

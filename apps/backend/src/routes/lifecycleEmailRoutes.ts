@@ -191,9 +191,7 @@ publicLifecycleEmailRoutes.post('/newsletter/unsubscribe/:token', async (req, re
         data: { status: 'unsubscribed', unsubscribedAt: new Date(), confirmTokenHash: null },
       });
     }
-    res
-      .type('html')
-      .send(newsletterUnsubscribePage('', true));
+    res.type('html').send(newsletterUnsubscribePage('', true));
   } catch (err) {
     next(err);
   }

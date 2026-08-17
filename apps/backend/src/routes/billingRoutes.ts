@@ -32,7 +32,8 @@ export async function deriveQualcanvasPlan(stripe: ReturnType<typeof getStripe>,
   if (meta.app === 'qualcanvas' && QC_PLANS.includes(meta.plan)) return meta.plan as QcPlan;
   try {
     let product = typeof resolvedPrice.product === 'object' ? resolvedPrice.product : null;
-    if (!product && typeof resolvedPrice.product === 'string') product = await stripe.products.retrieve(resolvedPrice.product);
+    if (!product && typeof resolvedPrice.product === 'string')
+      product = await stripe.products.retrieve(resolvedPrice.product);
     const name = String(product?.name || '').toLowerCase();
     if (!name.startsWith('qualcanvas')) return null;
     if (name.includes('student')) return 'student';

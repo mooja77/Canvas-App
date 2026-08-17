@@ -197,9 +197,7 @@ export function startLifecycleEmailScheduler(): void {
 
   const scopeProbe = ALLOW_ALL_RECIPIENTS ? 'probe@example.invalid' : Array.from(RECIPIENT_ALLOWLIST)[0];
   if (!isLifecycleSendingEnabledFor(scopeProbe)) {
-    console.log(
-      '[LifecycleEmailScheduler] Automation blocked: LIFECYCLE_EMAIL_SEND_ENABLED must be explicitly true.',
-    );
+    console.log('[LifecycleEmailScheduler] Automation blocked: LIFECYCLE_EMAIL_SEND_ENABLED must be explicitly true.');
     return;
   }
 

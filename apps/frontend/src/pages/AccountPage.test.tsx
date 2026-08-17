@@ -48,7 +48,13 @@ vi.mock('../stores/authStore', () => ({
 const mockGetMe = vi.fn();
 const mockGetSettings = vi.fn();
 const mockGetPreferences = vi.fn();
+const mockGetIntegrations = vi.fn();
+const mockDisconnectIntegration = vi.fn();
 vi.mock('../services/api', () => ({
+  canvasApi: {
+    getIntegrations: (...a: unknown[]) => mockGetIntegrations(...a),
+    disconnectIntegration: (...a: unknown[]) => mockDisconnectIntegration(...a),
+  },
   authApi: {
     getMe: (...args: unknown[]) => mockGetMe(...args),
     updateProfile: vi.fn(),
@@ -211,5 +217,25 @@ describe('AccountPage', () => {
     });
 
     expect(screen.getByText('Next billing date')).toBeInTheDocument();
+  });
+
+  // ─── Legacy provider credentials ───
+  // The erasure panel is the only route a user has to credentials an earlier
+  // build stored. It was previously unmounted, so it existed but could not be
+  // reached; this asserts it is actually rendered on the account page.
+  it('renders the legacy provider credentials section', async () => {
+    mockGetIntegrations.mockResolvedValue({ data: { integrations: [] } });
+    render(<AccountPage />);
+
+    expect(await screen.findByText('Legacy provider credentials')).toBeInTheDocument();
+  });
+
+  it('reaches the credentials API when the account page loads', async () => {
+    mockGetIntegrations.mockResolvedValue({ data: { integrations: [] } });
+    render(<AccountPage />);
+
+    await waitFor(() => {
+      expect(mockGetIntegrations).toHaveBeenCalled();
+    });
   });
 });

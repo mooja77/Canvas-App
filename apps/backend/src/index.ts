@@ -112,6 +112,7 @@ import { initSocketServer } from './lib/socket.js';
 import { startReportScheduler, stopReportScheduler } from './jobs/reportScheduler.js';
 import { startLifecycleEmailScheduler, stopLifecycleEmailScheduler } from './jobs/lifecycleEmailScheduler.js';
 import { startStripeReconciliationScheduler, stopStripeReconciliationScheduler } from './jobs/stripeReconciliation.js';
+import { startAuditRetentionScheduler, stopAuditRetentionScheduler } from './jobs/auditRetention.js';
 import { corsOrigin } from './utils/origins.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -399,7 +400,9 @@ v1Router.use(auth, viewerWriteGuard, auditLog, qdpxRoutes);
 // Protected repository routes
 v1Router.use(auth, auditLog, repositoryRoutes);
 
-// Protected integration routes
+// Integration credential access. Provider connections are retired (410), but
+// list + delete stay reachable so users can revoke credentials stored by
+// earlier builds. Deliberately not behind checkIntegrationsAccess().
 v1Router.use(auth, auditLog, integrationRoutes);
 
 // Protected AI settings routes
@@ -457,6 +460,9 @@ const server = httpServer.listen(PORT, () => {
     startReportScheduler();
     startLifecycleEmailScheduler();
     startStripeReconciliationScheduler();
+    // Enforces the 90-day audit-log window published on /trust, /privacy and
+    // in the DPA.
+    startAuditRetentionScheduler();
   }
 });
 
@@ -466,6 +472,7 @@ function shutdown(signal: string) {
   stopReportScheduler();
   stopLifecycleEmailScheduler();
   stopStripeReconciliationScheduler();
+  stopAuditRetentionScheduler();
   server.close(async () => {
     await prisma.$disconnect();
     console.log('Server closed');

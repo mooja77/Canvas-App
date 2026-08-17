@@ -106,9 +106,9 @@ const ENTRIES: ChangelogEntry[] = [
   {
     date: '2026-04-24',
     title: 'Security audit — high, medium, and low findings resolved',
-    body: 'A pass through the internal security audit closing eight findings. Integration OAuth tokens (Otter, Rev, Descript) now live encrypted at rest. Prod source maps no longer ship to the public bundle. Two IDOR routes on nested resources are patched. Sessions invalidate across the cluster on credential change. Operations on trashed canvases are blocked at the route layer instead of relying on UI gating.',
+    body: 'A pass through the internal security audit closing eight findings. Stored integration tokens now live encrypted at rest. Prod source maps no longer ship to the public bundle. Two IDOR routes on nested resources are patched. Sessions invalidate across the cluster on credential change. Operations on trashed canvases are blocked at the route layer instead of relying on UI gating.',
     highlights: [
-      'Encrypt integration OAuth tokens at rest',
+      'Encrypt stored integration tokens at rest',
       'Strip prod sourcemaps; bundle no longer leaks structured logging',
       'IDOR fixes on nested resources + session invalidation propagation',
       'Pagination clamp, request-ID propagation, deep-readiness endpoint',

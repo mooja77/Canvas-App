@@ -442,15 +442,10 @@ export const canvasApi = {
     canvasClient.delete(`/repositories/${repoId}/insights/${insightId}`),
 
   // ─── Integrations ───
+  // Provider connections are retired (POST /integrations/connect returns 410).
+  // List + delete remain so a user can see and erase credentials stored by
+  // earlier builds.
   getIntegrations: () => canvasClient.get('/integrations'),
-
-  connectIntegration: (data: {
-    provider: string;
-    accessToken: string;
-    refreshToken?: string;
-    metadata?: Record<string, unknown>;
-    expiresAt?: string;
-  }) => canvasClient.post('/integrations/connect', data),
 
   disconnectIntegration: (integrationId: string) => canvasClient.delete(`/integrations/${integrationId}`),
 };

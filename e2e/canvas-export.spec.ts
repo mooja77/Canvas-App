@@ -248,3 +248,62 @@ test.describe('Canvas Export & Tools', () => {
     await page.keyboard.press('Escape');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// Word (.docx) export — generated client-side in RichExportModal via the
+// `docx` package (Packer.toBlob). There is no backend route for it, which is
+// exactly why it needs an end-to-end proof: a missing or broken generator
+// fails silently as an empty/absent download rather than a server error.
+// ═══════════════════════════════════════════════════════════════════
+
+test.describe('Word export', () => {
+  let canvasId: string;
+
+  test.beforeEach(async ({ page }) => {
+    await goToCanvasList(page);
+    canvasId = await createCanvasViaApi(page, `E2E Word ${Date.now()}`);
+    const headers = await apiHeaders(page);
+    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
+      headers,
+      data: {
+        title: 'Word Export Transcript',
+        content: 'Participants described the bus service as unreliable and expensive.',
+      },
+    });
+    await openCanvasById(page, canvasId);
+  });
+
+  test.afterEach(async ({ page }) => {
+    if (canvasId) await deleteCanvasViaApi(page, canvasId);
+  });
+
+  test('Download Report produces a non-empty .docx file', async ({ page }) => {
+    await openExportDropdown(page);
+    await page.getByText('Export Report (Word, web, text)').first().click();
+
+    // .docx is the modal default, but select it explicitly so the test still
+    // means something if the default changes.
+    const wordOption = page.getByText('.docx — for supervisors & repositories').first();
+    await expect(wordOption).toBeVisible({ timeout: 10000 });
+    await wordOption.click();
+
+    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+    await page.getByRole('button', { name: /Download Report/i }).click();
+    const download = await downloadPromise;
+
+    expect(download.suggestedFilename()).toMatch(/\.docx$/);
+
+    const filePath = await download.path();
+    expect(filePath).toBeTruthy();
+
+    const { readFileSync } = await import('node:fs');
+    const buf = readFileSync(filePath!);
+
+    // Non-empty, and structurally a .docx: OOXML is a ZIP, so it must carry the
+    // PK local-file-header signature and a word/document.xml part. A stub
+    // returning an empty Blob, or a text file renamed .docx, fails this.
+    expect(buf.byteLength).toBeGreaterThan(1000);
+    expect(buf.subarray(0, 2).toString('latin1')).toBe('PK');
+    expect(buf.includes(Buffer.from('word/document.xml'))).toBe(true);
+  });
+});

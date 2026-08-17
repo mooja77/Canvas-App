@@ -2,13 +2,13 @@
 
 ## 1. Prerequisites
 
-| Requirement | Version | Notes |
-|-------------|---------|-------|
-| Node.js | 20+ LTS | Required for build and runtime |
-| npm | 9+ | Ships with Node 20 |
-| PostgreSQL | 16+ | Production database (Railway provides this) |
-| SQLite | any | Local development alternative (zero setup) |
-| Docker | 24+ | Optional, for containerized deployment |
+| Requirement | Version | Notes                                       |
+| ----------- | ------- | ------------------------------------------- |
+| Node.js     | 20+ LTS | Required for build and runtime              |
+| npm         | 9+      | Ships with Node 20                          |
+| PostgreSQL  | 16+     | Production database (Railway provides this) |
+| SQLite      | any     | Local development alternative (zero setup)  |
+| Docker      | 24+     | Optional, for containerized deployment      |
 
 ## 2. Local Development Setup
 
@@ -47,26 +47,26 @@ npm run dev
 
 ### Available Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Build shared types, then start backend + frontend concurrently |
-| `npm run dev:backend` | Start only the backend dev server |
-| `npm run dev:frontend` | Start only the frontend dev server |
-| `npm run build` | Production build: shared -> backend -> frontend |
-| `npm start` | Start the compiled backend (`apps/backend/dist`) |
-| `npm run db:migrate` | Run Prisma migrations |
-| `npm run db:seed` | Seed templates and, when configured, a `DEMO_ACCESS_CODE` account |
-| `npm test` | Run all unit tests (570 backend + 333 frontend) |
-| `npm run test:e2e` | Run ~564 Playwright E2E tests (Chromium, 39 spec files) |
-| `npm run test:e2e:all` | Run E2E tests across all browsers |
-| `npm run test:e2e:firefox` | Run E2E tests on Firefox |
-| `npm run test:e2e:webkit` | Run E2E tests on WebKit |
-| `npm run test:e2e:mobile` | Run E2E tests on mobile viewports |
-| `npm run typecheck` | TypeScript type checking (backend + frontend) |
-| `npm run lint` | ESLint across all packages |
-| `npm run lint:fix` | ESLint with auto-fix |
-| `npm run format` | Prettier formatting |
-| `npm run format:check` | Prettier check (CI-friendly) |
+| Script                     | Description                                                       |
+| -------------------------- | ----------------------------------------------------------------- |
+| `npm run dev`              | Build shared types, then start backend + frontend concurrently    |
+| `npm run dev:backend`      | Start only the backend dev server                                 |
+| `npm run dev:frontend`     | Start only the frontend dev server                                |
+| `npm run build`            | Production build: shared -> backend -> frontend                   |
+| `npm start`                | Start the compiled backend (`apps/backend/dist`)                  |
+| `npm run db:migrate`       | Run Prisma migrations                                             |
+| `npm run db:seed`          | Seed templates and, when configured, a `DEMO_ACCESS_CODE` account |
+| `npm test`                 | Run all unit tests (570 backend + 333 frontend)                   |
+| `npm run test:e2e`         | Run ~564 Playwright E2E tests (Chromium, 39 spec files)           |
+| `npm run test:e2e:all`     | Run E2E tests across all browsers                                 |
+| `npm run test:e2e:firefox` | Run E2E tests on Firefox                                          |
+| `npm run test:e2e:webkit`  | Run E2E tests on WebKit                                           |
+| `npm run test:e2e:mobile`  | Run E2E tests on mobile viewports                                 |
+| `npm run typecheck`        | TypeScript type checking (backend + frontend)                     |
+| `npm run lint`             | ESLint across all packages                                        |
+| `npm run lint:fix`         | ESLint with auto-fix                                              |
+| `npm run format`           | Prettier formatting                                               |
+| `npm run format:check`     | Prettier check (CI-friendly)                                      |
 
 ## 3. Environment Variables
 
@@ -74,91 +74,91 @@ Copy `.env.example` to `.env` and configure. Variables are organized by category
 
 ### Server & Database
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `NODE_ENV` | Yes | `development` | `development` or `production` |
-| `PORT` | No | `3007` | Backend server port |
-| `DATABASE_URL` | Yes | — | PostgreSQL connection string, or `file:./canvas-app.db` for SQLite |
-| `JWT_SECRET` | Yes | — | 32+ char random string for signing JWTs. Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `ENCRYPTION_KEY` | Recommended | — | 32-byte hex key for encrypting user API keys. Generate same as JWT_SECRET |
+| Variable         | Required    | Default       | Description                                                                                                                   |
+| ---------------- | ----------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`       | Yes         | `development` | `development` or `production`                                                                                                 |
+| `PORT`           | No          | `3007`        | Backend server port                                                                                                           |
+| `DATABASE_URL`   | Yes         | —             | PostgreSQL connection string, or `file:./canvas-app.db` for SQLite                                                            |
+| `JWT_SECRET`     | Yes         | —             | 32+ char random string for signing JWTs. Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `ENCRYPTION_KEY` | Recommended | —             | 32-byte hex key for encrypting user API keys. Generate same as JWT_SECRET                                                     |
 
 ### CORS & Origins
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `ALLOWED_ORIGINS` | Production | — | Comma-separated frontend URLs for CORS/CSRF |
-| `CORS_ORIGIN` | No | — | Alternative CORS origin (also checked by CSRF middleware) |
-| `FRONTEND_URL` | No | — | Alternative frontend URL |
-| `APP_URL` | Recommended | `http://localhost:5174` | Public app URL for Stripe redirects and password reset links |
+| Variable          | Required    | Default                 | Description                                                  |
+| ----------------- | ----------- | ----------------------- | ------------------------------------------------------------ |
+| `ALLOWED_ORIGINS` | Production  | —                       | Comma-separated frontend URLs for CORS/CSRF                  |
+| `CORS_ORIGIN`     | No          | —                       | Alternative CORS origin (also checked by CSRF middleware)    |
+| `FRONTEND_URL`    | No          | —                       | Alternative frontend URL                                     |
+| `APP_URL`         | Recommended | `http://localhost:5174` | Public app URL for Stripe redirects and password reset links |
 
 ### Authentication
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `REGISTRATION_ENABLED` | No | `false` | Set to `true` to allow new user signups in production |
-| `GOOGLE_CLIENT_ID` | No | — | Google OAuth client ID for Google sign-in |
+| Variable               | Required | Default | Description                                           |
+| ---------------------- | -------- | ------- | ----------------------------------------------------- |
+| `REGISTRATION_ENABLED` | No       | `false` | Set to `true` to allow new user signups in production |
+| `GOOGLE_CLIENT_ID`     | No       | —       | Google OAuth client ID for Google sign-in             |
 
 ### Admin Portal
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `ADMIN_API_KEY` | For admin | — | Secret key for admin portal access (`/admin`). Generate: `openssl rand -hex 32` or `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| Variable        | Required  | Default | Description                                                                                                                                                   |
+| --------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_API_KEY` | For admin | —       | Secret key for admin portal access (`/admin`). Generate: `openssl rand -hex 32` or `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 
 > **Note:** The `/admin` route is not included in the sitemap and is not publicly linked. It is a private internal tool. Without `ADMIN_API_KEY` set, admin endpoints return 503.
 >
-> **Route mounting order:** Admin routes are mounted *before* the versioned API router (`v1Router`) in `index.ts`. If you modify route registration, ensure `/api/admin/*` remains above the general v1 router to avoid auth middleware conflicts.
+> **Route mounting order:** Admin routes are mounted _before_ the versioned API router (`v1Router`) in `index.ts`. If you modify route registration, ensure `/api/admin/*` remains above the general v1 router to avoid auth middleware conflicts.
 
 ### Stripe / Billing
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `STRIPE_SECRET_KEY` | For billing | — | Stripe secret key (`sk_test_...` or `sk_live_...`) |
-| `STRIPE_WEBHOOK_SECRET` | For billing | — | Stripe webhook signing secret (`whsec_...`) |
-| `STRIPE_ACADEMIC_COUPON_ID` | No | — | Stripe coupon ID for 40% academic discount (.edu emails) |
+| Variable                    | Required    | Default | Description                                              |
+| --------------------------- | ----------- | ------- | -------------------------------------------------------- |
+| `STRIPE_SECRET_KEY`         | For billing | —       | Stripe secret key (`sk_test_...` or `sk_live_...`)       |
+| `STRIPE_WEBHOOK_SECRET`     | For billing | —       | Stripe webhook signing secret (`whsec_...`)              |
+| `STRIPE_ACADEMIC_COUPON_ID` | No          | —       | Stripe coupon ID for 40% academic discount (.edu emails) |
 
 ### Email (SMTP)
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `SMTP_HOST` | For emails | — | SMTP server (e.g., `smtp.resend.com`, `smtp.gmail.com`) |
-| `SMTP_PORT` | For emails | `465` | SMTP port (465 for SSL, 587 for TLS) |
-| `SMTP_USER` | For emails | — | SMTP username |
-| `SMTP_PASS` | For emails | — | SMTP password or app-specific password |
-| `SMTP_FROM` | For emails | — | From address (e.g., `QualCanvas <noreply@qualcanvas.com>`) |
+| Variable    | Required   | Default | Description                                                |
+| ----------- | ---------- | ------- | ---------------------------------------------------------- |
+| `SMTP_HOST` | For emails | —       | SMTP server (e.g., `smtp.resend.com`, `smtp.gmail.com`)    |
+| `SMTP_PORT` | For emails | `465`   | SMTP port (465 for SSL, 587 for TLS)                       |
+| `SMTP_USER` | For emails | —       | SMTP username                                              |
+| `SMTP_PASS` | For emails | —       | SMTP password or app-specific password                     |
+| `SMTP_FROM` | For emails | —       | From address (e.g., `QualCanvas <noreply@qualcanvas.com>`) |
 
 If SMTP is not configured, password reset links are logged to the server console (useful for development).
 
 ### AI / LLM
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `AI_PROVIDER` | No | `openai` | AI provider (`openai`, `anthropic`, `google`) |
-| `AI_MODEL` | No | `gpt-4o-mini` | Default AI model |
-| `OPENAI_API_KEY` | No | — | Server-side fallback API key (users bring their own keys) |
+| Variable         | Required | Default       | Description                                               |
+| ---------------- | -------- | ------------- | --------------------------------------------------------- |
+| `AI_PROVIDER`    | No       | `openai`      | AI provider (`openai`, `anthropic`, `google`)             |
+| `AI_MODEL`       | No       | `gpt-4o-mini` | Default AI model                                          |
+| `OPENAI_API_KEY` | No       | —             | Server-side fallback API key (users bring their own keys) |
 
 ### S3 File Storage
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `S3_BUCKET` | No | — | S3/R2/MinIO bucket name. Omit for local file storage fallback |
-| `S3_REGION` | No | `us-east-1` | S3 region |
-| `S3_ACCESS_KEY` | No | — | S3 access key |
-| `S3_SECRET_KEY` | No | — | S3 secret key |
-| `S3_ENDPOINT` | No | — | Custom endpoint for R2/MinIO |
+| Variable        | Required | Default     | Description                                                   |
+| --------------- | -------- | ----------- | ------------------------------------------------------------- |
+| `S3_BUCKET`     | No       | —           | S3/R2/MinIO bucket name. Omit for local file storage fallback |
+| `S3_REGION`     | No       | `us-east-1` | S3 region                                                     |
+| `S3_ACCESS_KEY` | No       | —           | S3 access key                                                 |
+| `S3_SECRET_KEY` | No       | —           | S3 secret key                                                 |
+| `S3_ENDPOINT`   | No       | —           | Custom endpoint for R2/MinIO                                  |
 
 ### Frontend (Vite)
 
 These must be prefixed with `VITE_` to be available in the browser.
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `VITE_API_URL` | No | `/api` | API base URL (use `/api` with Vercel proxy, or `http://localhost:3007/api` for local dev) |
-| `VITE_GOOGLE_CLIENT_ID` | No | — | Google OAuth client ID for frontend |
-| `VITE_WS_URL` | No | — | WebSocket URL (points to Railway in production) |
-| `VITE_STRIPE_PRO_MONTHLY_PRICE_ID` | For billing | — | Stripe price ID for Pro monthly plan |
-| `VITE_STRIPE_PRO_ANNUAL_PRICE_ID` | For billing | — | Stripe price ID for Pro annual plan |
-| `VITE_STRIPE_TEAM_MONTHLY_PRICE_ID` | For billing | — | Stripe price ID for Team monthly plan |
-| `VITE_STRIPE_TEAM_ANNUAL_PRICE_ID` | For billing | — | Stripe price ID for Team annual plan |
+| Variable                            | Required    | Default | Description                                                                               |
+| ----------------------------------- | ----------- | ------- | ----------------------------------------------------------------------------------------- |
+| `VITE_API_URL`                      | No          | `/api`  | API base URL (use `/api` with Vercel proxy, or `http://localhost:3007/api` for local dev) |
+| `VITE_GOOGLE_CLIENT_ID`             | No          | —       | Google OAuth client ID for frontend                                                       |
+| `VITE_WS_URL`                       | No          | —       | WebSocket URL (points to Railway in production)                                           |
+| `VITE_STRIPE_PRO_MONTHLY_PRICE_ID`  | For billing | —       | Stripe price ID for Pro monthly plan                                                      |
+| `VITE_STRIPE_PRO_ANNUAL_PRICE_ID`   | For billing | —       | Stripe price ID for Pro annual plan                                                       |
+| `VITE_STRIPE_TEAM_MONTHLY_PRICE_ID` | For billing | —       | Stripe price ID for Team monthly plan                                                     |
+| `VITE_STRIPE_TEAM_ANNUAL_PRICE_ID`  | For billing | —       | Stripe price ID for Team annual plan                                                      |
 
 ## 4. Database Setup
 
@@ -204,6 +204,7 @@ The multi-stage Dockerfile (`node:20-alpine`) builds in five stages:
 5. **production** — Minimal image with production deps only, built artifacts, and Prisma client
 
 Production image features:
+
 - Runs as non-root `node` user for security
 - Auto-runs `prisma migrate deploy` on startup before starting the server
 - Built-in health check: `wget` to `/health` every 30s (5s timeout, 10s start period, 3 retries)
@@ -221,22 +222,23 @@ docker-compose up -d
 
 The `docker-compose.yml` defines two services:
 
-| Service | Image | Description |
-|---------|-------|-------------|
-| `db` | `postgres:16-alpine` | PostgreSQL database with persistent volume (`pgdata`) |
-| `app` | Built from Dockerfile | Backend + serves frontend, depends on `db` |
+| Service | Image                 | Description                                           |
+| ------- | --------------------- | ----------------------------------------------------- |
+| `db`    | `postgres:16-alpine`  | PostgreSQL database with persistent volume (`pgdata`) |
+| `app`   | Built from Dockerfile | Backend + serves frontend, depends on `db`            |
 
 Default compose environment:
 
-| Variable | Default | Notes |
-|----------|---------|-------|
-| `POSTGRES_DB` | `canvas_app` | Database name |
-| `POSTGRES_USER` | `canvas` | Database user |
-| `POSTGRES_PASSWORD` | `canvas_dev_password` | **Change in production!** |
-| `DATABASE_URL` | Auto-constructed | Points to the `db` service |
-| `REGISTRATION_ENABLED` | `false` | Set to `true` to allow signups |
+| Variable               | Default               | Notes                          |
+| ---------------------- | --------------------- | ------------------------------ |
+| `POSTGRES_DB`          | `canvas_app`          | Database name                  |
+| `POSTGRES_USER`        | `canvas`              | Database user                  |
+| `POSTGRES_PASSWORD`    | `canvas_dev_password` | **Change in production!**      |
+| `DATABASE_URL`         | Auto-constructed      | Points to the `db` service     |
+| `REGISTRATION_ENABLED` | `false`               | Set to `true` to allow signups |
 
 > **Security:** Always override default credentials in production:
+>
 > ```bash
 > POSTGRES_PASSWORD=your_strong_password JWT_SECRET=your_jwt_secret docker-compose up -d
 > ```
@@ -280,11 +282,11 @@ The frontend is deployed as a static Vite site on Vercel. Configuration is in `v
 
 Vercel rewrites proxy API and health requests to the Railway backend:
 
-| Source | Destination |
-|--------|-------------|
+| Source        | Destination                        |
+| ------------- | ---------------------------------- |
 | `/api/:path*` | `https://<railway-url>/api/:path*` |
-| `/health` | `https://<railway-url>/health` |
-| `/:path*` | `/index.html` (SPA fallback) |
+| `/health`     | `https://<railway-url>/health`     |
+| `/:path*`     | `/index.html` (SPA fallback)       |
 
 Update the Railway URL in `vercel.json` to match your deployment.
 
@@ -427,9 +429,9 @@ The backend runs a report scheduler as a background `setInterval` job (not a sep
 
 ### New Backend Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| `exceljs` | Excel workbook generation for `.xlsx` export |
+| Package          | Purpose                                         |
+| ---------------- | ----------------------------------------------- |
+| `exceljs`        | Excel workbook generation for `.xlsx` export    |
 | `ical-generator` | iCal (.ics) file generation for calendar export |
 
 These are included in the backend `package.json` and installed automatically with `npm install`.
@@ -438,21 +440,21 @@ These are included in the backend `package.json` and installed automatically wit
 
 ### Common Issues
 
-| Problem | Cause | Solution |
-|---------|-------|----------|
-| `prisma migrate dev` fails with SQLite URL | Provider mismatch: schema says `postgresql`, URL says `file:` | Use `prisma db push` locally, or temporarily change provider to `sqlite` (don't commit) |
-| Frontend can't reach API | CORS or proxy misconfiguration | Check `ALLOWED_ORIGINS` on backend, `VITE_API_URL` on frontend, and Vercel rewrites |
-| JWT errors after deploy | Missing or mismatched `JWT_SECRET` | Ensure the same `JWT_SECRET` is set in production env vars |
-| Password reset emails not sent | SMTP not configured | Set `SMTP_*` env vars, or check server console for logged reset links |
-| Stripe webhooks failing | Wrong webhook secret or URL | Verify `STRIPE_WEBHOOK_SECRET` and webhook endpoint URL in Stripe Dashboard |
-| `ENCRYPTION_KEY` errors | Key not set or wrong format | Generate a 32-byte hex key: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| Docker build fails on `prisma generate` | Missing schema file in build context | Ensure `apps/backend/prisma/` is not in `.dockerignore` |
-| Registration disabled | `REGISTRATION_ENABLED` defaults to `false` | Set `REGISTRATION_ENABLED=true` in production env vars |
-| WebSocket connection fails | `VITE_WS_URL` not set or wrong | Set `VITE_WS_URL=wss://your-railway-url.up.railway.app` on Vercel |
-| E2E tests fail locally | Playwright browsers not installed | Run `npx playwright install --with-deps chromium` |
-| Canvas nodes invisible | React Flow v12 measurement stall | CSS fix applied: `visibility: visible !important` on `.react-flow__node` in `index.css`. If nodes still don't render, ensure the canvas container has `h-full` class |
-| Stale frontend after deploy | Vercel CDN chunk caching | Clear Vercel CDN cache in dashboard, or redeploy. Users may need hard refresh (Ctrl+Shift+R) to pick up new JS chunks |
-| Stale canvas tabs after deletion | localStorage retains deleted canvas tab IDs | Fixed in code: tab cleanup runs on canvas list fetch, removing tabs for deleted canvases |
+| Problem                                    | Cause                                                         | Solution                                                                                                                                                             |
+| ------------------------------------------ | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prisma migrate dev` fails with SQLite URL | Provider mismatch: schema says `postgresql`, URL says `file:` | Use `prisma db push` locally, or temporarily change provider to `sqlite` (don't commit)                                                                              |
+| Frontend can't reach API                   | CORS or proxy misconfiguration                                | Check `ALLOWED_ORIGINS` on backend, `VITE_API_URL` on frontend, and Vercel rewrites                                                                                  |
+| JWT errors after deploy                    | Missing or mismatched `JWT_SECRET`                            | Ensure the same `JWT_SECRET` is set in production env vars                                                                                                           |
+| Password reset emails not sent             | SMTP not configured                                           | Set `SMTP_*` env vars, or check server console for logged reset links                                                                                                |
+| Stripe webhooks failing                    | Wrong webhook secret or URL                                   | Verify `STRIPE_WEBHOOK_SECRET` and webhook endpoint URL in Stripe Dashboard                                                                                          |
+| `ENCRYPTION_KEY` errors                    | Key not set or wrong format                                   | Generate a 32-byte hex key: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`                                                               |
+| Docker build fails on `prisma generate`    | Missing schema file in build context                          | Ensure `apps/backend/prisma/` is not in `.dockerignore`                                                                                                              |
+| Registration disabled                      | `REGISTRATION_ENABLED` defaults to `false`                    | Set `REGISTRATION_ENABLED=true` in production env vars                                                                                                               |
+| WebSocket connection fails                 | `VITE_WS_URL` not set or wrong                                | Set `VITE_WS_URL=wss://your-railway-url.up.railway.app` on Vercel                                                                                                    |
+| E2E tests fail locally                     | Playwright browsers not installed                             | Run `npx playwright install --with-deps chromium`                                                                                                                    |
+| Canvas nodes invisible                     | React Flow v12 measurement stall                              | CSS fix applied: `visibility: visible !important` on `.react-flow__node` in `index.css`. If nodes still don't render, ensure the canvas container has `h-full` class |
+| Stale frontend after deploy                | Vercel CDN chunk caching                                      | Clear Vercel CDN cache in dashboard, or redeploy. Users may need hard refresh (Ctrl+Shift+R) to pick up new JS chunks                                                |
+| Stale canvas tabs after deletion           | localStorage retains deleted canvas tab IDs                   | Fixed in code: tab cleanup runs on canvas list fetch, removing tabs for deleted canvases                                                                             |
 
 ### Verifying a Deployment
 

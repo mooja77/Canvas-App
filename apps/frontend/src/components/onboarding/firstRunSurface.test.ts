@@ -35,4 +35,3 @@ describe('resolveFirstRunSurface', () => {
     expect(resolveFirstRunSurface({ ...base, authType: 'legacy' })).toBe('legacy_setup');
   });
 });
-

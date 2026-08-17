@@ -161,6 +161,77 @@ async function smokeFrontendWithRetry(browser, frontendUrl, maxAttempts = 3, bas
   throw lastError;
 }
 
+// The canonical origin baked into every prerendered file by
+// apps/frontend/scripts/prerender-marketing.mjs. Self-canonical is always
+// qualcanvas.com regardless of which host serves the bytes.
+const PRERENDER_ORIGIN = 'https://qualcanvas.com';
+const HOMEPAGE_TITLE = 'QualCanvas — Visual Coding for Interview Research';
+// Routes that prerender-marketing.mjs emits as their own static HTML. Each must
+// carry its OWN <title> (NOT the homepage title) and its OWN canonical equal to
+// the requested URL — otherwise the SPA fallback is being served (regression:
+// Google sees them as homepage duplicates again).
+const MARKETING_PRERENDER_ROUTES = [
+  '/cite',
+  '/vs',
+  '/for-institutions',
+  '/customers',
+  '/press',
+  '/colophon',
+  '/trust',
+  '/trust/ai',
+  '/changelog',
+  '/accessibility-statement',
+  '/guide',
+];
+
+function extractTitle(html) {
+  const m = html.match(/<title>([\s\S]*?)<\/title>/i);
+  return m ? m[1].trim() : null;
+}
+
+function extractCanonical(html) {
+  const m = html.match(/<link[^>]+rel=["']canonical["'][^>]*>/i);
+  if (!m) return null;
+  const href = m[0].match(/href=["']([^"']+)["']/i);
+  return href ? href[1].trim() : null;
+}
+
+// Fetch the raw HTML for each prerendered marketing route (no JS executed, the
+// way Googlebot sees it) and assert it is a distinct static page, not the
+// homepage SPA fallback.
+async function checkMarketingPrerender(frontendUrl) {
+  const failures = [];
+  for (const path of MARKETING_PRERENDER_ROUTES) {
+    const url = `${frontendUrl}${path}`;
+    const expectedCanonical = `${PRERENDER_ORIGIN}${path}`;
+    try {
+      const res = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': 'Googlebot/2.1' } });
+      if (!res.ok) {
+        failures.push(`${path}: HTTP ${res.status}`);
+        continue;
+      }
+      const html = await res.text();
+      const title = extractTitle(html);
+      const canonical = extractCanonical(html);
+
+      if (!title) {
+        failures.push(`${path}: no <title>`);
+      } else if (title === HOMEPAGE_TITLE) {
+        failures.push(`${path}: title is the homepage title (SPA fallback served — prerender missing)`);
+      }
+
+      if (!canonical) {
+        failures.push(`${path}: no canonical link`);
+      } else if (canonical !== expectedCanonical) {
+        failures.push(`${path}: canonical is "${canonical}", expected "${expectedCanonical}"`);
+      }
+    } catch (err) {
+      failures.push(`${path}: fetch failed — ${err.message}`);
+    }
+  }
+  return { ok: failures.length === 0, frontendUrl, checked: MARKETING_PRERENDER_ROUTES.length, failures };
+}
+
 async function main() {
   const ready = await checkBackendReady();
   const browser = await chromium.launch({ headless: true });
@@ -171,8 +242,15 @@ async function main() {
       frontendResults.push(await smokeFrontendWithRetry(browser, frontendUrl));
     }
 
+    const marketingPrerenderResults = [];
+    for (const frontendUrl of frontendUrls) {
+      marketingPrerenderResults.push(await checkMarketingPrerender(frontendUrl));
+    }
+
     const result = {
-      ok: frontendResults.every((entry) => entry.ok),
+      ok:
+        frontendResults.every((entry) => entry.ok) &&
+        marketingPrerenderResults.every((entry) => entry.ok),
       backend: {
         url: backendUrl,
         status: ready.status,
@@ -180,6 +258,7 @@ async function main() {
         checks: ready.checks,
       },
       frontends: frontendResults,
+      marketingPrerender: marketingPrerenderResults,
     };
 
     console.log(JSON.stringify(result, null, 2));

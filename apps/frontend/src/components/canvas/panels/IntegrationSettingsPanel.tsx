@@ -3,50 +3,45 @@ import { canvasApi } from '../../../services/api';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../ConfirmDialog';
 
+/**
+ * Legacy provider credentials — erasure only.
+ *
+ * QualCanvas never had a working Zoom/Slack/Qualtrics integration: the old
+ * connect endpoint stored an access token pasted into the request body and
+ * nothing ever read it back. That endpoint is retired (410) and no new
+ * credentials can be created.
+ *
+ * This panel exists solely so a user can see whether anything was stored for
+ * them under the old behaviour and delete it. Deliberately:
+ *   - lists only credentials that actually exist, never a provider catalogue;
+ *   - renders nothing suggesting a provider is pending or "coming later";
+ *   - never offers or implies reconnection;
+ *   - works on every plan, because erasing your own data is not a paid feature.
+ */
+
 interface IntegrationInfo {
   id: string;
-  userId: string;
   provider: string;
-  metadata: string;
-  expiresAt: string | null;
   createdAt: string;
 }
 
-const PROVIDERS = [
-  {
-    id: 'zoom',
-    name: 'Zoom',
-    description: 'Import meeting recordings and transcripts',
-    icon: '📹',
-  },
-  {
-    id: 'slack',
-    name: 'Slack',
-    description: 'Import channel conversations for analysis',
-    icon: '💬',
-  },
-  {
-    id: 'qualtrics',
-    name: 'Qualtrics',
-    description: 'Import survey responses and open-ended data',
-    icon: '📊',
-  },
-];
+const PROVIDER_LABELS: Record<string, string> = {
+  zoom: 'Zoom',
+  slack: 'Slack',
+  qualtrics: 'Qualtrics',
+};
 
 export default function IntegrationSettingsPanel() {
   const [integrations, setIntegrations] = useState<IntegrationInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [confirmDisconnectId, setConfirmDisconnectId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const loadIntegrations = async () => {
     try {
       const res = await canvasApi.getIntegrations();
-      setIntegrations(res.data.integrations);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      if (err.response?.status !== 403) {
-        toast.error('Failed to load integrations');
-      }
+      setIntegrations(res.data.integrations ?? []);
+    } catch {
+      toast.error('Could not load stored credentials');
     } finally {
       setLoading(false);
     }
@@ -56,20 +51,18 @@ export default function IntegrationSettingsPanel() {
     loadIntegrations();
   }, []);
 
-  const handleConfirmedDisconnect = async () => {
-    if (!confirmDisconnectId) return;
+  const handleConfirmedDelete = async () => {
+    if (!confirmDeleteId) return;
     try {
-      await canvasApi.disconnectIntegration(confirmDisconnectId);
-      toast.success('Integration disconnected');
+      await canvasApi.disconnectIntegration(confirmDeleteId);
+      toast.success('Credential deleted');
       loadIntegrations();
     } catch {
-      toast.error('Failed to disconnect integration');
+      toast.error('Could not delete credential');
     } finally {
-      setConfirmDisconnectId(null);
+      setConfirmDeleteId(null);
     }
   };
-
-  const connectedProviders = new Set(integrations.map((i) => i.provider));
 
   if (loading) {
     return (
@@ -82,59 +75,58 @@ export default function IntegrationSettingsPanel() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Integrations</h3>
-        <p className="text-sm text-gray-500 mt-1">
-          Existing connections can be removed here. New provider connections are not available yet.
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Legacy provider credentials</h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          QualCanvas does not connect to Zoom, Slack or Qualtrics. Those connections have been retired and cannot be
+          created. Import transcripts as files instead.
         </p>
       </div>
 
-      <div className="space-y-3">
-        {PROVIDERS.map((provider) => {
-          const connected = connectedProviders.has(provider.id);
-          const integration = integrations.find((i) => i.provider === provider.id);
+      {integrations.length === 0 ? (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300">
+          No provider credentials are stored for your account. Nothing to remove.
+        </div>
+      ) : (
+        <>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
+            An earlier version of QualCanvas stored the credential{integrations.length === 1 ? '' : 's'} below. They are
+            encrypted at rest and unused. You can delete {integrations.length === 1 ? 'it' : 'them'} permanently here;
+            deleting your account removes {integrations.length === 1 ? 'it' : 'them'} too.
+          </div>
 
-          return (
-            <div
-              key={provider.id}
-              className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{provider.icon}</span>
+          <ul className="space-y-3">
+            {integrations.map((integration) => (
+              <li
+                key={integration.id}
+                className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+              >
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-white">{provider.name}</h4>
-                  <p className="text-xs text-gray-500">{provider.description}</p>
-                  {connected && integration && (
-                    <p className="text-[10px] text-green-600 dark:text-green-400 mt-0.5">
-                      Connected since {new Date(integration.createdAt).toLocaleDateString()}
-                    </p>
-                  )}
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                    {PROVIDER_LABELS[integration.provider] ?? integration.provider}
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Stored {new Date(integration.createdAt).toLocaleDateString()} · unused
+                  </p>
                 </div>
-              </div>
-
-              {connected ? (
                 <button
-                  onClick={() => integration && setConfirmDisconnectId(integration.id)}
-                  className="px-3 py-1.5 text-xs text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                  onClick={() => setConfirmDeleteId(integration.id)}
+                  className="rounded border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
                 >
-                  Disconnect
+                  Delete
                 </button>
-              ) : (
-                <span className="rounded bg-gray-100 px-3 py-1.5 text-xs text-gray-500 dark:bg-gray-700 dark:text-gray-300">
-                  Coming later
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
-      {confirmDisconnectId && (
+      {confirmDeleteId && (
         <ConfirmDialog
-          title="Disconnect Integration"
-          message="Disconnect this integration? You can reconnect it at any time."
-          confirmLabel="Disconnect"
-          onConfirm={handleConfirmedDisconnect}
-          onCancel={() => setConfirmDisconnectId(null)}
+          title="Delete stored credential"
+          message="This permanently deletes the stored credential. It cannot be undone, and there is no way to create a new one — provider connections have been retired."
+          confirmLabel="Delete permanently"
+          onConfirm={handleConfirmedDelete}
+          onCancel={() => setConfirmDeleteId(null)}
         />
       )}
     </div>

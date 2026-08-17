@@ -42,47 +42,47 @@ QualCanvas is a SaaS qualitative coding canvas for researchers, built as a monor
 
 ## 2. Tech Stack
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| Runtime | Node.js | 20 (Alpine in Docker) |
-| Language | TypeScript | ^5.7.0 |
-| Frontend Framework | React | ^18.3.1 |
-| Build Tool | Vite | ^6.0.7 |
-| CSS | Tailwind CSS | ^3.4.17 |
-| Canvas Library | @xyflow/react (React Flow) | ^12.10.1 |
-| State Management | Zustand | ^5.0.3 |
-| Routing (Frontend) | react-router-dom | ^7.1.1 |
-| Charts | Recharts | ^2.15.0 |
-| Word Cloud | @visx/wordcloud + @visx/text | ^3.12.0 |
-| i18n | i18next + react-i18next | ^25.10.4 / ^16.6.1 |
-| HTTP Client | Axios | ^1.7.9 |
-| Error Tracking | @sentry/react | ^10.45.0 |
-| UI Components | @headlessui/react + @heroicons/react | ^2.2.0 |
-| Graph Layout | dagre | ^0.8.5 |
-| PWA | vite-plugin-pwa | ^0.21.1 |
-| Backend Framework | Express | ^4.21.2 |
-| ORM | Prisma | ^6.3.0 |
-| Database | PostgreSQL (prod) / SQLite (dev) | 16+ |
-| WebSocket | Socket.IO | ^4.8.3 |
-| Auth | jsonwebtoken + bcryptjs | ^9.0.3 / ^3.0.3 |
-| Validation | Zod | ^3.24.1 |
-| Security | helmet | ^8.0.0 |
-| Rate Limiting | express-rate-limit | ^7.5.0 |
-| Payments | Stripe | ^20.4.1 |
-| AI - OpenAI | openai | ^6.32.0 |
-| AI - Anthropic | @anthropic-ai/sdk | ^0.80.0 |
-| AI - Google | @google/generative-ai | ^0.24.1 |
-| File Upload | multer | ^2.1.1 |
-| Object Storage | @aws-sdk/client-s3 | ^3.1012.0 |
-| Email | nodemailer | ^8.0.3 |
-| XML Parsing | fast-xml-parser | ^5.5.7 |
-| Archive | archiver + yauzl | ^7.0.1 / ^3.2.1 |
-| Logging | morgan | ^1.10.0 |
-| Google Auth | google-auth-library | ^10.6.2 |
-| Test Runner | Vitest | ^4.0.18 |
-| E2E Testing | Playwright | ^1.58.2 |
-| Linter | ESLint | ^9.39.3 |
-| Concurrency | concurrently | ^9.1.0 |
+| Layer              | Technology                           | Version               |
+| ------------------ | ------------------------------------ | --------------------- |
+| Runtime            | Node.js                              | 20 (Alpine in Docker) |
+| Language           | TypeScript                           | ^5.7.0                |
+| Frontend Framework | React                                | ^18.3.1               |
+| Build Tool         | Vite                                 | ^6.0.7                |
+| CSS                | Tailwind CSS                         | ^3.4.17               |
+| Canvas Library     | @xyflow/react (React Flow)           | ^12.10.1              |
+| State Management   | Zustand                              | ^5.0.3                |
+| Routing (Frontend) | react-router-dom                     | ^7.1.1                |
+| Charts             | Recharts                             | ^2.15.0               |
+| Word Cloud         | @visx/wordcloud + @visx/text         | ^3.12.0               |
+| i18n               | i18next + react-i18next              | ^25.10.4 / ^16.6.1    |
+| HTTP Client        | Axios                                | ^1.7.9                |
+| Error Tracking     | @sentry/react                        | ^10.45.0              |
+| UI Components      | @headlessui/react + @heroicons/react | ^2.2.0                |
+| Graph Layout       | dagre                                | ^0.8.5                |
+| PWA                | vite-plugin-pwa                      | ^0.21.1               |
+| Backend Framework  | Express                              | ^4.21.2               |
+| ORM                | Prisma                               | ^6.3.0                |
+| Database           | PostgreSQL (prod) / SQLite (dev)     | 16+                   |
+| WebSocket          | Socket.IO                            | ^4.8.3                |
+| Auth               | jsonwebtoken + bcryptjs              | ^9.0.3 / ^3.0.3       |
+| Validation         | Zod                                  | ^3.24.1               |
+| Security           | helmet                               | ^8.0.0                |
+| Rate Limiting      | express-rate-limit                   | ^7.5.0                |
+| Payments           | Stripe                               | ^20.4.1               |
+| AI - OpenAI        | openai                               | ^6.32.0               |
+| AI - Anthropic     | @anthropic-ai/sdk                    | ^0.80.0               |
+| AI - Google        | @google/generative-ai                | ^0.24.1               |
+| File Upload        | multer                               | ^2.1.1                |
+| Object Storage     | @aws-sdk/client-s3                   | ^3.1012.0             |
+| Email              | nodemailer                           | ^8.0.3                |
+| XML Parsing        | fast-xml-parser                      | ^5.5.7                |
+| Archive            | archiver + yauzl                     | ^7.0.1 / ^3.2.1       |
+| Logging            | morgan                               | ^1.10.0               |
+| Google Auth        | google-auth-library                  | ^10.6.2               |
+| Test Runner        | Vitest                               | ^4.0.18               |
+| E2E Testing        | Playwright                           | ^1.58.2               |
+| Linter             | ESLint                               | ^9.39.3               |
+| Concurrency        | concurrently                         | ^9.1.0                |
 
 ---
 
@@ -172,6 +172,7 @@ qualcanvas/
 ```
 
 Workspaces defined in root `package.json`:
+
 - `shared` — shared TypeScript types (`@qualcanvas/shared`)
 - `apps/frontend` — Vite React SPA (`@qualcanvas/frontend`)
 - `apps/backend` — Express API server (`@qualcanvas/backend`)
@@ -184,59 +185,60 @@ Workspaces defined in root `package.json`:
 
 The middleware stack in `apps/backend/src/index.ts` is applied in this order:
 
-| Order | Middleware | Purpose |
-|-------|-----------|---------|
-| 1 | `trust proxy` | Railway/Vercel reverse proxy support |
-| 2 | `helmet` | Security headers (CSP, HSTS, X-Frame-Options) |
-| 3 | `cors` | CORS with configurable `ALLOWED_ORIGINS` |
-| 4 | `morgan` | HTTP request logging (`combined` prod, `dev` local) |
-| 5 | `express.raw` | Raw body for `/api/billing/webhook` (Stripe signature) |
-| 6 | `express.json` | JSON body parsing (1MB default) |
-| 7 | Request counter | Increments counter for `/metrics` endpoint |
-| 8 | `csrfProtection` | Origin/Referer/Sec-Fetch-Site validation on mutations |
-| 9 | `generalLimiter` | 500 req/15min on `/api/*` (skipped in test/E2E) |
-| 10 | `computeLimiter` | 30 req/15min on computed node `/run` endpoints |
-| 11 | `express.json(10mb)` | Larger body limit for transcript/import routes |
-| 12 | Request timeout | 30-second timeout per request |
-| 13a | Admin routes | `/api/admin/*` (mounted before v1Router to avoid auth middleware) |
-| 13b | Route handlers | Versioned API router (`/api/v1` + `/api`) |
-| 14 | Static files | Production-only: serves frontend build |
-| 15 | `errorHandler` | Global error handler (AppError class) |
+| Order | Middleware           | Purpose                                                           |
+| ----- | -------------------- | ----------------------------------------------------------------- |
+| 1     | `trust proxy`        | Railway/Vercel reverse proxy support                              |
+| 2     | `helmet`             | Security headers (CSP, HSTS, X-Frame-Options)                     |
+| 3     | `cors`               | CORS with configurable `ALLOWED_ORIGINS`                          |
+| 4     | `morgan`             | HTTP request logging (`combined` prod, `dev` local)               |
+| 5     | `express.raw`        | Raw body for `/api/billing/webhook` (Stripe signature)            |
+| 6     | `express.json`       | JSON body parsing (1MB default)                                   |
+| 7     | Request counter      | Increments counter for `/metrics` endpoint                        |
+| 8     | `csrfProtection`     | Origin/Referer/Sec-Fetch-Site validation on mutations             |
+| 9     | `generalLimiter`     | 500 req/15min on `/api/*` (skipped in test/E2E)                   |
+| 10    | `computeLimiter`     | 30 req/15min on computed node `/run` endpoints                    |
+| 11    | `express.json(10mb)` | Larger body limit for transcript/import routes                    |
+| 12    | Request timeout      | 30-second timeout per request                                     |
+| 13a   | Admin routes         | `/api/admin/*` (mounted before v1Router to avoid auth middleware) |
+| 13b   | Route handlers       | Versioned API router (`/api/v1` + `/api`)                         |
+| 14    | Static files         | Production-only: serves frontend build                            |
+| 15    | `errorHandler`       | Global error handler (AppError class)                             |
 
 ### 4.2 Route Modules
 
 All routes are mounted under `/api/v1` and `/api` (backwards compat).
 
-| File | Prefix | Auth | Audit | Purpose |
-|------|--------|------|-------|---------|
-| `authRoutes.ts` | `/auth` | No | No | Legacy access-code login/register |
-| `userAuthRoutes.ts` | `/auth` | Mixed | No | Email signup/login, password reset, profile, Google OAuth |
-| `billingRoutes.ts` | `/billing` | Mixed | No | Stripe checkout/portal/subscription/webhook |
-| `canvasRoutes.ts` | `/canvas` | Yes | Yes | Canvas CRUD, main orchestration |
-| `transcriptRoutes.ts` | `/canvas/:id/transcripts` | Yes | Yes | Transcript CRUD, import, anonymize |
-| `codingRoutes.ts` | `/canvas/:id/codings` | Yes | Yes | Text coding CRUD, reassign, auto-code |
-| `computedRoutes.ts` | `/canvas/:id/computed` | Yes | Yes | Analysis node CRUD + run |
-| `shareRoutes.ts` | `/canvas/:id/share` | Yes | Yes | Share code generation, public viewing, cloning |
-| `ethicsRoutes.ts` | `/canvas/:id/ethics` | Yes | Yes | Ethics settings, consent records, audit log |
-| `aiRoutes.ts` | `/canvas/:id/ai` | Yes | Yes | AI code suggestions, auto-coding |
-| `aiSettingsRoutes.ts` | `/ai-settings` | Yes | No | User AI config (API key storage) |
-| `chatRoutes.ts` | `/canvas/:id/chat` | Yes | Yes | Research assistant (RAG chat) |
-| `summaryRoutes.ts` | `/canvas/:id/summaries` | Yes | Yes | AI text summarization |
-| `uploadRoutes.ts` | `/canvas/:id/uploads` | Yes | Yes | File upload, audio transcription |
-| `collaborationRoutes.ts` | `/canvas/:id/collaborators` | Yes | Yes | Collaborator invites, roles |
-| `documentRoutes.ts` | `/canvas/:id/documents` | Yes | Yes | Document (PDF/image) + region coding |
-| `trainingRoutes.ts` | `/canvas/:id/training` | Yes | Yes | Intercoder training exercises |
-| `qdpxRoutes.ts` | `/canvas/:id/qdpx` | Yes | Yes | QDPX export/import (interop) |
-| `repositoryRoutes.ts` | `/repositories` | Yes | Yes | Research insight repository |
-| `integrationRoutes.ts` | `/integrations` | Yes | Yes | Third-party integrations (Zoom, Slack, Qualtrics) |
-| `teamRoutes.ts` | `/teams` | Yes | Yes | Team management, member roles |
-| `notificationRoutes.ts` | `/notifications` | Yes | No | User notifications (list, read, delete) |
-| `reportRoutes.ts` | `/reports` | Yes | No | Scheduled reports (CRUD, on-demand generate) |
-| `calendarRoutes.ts` | `/calendar` | Yes | No | Research calendar events + iCal export |
-| `exportRoutes.ts` | `/canvas/:id/export` | Yes | No | Excel (.xlsx) export via ExcelJS |
-| `adminRoutes.ts` | `/admin` | Admin key | No | Admin dashboard, user management, billing metrics, health, activity log, feature usage |
+| File                     | Prefix                      | Auth      | Audit | Purpose                                                                                |
+| ------------------------ | --------------------------- | --------- | ----- | -------------------------------------------------------------------------------------- |
+| `authRoutes.ts`          | `/auth`                     | No        | No    | Legacy access-code login/register                                                      |
+| `userAuthRoutes.ts`      | `/auth`                     | Mixed     | No    | Email signup/login, password reset, profile, Google OAuth                              |
+| `billingRoutes.ts`       | `/billing`                  | Mixed     | No    | Stripe checkout/portal/subscription/webhook                                            |
+| `canvasRoutes.ts`        | `/canvas`                   | Yes       | Yes   | Canvas CRUD, main orchestration                                                        |
+| `transcriptRoutes.ts`    | `/canvas/:id/transcripts`   | Yes       | Yes   | Transcript CRUD, import, anonymize                                                     |
+| `codingRoutes.ts`        | `/canvas/:id/codings`       | Yes       | Yes   | Text coding CRUD, reassign, auto-code                                                  |
+| `computedRoutes.ts`      | `/canvas/:id/computed`      | Yes       | Yes   | Analysis node CRUD + run                                                               |
+| `shareRoutes.ts`         | `/canvas/:id/share`         | Yes       | Yes   | Share code generation, public viewing, cloning                                         |
+| `ethicsRoutes.ts`        | `/canvas/:id/ethics`        | Yes       | Yes   | Ethics settings, consent records, audit log                                            |
+| `aiRoutes.ts`            | `/canvas/:id/ai`            | Yes       | Yes   | AI code suggestions, auto-coding                                                       |
+| `aiSettingsRoutes.ts`    | `/ai-settings`              | Yes       | No    | User AI config (API key storage)                                                       |
+| `chatRoutes.ts`          | `/canvas/:id/chat`          | Yes       | Yes   | Research assistant (RAG chat)                                                          |
+| `summaryRoutes.ts`       | `/canvas/:id/summaries`     | Yes       | Yes   | AI text summarization                                                                  |
+| `uploadRoutes.ts`        | `/canvas/:id/uploads`       | Yes       | Yes   | File upload, audio transcription                                                       |
+| `collaborationRoutes.ts` | `/canvas/:id/collaborators` | Yes       | Yes   | Collaborator invites, roles                                                            |
+| `documentRoutes.ts`      | `/canvas/:id/documents`     | Yes       | Yes   | Document (PDF/image) + region coding                                                   |
+| `trainingRoutes.ts`      | `/canvas/:id/training`      | Yes       | Yes   | Intercoder training exercises                                                          |
+| `qdpxRoutes.ts`          | `/canvas/:id/qdpx`          | Yes       | Yes   | QDPX export/import (interop)                                                           |
+| `repositoryRoutes.ts`    | `/repositories`             | Yes       | Yes   | Research insight repository                                                            |
+| `integrationRoutes.ts`   | `/integrations`             | Yes       | Yes   | Third-party integrations (Zoom, Slack, Qualtrics)                                      |
+| `teamRoutes.ts`          | `/teams`                    | Yes       | Yes   | Team management, member roles                                                          |
+| `notificationRoutes.ts`  | `/notifications`            | Yes       | No    | User notifications (list, read, delete)                                                |
+| `reportRoutes.ts`        | `/reports`                  | Yes       | No    | Scheduled reports (CRUD, on-demand generate)                                           |
+| `calendarRoutes.ts`      | `/calendar`                 | Yes       | No    | Research calendar events + iCal export                                                 |
+| `exportRoutes.ts`        | `/canvas/:id/export`        | Yes       | No    | Excel (.xlsx) export via ExcelJS                                                       |
+| `adminRoutes.ts`         | `/admin`                    | Admin key | No    | Admin dashboard, user management, billing metrics, health, activity log, feature usage |
 
 Public (unauthenticated) routes:
+
 - `GET /health` — DB health check
 - `GET /ready` — Readiness probe with version/uptime
 - `GET /metrics` — Basic request count + memory metrics
@@ -350,26 +352,26 @@ Legacy access-code users can link their account to an email via `POST /auth/link
 
 ### 4.5 Plan Tiers and Limits
 
-| Limit | Free | Pro ($12/mo) | Team ($29/mo/seat) |
-|-------|------|-------------|-------------------|
-| Canvases | 1 | Unlimited | Unlimited |
-| Transcripts/canvas | 2 | Unlimited | Unlimited |
-| Words/transcript | 5,000 | 50,000 | 50,000 |
-| Codes | 5 | Unlimited | Unlimited |
-| Auto-code | No | Yes | Yes |
-| Analysis types | stats, wordcloud | All 13 types | All 13 types |
-| Export formats | CSV | CSV, PNG, HTML, MD, QDPX | CSV, PNG, HTML, MD, QDPX |
-| Share codes | 0 | 5 | Unlimited |
-| Ethics panel | No | Yes | Yes |
-| Cases | No | Yes | Yes |
-| Intercoder (Kappa) | No | No | Yes |
-| AI features | No | Yes (1000 req/day) | Yes (1000 req/day) |
-| File uploads | No | Yes | Yes |
-| Storage | 0 MB | 500 MB | 5,000 MB |
-| Transcription | 0 min/mo | 60 min/mo | 300 min/mo |
-| Collaborators | 0 | 3 | Unlimited |
-| Repository | No | Yes | Yes |
-| Integrations | No | No | Yes |
+| Limit              | Free             | Pro ($12/mo)             | Team ($29/mo/seat)       |
+| ------------------ | ---------------- | ------------------------ | ------------------------ |
+| Canvases           | 1                | Unlimited                | Unlimited                |
+| Transcripts/canvas | 2                | Unlimited                | Unlimited                |
+| Words/transcript   | 5,000            | 50,000                   | 50,000                   |
+| Codes              | 5                | Unlimited                | Unlimited                |
+| Auto-code          | No               | Yes                      | Yes                      |
+| Analysis types     | stats, wordcloud | All 13 types             | All 13 types             |
+| Export formats     | CSV              | CSV, PNG, HTML, MD, QDPX | CSV, PNG, HTML, MD, QDPX |
+| Share codes        | 0                | 5                        | Unlimited                |
+| Ethics panel       | No               | Yes                      | Yes                      |
+| Cases              | No               | Yes                      | Yes                      |
+| Intercoder (Kappa) | No               | No                       | Yes                      |
+| AI features        | No               | Yes (1000 req/day)       | Yes (1000 req/day)       |
+| File uploads       | No               | Yes                      | Yes                      |
+| Storage            | 0 MB             | 500 MB                   | 5,000 MB                 |
+| Transcription      | 0 min/mo         | 60 min/mo                | 300 min/mo               |
+| Collaborators      | 0                | 3                        | Unlimited                |
+| Repository         | No               | Yes                      | Yes                      |
+| Integrations       | No               | No                       | Yes                      |
 
 Analysis types (13): `search`, `cooccurrence`, `matrix`, `stats`, `comparison`, `wordcloud`, `cluster`, `codingquery`, `sentiment`, `treemap`, `documentportrait`, `timeline`, `geomap`.
 
@@ -381,58 +383,58 @@ Academic discount: 40% off for `.edu` emails via Stripe coupon.
 
 ### 5.1 Routes
 
-| Path | Component | Protected | Lazy | Description |
-|------|-----------|-----------|------|-------------|
-| `/` | `LandingPage` | No | No | Public marketing page |
-| `/login` | `LoginPage` | No | No | Email login (primary) + access code (collapsible) |
-| `/pricing` | `PricingPage` | No | No | Tier comparison, monthly/annual toggle |
-| `/account` | `AccountPage` | Yes | Yes | Profile, plan, usage, billing portal |
-| `/canvas/:canvasId?` | `CanvasPage` | Yes | Yes | Main canvas workspace (deep linking) |
-| `/repository` | `RepositoryPage` | Yes | Yes | Research insight repository |
-| `/team` | `TeamPage` | Yes | Yes | Team management |
-| `/forgot-password` | `ForgotPasswordPage` | No | No | Password reset request |
-| `/reset-password` | `ResetPasswordPage` | No | No | Password reset with token |
-| `/verify-email` | `VerifyEmailPage` | No | No | Email verification |
-| `/terms` | `TermsPage` | No | No | Terms of service |
-| `/privacy` | `PrivacyPage` | No | No | Privacy policy |
-| `/guide` | `GuidePage` | No | No | User guide |
-| `/admin` | `AdminPage` | No (admin key gate) | Yes | Admin portal (6-tab dashboard) |
-| `*` | `NotFoundPage` | No | No | 404 fallback |
+| Path                 | Component            | Protected           | Lazy | Description                                       |
+| -------------------- | -------------------- | ------------------- | ---- | ------------------------------------------------- |
+| `/`                  | `LandingPage`        | No                  | No   | Public marketing page                             |
+| `/login`             | `LoginPage`          | No                  | No   | Email login (primary) + access code (collapsible) |
+| `/pricing`           | `PricingPage`        | No                  | No   | Tier comparison, monthly/annual toggle            |
+| `/account`           | `AccountPage`        | Yes                 | Yes  | Profile, plan, usage, billing portal              |
+| `/canvas/:canvasId?` | `CanvasPage`         | Yes                 | Yes  | Main canvas workspace (deep linking)              |
+| `/repository`        | `RepositoryPage`     | Yes                 | Yes  | Research insight repository                       |
+| `/team`              | `TeamPage`           | Yes                 | Yes  | Team management                                   |
+| `/forgot-password`   | `ForgotPasswordPage` | No                  | No   | Password reset request                            |
+| `/reset-password`    | `ResetPasswordPage`  | No                  | No   | Password reset with token                         |
+| `/verify-email`      | `VerifyEmailPage`    | No                  | No   | Email verification                                |
+| `/terms`             | `TermsPage`          | No                  | No   | Terms of service                                  |
+| `/privacy`           | `PrivacyPage`        | No                  | No   | Privacy policy                                    |
+| `/guide`             | `GuidePage`          | No                  | No   | User guide                                        |
+| `/admin`             | `AdminPage`          | No (admin key gate) | Yes  | Admin portal (6-tab dashboard)                    |
+| `*`                  | `NotFoundPage`       | No                  | No   | 404 fallback                                      |
 
 Global components rendered on all routes: `ErrorBoundary`, `OfflineBanner`, `UpgradePrompt`.
 
 ### 5.2 State Management (Zustand Stores)
 
-| Store | File | Persisted | Purpose |
-|-------|------|-----------|---------|
-| `authStore` | `stores/authStore.ts` | Yes (localStorage) | JWT, user profile, plan, dual auth state |
-| `uiStore` | `stores/uiStore.ts` | Yes (localStorage) | Dark mode, onboarding, sidebar, edge style, scroll mode, zoom tier |
-| `canvasStore` | `stores/canvasStore.ts` | No | Canvas list, active canvas, CRUD operations, text selection, layout |
-| `shortcutStore` | `stores/shortcutStore.ts` | Yes (localStorage) | Customizable keyboard shortcuts |
+| Store           | File                      | Persisted          | Purpose                                                             |
+| --------------- | ------------------------- | ------------------ | ------------------------------------------------------------------- |
+| `authStore`     | `stores/authStore.ts`     | Yes (localStorage) | JWT, user profile, plan, dual auth state                            |
+| `uiStore`       | `stores/uiStore.ts`       | Yes (localStorage) | Dark mode, onboarding, sidebar, edge style, scroll mode, zoom tier  |
+| `canvasStore`   | `stores/canvasStore.ts`   | No                 | Canvas list, active canvas, CRUD operations, text selection, layout |
+| `shortcutStore` | `stores/shortcutStore.ts` | Yes (localStorage) | Customizable keyboard shortcuts                                     |
 
 Components use granular Zustand selector hooks (migrated in commit `95c0449`).
 
 ### 5.3 Custom Hooks
 
-| Hook | File | Purpose |
-|------|------|---------|
-| `useCanvasHistory` | `hooks/useCanvasHistory.ts` | Undo/redo stack for canvas operations |
-| `useCanvasKeyboard` | `hooks/useCanvasKeyboard.ts` | Keyboard shortcut handling |
-| `useMobile` | `hooks/useMobile.ts` | Touch gesture support (pinch, pan, tap) |
-| `useAutoLayout` | `hooks/useAutoLayout.ts` | Dagre-based automatic node layout |
-| `useCollaboration` | `hooks/useCollaboration.ts` | WebSocket collaboration + presence |
-| `useFileUpload` | `hooks/useFileUpload.ts` | File upload with progress tracking |
-| `useAiSuggestions` | `hooks/useAiSuggestions.ts` | AI coding suggestion management |
-| `useCanvasBookmarks` | `hooks/useCanvasBookmarks.ts` | Canvas bookmark management |
-| `useCanvasGroups` | `hooks/useCanvasGroups.ts` | Visual node grouping |
-| `useCanvasStickyNotes` | `hooks/useCanvasStickyNotes.ts` | Sticky note CRUD |
-| `useCanvasRerouteNodes` | `hooks/useCanvasRerouteNodes.ts` | Edge reroute waypoints |
-| `useAlignmentGuides` | `hooks/useAlignmentGuides.ts` | Snap-line alignment guides for node placement |
-| `useCodeBookmarks` | `hooks/useCodeBookmarks.ts` | Code bookmark management |
-| `useContainerSize` | `hooks/useContainerSize.ts` | Responsive container dimensions |
-| `useNodeColors` | `hooks/useNodeColors.ts` | Node color management |
-| `useSessionTimeout` | `hooks/useSessionTimeout.ts` | Auto-logout on session expiry |
-| `usePageMeta` | `hooks/usePageMeta.ts` | Dynamic page title, description, canonical URL, OG tags |
+| Hook                    | File                             | Purpose                                                 |
+| ----------------------- | -------------------------------- | ------------------------------------------------------- |
+| `useCanvasHistory`      | `hooks/useCanvasHistory.ts`      | Undo/redo stack for canvas operations                   |
+| `useCanvasKeyboard`     | `hooks/useCanvasKeyboard.ts`     | Keyboard shortcut handling                              |
+| `useMobile`             | `hooks/useMobile.ts`             | Touch gesture support (pinch, pan, tap)                 |
+| `useAutoLayout`         | `hooks/useAutoLayout.ts`         | Dagre-based automatic node layout                       |
+| `useCollaboration`      | `hooks/useCollaboration.ts`      | WebSocket collaboration + presence                      |
+| `useFileUpload`         | `hooks/useFileUpload.ts`         | File upload with progress tracking                      |
+| `useAiSuggestions`      | `hooks/useAiSuggestions.ts`      | AI coding suggestion management                         |
+| `useCanvasBookmarks`    | `hooks/useCanvasBookmarks.ts`    | Canvas bookmark management                              |
+| `useCanvasGroups`       | `hooks/useCanvasGroups.ts`       | Visual node grouping                                    |
+| `useCanvasStickyNotes`  | `hooks/useCanvasStickyNotes.ts`  | Sticky note CRUD                                        |
+| `useCanvasRerouteNodes` | `hooks/useCanvasRerouteNodes.ts` | Edge reroute waypoints                                  |
+| `useAlignmentGuides`    | `hooks/useAlignmentGuides.ts`    | Snap-line alignment guides for node placement           |
+| `useCodeBookmarks`      | `hooks/useCodeBookmarks.ts`      | Code bookmark management                                |
+| `useContainerSize`      | `hooks/useContainerSize.ts`      | Responsive container dimensions                         |
+| `useNodeColors`         | `hooks/useNodeColors.ts`         | Node color management                                   |
+| `useSessionTimeout`     | `hooks/useSessionTimeout.ts`     | Auto-logout on session expiry                           |
+| `usePageMeta`           | `hooks/usePageMeta.ts`           | Dynamic page title, description, canonical URL, OG tags |
 
 ### 5.4 Canvas UX Architecture (ComfyUI-Inspired)
 
@@ -448,15 +450,15 @@ The canvas uses a ComfyUI-inspired UX with 20 enhancements across 4 phases:
 
 **New Components:**
 
-| Component | File | Purpose |
-|-----------|------|---------|
-| `ConnectionLine` | `edges/ConnectionLine.tsx` | Animated connection preview line during edge creation |
-| `CrossCanvasRefBadge` | `canvas/CrossCanvasRefBadge.tsx` | Badge linking to nodes in other canvases |
+| Component             | File                             | Purpose                                               |
+| --------------------- | -------------------------------- | ----------------------------------------------------- |
+| `ConnectionLine`      | `edges/ConnectionLine.tsx`       | Animated connection preview line during edge creation |
+| `CrossCanvasRefBadge` | `canvas/CrossCanvasRefBadge.tsx` | Badge linking to nodes in other canvases              |
 
 **New Libraries:**
 
-| File | Purpose |
-|------|---------|
+| File                     | Purpose                                                                 |
+| ------------------------ | ----------------------------------------------------------------------- |
 | `lib/crossCanvasRefs.ts` | localStorage-based cross-canvas reference storage (no DB schema needed) |
 
 **CSS Fix (index.css):** `visibility: visible !important` on `.react-flow__node` — React Flow v12 hides nodes with `visibility:hidden` until ResizeObserver reports dimensions; in some environments the measurement cycle stalls, leaving nodes permanently invisible.
@@ -467,38 +469,39 @@ Defined in `CanvasWorkspace.tsx`:
 
 **Base nodes (7):**
 
-| Type | Component | Description |
-|------|-----------|-------------|
-| `transcript` | `TranscriptNode` | Text transcript with coding highlights |
-| `question` | `QuestionNode` | Research question / code (hierarchical) |
-| `memo` | `MemoNode` | Research memo / annotation |
-| `case` | `CaseNode` | Analytical case grouping |
-| `group` | `GroupNode` | Visual grouping container |
-| `sticky` | `StickyNoteNode` | Free-form sticky note |
-| `reroute` | `RerouteNode` | Edge reroute waypoint |
+| Type         | Component        | Description                             |
+| ------------ | ---------------- | --------------------------------------- |
+| `transcript` | `TranscriptNode` | Text transcript with coding highlights  |
+| `question`   | `QuestionNode`   | Research question / code (hierarchical) |
+| `memo`       | `MemoNode`       | Research memo / annotation              |
+| `case`       | `CaseNode`       | Analytical case grouping                |
+| `group`      | `GroupNode`      | Visual grouping container               |
+| `sticky`     | `StickyNoteNode` | Free-form sticky note                   |
+| `reroute`    | `RerouteNode`    | Edge reroute waypoint                   |
 
 **Computed nodes (14, wrapped with error boundary):**
 
-| Type | Component | Description |
-|------|-----------|-------------|
-| `search` | `SearchResultNode` | Text search results |
-| `cooccurrence` | `CooccurrenceNode` | Code co-occurrence analysis |
-| `matrix` | `MatrixNode` | Code-by-document matrix |
-| `stats` | `StatsNode` | Descriptive statistics |
-| `comparison` | `ComparisonNode` | Cross-case comparison |
-| `wordcloud` | `WordCloudNode` | Word frequency visualization |
-| `cluster` | `ClusterNode` | Code clustering |
-| `codingquery` | `CodingQueryNode` | Boolean coding queries |
-| `sentiment` | `SentimentNode` | Sentiment analysis |
-| `treemap` | `TreemapNode` | Hierarchical code treemap |
-| `timeline` | `TimelineNode` | Temporal event timeline |
-| `geomap` | `GeoMapNode` | Geographic data mapping |
-| `document` | `DocumentNode` | PDF/image document viewer |
+| Type               | Component              | Description                     |
+| ------------------ | ---------------------- | ------------------------------- |
+| `search`           | `SearchResultNode`     | Text search results             |
+| `cooccurrence`     | `CooccurrenceNode`     | Code co-occurrence analysis     |
+| `matrix`           | `MatrixNode`           | Code-by-document matrix         |
+| `stats`            | `StatsNode`            | Descriptive statistics          |
+| `comparison`       | `ComparisonNode`       | Cross-case comparison           |
+| `wordcloud`        | `WordCloudNode`        | Word frequency visualization    |
+| `cluster`          | `ClusterNode`          | Code clustering                 |
+| `codingquery`      | `CodingQueryNode`      | Boolean coding queries          |
+| `sentiment`        | `SentimentNode`        | Sentiment analysis              |
+| `treemap`          | `TreemapNode`          | Hierarchical code treemap       |
+| `timeline`         | `TimelineNode`         | Temporal event timeline         |
+| `geomap`           | `GeoMapNode`           | Geographic data mapping         |
+| `document`         | `DocumentNode`         | PDF/image document viewer       |
 | `documentportrait` | `DocumentPortraitNode` | Document portrait visualization |
 
 ### 5.6 Build Configuration
 
 Vite config (`apps/frontend/vite.config.ts`):
+
 - **PWA**: Auto-update service worker, NetworkFirst API caching (5min TTL, 50 entries)
 - **Path alias**: `@` maps to `./src`
 - **Code splitting** (manual chunks):
@@ -515,29 +518,29 @@ WebSocket server is initialized in `apps/backend/src/lib/socket.ts` using Socket
 
 ### 6.1 WebSocket Events
 
-| Direction | Event | Payload | Description |
-|-----------|-------|---------|-------------|
-| Client -> Server | `canvas:join` | `{ canvasId }` | Join a canvas room (auto-leaves previous rooms) |
-| Client -> Server | `canvas:leave` | `{ canvasId }` | Leave a canvas room |
-| Client -> Server | `node:move` | `{ canvasId, nodeId, x, y }` | Broadcast node position change |
-| Client -> Server | `cursor:move` | `{ canvasId, x, y }` | Broadcast cursor position |
-| Client -> Server | `canvas:change` | `{ canvasId, changeType, payload }` | Generic change event (legacy) |
-| Client -> Server | `canvas:node-added` | `{ canvasId, data }` | New node added |
-| Client -> Server | `canvas:node-deleted` | `{ canvasId, data: { nodeId, nodeType } }` | Node deleted |
-| Client -> Server | `canvas:node-moved` | `{ canvasId, data: { nodeId, position } }` | Node repositioned |
-| Client -> Server | `canvas:coding-added` | `{ canvasId, data }` | New coding created |
-| Client -> Server | `canvas:coding-deleted` | `{ canvasId, data: { codingId } }` | Coding deleted |
-| Client -> Server | `canvas:transcript-updated` | `{ canvasId, data: { transcriptId } }` | Transcript content changed |
-| Server -> Client | `presence:updated` | `{ canvasId, users: PresenceEntry[] }` | Room presence changed |
-| Server -> Client | `presence:current` | `{ canvasId, users, self }` | Initial presence on join |
-| Server -> Client | `node:moved` | `{ userId, userName, nodeId, x, y }` | Another user moved a node |
-| Server -> Client | `cursor:moved` | `{ userId, userName, x, y }` | Another user's cursor position |
-| Server -> Client | `canvas:changed` | `{ userId, userName, changeType, payload }` | Generic change broadcast |
-| Server -> Client | `canvas:node-added` | `{ userId, userName, data }` | Node added by another user |
-| Server -> Client | `canvas:node-deleted` | `{ userId, userName, data }` | Node deleted by another user |
-| Server -> Client | `canvas:coding-added` | `{ userId, userName, data }` | Coding added by another user |
-| Server -> Client | `canvas:coding-deleted` | `{ userId, userName, data }` | Coding deleted by another user |
-| Server -> Client | `canvas:transcript-updated` | `{ userId, userName, data }` | Transcript updated by another user |
+| Direction        | Event                       | Payload                                     | Description                                     |
+| ---------------- | --------------------------- | ------------------------------------------- | ----------------------------------------------- |
+| Client -> Server | `canvas:join`               | `{ canvasId }`                              | Join a canvas room (auto-leaves previous rooms) |
+| Client -> Server | `canvas:leave`              | `{ canvasId }`                              | Leave a canvas room                             |
+| Client -> Server | `node:move`                 | `{ canvasId, nodeId, x, y }`                | Broadcast node position change                  |
+| Client -> Server | `cursor:move`               | `{ canvasId, x, y }`                        | Broadcast cursor position                       |
+| Client -> Server | `canvas:change`             | `{ canvasId, changeType, payload }`         | Generic change event (legacy)                   |
+| Client -> Server | `canvas:node-added`         | `{ canvasId, data }`                        | New node added                                  |
+| Client -> Server | `canvas:node-deleted`       | `{ canvasId, data: { nodeId, nodeType } }`  | Node deleted                                    |
+| Client -> Server | `canvas:node-moved`         | `{ canvasId, data: { nodeId, position } }`  | Node repositioned                               |
+| Client -> Server | `canvas:coding-added`       | `{ canvasId, data }`                        | New coding created                              |
+| Client -> Server | `canvas:coding-deleted`     | `{ canvasId, data: { codingId } }`          | Coding deleted                                  |
+| Client -> Server | `canvas:transcript-updated` | `{ canvasId, data: { transcriptId } }`      | Transcript content changed                      |
+| Server -> Client | `presence:updated`          | `{ canvasId, users: PresenceEntry[] }`      | Room presence changed                           |
+| Server -> Client | `presence:current`          | `{ canvasId, users, self }`                 | Initial presence on join                        |
+| Server -> Client | `node:moved`                | `{ userId, userName, nodeId, x, y }`        | Another user moved a node                       |
+| Server -> Client | `cursor:moved`              | `{ userId, userName, x, y }`                | Another user's cursor position                  |
+| Server -> Client | `canvas:changed`            | `{ userId, userName, changeType, payload }` | Generic change broadcast                        |
+| Server -> Client | `canvas:node-added`         | `{ userId, userName, data }`                | Node added by another user                      |
+| Server -> Client | `canvas:node-deleted`       | `{ userId, userName, data }`                | Node deleted by another user                    |
+| Server -> Client | `canvas:coding-added`       | `{ userId, userName, data }`                | Coding added by another user                    |
+| Server -> Client | `canvas:coding-deleted`     | `{ userId, userName, data }`                | Coding deleted by another user                  |
+| Server -> Client | `canvas:transcript-updated` | `{ userId, userName, data }`                | Transcript updated by another user              |
 
 ### 6.2 Presence System
 
@@ -547,7 +550,7 @@ Implemented in `apps/backend/src/lib/presence.ts` as an in-memory `Map<canvasId,
 interface PresenceEntry {
   userId: string;
   name: string;
-  color: string;        // Assigned from 10-color palette
+  color: string; // Assigned from 10-color palette
   cursor?: { x: number; y: number };
   joinedAt: number;
 }
@@ -584,6 +587,7 @@ POST /billing/create-checkout  ──►  Stripe Checkout Session
 ```
 
 Webhook events handled:
+
 - `checkout.session.completed` — Activate subscription
 - `customer.subscription.updated` — Plan changes, cancellations
 - `customer.subscription.deleted` — Subscription ended
@@ -596,11 +600,11 @@ Webhook deduplication via `WebhookEvent` table (Stripe event ID as primary key).
 
 Three providers supported, configurable per-user via `UserAiConfig`:
 
-| Provider | SDK | Features |
-|----------|-----|----------|
-| OpenAI | `openai` ^6.32.0 | Code suggestions, auto-coding, summarization, chat, embeddings |
-| Anthropic | `@anthropic-ai/sdk` ^0.80.0 | Code suggestions, auto-coding, summarization, chat |
-| Google | `@google/generative-ai` ^0.24.1 | Code suggestions, auto-coding, summarization |
+| Provider  | SDK                             | Features                                                       |
+| --------- | ------------------------------- | -------------------------------------------------------------- |
+| OpenAI    | `openai` ^6.32.0                | Code suggestions, auto-coding, summarization, chat, embeddings |
+| Anthropic | `@anthropic-ai/sdk` ^0.80.0     | Code suggestions, auto-coding, summarization, chat             |
+| Google    | `@google/generative-ai` ^0.24.1 | Code suggestions, auto-coding, summarization                   |
 
 Usage tracked per-request in `AiUsage` table (input/output tokens, cost).
 
@@ -649,6 +653,7 @@ Usage tracked per-request in `AiUsage` table (input/output tokens, cost).
 ### 7.9 Third-Party Integrations (Team plan)
 
 Stored in `Integration` model with OAuth tokens:
+
 - **Zoom** — Meeting recording import
 - **Slack** — Notifications
 - **Qualtrics** — Survey data import
@@ -659,12 +664,12 @@ Stored in `Integration` model with OAuth tokens:
 
 ### 8.1 Authentication
 
-| Mechanism | Details |
-|-----------|---------|
-| JWT sessions | Signed with `JWT_SECRET` and stored in secure HTTP-only cookies |
-| Password hashing | bcryptjs (cost factor default) |
-| Google OAuth | `google-auth-library` for token verification |
-| Session timeout | 30-minute inactivity timeout (communicated via `X-Session-Timeout` header) |
+| Mechanism        | Details                                                                    |
+| ---------------- | -------------------------------------------------------------------------- |
+| JWT sessions     | Signed with `JWT_SECRET` and stored in secure HTTP-only cookies            |
+| Password hashing | bcryptjs (cost factor default)                                             |
+| Google OAuth     | `google-auth-library` for token verification                               |
+| Session timeout  | 30-minute inactivity timeout (communicated via `X-Session-Timeout` header) |
 
 ### 8.2 CORS
 
@@ -675,6 +680,7 @@ Stored in `Integration` model with OAuth tokens:
 ### 8.3 CSRF Protection
 
 Origin-based validation on mutation methods (`POST`, `PUT`, `PATCH`, `DELETE`):
+
 1. Check `Origin` header against allowed origins
 2. Fall back to `Sec-Fetch-Site: same-origin/same-site`
 3. Fall back to `Referer` header origin check
@@ -700,31 +706,32 @@ HSTS enabled in production: `max-age=31536000; includeSubDomains`.
 
 The admin portal uses a separate authentication mechanism from the dual JWT auth system:
 
-| Mechanism | Details |
-|-----------|---------|
-| Header | `x-admin-key` — must match `ADMIN_API_KEY` environment variable |
-| Scope | All `/api/admin/*` endpoints |
-| Error | 403 if key is missing/invalid, 503 if `ADMIN_API_KEY` is not configured |
+| Mechanism | Details                                                                 |
+| --------- | ----------------------------------------------------------------------- |
+| Header    | `x-admin-key` — must match `ADMIN_API_KEY` environment variable         |
+| Scope     | All `/api/admin/*` endpoints                                            |
+| Error     | 403 if key is missing/invalid, 503 if `ADMIN_API_KEY` is not configured |
 
 The admin key is not a JWT and does not go through the standard auth middleware. The frontend stores the key in `sessionStorage` (cleared on tab close).
 
-**Important:** Admin routes must be mounted *before* the versioned API router (`v1Router`) in `index.ts`. This ensures `/api/admin/*` is not intercepted by the general auth middleware on the v1 router.
+**Important:** Admin routes must be mounted _before_ the versioned API router (`v1Router`) in `index.ts`. This ensures `/api/admin/*` is not intercepted by the general auth middleware on the v1 router.
 
 **Test user filtering:** Admin dashboard and billing endpoints automatically filter out test users (emails matching `*@test.com` or `test-*` patterns) from metrics like user counts and MRR, ensuring accurate production analytics.
 
 ### 8.6 Rate Limiting
 
-| Scope | Limit | Window |
-|-------|-------|--------|
-| General API (`/api/*`) | 500 requests | 15 minutes |
-| Compute endpoints (`/computed/:nid/run`) | 30 requests | 15 minutes |
-| Admin endpoints (`/api/admin/*`) | 30 requests | 1 minute |
+| Scope                                    | Limit        | Window     |
+| ---------------------------------------- | ------------ | ---------- |
+| General API (`/api/*`)                   | 500 requests | 15 minutes |
+| Compute endpoints (`/computed/:nid/run`) | 30 requests  | 15 minutes |
+| Admin endpoints (`/api/admin/*`)         | 30 requests  | 1 minute   |
 
 All limits are disabled when `NODE_ENV=test` or `E2E_TEST=true`.
 
 ### 8.7 API Key Encryption
 
 User AI API keys (`UserAiConfig`) are encrypted at rest using AES-256-GCM:
+
 - `apiKeyEncrypted` — ciphertext
 - `apiKeyIv` — initialization vector
 - `apiKeyTag` — authentication tag
@@ -752,15 +759,16 @@ User AI API keys (`UserAiConfig`) are encrypted at rest using AES-256-GCM:
 
 The `Dockerfile` uses 5 stages on Node 20 Alpine:
 
-| Stage | Purpose |
-|-------|---------|
-| `deps` | Install all dependencies (`npm ci --ignore-scripts`) |
-| `build-shared` | Compile shared types package |
-| `build-frontend` | Build Vite frontend (static assets) |
-| `build-backend` | Build backend TypeScript + Prisma generate |
-| `production` | Minimal image: production deps + compiled artifacts |
+| Stage            | Purpose                                              |
+| ---------------- | ---------------------------------------------------- |
+| `deps`           | Install all dependencies (`npm ci --ignore-scripts`) |
+| `build-shared`   | Compile shared types package                         |
+| `build-frontend` | Build Vite frontend (static assets)                  |
+| `build-backend`  | Build backend TypeScript + Prisma generate           |
+| `production`     | Minimal image: production deps + compiled artifacts  |
 
 Production image features:
+
 - `npm ci --omit=dev` for minimal node_modules
 - Prisma client generated for production
 - Runs as non-root `node` user
@@ -770,19 +778,21 @@ Production image features:
 ### 9.2 Docker Compose
 
 Services:
+
 - `db`: PostgreSQL 16 Alpine (port 5432, persistent volume `pgdata`)
 - `app`: Built from Dockerfile (port 3007, depends on `db`)
 
 ### 9.3 Production Deployment
 
-| Component | Platform | URL |
-|-----------|----------|-----|
-| Frontend | Vercel | qualcanvas.com |
-| Backend | Railway | canvas-app-production.up.railway.app |
-| DNS | Cloudflare | qualcanvas.com |
-| Database | Railway PostgreSQL | Internal connection string |
+| Component | Platform           | URL                                  |
+| --------- | ------------------ | ------------------------------------ |
+| Frontend  | Vercel             | qualcanvas.com                       |
+| Backend   | Railway            | canvas-app-production.up.railway.app |
+| DNS       | Cloudflare         | qualcanvas.com                       |
+| Database  | Railway PostgreSQL | Internal connection string           |
 
 **Vercel configuration** (`vercel.json`):
+
 - Build: `npm run build -w shared && npm run build -w apps/frontend`
 - Output: `apps/frontend/dist`
 - Rewrites: `/api/*` and `/health` proxied to Railway backend
@@ -814,24 +824,24 @@ All jobs use `ubuntu-latest` with Node 20 and npm caching. E2E test failures upl
 
 ### 10.1 Test Counts
 
-| Layer | Framework | Count | Location |
-|-------|-----------|-------|----------|
-| Backend unit | Vitest | 570 | `apps/backend/src/**/*.test.ts` |
-| Frontend unit | Vitest + Testing Library | 333 | `apps/frontend/src/**/*.test.ts` |
-| E2E | Playwright | ~564 | `e2e/` (39 spec files) |
-| **Total** | | **~1,467** | |
+| Layer         | Framework                | Count      | Location                         |
+| ------------- | ------------------------ | ---------- | -------------------------------- |
+| Backend unit  | Vitest                   | 570        | `apps/backend/src/**/*.test.ts`  |
+| Frontend unit | Vitest + Testing Library | 333        | `apps/frontend/src/**/*.test.ts` |
+| E2E           | Playwright               | ~564       | `e2e/` (39 spec files)           |
+| **Total**     |                          | **~1,467** |                                  |
 
 ### 10.2 Test Infrastructure
 
-| Tool | Purpose |
-|------|---------|
-| Vitest ^4.0.18 | Unit test runner (backend + frontend) |
-| @testing-library/react ^16.3.2 | React component testing |
-| @testing-library/user-event ^14.6.1 | User interaction simulation |
-| @testing-library/jest-dom ^6.9.1 | DOM assertion matchers |
-| jsdom ^29.0.1 | Browser environment simulation |
-| supertest ^7.2.2 | HTTP integration testing |
-| Playwright ^1.58.2 | E2E browser testing |
+| Tool                                | Purpose                               |
+| ----------------------------------- | ------------------------------------- |
+| Vitest ^4.0.18                      | Unit test runner (backend + frontend) |
+| @testing-library/react ^16.3.2      | React component testing               |
+| @testing-library/user-event ^14.6.1 | User interaction simulation           |
+| @testing-library/jest-dom ^6.9.1    | DOM assertion matchers                |
+| jsdom ^29.0.1                       | Browser environment simulation        |
+| supertest ^7.2.2                    | HTTP integration testing              |
+| Playwright ^1.58.2                  | E2E browser testing                   |
 
 ### 10.3 Playwright Configuration
 
@@ -871,15 +881,15 @@ npm run lint
 
 ### 10.5 Recent Bug Fixes (Canvas)
 
-| Component | Fix | Impact |
-|-----------|-----|--------|
-| `SetupWizard` | Conditional render — only shows for users with 0 canvases | Prevents wizard from appearing for returning users who already have data |
-| `canvasStore.refreshCanvas` | Error logging instead of throwing | Prevents UI disruption on background refresh failures |
-| `canvasStore.createCoding` | Clears `pendingSelection` after creation | Prevents stale text selection state after coding |
-| `canvasStore.openCanvas` | Clears `pendingSelection` on open | Prevents stale selection from previous canvas carrying over |
-| `OnboardingTour` | Added `validateCanvas` context check | Prevents tour errors when canvas context is unavailable |
-| `adminRoutes.ts` | 15 TypeScript `noImplicitAny` fixes | Improved type safety across all admin route handlers |
-| `index.ts` | Admin routes mounted before `v1Router` | Prevents admin endpoints from being intercepted by v1 auth middleware |
+| Component                   | Fix                                                       | Impact                                                                   |
+| --------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `SetupWizard`               | Conditional render — only shows for users with 0 canvases | Prevents wizard from appearing for returning users who already have data |
+| `canvasStore.refreshCanvas` | Error logging instead of throwing                         | Prevents UI disruption on background refresh failures                    |
+| `canvasStore.createCoding`  | Clears `pendingSelection` after creation                  | Prevents stale text selection state after coding                         |
+| `canvasStore.openCanvas`    | Clears `pendingSelection` on open                         | Prevents stale selection from previous canvas carrying over              |
+| `OnboardingTour`            | Added `validateCanvas` context check                      | Prevents tour errors when canvas context is unavailable                  |
+| `adminRoutes.ts`            | 15 TypeScript `noImplicitAny` fixes                       | Improved type safety across all admin route handlers                     |
+| `index.ts`                  | Admin routes mounted before `v1Router`                    | Prevents admin endpoints from being intercepted by v1 auth middleware    |
 
 ---
 
@@ -887,86 +897,86 @@ npm run lint
 
 ### Required
 
-| Variable | Description |
-|----------|-------------|
+| Variable       | Description                                                                |
+| -------------- | -------------------------------------------------------------------------- |
 | `DATABASE_URL` | PostgreSQL connection string (prod) or `file:./canvas-app.db` (dev SQLite) |
-| `JWT_SECRET` | 32+ char random string for JWT signing |
+| `JWT_SECRET`   | 32+ char random string for JWT signing                                     |
 
 ### Optional — Backend
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NODE_ENV` | `production` / `development` / `test` | `development` |
-| `PORT` | HTTP server port | `3007` |
-| `ALLOWED_ORIGINS` | Comma-separated frontend URLs for CORS | All origins in dev |
-| `REGISTRATION_ENABLED` | Enable new user signups (`true`/`false`) | `false` |
-| `APP_URL` | Public app URL (email links, Stripe redirects) | — |
-| `ENCRYPTION_KEY` | 32-byte hex key for AES-256-GCM encryption of API keys | — |
-| `E2E_TEST` | Enables E2E test mode (skips rate limits) | — |
+| Variable               | Description                                            | Default            |
+| ---------------------- | ------------------------------------------------------ | ------------------ |
+| `NODE_ENV`             | `production` / `development` / `test`                  | `development`      |
+| `PORT`                 | HTTP server port                                       | `3007`             |
+| `ALLOWED_ORIGINS`      | Comma-separated frontend URLs for CORS                 | All origins in dev |
+| `REGISTRATION_ENABLED` | Enable new user signups (`true`/`false`)               | `false`            |
+| `APP_URL`              | Public app URL (email links, Stripe redirects)         | —                  |
+| `ENCRYPTION_KEY`       | 32-byte hex key for AES-256-GCM encryption of API keys | —                  |
+| `E2E_TEST`             | Enables E2E test mode (skips rate limits)              | —                  |
 
 ### Optional — Stripe
 
-| Variable | Description |
-|----------|-------------|
-| `STRIPE_SECRET_KEY` | Stripe secret key |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| Variable                    | Description                           |
+| --------------------------- | ------------------------------------- |
+| `STRIPE_SECRET_KEY`         | Stripe secret key                     |
+| `STRIPE_WEBHOOK_SECRET`     | Stripe webhook signing secret         |
 | `STRIPE_ACADEMIC_COUPON_ID` | Coupon ID for .edu discount (40% off) |
 
 ### Optional — SMTP
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SMTP_HOST` | SMTP server hostname | — |
-| `SMTP_PORT` | SMTP port | `465` |
-| `SMTP_USER` | SMTP username | — |
-| `SMTP_PASS` | SMTP password | — |
-| `SMTP_FROM` | From address for emails | — |
+| Variable    | Description             | Default |
+| ----------- | ----------------------- | ------- |
+| `SMTP_HOST` | SMTP server hostname    | —       |
+| `SMTP_PORT` | SMTP port               | `465`   |
+| `SMTP_USER` | SMTP username           | —       |
+| `SMTP_PASS` | SMTP password           | —       |
+| `SMTP_FROM` | From address for emails | —       |
 
 ### Optional — Admin
 
-| Variable | Description |
-|----------|-------------|
+| Variable        | Description                                                          |
+| --------------- | -------------------------------------------------------------------- |
 | `ADMIN_API_KEY` | Secret key for admin portal access. Generate: `openssl rand -hex 32` |
 
 ### Optional — AI / OAuth
 
-| Variable | Description |
-|----------|-------------|
-| `OPENAI_API_KEY` | Default OpenAI API key (users can also provide their own) |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID for sign-in |
+| Variable           | Description                                               |
+| ------------------ | --------------------------------------------------------- |
+| `OPENAI_API_KEY`   | Default OpenAI API key (users can also provide their own) |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID for sign-in                        |
 
-### Optional — Frontend (VITE_ prefix)
+### Optional — Frontend (VITE\_ prefix)
 
-| Variable | Description |
-|----------|-------------|
-| `VITE_STRIPE_PRO_MONTHLY_PRICE_ID` | Stripe price ID for Pro monthly |
-| `VITE_STRIPE_PRO_ANNUAL_PRICE_ID` | Stripe price ID for Pro annual |
-| `VITE_STRIPE_TEAM_MONTHLY_PRICE_ID` | Stripe price ID for Team monthly |
-| `VITE_STRIPE_TEAM_ANNUAL_PRICE_ID` | Stripe price ID for Team annual |
-| `VITE_WS_URL` | WebSocket URL (points to Railway in production) |
+| Variable                            | Description                                     |
+| ----------------------------------- | ----------------------------------------------- |
+| `VITE_STRIPE_PRO_MONTHLY_PRICE_ID`  | Stripe price ID for Pro monthly                 |
+| `VITE_STRIPE_PRO_ANNUAL_PRICE_ID`   | Stripe price ID for Pro annual                  |
+| `VITE_STRIPE_TEAM_MONTHLY_PRICE_ID` | Stripe price ID for Team monthly                |
+| `VITE_STRIPE_TEAM_ANNUAL_PRICE_ID`  | Stripe price ID for Team annual                 |
+| `VITE_WS_URL`                       | WebSocket URL (points to Railway in production) |
 
 ---
 
 ## 12. Key Commands
 
-| Command | Description |
-|---------|-------------|
-| `npm install` | Install all workspace dependencies |
-| `npm run dev` | Start backend + frontend concurrently (builds shared first) |
-| `npm run dev:backend` | Start backend only (tsx watch) |
-| `npm run dev:frontend` | Start frontend only (Vite) |
-| `npm run build` | Full production build (shared -> backend -> frontend) |
-| `npm start` | Start production server (from apps/backend) |
-| `npm test` | Run all unit tests (570 backend + 333 frontend) |
-| `npm run test:e2e` | Run E2E tests (Chromium, ~564 tests) |
-| `npm run test:e2e:all` | Run E2E tests on all browsers |
-| `npm run test:e2e:firefox` | Run E2E tests on Firefox |
-| `npm run test:e2e:webkit` | Run E2E tests on WebKit |
-| `npm run test:e2e:mobile` | Run E2E tests on mobile viewports |
-| `npm run typecheck` | Type-check backend + frontend (`tsc -b`) |
-| `npm run lint` | ESLint across all packages |
-| `npm run lint:fix` | ESLint with auto-fix |
-| `npm run format` | Prettier format all TypeScript files |
-| `npm run format:check` | Prettier check (no write) |
-| `npm run db:migrate` | Run Prisma migrations (`prisma migrate dev`) |
-| `npm run db:seed` | Seed demo data (`tsx prisma/seed.ts`) |
+| Command                    | Description                                                 |
+| -------------------------- | ----------------------------------------------------------- |
+| `npm install`              | Install all workspace dependencies                          |
+| `npm run dev`              | Start backend + frontend concurrently (builds shared first) |
+| `npm run dev:backend`      | Start backend only (tsx watch)                              |
+| `npm run dev:frontend`     | Start frontend only (Vite)                                  |
+| `npm run build`            | Full production build (shared -> backend -> frontend)       |
+| `npm start`                | Start production server (from apps/backend)                 |
+| `npm test`                 | Run all unit tests (570 backend + 333 frontend)             |
+| `npm run test:e2e`         | Run E2E tests (Chromium, ~564 tests)                        |
+| `npm run test:e2e:all`     | Run E2E tests on all browsers                               |
+| `npm run test:e2e:firefox` | Run E2E tests on Firefox                                    |
+| `npm run test:e2e:webkit`  | Run E2E tests on WebKit                                     |
+| `npm run test:e2e:mobile`  | Run E2E tests on mobile viewports                           |
+| `npm run typecheck`        | Type-check backend + frontend (`tsc -b`)                    |
+| `npm run lint`             | ESLint across all packages                                  |
+| `npm run lint:fix`         | ESLint with auto-fix                                        |
+| `npm run format`           | Prettier format all TypeScript files                        |
+| `npm run format:check`     | Prettier check (no write)                                   |
+| `npm run db:migrate`       | Run Prisma migrations (`prisma migrate dev`)                |
+| `npm run db:seed`          | Seed demo data (`tsx prisma/seed.ts`)                       |
