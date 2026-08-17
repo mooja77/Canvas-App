@@ -3,6 +3,15 @@ import { test, expect, type Page } from '@playwright/test';
 // Only run visual regression on Chromium — other browsers render differently
 test.skip(({ browserName }) => browserName !== 'chromium', 'Visual regression: Chromium only');
 
+// Linux only. Screenshot baselines are per-platform, and CI (ubuntu-latest) is
+// the only place they are generated and refreshed — see update-e2e-snapshots.yml.
+// A parallel win32 set existed and drifted: font rasterisation differs from
+// Linux, so every UI change silently invalidated it and Windows contributors hit
+// nine failures that said nothing about their work. Rather than maintain two
+// authoritative sets, this suite is pinned to the platform CI actually runs on.
+// Running it elsewhere skips with a reason instead of failing misleadingly.
+test.skip(process.platform !== 'linux', `Visual regression baselines are Linux-only (this is ${process.platform})`);
+
 // ═══════════════════════════════════════════════════════════════════
 // Visual Regression Tests
 // Uses Playwright's built-in screenshot comparison (toHaveScreenshot).

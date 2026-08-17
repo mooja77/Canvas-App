@@ -332,7 +332,7 @@ test.describe('Scenario B: Grounded Theory — Teacher Burnout', () => {
       data: { sourceId: codeIds.adminPressure, targetId: codeIds.systemicIssues },
     });
     if (!res.ok()) {
-      test.skip();
+      test.skip(true, 'precondition not met: !res.ok()');
       return;
     }
     const body = await res.json();
@@ -351,7 +351,7 @@ test.describe('Scenario B: Grounded Theory — Teacher Burnout', () => {
       data: { sourceId: codeIds.parentConflict, targetId: codeIds.lackOfSupport },
     });
     if (!res.ok()) {
-      test.skip();
+      test.skip(true, 'precondition not met: !res.ok()');
       return;
     }
     const body = await res.json();
@@ -368,7 +368,7 @@ test.describe('Scenario B: Grounded Theory — Teacher Burnout', () => {
       data: { text: 'External Pressures' },
     });
     if (!res.ok()) {
-      test.skip();
+      test.skip(true, 'precondition not met: !res.ok()');
       return;
     }
     const body = await res.json();
@@ -382,7 +382,7 @@ test.describe('Scenario B: Grounded Theory — Teacher Burnout', () => {
       data: { parentQuestionId: codeIds.identityErosion },
     });
     if (!res1.ok()) {
-      test.skip();
+      test.skip(true, 'precondition not met: !res1.ok()');
       return;
     }
     expect((await res1.json()).data.parentQuestionId).toBe(codeIds.identityErosion);
@@ -393,7 +393,7 @@ test.describe('Scenario B: Grounded Theory — Teacher Burnout', () => {
       data: { parentQuestionId: codeIds.identityErosion },
     });
     if (!res2.ok()) {
-      test.skip();
+      test.skip(true, 'precondition not met: !res2.ok()');
       return;
     }
     expect((await res2.json()).data.parentQuestionId).toBe(codeIds.identityErosion);
@@ -405,7 +405,7 @@ test.describe('Scenario B: Grounded Theory — Teacher Burnout', () => {
       data: { text: 'Personal Impact' },
     });
     if (!res.ok()) {
-      test.skip();
+      test.skip(true, 'precondition not met: !res.ok()');
       return;
     }
     expect((await res.json()).data.text).toBe('Personal Impact');
@@ -418,7 +418,7 @@ test.describe('Scenario B: Grounded Theory — Teacher Burnout', () => {
       data: { parentQuestionId: codeIds.systemicIssues },
     });
     if (!res1.ok()) {
-      test.skip();
+      test.skip(true, 'precondition not met: !res1.ok()');
       return;
     }
 
@@ -428,7 +428,7 @@ test.describe('Scenario B: Grounded Theory — Teacher Burnout', () => {
       data: { parentQuestionId: codeIds.systemicIssues },
     });
     if (!res2.ok()) {
-      test.skip();
+      test.skip(true, 'precondition not met: !res2.ok()');
       return;
     }
   });

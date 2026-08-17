@@ -43,7 +43,7 @@ test.describe('Mobile Responsive', () => {
     const hamburger = page.locator('button[aria-label="Toggle menu"]');
 
     if (!(await hamburger.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await hamburger.isVisible({ timeout: 3000 }).catch(() => false))');
       return;
     }
 

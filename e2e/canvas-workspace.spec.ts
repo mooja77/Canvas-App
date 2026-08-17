@@ -177,7 +177,7 @@ test.describe('Canvas Workspace', () => {
   test('node drag preserves position', async ({ page }) => {
     const node = page.locator('.react-flow__node').first();
     if (!(await node.isVisible({ timeout: 2000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await node.isVisible({ timeout: 2000 }).catch(() => false))');
       return;
     }
     const box = await node.boundingBox();

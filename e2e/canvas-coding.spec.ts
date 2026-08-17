@@ -11,7 +11,7 @@ test.describe('Canvas Coding Workflow', () => {
     const transcriptNodes = page.locator('.react-flow__node[data-id^="transcript-"]');
     const count = await transcriptNodes.count();
     if (count === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: count === 0');
       return;
     }
 
@@ -29,7 +29,7 @@ test.describe('Canvas Coding Workflow', () => {
     const codeNodes = page.locator('.react-flow__node[data-id^="question-"]');
     const count = await codeNodes.count();
     if (count === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: count === 0');
       return;
     }
 
@@ -50,7 +50,7 @@ test.describe('Canvas Coding Workflow', () => {
       .isVisible({ timeout: 2000 })
       .catch(() => false);
     if (!hasNodes) {
-      test.skip();
+      test.skip(true, 'precondition not met: !hasNodes');
       return;
     }
 
@@ -79,7 +79,7 @@ test.describe('Canvas Coding Workflow', () => {
 
     const count = await codeItems.count();
     if (count === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: count === 0');
       return;
     }
 
@@ -141,7 +141,7 @@ test.describe('Canvas Coding Workflow', () => {
     const viewSegmentsBtns = page.locator('button[title="View coded segments"]');
     const count = await viewSegmentsBtns.count();
     if (count === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: count === 0');
       return;
     }
 

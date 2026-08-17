@@ -185,7 +185,7 @@ test.describe('Code Management', () => {
 
     const count = await codeItems.count();
     if (count === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: count === 0');
       return;
     }
 
@@ -199,7 +199,7 @@ test.describe('Code Management', () => {
 
     const colorDots = page.locator('[data-tour="canvas-navigator"] div[role="button"] .rounded-full').first();
     if (!(await colorDots.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await colorDots.isVisible({ timeout: 3000 }).catch(() => false))');
       return;
     }
 
@@ -254,7 +254,7 @@ test.describe('Code Management', () => {
       has: page.locator('.rounded-full'),
     });
     if ((await codeItems.count()) === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: (await codeItems.count()) === 0');
       return;
     }
 
@@ -270,7 +270,7 @@ test.describe('Code Management', () => {
     });
     const count = await codeItems.count();
     if (count === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: count === 0');
       return;
     }
 

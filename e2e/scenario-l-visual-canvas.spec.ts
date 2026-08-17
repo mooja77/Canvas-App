@@ -279,7 +279,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
     const node = page.locator('[data-id^="transcript-"]').first();
     const before = await node.boundingBox();
     if (!before) {
-      test.skip();
+      test.skip(true, 'precondition not met: !before');
       return;
     } // Node not in viewport even after fit
 
@@ -308,7 +308,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
 
     const after = await node.boundingBox();
     if (!after) {
-      test.skip();
+      test.skip(true, 'precondition not met: !after');
       return;
     }
     const moved = Math.abs(after!.x - before!.x) > 20 || Math.abs(after!.y - before!.y) > 20;
@@ -339,7 +339,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
 
     const after = await node.boundingBox();
     if (!after) {
-      test.skip();
+      test.skip(true, 'precondition not met: !after');
       return;
     }
     const moved = Math.abs(after!.x - before!.x) > 20 || Math.abs(after!.y - before!.y) > 20;
@@ -364,7 +364,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
 
     const after = await node.boundingBox();
     if (!after) {
-      test.skip();
+      test.skip(true, 'precondition not met: !after');
       return;
     }
     const moved = Math.abs(after!.x - before!.x) > 20 || Math.abs(after!.y - before!.y) > 20;
@@ -384,7 +384,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
 
     const selectedCount = await page.locator('.react-flow__node.selected').count();
     if (selectedCount < 2) {
-      test.skip();
+      test.skip(true, 'precondition not met: selectedCount < 2');
       return;
     }
 
@@ -409,7 +409,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
       beforePositions.push(position);
     }
     if (beforePositions.length < 2) {
-      test.skip();
+      test.skip(true, 'precondition not met: beforePositions.length < 2');
       return;
     }
 
@@ -424,7 +424,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
       }
     }
     if (dragTargetIndex === -1) {
-      test.skip();
+      test.skip(true, 'precondition not met: dragTargetIndex === -1');
       return;
     }
 
@@ -462,7 +462,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
     const node = page.locator('[data-id^="transcript-"]').first();
     const fullBox = await node.boundingBox();
     if (!fullBox) {
-      test.skip();
+      test.skip(true, 'precondition not met: !fullBox');
       return;
     }
 
@@ -477,12 +477,12 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
 
       const collapsedBox = await node.boundingBox();
       if (!collapsedBox) {
-        test.skip();
+        test.skip(true, 'precondition not met: !collapsedBox');
         return;
       }
       // Collapsed height should be significantly less
       if (collapsedBox.height >= fullBox.height) {
-        test.skip();
+        test.skip(true, 'precondition not met: collapsedBox.height >= fullBox.height');
         return;
       }
       expect(collapsedBox.height).toBeLessThan(fullBox.height);
@@ -497,11 +497,11 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
 
         const expandedBox = await node.boundingBox();
         if (!expandedBox) {
-          test.skip();
+          test.skip(true, 'precondition not met: !expandedBox');
           return;
         }
         if (expandedBox.height <= collapsedBox.height) {
-          test.skip();
+          test.skip(true, 'precondition not met: expandedBox.height <= collapsedBox.height');
           return;
         }
         expect(expandedBox.height).toBeGreaterThan(collapsedBox.height);
@@ -521,19 +521,19 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
           collapseControlBox.x > viewport.width ||
           collapseControlBox.y > viewport.height
         ) {
-          test.skip();
+          test.skip(true, 'precondition not met');
           return;
         }
         await nodeCollapse.click({ force: true });
         await page.waitForTimeout(500);
         const collapsedBox = await node.boundingBox();
         if (!collapsedBox || collapsedBox.height >= fullBox.height) {
-          test.skip();
+          test.skip(true, 'precondition not met: !collapsedBox || collapsedBox.height >= fullBox.height');
           return;
         }
         expect(collapsedBox.height).toBeLessThan(fullBox.height);
       } else {
-        test.skip();
+        test.skip(true, 'precondition not met: !collapsedBox || collapsedBox.height >= fullBox.height');
       }
     }
   });
@@ -592,7 +592,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
     } else {
       // Close the dropdown
       await page.keyboard.press('Escape');
-      test.skip();
+      test.skip(true, 'precondition not met');
     }
   });
 
@@ -626,7 +626,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
     // Viewport should have panned (x or y changed)
     const panned = Math.abs(after!.x - before!.x) > 5 || Math.abs(after!.y - before!.y) > 5;
     if (!panned) {
-      test.skip();
+      test.skip(true, 'precondition not met: !panned');
       return;
     }
     expect(panned).toBe(true);
@@ -660,7 +660,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
       const afterOut = parseInt((await zoomText.textContent()) || '100');
       expect(afterOut).toBeLessThan(afterIn);
     } else {
-      test.skip();
+      test.skip(true, 'precondition not met');
     }
   });
 
@@ -877,7 +877,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
         await lightModeBtn.click();
         await page.waitForTimeout(300);
       } else {
-        test.skip();
+        test.skip(true, 'precondition not met');
       }
     } else {
       // Already in dark mode, verify, then toggle back
@@ -948,7 +948,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
         .isVisible({ timeout: 1000 })
         .catch(() => false));
     if (!menuVisible) {
-      test.skip();
+      test.skip(true, 'precondition not met: !menuVisible');
       return;
     }
     expect(menuVisible).toBe(true);
@@ -1007,7 +1007,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
       await page.waitForTimeout(300);
     } else {
       await page.keyboard.press('Escape');
-      test.skip();
+      test.skip(true, 'precondition not met');
     }
   });
 
@@ -1033,7 +1033,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
     }
 
     if (nodeIndex === -1 || !before) {
-      test.skip();
+      test.skip(true, 'precondition not met: nodeIndex === -1 || !before');
       return;
     }
 
@@ -1045,7 +1045,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
 
     const afterDrag = await node.boundingBox();
     if (!afterDrag) {
-      test.skip();
+      test.skip(true, 'precondition not met: !afterDrag');
       return;
     }
 
@@ -1058,7 +1058,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
 
       const afterUndo = await node.boundingBox();
       if (!afterUndo) {
-        test.skip();
+        test.skip(true, 'precondition not met: !afterUndo');
         return;
       }
       // The node should be closer to its original position than the dragged position
@@ -1083,7 +1083,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
     // Selected node should have a selection indicator (class 'selected' on the node wrapper)
     const isSelected = await node.evaluate((el) => el.classList.contains('selected'));
     if (!isSelected) {
-      test.skip();
+      test.skip(true, 'precondition not met: !isSelected');
       return;
     }
 
@@ -1100,7 +1100,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
     // exposed because rf.fitView() makes clicks land reliably (Sprint 1A).
     const isDeselected = await node.evaluate((el) => !el.classList.contains('selected'));
     if (!isDeselected) {
-      test.skip();
+      test.skip(true, 'precondition not met: !isDeselected');
       return;
     }
 
@@ -1110,7 +1110,7 @@ test.describe('Scenario L: Visual Canvas Interactions', () => {
 
     const selectedCount = await page.locator('.react-flow__node.selected').count();
     if (selectedCount === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: selectedCount === 0');
       return;
     }
   });

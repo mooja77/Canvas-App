@@ -296,7 +296,7 @@ test.describe('UX Phase 3 — Power User Features', () => {
     await openCanvasById(page, canvasId);
     const edgeCount = await ensureEdgesVisible(page);
     if (edgeCount === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: edgeCount === 0');
       return;
     }
 
@@ -317,7 +317,7 @@ test.describe('UX Phase 3 — Power User Features', () => {
     // At least one edge should have stroke-width > 1.5 (bundled edges with count > 1)
     const hasThickEdge = strokeWidths.some((w) => w > 1.5);
     if (!hasThickEdge) {
-      test.skip();
+      test.skip(true, 'precondition not met: !hasThickEdge');
       return;
     }
     expect(hasThickEdge).toBe(true);
@@ -336,7 +336,7 @@ test.describe('UX Phase 3 — Power User Features', () => {
     await openCanvasById(page, canvasId);
     const edgeCount = await ensureEdgesVisible(page);
     if (edgeCount === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: edgeCount === 0');
       return;
     }
 
@@ -429,7 +429,7 @@ test.describe('UX Phase 3 — Power User Features', () => {
     });
     const nodeCount = await nodes.count();
     if (nodeCount < 2) {
-      test.skip();
+      test.skip(true, 'precondition not met: nodeCount < 2');
       return;
     }
 
@@ -506,7 +506,7 @@ test.describe('UX Phase 3 — Power User Features', () => {
     await openCanvasById(page, canvasId);
     const nodeCount = await page.locator('.react-flow__node').count();
     if (nodeCount === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: nodeCount === 0');
       return;
     }
 
@@ -525,13 +525,13 @@ test.describe('UX Phase 3 — Power User Features', () => {
     // Move a node to create an undoable action
     const node = page.locator('.react-flow__node').first();
     if (!(await node.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await node.isVisible({ timeout: 3000 }).catch(() => false))');
       return;
     }
 
     const box = await node.boundingBox();
     if (!box) {
-      test.skip();
+      test.skip(true, 'precondition not met: !box');
       return;
     }
 
@@ -573,7 +573,7 @@ test.describe('UX Phase 3 — Power User Features', () => {
 
     const navigator = page.locator('[data-tour="canvas-navigator"]');
     if (!(await navigator.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await navigator.isVisible({ timeout: 3000 }).catch(() => false))');
       return;
     }
 

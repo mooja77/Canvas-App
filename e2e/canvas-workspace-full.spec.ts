@@ -315,7 +315,7 @@ test.describe('Canvas Workspace Full', () => {
         .isVisible({ timeout: 3000 })
         .catch(() => false))
     ) {
-      test.skip();
+      test.skip(true, 'precondition not met');
       return;
     }
 
@@ -387,7 +387,7 @@ test.describe('Canvas Workspace Full', () => {
 
     const scrollBtn = page.getByRole('button', { name: /Scroll: Zoom/i });
     if (!(await scrollBtn.isVisible({ timeout: 2000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await scrollBtn.isVisible({ timeout: 2000 }).catch(() => false))');
       return;
     }
 

@@ -147,13 +147,11 @@ test.describe('Coding Workflow', () => {
 
   test('transcript node exists with text content', async ({ page }) => {
     const transcriptNodes = page.locator('.react-flow__node[data-id^="transcript-"]');
-    const count = await transcriptNodes.count();
-    if (count === 0) {
-      test.skip();
-      return;
-    }
-
-    await expect(transcriptNodes.first()).toBeAttached({ timeout: 5000 });
+    // beforeAll seeds a transcript, so its node must render. This used to
+    // test.skip() on a zero count, which turned "the node vanished" into a
+    // silent pass.
+    await expect(transcriptNodes.first()).toBeAttached({ timeout: 10000 });
+    expect(await transcriptNodes.count()).toBeGreaterThan(0);
 
     const textContent = await transcriptNodes.first().textContent();
     expect(textContent).toBeTruthy();
@@ -162,13 +160,9 @@ test.describe('Coding Workflow', () => {
 
   test('code node exists on canvas', async ({ page }) => {
     const codeNodes = page.locator('.react-flow__node[data-id^="question-"]');
-    const count = await codeNodes.count();
-    if (count === 0) {
-      test.skip();
-      return;
-    }
-
-    await expect(codeNodes.first()).toBeAttached({ timeout: 5000 });
+    // beforeAll seeds two codes, so at least one code node must render.
+    await expect(codeNodes.first()).toBeAttached({ timeout: 10000 });
+    expect(await codeNodes.count()).toBeGreaterThan(0);
 
     const textContent = await codeNodes.first().textContent();
     expect(textContent).toBeTruthy();
@@ -183,12 +177,10 @@ test.describe('Coding Workflow', () => {
 
     // The status bar shows coding count as the third number
     // If no codings, skip
-    const hasTranscripts = (await page.locator('.react-flow__node[data-id^="transcript-"]').count()) > 0;
-    const hasCodes = (await page.locator('.react-flow__node[data-id^="question-"]').count()) > 0;
-    if (!hasTranscripts || !hasCodes) {
-      test.skip();
-      return;
-    }
+    // Both are seeded in beforeAll; assert rather than skip so their absence
+    // fails loudly.
+    await expect(page.locator('.react-flow__node[data-id^="transcript-"]').first()).toBeAttached({ timeout: 10000 });
+    await expect(page.locator('.react-flow__node[data-id^="question-"]').first()).toBeAttached({ timeout: 10000 });
 
     // Fit view to ensure everything is rendered
     await page.getByRole('button', { name: 'Fit View' }).click();
@@ -222,7 +214,7 @@ test.describe('Coding Workflow', () => {
 
     const navigatorEl = page.locator('[data-tour="canvas-navigator"]');
     if (!(await navigatorEl.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await navigatorEl.isVisible({ timeout: 3000 }).catch(() => false))');
       return;
     }
 
@@ -245,7 +237,7 @@ test.describe('Coding Workflow', () => {
 
     const codedPctText = statusBar.getByText(/\d+%\s*coded/);
     if (!(await codedPctText.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await codedPctText.isVisible({ timeout: 3000 }).catch(() => false))');
       return;
     }
 
@@ -270,7 +262,7 @@ test.describe('Coding Workflow', () => {
     });
     const count = await codeItems.count();
     if (count === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: count === 0');
       return;
     }
 
@@ -291,7 +283,7 @@ test.describe('Coding Workflow', () => {
       .locator('[data-tour="canvas-navigator"] div[role="button"]')
       .filter({ hasText: 'Research Methods' });
     if (!(await researchItem.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await researchItem.isVisible({ timeout: 3000 }).catch(() => false))');
       return;
     }
     await researchItem.click();
@@ -328,7 +320,7 @@ test.describe('Coding Workflow', () => {
     const codeNodes = page.locator('.react-flow__node[data-id^="question-"]');
     const count = await codeNodes.count();
     if (count < 2) {
-      test.skip();
+      test.skip(true, 'precondition not met: count < 2');
       return;
     }
 
@@ -356,13 +348,13 @@ test.describe('Coding Workflow', () => {
 
     const node = page.locator('.react-flow__node').first();
     if (!(await node.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await node.isVisible({ timeout: 3000 }).catch(() => false))');
       return;
     }
 
     const box = await node.boundingBox();
     if (!box) {
-      test.skip();
+      test.skip(true, 'precondition not met: !box');
       return;
     }
 
@@ -381,7 +373,7 @@ test.describe('Coding Workflow', () => {
   test('coding stripes toggle works via Tools dropdown', async ({ page }) => {
     const toolsBtn = page.getByText('Tools').first();
     if (!(await toolsBtn.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip();
+      test.skip(true, 'precondition not met: !(await toolsBtn.isVisible({ timeout: 3000 }).catch(() => false))');
       return;
     }
     await toolsBtn.click();
@@ -389,7 +381,7 @@ test.describe('Coding Workflow', () => {
     const stripesOption = page.getByText(/Show Coding Stripes|Hide Coding Stripes/);
     if (!(await stripesOption.isVisible({ timeout: 3000 }).catch(() => false))) {
       await page.keyboard.press('Escape');
-      test.skip();
+      test.skip(true, 'precondition not met: !(await stripesOption.isVisible({ timeout: 3000 }).catch(() => false))');
       return;
     }
 
@@ -409,7 +401,7 @@ test.describe('Coding Workflow', () => {
   test('auto-arrange places nodes and shows toast', async ({ page }) => {
     const nodeCount = await page.locator('.react-flow__node').count();
     if (nodeCount === 0) {
-      test.skip();
+      test.skip(true, 'precondition not met: nodeCount === 0');
       return;
     }
 

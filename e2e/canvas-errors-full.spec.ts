@@ -136,7 +136,7 @@ test.describe('Canvas Error Handling', () => {
       if (await tourBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await tourBtn.click();
       } else {
-        test.skip();
+        test.skip(true, 'precondition not met: await tourBtn.isVisible({ timeout: 2000 }).catch(() => false)');
         return;
       }
     } else {
