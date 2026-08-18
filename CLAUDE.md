@@ -17,6 +17,8 @@ Qualitative coding canvas for researchers. React 18 + Vite frontend, Express + P
 - `npm run typecheck` — type-check backend + frontend
 - `npm run lint` — ESLint across all packages
 - `npm run build` — full production build
+- `npm run sw:repro -- --root <dist>` — serve a build the way Cloudflare Pages does, to reproduce
+  service-worker stale-bundle failures locally. CI cannot cover these; see `scripts/sw-repro/README.md`.
 - Demo login: supply `DEMO_ACCESS_CODE` through the environment; never commit the value.
 
 ## Ports
