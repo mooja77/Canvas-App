@@ -31,6 +31,7 @@
     "typecheck": "tsc -b apps/backend apps/frontend",
     "smoke-test": "bash scripts/smoke-test.sh",
     "smoke:postdeploy": "node scripts/post-deploy-smoke.mjs",
+    "sw:repro": "node scripts/sw-repro/serve-like-pages.mjs",
     "prepare": "husky"
   },
   "devDependencies": {
