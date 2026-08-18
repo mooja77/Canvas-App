@@ -1,5 +1,5 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
-import { applyServiceWorkerUpdate } from './swUpdate';
+import { activateWaitingWorker } from './swUpdate';
 
 /**
  * `React.lazy` that can survive a deploy.
@@ -35,6 +35,14 @@ import { applyServiceWorkerUpdate } from './swUpdate';
 
 export const CHUNK_RECOVERY_FLAG = 'qc-chunk-recovery-attempted';
 
+/** Thrown when there is no newer bundle to recover onto. */
+export class ChunkRecoveryUnavailableError extends Error {
+  constructor() {
+    super('No service-worker update available to recover onto');
+    this.name = 'ChunkRecoveryUnavailableError';
+  }
+}
+
 function hasAttemptedRecovery(): boolean {
   try {
     return sessionStorage.getItem(CHUNK_RECOVERY_FLAG) === '1';
@@ -61,12 +69,20 @@ export function clearChunkRecoveryFlag(): void {
   }
 }
 
-/** Visible for testing — the recovery half, without the React.lazy wrapper. */
+/**
+ * Visible for testing. Returns only if recovery is impossible - when it is
+ * possible the page navigates away and this never settles.
+ */
 export async function recoverFromChunkLoadFailure(): Promise<never> {
+  // Only spend a reload (and the one-shot guard) when a new version actually
+  // exists. If nothing is waiting we are already on the newest bundle, so the
+  // chunk is unreachable for another reason and reloading would just cost the
+  // user a flash of skeleton before failing again.
+  const newVersionExists = await activateWaitingWorker();
+  if (!newVersionExists) throw new ChunkRecoveryUnavailableError();
+
   markRecoveryAttempted();
-  await applyServiceWorkerUpdate();
-  // applyServiceWorkerUpdate navigates away. Never settling keeps <Suspense>
-  // on its fallback rather than flashing an error boundary on the way out.
+  window.location.reload();
   return new Promise<never>(() => {});
 }
 
@@ -85,7 +101,11 @@ export function lazyRoute<T extends ComponentType<any>>(
       },
       (error: unknown) => {
         if (hasAttemptedRecovery()) throw error;
-        return recoverFromChunkLoadFailure();
+        // Surface the original chunk error, not the sentinel, so the boundary
+        // and Sentry see the real failure.
+        return recoverFromChunkLoadFailure().catch(() => {
+          throw error;
+        });
       },
     ),
   );

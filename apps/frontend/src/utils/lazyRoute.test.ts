@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CHUNK_RECOVERY_FLAG, clearChunkRecoveryFlag, recoverFromChunkLoadFailure } from './lazyRoute';
-import { applyServiceWorkerUpdate } from './swUpdate';
+import { activateWaitingWorker } from './swUpdate';
 
 // Reproduces the live /login failure: a stale precached index.html points at a
 // build whose chunks Cloudflare Pages has purged, Pages answers the miss with
@@ -50,66 +50,78 @@ afterEach(() => {
   Reflect.deleteProperty(navigator, 'serviceWorker');
 });
 
-describe('applyServiceWorkerUpdate', () => {
-  it('skips waiting and reloads once the new worker takes control', async () => {
+describe('activateWaitingWorker', () => {
+  it('skips waiting and reports that a new version exists', async () => {
     installServiceWorker({ waiting: true });
-    const done = applyServiceWorkerUpdate(10_000);
+    const done = activateWaitingWorker(10_000);
 
     await vi.waitFor(() => expect(registration.waiting?.postMessage).toHaveBeenCalled());
     expect(registration.waiting?.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
-    // Nothing should have reloaded yet - reloading before the new worker
-    // controls the page just re-serves the same stale index.html.
-    expect(reload).not.toHaveBeenCalled();
 
     listeners.controllerchange();
-    await done;
-    expect(reload).toHaveBeenCalledTimes(1);
+    await expect(done).resolves.toBe(true);
+    // Activation must not reload by itself - the caller decides.
+    expect(reload).not.toHaveBeenCalled();
   });
 
   it('forces an update check when no worker is waiting yet', async () => {
     // The chunk rejects within ms of boot, while registerSW is still probing,
     // so `waiting` is routinely still null at this point.
     installServiceWorker({ waiting: false, waitingAfterUpdate: true });
-    const done = applyServiceWorkerUpdate(10_000);
+    const done = activateWaitingWorker(10_000);
 
     await vi.waitFor(() => expect(registration.update).toHaveBeenCalled());
     await vi.waitFor(() => expect(registration.waiting?.postMessage).toHaveBeenCalled());
     listeners.controllerchange();
-    await done;
-    expect(reload).toHaveBeenCalledTimes(1);
+    await expect(done).resolves.toBe(true);
   });
 
-  it('reloads anyway if the worker never takes control', async () => {
+  it('still reports true on timeout - a new version demonstrably exists', async () => {
     installServiceWorker({ waiting: true });
-    await applyServiceWorkerUpdate(10);
-    expect(reload).toHaveBeenCalledTimes(1);
+    await expect(activateWaitingWorker(10)).resolves.toBe(true);
   });
 
-  it('reloads when there is no registration at all', async () => {
+  it('reports false when nothing is waiting', async () => {
+    installServiceWorker({ waiting: false });
+    await expect(activateWaitingWorker(10)).resolves.toBe(false);
+  });
+
+  it('reports false when there is no registration at all', async () => {
     installServiceWorker({ waiting: false });
     (navigator.serviceWorker.getRegistration as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
-    await applyServiceWorkerUpdate(10);
-    expect(reload).toHaveBeenCalledTimes(1);
+    await expect(activateWaitingWorker(10)).resolves.toBe(false);
   });
 
-  it('reloads when service workers are unavailable', async () => {
+  it('reports false when service workers are unavailable', async () => {
     Reflect.deleteProperty(navigator, 'serviceWorker');
-    await applyServiceWorkerUpdate(10);
-    expect(reload).toHaveBeenCalledTimes(1);
+    await expect(activateWaitingWorker(10)).resolves.toBe(false);
   });
 });
 
 describe('recoverFromChunkLoadFailure', () => {
-  it('marks the attempt so a second failure cannot loop', async () => {
-    installServiceWorker({ waiting: false });
+  it('reloads and marks the attempt when a new version exists', async () => {
+    installServiceWorker({ waiting: true });
     void recoverFromChunkLoadFailure();
-    await vi.waitFor(() => expect(reload).toHaveBeenCalled());
+    // Let the new worker take control, rather than sitting out the 10s bound.
+    await vi.waitFor(() => expect(registration.waiting?.postMessage).toHaveBeenCalled());
+    listeners.controllerchange();
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
     expect(sessionStorage.getItem(CHUNK_RECOVERY_FLAG)).toBe('1');
+  });
+
+  it('does NOT reload or spend the guard when there is no new version', async () => {
+    // Offline, or any unreachable-chunk cause: reloading cannot conjure the
+    // chunk, and the one-shot guard must stay available for a real stale
+    // bundle later in this session.
+    installServiceWorker({ waiting: false });
+    await expect(recoverFromChunkLoadFailure()).rejects.toThrow(/No service-worker update/);
+    expect(reload).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem(CHUNK_RECOVERY_FLAG)).toBeNull();
   });
 });
 
 describe('lazyRoute factory behaviour', () => {
-  // Exercise the promise wiring lazyRoute installs, without React.lazy's
+  // Mirrors the promise wiring lazyRoute installs, without React.lazy's
   // Suspense machinery - the branching is what matters here.
   const wrap = <T>(factory: () => Promise<T>) =>
     factory().then(
@@ -119,31 +131,47 @@ describe('lazyRoute factory behaviour', () => {
       },
       (error: unknown) => {
         if (sessionStorage.getItem(CHUNK_RECOVERY_FLAG) === '1') throw error;
-        return recoverFromChunkLoadFailure();
+        return recoverFromChunkLoadFailure().catch(() => {
+          throw error;
+        });
       },
     );
 
-  beforeEach(() => installServiceWorker({ waiting: false }));
-
   it('passes a successful import straight through', async () => {
+    installServiceWorker({ waiting: false });
     const mod = { default: 'Page' };
     await expect(wrap(async () => mod)).resolves.toBe(mod);
   });
 
   it('clears the flag once a chunk loads, re-arming recovery', async () => {
+    installServiceWorker({ waiting: false });
     sessionStorage.setItem(CHUNK_RECOVERY_FLAG, '1');
     await wrap(async () => ({ default: 'Page' }));
     expect(sessionStorage.getItem(CHUNK_RECOVERY_FLAG)).toBeNull();
   });
 
-  it('recovers on the first chunk-load failure', async () => {
+  it('recovers on the first chunk-load failure when an update is waiting', async () => {
+    installServiceWorker({ waiting: true });
     void wrap(async () => {
       throw chunkLoadError;
     });
+    await vi.waitFor(() => expect(registration.waiting?.postMessage).toHaveBeenCalled());
+    listeners.controllerchange();
     await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
   });
 
+  it('surfaces the ORIGINAL chunk error when recovery is impossible', async () => {
+    installServiceWorker({ waiting: false });
+    await expect(
+      wrap(async () => {
+        throw chunkLoadError;
+      }),
+    ).rejects.toThrow('Failed to fetch dynamically imported module');
+    expect(reload).not.toHaveBeenCalled();
+  });
+
   it('rethrows the second failure instead of reloading again', async () => {
+    installServiceWorker({ waiting: false });
     sessionStorage.setItem(CHUNK_RECOVERY_FLAG, '1');
     await expect(
       wrap(async () => {
