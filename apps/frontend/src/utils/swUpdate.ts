@@ -52,31 +52,40 @@ async function findWaitingWorker(
   return registration.waiting ?? null;
 }
 
-export async function applyServiceWorkerUpdate(timeoutMs: number = SW_ACTIVATION_TIMEOUT_MS): Promise<void> {
+/**
+ * Activate a waiting worker, if there is one.
+ *
+ * Returns whether a new version actually existed. That answer is the useful
+ * one: if nothing is waiting we are already running the newest bundle, so the
+ * missing chunk is unreachable for some other reason (offline, a network
+ * blip) and reloading cannot conjure it up. Callers use this to decide between
+ * reloading and surfacing the failure.
+ *
+ * `navigator.onLine` is deliberately NOT used for that decision - it reports
+ * whether a network interface exists, not whether the origin is reachable, so
+ * it stays `true` for most real-world "offline" cases.
+ */
+export async function activateWaitingWorker(timeoutMs: number = SW_ACTIVATION_TIMEOUT_MS): Promise<boolean> {
   const container = typeof navigator === 'undefined' ? undefined : navigator.serviceWorker;
+  if (!container) return false;
 
-  if (container) {
-    try {
-      const registration = await container.getRegistration();
-      const waiting = registration ? await findWaitingWorker(registration, timeoutMs) : null;
+  try {
+    const registration = await container.getRegistration();
+    const waiting = registration ? await findWaitingWorker(registration, timeoutMs) : null;
+    if (!waiting) return false;
 
-      if (waiting) {
-        const controllerChanged = new Promise<void>((resolve) => {
-          container.addEventListener('controllerchange', () => resolve(), { once: true });
-        });
-        const timedOut = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
+    const controllerChanged = new Promise<void>((resolve) => {
+      container.addEventListener('controllerchange', () => resolve(), { once: true });
+    });
+    const timedOut = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
 
-        waiting.postMessage({ type: 'SKIP_WAITING' });
-        await Promise.race([controllerChanged, timedOut]);
-      }
-    } catch {
-      // Fall through to the reload - a broken update path must never leave the
-      // user stranded on a dead route.
-    }
+    waiting.postMessage({ type: 'SKIP_WAITING' });
+    await Promise.race([controllerChanged, timedOut]);
+
+    // True even on timeout: a new version demonstrably exists, so reloading is
+    // still the right move.
+    return true;
+  } catch {
+    return false;
   }
-
-  // Reached when the new worker took control, when the wait timed out, and when
-  // there was no worker to activate. A reload is right in each case; only the
-  // first is expected to actually fix anything.
-  window.location.reload();
 }

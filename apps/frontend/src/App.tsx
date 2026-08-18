@@ -4,6 +4,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import UpgradePrompt from './components/UpgradePrompt';
 import OfflineBanner from './components/OfflineBanner';
 import { PageSkeleton } from './components/LoadingSkeleton';
+import RouteErrorFallback from './components/RouteErrorFallback';
 import { useAuthStore } from './stores/authStore';
 import { lazyRoute } from './utils/lazyRoute';
 
@@ -54,100 +55,106 @@ export default function App() {
       <BrowserRouter>
         <OfflineBanner />
         <UpgradePrompt />
-        <Suspense fallback={<PageSkeleton />}>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/pricing" element={<PricingPage />} />
-            <Route path="/cite" element={<CitePage />} />
-            <Route path="/colophon" element={<ColophonPage />} />
-            <Route path="/accessibility-statement" element={<AccessibilityStatementPage />} />
-            <Route path="/press" element={<PressPage />} />
-            <Route path="/trust/ai" element={<TrustAIPage />} />
-            <Route path="/for-teams" element={<ForTeamsPage />} />
-            <Route path="/for-institutions" element={<ForInstitutionsPage />} />
-            <Route path="/methodology" element={<MethodologyIndexPage />} />
-            <Route
-              path="/methodology/:slug"
-              element={
-                <Suspense fallback={<PageSkeleton />}>
-                  <MethodologyChapterPage />
-                </Suspense>
-              }
-            />
-            <Route path="/customers" element={<CustomersIndexPage />} />
-            <Route path="/changelog" element={<ChangelogPage />} />
-            <Route path="/vs" element={<VsIndexPage />} />
-            {/* Per-competitor pages aren't published yet — redirect to the /vs index so these URLs don't 404. */}
-            <Route path="/vs/:competitor" element={<VsCompetitorRedirect />} />
-            <Route path="/subscribe" element={<SubscribePage />} />
-            <Route
-              path="/account"
-              element={
-                <ProtectedRoute>
+        {/* Route failures are caught here rather than by the outer boundary so
+            the app chrome survives them. The outer one replaced the whole tree
+            - including OfflineBanner - which meant a chunk that failed while
+            offline destroyed the one element explaining why. */}
+        <ErrorBoundary fallback={<RouteErrorFallback />}>
+          <Suspense fallback={<PageSkeleton />}>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/cite" element={<CitePage />} />
+              <Route path="/colophon" element={<ColophonPage />} />
+              <Route path="/accessibility-statement" element={<AccessibilityStatementPage />} />
+              <Route path="/press" element={<PressPage />} />
+              <Route path="/trust/ai" element={<TrustAIPage />} />
+              <Route path="/for-teams" element={<ForTeamsPage />} />
+              <Route path="/for-institutions" element={<ForInstitutionsPage />} />
+              <Route path="/methodology" element={<MethodologyIndexPage />} />
+              <Route
+                path="/methodology/:slug"
+                element={
                   <Suspense fallback={<PageSkeleton />}>
-                    <AccountPage />
+                    <MethodologyChapterPage />
                   </Suspense>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/canvas/:canvasId?"
-              element={
-                <ProtectedRoute>
+                }
+              />
+              <Route path="/customers" element={<CustomersIndexPage />} />
+              <Route path="/changelog" element={<ChangelogPage />} />
+              <Route path="/vs" element={<VsIndexPage />} />
+              {/* Per-competitor pages aren't published yet — redirect to the /vs index so these URLs don't 404. */}
+              <Route path="/vs/:competitor" element={<VsCompetitorRedirect />} />
+              <Route path="/subscribe" element={<SubscribePage />} />
+              <Route
+                path="/account"
+                element={
+                  <ProtectedRoute>
+                    <Suspense fallback={<PageSkeleton />}>
+                      <AccountPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/canvas/:canvasId?"
+                element={
+                  <ProtectedRoute>
+                    <Suspense fallback={<PageSkeleton />}>
+                      <CanvasPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/repository"
+                element={
+                  <ProtectedRoute>
+                    <Suspense fallback={<PageSkeleton />}>
+                      <RepositoryPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/team"
+                element={
+                  <ProtectedRoute>
+                    <Suspense fallback={<PageSkeleton />}>
+                      <TeamPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/trust" element={<TrustPage />} />
+              <Route path="/cookies" element={<CookiePolicyPage />} />
+              <Route path="/guide" element={<GuidePage />} />
+              <Route
+                path="/training"
+                element={
                   <Suspense fallback={<PageSkeleton />}>
-                    <CanvasPage />
+                    <TrainingPage />
                   </Suspense>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/repository"
-              element={
-                <ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
                   <Suspense fallback={<PageSkeleton />}>
-                    <RepositoryPage />
+                    <AdminPage />
                   </Suspense>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/team"
-              element={
-                <ProtectedRoute>
-                  <Suspense fallback={<PageSkeleton />}>
-                    <TeamPage />
-                  </Suspense>
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/verify-email" element={<VerifyEmailPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/trust" element={<TrustPage />} />
-            <Route path="/cookies" element={<CookiePolicyPage />} />
-            <Route path="/guide" element={<GuidePage />} />
-            <Route
-              path="/training"
-              element={
-                <Suspense fallback={<PageSkeleton />}>
-                  <TrainingPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <Suspense fallback={<PageSkeleton />}>
-                  <AdminPage />
-                </Suspense>
-              }
-            />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Suspense>
+                }
+              />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </BrowserRouter>
     </ErrorBoundary>
   );
