@@ -90,8 +90,20 @@ export const useShortcutStore = create<ShortcutState>()(
     {
       name: 'qualcanvas-shortcuts',
       partialize: (state) => ({ shortcuts: state.shortcuts }),
-    }
-  )
+      // Same shape, same trap as the feature flags: the shortcut map sits under
+      // one key, and zustand's default merge is shallow at the top level, so a
+      // persisted map replaced DEFAULT_SHORTCUTS wholesale. Shortcuts added
+      // after a user's last visit were missing for them entirely. Defaults
+      // first, then the user's own rebindings on top.
+      merge: (persisted, current) => ({
+        ...current,
+        shortcuts: {
+          ...DEFAULT_SHORTCUTS,
+          ...((persisted as { shortcuts?: Record<string, string> } | undefined)?.shortcuts ?? {}),
+        },
+      }),
+    },
+  ),
 );
 
 /**
