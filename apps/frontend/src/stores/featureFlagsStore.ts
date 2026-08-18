@@ -89,6 +89,29 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>()(
     {
       name: 'qualcanvas-feature-flags',
       partialize: (state) => ({ flags: state.flags }), // don't persist overrides
+      // The whole flag map lives under one key, and zustand's default merge is
+      // shallow at the TOP level - so a persisted `flags` object replaced
+      // DEFAULT_FLAGS wholesale instead of filling gaps. Any flag added after a
+      // user's last visit was simply absent, and `isEnabled`'s `?? false` made
+      // it resolve off: features shipped default-on never reached existing
+      // users, silently. (Krippendorff alpha and the inline AI suggester were
+      // both dark for returning users because of this.)
+      //
+      // Defaults first, persisted values second: new keys get their coded
+      // default, keys the user already has keep whatever they had - so the
+      // deliberate case in the DEFAULT_FLAGS comment above, where someone who
+      // saw the old onboarding is not yanked onto the new one, still holds.
+      //
+      // Deliberately NO `version` bump: zustand discards persisted state on a
+      // version mismatch unless a `migrate` is supplied, which would wipe user
+      // settings - worse than the bug.
+      merge: (persisted, current) => ({
+        ...current,
+        flags: {
+          ...DEFAULT_FLAGS,
+          ...((persisted as { flags?: Partial<Record<FeatureFlag, boolean>> } | undefined)?.flags ?? {}),
+        },
+      }),
     },
   ),
 );
