@@ -475,7 +475,7 @@ test.describe('Workspace Tests', () => {
 
     await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/codings`, {
       headers,
-      data: { transcriptId: tId, questionId: qId, startOffset: 0, endOffset: 20, codedText: 'Content for edge te' },
+      data: { transcriptId: tId, questionId: qId, startOffset: 0, endOffset: 19, codedText: 'Content for edge te' },
     });
     await openCanvasById(page, canvasId);
     // The status bar should show the coding count > 0

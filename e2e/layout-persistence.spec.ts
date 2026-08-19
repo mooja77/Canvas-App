@@ -155,11 +155,14 @@ test.describe('Layout Persistence', () => {
     for (let i = 0; i < 5; i++) {
       const res = await page.request.post(`${BASE}/canvas/${canvasId}/codings`, {
         headers,
+        // Each transcript's content begins with this exact phrase, so deriving
+        // the end offset from it keeps the coding consistent with the text.
+        // The previous literal claimed 0..30 for a 20-character string.
         data: {
           transcriptId: transcriptIds[i % 3],
           questionId: codeIds[i],
           startOffset: 0,
-          endOffset: 30,
+          endOffset: `This is transcript ${(i % 3) + 1}`.length,
           codedText: `This is transcript ${(i % 3) + 1}`,
         },
       });

@@ -62,14 +62,20 @@ async function createSeededCanvas(page: Page): Promise<string | null> {
     });
 
     if (transcriptId && questionId) {
+      // Offsets are derived from the text, not hand-counted. The server now
+      // verifies content.slice(start, end) === codedText, and the previous
+      // literals described a span that could not exist (0..31 for a 33-char
+      // string), so the seeded coding was never a thing the product could
+      // actually produce.
+      const codedText = 'The research methodology involved';
       await page.request.post(`${API_BASE}/canvas/${canvasId}/codings`, {
         headers,
         data: {
           transcriptId,
           questionId,
           startOffset: 0,
-          endOffset: 31,
-          codedText: 'The research methodology involved',
+          endOffset: codedText.length,
+          codedText,
         },
       });
     }
