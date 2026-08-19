@@ -1,3 +1,10 @@
+// Seeded codings slice their text out of this content at their own
+// offsets. The server verifies content.slice(start, end) === codedText,
+// and the previous hand-written literals described spans that could not exist.
+const PHASE3_TRANSCRIPT =
+  'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds across three institutions. Each interview lasted sixty minutes and was recorded with participant consent.';
+const PHASE3_TRANSCRIPT_2 =
+  'Participants described their experiences navigating organizational change and adapting to new technologies in their daily work routines. Several common patterns emerged from the data.';
 import { test, expect, type Page } from '@playwright/test';
 
 // ─── Helpers ───
@@ -130,8 +137,7 @@ test.describe('UX Phase 3 — Power User Features', () => {
       headers,
       data: {
         title: 'Interview Alpha',
-        content:
-          'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds across three institutions. Each interview lasted sixty minutes and was recorded with participant consent.',
+        content: PHASE3_TRANSCRIPT,
       },
     });
     const t1Id = (await t1Res.json()).data.id;
@@ -140,8 +146,7 @@ test.describe('UX Phase 3 — Power User Features', () => {
       headers,
       data: {
         title: 'Interview Beta',
-        content:
-          'Participants described their experiences navigating organizational change and adapting to new technologies in their daily work routines. Several common patterns emerged from the data.',
+        content: PHASE3_TRANSCRIPT_2,
       },
     });
     const t2Id = (await t2Res.json()).data.id;
@@ -171,71 +176,71 @@ test.describe('UX Phase 3 — Power User Features', () => {
         transcriptId: t1Id,
         questionId: c1Id,
         startOffset: 0,
-        endOffset: 40,
-        codedText: 'The research methodology involved conducting',
+        endOffset: Math.min(40, PHASE3_TRANSCRIPT.length),
+        codedText: PHASE3_TRANSCRIPT.slice(0, Math.min(40, PHASE3_TRANSCRIPT.length)),
       },
       {
         transcriptId: t1Id,
         questionId: c1Id,
         startOffset: 41,
-        endOffset: 90,
-        codedText: 'semi-structured interviews with fifteen participants',
+        endOffset: Math.min(90, PHASE3_TRANSCRIPT.length),
+        codedText: PHASE3_TRANSCRIPT.slice(41, Math.min(90, PHASE3_TRANSCRIPT.length)),
       },
       {
         transcriptId: t1Id,
         questionId: c1Id,
         startOffset: 91,
-        endOffset: 130,
-        codedText: 'from diverse backgrounds across three institutions',
+        endOffset: Math.min(130, PHASE3_TRANSCRIPT.length),
+        codedText: PHASE3_TRANSCRIPT.slice(91, Math.min(130, PHASE3_TRANSCRIPT.length)),
       },
       {
         transcriptId: t1Id,
         questionId: c2Id,
         startOffset: 0,
-        endOffset: 50,
-        codedText: 'The research methodology involved conducting semi-structured',
+        endOffset: Math.min(50, PHASE3_TRANSCRIPT.length),
+        codedText: PHASE3_TRANSCRIPT.slice(0, Math.min(50, PHASE3_TRANSCRIPT.length)),
       },
       {
         transcriptId: t1Id,
         questionId: c2Id,
         startOffset: 51,
-        endOffset: 100,
-        codedText: 'interviews with fifteen participants from diverse',
+        endOffset: Math.min(100, PHASE3_TRANSCRIPT.length),
+        codedText: PHASE3_TRANSCRIPT.slice(51, Math.min(100, PHASE3_TRANSCRIPT.length)),
       },
       {
         transcriptId: t1Id,
         questionId: c3Id,
         startOffset: 131,
-        endOffset: 180,
-        codedText: 'Each interview lasted sixty minutes and was recorded',
+        endOffset: Math.min(180, PHASE3_TRANSCRIPT.length),
+        codedText: PHASE3_TRANSCRIPT.slice(131, Math.min(180, PHASE3_TRANSCRIPT.length)),
       },
       {
         transcriptId: t2Id,
         questionId: c2Id,
         startOffset: 0,
-        endOffset: 50,
-        codedText: 'Participants described their experiences navigating',
+        endOffset: Math.min(50, PHASE3_TRANSCRIPT_2.length),
+        codedText: PHASE3_TRANSCRIPT_2.slice(0, Math.min(50, PHASE3_TRANSCRIPT_2.length)),
       },
       {
         transcriptId: t2Id,
         questionId: c2Id,
         startOffset: 51,
-        endOffset: 100,
-        codedText: 'organizational change and adapting to new technologies',
+        endOffset: Math.min(100, PHASE3_TRANSCRIPT_2.length),
+        codedText: PHASE3_TRANSCRIPT_2.slice(51, Math.min(100, PHASE3_TRANSCRIPT_2.length)),
       },
       {
         transcriptId: t2Id,
         questionId: c3Id,
         startOffset: 0,
-        endOffset: 60,
-        codedText: 'Participants described their experiences navigating organizational',
+        endOffset: Math.min(60, PHASE3_TRANSCRIPT_2.length),
+        codedText: PHASE3_TRANSCRIPT_2.slice(0, Math.min(60, PHASE3_TRANSCRIPT_2.length)),
       },
       {
         transcriptId: t2Id,
         questionId: c3Id,
         startOffset: 61,
-        endOffset: 120,
-        codedText: 'change and adapting to new technologies in their daily',
+        endOffset: Math.min(120, PHASE3_TRANSCRIPT_2.length),
+        codedText: PHASE3_TRANSCRIPT_2.slice(61, Math.min(120, PHASE3_TRANSCRIPT_2.length)),
       },
     ];
 

@@ -80,7 +80,7 @@ test.describe('Canvas modal accessibility', () => {
         transcriptId,
         questionId,
         startOffset: 0,
-        endOffset: 31,
+        endOffset: 33,
         codedText: 'The research methodology involved',
       },
     });

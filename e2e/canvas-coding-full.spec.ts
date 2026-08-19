@@ -119,8 +119,7 @@ test.describe('Coding Workflow', () => {
               questionId: code1Id,
               startOffset: 0,
               endOffset: 91,
-              codedText:
-                'The research methodology involved conducting semi-structured interviews with fifteen participants',
+              codedText: sampleText.slice(0, 91),
             },
           });
         }

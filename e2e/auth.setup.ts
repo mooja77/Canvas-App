@@ -165,13 +165,16 @@ setup('authenticate', async ({ page }) => {
         if (transcriptId && code1Id) {
           await page.request.post(`${baseUrl}/canvas/${canvasId}/codings`, {
             headers,
+            // Slice the excerpt out of the content itself so the offsets and
+            // the text cannot disagree - the server now rejects codings where
+            // they do. The previous literals claimed 0..91 for a 97-char
+            // string.
             data: {
               transcriptId,
               questionId: code1Id,
               startOffset: 0,
               endOffset: 91,
-              codedText:
-                'The research methodology involved conducting semi-structured interviews with fifteen participants',
+              codedText: sampleText.slice(0, 91),
             },
           });
         }

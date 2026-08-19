@@ -194,7 +194,12 @@ describe('Coding extended tests', () => {
     const questionId2 = 'q-overlap-2';
 
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
-    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ id: transcriptId, canvasId });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
+      id: transcriptId,
+      canvasId,
+      // slice(0, 20) === 'overlapping segments', slice(5, 15) === 'apping seg'
+      content: 'overlapping segments in text',
+    });
     mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: questionId1, canvasId });
     mockPrisma.canvasTextCoding.create.mockResolvedValue({
       id: 'coding-overlap-1',
@@ -203,13 +208,19 @@ describe('Coding extended tests', () => {
       questionId: questionId1,
       startOffset: 0,
       endOffset: 20,
-      codedText: 'overlapping segment',
+      codedText: 'overlapping segments',
     });
 
     const res1 = await request(app)
       .post(`/api/canvas/${canvasId}/codings`)
       .set('Authorization', `Bearer ${jwt}`)
-      .send({ transcriptId, questionId: questionId1, startOffset: 0, endOffset: 20, codedText: 'overlapping segment' });
+      .send({
+        transcriptId,
+        questionId: questionId1,
+        startOffset: 0,
+        endOffset: 20,
+        codedText: 'overlapping segments',
+      });
 
     expect(res1.status).toBe(201);
 
@@ -222,13 +233,13 @@ describe('Coding extended tests', () => {
       questionId: questionId2,
       startOffset: 5,
       endOffset: 15,
-      codedText: 'apping segme',
+      codedText: 'apping seg',
     });
 
     const res2 = await request(app)
       .post(`/api/canvas/${canvasId}/codings`)
       .set('Authorization', `Bearer ${jwt}`)
-      .send({ transcriptId, questionId: questionId2, startOffset: 5, endOffset: 15, codedText: 'apping segme' });
+      .send({ transcriptId, questionId: questionId2, startOffset: 5, endOffset: 15, codedText: 'apping seg' });
 
     expect(res2.status).toBe(201);
     expect(res2.body.data.id).toBe('coding-overlap-2');
@@ -275,7 +286,7 @@ describe('Coding extended tests', () => {
 
   it('POST /canvas/:id/codings accepts optional note field', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
-    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ id: 'tr-note', canvasId });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ id: 'tr-note', canvasId, content: 'hello world' });
     mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: 'q-note', canvasId });
     mockPrisma.canvasTextCoding.create.mockResolvedValue({
       id: 'coding-note',

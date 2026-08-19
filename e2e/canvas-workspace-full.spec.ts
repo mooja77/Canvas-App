@@ -109,8 +109,7 @@ test.describe('Canvas Workspace Full', () => {
           questionId: codeId,
           startOffset: 0,
           endOffset: 91,
-          codedText:
-            'The research methodology involved conducting semi-structured interviews with fifteen participants',
+          codedText: sampleText.slice(0, 91),
         },
       });
     }
