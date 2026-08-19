@@ -7,36 +7,26 @@
  * When we outgrow this (need per-user / per-plan targeting beyond static checks),
  * upgrade to a GrowthBook / LaunchDarkly delivery. Keep the `useFeatureFlag` hook
  * stable so consumers don't change.
+ *
+ * Every flag declared here MUST have a consumer. A flag nothing reads is dead
+ * config that looks like a shipped gate to the next person who finds it -
+ * `featureFlagsStore.test.ts` asserts the inventory to keep that honest.
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type FeatureFlag =
-  // V3 Sprint G — IA redesign
+  // V3 Sprint G - IA redesign (read by CanvasPage / ActivityBar)
   | 'activity_bar_v2'
-  // V3 Sprint F — onboarding redesign
+  // V3 Sprint F - onboarding redesign (read by CanvasPage)
   | 'onboarding_v2'
-  // V3 Sprint H — inline AI tag suggestions
+  // V3 Sprint H - inline AI tag suggestions (read by CanvasWorkspace)
   | 'inline_ai_suggester'
-  // V3 Sprint C — pricing v2 (defaults off; ship to new signups only)
-  | 'pricing_v2'
-  // V3 Sprint D — Krippendorff α surface
-  | 'krippendorff_alpha'
-  // V3 Sprint E — Trust page
-  | 'trust_page'
-  // Brand Tier 2 — Ink + Ochre palette
+  // Brand Tier 2 - Ink + Ochre palette (read by main.tsx / PageShell)
   | 'ink_ochre_palette'
-  // Brand Tier 2 — Fraunces display serif
-  | 'fraunces_display'
-  // AI prompt upgrade — Methods Statement export
-  | 'methods_statement_export'
-  // V3 — typed sockets (edge validation)
-  | 'typed_sockets'
-  // V3 — Magic Cluster
-  | 'magic_cluster'
-  // V3 — Cmd+J context AI chat
-  | 'ai_chat_cmd_j';
+  // Brand Tier 2 - Fraunces display serif (read by main.tsx / PageShell)
+  | 'fraunces_display';
 
 interface FeatureFlagsState {
   flags: Record<FeatureFlag, boolean>;
@@ -47,26 +37,53 @@ interface FeatureFlagsState {
   isEnabled: (flag: FeatureFlag) => boolean;
 }
 
-// Sprint F + H rollout — flags flipped on for new signups once their
+// Sprint F + H rollout - flags flipped on for new signups once their
 // respective sprints landed CI green (Sprint F: dc68c28 / 68907b2,
 // Sprint H: 70d3f8a). Persisted overrides in localStorage still win, so
 // existing users who already saw the old flow won't see a sudden change.
-// Sprint D (Krippendorff α) also flips on — the surface is gated by
-// Team plan check inside the component, so it's safe to default-enable.
 const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   activity_bar_v2: false,
   onboarding_v2: true,
   inline_ai_suggester: true,
-  pricing_v2: false,
-  krippendorff_alpha: true,
-  trust_page: false,
   ink_ochre_palette: false,
   fraunces_display: false,
-  methods_statement_export: false,
-  typed_sockets: false,
-  magic_cluster: false,
-  ai_chat_cmd_j: false,
 };
+
+const STORAGE_KEY = 'qualcanvas-feature-flags';
+
+// Session overrides must not reach localStorage. `partialize` already drops
+// the `overrides` key, but zustand-persist writes the ENTIRE partialized
+// snapshot on every set() - so writing an override also froze that build's
+// DEFAULT_FLAGS into the user's persisted `flags` map. Since `merge` lets
+// persisted values win over coded defaults, anyone who had ever opened a
+// `?flags=` URL (soft-launch cohort, support-issued overrides, internal QA)
+// stopped receiving default flips for good.
+//
+// A guarded storage is the smallest fix that keeps the store shape and the
+// public API intact: override actions run inside `withoutPersisting`, and the
+// setItem that zustand fires synchronously right after their set() is dropped.
+let suppressPersist = false;
+
+function withoutPersisting<T>(fn: () => T): T {
+  suppressPersist = true;
+  try {
+    return fn();
+  } finally {
+    suppressPersist = false;
+  }
+}
+
+const guardedStorage = createJSONStorage(() => ({
+  getItem: (name: string) => (typeof localStorage === 'undefined' ? null : localStorage.getItem(name)),
+  setItem: (name: string, value: string) => {
+    if (suppressPersist || typeof localStorage === 'undefined') return;
+    localStorage.setItem(name, value);
+  },
+  removeItem: (name: string) => {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.removeItem(name);
+  },
+}));
 
 export const useFeatureFlagsStore = create<FeatureFlagsState>()(
   persist(
@@ -77,9 +94,9 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>()(
         set((s) => ({ flags: { ...s.flags, [flag]: enabled } }));
       },
       setOverride: (flag, enabled) => {
-        set((s) => ({ overrides: { ...s.overrides, [flag]: enabled } }));
+        withoutPersisting(() => set((s) => ({ overrides: { ...s.overrides, [flag]: enabled } })));
       },
-      clearOverrides: () => set({ overrides: {} }),
+      clearOverrides: () => withoutPersisting(() => set({ overrides: {} })),
       isEnabled: (flag) => {
         const { flags, overrides } = get();
         if (flag in overrides) return overrides[flag] as boolean;
@@ -87,31 +104,37 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>()(
       },
     }),
     {
-      name: 'qualcanvas-feature-flags',
+      name: STORAGE_KEY,
+      storage: guardedStorage,
       partialize: (state) => ({ flags: state.flags }), // don't persist overrides
       // The whole flag map lives under one key, and zustand's default merge is
       // shallow at the TOP level - so a persisted `flags` object replaced
       // DEFAULT_FLAGS wholesale instead of filling gaps. Any flag added after a
       // user's last visit was simply absent, and `isEnabled`'s `?? false` made
       // it resolve off: features shipped default-on never reached existing
-      // users, silently. (Krippendorff alpha and the inline AI suggester were
-      // both dark for returning users because of this.)
+      // users, silently. (The inline AI suggester was dark for returning users
+      // because of this.)
       //
       // Defaults first, persisted values second: new keys get their coded
       // default, keys the user already has keep whatever they had - so the
       // deliberate case in the DEFAULT_FLAGS comment above, where someone who
       // saw the old onboarding is not yanked onto the new one, still holds.
+      // Keys no longer declared are dropped, so a retired flag doesn't live on
+      // in localStorage forever.
       //
       // Deliberately NO `version` bump: zustand discards persisted state on a
       // version mismatch unless a `migrate` is supplied, which would wipe user
       // settings - worse than the bug.
-      merge: (persisted, current) => ({
-        ...current,
-        flags: {
-          ...DEFAULT_FLAGS,
-          ...((persisted as { flags?: Partial<Record<FeatureFlag, boolean>> } | undefined)?.flags ?? {}),
-        },
-      }),
+      merge: (persisted, current) => {
+        const persistedFlags =
+          (persisted as { flags?: Partial<Record<FeatureFlag, boolean>> } | undefined)?.flags ?? {};
+        const flags = { ...DEFAULT_FLAGS };
+        for (const key of Object.keys(DEFAULT_FLAGS) as FeatureFlag[]) {
+          const value = persistedFlags[key];
+          if (typeof value === 'boolean') flags[key] = value;
+        }
+        return { ...current, flags };
+      },
     },
   ),
 );
@@ -126,6 +149,9 @@ export function useFeatureFlag(flag: FeatureFlag): boolean {
 /**
  * Read URL `?flags=...` and apply as session overrides.
  * Call this once at app startup (e.g. in main.tsx after store hydration).
+ *
+ * Unknown flag names are ignored: a stale bookmark for a retired flag must not
+ * inject junk keys into the store.
  */
 export function applyUrlFlagOverrides() {
   if (typeof window === 'undefined') return;
@@ -135,7 +161,8 @@ export function applyUrlFlagOverrides() {
   const setOverride = useFeatureFlagsStore.getState().setOverride;
   for (const kv of flagsParam.split(',')) {
     const [name, value] = kv.split('=');
-    if (!name) continue;
-    setOverride(name.trim() as FeatureFlag, value !== 'false');
+    const flag = name?.trim();
+    if (!flag || !(flag in DEFAULT_FLAGS)) continue;
+    setOverride(flag as FeatureFlag, value !== 'false');
   }
 }

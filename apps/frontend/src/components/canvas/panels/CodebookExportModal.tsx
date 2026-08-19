@@ -3,6 +3,8 @@ import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useUIStore } from '../../../stores/uiStore';
+import { patchOnboardingState } from '../../onboarding/utils/onboardingState';
 
 interface CodebookExportModalProps {
   onClose: () => void;
@@ -35,6 +37,7 @@ type Tab = 'codebook' | 'data';
 export default function CodebookExportModal({ onClose }: CodebookExportModalProps) {
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
+  const markChecklistItemComplete = useUIStore((s) => s.markChecklistItemComplete);
   const [tab, setTab] = useState<Tab>('codebook');
 
   const entries = useMemo((): CodebookEntry[] => {
@@ -151,9 +154,14 @@ export default function CodebookExportModal({ onClose }: CodebookExportModalProp
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    // Mark the onboarding "Export your codings to CSV" step complete (the
-    // checklist reads this flag; nothing wrote it before).
-    localStorage.setItem('qualcanvas-first-export', new Date().toISOString());
+    // Mark the onboarding "Export your codings to CSV" step complete. This is
+    // recorded against the ACCOUNT (onboardingState.checklistComplete), not
+    // the browser: a browser-wide localStorage bit ticked the row for every
+    // future account on the same machine. The server write is best-effort -
+    // patchOnboardingState swallows its own failures - and the local store
+    // keeps the row ticked for this session either way.
+    markChecklistItemComplete('export-csv');
+    void patchOnboardingState({ checklistComplete: useUIStore.getState().onboardingChecklistComplete });
     toast.success('CSV downloaded');
   };
 
