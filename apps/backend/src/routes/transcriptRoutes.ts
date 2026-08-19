@@ -54,11 +54,37 @@ transcriptRoutes.put(
       // just by knowing the transcript ID (IDOR).
       const existing = await prisma.canvasTranscript.findUnique({
         where: { id: req.params.tid },
-        select: { canvasId: true },
+        select: { canvasId: true, content: true },
       });
       if (!existing || existing.canvasId !== req.params.id) {
         return next(new AppError('Transcript not found in this canvas', 404));
       }
+
+      // Codings are absolute character offsets into this content. Changing the
+      // text underneath them silently repoints every coding at whatever now
+      // occupies those positions - the stored codedText stops matching, and
+      // highlights, excerpt context, exports and agreement statistics all
+      // quietly describe the wrong span. Nothing here remapped or invalidated
+      // them, and nothing warned.
+      //
+      // No UI edits transcript content today (only caseId and title), so this
+      // is latent rather than active - but the endpoint accepts content, and
+      // the moment a transcript editor is added it would corrupt every coding
+      // on that transcript. Refuse rather than corrupt. Re-mapping offsets
+      // through a diff is the real feature and needs to be designed, not
+      // improvised here.
+      if (req.body.content !== undefined && req.body.content !== existing.content) {
+        const codingCount = await prisma.canvasTextCoding.count({ where: { transcriptId: req.params.tid } });
+        if (codingCount > 0) {
+          return next(
+            new AppError(
+              `Cannot change this transcript's text: ${codingCount} coding(s) reference positions in it and would be silently repointed at different words. Remove the codings first, or import the revised text as a new transcript.`,
+              409,
+            ),
+          );
+        }
+      }
+
       const transcript = await prisma.canvasTranscript.update({
         where: { id: req.params.tid },
         data: req.body,
