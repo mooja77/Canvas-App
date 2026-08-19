@@ -126,8 +126,13 @@ canvasRoutes.post('/canvas', validate(createCanvasSchema), checkCanvasLimit(), a
     const plan = req.userPlan || 'free';
     const limits = getPlanLimits(plan);
     if (limits.maxCanvases !== Infinity) {
+      // Mirrors checkCanvasLimit: trashed canvases do not consume a slot. If
+      // this recount disagrees with the middleware, it hard-deletes the row the
+      // user just created — so the two filters must stay identical.
       const finalCount = await prisma.codingCanvas.count({
-        where: userId ? { OR: [{ userId }, { dashboardAccessId }] } : { dashboardAccessId },
+        where: userId
+          ? { OR: [{ userId }, { dashboardAccessId }], deletedAt: null }
+          : { dashboardAccessId, deletedAt: null },
       });
       if (finalCount > limits.maxCanvases) {
         await prisma.codingCanvas.delete({ where: { id: canvas.id } }).catch(() => {});

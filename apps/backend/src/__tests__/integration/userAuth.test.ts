@@ -847,5 +847,45 @@ describe('User auth integration tests', () => {
 
       expect(res.status).toBe(401);
     });
+
+    // The usage panel is what the user checks when the app tells them they are
+    // at their cap. If it counts trashed canvases while the cap check does not,
+    // the two disagree and the panel is the one that looks broken.
+    it('reports usage over LIVE resources only, matching the cap checks', async () => {
+      const jwt = signUserToken('user-usage-1', 'researcher', 'free');
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-usage-1',
+        email: 'usage@example.com',
+        name: 'Usage Tester',
+        role: 'researcher',
+        plan: 'free',
+        emailVerified: true,
+        trialEndsAt: null,
+        legacyPricing: false,
+        createdAt: new Date(),
+        passwordHash: 'x',
+        subscription: null,
+        dashboardAccess: null,
+      });
+      // 1 live canvas, 2 in the trash.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const liveOnly = (args: any) => Promise.resolve(args?.where?.deletedAt === null ? 1 : 3);
+      mockPrisma.codingCanvas.count.mockImplementation(liveOnly);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const viaLiveCanvas = (args: any) => Promise.resolve(args?.where?.canvas?.deletedAt === null ? 4 : 9);
+      mockPrisma.canvasTranscript.count.mockImplementation(viaLiveCanvas);
+      mockPrisma.canvasQuestion.count.mockImplementation(viaLiveCanvas);
+      mockPrisma.canvasShare.count.mockImplementation(viaLiveCanvas);
+
+      const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${jwt}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.usage).toEqual({
+        canvasCount: 1,
+        totalTranscripts: 4,
+        totalCodes: 4,
+        totalShares: 4,
+      });
+    });
   });
 });

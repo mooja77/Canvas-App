@@ -596,20 +596,19 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
         user.plan = validPlan;
       }
 
-      // Count resources for usage
+      // Count resources for usage.
+      //
+      // LIVE resources only. Trashed canvases are hidden from GET /canvas and
+      // no longer consume a plan slot (see checkCanvasLimit), so counting them
+      // here would make the account page contradict the cap the server is
+      // actually enforcing.
+      const owned = { OR: [{ userId }, ...(dashboardAccessId ? [{ dashboardAccessId }] : [])] };
+      const inLiveCanvas = { canvas: { ...owned, deletedAt: null } };
       const [canvasCount, totalTranscripts, totalCodes, totalShares] = await Promise.all([
-        prisma.codingCanvas.count({
-          where: { OR: [{ userId }, ...(dashboardAccessId ? [{ dashboardAccessId }] : [])] },
-        }),
-        prisma.canvasTranscript.count({
-          where: { canvas: { OR: [{ userId }, ...(dashboardAccessId ? [{ dashboardAccessId }] : [])] } },
-        }),
-        prisma.canvasQuestion.count({
-          where: { canvas: { OR: [{ userId }, ...(dashboardAccessId ? [{ dashboardAccessId }] : [])] } },
-        }),
-        prisma.canvasShare.count({
-          where: { canvas: { OR: [{ userId }, ...(dashboardAccessId ? [{ dashboardAccessId }] : [])] } },
-        }),
+        prisma.codingCanvas.count({ where: { ...owned, deletedAt: null } }),
+        prisma.canvasTranscript.count({ where: inLiveCanvas }),
+        prisma.canvasQuestion.count({ where: inLiveCanvas }),
+        prisma.canvasShare.count({ where: inLiveCanvas }),
       ]);
 
       // Trial overlay: same logic as auth middleware — free users with an

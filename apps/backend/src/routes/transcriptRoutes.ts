@@ -12,7 +12,7 @@ import {
   canvasTranscriptParams,
 } from '../middleware/validation.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
-import { checkTranscriptLimit, checkWordLimit } from '../middleware/planLimits.js';
+import { checkTranscriptLimit, checkWordLimit, resolveRequestPlan } from '../middleware/planLimits.js';
 import { getPlanLimits } from '../config/plans.js';
 
 export const transcriptRoutes = Router();
@@ -106,8 +106,13 @@ transcriptRoutes.post(
 
       const count = await prisma.canvasTranscript.count({ where: { canvasId: req.params.id } });
 
-      // Plan limit checks for bulk import
-      const plan = req.userPlan || 'free';
+      // Plan limit checks for bulk import.
+      //
+      // Resolve against the canvas OWNER, exactly like checkTranscriptLimit /
+      // checkWordLimit do on every other transcript route. req.userPlan is the
+      // REQUESTER's plan, so a Free collaborator invited onto a Pro canvas was
+      // held to Free caps on someone else's paid canvas.
+      const plan = await resolveRequestPlan(req);
       const limits = getPlanLimits(plan);
       if (limits.maxTranscriptsPerCanvas !== Infinity && count + narratives.length > limits.maxTranscriptsPerCanvas) {
         return next(
@@ -182,8 +187,8 @@ transcriptRoutes.post(
 
       const count = await prisma.canvasTranscript.count({ where: { canvasId: req.params.id } });
 
-      // Plan limit checks for cross-canvas import
-      const plan = req.userPlan || 'free';
+      // Plan limit checks for cross-canvas import — owner-resolved, as above.
+      const plan = await resolveRequestPlan(req);
       const limits = getPlanLimits(plan);
       if (
         limits.maxTranscriptsPerCanvas !== Infinity &&

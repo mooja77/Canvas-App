@@ -69,6 +69,11 @@ export default function CanvasPage() {
         const u = res.data?.data?.user;
         if (u && typeof u.effectivePlan === 'string') {
           setTrialState({
+            // Carry the REAL plan through too. The X-User-Plan response header
+            // only ever reports the trial-overlaid tier, so /auth/me is the
+            // only place `plan` gets refreshed mid-session (e.g. right after a
+            // checkout completes).
+            ...(typeof u.plan === 'string' ? { plan: u.plan } : {}),
             effectivePlan: u.effectivePlan,
             trialEndsAt: u.trialEndsAt ?? null,
           });

@@ -53,14 +53,23 @@ canvasClient.interceptors.response.use(
   },
 );
 
-// Plan sync interceptor — reads X-User-Plan header from server
+// Plan sync interceptor — reads X-User-Plan header from server.
+//
+// The header carries the EFFECTIVE plan: the backend stamps it AFTER applying
+// the free-trial overlay (middleware/auth.ts sends 'pro' for a verified Free
+// user inside their trial window). Writing it into `plan` therefore conflated
+// "actually subscribed to Pro" with "Free user on a trial", and every consumer
+// of `plan` inherited the lie — most visibly the trial banner. `effectivePlan`
+// is the field that exists for the overlay and the one feature gating reads,
+// so sync that and leave `plan` to mean what the account actually pays for.
+// (`plan` itself is refreshed from /auth/me — see CanvasPage.)
 canvasClient.interceptors.response.use(
   (response) => {
     const serverPlan = response.headers['x-user-plan'];
     if (serverPlan) {
-      const currentPlan = useAuthStore.getState().plan;
-      if (currentPlan && currentPlan !== serverPlan) {
-        useAuthStore.getState().updatePlan(serverPlan);
+      const { effectivePlan, setEffectivePlan } = useAuthStore.getState();
+      if (effectivePlan !== serverPlan) {
+        setEffectivePlan(serverPlan);
       }
     }
     return response;

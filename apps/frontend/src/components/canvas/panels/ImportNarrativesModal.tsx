@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createWiseShiftBridge } from '../../../services/api';
+import { apiErrorMessage, createWiseShiftBridge } from '../../../services/api';
 import { useCanvasStore } from '../../../stores/canvasStore';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
@@ -94,8 +94,10 @@ export default function ImportNarrativesModal({ onClose }: Props) {
       await importNarratives(formatted);
       toast.success(`Imported ${formatted.length} narrative${formatted.length > 1 ? 's' : ''}`);
       onClose();
-    } catch {
-      toast.error('Failed to import narratives');
+    } catch (err) {
+      // Plan-limit refusals from the server are written for end users and say
+      // exactly what to change; a bare "Failed to import" throws that away.
+      toast.error(apiErrorMessage(err, 'Failed to import narratives'));
     } finally {
       setImporting(false);
     }
@@ -109,8 +111,8 @@ export default function ImportNarrativesModal({ onClose }: Props) {
       await importNarratives([{ title: manualTitle.trim(), content: manualContent.trim(), sourceType: 'manual' }]);
       toast.success('Transcript added');
       onClose();
-    } catch {
-      toast.error('Failed to add transcript');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Failed to add transcript'));
     } finally {
       setImporting(false);
     }
