@@ -1,14 +1,44 @@
 import ExcelJS from 'exceljs';
 
 /**
- * Sanitize cell values to prevent Excel formula injection.
- * Prefixes values starting with =, +, -, @, or tab/CR with a single quote.
+ * Excel reads a leading =, +, -, @ (or tab/CR) as the start of a formula when a
+ * value is typed into a cell or imported from CSV, so untrusted text needs a
+ * guard. The guard must not change what the researcher actually wrote:
+ * prepending a literal apostrophe corrupts the exported value, because inside
+ * an .xlsx the apostrophe becomes part of the stored string rather than a
+ * style flag.
+ *
+ * ExcelJS 4.4 has no quotePrefix support (its style xform never writes that
+ * attribute), so the guard used here is the Text number format. Combined with
+ * the fact that ExcelJS stores a JS string as a string cell and never as <f>,
+ * the value is inert on open and stays Text if the sheet is edited or
+ * re-imported - and the visible value is exactly what was written.
  */
-function sanitizeCell(value: string | number | null | undefined): string {
+const TEXT_NUMBER_FORMAT = '@';
+
+const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+
+/** True when a value would be read as the start of a formula. */
+export function looksLikeFormula(value: unknown): boolean {
+  return typeof value === 'string' && FORMULA_PREFIX.test(value);
+}
+
+/** Coerce a cell value to the text ExcelJS should store (never null). */
+function cellText(value: string | number | null | undefined): string {
   if (value == null) return '';
-  const s = String(value);
-  if (/^[=+\-@\t\r]/.test(s)) return `'${s}`;
-  return s;
+  return String(value);
+}
+
+/** Pin a cell to the Text format when its content looks like a formula. */
+function guardCell(cell: ExcelJS.Cell): void {
+  if (looksLikeFormula(cell.value)) {
+    cell.numFmt = TEXT_NUMBER_FORMAT;
+  }
+}
+
+/** Guard every named text cell in a row. */
+function guardCells(row: ExcelJS.Row, keys: string[]): void {
+  keys.forEach((key) => guardCell(row.getCell(key)));
 }
 
 // ─── Types for canvas data passed from route ───
@@ -142,11 +172,14 @@ function buildCodebookSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
   data.questions.forEach((q) => {
     const parent = q.parentQuestionId ? questionMap.get(q.parentQuestionId) : null;
     const row = ws.addRow({
-      name: q.text,
-      color: q.color,
+      name: cellText(q.text),
+      color: cellText(q.color),
       frequency: freqMap.get(q.id) || 0,
-      parent: parent?.text || '',
+      parent: cellText(parent?.text || ''),
     });
+    // Same formula guard the Codings sheet uses - code names and parent themes
+    // are researcher-authored text and can start with = or -.
+    guardCells(row, ['name', 'color', 'parent']);
 
     // Color the code name cell with the code's color
     const nameCell = row.getCell('name');
@@ -206,14 +239,15 @@ function buildCodingsSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
     const question = questionMap.get(c.questionId);
 
     const row = ws.addRow({
-      transcript: sanitizeCell(transcript?.title || 'Unknown'),
-      code: sanitizeCell(question?.text || 'Unknown'),
-      codedText: sanitizeCell(c.codedText),
+      transcript: cellText(transcript?.title || 'Unknown'),
+      code: cellText(question?.text || 'Unknown'),
+      codedText: cellText(c.codedText),
       startOffset: c.startOffset,
       endOffset: c.endOffset,
-      note: sanitizeCell(c.note || ''),
-      annotation: sanitizeCell(c.annotation || ''),
+      note: cellText(c.note || ''),
+      annotation: cellText(c.annotation || ''),
     });
+    guardCells(row, ['transcript', 'code', 'codedText', 'note', 'annotation']);
 
     // Color the code cell
     if (question) {
@@ -264,7 +298,7 @@ function buildCaseMatrixSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
   // Header row: Case Name | Code1 | Code2 | ...
   const columns: Partial<ExcelJS.Column>[] = [{ header: 'Case', key: 'case', width: 25 }];
   data.questions.forEach((q) => {
-    columns.push({ header: q.text, key: q.id, width: 14 });
+    columns.push({ header: cellText(q.text), key: q.id, width: 14 });
   });
   ws.columns = columns;
 
@@ -283,12 +317,14 @@ function buildCaseMatrixSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
     const b = parseInt(hex.substring(4, 6), 16);
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
     cell.font = { bold: true, color: { argb: luminance > 0.5 ? 'FF000000' : 'FFFFFFFF' }, size: 11 };
+    // Code names land in the header row here, so they need the same guard.
+    guardCell(cell);
   });
 
   // Fill data rows
   data.cases.forEach((c) => {
     const tIds = caseTranscripts.get(c.id) || new Set();
-    const rowData: Record<string, string | number> = { case: c.name };
+    const rowData: Record<string, string | number> = { case: cellText(c.name) };
 
     data.questions.forEach((q) => {
       const count = data.codings.filter((coding) => coding.questionId === q.id && tIds.has(coding.transcriptId)).length;
@@ -296,6 +332,7 @@ function buildCaseMatrixSheet(wb: ExcelJS.Workbook, data: CanvasData): void {
     });
 
     const row = ws.addRow(rowData);
+    guardCell(row.getCell('case'));
     row.eachCell((cell) => {
       cell.border = THIN_BORDER;
     });

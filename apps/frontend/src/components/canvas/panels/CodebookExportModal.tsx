@@ -3,31 +3,17 @@ import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import {
+  buildCodebookCsv,
+  buildCodebookTsv,
+  buildDataCsv,
+  buildDataTsv,
+  type CodebookEntry,
+  type DataRow,
+} from './codebookExportFormat';
 
 interface CodebookExportModalProps {
   onClose: () => void;
-}
-
-interface CodebookEntry {
-  name: string;
-  color: string;
-  parentTheme: string;
-  frequency: number;
-  coveragePercent: number;
-  examples: string[];
-}
-
-interface DataRow {
-  transcriptTitle: string;
-  codeName: string;
-  codeColor: string;
-  parentTheme: string;
-  codedText: string;
-  startOffset: number;
-  endOffset: number;
-  annotation: string;
-  caseName: string;
-  createdAt: string;
 }
 
 type Tab = 'codebook' | 'data';
@@ -93,24 +79,8 @@ export default function CodebookExportModal({ onClose }: CodebookExportModalProp
     });
   }, [activeCanvas]);
 
-  const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
-
   const handleCopyClipboard = async () => {
-    if (tab === 'codebook') {
-      const header = 'Code Name\tColor\tParent Theme\tFrequency\tCoverage %\tExample Excerpts';
-      const rows = entries.map(
-        (e) =>
-          `${e.name}\t${e.color}\t${e.parentTheme}\t${e.frequency}\t${e.coveragePercent}%\t${e.examples.join(' | ')}`,
-      );
-      await copyText([header, ...rows].join('\n'));
-    } else {
-      const header = 'Transcript\tCode\tParent Theme\tCoded Text\tAnnotation\tCase\tDate';
-      const rows = dataRows.map(
-        (r) =>
-          `${r.transcriptTitle}\t${r.codeName}\t${r.parentTheme}\t${r.codedText}\t${r.annotation}\t${r.caseName}\t${r.createdAt}`,
-      );
-      await copyText([header, ...rows].join('\n'));
-    }
+    await copyText(tab === 'codebook' ? buildCodebookTsv(entries) : buildDataTsv(dataRows));
   };
 
   const copyText = async (text: string) => {
@@ -127,20 +97,10 @@ export default function CodebookExportModal({ onClose }: CodebookExportModalProp
     let filename: string;
 
     if (tab === 'codebook') {
-      const header = 'Code Name,Color,Parent Theme,Frequency,Coverage %,Example Excerpts';
-      const rows = entries.map(
-        (e) =>
-          `${escape(e.name)},${e.color},${escape(e.parentTheme)},${e.frequency},${e.coveragePercent}%,${escape(e.examples.join(' | '))}`,
-      );
-      csv = [header, ...rows].join('\n');
+      csv = buildCodebookCsv(entries);
       filename = `codebook-${activeCanvas?.name || 'export'}.csv`;
     } else {
-      const header = 'Transcript,Code,Code Color,Parent Theme,Coded Text,Start,End,Annotation,Case,Date';
-      const rows = dataRows.map(
-        (r) =>
-          `${escape(r.transcriptTitle)},${escape(r.codeName)},${r.codeColor},${escape(r.parentTheme)},${escape(r.codedText)},${r.startOffset},${r.endOffset},${escape(r.annotation)},${escape(r.caseName)},${r.createdAt}`,
-      );
-      csv = [header, ...rows].join('\n');
+      csv = buildDataCsv(dataRows);
       filename = `coded-data-${activeCanvas?.name || 'export'}.csv`;
     }
 
