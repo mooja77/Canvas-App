@@ -3,6 +3,7 @@ import { useActiveCanvas } from '../../../stores/canvasStore';
 import { canvasClient } from '../../../services/api';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { AUDIT_EXPORT_PAGE_SIZE, buildAuditCsv, fetchAllAuditEntries, type AuditEntry } from './auditLogExport';
 
 interface EthicsCompliancePanelProps {
   onClose: () => void;
@@ -30,15 +31,6 @@ interface ConsentRecord {
   notes: string;
   status: 'active' | 'withdrawn';
   createdAt: string;
-}
-
-interface AuditEntry {
-  id: string;
-  timestamp: string;
-  action: string;
-  resource: string;
-  actor: string;
-  details: string;
 }
 
 const defaultSettings: EthicsSettings = {
@@ -88,6 +80,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
   const [auditActionFilter, setAuditActionFilter] = useState('');
   const [auditOffset, setAuditOffset] = useState(0);
   const [auditHasMore, setAuditHasMore] = useState(false);
+  const [auditExporting, setAuditExporting] = useState(false);
   const AUDIT_LIMIT = 50;
 
   // ─── Reflexivity Journal state (localStorage per canvas) ───
@@ -218,20 +211,29 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
   };
 
   // ─── Load audit trail ───
+  // One fetcher for both the table and the export, so the export always
+  // honours the filters the researcher can see.
+  const fetchAuditPage = useCallback(
+    async (offset: number, limit: number): Promise<AuditEntry[]> => {
+      const params = new URLSearchParams();
+      if (auditDateFrom) params.set('from', auditDateFrom);
+      if (auditDateTo) params.set('to', auditDateTo);
+      if (auditActionFilter) params.set('action', auditActionFilter);
+      params.set('limit', String(limit));
+      params.set('offset', String(offset));
+
+      const res = await canvasClient.get(`/audit-log?${params.toString()}`);
+      const payload = res.data?.data || res.data;
+      return Array.isArray(payload?.entries) ? payload.entries : Array.isArray(payload) ? payload : [];
+    },
+    [auditDateFrom, auditDateTo, auditActionFilter],
+  );
+
   const loadAuditLog = useCallback(
     async (offset = 0, append = false) => {
       setAuditLoading(true);
       try {
-        const params = new URLSearchParams();
-        if (auditDateFrom) params.set('from', auditDateFrom);
-        if (auditDateTo) params.set('to', auditDateTo);
-        if (auditActionFilter) params.set('action', auditActionFilter);
-        params.set('limit', String(AUDIT_LIMIT));
-        params.set('offset', String(offset));
-
-        const res = await canvasClient.get(`/audit-log?${params.toString()}`);
-        const payload = res.data?.data || res.data;
-        const entries = Array.isArray(payload?.entries) ? payload.entries : Array.isArray(payload) ? payload : [];
+        const entries = await fetchAuditPage(offset, AUDIT_LIMIT);
         if (append) {
           setAuditEntries((prev) => [...prev, ...entries]);
         } else {
@@ -245,25 +247,39 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
         setAuditLoading(false);
       }
     },
-    [auditDateFrom, auditDateTo, auditActionFilter],
+    [fetchAuditPage],
   );
 
   // ─── Export audit log as CSV ───
-  const exportAuditCsv = () => {
-    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
-    const header = 'Date/Time,Action,Resource,Actor,Details';
-    const rows = auditEntries.map(
-      (e) => `${escape(e.timestamp)},${escape(e.action)},${escape(e.resource)},${escape(e.actor)},${escape(e.details)}`,
-    );
-    const csv = [header, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `audit-log-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Audit log exported');
+  // The table holds only the pages that have been scrolled into view; an audit
+  // trail export has to be the whole (filtered) log, so re-read it from the API.
+  const exportAuditCsv = async () => {
+    setAuditExporting(true);
+    try {
+      const { entries, truncated } = await fetchAllAuditEntries(fetchAuditPage, {
+        pageSize: AUDIT_EXPORT_PAGE_SIZE,
+      });
+      if (entries.length === 0) {
+        toast.error('No audit log entries to export');
+        return;
+      }
+      const blob = new Blob([buildAuditCsv(entries)], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-log-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(
+        truncated
+          ? `Audit log exported (first ${entries.length} entries)`
+          : `Audit log exported (${entries.length} entries)`,
+      );
+    } catch {
+      toast.error('Failed to export the audit log');
+    } finally {
+      setAuditExporting(false);
+    }
   };
 
   // ─── Journal helpers ───
@@ -922,7 +938,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                 </button>
                 <button
                   onClick={exportAuditCsv}
-                  disabled={auditEntries.length === 0}
+                  disabled={auditEntries.length === 0 || auditExporting}
                   className="flex items-center gap-1 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -932,7 +948,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                       d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
                     />
                   </svg>
-                  Export Audit Log
+                  {auditExporting ? 'Exporting...' : 'Export Audit Log'}
                 </button>
               </div>
 
