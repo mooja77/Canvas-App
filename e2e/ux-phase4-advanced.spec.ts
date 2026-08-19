@@ -1,3 +1,8 @@
+// Seeded codings slice their text out of this content at their own
+// offsets. The server verifies content.slice(start, end) === codedText,
+// and the previous hand-written literals described spans that could not exist.
+const PHASE4_TRANSCRIPT =
+  'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted sixty minutes and was recorded with participant consent. Participants described their experiences navigating organizational change.';
 import { test, expect, type Page } from '@playwright/test';
 
 // ─── Helpers ───
@@ -131,8 +136,7 @@ test.describe('UX Phase 4 — Advanced Features', () => {
       headers,
       data: {
         title: 'Phase4 Interview',
-        content:
-          'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted sixty minutes and was recorded with participant consent. Participants described their experiences navigating organizational change.',
+        content: PHASE4_TRANSCRIPT,
       },
     });
     const tId = (await tRes.json()).data.id;
@@ -156,8 +160,8 @@ test.describe('UX Phase 4 — Advanced Features', () => {
         transcriptId: tId,
         questionId: c1Id,
         startOffset: 0,
-        endOffset: 80,
-        codedText: 'The research methodology involved conducting semi-structured interviews',
+        endOffset: Math.min(80, PHASE4_TRANSCRIPT.length),
+        codedText: PHASE4_TRANSCRIPT.slice(0, Math.min(80, PHASE4_TRANSCRIPT.length)),
       },
     });
     await page.request.post(`${baseUrl}/canvas/${canvasId}/codings`, {
@@ -166,8 +170,8 @@ test.describe('UX Phase 4 — Advanced Features', () => {
         transcriptId: tId,
         questionId: c2Id,
         startOffset: 180,
-        endOffset: 270,
-        codedText: 'Participants described their experiences navigating organizational change',
+        endOffset: Math.min(270, PHASE4_TRANSCRIPT.length),
+        codedText: PHASE4_TRANSCRIPT.slice(180, Math.min(270, PHASE4_TRANSCRIPT.length)),
       },
     });
 
