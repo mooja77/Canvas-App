@@ -9,13 +9,28 @@ type CanvasSocketRole = 'owner' | 'editor' | 'viewer';
 
 // Check that the user owns the canvas or is an explicit collaborator.
 // Share codes grant clone access, not live-coding access, so they don't count here.
+//
+// Ownership must mirror the REST check in utils/routeHelpers#getOwnedCanvas:
+// a canvas is owned either via CodingCanvas.userId (email auth) or via
+// CodingCanvas.dashboardAccessId (legacy access-code projects, whose userId
+// column is NULL). Checking userId alone locked the legacy owner out of their
+// own realtime session — presence, cursors and live coding silently never
+// worked — while the REST API happily served the same canvas.
 async function getCanvasAccess(canvasId: string, userId: string): Promise<CanvasSocketRole | null> {
   const canvas = await prisma.codingCanvas.findUnique({
     where: { id: canvasId },
-    select: { userId: true, deletedAt: true },
+    select: { userId: true, dashboardAccessId: true, deletedAt: true },
   });
   if (!canvas || canvas.deletedAt) return null;
   if (canvas.userId === userId) return 'owner';
+  if (canvas.dashboardAccessId) {
+    // DashboardAccess.userId is unique — at most one row per linked user.
+    const dashboardAccess = await prisma.dashboardAccess.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (dashboardAccess && dashboardAccess.id === canvas.dashboardAccessId) return 'owner';
+  }
   const collab = await prisma.canvasCollaborator.findUnique({
     where: { canvasId_userId: { canvasId, userId } },
     select: { role: true },

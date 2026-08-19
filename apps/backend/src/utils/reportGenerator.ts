@@ -23,14 +23,29 @@ export async function generateReport(
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { name: true, email: true },
+    // The legacy DashboardAccess row (if this account was linked from an
+    // access code) is part of how the user's canvases are scoped — see below.
+    select: { name: true, email: true, dashboardAccess: { select: { id: true } } },
   });
 
   if (!user) {
     return { html: '<p>User not found</p>', subject: 'QualCanvas Report' };
   }
 
-  const canvasWhere = canvasId ? { id: canvasId, userId } : { userId };
+  // Scope canvases exactly as GET /canvas does: owned via userId, owned via the
+  // legacy DashboardAccess row (those canvases carry a NULL userId), or shared
+  // with the user as a collaborator. Scoping by userId alone silently dropped
+  // the latter two, so users whose canvases are plainly listed in the UI got a
+  // 200 with "No canvas activity this period" — a missing-data bug reported as
+  // a success.
+  const visibleToUser = {
+    OR: [
+      { userId },
+      { collaborators: { some: { userId } } },
+      ...(user.dashboardAccess ? [{ dashboardAccessId: user.dashboardAccess.id }] : []),
+    ],
+  };
+  const canvasWhere = canvasId ? { id: canvasId, ...visibleToUser } : visibleToUser;
 
   const canvases = await prisma.codingCanvas.findMany({
     where: { ...canvasWhere, deletedAt: null },

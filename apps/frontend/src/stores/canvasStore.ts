@@ -20,7 +20,7 @@ import type {
 } from '@qualcanvas/shared';
 import { canvasApi } from '../services/api';
 import { emitSocketEvent } from '../lib/socket';
-import { cacheCanvas, getCachedCanvas } from '../lib/offlineStorage';
+import { cacheCanvas, getCachedCanvas, clearCachedCanvas } from '../lib/offlineStorage';
 import { trackEvent } from '../utils/analytics';
 import toast from 'react-hot-toast';
 
@@ -225,8 +225,35 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
         set({ activeCanvasId: id, activeCanvas: res.data.data, loading: false, pendingSelection: null });
         // Cache for offline use
         cacheCanvas(res.data.data).catch(() => {});
-      } catch {
-        // Try offline fallback
+      } catch (err) {
+        // A response with a status code is a definitive answer from the
+        // server, NOT an offline condition. Re-serving the cached copy here
+        // handed a removed collaborator (403) or a trashed canvas (404) the
+        // full transcripts, codings and memos — with a stale myRole of
+        // 'owner' — behind a reassuring "Loaded from offline cache" toast.
+        const status = (err as { response?: { status?: number } } | undefined)?.response?.status;
+
+        if (status === 403 || status === 404) {
+          // Access was refused or the canvas is gone: drop the local copy so
+          // it can't be served later either.
+          await clearCachedCanvas(id).catch(() => {});
+          const message =
+            status === 403 ? 'You no longer have access to this canvas' : 'This canvas is no longer available';
+          set({ error: message, loading: false, activeCanvasId: null, activeCanvas: null, pendingSelection: null });
+          toast.error(message);
+          return;
+        }
+
+        if (status !== undefined && status < 500) {
+          // Any other 4xx (401 expired session, 429 rate limit, ...) is still
+          // a real server answer — don't dress it up as offline. The cached
+          // copy may legitimately be this user's, so leave it in place.
+          set({ error: 'Failed to open canvas', loading: false });
+          toast.error('Failed to load canvas');
+          return;
+        }
+
+        // No response at all (network down) or a 5xx outage — offline fallback.
         const cached = await getCachedCanvas(id).catch(() => null);
         if (cached) {
           set({ activeCanvasId: id, activeCanvas: cached, loading: false, pendingSelection: null });
