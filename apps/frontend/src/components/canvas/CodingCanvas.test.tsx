@@ -5,6 +5,11 @@ import { render, screen } from '@testing-library/react';
 const mockUseParams = vi.fn<() => Record<string, string | undefined>>(() => ({}));
 vi.mock('react-router-dom', () => ({
   useParams: () => mockUseParams(),
+  Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode }) => (
+    <a href={to} {...rest}>
+      {children}
+    </a>
+  ),
 }));
 
 // Mock canvasStore
@@ -14,6 +19,7 @@ const mockCloseCanvas = vi.fn();
 const mockCanvasStoreState: Record<string, any> = {
   activeCanvasId: null,
   activeCanvas: null,
+  error: null,
   openCanvas: mockOpenCanvas,
   closeCanvas: mockCloseCanvas,
 };
@@ -25,6 +31,7 @@ vi.mock('../../stores/canvasStore', () => ({
   },
   useActiveCanvas: () => mockCanvasStoreState.activeCanvas,
   useActiveCanvasId: () => mockCanvasStoreState.activeCanvasId,
+  useCanvasError: () => mockCanvasStoreState.error,
 }));
 
 // Mock child components to avoid rendering their complex trees
@@ -42,6 +49,7 @@ describe('CodingCanvas', () => {
     vi.clearAllMocks();
     mockCanvasStoreState.activeCanvasId = null;
     mockCanvasStoreState.activeCanvas = null;
+    mockCanvasStoreState.error = null;
     mockCanvasStoreState.openCanvas = mockOpenCanvas;
     mockCanvasStoreState.closeCanvas = mockCloseCanvas;
     mockUseParams.mockReturnValue({});
@@ -87,6 +95,18 @@ describe('CodingCanvas', () => {
     mockUseParams.mockReturnValue({});
     render(<CodingCanvas />);
     expect(mockCloseCanvas).toHaveBeenCalled();
+  });
+
+  // Once openCanvas stopped serving a cached canvas to a user whose access was
+  // revoked, the 403 path landed on the "Loading canvas..." placeholder with
+  // nothing to retry and no way out. Surface the refusal instead.
+  it('shows the load error instead of a permanent loading placeholder', () => {
+    mockUseParams.mockReturnValue({ canvasId: 'url-canvas-403' });
+    mockCanvasStoreState.error = 'You no longer have access to this canvas';
+    render(<CodingCanvas />);
+    expect(screen.getByText('You no longer have access to this canvas')).toBeInTheDocument();
+    expect(screen.queryByText('Loading canvas...')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /back to your canvases/i })).toBeInTheDocument();
   });
 
   it('does nothing when no URL canvasId and no active canvas', () => {
