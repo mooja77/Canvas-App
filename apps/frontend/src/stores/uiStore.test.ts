@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useUIStore } from './uiStore';
 
 // Reset store state between tests
@@ -12,8 +12,11 @@ function resetStore() {
     onboardingOwnerId: null,
     onboardingV2Complete: false,
     onboardingChecklistDismissed: false,
+    onboardingChecklistComplete: [],
     dismissedJitTooltips: [],
+    showFullProductTour: false,
   });
+  localStorage.removeItem('qualcanvas-ui');
   // Clean up DOM class
   document.documentElement.classList.remove('dark');
 }
@@ -177,6 +180,64 @@ describe('uiStore', () => {
       const state = useUIStore.getState();
       expect(state.onboardingChecklistDismissed).toBe(true);
       expect(state.dismissedJitTooltips).toEqual(['local-tooltip', 'server-tooltip']);
+    });
+
+    it('resets checklist completions when the account changes', () => {
+      useUIStore.setState({ onboardingOwnerId: 'user-a', onboardingChecklistComplete: ['export-csv'] });
+
+      useUIStore.getState().prepareOnboardingForAccount('user-b');
+
+      expect(useUIStore.getState().onboardingChecklistComplete).toEqual([]);
+    });
+
+    it('hydrates checklist completions from the account record', () => {
+      useUIStore.getState().hydrateOnboardingForAccount('user-a', {
+        completed: false,
+        checklistComplete: ['export-csv'],
+      });
+
+      expect(useUIStore.getState().onboardingChecklistComplete).toEqual(['export-csv']);
+    });
+
+    it('records a checklist completion without duplicating it', () => {
+      useUIStore.getState().markChecklistItemComplete('export-csv');
+      useUIStore.getState().markChecklistItemComplete('export-csv');
+
+      expect(useUIStore.getState().onboardingChecklistComplete).toEqual(['export-csv']);
+    });
+  });
+
+  describe('transient state', () => {
+    // Abandoning the tour by closing the tab used to re-open a full-screen
+    // overlay at step 1 on the next visit, with no gesture from the user.
+    it('does not persist showFullProductTour', () => {
+      useUIStore.getState().openFullProductTour();
+
+      const raw = localStorage.getItem('qualcanvas-ui');
+      expect(raw).not.toBeNull();
+      const persisted = JSON.parse(raw as string).state as Record<string, unknown>;
+      expect('showFullProductTour' in persisted).toBe(false);
+      // Control: neighbouring onboarding state IS still persisted.
+      expect('onboardingChecklistDismissed' in persisted).toBe(true);
+    });
+
+    it('purges a showFullProductTour flag left behind by an older build', async () => {
+      // Read is deliberately left intact (E2E seeds the tour through this
+      // key), so a user who abandoned the tour before this fix still sees it
+      // hydrate once. The first subsequent write drops it for good.
+      vi.resetModules();
+      localStorage.setItem(
+        'qualcanvas-ui',
+        JSON.stringify({ state: { showFullProductTour: true, onboardingComplete: false }, version: 0 }),
+      );
+
+      const { useUIStore: freshStore } = await import('./uiStore');
+      expect(freshStore.getState().showFullProductTour).toBe(true);
+
+      freshStore.getState().setSidebarCollapsed(true);
+
+      const persisted = JSON.parse(localStorage.getItem('qualcanvas-ui') as string).state as Record<string, unknown>;
+      expect('showFullProductTour' in persisted).toBe(false);
     });
   });
 });

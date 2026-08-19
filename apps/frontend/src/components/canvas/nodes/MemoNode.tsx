@@ -6,6 +6,7 @@ import type { NodeProps } from '@xyflow/react';
 import { useCanvasStore } from '../../../stores/canvasStore';
 import CrossCanvasRefBadge from '../CrossCanvasRefBadge';
 import ConfirmDialog from '../ConfirmDialog';
+import { reportNodeSaveError } from './nodeSave';
 
 export interface MemoNodeData {
   memoId: string;
@@ -139,6 +140,7 @@ function MemoNode({ data, id, selected }: NodeProps) {
   const [editContent, setEditContent] = useState(nodeData.content);
   const [editTitle, setEditTitle] = useState(nodeData.title || '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { collapsed, toggleCollapsed } = useNodeCollapsed(id, nodeData.collapsed);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -150,12 +152,25 @@ function MemoNode({ data, id, selected }: NodeProps) {
     }
   }, [editing, editContent]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const updates: { content?: string; title?: string } = {};
     if (editContent.trim() !== nodeData.content) updates.content = editContent.trim();
     if (editTitle.trim() !== (nodeData.title || '')) updates.title = editTitle.trim() || undefined;
-    if (Object.keys(updates).length > 0) updateMemo(nodeData.memoId, updates);
-    setEditing(false);
+    if (Object.keys(updates).length === 0) {
+      setEditing(false);
+      return;
+    }
+    if (saving) return;
+    setSaving(true);
+    try {
+      await updateMemo(nodeData.memoId, updates);
+      setEditing(false);
+    } catch (err) {
+      // Keep the editor open so the typed text is not thrown away.
+      reportNodeSaveError(err, 'Failed to save memo');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Insert formatting at cursor

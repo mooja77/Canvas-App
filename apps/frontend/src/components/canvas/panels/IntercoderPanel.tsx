@@ -20,10 +20,15 @@ interface AgreementResult {
   nSegments: number;
 }
 
+// A Viewer is structurally incapable of holding a coding (writes are blocked
+// server-side by viewerWriteGuard), so they can never be a comparable coder.
+type CoderRole = 'owner' | 'editor' | 'viewer';
+
 interface Coder {
   id: string;
   name: string;
   email: string;
+  role: CoderRole;
 }
 
 // α and κ share the same conventional agreement bands.
@@ -57,10 +62,18 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
   const canvasId = activeCanvas?.id;
   const transcripts = activeCanvas?.transcripts ?? [];
 
-  // Coders = the current user ("You") plus any collaborators on the canvas.
+  // Coders = the current user ("You"), the canvas owner, and any collaborators.
   // Codings are attributed by coderUserId (migration 0031), so a genuine ≥2-coder
   // agreement statistic can be computed across the selected people.
   const [collaborators, setCollaborators] = useState<Coder[]>([]);
+
+  // GET /canvas/:id/collaborators returns CanvasCollaborator rows (userId, role,
+  // …) enriched with userName/userEmail. Owners hold no collaborator row.
+  const myRole = activeCanvas?.myRole;
+  // The canvas-detail payload spreads the CodingCanvas row, so the owner's user
+  // id rides along as `userId`. It is not declared on the shared CanvasDetail
+  // type, so read it defensively rather than widening the shared package here.
+  const ownerUserId = (activeCanvas as { userId?: string | null } | null | undefined)?.userId ?? null;
 
   useEffect(() => {
     if (!canvasId) return;
@@ -75,6 +88,9 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
           id: c.userId || c.user?.id || c.id,
           name: c.userName || c.user?.name || c.name || 'Unknown',
           email: c.userEmail || c.user?.email || c.email || '',
+          // Anything that isn't an explicit viewer can code (the backend
+          // defaults an invite to 'editor').
+          role: (c.role === 'viewer' ? 'viewer' : 'editor') as CoderRole,
         }));
         setCollaborators(users);
       })
@@ -88,16 +104,42 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
 
   const coders: Coder[] = useMemo(() => {
     const list: Coder[] = [];
+    const seen = new Set<string>();
     if (currentUserId) {
-      list.push({ id: currentUserId, name: 'You', email: currentUserEmail ?? '' });
+      const mine: CoderRole = myRole === 'viewer' ? 'viewer' : myRole === 'editor' ? 'editor' : 'owner';
+      list.push({ id: currentUserId, name: 'You', email: currentUserEmail ?? '', role: mine });
+      seen.add(currentUserId);
+    }
+    // The owner has no collaborator row, so without this an invited coder is
+    // told the canvas has no second coder while looking at their co-coder's work.
+    if (ownerUserId && currentUserId && myRole !== 'owner' && !seen.has(ownerUserId)) {
+      list.push({ id: ownerUserId, name: 'Canvas owner', email: '', role: 'owner' });
+      seen.add(ownerUserId);
     }
     for (const c of collaborators) {
-      if (c.id && c.id !== currentUserId) list.push(c);
+      if (!c.id || seen.has(c.id)) continue;
+      list.push(c);
+      seen.add(c.id);
     }
     return list;
-  }, [currentUserId, currentUserEmail, collaborators]);
+  }, [currentUserId, currentUserEmail, ownerUserId, myRole, collaborators]);
+
+  // Viewers cannot hold a coding: selecting one would score every coded unit as
+  // a disagreement and silently deflate the coefficient.
+  const selectableCoders = useMemo(() => coders.filter((c) => c.role !== 'viewer'), [coders]);
+  const hasExcludedViewers = coders.length > selectableCoders.length;
+
+  // Drop any selection that stops being selectable (the roster loads async).
+  useEffect(() => {
+    const allowed = new Set(selectableCoders.map((c) => c.id));
+    setSelectedCoderIds((prev) => {
+      const next = prev.filter((id) => allowed.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [selectableCoders]);
 
   const toggleCoder = (id: string) => {
+    if (!selectableCoders.some((c) => c.id === id)) return;
     setResult(null);
     setSelectedCoderIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
@@ -201,20 +243,30 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
             </label>
             <div className="flex flex-wrap gap-2">
               {coders.map((c) => {
-                const checked = selectedCoderIds.includes(c.id);
+                const isViewer = c.role === 'viewer';
+                const checked = !isViewer && selectedCoderIds.includes(c.id);
                 return (
                   <button
                     key={c.id}
                     type="button"
-                    aria-pressed={checked}
+                    disabled={isViewer}
+                    aria-pressed={isViewer ? undefined : checked}
+                    title={
+                      isViewer
+                        ? `${c.name} has view-only access, so they hold no coding to compare. Re-invite them as a coder to include them.`
+                        : undefined
+                    }
                     onClick={() => toggleCoder(c.id)}
                     className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                      checked
-                        ? 'border-indigo-300 bg-indigo-100 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
+                      isViewer
+                        ? 'border-dashed border-gray-200 text-gray-400 cursor-not-allowed dark:border-gray-700 dark:text-gray-500'
+                        : checked
+                          ? 'border-indigo-300 bg-indigo-100 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+                          : 'border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
                     }`}
                   >
                     {c.name}
+                    {isViewer && <span className="ml-1 font-normal">(viewer)</span>}
                   </button>
                 );
               })}
@@ -222,6 +274,11 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
             <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
               {choice.canCompute ? `${selectedCoderIds.length} selected — ${choice.label}` : choice.label}
             </p>
+            {hasExcludedViewers && (
+              <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
+                Viewers can&rsquo;t code, so they can&rsquo;t be compared.
+              </p>
+            )}
           </div>
 
           <div className="flex items-end gap-3">
@@ -271,11 +328,11 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
                 />
               </svg>
               <p className="text-xs text-gray-400 dark:text-gray-500">
-                {coders.length < 2
+                {selectableCoders.length < 2
                   ? 'You need a second coder on this canvas to compare coding.'
                   : 'Select two or more coders and a transcript, then click "Compute agreement".'}
               </p>
-              {coders.length < 2 && (
+              {selectableCoders.length < 2 && (
                 <button
                   onClick={() => {
                     // Hand off to the Share modal, which owns the invite flow.
