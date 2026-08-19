@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
+import { reportNodeSaveError } from './nodeSave';
 import { useCanvasStore, useCanvasComputedNodes } from '../../../stores/canvasStore';
 import type { CanvasComputedNode, SearchConfig, SearchResult } from '@qualcanvas/shared';
 
@@ -12,7 +13,7 @@ export interface SearchResultNodeData {
 function SearchResultNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as SearchResultNodeData;
   const computedNodes = useCanvasComputedNodes();
-  const updateComputedNode = useCanvasStore(s => s.updateComputedNode);
+  const updateComputedNode = useCanvasStore((s) => s.updateComputedNode);
   const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [editing, setEditing] = useState(false);
   const [pattern, setPattern] = useState((node?.config as unknown as SearchConfig)?.pattern || '');
@@ -22,14 +23,22 @@ function SearchResultNode({ data, id, selected }: NodeProps) {
   const config = node.config as unknown as SearchConfig;
   const result = node.result as unknown as SearchResult;
 
-  const handleSaveConfig = () => {
-    updateComputedNode(node.id, { config: { ...config, pattern, mode } });
-    setEditing(false);
+  const handleSaveConfig = async () => {
+    try {
+      await updateComputedNode(node.id, { config: { ...config, pattern, mode } });
+      setEditing(false);
+    } catch (err) {
+      reportNodeSaveError(err, 'Failed to save settings');
+    }
   };
 
   const icon = (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+      />
     </svg>
   );
 
@@ -40,7 +49,11 @@ function SearchResultNode({ data, id, selected }: NodeProps) {
       label={node.label}
       icon={icon}
       color="#059669"
-      onConfigure={() => { setPattern(config?.pattern || ''); setMode(config?.mode || 'keyword'); setEditing(true); }}
+      onConfigure={() => {
+        setPattern(config?.pattern || '');
+        setMode(config?.mode || 'keyword');
+        setEditing(true);
+      }}
       selected={selected}
       collapsed={(data as unknown as Record<string, unknown>).collapsed as boolean}
       zoomLevel={(data as unknown as Record<string, unknown>).zoomLevel as number}
@@ -52,20 +65,24 @@ function SearchResultNode({ data, id, selected }: NodeProps) {
             className="input h-7 w-full text-xs"
             placeholder="Search pattern..."
             value={pattern}
-            onChange={e => setPattern(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSaveConfig()}
+            onChange={(e) => setPattern(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSaveConfig()}
           />
           <div className="flex items-center gap-2">
             <select
               className="input h-7 text-xs flex-1"
               value={mode}
-              onChange={e => setMode(e.target.value as 'keyword' | 'regex')}
+              onChange={(e) => setMode(e.target.value as 'keyword' | 'regex')}
             >
               <option value="keyword">Keyword</option>
               <option value="regex">Regex</option>
             </select>
-            <button onClick={handleSaveConfig} className="btn-primary h-7 px-2 text-xs">Save</button>
-            <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+            <button onClick={handleSaveConfig} className="btn-primary h-7 px-2 text-xs">
+              Save
+            </button>
+            <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">
+              Cancel
+            </button>
           </div>
         </div>
       )}

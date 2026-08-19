@@ -38,6 +38,14 @@ import AiSuggestPanel from './panels/AiSuggestPanel';
 import AiSetupGuide from './panels/AiSetupGuide';
 import { getCodingIdsFromEdgeData, isDenseEdgeGraph, shouldHideEdgesAtZoom } from './canvasEdgeUtils';
 import { decorateNodes } from './canvasNodeDecoration';
+import {
+  deleteNodesById,
+  describeBulkDelete,
+  describePaste,
+  resolveNodeDelete,
+  type NodeDeleters,
+  type PasteOutcome,
+} from './canvasNodeOps';
 import { numericValue } from './canvasGeometry';
 import { edgeTypes, nodeTypes } from './canvasFlowTypes';
 import AlignmentGuideOverlay from './AlignmentGuideOverlay';
@@ -518,7 +526,7 @@ export default function CanvasWorkspace() {
   const {
     rerouteNodes,
     addReroute,
-    removeReroute: _removeReroute,
+    removeReroute,
     updateReroutePosition: _updateReroutePosition,
   } = useCanvasRerouteNodes();
 
@@ -1360,7 +1368,13 @@ export default function CanvasWorkspace() {
     else if (type === 'memo') label = (d?.title as string) || 'memo';
     else if (type === 'case') label = 'case';
     else if (type === 'group') label = (d?.title as string) || 'group';
-    else {
+    else if (type === 'reroute') {
+      label = 'waypoint';
+      typeLabel = 'waypoint';
+    } else if (type === 'sticky') {
+      label = 'sticky note';
+      typeLabel = 'sticky note';
+    } else {
       const friendly = COMPUTED_NODE_LABELS[type] || 'analysis';
       label = friendly;
       typeLabel = friendly;
@@ -1369,19 +1383,49 @@ export default function CanvasWorkspace() {
     setDeleteConfirm({ nodeId: node.id, label, type: typeLabel });
   }, [nodes]);
 
+  // One place that knows how to delete each kind of canvas node, so a delete
+  // either really happens or is reported as a failure — never silently ignored
+  // while the UI claims success.
+  const nodeDeleters = useMemo<NodeDeleters>(
+    () => ({
+      transcript: (id) => deleteTranscript(id),
+      question: (id) => deleteQuestion(id),
+      memo: (id) => deleteMemo(id),
+      case: (id) => deleteCase(id),
+      computed: (id) => deleteComputedNode(id),
+      group: (id, nodeId) => {
+        removeGroup(id);
+        setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+      },
+      // Waypoints and sticky notes live in localStorage; their node id IS the
+      // record id for reroutes, while sticky node ids are prefixed.
+      reroute: (_id, nodeId) => removeReroute(nodeId),
+      sticky: (id) => removeStickyNote(id),
+    }),
+    [
+      deleteTranscript,
+      deleteQuestion,
+      deleteMemo,
+      deleteCase,
+      deleteComputedNode,
+      removeGroup,
+      removeReroute,
+      removeStickyNote,
+      setNodes,
+    ],
+  );
+
   const confirmDeleteNode = async () => {
     if (!deleteConfirm) return;
     const { nodeId } = deleteConfirm;
+    const run = resolveNodeDelete(nodeId, nodeDeleters);
+    if (!run) {
+      toast.error('This node cannot be deleted');
+      setDeleteConfirm(null);
+      return;
+    }
     try {
-      if (nodeId.startsWith('transcript-')) await deleteTranscript(nodeId.replace('transcript-', ''));
-      else if (nodeId.startsWith('question-')) await deleteQuestion(nodeId.replace('question-', ''));
-      else if (nodeId.startsWith('memo-')) await deleteMemo(nodeId.replace('memo-', ''));
-      else if (nodeId.startsWith('case-')) await deleteCase(nodeId.replace('case-', ''));
-      else if (nodeId.startsWith('computed-')) await deleteComputedNode(nodeId.replace('computed-', ''));
-      else if (nodeId.startsWith('group-')) {
-        removeGroup(nodeId.replace('group-', ''));
-        setNodes((nds) => nds.filter((n) => n.id !== nodeId));
-      }
+      await run();
       toast.success('Node deleted');
       setTimeout(() => pushHistorySnapshot(), 300);
     } catch (err) {
@@ -1392,30 +1436,22 @@ export default function CanvasWorkspace() {
 
   // Delete multiple selected nodes
   const handleDeleteAllSelected = useCallback(async () => {
-    for (const node of selectedNodes) {
-      try {
-        if (node.id.startsWith('transcript-')) await deleteTranscript(node.id.replace('transcript-', ''));
-        else if (node.id.startsWith('question-')) await deleteQuestion(node.id.replace('question-', ''));
-        else if (node.id.startsWith('memo-')) await deleteMemo(node.id.replace('memo-', ''));
-        else if (node.id.startsWith('case-')) await deleteCase(node.id.replace('case-', ''));
-        else if (node.id.startsWith('computed-')) await deleteComputedNode(node.id.replace('computed-', ''));
-        else if (node.id.startsWith('group-')) removeGroup(node.id.replace('group-', ''));
-      } catch {
-        /* continue */
-      }
+    if (selectedNodes.length === 0) return;
+    const result = await deleteNodesById(
+      selectedNodes.map((n) => n.id),
+      nodeDeleters,
+    );
+    const report = describeBulkDelete(result);
+    if (report.kind === 'success') {
+      toast.success(report.text);
+    } else {
+      // Prefer the server's own explanation ("You have view-only access…")
+      // alongside the real counts.
+      const detail = result.firstError ? apiErrorMessage(result.firstError, '') : '';
+      toast.error(detail ? `${report.text}: ${detail}` : report.text);
     }
-    toast.success(`Deleted ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''}`);
-    setTimeout(() => pushHistorySnapshot(), 300);
-  }, [
-    selectedNodes,
-    deleteTranscript,
-    deleteQuestion,
-    deleteMemo,
-    deleteCase,
-    deleteComputedNode,
-    removeGroup,
-    pushHistorySnapshot,
-  ]);
+    if (result.deleted > 0) setTimeout(() => pushHistorySnapshot(), 300);
+  }, [selectedNodes, nodeDeleters, pushHistorySnapshot]);
 
   // Copy selected nodes (with relation edges between them)
   const handleCopy = useCallback(() => {
@@ -1435,6 +1471,8 @@ export default function CanvasWorkspace() {
     const { nodes: toPaste, relationEdges } = clipboardRef.current;
     if (toPaste.length === 0) return;
     let pasted = 0;
+    let failed = 0;
+    let firstError: unknown;
     // Map old node IDs to new entity IDs (e.g. "question-abc" -> new question id)
     const oldIdToNewId = new Map<string, { type: 'case' | 'question'; id: string }>();
     for (const node of toPaste) {
@@ -1461,8 +1499,9 @@ export default function CanvasWorkspace() {
             pasted++;
           }
         }
-      } catch {
-        /* skip */
+      } catch (err) {
+        failed++;
+        if (firstError === undefined) firstError = err;
       }
     }
     // Recreate relation edges between pasted nodes
@@ -1480,14 +1519,17 @@ export default function CanvasWorkspace() {
         }
       }
     }
-    if (pasted > 0) {
-      const msg =
-        relationsCreated > 0
-          ? `Pasted ${pasted} node(s) with ${relationsCreated} connection(s)`
-          : `Pasted ${pasted} node(s)`;
-      toast.success(msg);
-      setTimeout(() => pushHistorySnapshot(), 300);
+    const outcome: PasteOutcome = { pasted, relationsCreated, failed, firstError };
+    const report = describePaste(outcome);
+    if (report) {
+      if (report.kind === 'success') {
+        toast.success(report.text);
+      } else {
+        const detail = firstError ? apiErrorMessage(firstError, '') : '';
+        toast.error(detail ? `${report.text}: ${detail}` : report.text);
+      }
     }
+    if (pasted > 0) setTimeout(() => pushHistorySnapshot(), 300);
   }, [activeCanvas, addTranscript, addQuestion, addMemo, addComputedNode, addRelation, pushHistorySnapshot]);
 
   // Duplicate (copy + paste)

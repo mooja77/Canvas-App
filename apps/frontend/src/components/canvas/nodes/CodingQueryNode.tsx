@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
+import { reportNodeSaveError } from './nodeSave';
 import { useCanvasStore, useCanvasComputedNodes, useCanvasQuestions } from '../../../stores/canvasStore';
 import type { CanvasComputedNode, CanvasQuestion, CodingQueryConfig, CodingQueryResult } from '@qualcanvas/shared';
 
@@ -13,7 +14,7 @@ function CodingQueryNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as CodingQueryNodeData;
   const computedNodes = useCanvasComputedNodes();
   const questions = useCanvasQuestions();
-  const updateComputedNode = useCanvasStore(s => s.updateComputedNode);
+  const updateComputedNode = useCanvasStore((s) => s.updateComputedNode);
   const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [editing, setEditing] = useState(false);
   const [conditions, setConditions] = useState<{ questionId: string; operator: 'AND' | 'OR' | 'NOT' }[]>([]);
@@ -22,10 +23,14 @@ function CodingQueryNode({ data, id, selected }: NodeProps) {
   const config = node.config as unknown as CodingQueryConfig;
   const result = node.result as unknown as CodingQueryResult;
 
-  const handleSaveConfig = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    updateComputedNode(node.id, { config: { conditions } as any });
-    setEditing(false);
+  const handleSaveConfig = async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateComputedNode(node.id, { config: { conditions } as any });
+      setEditing(false);
+    } catch (err) {
+      reportNodeSaveError(err, 'Failed to save settings');
+    }
   };
 
   const addCondition = () => {
@@ -39,7 +44,11 @@ function CodingQueryNode({ data, id, selected }: NodeProps) {
 
   const icon = (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"
+      />
     </svg>
   );
 
@@ -67,7 +76,7 @@ function CodingQueryNode({ data, id, selected }: NodeProps) {
                 <select
                   className="input h-6 text-[10px] w-14"
                   value={cond.operator}
-                  onChange={e => {
+                  onChange={(e) => {
                     const updated = [...conditions];
                     updated[i] = { ...cond, operator: e.target.value as 'AND' | 'OR' | 'NOT' };
                     setConditions(updated);
@@ -82,14 +91,16 @@ function CodingQueryNode({ data, id, selected }: NodeProps) {
               <select
                 className="input h-6 text-[10px] flex-1"
                 value={cond.questionId}
-                onChange={e => {
+                onChange={(e) => {
                   const updated = [...conditions];
                   updated[i] = { ...cond, questionId: e.target.value };
                   setConditions(updated);
                 }}
               >
                 {questions.map((q: CanvasQuestion) => (
-                  <option key={q.id} value={q.id}>{q.text.slice(0, 30)}</option>
+                  <option key={q.id} value={q.id}>
+                    {q.text.slice(0, 30)}
+                  </option>
                 ))}
               </select>
               <button onClick={() => removeCondition(i)} className="text-gray-400 hover:text-red-500 p-0.5">
@@ -100,11 +111,17 @@ function CodingQueryNode({ data, id, selected }: NodeProps) {
             </div>
           ))}
           <div className="flex gap-2">
-            <button onClick={addCondition} className="text-[10px] text-red-600 hover:text-red-700">+ Add condition</button>
+            <button onClick={addCondition} className="text-[10px] text-red-600 hover:text-red-700">
+              + Add condition
+            </button>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleSaveConfig} className="btn-primary h-7 px-2 text-xs">Save</button>
-            <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+            <button onClick={handleSaveConfig} className="btn-primary h-7 px-2 text-xs">
+              Save
+            </button>
+            <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">
+              Cancel
+            </button>
           </div>
         </div>
       )}
