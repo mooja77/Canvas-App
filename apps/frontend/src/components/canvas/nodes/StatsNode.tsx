@@ -64,11 +64,10 @@ function StatsNode({ data, id, selected }: NodeProps) {
         <div className="border-b border-gray-100 dark:border-gray-700 px-3 py-2 space-y-2">
           <div className="flex items-center gap-2">
             <label className="text-[10px] text-gray-500">Group by:</label>
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <select
               className="input h-7 text-xs flex-1"
               value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value as any)}
+              onChange={(e) => setGroupBy(e.target.value as 'question' | 'transcript')}
             >
               <option value="question">Question</option>
               <option value="transcript">Transcript</option>
