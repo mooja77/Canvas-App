@@ -2,6 +2,7 @@ import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import ComputedNodeShell from './ComputedNodeShell';
+import { reportNodeSaveError } from './nodeSave';
 import {
   useCanvasStore,
   useCanvasComputedNodes,
@@ -36,10 +37,14 @@ function SentimentNode({ data, id, selected }: NodeProps) {
   const config = node.config as unknown as SentimentConfig;
   const result = node.result as unknown as SentimentResult;
 
-  const handleSaveConfig = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    updateComputedNode(node.id, { config: { scope, scopeId: scopeId || undefined } as any });
-    setEditing(false);
+  const handleSaveConfig = async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateComputedNode(node.id, { config: { scope, scopeId: scopeId || undefined } as any });
+      setEditing(false);
+    } catch (err) {
+      reportNodeSaveError(err, 'Failed to save settings');
+    }
   };
 
   const icon = (
