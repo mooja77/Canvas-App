@@ -86,7 +86,11 @@ canvasClient.interceptors.response.use(
     if (error.response?.status === 401 && error.response?.data?.code !== 'PLAN_LIMIT_EXCEEDED' && !isAuthAttempt) {
       if (!isRedirecting && useAuthStore.getState().authenticated) {
         isRedirecting = true;
-        useAuthStore.getState().logout();
+        // Session expiry is involuntary - the 24h JWT has no refresh endpoint,
+        // so every user reaches this eventually. Keep their locally-stored
+        // research data (journals, weights, sticky notes, offline queue); a
+        // different account signing in is what clears it.
+        useAuthStore.getState().logout({ preserveLocalData: true });
         window.location.href = '/login?expired=true';
         setTimeout(() => {
           isRedirecting = false;
