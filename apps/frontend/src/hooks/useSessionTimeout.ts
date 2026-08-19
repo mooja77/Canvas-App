@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuthStore } from '../stores/authStore';
 
 const INACTIVITY_WARNING_MS = 30 * 60 * 1000; // 30 minutes
-const INACTIVITY_LOGOUT_MS = 35 * 60 * 1000;  // 35 minutes
+const INACTIVITY_LOGOUT_MS = 35 * 60 * 1000; // 35 minutes
 
 /**
  * Tracks user activity and auto-logs out after extended inactivity.
@@ -28,7 +28,9 @@ export function useSessionTimeout() {
     }, INACTIVITY_WARNING_MS);
 
     logoutTimerRef.current = setTimeout(() => {
-      useAuthStore.getState().logout();
+      // Involuntary - the user walked away, they did not choose to log out.
+      // Preserve their local research data; see authStore.logout.
+      useAuthStore.getState().logout({ preserveLocalData: true });
     }, INACTIVITY_LOGOUT_MS);
   }, []);
 
@@ -46,12 +48,12 @@ export function useSessionTimeout() {
     resetTimers();
 
     // Listen for activity
-    events.forEach(event => {
+    events.forEach((event) => {
       window.addEventListener(event, handleActivity, { passive: true });
     });
 
     return () => {
-      events.forEach(event => {
+      events.forEach((event) => {
         window.removeEventListener(event, handleActivity);
       });
       if (warningTimerRef.current) clearTimeout(warningTimerRef.current);

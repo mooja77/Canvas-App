@@ -51,7 +51,55 @@ interface AuthState {
   setName: (name: string) => void;
   updatePlan: (plan: string) => void;
   setTrialState: (data: { effectivePlan: string; trialEndsAt: string | null }) => void;
-  logout: () => void;
+  logout: (options?: { preserveLocalData?: boolean }) => void;
+}
+
+/**
+ * Per-canvas research data that lives ONLY in localStorage - there is no server
+ * copy of any of it: reflexivity journals, code weights, sticky notes, theme
+ * groups, node colours, bookmarks, edge waypoints, and the offline write queue.
+ */
+const LOCAL_RESEARCH_PREFIXES = ['canvas-'];
+const LOCAL_RESEARCH_KEYS = ['qualcanvas-cross-refs', 'qualcanvas-offline-queue'];
+
+/** Identity of the last account to authenticate in this browser. */
+const IDENTITY_KEY = 'qualcanvas-last-identity';
+
+function clearLocalResearchData(): void {
+  try {
+    for (let index = localStorage.length - 1; index >= 0; index--) {
+      const key = localStorage.key(index);
+      if (!key) continue;
+      if (LOCAL_RESEARCH_PREFIXES.some((prefix) => key.startsWith(prefix)) || LOCAL_RESEARCH_KEYS.includes(key)) {
+        localStorage.removeItem(key);
+      }
+    }
+  } catch {
+    // Storage can throw in private mode; nothing here is worth failing auth for.
+  }
+}
+
+/**
+ * Wipe the previous account's local research data when a DIFFERENT identity
+ * signs in on this browser.
+ *
+ * This is where the shared-browser guarantee belongs. It used to sit in
+ * `logout()`, which meant an *involuntary* logout - an expired 24h JWT, or the
+ * 35-minute idle timer - destroyed the user's own journals and weights before
+ * they had touched anything. Closing the tab, by far the commonest way to end a
+ * session, never wiped any of it, so the sweep was inconsistent rather than
+ * protective. Tying it to a change of identity keeps the next account from
+ * seeing the previous one's notes while letting the same person come back to
+ * their own work.
+ */
+function clearIfDifferentIdentity(identity: string): void {
+  try {
+    const previous = localStorage.getItem(IDENTITY_KEY);
+    if (previous && previous !== identity) clearLocalResearchData();
+    localStorage.setItem(IDENTITY_KEY, identity);
+  } catch {
+    // Ignored - see clearLocalResearchData.
+  }
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -73,7 +121,10 @@ export const useAuthStore = create<AuthState>()(
       emailVerified: false,
 
       // Legacy access-code login — jwt payload intentionally not stored
-      setAuth: (data) =>
+      setAuth: (data) => {
+        // A different account signing in on this browser clears the previous
+        // one's local research data. See clearIfDifferentIdentity.
+        clearIfDifferentIdentity(`legacy:${data.dashboardAccessId}`);
         set({
           dashboardCode: data.dashboardCode,
           name: data.name,
@@ -84,10 +135,12 @@ export const useAuthStore = create<AuthState>()(
           plan: 'pro', // Grandfathered
           effectivePlan: 'pro',
           trialEndsAt: null,
-        }),
+        });
+      },
 
       // Email login — jwt payload intentionally not stored
-      setEmailAuth: (data) =>
+      setEmailAuth: (data) => {
+        clearIfDifferentIdentity(`email:${data.userId}`);
         set({
           email: data.email,
           userId: data.userId,
@@ -101,7 +154,8 @@ export const useAuthStore = create<AuthState>()(
           authType: 'email',
           dashboardCode: null,
           dashboardAccessId: null,
-        }),
+        });
+      },
 
       setEmailVerified: (verified) => set({ emailVerified: verified }),
 
@@ -111,7 +165,7 @@ export const useAuthStore = create<AuthState>()(
 
       setTrialState: (data) => set({ effectivePlan: data.effectivePlan, trialEndsAt: data.trialEndsAt }),
 
-      logout: () => {
+      logout: (options) => {
         // Fire-and-forget: clear the httpOnly cookie on the server. Local
         // state clears immediately regardless so the UI doesn't wait on
         // network — a failed request just leaves a stale cookie that the
@@ -122,16 +176,22 @@ export const useAuthStore = create<AuthState>()(
           credentials: 'include',
           keepalive: true,
         }).catch(() => {});
-        // Canvas notes, reflexivity journals, code weights and cross-canvas
-        // references can contain research data. Do not leave them behind for
-        // the next account on a shared browser.
-        for (let index = localStorage.length - 1; index >= 0; index--) {
-          const key = localStorage.key(index);
-          if (
-            key &&
-            (key.startsWith('canvas-') || key === 'qualcanvas-cross-refs' || key === 'qualcanvas-offline-queue')
-          ) {
-            localStorage.removeItem(key);
+        // A DELIBERATE logout still clears local research data, so nothing is
+        // left behind for the next account on a shared browser.
+        //
+        // An INVOLUNTARY one must not. An expired 24h JWT (there is no refresh
+        // endpoint, so every user hits this) or the 35-minute idle timer would
+        // otherwise destroy the user's reflexivity journals, code weights,
+        // sticky notes, theme groups, node colours and bookmarks - none of
+        // which exist server-side - before they had done anything at all. The
+        // shared-browser guarantee is preserved by clearIfDifferentIdentity(),
+        // which wipes when a different account signs in.
+        if (!options?.preserveLocalData) {
+          clearLocalResearchData();
+          try {
+            localStorage.removeItem(IDENTITY_KEY);
+          } catch {
+            // Ignored.
           }
         }
         set({
