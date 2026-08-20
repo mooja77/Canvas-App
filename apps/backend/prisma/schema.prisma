@@ -183,6 +183,7 @@ model CodingCanvas {
   @@index([dashboardAccessId])
   @@index([userId])
   @@index([deletedAt])
+  journalEntries    CanvasJournalEntry[]
 }
 
 model CanvasShare {
@@ -257,6 +258,27 @@ model CanvasMemo {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   canvas    CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+}
+
+/// Reflexivity journal entries.
+///
+/// The panel that writes these cites Lincoln & Guba and promises "an audit
+/// trail for your analytical choices", but they lived only in the browser's
+/// localStorage: invisible on a second device, absent from every export, and
+/// destroyed by anything that cleared site data. `coderUserId` records who
+/// wrote the entry, since reflexivity is personal to a researcher rather than
+/// a property of the canvas.
+model CanvasJournalEntry {
+  id           String       @id @default(cuid())
+  canvasId     String
+  coderUserId  String?
+  category     String       @default("general")
+  content      String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  canvas       CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@index([canvasId])
 }
 
 model CanvasTextCoding {

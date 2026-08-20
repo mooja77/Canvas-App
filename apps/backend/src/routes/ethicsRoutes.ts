@@ -4,6 +4,10 @@ import { AppError } from '../middleware/errorHandler.js';
 import { logAudit } from '../middleware/auditLog.js';
 import {
   validate,
+  validateParams,
+  canvasIdParam,
+  canvasJournalParams,
+  createJournalEntrySchema,
   updateEthicsSchema,
   createConsentSchema,
   withdrawConsentSchema,
@@ -359,6 +363,84 @@ ethicsRoutes.post(
       });
 
       res.json({ success: true, data: updatedTranscript });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ─── Reflexivity journal ───
+//
+// These entries used to live only in the browser's localStorage, while the
+// panel that writes them cites Lincoln & Guba and promises "an audit trail for
+// your analytical choices". They were invisible on a second device, absent from
+// every export, and destroyed by anything that cleared site data - including,
+// until recently, an ordinary session expiry.
+//
+// Reflexivity is personal to a researcher rather than a property of the canvas,
+// so entries are attributed and each coder sees their own.
+
+ethicsRoutes.get('/canvas/:id/journal', validateParams(canvasIdParam), async (req, res, next) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    const userId = getAuthUserId(req);
+    await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+    const entries = await prisma.canvasJournalEntry.findMany({
+      where: { canvasId: req.params.id, coderUserId: userId ?? null },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ success: true, data: entries });
+  } catch (err) {
+    next(err);
+  }
+});
+
+ethicsRoutes.post(
+  '/canvas/:id/journal',
+  validateParams(canvasIdParam),
+  mutationLimiter,
+  validate(createJournalEntrySchema),
+  async (req, res, next) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      const userId = getAuthUserId(req);
+      await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+      const entry = await prisma.canvasJournalEntry.create({
+        data: {
+          canvasId: req.params.id,
+          coderUserId: userId ?? null,
+          content: req.body.content,
+          category: req.body.category ?? 'general',
+        },
+      });
+      res.status(201).json({ success: true, data: entry });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+ethicsRoutes.delete(
+  '/canvas/:id/journal/:entryId',
+  // Must validate BOTH params: validateParams replaces req.params with the
+  // parsed object, so a schema covering only `id` silently drops entryId.
+  validateParams(canvasJournalParams),
+  async (req, res, next) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      const userId = getAuthUserId(req);
+      await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
+      const existing = await prisma.canvasJournalEntry.findUnique({
+        where: { id: req.params.entryId },
+        select: { canvasId: true, coderUserId: true },
+      });
+      // Only the author may remove their own reflexivity note, and only from the
+      // canvas it belongs to.
+      if (!existing || existing.canvasId !== req.params.id || existing.coderUserId !== (userId ?? null)) {
+        return next(new AppError('Journal entry not found', 404));
+      }
+      await prisma.canvasJournalEntry.delete({ where: { id: req.params.entryId } });
+      res.json({ success: true });
     } catch (err) {
       next(err);
     }

@@ -38,6 +38,12 @@ const { mockPrisma } = vi.hoisted(() => {
       findMany: vi.fn(),
       count: vi.fn(),
     },
+    canvasJournalEntry: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+    },
     $transaction: vi.fn(),
     $disconnect: vi.fn(),
   };
@@ -505,5 +511,83 @@ describe('Ethics extended integration tests', () => {
 
     expect(res.status).toBe(403);
     expect(res.body.success).toBe(false);
+  });
+
+  // ─── Reflexivity journal ───
+  //
+  // These entries used to live only in the browser's localStorage while the
+  // panel promised "an audit trail for your analytical choices". Reflexivity is
+  // personal to a researcher, so entries are attributed and scoped per coder.
+  describe('reflexivity journal', () => {
+    it('GET /canvas/:canvasId/journal returns only the requester own entries', async () => {
+      mockPrisma.canvasJournalEntry.findMany.mockResolvedValue([]);
+
+      const res = await request(app).get(`/api/canvas/${canvasId}/journal`).set('Authorization', `Bearer ${jwt}`);
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.canvasJournalEntry.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { canvasId, coderUserId: userId } }),
+      );
+    });
+
+    it('POST /canvas/:canvasId/journal persists the entry attributed to its author', async () => {
+      mockPrisma.canvasJournalEntry.create.mockResolvedValue({
+        id: 'clj00000000000000000001',
+        content: 'A hunch about how trust is being described.',
+      });
+
+      const res = await request(app)
+        .post(`/api/canvas/${canvasId}/journal`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ content: 'A hunch about how trust is being described.', category: 'reflection' });
+
+      expect(res.status).toBe(201);
+      expect(mockPrisma.canvasJournalEntry.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            canvasId,
+            coderUserId: userId,
+            content: 'A hunch about how trust is being described.',
+            category: 'reflection',
+          }),
+        }),
+      );
+    });
+
+    it('POST /canvas/:canvasId/journal rejects an empty entry instead of storing it', async () => {
+      const res = await request(app)
+        .post(`/api/canvas/${canvasId}/journal`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ content: '' });
+
+      expect(res.status).toBe(400);
+      expect(mockPrisma.canvasJournalEntry.create).not.toHaveBeenCalled();
+    });
+
+    it('DELETE /canvas/:canvasId/journal/:entryId refuses another researcher entry', async () => {
+      mockPrisma.canvasJournalEntry.findUnique.mockResolvedValue({
+        canvasId,
+        coderUserId: 'a-different-researcher',
+      });
+
+      const res = await request(app)
+        .delete(`/api/canvas/${canvasId}/journal/clj0000000000000000othr`)
+        .set('Authorization', `Bearer ${jwt}`);
+
+      expect(res.status).toBe(404);
+      expect(mockPrisma.canvasJournalEntry.delete).not.toHaveBeenCalled();
+    });
+
+    it('DELETE /canvas/:canvasId/journal/:entryId removes the author own entry', async () => {
+      mockPrisma.canvasJournalEntry.findUnique.mockResolvedValue({ canvasId, coderUserId: userId });
+      mockPrisma.canvasJournalEntry.delete.mockResolvedValue({ id: 'clj00000000000000000001' });
+
+      const res = await request(app)
+        .delete(`/api/canvas/${canvasId}/journal/clj00000000000000000001`)
+        .set('Authorization', `Bearer ${jwt}`);
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.canvasJournalEntry.delete).toHaveBeenCalledWith({ where: { id: 'clj00000000000000000001' } });
+    });
   });
 });

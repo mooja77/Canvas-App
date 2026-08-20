@@ -44,6 +44,7 @@ export const canvasCanvasIdParam = z.object({ canvasId: cuid });
 export const canvasTranscriptParams = z.object({ id: cuid, tid: cuid });
 export const canvasQuestionParams = z.object({ id: cuid, qid: cuid });
 export const canvasMemoParams = z.object({ id: cuid, mid: cuid });
+export const canvasJournalParams = z.object({ id: cuid, entryId: cuid });
 export const canvasCodingParams = z.object({ id: cuid, codingId: cuid });
 export const canvasCodingCidParams = z.object({ id: cuid, cid: cuid });
 export const canvasCaseParams = z.object({ id: cuid, caseId: cuid });
@@ -137,6 +138,11 @@ export const updateCanvasQuestionSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .optional(),
   parentQuestionId: z.string().nullable().optional(),
+});
+
+export const createJournalEntrySchema = z.object({
+  content: z.string().min(1, 'Journal entry cannot be empty').max(10000),
+  category: z.string().max(50).optional(),
 });
 
 export const createCanvasMemoSchema = z.object({
