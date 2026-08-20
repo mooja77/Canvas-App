@@ -263,8 +263,11 @@ export function checkShareLimit() {
 
     const { userId, dashboardAccessId } = await getCanvasOwnerIds(req);
     const where = ownerWhere(userId, dashboardAccessId);
+    // Exclude shares on trashed canvases, matching the usage figure /auth/me
+    // reports. Without this the account page could read "3/5" while share
+    // creation was refused - the panel contradicting the cap it describes.
     const count = await prisma.canvasShare.count({
-      where: { canvas: where },
+      where: { canvas: { ...where, deletedAt: null } },
     });
 
     if (count >= limits.maxShares) {

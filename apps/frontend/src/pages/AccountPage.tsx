@@ -15,6 +15,8 @@ interface UserProfile {
     name: string;
     role: string;
     plan: string;
+    /** Trial-aware plan the server actually enforces; 'pro' for a free user mid-trial. */
+    effectivePlan?: string;
     emailVerified?: boolean;
     createdAt?: string;
     hasPassword?: boolean;
@@ -699,7 +701,12 @@ export default function AccountPage() {
                 // account total by a per-canvas cap is what used to show a
                 // compliant Free user 100% red on everything, on top of the
                 // caps themselves being the retired pre-2026 numbers.
-                const limits = getFrontendPlanLimits(profile.user.plan);
+                // Meter against the plan the SERVER enforces. resolveRequestPlan
+                // uses the trial overlay, so metering a trialing free user
+                // against Free caps shows them 2/2 in red while the server
+                // still lets them create - the same class of contradiction as
+                // the stale limits above.
+                const limits = getFrontendPlanLimits(profile.user.effectivePlan ?? profile.user.plan);
                 const items: {
                   key: string;
                   label: string;
