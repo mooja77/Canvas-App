@@ -495,9 +495,14 @@ export const authApi = {
 
   exportAccount: () => canvasClient.get('/auth/export', { responseType: 'blob' }),
 
-  deleteAccount: (confirmation: string, hasPassword: boolean) =>
+  deleteAccount: (confirmation: string, hasPassword: boolean, deleteLegacyCanvases = false) =>
     canvasClient.delete('/auth/account', {
-      data: hasPassword ? { password: confirmation } : { confirmation },
+      data: {
+        ...(hasPassword ? { password: confirmation } : { confirmation }),
+        // Canvases owned only through a legacy access code are NOT cascaded by
+        // account deletion. They are kept unless the user asks for them too.
+        deleteLegacyCanvases,
+      },
     }),
 };
 

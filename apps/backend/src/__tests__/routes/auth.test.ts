@@ -313,7 +313,10 @@ describe('Auth routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.user.email).toBe('test@example.com');
+      // legacyCanvasCount tells the delete dialog how many access-code-owned
+      // canvases would survive account deletion.
       expect(res.body.data.usage).toEqual({
+        legacyCanvasCount: expect.any(Number),
         canvasCount: 1,
         totalTranscripts: 2,
         totalCodes: 3,

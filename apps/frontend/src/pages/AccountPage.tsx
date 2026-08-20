@@ -28,6 +28,8 @@ interface UserProfile {
     totalTranscripts: number;
     totalCodes: number;
     totalShares: number;
+    /** Canvases owned only via a legacy access code; not cascaded by account deletion. */
+    legacyCanvasCount?: number;
   } | null;
   authType: string;
 }
@@ -54,6 +56,7 @@ export default function AccountPage() {
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
+  const [deleteLegacyCanvases, setDeleteLegacyCanvases] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [exportingAccount, setExportingAccount] = useState(false);
 
@@ -249,7 +252,7 @@ export default function AccountPage() {
     if (!deletePassword || !profile) return;
     setDeleting(true);
     try {
-      await authApi.deleteAccount(deletePassword, profile.user.hasPassword !== false);
+      await authApi.deleteAccount(deletePassword, profile.user.hasPassword !== false, deleteLegacyCanvases);
       toast.success('Account deleted');
       logout();
       navigate('/');
@@ -1212,11 +1215,31 @@ export default function AccountPage() {
                   onChange={(e) => setDeletePassword(e.target.value)}
                   className="w-full px-3 py-2 border border-red-300 dark:border-red-700 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
+                {(profile.usage?.legacyCanvasCount ?? 0) > 0 && (
+                  <label className="flex items-start gap-2 text-sm text-red-700 dark:text-red-300">
+                    <input
+                      type="checkbox"
+                      checked={deleteLegacyCanvases}
+                      onChange={(e) => setDeleteLegacyCanvases(e.target.checked)}
+                      className="mt-0.5"
+                      data-testid="delete-legacy-canvases"
+                    />
+                    <span>
+                      Also delete {profile.usage?.legacyCanvasCount} canvas
+                      {(profile.usage?.legacyCanvasCount ?? 0) === 1 ? '' : 'es'} created with your access code.
+                      <span className="block text-xs opacity-80">
+                        These are not removed with your account. Leave this unticked to keep them reachable with the
+                        original access code.
+                      </span>
+                    </span>
+                  </label>
+                )}
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
                       setShowDeleteConfirm(false);
                       setDeletePassword('');
+                      setDeleteLegacyCanvases(false);
                     }}
                     className="flex-1 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
