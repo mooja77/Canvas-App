@@ -52,7 +52,21 @@ interface TranscriptSegment {
 
 // Compute overlapping highlight segments from codings, plus an optional
 // transient "verify in context" range (from an AI suggestion's Locate action).
-function computeOverlappingSegments(
+/**
+ * Exported for testing. This function is load-bearing for the whole coding
+ * loop: the segments it returns are rendered as the transcript, and the
+ * character offsets a user's text selection produces are measured against that
+ * RENDERED text (see handleMouseUp, which walks the DOM with Range.toString()).
+ *
+ * So the segments must form a complete, non-overlapping partition of
+ * [0, text.length]. If a segment were dropped, duplicated, or if any rendered
+ * element injected characters of its own, every offset computed from a
+ * selection would be wrong from that point in the text onward - and nothing
+ * would report an error. The coded text would simply be stored against the
+ * wrong span, and highlights, exports and agreement statistics would all
+ * inherit it.
+ */
+export function computeOverlappingSegments(
   text: string,
   codings: CanvasTextCoding[],
   colorMap: Map<string, string>,

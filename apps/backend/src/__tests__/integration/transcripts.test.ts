@@ -245,6 +245,87 @@ describe('Transcript integration tests', () => {
     expect(res.body.data.content).toBe('Updated content here.');
   });
 
+  // ─── Coding integrity: transcript text cannot move under existing codings ───
+  //
+  // Codings are absolute character offsets into the content. Rewriting the text
+  // silently repoints every one of them at whatever now occupies those
+  // positions - no error, no warning, and the stored codedText quietly stops
+  // describing the span it points at.
+  it('PUT /canvas/:id/transcripts/:tid refuses a content change when codings exist', async () => {
+    const transcriptId = 'transcript-t1';
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
+      id: transcriptId,
+      canvasId,
+      content: 'The original interview text.',
+    });
+    mockPrisma.canvasTextCoding.count.mockResolvedValue(7);
+
+    const res = await request(app)
+      .put(`/api/canvas/${canvasId}/transcripts/${transcriptId}`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ content: 'Completely different text.' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/7 coding\(s\)/);
+    expect(mockPrisma.canvasTranscript.update).not.toHaveBeenCalled();
+  });
+
+  it('PUT /canvas/:id/transcripts/:tid allows a content change when nothing is coded', async () => {
+    const transcriptId = 'transcript-t1';
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
+      id: transcriptId,
+      canvasId,
+      content: 'The original interview text.',
+    });
+    mockPrisma.canvasTextCoding.count.mockResolvedValue(0);
+    mockPrisma.canvasTranscript.update.mockResolvedValue({ id: transcriptId, canvasId, content: 'Revised.' });
+
+    const res = await request(app)
+      .put(`/api/canvas/${canvasId}/transcripts/${transcriptId}`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ content: 'Revised.' });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('PUT /canvas/:id/transcripts/:tid still allows title and caseId changes on a coded transcript', async () => {
+    const transcriptId = 'transcript-t1';
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
+      id: transcriptId,
+      canvasId,
+      content: 'The original interview text.',
+    });
+    mockPrisma.canvasTextCoding.count.mockResolvedValue(7);
+    mockPrisma.canvasTranscript.update.mockResolvedValue({ id: transcriptId, canvasId, title: 'Renamed' });
+
+    const res = await request(app)
+      .put(`/api/canvas/${canvasId}/transcripts/${transcriptId}`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ title: 'Renamed', caseId: 'case-1' });
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.canvasTextCoding.count).not.toHaveBeenCalled();
+  });
+
+  it('PUT /canvas/:id/transcripts/:tid allows re-sending identical content on a coded transcript', async () => {
+    const transcriptId = 'transcript-t1';
+    const content = 'The original interview text.';
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ id: transcriptId, canvasId, content });
+    mockPrisma.canvasTextCoding.count.mockResolvedValue(7);
+    mockPrisma.canvasTranscript.update.mockResolvedValue({ id: transcriptId, canvasId, content });
+
+    const res = await request(app)
+      .put(`/api/canvas/${canvasId}/transcripts/${transcriptId}`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ title: 'Renamed', content });
+
+    expect(res.status).toBe(200);
+  });
+
   // ─── 4. DELETE /canvas/:id/transcripts/:tid — deletes transcript ───
   it('DELETE /canvas/:id/transcripts/:tid deletes a transcript', async () => {
     const transcriptId = 'transcript-t1';

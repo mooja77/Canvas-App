@@ -1,16 +1,21 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
-import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase, CanvasMemo } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import { useAuthStore } from '../../../stores/authStore';
+import {
+  generateReportDocxBlob,
+  generateReportHtml,
+  generateReportMarkdown,
+  type GroupBy,
+  type ReportInput,
+} from './richExportContent';
 
 interface RichExportModalProps {
   onClose: () => void;
 }
 
 type ExportFormat = 'docx' | 'html' | 'markdown';
-type GroupBy = 'code' | 'source' | 'case';
 
 export default function RichExportModal({ onClose }: RichExportModalProps) {
   useEscapeToClose(onClose);
@@ -27,479 +32,29 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
   const [includeSummary, setIncludeSummary] = useState(true);
   const [includeCoverage, setIncludeCoverage] = useState(true);
 
-  const rawQuestions = activeCanvas?.questions;
-  const rawTranscripts = activeCanvas?.transcripts;
-  const rawCodings = activeCanvas?.codings;
-  const rawCases = activeCanvas?.cases;
-  const questions = useMemo(() => rawQuestions ?? [], [rawQuestions]);
-  const transcripts = useMemo(() => rawTranscripts ?? [], [rawTranscripts]);
-  const codings = useMemo(() => rawCodings ?? [], [rawCodings]);
+  const questions = activeCanvas?.questions ?? [];
+  const transcripts = activeCanvas?.transcripts ?? [];
+  const codings = activeCanvas?.codings ?? [];
+  const cases = activeCanvas?.cases ?? [];
   const memos = activeCanvas?.memos ?? [];
-  const cases = useMemo(() => rawCases ?? [], [rawCases]);
 
-  const questionMap = useMemo(() => {
-    const m = new Map<string, CanvasQuestion>();
-    questions.forEach((q) => m.set(q.id, q));
-    return m;
-  }, [questions]);
-
-  const transcriptMap = useMemo(() => {
-    const m = new Map<string, CanvasTranscript>();
-    transcripts.forEach((t) => m.set(t.id, t));
-    return m;
-  }, [transcripts]);
-
-  const _caseMap = useMemo(() => {
-    const m = new Map<string, CanvasCase>();
-    cases.forEach((c) => m.set(c.id, c));
-    return m;
-  }, [cases]);
-
-  // Compute coverage per transcript
-  const transcriptCoverage = useMemo(() => {
-    const coverageMap = new Map<string, { coded: number; total: number; pct: number }>();
-    transcripts.forEach((t: CanvasTranscript) => {
-      const tCodings = codings.filter((c: CanvasTextCoding) => c.transcriptId === t.id);
-      const codedChars = new Set<number>();
-      tCodings.forEach((c: CanvasTextCoding) => {
-        for (let i = c.startOffset; i < c.endOffset; i++) codedChars.add(i);
-      });
-      const pct = t.content.length > 0 ? Math.round((codedChars.size / t.content.length) * 100) : 0;
-      coverageMap.set(t.id, { coded: codedChars.size, total: t.content.length, pct });
-    });
-    return coverageMap;
-  }, [transcripts, codings]);
-
-  const generateHTML = (): string => {
-    const name = activeCanvas?.name || 'Untitled Canvas';
-    const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    const totalWords = transcripts.reduce((sum, t) => sum + t.content.split(/\s+/).filter(Boolean).length, 0);
-
-    let html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${escHTML(name)} — Analysis Report</title>
-<style>
-  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 24px; color: #1f2937; line-height: 1.6; }
-  h1 { font-size: 24px; border-bottom: 2px solid #6366f1; padding-bottom: 8px; color: #111827; }
-  h2 { font-size: 18px; margin-top: 32px; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
-  h3 { font-size: 14px; margin-top: 20px; color: #4b5563; }
-  .meta { color: #6b7280; font-size: 13px; margin-top: 4px; }
-  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
-  .summary-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; text-align: center; }
-  .summary-card .number { font-size: 24px; font-weight: 700; color: #111827; }
-  .summary-card .label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
-  .code-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
-  .code-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-  .excerpt { margin: 8px 0; padding: 10px 14px; background: #f9fafb; border-left: 3px solid #6366f1; border-radius: 0 6px 6px 0; font-size: 13px; }
-  .excerpt .source { font-size: 11px; color: #9ca3af; margin-top: 4px; }
-  .annotation { margin: 4px 0 0 14px; padding: 6px 10px; background: #fffbeb; border-left: 2px solid #f59e0b; font-size: 12px; color: #92400e; border-radius: 0 4px 4px 0; }
-  .coverage-bar { height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; width: 120px; display: inline-block; vertical-align: middle; }
-  .coverage-fill { height: 100%; border-radius: 3px; }
-  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
-  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-  th { background: #f9fafb; font-weight: 600; color: #4b5563; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .memo-card { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px; margin: 8px 0; }
-  .memo-title { font-weight: 600; font-size: 13px; color: #92400e; }
-  .memo-content { font-size: 13px; color: #78350f; margin-top: 4px; white-space: pre-wrap; }
-  .page-break { page-break-before: always; }
-  @media print { body { padding: 20px; } .page-break { page-break-before: always; } }
-  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #9ca3af; text-align: center; }
-</style>
-</head>
-<body>
-<h1>${escHTML(name)}</h1>
-<p class="meta">Generated on ${date}</p>
-`;
-
-    // Summary section
-    if (includeSummary) {
-      let totalCoded = 0;
-      let totalChars = 0;
-      transcriptCoverage.forEach((v) => {
-        totalCoded += v.coded;
-        totalChars += v.total;
-      });
-      const overallPct = totalChars > 0 ? Math.round((totalCoded / totalChars) * 100) : 0;
-
-      html += `
-<h2>Project Summary</h2>
-<div class="summary-grid">
-  <div class="summary-card"><div class="number">${transcripts.length}</div><div class="label">Sources</div></div>
-  <div class="summary-card"><div class="number">${questions.length}</div><div class="label">Codes</div></div>
-  <div class="summary-card"><div class="number">${codings.length}</div><div class="label">Excerpts</div></div>
-  <div class="summary-card"><div class="number">${overallPct}%</div><div class="label">Coverage</div></div>
-</div>
-<p class="meta">${totalWords.toLocaleString()} total words across ${transcripts.length} transcript${transcripts.length !== 1 ? 's' : ''}</p>
-`;
-    }
-
-    // Coverage table
-    if (includeCoverage && transcripts.length > 0) {
-      html += `<h2>Source Coverage</h2><table><thead><tr><th>Source</th><th>Words</th><th>Coverage</th><th>Codes Applied</th></tr></thead><tbody>`;
-      transcripts.forEach((t: CanvasTranscript) => {
-        const cov = transcriptCoverage.get(t.id);
-        const pct = cov?.pct ?? 0;
-        const wordCount = t.content.split(/\s+/).filter(Boolean).length;
-        const codeCount = new Set(
-          codings.filter((c: CanvasTextCoding) => c.transcriptId === t.id).map((c) => c.questionId),
-        ).size;
-        const barColor = pct < 30 ? '#f59e0b' : pct < 70 ? '#3b82f6' : '#10b981';
-        html += `<tr><td>${escHTML(t.title)}</td><td>${wordCount.toLocaleString()}</td><td><div class="coverage-bar"><div class="coverage-fill" style="width:${pct}%;background:${barColor}"></div></div> ${pct}%</td><td>${codeCount}</td></tr>`;
-      });
-      html += `</tbody></table>`;
-    }
-
-    // Codebook section
-    if (includeCodebook) {
-      html += `<h2>Codebook</h2><table><thead><tr><th>Code</th><th>Parent Theme</th><th>Frequency</th><th>Coverage</th></tr></thead><tbody>`;
-      const totalChars = transcripts.reduce((s, t) => s + t.content.length, 0);
-      questions.forEach((q: CanvasQuestion) => {
-        const qCodings = codings.filter((c: CanvasTextCoding) => c.questionId === q.id);
-        const codedChars = qCodings.reduce((s, c) => s + (c.endOffset - c.startOffset), 0);
-        const covPct = totalChars > 0 ? Math.round((codedChars / totalChars) * 1000) / 10 : 0;
-        const parentQ = q.parentQuestionId ? questionMap.get(q.parentQuestionId) : null;
-        html += `<tr><td><span class="code-badge"><span class="code-dot" style="background:${q.color}"></span>${escHTML(q.text)}</span></td><td>${parentQ ? escHTML(parentQ.text) : '—'}</td><td>${qCodings.length}</td><td>${covPct}%</td></tr>`;
-      });
-      html += `</tbody></table>`;
-    }
-
-    // Excerpts section
-    if (includeExcerpts) {
-      html += `<div class="page-break"></div><h2>Coded Excerpts</h2>`;
-
-      if (groupBy === 'code') {
-        questions.forEach((q: CanvasQuestion) => {
-          const qCodings = codings.filter((c: CanvasTextCoding) => c.questionId === q.id);
-          if (qCodings.length === 0) return;
-          html += `<h3><span class="code-dot" style="background:${q.color}"></span> ${escHTML(q.text)} <span style="color:#9ca3af;font-weight:400">(${qCodings.length})</span></h3>`;
-          qCodings.forEach((c: CanvasTextCoding) => {
-            const t = transcriptMap.get(c.transcriptId);
-            html += `<div class="excerpt">&ldquo;${escHTML(c.codedText)}&rdquo;<div class="source">${escHTML(t?.title || 'Unknown')}</div></div>`;
-            if (c.annotation) html += `<div class="annotation">${escHTML(c.annotation)}</div>`;
-          });
-        });
-      } else if (groupBy === 'source') {
-        transcripts.forEach((t: CanvasTranscript) => {
-          const tCodings = codings.filter((c: CanvasTextCoding) => c.transcriptId === t.id);
-          if (tCodings.length === 0) return;
-          html += `<h3>${escHTML(t.title)} <span style="color:#9ca3af;font-weight:400">(${tCodings.length} excerpt${tCodings.length !== 1 ? 's' : ''})</span></h3>`;
-          tCodings.forEach((c: CanvasTextCoding) => {
-            const q = questionMap.get(c.questionId);
-            html += `<div class="excerpt" style="border-left-color:${q?.color || '#6366f1'}">&ldquo;${escHTML(c.codedText)}&rdquo;<div class="source"><span class="code-badge"><span class="code-dot" style="background:${q?.color || '#888'}"></span>${escHTML(q?.text || 'Unknown')}</span></div></div>`;
-            if (c.annotation) html += `<div class="annotation">${escHTML(c.annotation)}</div>`;
-          });
-        });
-      } else {
-        // Group by case
-        const uncased = transcripts.filter((t) => !t.caseId);
-        const caseGroups = cases.map((c) => ({
-          case: c,
-          transcripts: transcripts.filter((t: CanvasTranscript) => t.caseId === c.id),
-        }));
-
-        [...caseGroups, { case: null as CanvasCase | null, transcripts: uncased }].forEach((group) => {
-          if (group.transcripts.length === 0) return;
-          const tIds = new Set(group.transcripts.map((t) => t.id));
-          const caseCodings = codings.filter((c: CanvasTextCoding) => tIds.has(c.transcriptId));
-          if (caseCodings.length === 0) return;
-          html += `<h3>${group.case ? escHTML(group.case.name) : 'Uncategorized'} <span style="color:#9ca3af;font-weight:400">(${caseCodings.length} excerpt${caseCodings.length !== 1 ? 's' : ''})</span></h3>`;
-          caseCodings.forEach((c: CanvasTextCoding) => {
-            const q = questionMap.get(c.questionId);
-            const t = transcriptMap.get(c.transcriptId);
-            html += `<div class="excerpt" style="border-left-color:${q?.color || '#6366f1'}">&ldquo;${escHTML(c.codedText)}&rdquo;<div class="source">${escHTML(t?.title || 'Unknown')} · <span class="code-badge"><span class="code-dot" style="background:${q?.color || '#888'}"></span>${escHTML(q?.text || 'Unknown')}</span></div></div>`;
-            if (c.annotation) html += `<div class="annotation">${escHTML(c.annotation)}</div>`;
-          });
-        });
-      }
-    }
-
-    // Memos section
-    if (includeMemos && memos.length > 0) {
-      html += `<div class="page-break"></div><h2>Research Memos</h2>`;
-      memos.forEach((m: CanvasMemo) => {
-        html += `<div class="memo-card"><div class="memo-title">${escHTML(m.title || 'Memo')}</div><div class="memo-content">${escHTML(m.content)}</div></div>`;
-      });
-    }
-
-    html += `
-<div class="footer">
-  <p>Generated by QualCanvas &middot; ${date}</p>
-</div>
-</body></html>`;
-
-    return html;
-  };
-
-  const generateMarkdown = (): string => {
-    const name = activeCanvas?.name || 'Untitled Canvas';
-    const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    let md = `# ${name}\n\n*Generated on ${date}*\n\n`;
-
-    if (includeSummary) {
-      let totalCoded = 0;
-      let totalChars = 0;
-      transcriptCoverage.forEach((v) => {
-        totalCoded += v.coded;
-        totalChars += v.total;
-      });
-      const overallPct = totalChars > 0 ? Math.round((totalCoded / totalChars) * 100) : 0;
-      md += `## Project Summary\n\n| Metric | Value |\n|--------|-------|\n| Sources | ${transcripts.length} |\n| Codes | ${questions.length} |\n| Excerpts | ${codings.length} |\n| Coverage | ${overallPct}% |\n\n`;
-    }
-
-    if (includeCoverage && transcripts.length > 0) {
-      md += `## Source Coverage\n\n| Source | Words | Coverage | Codes |\n|--------|-------|----------|-------|\n`;
-      transcripts.forEach((t: CanvasTranscript) => {
-        const cov = transcriptCoverage.get(t.id);
-        const pct = cov?.pct ?? 0;
-        const wordCount = t.content.split(/\s+/).filter(Boolean).length;
-        const codeCount = new Set(
-          codings.filter((c: CanvasTextCoding) => c.transcriptId === t.id).map((c) => c.questionId),
-        ).size;
-        md += `| ${t.title} | ${wordCount.toLocaleString()} | ${pct}% | ${codeCount} |\n`;
-      });
-      md += '\n';
-    }
-
-    if (includeCodebook) {
-      md += `## Codebook\n\n| Code | Parent Theme | Frequency |\n|------|-------------|------------|\n`;
-      questions.forEach((q: CanvasQuestion) => {
-        const count = codings.filter((c: CanvasTextCoding) => c.questionId === q.id).length;
-        const parentQ = q.parentQuestionId ? questionMap.get(q.parentQuestionId) : null;
-        md += `| ${q.text} | ${parentQ?.text || '—'} | ${count} |\n`;
-      });
-      md += '\n';
-    }
-
-    if (includeExcerpts) {
-      md += `## Coded Excerpts\n\n`;
-      if (groupBy === 'code') {
-        questions.forEach((q: CanvasQuestion) => {
-          const qCodings = codings.filter((c: CanvasTextCoding) => c.questionId === q.id);
-          if (qCodings.length === 0) return;
-          md += `### ${q.text} (${qCodings.length})\n\n`;
-          qCodings.forEach((c: CanvasTextCoding) => {
-            const t = transcriptMap.get(c.transcriptId);
-            md += `> "${c.codedText}"\n> — *${t?.title || 'Unknown'}*\n\n`;
-            if (c.annotation) md += `*Note: ${c.annotation}*\n\n`;
-          });
-        });
-      } else if (groupBy === 'source') {
-        transcripts.forEach((t: CanvasTranscript) => {
-          const tCodings = codings.filter((c: CanvasTextCoding) => c.transcriptId === t.id);
-          if (tCodings.length === 0) return;
-          md += `### ${t.title} (${tCodings.length} excerpt${tCodings.length !== 1 ? 's' : ''})\n\n`;
-          tCodings.forEach((c: CanvasTextCoding) => {
-            const q = questionMap.get(c.questionId);
-            md += `> "${c.codedText}"\n> — *[${q?.text || 'Unknown'}]*\n\n`;
-            if (c.annotation) md += `*Note: ${c.annotation}*\n\n`;
-          });
-        });
-      } else {
-        const uncased = transcripts.filter((t) => !t.caseId);
-        const caseGroups = cases.map((c) => ({
-          case: c,
-          transcripts: transcripts.filter((t: CanvasTranscript) => t.caseId === c.id),
-        }));
-        [...caseGroups, { case: null as CanvasCase | null, transcripts: uncased }].forEach((group) => {
-          if (group.transcripts.length === 0) return;
-          const tIds = new Set(group.transcripts.map((t) => t.id));
-          const caseCodings = codings.filter((c: CanvasTextCoding) => tIds.has(c.transcriptId));
-          if (caseCodings.length === 0) return;
-          md += `### ${group.case?.name || 'Uncategorized'} (${caseCodings.length} excerpt${caseCodings.length !== 1 ? 's' : ''})\n\n`;
-          caseCodings.forEach((c: CanvasTextCoding) => {
-            const q = questionMap.get(c.questionId);
-            const t = transcriptMap.get(c.transcriptId);
-            md += `> "${c.codedText}"\n> — *${t?.title || 'Unknown'}* · [${q?.text || 'Unknown'}]\n\n`;
-          });
-        });
-      }
-    }
-
-    if (includeMemos && memos.length > 0) {
-      md += `## Research Memos\n\n`;
-      memos.forEach((m: CanvasMemo) => {
-        md += `### ${m.title || 'Memo'}\n\n${m.content}\n\n---\n\n`;
-      });
-    }
-
-    md += `\n---\n*Generated by QualCanvas · ${date}*\n`;
-    return md;
-  };
-
-  // Real .docx via the `docx` package, mirroring the HTML report's sections.
-  // Dynamically imported so the library only loads when a Word export runs.
-  const generateDocxBlob = async (): Promise<Blob> => {
-    const docx = await import('docx');
-    const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle } =
-      docx;
-
-    const name = activeCanvas?.name || 'Untitled Canvas';
-    const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    const children: InstanceType<typeof Paragraph | typeof Table>[] = [];
-
-    const heading = (text: string) =>
-      children.push(new Paragraph({ text, heading: HeadingLevel.HEADING_1, spacing: { before: 360, after: 160 } }));
-    const sub = (text: string) =>
-      children.push(new Paragraph({ text, heading: HeadingLevel.HEADING_2, spacing: { before: 240, after: 120 } }));
-    const cell = (text: string, bold = false) =>
-      new TableCell({
-        width: { size: 25, type: WidthType.PERCENTAGE },
-        children: [new Paragraph({ children: [new TextRun({ text, bold, size: 20 })] })],
-      });
-    const table = (header: string[], rows: string[][]) =>
-      children.push(
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          borders: {
-            top: { style: BorderStyle.SINGLE, size: 2, color: 'DDDDDD' },
-            bottom: { style: BorderStyle.SINGLE, size: 2, color: 'DDDDDD' },
-            left: { style: BorderStyle.NONE },
-            right: { style: BorderStyle.NONE },
-            insideHorizontal: { style: BorderStyle.SINGLE, size: 2, color: 'EEEEEE' },
-            insideVertical: { style: BorderStyle.NONE },
-          },
-          rows: [
-            new TableRow({ children: header.map((h) => cell(h, true)) }),
-            ...rows.map((r) => new TableRow({ children: r.map((c) => cell(c)) })),
-          ],
-        }),
-      );
-
-    children.push(new Paragraph({ text: name, heading: HeadingLevel.TITLE }));
-    children.push(
-      new Paragraph({
-        children: [new TextRun({ text: `Generated on ${date} by QualCanvas`, italics: true, color: '6B7280' })],
-        spacing: { after: 240 },
-      }),
-    );
-
-    if (includeSummary) {
-      let totalCoded = 0;
-      let totalChars = 0;
-      transcriptCoverage.forEach((v) => {
-        totalCoded += v.coded;
-        totalChars += v.total;
-      });
-      const overallPct = totalChars > 0 ? Math.round((totalCoded / totalChars) * 100) : 0;
-      heading('Project Summary');
-      table(
-        ['Sources', 'Codes', 'Excerpts', 'Coverage'],
-        [[String(transcripts.length), String(questions.length), String(codings.length), `${overallPct}%`]],
-      );
-    }
-
-    if (includeCoverage && transcripts.length > 0) {
-      heading('Source Coverage');
-      table(
-        ['Source', 'Words', 'Coverage', 'Codes applied'],
-        transcripts.map((t: CanvasTranscript) => {
-          const cov = transcriptCoverage.get(t.id);
-          const wordCount = t.content.split(/\s+/).filter(Boolean).length;
-          const codeCount = new Set(
-            codings.filter((c: CanvasTextCoding) => c.transcriptId === t.id).map((c) => c.questionId),
-          ).size;
-          return [t.title, wordCount.toLocaleString(), `${cov?.pct ?? 0}%`, String(codeCount)];
-        }),
-      );
-    }
-
-    if (includeCodebook) {
-      heading('Codebook');
-      table(
-        ['Code', 'Parent theme', 'Frequency'],
-        questions.map((q: CanvasQuestion) => {
-          const count = codings.filter((c: CanvasTextCoding) => c.questionId === q.id).length;
-          const parentQ = q.parentQuestionId ? questionMap.get(q.parentQuestionId) : null;
-          return [q.text, parentQ?.text || '—', String(count)];
-        }),
-      );
-    }
-
-    const excerpt = (quote: string, source: string, annotation?: string | null) => {
-      children.push(
-        new Paragraph({
-          children: [new TextRun({ text: `“${quote}”` })],
-          indent: { left: 360 },
-          spacing: { before: 120, after: 40 },
-        }),
-      );
-      children.push(
-        new Paragraph({
-          children: [new TextRun({ text: `— ${source}`, italics: true, color: '6B7280', size: 18 })],
-          indent: { left: 360 },
-          spacing: { after: annotation ? 40 : 120 },
-        }),
-      );
-      if (annotation) {
-        children.push(
-          new Paragraph({
-            children: [new TextRun({ text: `Note: ${annotation}`, italics: true, color: '92400E', size: 18 })],
-            indent: { left: 720 },
-            spacing: { after: 120 },
-          }),
-        );
-      }
-    };
-
-    if (includeExcerpts) {
-      heading('Coded Excerpts');
-      if (groupBy === 'code') {
-        questions.forEach((q: CanvasQuestion) => {
-          const qCodings = codings.filter((c: CanvasTextCoding) => c.questionId === q.id);
-          if (qCodings.length === 0) return;
-          sub(`${q.text} (${qCodings.length})`);
-          qCodings.forEach((c: CanvasTextCoding) =>
-            excerpt(c.codedText, transcriptMap.get(c.transcriptId)?.title || 'Unknown', c.annotation),
-          );
-        });
-      } else if (groupBy === 'source') {
-        transcripts.forEach((t: CanvasTranscript) => {
-          const tCodings = codings.filter((c: CanvasTextCoding) => c.transcriptId === t.id);
-          if (tCodings.length === 0) return;
-          sub(`${t.title} (${tCodings.length} excerpt${tCodings.length !== 1 ? 's' : ''})`);
-          tCodings.forEach((c: CanvasTextCoding) =>
-            excerpt(c.codedText, `[${questionMap.get(c.questionId)?.text || 'Unknown'}]`, c.annotation),
-          );
-        });
-      } else {
-        const uncased = transcripts.filter((t) => !t.caseId);
-        const caseGroups = cases.map((c) => ({
-          case: c,
-          transcripts: transcripts.filter((t: CanvasTranscript) => t.caseId === c.id),
-        }));
-        [...caseGroups, { case: null as CanvasCase | null, transcripts: uncased }].forEach((group) => {
-          if (group.transcripts.length === 0) return;
-          const tIds = new Set(group.transcripts.map((t) => t.id));
-          const caseCodings = codings.filter((c: CanvasTextCoding) => tIds.has(c.transcriptId));
-          if (caseCodings.length === 0) return;
-          sub(
-            `${group.case?.name || 'Uncategorized'} (${caseCodings.length} excerpt${caseCodings.length !== 1 ? 's' : ''})`,
-          );
-          caseCodings.forEach((c: CanvasTextCoding) =>
-            excerpt(
-              c.codedText,
-              `${transcriptMap.get(c.transcriptId)?.title || 'Unknown'} · [${questionMap.get(c.questionId)?.text || 'Unknown'}]`,
-              c.annotation,
-            ),
-          );
-        });
-      }
-    }
-
-    if (includeMemos && memos.length > 0) {
-      heading('Research Memos');
-      memos.forEach((m: CanvasMemo) => {
-        sub(m.title || 'Memo');
-        children.push(new Paragraph({ text: m.content, spacing: { after: 160 } }));
-      });
-    }
-
-    const doc = new Document({ sections: [{ children }] });
-    return Packer.toBlob(doc);
-  };
+  // The report bodies live in richExportContent.ts so they can be tested
+  // against the file they actually produce.
+  const buildReportInput = (): ReportInput => ({
+    canvasName: activeCanvas?.name || 'Untitled Canvas',
+    date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    questions,
+    transcripts,
+    codings,
+    cases,
+    memos,
+    groupBy,
+    includeCodebook,
+    includeExcerpts,
+    includeMemos,
+    includeSummary,
+    includeCoverage,
+  });
 
   const handleExport = async () => {
     if (effectivePlan === 'free') {
@@ -510,11 +65,12 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
       setExporting(true);
       let blob: Blob;
       let ext: string;
+      const input = buildReportInput();
       if (format === 'docx') {
-        blob = await generateDocxBlob();
+        blob = await generateReportDocxBlob(input);
         ext = 'docx';
       } else {
-        const content = format === 'html' ? generateHTML() : generateMarkdown();
+        const content = format === 'html' ? generateReportHtml(input) : generateReportMarkdown(input);
         const mimeType = format === 'html' ? 'text/html' : 'text/markdown';
         ext = format === 'html' ? 'html' : 'md';
         blob = new Blob([content], { type: `${mimeType};charset=utf-8;` });
@@ -539,7 +95,7 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
       toast.error('Formatted reports are available on Student, Pro, and Team plans.');
       return;
     }
-    const content = generateHTML();
+    const content = generateReportHtml(buildReportInput());
     const win = window.open('', '_blank');
     if (win) {
       win.document.write(content);
@@ -732,8 +288,4 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
       </div>
     </div>
   );
-}
-
-function escHTML(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

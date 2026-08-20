@@ -394,6 +394,8 @@ describe('Data integrity integration tests', () => {
       mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
         id: 'transcript-1',
         canvasId,
+        // slice(0, 11) === 'overlapping'
+        content: 'overlapping text',
       });
       mockPrisma.canvasQuestion.findUnique.mockResolvedValue(null);
 
@@ -469,6 +471,8 @@ describe('Data integrity integration tests', () => {
       mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
         id: 'transcript-1',
         canvasId,
+        // slice(0, 11) === 'overlapping'
+        content: 'overlapping text',
       });
       mockPrisma.canvasQuestion.findUnique.mockResolvedValue({
         id: 'question-1',
@@ -481,7 +485,7 @@ describe('Data integrity integration tests', () => {
           transcriptId: 'transcript-1',
           questionId: 'question-1',
           startOffset: 0,
-          endOffset: 10,
+          endOffset: 11,
           codedText: 'overlapping',
         })
         .mockResolvedValueOnce({
@@ -490,7 +494,7 @@ describe('Data integrity integration tests', () => {
           transcriptId: 'transcript-1',
           questionId: 'question-1',
           startOffset: 0,
-          endOffset: 10,
+          endOffset: 11,
           codedText: 'overlapping',
         });
 
@@ -498,7 +502,7 @@ describe('Data integrity integration tests', () => {
         transcriptId: 'transcript-1',
         questionId: 'question-1',
         startOffset: 0,
-        endOffset: 10,
+        endOffset: 11,
         codedText: 'overlapping',
       };
 

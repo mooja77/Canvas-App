@@ -12,9 +12,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
  * into, so anything added since the user's last visit vanished.
  */
 
-// A flags payload written before ai_chat_cmd_j, krippendorff_alpha and
-// inline_ai_suggester existed. onboarding_v2 was explicitly turned off for
-// this user, which must survive.
+// A flags payload written before inline_ai_suggester and the Brand Tier 2
+// flags existed. onboarding_v2 was explicitly turned off for this user, which
+// must survive.
 const OLD_FLAGS_PAYLOAD = JSON.stringify({
   state: { flags: { activity_bar_v2: false, onboarding_v2: false } },
   version: 0,
@@ -31,9 +31,8 @@ describe('featureFlagsStore rehydration from an older build', () => {
     const { useFeatureFlagsStore } = await import('./featureFlagsStore');
     const state = useFeatureFlagsStore.getState();
 
-    // Both default to true in code. Before the merge fix these resolved false,
-    // so the features were dark for every returning user.
-    expect(state.isEnabled('krippendorff_alpha')).toBe(true);
+    // Defaults to true in code. Before the merge fix this resolved false, so
+    // the feature was dark for every returning user.
     expect(state.isEnabled('inline_ai_suggester')).toBe(true);
   });
 
@@ -42,7 +41,7 @@ describe('featureFlagsStore rehydration from an older build', () => {
     const { useFeatureFlagsStore } = await import('./featureFlagsStore');
     const keys = Object.keys(useFeatureFlagsStore.getState().flags);
 
-    expect(keys).toContain('ai_chat_cmd_j');
+    expect(keys).toContain('ink_ochre_palette');
     expect(keys.length).toBeGreaterThan(2);
   });
 
@@ -57,7 +56,7 @@ describe('featureFlagsStore rehydration from an older build', () => {
 
   it('is unaffected when there is nothing persisted', async () => {
     const { useFeatureFlagsStore } = await import('./featureFlagsStore');
-    expect(useFeatureFlagsStore.getState().isEnabled('krippendorff_alpha')).toBe(true);
+    expect(useFeatureFlagsStore.getState().isEnabled('inline_ai_suggester')).toBe(true);
     expect(useFeatureFlagsStore.getState().isEnabled('activity_bar_v2')).toBe(false);
   });
 });

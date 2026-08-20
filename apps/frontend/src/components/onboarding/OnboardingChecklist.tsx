@@ -29,6 +29,11 @@ export default function OnboardingChecklist() {
   const plan = useAuthStore((s) => s.plan);
   const onboardingChecklistDismissed = useUIStore((s) => s.onboardingChecklistDismissed);
   const dismissOnboardingChecklist = useUIStore((s) => s.dismissOnboardingChecklist);
+  // Account-scoped, server-backed (onboardingState.checklistComplete). This
+  // used to read a browser-wide `qualcanvas-first-export` localStorage bit, so
+  // a brand-new account on a machine where anyone had ever exported opened
+  // with the row already ticked and the whole card collapsed.
+  const checklistComplete = useUIStore((s) => s.onboardingChecklistComplete);
 
   useEffect(() => {
     if (onboardingChecklistDismissed) setDismissed(true);
@@ -61,7 +66,7 @@ export default function OnboardingChecklist() {
       {
         id: 'export-csv',
         label: 'Export your codings to CSV',
-        done: !!localStorage.getItem('qualcanvas-first-export'),
+        done: checklistComplete.includes('export-csv'),
         action: null,
       },
       isPro
@@ -81,7 +86,7 @@ export default function OnboardingChecklist() {
             action: () => navigate('/pricing'),
           },
     ];
-  }, [activeCanvas, plan, navigate]);
+  }, [activeCanvas, plan, navigate, checklistComplete]);
 
   const completedCount = tasks.filter((t) => t.done).length;
   const allDone = completedCount === tasks.length;
