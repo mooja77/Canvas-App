@@ -311,13 +311,22 @@ describe('Collaboration throttling', () => {
     });
   });
 
+  const mounted: { unmount: () => void }[] = [];
+
   afterEach(() => {
+    // Unmount before restoring mocks: useCollaboration removes its document
+    // listeners on unmount, and its socket handlers call refreshCanvas()
+    // fire-and-forget. Left mounted, that rejection logs after the worker has
+    // begun tearing down and vitest fails the run with
+    // "Closing rpc while onUserConsoleLog was pending".
+    while (mounted.length) mounted.pop()?.unmount();
+    useCanvasStore.setState({ activeCanvasId: null, activeCanvas: null });
     vi.restoreAllMocks();
   });
 
   it('cursor throttle prevents >20 emissions/sec (50ms throttle)', async () => {
     const { useCollaboration } = await import('../hooks/useCollaboration');
-    renderHook(() => useCollaboration({ canvasId: 'c1' }));
+    mounted.push(renderHook(() => useCollaboration({ canvasId: 'c1' })));
 
     act(() => {
       mockSocket._trigger('connect');
@@ -337,7 +346,9 @@ describe('Collaboration throttling', () => {
 
   it('node move throttle limits to 10/sec (100ms throttle)', async () => {
     const { useCollaboration } = await import('../hooks/useCollaboration');
-    const { result } = renderHook(() => useCollaboration({ canvasId: 'c1' }));
+    const rendered = renderHook(() => useCollaboration({ canvasId: 'c1' }));
+    mounted.push(rendered);
+    const { result } = rendered;
 
     act(() => {
       mockSocket._trigger('connect');
