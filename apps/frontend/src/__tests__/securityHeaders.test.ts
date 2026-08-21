@@ -37,6 +37,7 @@ describe('production security headers', () => {
     );
     expect(directive('connect-src')).toEqual(
       expect.arrayContaining([
+        'https://analytics.google.com',
         'https://region1.analytics.google.com',
         'https://stats.g.doubleclick.net',
         'https://ad.doubleclick.net',
