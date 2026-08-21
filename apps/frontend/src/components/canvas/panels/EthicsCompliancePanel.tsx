@@ -45,6 +45,18 @@ const defaultSettings: EthicsSettings = {
   },
 };
 
+/** A reflexivity journal entry as this panel renders it. */
+type JournalEntry = { id: string; date: string; content: string; category: string };
+
+/** The API returns createdAt; the panel renders `date`. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const toJournalEntry = (row: any): JournalEntry => ({
+  id: row.id,
+  date: row.createdAt ?? row.date,
+  content: row.content,
+  category: row.category ?? 'general',
+});
+
 export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanelProps) {
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
@@ -84,9 +96,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
   const AUDIT_LIMIT = 50;
 
   // ─── Reflexivity Journal state (localStorage per canvas) ───
-  const [journalEntries, setJournalEntries] = useState<
-    { id: string; date: string; content: string; category: string }[]
-  >([]);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [journalDraft, setJournalDraft] = useState('');
   const [journalCategory, setJournalCategory] = useState('reflection');
 
@@ -283,41 +293,91 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
   };
 
   // ─── Journal helpers ───
+  //
+  // Entries are stored server-side. They used to live only in this browser's
+  // localStorage, while the panel below promises "an audit trail for your
+  // analytical choices" - so they were invisible on another device, absent
+  // from exports, and lost with site data.
   const journalKey = canvasId ? `canvas-journal-${canvasId}` : null;
 
-  const loadJournal = useCallback(() => {
-    if (!journalKey) return;
+  const loadJournal = useCallback(async () => {
+    if (!canvasId) return;
     try {
-      const stored = localStorage.getItem(journalKey);
-      if (stored) setJournalEntries(JSON.parse(stored));
-    } catch {
-      /* ignore */
-    }
-  }, [journalKey]);
+      const res = await canvasClient.get(`/canvas/${canvasId}/journal`);
+      const serverEntries: JournalEntry[] = (Array.isArray(res.data?.data) ? res.data.data : []).map(toJournalEntry);
 
-  const saveJournalEntry = useCallback(() => {
-    if (!journalDraft.trim() || !journalKey) return;
-    const entry = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      date: new Date().toISOString(),
-      content: journalDraft.trim(),
-      category: journalCategory,
-    };
-    const updated = [entry, ...journalEntries];
-    setJournalEntries(updated);
-    localStorage.setItem(journalKey, JSON.stringify(updated));
-    setJournalDraft('');
-    toast.success('Journal entry saved');
-  }, [journalDraft, journalCategory, journalEntries, journalKey]);
+      // One-time lift of anything this browser still holds locally, so a
+      // researcher's existing notes are not stranded by the move.
+      let local: JournalEntry[] = [];
+      if (journalKey) {
+        try {
+          const stored = localStorage.getItem(journalKey);
+          if (stored) local = JSON.parse(stored);
+        } catch {
+          /* unreadable local entries are not worth failing the panel over */
+        }
+      }
+
+      if (local.length > 0) {
+        const existing = new Set(serverEntries.map((e) => e.content));
+        const pending = local.filter((e) => !existing.has(e.content));
+        for (const entry of pending) {
+          try {
+            await canvasClient.post(`/canvas/${canvasId}/journal`, {
+              content: entry.content,
+              category: entry.category,
+            });
+          } catch {
+            /* keep the local copy if the upload fails - do not drop it */
+            setJournalEntries(serverEntries);
+            return;
+          }
+        }
+        if (journalKey) localStorage.removeItem(journalKey);
+        if (pending.length > 0) {
+          toast.success(`Moved ${pending.length} journal entr${pending.length === 1 ? 'y' : 'ies'} to your account`);
+          const refreshed = await canvasClient.get(`/canvas/${canvasId}/journal`);
+          setJournalEntries(
+            Array.isArray(refreshed.data?.data) ? refreshed.data.data.map(toJournalEntry) : serverEntries,
+          );
+          return;
+        }
+      }
+
+      setJournalEntries(serverEntries);
+    } catch {
+      toast.error('Could not load your reflexivity journal');
+    }
+  }, [canvasId, journalKey]);
+
+  const saveJournalEntry = useCallback(async () => {
+    if (!journalDraft.trim() || !canvasId) return;
+    try {
+      const res = await canvasClient.post(`/canvas/${canvasId}/journal`, {
+        content: journalDraft.trim(),
+        category: journalCategory,
+      });
+      setJournalEntries((prev) => [toJournalEntry(res.data.data), ...prev]);
+      setJournalDraft('');
+      toast.success('Journal entry saved');
+    } catch {
+      // Previously this toasted success for a localStorage write that no
+      // server ever saw. Report the real outcome instead.
+      toast.error('Could not save the journal entry');
+    }
+  }, [journalDraft, journalCategory, canvasId]);
 
   const deleteJournalEntry = useCallback(
-    (id: string) => {
-      if (!journalKey) return;
-      const updated = journalEntries.filter((e) => e.id !== id);
-      setJournalEntries(updated);
-      localStorage.setItem(journalKey, JSON.stringify(updated));
+    async (id: string) => {
+      if (!canvasId) return;
+      try {
+        await canvasClient.delete(`/canvas/${canvasId}/journal/${id}`);
+        setJournalEntries((prev) => prev.filter((e) => e.id !== id));
+      } catch {
+        toast.error('Could not delete the journal entry');
+      }
     },
-    [journalEntries, journalKey],
+    [canvasId],
   );
 
   // ─── Load data when tab changes ───
