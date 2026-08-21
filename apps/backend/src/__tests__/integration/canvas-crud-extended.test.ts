@@ -104,6 +104,9 @@ vi.mock('../../utils/hashing.js', () => ({
 }));
 
 vi.mock('../../middleware/planLimits.js', () => ({
+  // Bulk-import routes resolve the CANVAS OWNER's plan rather than reading
+  // req.userPlan; this stub keeps the pass-through behaviour these tests rely on.
+  resolveRequestPlan: async (req: Request) => req.userPlan || 'free',
   checkCanvasLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkTranscriptLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkWordLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),

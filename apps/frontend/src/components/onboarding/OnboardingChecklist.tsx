@@ -26,7 +26,10 @@ export default function OnboardingChecklist() {
   const [collapsed, setCollapsed] = useState<boolean | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const activeCanvas = useCanvasStore((s) => s.activeCanvas);
-  const plan = useAuthStore((s) => s.plan);
+  // effectivePlan overlays a trialing free user as 'pro'; `plan` stays the real
+  // paid tier. Reading `plan` here gave trialing users Free copy while
+  // PlanWelcome greeted them with Pro in the same flow.
+  const plan = useAuthStore((s) => s.effectivePlan ?? s.plan);
   const onboardingChecklistDismissed = useUIStore((s) => s.onboardingChecklistDismissed);
   const dismissOnboardingChecklist = useUIStore((s) => s.dismissOnboardingChecklist);
   // Account-scoped, server-backed (onboardingState.checklistComplete). This
@@ -43,7 +46,7 @@ export default function OnboardingChecklist() {
     const codings = activeCanvas?.codings ?? [];
     const questions = activeCanvas?.questions ?? [];
     const computedNodes = activeCanvas?.computedNodes ?? [];
-    const isPro = plan === 'pro' || plan === 'team';
+    const isPro = plan !== null && plan !== 'free';
     return [
       {
         id: 'first-coded-excerpt',

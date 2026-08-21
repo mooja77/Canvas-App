@@ -50,7 +50,13 @@ interface AuthState {
   setEmailVerified: (verified: boolean) => void;
   setName: (name: string) => void;
   updatePlan: (plan: string) => void;
-  setTrialState: (data: { effectivePlan: string; trialEndsAt: string | null }) => void;
+  /**
+   * Record the EFFECTIVE plan only (the trial-overlaid tier the server gates
+   * on). Deliberately does not touch `plan`, which must keep meaning "the tier
+   * this account actually pays for".
+   */
+  setEffectivePlan: (effectivePlan: string) => void;
+  setTrialState: (data: { plan?: string; effectivePlan: string; trialEndsAt: string | null }) => void;
   logout: (options?: { preserveLocalData?: boolean }) => void;
 }
 
@@ -163,7 +169,14 @@ export const useAuthStore = create<AuthState>()(
 
       updatePlan: (plan) => set({ plan }),
 
-      setTrialState: (data) => set({ effectivePlan: data.effectivePlan, trialEndsAt: data.trialEndsAt }),
+      setEffectivePlan: (effectivePlan) => set({ effectivePlan }),
+
+      setTrialState: (data) =>
+        set({
+          ...(data.plan ? { plan: data.plan } : {}),
+          effectivePlan: data.effectivePlan,
+          trialEndsAt: data.trialEndsAt,
+        }),
 
       logout: (options) => {
         // Fire-and-forget: clear the httpOnly cookie on the server. Local

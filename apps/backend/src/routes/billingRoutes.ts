@@ -46,6 +46,24 @@ export async function deriveQualcanvasPlan(stripe: ReturnType<typeof getStripe>,
 }
 
 // POST /api/billing/create-checkout — create a Stripe Checkout session
+/**
+ * The plan a user falls back to when their subscription ends.
+ *
+ * Legacy access-code holders who linked an email were grandfathered to Pro
+ * without ever paying (`legacyPricing = true`, `plan = 'pro'`). Writing 'free'
+ * here destroyed that permanently: the three read paths built to protect them
+ * all do `legacyPricing ? user.plan : 'free'`, so they faithfully preserved the
+ * 'free' that had already overwritten their entitlement. If such a user bought
+ * a tier and later cancelled or lapsed, they were silently demoted to 2
+ * canvases and 10 codes with no way back.
+ *
+ * No schema change is needed - legacyPricing already records who they are.
+ */
+async function planAfterSubscriptionEnds(userId: string): Promise<string> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { legacyPricing: true } });
+  return user?.legacyPricing ? 'pro' : 'free';
+}
+
 billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.userId;
@@ -302,7 +320,10 @@ export async function handleStripeWebhook(req: Request, res: Response) {
               await prisma.user.update({ where: { id: existingSub.userId }, data: { plan } });
             }
           } else {
-            await prisma.user.update({ where: { id: existingSub.userId }, data: { plan: 'free' } });
+            await prisma.user.update({
+              where: { id: existingSub.userId },
+              data: { plan: await planAfterSubscriptionEnds(existingSub.userId) },
+            });
           }
         }
         break;
@@ -316,6 +337,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           include: { user: true },
         });
         if (subRow) {
+          const fallbackPlan = await planAfterSubscriptionEnds(subRow.userId);
           await prisma.$transaction([
             prisma.subscription.update({
               where: { stripeSubscriptionId: sub.id },
@@ -323,7 +345,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
             }),
             prisma.user.update({
               where: { id: subRow.userId },
-              data: { plan: 'free' },
+              data: { plan: fallbackPlan },
             }),
           ]);
         }
