@@ -23,7 +23,7 @@ const { mockPrisma } = vi.hoisted(() => {
     subscription: {
       findUnique: vi.fn(),
     },
-    codingCanvas: { count: vi.fn(), findMany: vi.fn() },
+    codingCanvas: { count: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn() },
     canvasTranscript: { count: vi.fn() },
     canvasQuestion: { count: vi.fn() },
     canvasShare: { count: vi.fn() },
@@ -813,6 +813,58 @@ describe('User auth integration tests', () => {
       expect(mockPrisma.user.delete).toHaveBeenCalledWith({ where: { id: 'user-1' } });
     });
 
+    // Canvases owned only through a legacy access code are NOT cascaded by
+    // account deletion - DashboardAccess.user is ON DELETE SET NULL. They are
+    // research data, so they are kept unless the user explicitly asks for them.
+    const legacyDeletionFixture = () => {
+      const localUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        passwordHash: '$2a$12$hashedpassword',
+        plan: 'free',
+        role: 'researcher',
+        subscription: null,
+        stripeCustomerId: null,
+        dashboardAccess: null,
+      };
+      mockPrisma.user.findUnique.mockResolvedValue(localUser);
+      mockPrisma.codingCanvas.findMany.mockImplementation(({ where }: { where: Record<string, unknown> }) =>
+        Promise.resolve(where.userId === null ? [{ id: 'legacy-1' }, { id: 'legacy-2' }] : [{ id: 'direct-1' }]),
+      );
+      mockPrisma.user.delete.mockResolvedValue({ id: 'user-1' });
+      return signUserToken('user-1', 'researcher', 'free');
+    };
+
+    it('DELETE /api/auth/account keeps legacy access-code canvases by default', async () => {
+      const jwt = legacyDeletionFixture();
+      mockPrisma.codingCanvas.deleteMany.mockResolvedValue({ count: 0 });
+
+      const res = await request(app)
+        .delete('/api/auth/account')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ password: 'correct-password' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.legacyCanvasesRetained).toBe(2);
+      expect(mockPrisma.codingCanvas.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('DELETE /api/auth/account removes legacy canvases when explicitly requested', async () => {
+      const jwt = legacyDeletionFixture();
+      mockPrisma.codingCanvas.deleteMany.mockResolvedValue({ count: 2 });
+
+      const res = await request(app)
+        .delete('/api/auth/account')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ password: 'correct-password', deleteLegacyCanvases: true });
+
+      expect(res.status).toBe(200);
+      expect(res.body.legacyCanvasesDeleted).toBe(2);
+      expect(mockPrisma.codingCanvas.deleteMany).toHaveBeenCalledWith({
+        where: { id: { in: ['legacy-1', 'legacy-2'] } },
+      });
+    });
+
     it('keeps the account when Stripe subscription cancellation fails', async () => {
       const mockUser = {
         id: 'user-1',
@@ -885,6 +937,9 @@ describe('User auth integration tests', () => {
         totalTranscripts: 4,
         totalCodes: 4,
         totalShares: 4,
+        // Count of access-code-owned canvases that survive account deletion;
+        // the delete dialog needs it to offer the choice.
+        legacyCanvasCount: expect.any(Number),
       });
     });
   });

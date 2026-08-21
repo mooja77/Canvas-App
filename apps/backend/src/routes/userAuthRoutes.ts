@@ -604,11 +604,15 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
       // actually enforcing.
       const owned = { OR: [{ userId }, ...(dashboardAccessId ? [{ dashboardAccessId }] : [])] };
       const inLiveCanvas = { canvas: { ...owned, deletedAt: null } };
-      const [canvasCount, totalTranscripts, totalCodes, totalShares] = await Promise.all([
+      const [canvasCount, totalTranscripts, totalCodes, totalShares, legacyCanvasCount] = await Promise.all([
         prisma.codingCanvas.count({ where: { ...owned, deletedAt: null } }),
         prisma.canvasTranscript.count({ where: inLiveCanvas }),
         prisma.canvasQuestion.count({ where: inLiveCanvas }),
         prisma.canvasShare.count({ where: inLiveCanvas }),
+        // Canvases owned only through the legacy access code. Deleting the
+        // account does not cascade these, so the delete dialog must say so and
+        // let the user choose.
+        prisma.codingCanvas.count({ where: { userId: null, dashboardAccess: { userId }, deletedAt: null } }),
       ]);
 
       // Trial overlay: same logic as auth middleware — free users with an
@@ -641,7 +645,7 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
                 cancelAtPeriodEnd: user.subscription.cancelAtPeriodEnd,
               }
             : null,
-          usage: { canvasCount, totalTranscripts, totalCodes, totalShares },
+          usage: { canvasCount, totalTranscripts, totalCodes, totalShares, legacyCanvasCount },
           authType: 'email',
         },
       });
@@ -966,7 +970,7 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
     const userId = req.userId;
     if (!userId) throw new AppError('Email account required', 403);
 
-    const { password, confirmation } = req.body;
+    const { password, confirmation, deleteLegacyCanvases } = req.body;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -1000,18 +1004,53 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
       }
     }
 
-    const ownedCanvases = await prisma.codingCanvas.findMany({
-      where: { OR: [{ userId }, { dashboardAccess: { userId } }] },
+    // Canvases owned only through the legacy DashboardAccess row have a NULL
+    // userId, so `prisma.user.delete` does not cascade them - DashboardAccess.user
+    // is ON DELETE SET NULL. They survive, still openable with the original
+    // access code.
+    //
+    // That retention is deliberate: this is research data, and a coder may
+    // still need it. But it must be the user's choice, and it must be
+    // consistent. Previously the upload sweep used the WIDE filter while the
+    // canvases themselves survived, so retained canvases silently lost their
+    // media and kept only the interview text.
+    const legacyCanvases = await prisma.codingCanvas.findMany({
+      where: { userId: null, dashboardAccess: { userId } },
       select: { id: true },
     });
-    await deleteStoredUploads({
-      OR: [{ userId }, { canvasId: { in: ownedCanvases.map((canvas) => canvas.id) } }],
+    const legacyCanvasIds = legacyCanvases.map((canvas) => canvas.id);
+    const removeLegacy = deleteLegacyCanvases === true;
+
+    const directCanvases = await prisma.codingCanvas.findMany({
+      where: { userId },
+      select: { id: true },
     });
+
+    // Only sweep media for canvases that are actually going away.
+    const canvasIdsBeingDeleted = removeLegacy
+      ? [...directCanvases.map((c) => c.id), ...legacyCanvasIds]
+      : directCanvases.map((c) => c.id);
+    await deleteStoredUploads({
+      OR: [{ userId }, { canvasId: { in: canvasIdsBeingDeleted } }],
+    });
+
+    if (removeLegacy && legacyCanvasIds.length > 0) {
+      // Explicitly requested, so remove them outright rather than leaving
+      // orphans the user can no longer reach.
+      await prisma.codingCanvas.deleteMany({ where: { id: { in: legacyCanvasIds } } });
+    }
 
     // Cascade delete database records after physical media is gone.
     await prisma.user.delete({ where: { id: userId } });
 
-    res.json({ success: true, message: 'Account deleted' });
+    res.json({
+      success: true,
+      message: 'Account deleted',
+      // Reported so the caller can tell the user what was kept and how to
+      // reach it, rather than leaving data they do not know still exists.
+      legacyCanvasesRetained: removeLegacy ? 0 : legacyCanvasIds.length,
+      legacyCanvasesDeleted: removeLegacy ? legacyCanvasIds.length : 0,
+    });
   } catch (err) {
     next(err);
   }
