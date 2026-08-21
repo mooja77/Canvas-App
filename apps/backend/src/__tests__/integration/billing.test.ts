@@ -266,6 +266,7 @@ describe('Stripe Webhook Handler', () => {
       });
       mockPrisma.subscription.update.mockResolvedValue({});
       mockPrisma.user.update.mockResolvedValue({});
+      mockPrisma.user.findUnique.mockResolvedValue({ legacyPricing: false });
       mockPrisma.$transaction.mockResolvedValue([{}, {}]);
 
       const { req, res } = createMockReqRes(Buffer.from('{}'));
@@ -280,6 +281,38 @@ describe('Stripe Webhook Handler', () => {
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
         data: { plan: 'free' },
+      });
+    });
+
+    it('restores grandfathered Pro instead of demoting a legacy user', async () => {
+      // legacyPricing users were given Pro without paying. Writing 'free' here
+      // destroyed that permanently: the read paths that protect them all do
+      // `legacyPricing ? user.plan : 'free'`, so they preserved the 'free' that
+      // had already overwritten the entitlement.
+      const event = {
+        id: 'evt_sub_deleted_legacy',
+        type: 'customer.subscription.deleted',
+        data: { object: { id: 'sub_legacy' } },
+      };
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(event);
+      mockPrisma.subscription.findUnique.mockResolvedValue({
+        id: 'sub-record-legacy',
+        userId: 'user-legacy',
+        stripeSubscriptionId: 'sub_legacy',
+        user: { id: 'user-legacy', plan: 'team' },
+      });
+      mockPrisma.subscription.update.mockResolvedValue({});
+      mockPrisma.user.update.mockResolvedValue({});
+      mockPrisma.user.findUnique.mockResolvedValue({ legacyPricing: true });
+      mockPrisma.$transaction.mockResolvedValue([{}, {}]);
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-legacy' },
+        data: { plan: 'pro' },
       });
     });
 
