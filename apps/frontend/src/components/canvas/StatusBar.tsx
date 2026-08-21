@@ -2,14 +2,7 @@ import { useEffect, useState } from 'react';
 import { useActiveCanvas } from '../../stores/canvasStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
-
-// Subset of backend plans.ts — kept in sync manually since the frontend
-// only needs the word-cap number for the status bar gauge.
-const PLAN_WORD_CAPS: Record<string, number | null> = {
-  free: 5000,
-  pro: 50000,
-  team: null,
-};
+import { getFrontendPlanLimits } from '../../config/planLimits';
 
 /**
  * Sprint G slice — bottom status bar.
@@ -40,13 +33,18 @@ export default function StatusBar() {
   if (zoomTier === 'minimal' || !canvas) return null;
 
   const codeCount = canvas.questions?.length ?? 0;
-  const wordCount = (canvas.transcripts ?? []).reduce(
-    (sum, t) => sum + (t.content?.split(/\s+/).filter(Boolean).length ?? 0),
-    0,
+  const transcriptWordCounts = (canvas.transcripts ?? []).map(
+    (t) => t.content?.split(/\s+/).filter(Boolean).length ?? 0,
   );
+  const wordCount = transcriptWordCounts.reduce((sum, n) => sum + n, 0);
+  // The plan cap is PER TRANSCRIPT (see backend checkWordLimit), so the gauge
+  // has to track the single longest transcript. Summing the whole canvas and
+  // dividing by a per-transcript cap told compliant users they were over their
+  // limit as soon as they added a third document.
+  const longestTranscript = transcriptWordCounts.length ? Math.max(...transcriptWordCounts) : 0;
   const effective = effectivePlan ?? plan ?? 'free';
-  const wordCap = PLAN_WORD_CAPS[effective] ?? null;
-  const wordPct = wordCap ? Math.min(100, Math.round((wordCount / wordCap) * 100)) : null;
+  const wordCap = getFrontendPlanLimits(effective).maxWordsPerTranscript;
+  const wordPct = wordCap ? Math.min(100, Math.round((longestTranscript / wordCap) * 100)) : null;
 
   return (
     <div
@@ -56,18 +54,31 @@ export default function StatusBar() {
       data-testid="canvas-status-bar"
     >
       <div className="flex items-center gap-3">
-        <span className="tabular-nums">
+        <span className="tabular-nums" data-testid="status-bar-words">
           words {wordCount.toLocaleString()}
-          {wordCap ? <span className="text-gray-400">/{wordCap.toLocaleString()}</span> : null}
         </span>
+        {wordCap !== null && (
+          <>
+            <span className="text-gray-300 dark:text-gray-700">·</span>
+            <span
+              className="tabular-nums"
+              data-testid="status-bar-word-cap"
+              title={`Your plan allows ${wordCap.toLocaleString()} words per transcript. This is your longest one.`}
+            >
+              longest {longestTranscript.toLocaleString()}
+              <span className="text-gray-400">/{wordCap.toLocaleString()}</span>
+            </span>
+          </>
+        )}
         {wordPct !== null && wordPct >= 75 && (
           <span
+            data-testid="status-bar-word-pct"
             className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${
               wordPct >= 95
                 ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
                 : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
             }`}
-            title="You're nearing your plan's word limit"
+            title="Your longest transcript is nearing your plan's per-transcript word limit"
           >
             {wordPct}% of cap
           </span>

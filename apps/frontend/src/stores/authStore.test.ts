@@ -118,6 +118,45 @@ describe('authStore', () => {
     });
   });
 
+  describe('setEffectivePlan / setTrialState', () => {
+    const login = (plan: string) =>
+      useAuthStore.getState().setEmailAuth({
+        email: 'user@example.com',
+        userId: 'u1',
+        name: 'User',
+        role: 'user',
+        plan,
+      });
+
+    it('setEffectivePlan records the overlay without touching the paid plan', () => {
+      login('free');
+      useAuthStore.getState().setEffectivePlan('pro');
+
+      const state = useAuthStore.getState();
+      expect(state.effectivePlan).toBe('pro');
+      expect(state.plan).toBe('free');
+    });
+
+    it('setTrialState refreshes the real plan when the server supplies one', () => {
+      login('free');
+      useAuthStore.getState().setTrialState({ plan: 'student', effectivePlan: 'student', trialEndsAt: null });
+
+      const state = useAuthStore.getState();
+      expect(state.plan).toBe('student');
+      expect(state.effectivePlan).toBe('student');
+    });
+
+    it('setTrialState leaves the real plan alone when none is supplied', () => {
+      login('free');
+      useAuthStore.getState().setTrialState({ effectivePlan: 'pro', trialEndsAt: '2099-01-01T00:00:00.000Z' });
+
+      const state = useAuthStore.getState();
+      expect(state.plan).toBe('free');
+      expect(state.effectivePlan).toBe('pro');
+      expect(state.trialEndsAt).toBe('2099-01-01T00:00:00.000Z');
+    });
+  });
+
   describe('logout', () => {
     it('clears all auth state after legacy login', () => {
       useAuthStore.getState().setAuth({

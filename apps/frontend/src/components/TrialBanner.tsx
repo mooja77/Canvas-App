@@ -30,8 +30,14 @@ function computeBannerState({
   lastDismissalDate: string | null;
 }): BannerState | null {
   if (!trialEndsAt) return null;
-  // User has paid — banner only relevant for the trialing/expired cases.
-  if (plan === 'pro' || plan === 'team') return null;
+  // The trial overlay only ever applies to plan === 'free' — that is the rule
+  // both backend copies enforce (middleware/auth.ts and middleware/planLimits.ts
+  // resolveRequestPlan). Anything else is a paying subscriber, and telling a
+  // Student they are "limited to the Free tier" is simply false. Listing the
+  // paid tiers by name meant every tier added after this file was written
+  // (Student) silently inherited the trial nag; match the backend predicate
+  // instead so the next tier does not repeat it.
+  if (plan !== 'free') return null;
 
   const todayKey = new Date().toISOString().slice(0, 10);
   if (lastDismissalDate === todayKey) return null;
