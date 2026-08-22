@@ -18,6 +18,11 @@ interface AgreementResult {
   nUnits: number;
   nObservations: number;
   nSegments: number;
+  // Codings on this transcript that carry no coder attribution (bulk auto-code,
+  // QDPX/share imports, legacy access-code sessions). They cannot be counted
+  // toward any coder, so alpha does not describe them. Surfaced so the score is
+  // never read as covering the whole transcript when it does not.
+  unattributedCodings?: number;
 }
 
 // A Viewer is structurally incapable of holding a coding (writes are blocked
@@ -180,6 +185,16 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
       `Observations: ${result.nObservations}`,
       `Segments: ${result.nSegments}`,
     ];
+    // The caveat has to travel with the report, not just sit in the panel -
+    // this file is what ends up attached to a methods section.
+    if (result.unattributedCodings) {
+      lines.push(
+        '',
+        `Coverage caveat: ${result.unattributedCodings} coding(s) on this transcript carry no`,
+        'coder attribution (bulk auto-code, imports, or legacy access-code sessions) and are',
+        'excluded from the calculation. This score describes only the attributed coding.',
+      );
+    }
     const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -372,6 +387,15 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
                     Segments: <strong>{result.nSegments}</strong>
                   </span>
                 </div>
+                {result.unattributedCodings ? (
+                  <p className="mt-3 text-[10px] leading-relaxed text-amber-700 dark:text-amber-400">
+                    {result.unattributedCodings} coding
+                    {result.unattributedCodings === 1 ? '' : 's'} on this transcript
+                    {result.unattributedCodings === 1 ? ' has' : ' have'} no coder attribution (bulk auto-code, imports,
+                    or legacy sessions) and {result.unattributedCodings === 1 ? 'is' : 'are'} not counted. This score
+                    describes only the attributed coding.
+                  </p>
+                ) : null}
               </div>
 
               {/* Interpretation guide */}
