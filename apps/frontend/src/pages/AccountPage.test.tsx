@@ -239,3 +239,101 @@ describe('AccountPage', () => {
     });
   });
 });
+
+// ─── Usage meter accuracy ───
+// The meter used to hardcode the retired pre-2026 Free caps (1 canvas / 2
+// transcripts / 5 codes) and, worse, divide ACCOUNT-WIDE totals by PER-CANVAS
+// caps — so a fully compliant Free user saw 100% red across the board.
+describe('AccountPage usage meter', () => {
+  const freeProfile = (usage: Record<string, number>) => ({
+    ...mockProfile,
+    user: { ...mockProfile.user, plan: 'free' },
+    subscription: null,
+    usage,
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSearchParams.delete('session_id');
+    mockGetSettings.mockResolvedValue({ data: { data: null } });
+    mockGetPreferences.mockResolvedValue({
+      data: {
+        data: {
+          lifecycle: true,
+          productUpdates: true,
+          trainingTips: true,
+          inactivityNudges: true,
+          unsubscribedAt: null,
+        },
+      },
+    });
+  });
+
+  it('uses the real Free canvas cap of 2, not the retired cap of 1', async () => {
+    mockGetMe.mockResolvedValue({
+      data: { data: freeProfile({ canvasCount: 2, totalTranscripts: 0, totalCodes: 0, totalShares: 0 }) },
+    });
+    render(<AccountPage />);
+
+    expect(await screen.findByTestId('usage-canvases-value')).toHaveTextContent('2/2');
+  });
+
+  it('does not divide account-wide transcript and code totals by per-canvas caps', async () => {
+    // A compliant Free user: 2 canvases, each holding fewer than 5 transcripts
+    // and fewer than 10 codes. Account-wide totals therefore exceed the
+    // per-canvas caps without the user breaching anything.
+    mockGetMe.mockResolvedValue({
+      data: { data: freeProfile({ canvasCount: 2, totalTranscripts: 8, totalCodes: 18, totalShares: 0 }) },
+    });
+    render(<AccountPage />);
+
+    const transcripts = await screen.findByTestId('usage-transcripts-value');
+    expect(transcripts).toHaveTextContent('8');
+    expect(transcripts.textContent).not.toContain('/');
+
+    const codes = screen.getByTestId('usage-codes-value');
+    expect(codes).toHaveTextContent('18');
+    expect(codes.textContent).not.toContain('/');
+
+    // The real per-canvas caps are still surfaced, just not as a meter.
+    expect(screen.getByTestId('usage-transcripts-hint')).toHaveTextContent('5 per canvas');
+    expect(screen.getByTestId('usage-codes-hint')).toHaveTextContent('10 per canvas');
+  });
+
+  it('meters share codes, which really are an account-wide cap', async () => {
+    mockGetMe.mockResolvedValue({
+      data: { data: freeProfile({ canvasCount: 1, totalTranscripts: 1, totalCodes: 1, totalShares: 0 }) },
+    });
+    render(<AccountPage />);
+
+    expect(await screen.findByTestId('usage-shares-value')).toHaveTextContent('0/0');
+  });
+
+  it('shows uncapped counts for Pro rather than pretending there is no data', async () => {
+    mockGetMe.mockResolvedValue({ data: { data: mockProfile } });
+    render(<AccountPage />);
+
+    const canvases = await screen.findByTestId('usage-canvases-value');
+    expect(canvases).toHaveTextContent('3');
+    expect(canvases.textContent).not.toContain('/');
+    expect(screen.getByTestId('usage-shares-value')).toHaveTextContent('2/5');
+  });
+
+  it('applies the Student caps rather than falling through to no caps at all', async () => {
+    mockGetMe.mockResolvedValue({
+      data: {
+        data: {
+          ...mockProfile,
+          user: { ...mockProfile.user, plan: 'student' },
+          usage: { canvasCount: 4, totalTranscripts: 30, totalCodes: 90, totalShares: 1 },
+        },
+      },
+    });
+    render(<AccountPage />);
+
+    expect(await screen.findByTestId('usage-canvases-value')).toHaveTextContent('4/5');
+    expect(screen.getByTestId('usage-shares-value')).toHaveTextContent('1/2');
+    // Student has no transcript or code cap at all.
+    expect(screen.queryByTestId('usage-transcripts-hint')).not.toBeInTheDocument();
+  });
+});

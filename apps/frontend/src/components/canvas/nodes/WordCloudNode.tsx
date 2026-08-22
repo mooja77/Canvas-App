@@ -2,6 +2,7 @@ import { memo, useState, useMemo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Text } from '@visx/text';
 import ComputedNodeShell from './ComputedNodeShell';
+import { reportNodeSaveError } from './nodeSave';
 import { useCanvasStore, useCanvasComputedNodes, useCanvasQuestions } from '../../../stores/canvasStore';
 import type { CanvasComputedNode, CanvasQuestion, WordCloudConfig, WordCloudResult } from '@qualcanvas/shared';
 
@@ -24,10 +25,14 @@ function WordCloudNode({ data, id, selected }: NodeProps) {
   const config = node?.config as unknown as WordCloudConfig | undefined;
   const result = node?.result as unknown as WordCloudResult | undefined;
 
-  const handleSaveConfig = () => {
+  const handleSaveConfig = async () => {
     if (!node) return;
-    updateComputedNode(node.id, { config: { ...config, questionId: selectedQId || undefined } });
-    setEditing(false);
+    try {
+      await updateComputedNode(node.id, { config: { ...config, questionId: selectedQId || undefined } });
+      setEditing(false);
+    } catch (err) {
+      reportNodeSaveError(err, 'Failed to save settings');
+    }
   };
 
   // Simple spiral placement

@@ -46,7 +46,7 @@ test.describe('Deep Canvas: Visual Consistency', () => {
     const cid = (await cRes.json()).data.id;
     await p.request.post(`${API}/canvas/${canvasId}/codings`, {
       headers: headers(),
-      data: { transcriptId: tid, questionId: cid, startOffset: 0, endOffset: 20, codedText: 'Content for visual' },
+      data: { transcriptId: tid, questionId: cid, startOffset: 0, endOffset: 18, codedText: 'Content for visual' },
     });
     await p.close();
     await ctx.close();

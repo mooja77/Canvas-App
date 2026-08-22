@@ -51,12 +51,23 @@ interface UIState {
   // Whether the user has dismissed the post-onboarding checklist widget.
   // Once dismissed, it stays gone (it's nagware otherwise).
   onboardingChecklistDismissed: boolean;
+  // Activation-checklist rows the user has completed through an action we
+  // cannot re-derive from canvas content (currently only 'export-csv' - a
+  // download leaves no trace on the canvas). Account-scoped: reset by
+  // prepareOnboardingForAccount and hydrated from the server-side
+  // `onboardingState.checklistComplete` so a brand-new account on a shared
+  // browser does not inherit someone else's ticks.
+  onboardingChecklistComplete: string[];
   // Per-tooltip dismissal set for the JustInTimeTooltip primitive. Keyed by
   // tooltipId; absence means the tooltip can still fire.
   dismissedJitTooltips: string[];
   // Whether the original 22-step tour (now "Full product tour") is open.
   // Default false; only opens when the user explicitly picks it from the
   // Help menu. Sprint F replaced auto-firing with on-demand surfacing.
+  // NOT persisted (see partialize): it is "a tour is on screen right now",
+  // not a preference. Persisting it meant abandoning the tour by closing the
+  // tab re-opened a full-screen overlay at step 1 on the next visit, with no
+  // gesture from the user and no way to predict it.
   showFullProductTour: boolean;
 
   // Transient "verify in context" highlight. When a user clicks Locate on an
@@ -84,6 +95,7 @@ interface UIState {
     data: { completed: boolean; dismissedTooltips?: string[]; checklistComplete?: string[] },
   ) => void;
   dismissOnboardingChecklist: () => void;
+  markChecklistItemComplete: (id: string) => void;
   dismissJitTooltip: (id: string) => void;
   openFullProductTour: () => void;
   closeFullProductTour: () => void;
@@ -106,6 +118,7 @@ export const useUIStore = create<UIState>()(
       onboardingV2Complete: false,
       onboardingOwnerId: null,
       onboardingChecklistDismissed: false,
+      onboardingChecklistComplete: [],
       dismissedJitTooltips: [],
       showFullProductTour: false,
       verifyHighlight: null,
@@ -140,6 +153,7 @@ export const useUIStore = create<UIState>()(
         set({
           onboardingV2Complete: false,
           onboardingChecklistDismissed: false,
+          onboardingChecklistComplete: [],
           dismissedJitTooltips: [],
         }),
       prepareOnboardingForAccount: (userId) =>
@@ -153,6 +167,7 @@ export const useUIStore = create<UIState>()(
             featureDiscovery: { ...DEFAULT_FEATURE_DISCOVERY },
             onboardingV2Complete: false,
             onboardingChecklistDismissed: false,
+            onboardingChecklistComplete: [],
             dismissedJitTooltips: [],
             showFullProductTour: false,
           };
@@ -167,6 +182,12 @@ export const useUIStore = create<UIState>()(
             // merge the server snapshot instead of erasing a newer local choice.
             onboardingChecklistDismissed:
               state.onboardingChecklistDismissed || (data.checklistComplete?.includes('dismissed') ?? false),
+            // Same local-first merge: keep this account's local ticks and add
+            // whatever the server already recorded (including 'dismissed', so
+            // a later patch doesn't drop it).
+            onboardingChecklistComplete: Array.from(
+              new Set([...(sameOwner ? state.onboardingChecklistComplete : []), ...(data.checklistComplete ?? [])]),
+            ),
             dismissedJitTooltips: Array.from(
               new Set([...(sameOwner ? state.dismissedJitTooltips : []), ...(data.dismissedTooltips ?? [])]),
             ),
@@ -184,6 +205,12 @@ export const useUIStore = create<UIState>()(
           };
         }),
       dismissOnboardingChecklist: () => set({ onboardingChecklistDismissed: true }),
+      markChecklistItemComplete: (id) =>
+        set((s) =>
+          s.onboardingChecklistComplete.includes(id)
+            ? s
+            : { onboardingChecklistComplete: [...s.onboardingChecklistComplete, id] },
+        ),
       dismissJitTooltip: (id) =>
         set((s) => ({
           dismissedJitTooltips: s.dismissedJitTooltips.includes(id)
@@ -197,9 +224,12 @@ export const useUIStore = create<UIState>()(
     {
       name: 'qualcanvas-ui',
       partialize: (state) => {
-        // zoomTier and verifyHighlight are transient — never persist them.
+        // zoomTier, verifyHighlight and showFullProductTour are transient —
+        // never persist them. showFullProductTour describes an overlay that is
+        // open right now; persisting it re-opened the tour at step 1 for
+        // anyone who abandoned it by closing the tab.
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { zoomTier, verifyHighlight, ...persisted } = state;
+        const { zoomTier, verifyHighlight, showFullProductTour, ...persisted } = state;
         return persisted;
       },
     },

@@ -128,7 +128,7 @@ test.describe('Canvas Coding Workflow', () => {
         if (transcriptId && questionId) {
           await page.request.post(`${API}/canvas/${canvasId}/codings`, {
             headers,
-            data: { transcriptId, questionId, startOffset: 0, endOffset: 31, codedText: 'The research methodology' },
+            data: { transcriptId, questionId, startOffset: 0, endOffset: 24, codedText: 'The research methodology' },
           });
         }
         await page.goto(`/canvas/${canvasId}`);

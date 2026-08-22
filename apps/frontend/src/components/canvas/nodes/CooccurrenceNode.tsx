@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import ComputedNodeShell from './ComputedNodeShell';
+import { reportNodeSaveError } from './nodeSave';
 import { useCanvasStore, useCanvasComputedNodes, useCanvasQuestions } from '../../../stores/canvasStore';
 import type { CanvasComputedNode, CanvasQuestion, CooccurrenceConfig, CooccurrenceResult } from '@qualcanvas/shared';
 
@@ -13,7 +14,7 @@ function CooccurrenceNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as CooccurrenceNodeData;
   const computedNodes = useCanvasComputedNodes();
   const questions = useCanvasQuestions();
-  const updateComputedNode = useCanvasStore(s => s.updateComputedNode);
+  const updateComputedNode = useCanvasStore((s) => s.updateComputedNode);
   const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [editing, setEditing] = useState(false);
   const [selectedQIds, setSelectedQIds] = useState<string[]>([]);
@@ -24,18 +25,26 @@ function CooccurrenceNode({ data, id, selected }: NodeProps) {
 
   const questionMap = new Map(questions.map((q: CanvasQuestion) => [q.id, q]));
 
-  const handleSaveConfig = () => {
-    updateComputedNode(node.id, { config: { ...config, questionIds: selectedQIds } });
-    setEditing(false);
+  const handleSaveConfig = async () => {
+    try {
+      await updateComputedNode(node.id, { config: { ...config, questionIds: selectedQIds } });
+      setEditing(false);
+    } catch (err) {
+      reportNodeSaveError(err, 'Failed to save settings');
+    }
   };
 
   const toggleQ = (qid: string) => {
-    setSelectedQIds(prev => prev.includes(qid) ? prev.filter(id => id !== qid) : [...prev, qid]);
+    setSelectedQIds((prev) => (prev.includes(qid) ? prev.filter((id) => id !== qid) : [...prev, qid]));
   };
 
   const icon = (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"
+      />
     </svg>
   );
 
@@ -46,7 +55,10 @@ function CooccurrenceNode({ data, id, selected }: NodeProps) {
       label={node.label}
       icon={icon}
       color="#7C3AED"
-      onConfigure={() => { setSelectedQIds(config?.questionIds || []); setEditing(true); }}
+      onConfigure={() => {
+        setSelectedQIds(config?.questionIds || []);
+        setEditing(true);
+      }}
       selected={selected}
       collapsed={(data as unknown as Record<string, unknown>).collapsed as boolean}
       zoomLevel={(data as unknown as Record<string, unknown>).zoomLevel as number}
@@ -69,8 +81,12 @@ function CooccurrenceNode({ data, id, selected }: NodeProps) {
             ))}
           </div>
           <div className="flex gap-2">
-            <button onClick={handleSaveConfig} className="btn-primary h-7 px-2 text-xs">Save</button>
-            <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+            <button onClick={handleSaveConfig} className="btn-primary h-7 px-2 text-xs">
+              Save
+            </button>
+            <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">
+              Cancel
+            </button>
           </div>
         </div>
       )}
@@ -78,25 +94,37 @@ function CooccurrenceNode({ data, id, selected }: NodeProps) {
       <div className="max-h-[250px] overflow-y-auto px-3 py-2">
         {!result?.pairs?.length ? (
           <p className="text-xs text-gray-400 text-center py-4">
-            {config?.questionIds?.length >= 2 ? 'No co-occurrences found. Click Run.' : 'Select 2+ questions and click Run.'}
+            {config?.questionIds?.length >= 2
+              ? 'No co-occurrences found. Click Run.'
+              : 'Select 2+ questions and click Run.'}
           </p>
         ) : (
           <div className="space-y-2">
             {result.pairs.map((pair, i) => (
               <div key={i} className="rounded border border-gray-100 dark:border-gray-700 p-2">
                 <div className="flex items-center gap-1 mb-1">
-                  {pair.questionIds.map(qid => {
+                  {pair.questionIds.map((qid) => {
                     const q = questionMap.get(qid);
                     return q ? (
-                      <span key={qid} className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] text-white" style={{ backgroundColor: q.color }}>
-                        {q.text.slice(0, 25)}{q.text.length > 25 ? '...' : ''}
+                      <span
+                        key={qid}
+                        className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] text-white"
+                        style={{ backgroundColor: q.color }}
+                      >
+                        {q.text.slice(0, 25)}
+                        {q.text.length > 25 ? '...' : ''}
                       </span>
                     ) : null;
                   })}
                 </div>
-                <p className="text-[10px] text-gray-500">{pair.count} co-occurrence{pair.count !== 1 ? 's' : ''}</p>
+                <p className="text-[10px] text-gray-500">
+                  {pair.count} co-occurrence{pair.count !== 1 ? 's' : ''}
+                </p>
                 {pair.segments.slice(0, 3).map((seg, j) => (
-                  <p key={j} className="text-xs text-gray-600 dark:text-gray-400 mt-1 italic">"{seg.text.slice(0, 80)}{seg.text.length > 80 ? '...' : ''}"</p>
+                  <p key={j} className="text-xs text-gray-600 dark:text-gray-400 mt-1 italic">
+                    "{seg.text.slice(0, 80)}
+                    {seg.text.length > 80 ? '...' : ''}"
+                  </p>
                 ))}
               </div>
             ))}

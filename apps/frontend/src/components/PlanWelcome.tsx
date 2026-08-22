@@ -4,7 +4,9 @@ import { useUIStore } from '../stores/uiStore';
 // Plan-specific welcome card shown once, right after the setup wizard.
 // Each plan tier gets language and CTAs tailored to what they unlocked.
 export default function PlanWelcome({ onClose }: { onClose: () => void }) {
-  const plan = useAuthStore((s) => s.plan);
+  // effectivePlan carries the trial overlay (a Free user mid-Pro-trial really
+  // does have Pro features to be welcomed to); `plan` is the paid tier.
+  const plan = useAuthStore((s) => s.effectivePlan ?? s.plan);
   const markSeen = useUIStore((s) => s.markFeatureSeen);
 
   const handleClose = () => {
@@ -24,6 +26,23 @@ export default function PlanWelcome({ onClose }: { onClose: () => void }) {
           'Unlimited share codes',
         ],
         cta: { label: 'Set up your team', href: '/team' },
+      };
+    }
+    if (plan === 'student') {
+      // Student is a paid tier with near-Pro power. It had no branch here at
+      // all, so paying Student subscribers fell through to the Free copy and
+      // were told their "free plan is ready to go".
+      return {
+        title: 'Welcome to Student',
+        lede: 'Your Student plan unlocks the full analysis suite and AI-assisted coding.',
+        items: [
+          'Up to 5 canvases, with unlimited transcripts and codes in each',
+          'All 13 analysis tools - Sentiment, Clustering, Co-occurrence',
+          'AI-powered code suggestions and auto-coding',
+          'Ethics & compliance panel, cases, and the research repository',
+          '5 hours of audio transcription a month',
+        ],
+        cta: { label: 'Configure AI', href: '/account#ai' },
       };
     }
     if (plan === 'pro') {

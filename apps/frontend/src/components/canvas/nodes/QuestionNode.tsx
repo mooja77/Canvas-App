@@ -13,6 +13,7 @@ import { useUIStore } from '../../../stores/uiStore';
 import ConfirmDialog from '../ConfirmDialog';
 import ColorPicker from '../panels/ColorPicker';
 import CrossCanvasRefBadge from '../CrossCanvasRefBadge';
+import { reportNodeSaveError, saveOrReport } from './nodeSave';
 import type { CanvasTextCoding, CanvasQuestion } from '@qualcanvas/shared';
 
 export interface QuestionNodeData {
@@ -37,6 +38,7 @@ function QuestionNode({ data, id, selected }: NodeProps) {
   const [editText, setEditText] = useState(nodeData.text);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { collapsed, toggleCollapsed } = useNodeCollapsed(id, nodeData.collapsed);
 
   const zoomTier = useUIStore((s) => s.zoomTier);
@@ -65,11 +67,23 @@ function QuestionNode({ data, id, selected }: NodeProps) {
 
   const isSelected = selectedQuestionId === nodeData.questionId;
 
-  const handleSaveEdit = () => {
-    if (editText.trim() && editText.trim() !== nodeData.text) {
-      updateQuestion(nodeData.questionId, { text: editText.trim() });
+  const handleSaveEdit = async () => {
+    const next = editText.trim();
+    if (!next || next === nodeData.text) {
+      setEditing(false);
+      return;
     }
-    setEditing(false);
+    if (saving) return;
+    setSaving(true);
+    try {
+      await updateQuestion(nodeData.questionId, { text: next });
+      setEditing(false);
+    } catch (err) {
+      // Keep the editor open so the typed text is not thrown away.
+      reportNodeSaveError(err, 'Failed to rename code');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -127,7 +141,9 @@ function QuestionNode({ data, id, selected }: NodeProps) {
               <div className="absolute top-5 left-0 z-50">
                 <ColorPicker
                   color={nodeData.color}
-                  onChange={(c) => updateQuestion(nodeData.questionId, { color: c })}
+                  onChange={(c) =>
+                    saveOrReport(() => updateQuestion(nodeData.questionId, { color: c }), 'Failed to change color')
+                  }
                   onClose={() => setShowColorPicker(false)}
                 />
               </div>

@@ -3,6 +3,7 @@ import { useActiveCanvas } from '../../../stores/canvasStore';
 import { canvasClient } from '../../../services/api';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { AUDIT_EXPORT_PAGE_SIZE, buildAuditCsv, fetchAllAuditEntries, type AuditEntry } from './auditLogExport';
 
 interface EthicsCompliancePanelProps {
   onClose: () => void;
@@ -32,15 +33,6 @@ interface ConsentRecord {
   createdAt: string;
 }
 
-interface AuditEntry {
-  id: string;
-  timestamp: string;
-  action: string;
-  resource: string;
-  actor: string;
-  details: string;
-}
-
 const defaultSettings: EthicsSettings = {
   irbNumber: '',
   ethicsStatus: 'pending',
@@ -52,6 +44,18 @@ const defaultSettings: EthicsSettings = {
     retentionPeriodSet: false,
   },
 };
+
+/** A reflexivity journal entry as this panel renders it. */
+type JournalEntry = { id: string; date: string; content: string; category: string };
+
+/** The API returns createdAt; the panel renders `date`. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const toJournalEntry = (row: any): JournalEntry => ({
+  id: row.id,
+  date: row.createdAt ?? row.date,
+  content: row.content,
+  category: row.category ?? 'general',
+});
 
 export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanelProps) {
   useEscapeToClose(onClose);
@@ -88,12 +92,11 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
   const [auditActionFilter, setAuditActionFilter] = useState('');
   const [auditOffset, setAuditOffset] = useState(0);
   const [auditHasMore, setAuditHasMore] = useState(false);
+  const [auditExporting, setAuditExporting] = useState(false);
   const AUDIT_LIMIT = 50;
 
   // ─── Reflexivity Journal state (localStorage per canvas) ───
-  const [journalEntries, setJournalEntries] = useState<
-    { id: string; date: string; content: string; category: string }[]
-  >([]);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [journalDraft, setJournalDraft] = useState('');
   const [journalCategory, setJournalCategory] = useState('reflection');
 
@@ -218,20 +221,29 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
   };
 
   // ─── Load audit trail ───
+  // One fetcher for both the table and the export, so the export always
+  // honours the filters the researcher can see.
+  const fetchAuditPage = useCallback(
+    async (offset: number, limit: number): Promise<AuditEntry[]> => {
+      const params = new URLSearchParams();
+      if (auditDateFrom) params.set('from', auditDateFrom);
+      if (auditDateTo) params.set('to', auditDateTo);
+      if (auditActionFilter) params.set('action', auditActionFilter);
+      params.set('limit', String(limit));
+      params.set('offset', String(offset));
+
+      const res = await canvasClient.get(`/audit-log?${params.toString()}`);
+      const payload = res.data?.data || res.data;
+      return Array.isArray(payload?.entries) ? payload.entries : Array.isArray(payload) ? payload : [];
+    },
+    [auditDateFrom, auditDateTo, auditActionFilter],
+  );
+
   const loadAuditLog = useCallback(
     async (offset = 0, append = false) => {
       setAuditLoading(true);
       try {
-        const params = new URLSearchParams();
-        if (auditDateFrom) params.set('from', auditDateFrom);
-        if (auditDateTo) params.set('to', auditDateTo);
-        if (auditActionFilter) params.set('action', auditActionFilter);
-        params.set('limit', String(AUDIT_LIMIT));
-        params.set('offset', String(offset));
-
-        const res = await canvasClient.get(`/audit-log?${params.toString()}`);
-        const payload = res.data?.data || res.data;
-        const entries = Array.isArray(payload?.entries) ? payload.entries : Array.isArray(payload) ? payload : [];
+        const entries = await fetchAuditPage(offset, AUDIT_LIMIT);
         if (append) {
           setAuditEntries((prev) => [...prev, ...entries]);
         } else {
@@ -245,63 +257,127 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
         setAuditLoading(false);
       }
     },
-    [auditDateFrom, auditDateTo, auditActionFilter],
+    [fetchAuditPage],
   );
 
   // ─── Export audit log as CSV ───
-  const exportAuditCsv = () => {
-    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
-    const header = 'Date/Time,Action,Resource,Actor,Details';
-    const rows = auditEntries.map(
-      (e) => `${escape(e.timestamp)},${escape(e.action)},${escape(e.resource)},${escape(e.actor)},${escape(e.details)}`,
-    );
-    const csv = [header, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `audit-log-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Audit log exported');
+  // The table holds only the pages that have been scrolled into view; an audit
+  // trail export has to be the whole (filtered) log, so re-read it from the API.
+  const exportAuditCsv = async () => {
+    setAuditExporting(true);
+    try {
+      const { entries, truncated } = await fetchAllAuditEntries(fetchAuditPage, {
+        pageSize: AUDIT_EXPORT_PAGE_SIZE,
+      });
+      if (entries.length === 0) {
+        toast.error('No audit log entries to export');
+        return;
+      }
+      const blob = new Blob([buildAuditCsv(entries)], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-log-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(
+        truncated
+          ? `Audit log exported (first ${entries.length} entries)`
+          : `Audit log exported (${entries.length} entries)`,
+      );
+    } catch {
+      toast.error('Failed to export the audit log');
+    } finally {
+      setAuditExporting(false);
+    }
   };
 
   // ─── Journal helpers ───
+  //
+  // Entries are stored server-side. They used to live only in this browser's
+  // localStorage, while the panel below promises "an audit trail for your
+  // analytical choices" - so they were invisible on another device, absent
+  // from exports, and lost with site data.
   const journalKey = canvasId ? `canvas-journal-${canvasId}` : null;
 
-  const loadJournal = useCallback(() => {
-    if (!journalKey) return;
+  const loadJournal = useCallback(async () => {
+    if (!canvasId) return;
     try {
-      const stored = localStorage.getItem(journalKey);
-      if (stored) setJournalEntries(JSON.parse(stored));
-    } catch {
-      /* ignore */
-    }
-  }, [journalKey]);
+      const res = await canvasClient.get(`/canvas/${canvasId}/journal`);
+      const serverEntries: JournalEntry[] = (Array.isArray(res.data?.data) ? res.data.data : []).map(toJournalEntry);
 
-  const saveJournalEntry = useCallback(() => {
-    if (!journalDraft.trim() || !journalKey) return;
-    const entry = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      date: new Date().toISOString(),
-      content: journalDraft.trim(),
-      category: journalCategory,
-    };
-    const updated = [entry, ...journalEntries];
-    setJournalEntries(updated);
-    localStorage.setItem(journalKey, JSON.stringify(updated));
-    setJournalDraft('');
-    toast.success('Journal entry saved');
-  }, [journalDraft, journalCategory, journalEntries, journalKey]);
+      // One-time lift of anything this browser still holds locally, so a
+      // researcher's existing notes are not stranded by the move.
+      let local: JournalEntry[] = [];
+      if (journalKey) {
+        try {
+          const stored = localStorage.getItem(journalKey);
+          if (stored) local = JSON.parse(stored);
+        } catch {
+          /* unreadable local entries are not worth failing the panel over */
+        }
+      }
+
+      if (local.length > 0) {
+        const existing = new Set(serverEntries.map((e) => e.content));
+        const pending = local.filter((e) => !existing.has(e.content));
+        for (const entry of pending) {
+          try {
+            await canvasClient.post(`/canvas/${canvasId}/journal`, {
+              content: entry.content,
+              category: entry.category,
+            });
+          } catch {
+            /* keep the local copy if the upload fails - do not drop it */
+            setJournalEntries(serverEntries);
+            return;
+          }
+        }
+        if (journalKey) localStorage.removeItem(journalKey);
+        if (pending.length > 0) {
+          toast.success(`Moved ${pending.length} journal entr${pending.length === 1 ? 'y' : 'ies'} to your account`);
+          const refreshed = await canvasClient.get(`/canvas/${canvasId}/journal`);
+          setJournalEntries(
+            Array.isArray(refreshed.data?.data) ? refreshed.data.data.map(toJournalEntry) : serverEntries,
+          );
+          return;
+        }
+      }
+
+      setJournalEntries(serverEntries);
+    } catch {
+      toast.error('Could not load your reflexivity journal');
+    }
+  }, [canvasId, journalKey]);
+
+  const saveJournalEntry = useCallback(async () => {
+    if (!journalDraft.trim() || !canvasId) return;
+    try {
+      const res = await canvasClient.post(`/canvas/${canvasId}/journal`, {
+        content: journalDraft.trim(),
+        category: journalCategory,
+      });
+      setJournalEntries((prev) => [toJournalEntry(res.data.data), ...prev]);
+      setJournalDraft('');
+      toast.success('Journal entry saved');
+    } catch {
+      // Previously this toasted success for a localStorage write that no
+      // server ever saw. Report the real outcome instead.
+      toast.error('Could not save the journal entry');
+    }
+  }, [journalDraft, journalCategory, canvasId]);
 
   const deleteJournalEntry = useCallback(
-    (id: string) => {
-      if (!journalKey) return;
-      const updated = journalEntries.filter((e) => e.id !== id);
-      setJournalEntries(updated);
-      localStorage.setItem(journalKey, JSON.stringify(updated));
+    async (id: string) => {
+      if (!canvasId) return;
+      try {
+        await canvasClient.delete(`/canvas/${canvasId}/journal/${id}`);
+        setJournalEntries((prev) => prev.filter((e) => e.id !== id));
+      } catch {
+        toast.error('Could not delete the journal entry');
+      }
     },
-    [journalEntries, journalKey],
+    [canvasId],
   );
 
   // ─── Load data when tab changes ───
@@ -922,7 +998,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                 </button>
                 <button
                   onClick={exportAuditCsv}
-                  disabled={auditEntries.length === 0}
+                  disabled={auditEntries.length === 0 || auditExporting}
                   className="flex items-center gap-1 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -932,7 +1008,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                       d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
                     />
                   </svg>
-                  Export Audit Log
+                  {auditExporting ? 'Exporting...' : 'Export Audit Log'}
                 </button>
               </div>
 

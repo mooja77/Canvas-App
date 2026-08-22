@@ -166,7 +166,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const [creating, setCreating] = useState(false);
   const completeSetupWizard = useUIStore((s) => s.completeSetupWizard);
   const setUserProfile = useUIStore((s) => s.setUserProfile);
-  const plan = useAuthStore((s) => s.plan);
+  // See OnboardingChecklist: use the trial-aware plan, not the raw paid tier.
+  const plan = useAuthStore((s) => s.effectivePlan ?? s.plan);
   const createCanvas = useCanvasStore((s) => s.createCanvas);
   const openCanvas = useOpenCanvas();
   const addQuestion = useCanvasStore((s) => s.addQuestion);
@@ -246,7 +247,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   // Plan-specific subtitle for tips step
   const planTips = useMemo(() => {
     if (plan === 'team') return 'Set up your team on the Team page to collaborate with colleagues.';
-    if (plan === 'pro') return 'Add your AI API key in Account settings to unlock AI-powered coding.';
+    if (plan === 'pro' || plan === 'student')
+      return 'Add your AI API key in Account settings to unlock AI-powered coding.';
     return 'Upgrade anytime from the pricing page to unlock more features.';
   }, [plan]);
 

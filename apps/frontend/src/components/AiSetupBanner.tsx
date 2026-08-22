@@ -2,33 +2,40 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useUIStore } from '../stores/uiStore';
 import { useAiConfigStore } from '../stores/aiConfigStore';
+import { getFrontendPlanLimits } from '../config/planLimits';
 
-// Non-blocking banner for Pro/Team users whose AI key isn't set yet. Points
+// Non-blocking banner for AI-entitled users whose AI key isn't set yet. Points
 // them to the AI setup flow once; dismissal is per-session (we don't want to
 // permanently hide it in case they revisit the setup later).
 export default function AiSetupBanner() {
-  const plan = useAuthStore((s) => s.plan);
+  // effectivePlan carries the trial overlay; `plan` is what the user actually
+  // pays for. AI entitlement follows the overlay, matching resolveRequestPlan.
+  const plan = useAuthStore((s) => s.effectivePlan ?? s.plan);
   const authType = useAuthStore((s) => s.authType);
   const seen = useUIStore((s) => s.featureDiscovery.aiPromptSeen);
   const markSeen = useUIStore((s) => s.markFeatureSeen);
   const { configured, loaded, fetchConfig } = useAiConfigStore();
   const [dismissed, setDismissed] = useState(false);
 
+  // Derived from the shared plan-limits mirror rather than a hand-listed set of
+  // tier names — the old `plan === 'pro' || plan === 'team'` test silently
+  // excluded Student, a tier explicitly sold on full AI (aiEnabled: true).
+  const aiEntitled = getFrontendPlanLimits(plan).aiEnabled;
+
   useEffect(() => {
-    // AI keys are stored per email-auth user, so only Pro/Team email accounts can
-    // actually configure one. Don't poll the endpoint for free or legacy users —
-    // it would 401 for legacy (access-code) sessions and spam the console.
-    if (authType === 'email' && (plan === 'pro' || plan === 'team')) {
+    // AI keys are stored per email-auth user, so only AI-entitled email accounts
+    // can actually configure one. Don't poll the endpoint for free or legacy
+    // users — it would 401 for legacy (access-code) sessions and spam the console.
+    if (authType === 'email' && aiEntitled) {
       fetchConfig();
     }
-  }, [plan, authType, fetchConfig]);
+  }, [aiEntitled, authType, fetchConfig]);
 
   // Legacy (access-code) users are grandfathered to Pro but can't add an AI key
   // until they link an email — the Account page's AI Settings section is
   // email-auth only. Showing them the "add a key" CTA would dead-end on /account,
   // so gate the banner on email auth.
-  const eligible =
-    authType === 'email' && (plan === 'pro' || plan === 'team') && loaded && !configured && !seen && !dismissed;
+  const eligible = authType === 'email' && aiEntitled && loaded && !configured && !seen && !dismissed;
   if (!eligible) return null;
 
   const handleDismiss = () => {

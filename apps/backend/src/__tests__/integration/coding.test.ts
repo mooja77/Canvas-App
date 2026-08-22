@@ -260,6 +260,9 @@ describe('Coding integration tests', () => {
     mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
       id: transcriptId,
       canvasId,
+      // The coding below must actually describe this text - the route now
+      // verifies content.slice(start, end) === codedText.
+      content: 'patterns emerge from the data',
     });
     mockPrisma.canvasQuestion.findUnique.mockResolvedValue({
       id: questionId,
@@ -287,6 +290,71 @@ describe('Coding integration tests', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.id).toBe(codingId);
     expect(res.body.data.codedText).toBe('patterns emerge');
+  });
+
+  // ─── The coding loop's core invariant ───
+  //
+  // Offsets and codedText were previously stored as three independent facts
+  // supplied by the client and never compared against each other. A
+  // mis-measured selection was accepted silently and every downstream consumer
+  // inherited it. The selection gesture itself cannot be driven headlessly
+  // (React Flow swallows the drag), so the contract is enforced server-side.
+  const transcriptWithText = (transcriptId: string) => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
+      id: transcriptId,
+      canvasId,
+      content: 'patterns emerge from the data',
+    });
+    mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: 'question-c1', canvasId });
+  };
+
+  it('POST /canvas/:id/codings rejects text that does not match the offsets', async () => {
+    transcriptWithText('transcript-c1');
+
+    const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId: 'transcript-c1',
+      questionId: 'question-c1',
+      startOffset: 0,
+      endOffset: 15,
+      // The transcript says "patterns emerge" at 0..15.
+      codedText: 'something else',
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/does not match the transcript/i);
+    expect(mockPrisma.canvasTextCoding.create).not.toHaveBeenCalled();
+  });
+
+  it('POST /canvas/:id/codings rejects offsets past the end of the transcript', async () => {
+    transcriptWithText('transcript-c1');
+
+    const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId: 'transcript-c1',
+      questionId: 'question-c1',
+      startOffset: 5,
+      endOffset: 9000,
+      codedText: 'patterns emerge',
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/outside this transcript/i);
+    expect(mockPrisma.canvasTextCoding.create).not.toHaveBeenCalled();
+  });
+
+  it('POST /canvas/:id/codings accepts a coding whose text matches exactly', async () => {
+    transcriptWithText('transcript-c1');
+    mockPrisma.canvasTextCoding.create.mockResolvedValue({ id: 'coding-ok', canvasId });
+
+    const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId: 'transcript-c1',
+      questionId: 'question-c1',
+      startOffset: 9,
+      endOffset: 15,
+      codedText: 'emerge',
+    });
+
+    expect(res.status).toBe(201);
   });
 
   // ─── 6. POST /canvas/:id/codings — validates startOffset < endOffset ───
@@ -554,7 +622,11 @@ describe('Coding integration tests', () => {
     const questionId = 'question-c1';
 
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
-    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ id: transcriptId, canvasId });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
+      id: transcriptId,
+      canvasId,
+      content: 'patterns emerge from the data',
+    });
     mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: questionId, canvasId });
     mockPrisma.canvasTextCoding.create.mockResolvedValue({ id: 'coding-attr-1', canvasId });
 

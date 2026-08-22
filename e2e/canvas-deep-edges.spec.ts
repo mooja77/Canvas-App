@@ -1,6 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const API = 'http://localhost:3007/api/v1';
+
+// Seeded codings derive their text from this content and clamp their
+// offsets to it. The server verifies content.slice(start, end) === codedText,
+// and the previous literals described spans that could not exist (0..50 for a
+// 42-character string, and an endOffset of 160 on a shorter transcript).
+const EDGE_TRANSCRIPT =
+  'The patient described significant barriers to accessing healthcare in rural communities. Transportation and internet connectivity were major challenges.';
 let jwt = '';
 let canvasId = '';
 const PREFIX = `E2E-DE ${Date.now()}`;
@@ -39,11 +46,7 @@ test.describe('Deep Canvas: Edge Behavior', () => {
     canvasId = (await res.json()).data.id;
     const tRes = await p.request.post(`${API}/canvas/${canvasId}/transcripts`, {
       headers: headers(),
-      data: {
-        title: 'Edge Test',
-        content:
-          'The patient described significant barriers to accessing healthcare in rural communities. Transportation and internet connectivity were major challenges.',
-      },
+      data: { title: 'Edge Test', content: EDGE_TRANSCRIPT },
     });
     transcriptId = (await tRes.json()).data.id;
     for (const name of ['Access Barriers', 'Technology Issues', 'Rural Health']) {
@@ -55,30 +58,18 @@ test.describe('Deep Canvas: Edge Behavior', () => {
     }
     // Create 8 codings — multiple per pair for bundling
     const codings = [
-      { questionId: codeIds[0], startOffset: 0, endOffset: 30, codedText: 'The patient described significant' },
-      { questionId: codeIds[0], startOffset: 31, endOffset: 70, codedText: 'barriers to accessing healthcare' },
-      { questionId: codeIds[0], startOffset: 71, endOffset: 100, codedText: 'in rural communities' },
-      { questionId: codeIds[1], startOffset: 102, endOffset: 140, codedText: 'internet connectivity were major' },
-      {
-        questionId: codeIds[1],
-        startOffset: 102,
-        endOffset: 160,
-        codedText: 'internet connectivity were major challenges',
-      },
-      {
-        questionId: codeIds[2],
-        startOffset: 0,
-        endOffset: 50,
-        codedText: 'The patient described significant barriers',
-      },
-      { questionId: codeIds[2], startOffset: 71, endOffset: 100, codedText: 'in rural communities' },
-      {
-        questionId: codeIds[2],
-        startOffset: 102,
-        endOffset: 160,
-        codedText: 'internet connectivity were major challenges',
-      },
-    ];
+      { questionId: codeIds[0], startOffset: 0, endOffset: 30 },
+      { questionId: codeIds[0], startOffset: 31, endOffset: 70 },
+      { questionId: codeIds[0], startOffset: 71, endOffset: 100 },
+      { questionId: codeIds[1], startOffset: 102, endOffset: 140 },
+      { questionId: codeIds[1], startOffset: 102, endOffset: 160 },
+      { questionId: codeIds[2], startOffset: 0, endOffset: 50 },
+      { questionId: codeIds[2], startOffset: 71, endOffset: 100 },
+      { questionId: codeIds[2], startOffset: 102, endOffset: 160 },
+    ].map((c) => {
+      const endOffset = Math.min(c.endOffset, EDGE_TRANSCRIPT.length);
+      return { ...c, endOffset, codedText: EDGE_TRANSCRIPT.slice(c.startOffset, endOffset) };
+    });
     for (const c of codings) {
       await p.request.post(`${API}/canvas/${canvasId}/codings`, { headers: headers(), data: { transcriptId, ...c } });
     }

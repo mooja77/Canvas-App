@@ -84,6 +84,8 @@ const mockUIStore = {
   completeOnboardingV2: vi.fn(),
   onboardingChecklistDismissed: true,
   dismissOnboardingChecklist: vi.fn(),
+  onboardingChecklistComplete: [],
+  markChecklistItemComplete: vi.fn(),
   dismissedJitTooltips: [],
   dismissJitTooltip: vi.fn(),
   featureDiscovery: {

@@ -2,7 +2,13 @@ import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import ComputedNodeShell from './ComputedNodeShell';
-import { useCanvasStore, useCanvasComputedNodes, useCanvasQuestions, useCanvasTranscripts } from '../../../stores/canvasStore';
+import { reportNodeSaveError } from './nodeSave';
+import {
+  useCanvasStore,
+  useCanvasComputedNodes,
+  useCanvasQuestions,
+  useCanvasTranscripts,
+} from '../../../stores/canvasStore';
 import type { CanvasComputedNode, CanvasQuestion, ComparisonConfig, ComparisonResult } from '@qualcanvas/shared';
 
 export interface ComparisonNodeData {
@@ -17,7 +23,7 @@ function ComparisonNode({ data, id, selected }: NodeProps) {
   const computedNodes = useCanvasComputedNodes();
   const questions = useCanvasQuestions();
   const transcripts = useCanvasTranscripts();
-  const updateComputedNode = useCanvasStore(s => s.updateComputedNode);
+  const updateComputedNode = useCanvasStore((s) => s.updateComputedNode);
   const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [editing, setEditing] = useState(false);
   const [selectedTIds, setSelectedTIds] = useState<string[]>([]);
@@ -26,14 +32,22 @@ function ComparisonNode({ data, id, selected }: NodeProps) {
   const config = node.config as unknown as ComparisonConfig;
   const result = node.result as unknown as ComparisonResult;
 
-  const handleSaveConfig = () => {
-    updateComputedNode(node.id, { config: { ...config, transcriptIds: selectedTIds } });
-    setEditing(false);
+  const handleSaveConfig = async () => {
+    try {
+      await updateComputedNode(node.id, { config: { ...config, transcriptIds: selectedTIds } });
+      setEditing(false);
+    } catch (err) {
+      reportNodeSaveError(err, 'Failed to save settings');
+    }
   };
 
   const icon = (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"
+      />
     </svg>
   );
 
@@ -42,8 +56,8 @@ function ComparisonNode({ data, id, selected }: NodeProps) {
     ? questions.map((q: CanvasQuestion, _qi: number) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const entry: any = { name: q.text.slice(0, 12) };
-        result.transcripts.forEach(t => {
-          const profile = t.profile.find(p => p.questionId === q.id);
+        result.transcripts.forEach((t) => {
+          const profile = t.profile.find((p) => p.questionId === q.id);
           entry[t.title.slice(0, 15)] = profile?.count || 0;
         });
         return entry;
@@ -57,7 +71,10 @@ function ComparisonNode({ data, id, selected }: NodeProps) {
       label={node.label}
       icon={icon}
       color="#EC4899"
-      onConfigure={() => { setSelectedTIds(config?.transcriptIds || []); setEditing(true); }}
+      onConfigure={() => {
+        setSelectedTIds(config?.transcriptIds || []);
+        setEditing(true);
+      }}
       selected={selected}
       collapsed={(data as unknown as Record<string, unknown>).collapsed as boolean}
       zoomLevel={(data as unknown as Record<string, unknown>).zoomLevel as number}
@@ -66,12 +83,14 @@ function ComparisonNode({ data, id, selected }: NodeProps) {
         <div className="border-b border-gray-100 dark:border-gray-700 px-3 py-2 space-y-2">
           <p className="text-[10px] font-medium text-gray-500">Select transcripts to compare:</p>
           <div className="max-h-[120px] overflow-y-auto space-y-1">
-            {transcripts.map(t => (
+            {transcripts.map((t) => (
               <label key={t.id} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
                 <input
                   type="checkbox"
                   checked={selectedTIds.includes(t.id)}
-                  onChange={() => setSelectedTIds(prev => prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id])}
+                  onChange={() =>
+                    setSelectedTIds((prev) => (prev.includes(t.id) ? prev.filter((x) => x !== t.id) : [...prev, t.id]))
+                  }
                   className="rounded border-gray-300"
                 />
                 <span className="truncate">{t.title}</span>
@@ -79,8 +98,12 @@ function ComparisonNode({ data, id, selected }: NodeProps) {
             ))}
           </div>
           <div className="flex gap-2">
-            <button onClick={handleSaveConfig} className="btn-primary h-7 px-2 text-xs">Save</button>
-            <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+            <button onClick={handleSaveConfig} className="btn-primary h-7 px-2 text-xs">
+              Save
+            </button>
+            <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">
+              Cancel
+            </button>
           </div>
         </div>
       )}
@@ -97,7 +120,12 @@ function ComparisonNode({ data, id, selected }: NodeProps) {
                 <Tooltip contentStyle={{ fontSize: 11 }} />
                 <Legend wrapperStyle={{ fontSize: 9 }} />
                 {result.transcripts.map((t, i) => (
-                  <Bar key={t.id} dataKey={t.title.slice(0, 15)} fill={COLORS[i % COLORS.length]} radius={[2, 2, 0, 0]} />
+                  <Bar
+                    key={t.id}
+                    dataKey={t.title.slice(0, 15)}
+                    fill={COLORS[i % COLORS.length]}
+                    radius={[2, 2, 0, 0]}
+                  />
                 ))}
               </BarChart>
             </ResponsiveContainer>

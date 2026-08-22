@@ -16,6 +16,9 @@ const { mockPrisma } = vi.hoisted(() => {
     canvasCollaborator: {
       findUnique: vi.fn(),
     },
+    dashboardAccess: {
+      findUnique: vi.fn(),
+    },
     $disconnect: vi.fn(),
   };
   return { mockPrisma };
@@ -76,6 +79,8 @@ describe('WebSocket / Socket.IO server', () => {
       return Promise.resolve({ userId: 'user-1', id: where.id });
     });
     mockPrisma.canvasCollaborator.findUnique.mockResolvedValue({ id: 'collab-1', role: 'editor' });
+    // Default: this user has no legacy DashboardAccess row.
+    mockPrisma.dashboardAccess.findUnique.mockResolvedValue(null);
 
     httpServer = createServer();
     ioServer = initSocketServer(httpServer);
@@ -450,5 +455,52 @@ describe('WebSocket / Socket.IO server', () => {
 
     client1.disconnect();
     client2.disconnect();
+  });
+
+  // ─── Legacy access-code ownership ───
+
+  // Canvases created through the legacy access-code flow carry a NULL userId;
+  // ownership lives on the DashboardAccess row linked to the user. The REST
+  // routes (getOwnedCanvas) honour that, so realtime must too — otherwise
+  // presence, cursors and live coding silently never work for those projects.
+  describe('ownership via the legacy DashboardAccess row', () => {
+    it('lets the legacy owner of a NULL-userId canvas join', async () => {
+      mockPrisma.codingCanvas.findUnique.mockResolvedValue({
+        userId: null,
+        dashboardAccessId: 'da-legacy',
+      });
+      mockPrisma.canvasCollaborator.findUnique.mockResolvedValue(null);
+      mockPrisma.dashboardAccess.findUnique.mockResolvedValue({ id: 'da-legacy' });
+
+      const client = connectClient(signTestToken('user-1'));
+      await waitForEvent(client, 'connect');
+
+      const presencePromise = waitForEvent<{ canvasId: string; role: string }>(client, 'presence:current');
+      client.emit('canvas:join', { canvasId: 'canvas-legacy' });
+
+      const presence = await presencePromise;
+      expect(presence.canvasId).toBe('canvas-legacy');
+      expect(presence.role).toBe('owner');
+      client.disconnect();
+    });
+
+    it('still denies a user whose DashboardAccess row is a different one', async () => {
+      mockPrisma.codingCanvas.findUnique.mockResolvedValue({
+        userId: null,
+        dashboardAccessId: 'da-someone-else',
+      });
+      mockPrisma.canvasCollaborator.findUnique.mockResolvedValue(null);
+      mockPrisma.dashboardAccess.findUnique.mockResolvedValue({ id: 'da-mine' });
+
+      const client = connectClient(signTestToken('user-1'));
+      await waitForEvent(client, 'connect');
+
+      const deniedPromise = waitForEvent<{ canvasId: string; reason: string }>(client, 'canvas:join-denied');
+      client.emit('canvas:join', { canvasId: 'canvas-not-mine' });
+
+      const denied = await deniedPromise;
+      expect(denied.reason).toBe('access_denied');
+      client.disconnect();
+    });
   });
 });

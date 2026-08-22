@@ -231,6 +231,37 @@ codingRoutes.post(
         return next(new AppError('Question not found in this canvas', 400));
       }
 
+      // The coding loop's core invariant: the offsets and the text must
+      // describe the SAME span of this transcript.
+      //
+      // Until now they were stored as three independent facts supplied by the
+      // client and never compared. The browser measures offsets against the
+      // RENDERED transcript (a DOM walk with Range.toString()) and stores them
+      // against the raw content, so the two agree only while the rendering
+      // reproduces the text exactly. That holds today, and
+      // computeOverlappingSegments is now pinned by tests to keep it holding -
+      // but the selection gesture cannot be driven headlessly, so this is the
+      // backstop. Without it a mis-measured offset is accepted silently and
+      // every consumer downstream inherits it: highlights land on the wrong
+      // words, excerpt context is sliced from the wrong place, exports quote
+      // one span while pointing at another, and agreement statistics segment
+      // against offsets that no longer mean anything.
+      //
+      // The other, likelier cause is a stale transcript in the client's memory
+      // - someone edited the text elsewhere - which is exactly when storing the
+      // coding anyway would be wrong.
+      if (startOffset < 0 || endOffset > transcript.content.length || endOffset <= startOffset) {
+        return next(new AppError('Coding offsets are outside this transcript. Reload the canvas and try again.', 400));
+      }
+      if (transcript.content.slice(startOffset, endOffset) !== codedText) {
+        return next(
+          new AppError(
+            'Coding text does not match the transcript at those offsets. This usually means the transcript changed - reload the canvas and try again.',
+            400,
+          ),
+        );
+      }
+
       const coding = await prisma.canvasTextCoding.create({
         data: {
           canvasId: req.params.id,

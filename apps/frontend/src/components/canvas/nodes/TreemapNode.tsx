@@ -2,6 +2,7 @@ import { memo, useState } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Treemap, ResponsiveContainer, Tooltip } from 'recharts';
 import ComputedNodeShell from './ComputedNodeShell';
+import { reportNodeSaveError } from './nodeSave';
 import { useCanvasStore, useCanvasComputedNodes } from '../../../stores/canvasStore';
 import type { CanvasComputedNode, TreemapConfig, TreemapResult } from '@qualcanvas/shared';
 
@@ -49,7 +50,7 @@ function TreemapCell(props: any) {
 function TreemapNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as TreemapNodeData;
   const computedNodes = useCanvasComputedNodes();
-  const updateComputedNode = useCanvasStore(s => s.updateComputedNode);
+  const updateComputedNode = useCanvasStore((s) => s.updateComputedNode);
   const node = computedNodes.find((n: CanvasComputedNode) => n.id === nodeData.computedNodeId);
   const [editing, setEditing] = useState(false);
   const [metric, setMetric] = useState<'count' | 'characters'>('count');
@@ -58,40 +59,50 @@ function TreemapNode({ data, id, selected }: NodeProps) {
   const config = node.config as unknown as TreemapConfig;
   const result = node.result as unknown as TreemapResult;
 
-  const handleSaveConfig = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    updateComputedNode(node.id, { config: { metric } as any });
-    setEditing(false);
+  const handleSaveConfig = async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateComputedNode(node.id, { config: { metric } as any });
+      setEditing(false);
+    } catch (err) {
+      reportNodeSaveError(err, 'Failed to save settings');
+    }
   };
 
   const icon = (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"
+      />
     </svg>
   );
 
   // Build treemap data structure for recharts
   const treemapData = result?.nodes?.length
-    ? [{
-        name: 'root',
-        children: result.nodes
-          .filter(n => !n.parentId)
-          .map(n => {
-            const children = result.nodes.filter(c => c.parentId === n.id);
-            if (children.length > 0) {
-              return {
-                name: n.name,
-                color: n.color,
-                children: children.map(c => ({
-                  name: c.name,
-                  size: c.size,
-                  color: c.color,
-                })),
-              };
-            }
-            return { name: n.name, size: n.size, color: n.color };
-          }),
-      }]
+    ? [
+        {
+          name: 'root',
+          children: result.nodes
+            .filter((n) => !n.parentId)
+            .map((n) => {
+              const children = result.nodes.filter((c) => c.parentId === n.id);
+              if (children.length > 0) {
+                return {
+                  name: n.name,
+                  color: n.color,
+                  children: children.map((c) => ({
+                    name: c.name,
+                    size: c.size,
+                    color: c.color,
+                  })),
+                };
+              }
+              return { name: n.name, size: n.size, color: n.color };
+            }),
+        },
+      ]
     : [];
 
   return (
@@ -113,15 +124,22 @@ function TreemapNode({ data, id, selected }: NodeProps) {
         <div className="border-b border-gray-100 dark:border-gray-700 px-3 py-2 space-y-2">
           <div className="flex items-center gap-2">
             <label className="text-[10px] text-gray-500">Metric:</label>
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            <select className="input h-7 text-xs flex-1" value={metric} onChange={e => setMetric(e.target.value as any)}>
+            <select
+              className="input h-7 text-xs flex-1"
+              value={metric}
+              onChange={(e) => setMetric(e.target.value as 'count' | 'characters')}
+            >
               <option value="count">Coding Count</option>
               <option value="characters">Characters Coded</option>
             </select>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleSaveConfig} className="btn-primary h-7 px-2 text-xs">Save</button>
-            <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+            <button onClick={handleSaveConfig} className="btn-primary h-7 px-2 text-xs">
+              Save
+            </button>
+            <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">
+              Cancel
+            </button>
           </div>
         </div>
       )}
@@ -132,7 +150,9 @@ function TreemapNode({ data, id, selected }: NodeProps) {
         ) : (
           <>
             <div className="flex items-center justify-between text-[10px] text-gray-500 mb-1">
-              <span>{result.nodes.length} theme{result.nodes.length !== 1 ? 's' : ''}</span>
+              <span>
+                {result.nodes.length} theme{result.nodes.length !== 1 ? 's' : ''}
+              </span>
               <span>Total: {result.total}</span>
             </div>
             <div className="h-[200px]">
@@ -145,7 +165,10 @@ function TreemapNode({ data, id, selected }: NodeProps) {
                 >
                   <Tooltip
                     contentStyle={{ fontSize: 11 }}
-                    formatter={(value: number, name: string) => [`${value} ${config?.metric === 'characters' ? 'chars' : 'codings'}`, name]}
+                    formatter={(value: number, name: string) => [
+                      `${value} ${config?.metric === 'characters' ? 'chars' : 'codings'}`,
+                      name,
+                    ]}
                   />
                 </Treemap>
               </ResponsiveContainer>

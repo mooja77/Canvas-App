@@ -126,8 +126,13 @@ canvasRoutes.post('/canvas', validate(createCanvasSchema), checkCanvasLimit(), a
     const plan = req.userPlan || 'free';
     const limits = getPlanLimits(plan);
     if (limits.maxCanvases !== Infinity) {
+      // Mirrors checkCanvasLimit: trashed canvases do not consume a slot. If
+      // this recount disagrees with the middleware, it hard-deletes the row the
+      // user just created — so the two filters must stay identical.
       const finalCount = await prisma.codingCanvas.count({
-        where: userId ? { OR: [{ userId }, { dashboardAccessId }] } : { dashboardAccessId },
+        where: userId
+          ? { OR: [{ userId }, { dashboardAccessId }], deletedAt: null }
+          : { dashboardAccessId, deletedAt: null },
       });
       if (finalCount > limits.maxCanvases) {
         await prisma.codingCanvas.delete({ where: { id: canvas.id } }).catch(() => {});
@@ -258,23 +263,32 @@ canvasRoutes.delete('/canvas/:canvasId', validateParams(canvasCanvasIdParam), as
 });
 
 // POST /canvas/:canvasId/restore — restore a soft-deleted canvas
-canvasRoutes.post('/canvas/:canvasId/restore', validateParams(canvasCanvasIdParam), async (req, res, next) => {
-  try {
-    const dashboardAccessId = getAuthId(req);
-    const canvas = await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req), {
-      allowDeleted: true,
-      requireOwner: true,
-    });
-    if (!canvas.deletedAt) return next(new AppError('Canvas is not in trash', 400));
-    const restored = await prisma.codingCanvas.update({
-      where: { id: req.params.canvasId },
-      data: { deletedAt: null },
-    });
-    res.json({ success: true, data: restored });
-  } catch (err) {
-    next(err);
-  }
-});
+// Restoring consumes a plan slot, so it is capped like creation. Without this
+// the cap is bypassable without bound: soft-delete is the only delete the UI
+// offers and nothing purges the trash, so a user could create -> delete ->
+// create indefinitely and then restore everything.
+canvasRoutes.post(
+  '/canvas/:canvasId/restore',
+  validateParams(canvasCanvasIdParam),
+  checkCanvasLimit(),
+  async (req, res, next) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      const canvas = await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req), {
+        allowDeleted: true,
+        requireOwner: true,
+      });
+      if (!canvas.deletedAt) return next(new AppError('Canvas is not in trash', 400));
+      const restored = await prisma.codingCanvas.update({
+        where: { id: req.params.canvasId },
+        data: { deletedAt: null },
+      });
+      res.json({ success: true, data: restored });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // DELETE /canvas/:canvasId/permanent — permanently delete a trashed canvas
 canvasRoutes.delete('/canvas/:canvasId/permanent', validateParams(canvasCanvasIdParam), async (req, res, next) => {

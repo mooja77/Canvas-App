@@ -268,6 +268,8 @@ describe('Canvas lifecycle integration tests', () => {
     mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
       id: transcriptId,
       canvasId,
+      // slice(0, 10) === 'Some inter' - the route now verifies this.
+      content: 'Some interview text here.',
     });
     mockPrisma.canvasQuestion.findUnique.mockResolvedValue({
       id: questionId,

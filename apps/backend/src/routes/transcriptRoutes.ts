@@ -12,7 +12,7 @@ import {
   canvasTranscriptParams,
 } from '../middleware/validation.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
-import { checkTranscriptLimit, checkWordLimit } from '../middleware/planLimits.js';
+import { checkTranscriptLimit, checkWordLimit, resolveRequestPlan } from '../middleware/planLimits.js';
 import { getPlanLimits } from '../config/plans.js';
 
 export const transcriptRoutes = Router();
@@ -54,11 +54,37 @@ transcriptRoutes.put(
       // just by knowing the transcript ID (IDOR).
       const existing = await prisma.canvasTranscript.findUnique({
         where: { id: req.params.tid },
-        select: { canvasId: true },
+        select: { canvasId: true, content: true },
       });
       if (!existing || existing.canvasId !== req.params.id) {
         return next(new AppError('Transcript not found in this canvas', 404));
       }
+
+      // Codings are absolute character offsets into this content. Changing the
+      // text underneath them silently repoints every coding at whatever now
+      // occupies those positions - the stored codedText stops matching, and
+      // highlights, excerpt context, exports and agreement statistics all
+      // quietly describe the wrong span. Nothing here remapped or invalidated
+      // them, and nothing warned.
+      //
+      // No UI edits transcript content today (only caseId and title), so this
+      // is latent rather than active - but the endpoint accepts content, and
+      // the moment a transcript editor is added it would corrupt every coding
+      // on that transcript. Refuse rather than corrupt. Re-mapping offsets
+      // through a diff is the real feature and needs to be designed, not
+      // improvised here.
+      if (req.body.content !== undefined && req.body.content !== existing.content) {
+        const codingCount = await prisma.canvasTextCoding.count({ where: { transcriptId: req.params.tid } });
+        if (codingCount > 0) {
+          return next(
+            new AppError(
+              `Cannot change this transcript's text: ${codingCount} coding(s) reference positions in it and would be silently repointed at different words. Remove the codings first, or import the revised text as a new transcript.`,
+              409,
+            ),
+          );
+        }
+      }
+
       const transcript = await prisma.canvasTranscript.update({
         where: { id: req.params.tid },
         data: req.body,
@@ -106,8 +132,13 @@ transcriptRoutes.post(
 
       const count = await prisma.canvasTranscript.count({ where: { canvasId: req.params.id } });
 
-      // Plan limit checks for bulk import
-      const plan = req.userPlan || 'free';
+      // Plan limit checks for bulk import.
+      //
+      // Resolve against the canvas OWNER, exactly like checkTranscriptLimit /
+      // checkWordLimit do on every other transcript route. req.userPlan is the
+      // REQUESTER's plan, so a Free collaborator invited onto a Pro canvas was
+      // held to Free caps on someone else's paid canvas.
+      const plan = await resolveRequestPlan(req);
       const limits = getPlanLimits(plan);
       if (limits.maxTranscriptsPerCanvas !== Infinity && count + narratives.length > limits.maxTranscriptsPerCanvas) {
         return next(
@@ -182,8 +213,8 @@ transcriptRoutes.post(
 
       const count = await prisma.canvasTranscript.count({ where: { canvasId: req.params.id } });
 
-      // Plan limit checks for cross-canvas import
-      const plan = req.userPlan || 'free';
+      // Plan limit checks for cross-canvas import — owner-resolved, as above.
+      const plan = await resolveRequestPlan(req);
       const limits = getPlanLimits(plan);
       if (
         limits.maxTranscriptsPerCanvas !== Infinity &&

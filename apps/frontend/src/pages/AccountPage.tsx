@@ -3,6 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/authStore';
 import { authApi, billingApi, aiSettingsApi, reportApi, emailApi, type EmailPreferences } from '../services/api';
+import { getFrontendPlanLimits } from '../config/planLimits';
 import { usePageMeta } from '../hooks/usePageMeta';
 import IntegrationSettingsPanel from '../components/canvas/panels/IntegrationSettingsPanel';
 import toast from 'react-hot-toast';
@@ -14,6 +15,8 @@ interface UserProfile {
     name: string;
     role: string;
     plan: string;
+    /** Trial-aware plan the server actually enforces; 'pro' for a free user mid-trial. */
+    effectivePlan?: string;
     emailVerified?: boolean;
     createdAt?: string;
     hasPassword?: boolean;
@@ -28,6 +31,8 @@ interface UserProfile {
     totalTranscripts: number;
     totalCodes: number;
     totalShares: number;
+    /** Canvases owned only via a legacy access code; not cascaded by account deletion. */
+    legacyCanvasCount?: number;
   } | null;
   authType: string;
 }
@@ -54,6 +59,7 @@ export default function AccountPage() {
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
+  const [deleteLegacyCanvases, setDeleteLegacyCanvases] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [exportingAccount, setExportingAccount] = useState(false);
 
@@ -249,7 +255,7 @@ export default function AccountPage() {
     if (!deletePassword || !profile) return;
     setDeleting(true);
     try {
-      await authApi.deleteAccount(deletePassword, profile.user.hasPassword !== false);
+      await authApi.deleteAccount(deletePassword, profile.user.hasPassword !== false, deleteLegacyCanvases);
       toast.success('Account deleted');
       logout();
       navigate('/');
@@ -692,21 +698,74 @@ export default function AccountPage() {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {(() => {
-                const limits =
-                  profile.user.plan === 'free' ? { canvases: 1, transcripts: 2, codes: 5, shares: 0 } : null;
-                const items = [
-                  { label: 'Canvases', value: profile.usage.canvasCount, max: limits?.canvases },
-                  { label: 'Transcripts', value: profile.usage.totalTranscripts, max: limits?.transcripts },
-                  { label: 'Codes', value: profile.usage.totalCodes, max: limits?.codes },
-                  { label: 'Share codes', value: profile.usage.totalShares, max: limits?.shares },
+                // The usage numbers from /auth/me are ACCOUNT-WIDE totals, but
+                // only maxCanvases and maxShares are account-wide caps —
+                // transcripts and codes are capped PER CANVAS. Dividing an
+                // account total by a per-canvas cap is what used to show a
+                // compliant Free user 100% red on everything, on top of the
+                // caps themselves being the retired pre-2026 numbers.
+                // Meter against the plan the SERVER enforces. resolveRequestPlan
+                // uses the trial overlay, so metering a trialing free user
+                // against Free caps shows them 2/2 in red while the server
+                // still lets them create - the same class of contradiction as
+                // the stale limits above.
+                const limits = getFrontendPlanLimits(profile.user.effectivePlan ?? profile.user.plan);
+                const items: {
+                  key: string;
+                  label: string;
+                  value: number;
+                  /** Account-wide cap this value can honestly be metered against. */
+                  max: number | null;
+                  /** Per-canvas cap, surfaced as a hint rather than a meter. */
+                  perCanvas: number | null;
+                }[] = [
+                  {
+                    key: 'canvases',
+                    label: 'Canvases',
+                    value: profile.usage.canvasCount,
+                    max: limits.maxCanvases,
+                    perCanvas: null,
+                  },
+                  {
+                    key: 'transcripts',
+                    label: 'Transcripts',
+                    value: profile.usage.totalTranscripts,
+                    max: null,
+                    perCanvas: limits.maxTranscriptsPerCanvas,
+                  },
+                  {
+                    key: 'codes',
+                    label: 'Codes',
+                    value: profile.usage.totalCodes,
+                    max: null,
+                    perCanvas: limits.maxCodesPerCanvas,
+                  },
+                  {
+                    key: 'shares',
+                    label: 'Share codes',
+                    value: profile.usage.totalShares,
+                    max: limits.maxShares,
+                    perCanvas: null,
+                  },
                 ];
                 return items.map((item) => (
-                  <div key={item.label} className="text-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {item.max !== undefined ? `${item.value}/${item.max}` : item.value}
+                  <div key={item.key} className="text-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <p
+                      className="text-2xl font-bold text-gray-900 dark:text-white"
+                      data-testid={`usage-${item.key}-value`}
+                    >
+                      {item.max !== null ? `${item.value}/${item.max}` : item.value}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{item.label}</p>
-                    {item.max !== undefined && item.max > 0 && (
+                    {item.perCanvas !== null && (
+                      <p
+                        className="text-[10px] text-gray-400 dark:text-gray-500"
+                        data-testid={`usage-${item.key}-hint`}
+                      >
+                        {item.perCanvas} per canvas
+                      </p>
+                    )}
+                    {item.max !== null && item.max > 0 && (
                       <div className="mt-2 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all ${
@@ -1212,11 +1271,31 @@ export default function AccountPage() {
                   onChange={(e) => setDeletePassword(e.target.value)}
                   className="w-full px-3 py-2 border border-red-300 dark:border-red-700 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
+                {(profile.usage?.legacyCanvasCount ?? 0) > 0 && (
+                  <label className="flex items-start gap-2 text-sm text-red-700 dark:text-red-300">
+                    <input
+                      type="checkbox"
+                      checked={deleteLegacyCanvases}
+                      onChange={(e) => setDeleteLegacyCanvases(e.target.checked)}
+                      className="mt-0.5"
+                      data-testid="delete-legacy-canvases"
+                    />
+                    <span>
+                      Also delete {profile.usage?.legacyCanvasCount} canvas
+                      {(profile.usage?.legacyCanvasCount ?? 0) === 1 ? '' : 'es'} created with your access code.
+                      <span className="block text-xs opacity-80">
+                        These are not removed with your account. Leave this unticked to keep them reachable with the
+                        original access code.
+                      </span>
+                    </span>
+                  </label>
+                )}
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
                       setShowDeleteConfirm(false);
                       setDeletePassword('');
+                      setDeleteLegacyCanvases(false);
                     }}
                     className="flex-1 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
