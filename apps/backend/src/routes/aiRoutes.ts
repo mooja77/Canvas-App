@@ -640,6 +640,13 @@ aiRoutes.put(
               endOffset: suggestion.endOffset,
               codedText: suggestion.codedText,
               source: 'ai',
+              // Accepting a suggestion IS this researcher's coding decision, so
+              // it is attributed to them for intercoder agreement. `source`
+              // still records the AI provenance for the IRB disclosure export -
+              // the two are orthogonal. Without this the coding was invisible to
+              // Krippendorff's alpha, which then scored the accepting coder as
+              // having declined every code they had in fact applied.
+              coderUserId: getAuthUserId(req),
             },
           });
           return tx.aiSuggestion.update({ where: { id: req.params.sid }, data: { status } });
@@ -706,6 +713,8 @@ aiRoutes.post(
               endOffset: suggestion.endOffset,
               codedText: suggestion.codedText,
               source: 'ai',
+              // See the note on the single-accept path above.
+              coderUserId: getAuthUserId(req),
             },
           });
         }

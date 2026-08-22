@@ -676,10 +676,41 @@ codingRoutes.post(
         throw new AppError('Transcript not found in this canvas', 404);
       }
 
-      // Pull every coding on this transcript authored by one of the selected coders.
-      const allCodings = await prisma.canvasTextCoding.findMany({
-        where: { canvasId: req.params.id, transcriptId, coderUserId: { in: userIds } },
+      // Pull EVERY coding on this transcript, not just the selected coders'.
+      // The unattributed ones do not enter the statistic, but the caller has to
+      // be told they exist - see the guard below.
+      const transcriptCodings = await prisma.canvasTextCoding.findMany({
+        where: { canvasId: req.params.id, transcriptId },
       });
+      const allCodings = transcriptCodings.filter((c) => c.coderUserId && userIds.includes(c.coderUserId));
+      const unattributedCodings = transcriptCodings.filter((c) => !c.coderUserId).length;
+
+      // Refuse to return a confident number for a degenerate design.
+      //
+      // buildSegmentCodeObservations emits '0' (code absent) for any coder with
+      // no coding on a unit, so a selected coder who has coded NOTHING on this
+      // transcript does not merely contribute nothing - they turn every unit
+      // another coder coded into a recorded disagreement, dragging alpha toward
+      // or below zero. That number is then rendered to three decimals with an
+      // agreement band and an Export Report button, and it is wrong.
+      //
+      // Three real ways to reach this state: selecting a Viewer (structurally
+      // incapable of holding a coding), selecting someone who simply has not
+      // coded this transcript, and - the common one - a coder whose codings all
+      // carry a NULL coderUserId because they came from bulk auto-code, a
+      // QDPX/share import, or a legacy access-code session. Only manual coding
+      // and accepted AI suggestions are attributed.
+      const codersWithNothing = userIds.filter((id: string) => !allCodings.some((c) => c.coderUserId === id));
+      if (codersWithNothing.length > 0) {
+        const detail =
+          unattributedCodings > 0
+            ? ` This transcript also has ${unattributedCodings} coding(s) with no coder attribution (bulk auto-code, imports, or legacy sessions), which cannot be counted toward any coder.`
+            : '';
+        throw new AppError(
+          `Cannot compute agreement: ${codersWithNothing.length} selected coder(s) have no attributed codings on this transcript.${detail} Agreement needs at least two coders who have each coded it.`,
+          400,
+        );
+      }
 
       // Paragraph-level segmentation (mirrors the legacy route + the frontend modal).
       const content = transcript.content;
@@ -722,6 +753,9 @@ codingRoutes.post(
           nUnits: alphaResult.n_units,
           nObservations: alphaResult.n_observations,
           nSegments: segments.length,
+          // Surfaced so the figure is never read as covering the whole
+          // transcript when part of it could not be attributed to anyone.
+          unattributedCodings,
         },
       });
     } catch (err) {

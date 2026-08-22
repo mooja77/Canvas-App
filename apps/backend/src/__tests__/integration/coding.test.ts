@@ -670,6 +670,92 @@ describe('Coding integration tests', () => {
     expect(res.body.data.nCoders).toBe(2);
   });
 
+  // A coder with no attributed codings does not merely contribute nothing:
+  // buildSegmentCodeObservations emits '0' (absent) for them on every unit, so
+  // every unit the other coder coded becomes a recorded disagreement and alpha
+  // collapses. The route must refuse rather than render a confident wrong
+  // number with an agreement band and an Export Report button.
+  it('POST /canvas/:id/intercoder/agreement refuses when a selected coder has no attributed codings', async () => {
+    const transcriptId = 'transcript-c1';
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
+      id: transcriptId,
+      canvasId,
+      content: `First paragraph about access barriers.
+
+Second paragraph about something else entirely.`,
+    });
+    // coder-1 coded; coder-2 (e.g. a Viewer, or someone who has not coded this
+    // transcript) has nothing.
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
+      { transcriptId, questionId: 'q1', startOffset: 0, endOffset: 20, coderUserId: 'coder-1' },
+    ]);
+
+    const res = await request(app)
+      .post(`/api/canvas/${canvasId}/intercoder/agreement`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ transcriptId, userIds: ['coder-1', 'coder-2'] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/no attributed codings/i);
+  });
+
+  it('POST /canvas/:id/intercoder/agreement explains when the missing work is unattributed', async () => {
+    const transcriptId = 'transcript-c1';
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
+      id: transcriptId,
+      canvasId,
+      content: `First paragraph about access barriers.
+
+Second paragraph about something else entirely.`,
+    });
+    // coder-2's work exists but came from bulk auto-code / an import / a legacy
+    // session, so it carries no coderUserId.
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
+      { transcriptId, questionId: 'q1', startOffset: 0, endOffset: 20, coderUserId: 'coder-1' },
+      { transcriptId, questionId: 'q1', startOffset: 0, endOffset: 20, coderUserId: null },
+      { transcriptId, questionId: 'q1', startOffset: 40, endOffset: 60, coderUserId: null },
+    ]);
+
+    const res = await request(app)
+      .post(`/api/canvas/${canvasId}/intercoder/agreement`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ transcriptId, userIds: ['coder-1', 'coder-2'] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/2 coding\(s\) with no coder attribution/i);
+  });
+
+  it('POST /canvas/:id/intercoder/agreement reports how many codings were excluded', async () => {
+    const transcriptId = 'transcript-c1';
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
+      id: transcriptId,
+      canvasId,
+      content: `First paragraph about access barriers.
+
+Second paragraph about something else entirely.`,
+    });
+    // Both coders have attributed work, so alpha is computable - but part of the
+    // transcript was coded by nobody identifiable and must not be silently
+    // folded into a figure presented as covering it.
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
+      { transcriptId, questionId: 'q1', startOffset: 0, endOffset: 20, coderUserId: 'coder-1' },
+      { transcriptId, questionId: 'q1', startOffset: 0, endOffset: 20, coderUserId: 'coder-2' },
+      { transcriptId, questionId: 'q1', startOffset: 40, endOffset: 60, coderUserId: null },
+    ]);
+
+    const res = await request(app)
+      .post(`/api/canvas/${canvasId}/intercoder/agreement`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ transcriptId, userIds: ['coder-1', 'coder-2'] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.alpha).toBeCloseTo(1.0, 4);
+    expect(res.body.data.unattributedCodings).toBe(1);
+  });
+
   it('POST /canvas/:id/intercoder/agreement requires at least 2 coders', async () => {
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
     const res = await request(app)

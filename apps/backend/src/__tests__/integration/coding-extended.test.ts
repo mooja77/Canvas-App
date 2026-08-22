@@ -211,16 +211,13 @@ describe('Coding extended tests', () => {
       codedText: 'overlapping segments',
     });
 
-    const res1 = await request(app)
-      .post(`/api/canvas/${canvasId}/codings`)
-      .set('Authorization', `Bearer ${jwt}`)
-      .send({
-        transcriptId,
-        questionId: questionId1,
-        startOffset: 0,
-        endOffset: 20,
-        codedText: 'overlapping segments',
-      });
+    const res1 = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
+      transcriptId,
+      questionId: questionId1,
+      startOffset: 0,
+      endOffset: 20,
+      codedText: 'overlapping segments',
+    });
 
     expect(res1.status).toBe(201);
 
