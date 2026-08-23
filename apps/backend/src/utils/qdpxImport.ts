@@ -226,6 +226,17 @@ export async function importQdpx(canvasId: string, zipBuffer: Buffer): Promise<Q
           // Offsets index the resolved text. If the text could not be resolved
           // (missing archive entry) or the range falls outside it, skip: a
           // coding with empty codedText is worse than an honest skip.
+          //
+          // `slice` clamps silently, so a selection running past the end of the
+          // source used to be accepted with its ORIGINAL endPosition stored.
+          // That produced codings whose endOffset exceeded the transcript
+          // length, which the coverage statistic then divided by the real
+          // length - one imported archive reported 166,616.7% coverage. Reject
+          // the range rather than persist an offset the text cannot support.
+          if (startPosition < 0 || endPosition > text.length) {
+            skippedCodings += selection.codeGuids.length;
+            continue;
+          }
           const codedText = text.slice(startPosition, endPosition);
           if (codedText === '') {
             skippedCodings += selection.codeGuids.length;

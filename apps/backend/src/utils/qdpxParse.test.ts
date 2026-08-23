@@ -409,3 +409,57 @@ describe('parseQdpxProject — uncoded quotations', () => {
     expect(describeLosses(parseQdpxProject(withUncoded).unsupported)).toContain('1 uncoded quotation');
   });
 });
+
+/**
+ * Round-trip fidelity. A QDPX archive is how a researcher hands their project
+ * to a co-author, deposits it with a journal, or moves it to NVivo. If the text
+ * that comes back is not byte-identical to the text that went out, every coding
+ * offset in that source points at different words - and nothing detects it,
+ * because the importer recomputes codedText from the shifted text, so the
+ * `content.slice(start, end) === codedText` invariant still holds on the
+ * corrupted row. Both losses below were real and silent.
+ */
+describe('QDPX text round-trip fidelity', () => {
+  const roundTrip = (content: string): string => {
+    const xml = buildQdpxXml({
+      name: 'Fidelity',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      codes: [{ id: 'code-1', text: 'A code', children: [] }],
+      sources: [{ id: 'src-1', title: 'Interview', content }],
+      codings: [],
+    });
+    const parsed = parseQdpxProject(xml);
+    return parsed.sources[0].plainText ?? '';
+  };
+
+  it('preserves leading and trailing whitespace', () => {
+    // fast-xml-parser trims text nodes unless told not to. This exact string
+    // came back 43 chars instead of 49, sliding both codings on it.
+    const content = '   Leading spaces matter.\n\n\nBlank lines above.   ';
+    const out = roundTrip(content);
+    expect(out).toBe(content);
+    expect(out).toHaveLength(49);
+  });
+
+  it('preserves CRLF line endings from Windows- and Word-authored transcripts', () => {
+    // XML 1.0 section 2.11 makes a parser normalise literal CR and CRLF to a
+    // single LF, so a carriage return only survives as a numeric reference.
+    const content = 'Interviewer: How did it start?\r\nParticipant: Slowly.\r\n';
+    const out = roundTrip(content);
+    expect(out).toBe(content);
+    expect(out.split('\r\n')).toHaveLength(3);
+  });
+
+  it('keeps every coding offset addressing the same words after a round-trip', () => {
+    const content = '  Participant: it was the waiting that broke me.\r\nInterviewer: mm.  ';
+    const start = content.indexOf('the waiting');
+    const end = start + 'the waiting'.length;
+    const out = roundTrip(content);
+    expect(out.slice(start, end)).toBe('the waiting');
+  });
+
+  it('round-trips text that also needs entity escaping', () => {
+    const content = '\r\n  "R&D" <policy> costs 5 & rising\'s worth\r\n';
+    expect(roundTrip(content)).toBe(content);
+  });
+});

@@ -612,7 +612,13 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
         // Canvases owned only through the legacy access code. Deleting the
         // account does not cascade these, so the delete dialog must say so and
         // let the user choose.
-        prisma.codingCanvas.count({ where: { userId: null, dashboardAccess: { userId }, deletedAt: null } }),
+        // NO `deletedAt` filter. Deletion acts on every legacy canvas including
+        // trashed ones, so this count - which is the number the delete dialog
+        // shows the user - has to describe the same set. When it filtered to
+        // live canvases only, the dialog said "1 canvas" and three were
+        // destroyed; and a lone trashed canvas made the count 0, so the choice
+        // was never offered and participant data quietly survived deletion.
+        prisma.codingCanvas.count({ where: { userId: null, dashboardAccess: { userId } } }),
       ]);
 
       // Trial overlay: same logic as auth middleware — free users with an
@@ -1014,8 +1020,20 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
     // consistent. Previously the upload sweep used the WIDE filter while the
     // canvases themselves survived, so retained canvases silently lost their
     // media and kept only the interview text.
+    // Must match the count that produced the dialog EXACTLY, including
+    // `deletedAt: null`. It did not: the count at the /auth/me usage block
+    // filtered out trashed canvases while this query did not, so a user shown
+    // "Also delete 1 canvas created with your access code" had three destroyed,
+    // two of them restorable from the trash. The mirror was as bad - with the
+    // only legacy canvas in the trash the count was 0, the checkbox never
+    // rendered, and participant data survived a request to permanently delete
+    // everything, with no choice offered.
+    //
+    // Trashed canvases are still the user's data and are still restorable, so
+    // the honest fix is to count and act on the same set: all of them.
+    const legacyCanvasWhere = { userId: null, dashboardAccess: { userId } } as const;
     const legacyCanvases = await prisma.codingCanvas.findMany({
-      where: { userId: null, dashboardAccess: { userId } },
+      where: legacyCanvasWhere,
       select: { id: true },
     });
     const legacyCanvasIds = legacyCanvases.map((canvas) => canvas.id);
@@ -1027,12 +1045,19 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
     });
 
     // Only sweep media for canvases that are actually going away.
+    //
+    // Scope this by CANVAS, never by uploader. An `OR: [{ userId }, ...]` here
+    // reached every FileUpload the account ever created, wherever it lived:
+    // a recording uploaded to a COLLABORATOR'S canvas was destroyed along with
+    // the owner's project, and a recording on a legacy canvas the user had just
+    // asked to KEEP was destroyed while the canvas itself survived - leaving
+    // the interview text with its audio missing. Neither owner was asked or
+    // told. FileUpload.user is ON DELETE SET NULL precisely so the row can
+    // outlive the uploader; the wide filter was overriding that on purpose.
     const canvasIdsBeingDeleted = removeLegacy
       ? [...directCanvases.map((c) => c.id), ...legacyCanvasIds]
       : directCanvases.map((c) => c.id);
-    await deleteStoredUploads({
-      OR: [{ userId }, { canvasId: { in: canvasIdsBeingDeleted } }],
-    });
+    await deleteStoredUploads({ canvasId: { in: canvasIdsBeingDeleted } });
 
     if (removeLegacy && legacyCanvasIds.length > 0) {
       // Explicitly requested, so remove them outright rather than leaving

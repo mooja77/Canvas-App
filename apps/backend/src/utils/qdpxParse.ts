@@ -265,6 +265,14 @@ export function parseQdpxProject(xml: string): ParsedProject {
     parseAttributeValue: false,
     processEntities: false, // no external entity expansion (XXE)
     htmlEntities: false,
+    // fast-xml-parser trims text nodes by default, which silently shortened
+    // every source: a transcript stored with leading/trailing whitespace came
+    // back shorter while its codings kept their original offsets, so every
+    // coding in that source slid onto different words. Nothing detected it,
+    // because the importer recomputes codedText from the shifted text and the
+    // content.slice(start,end) === codedText invariant still held on the
+    // corrupted row. QualCanvas could not read back its own valid export.
+    trimValues: false,
   });
 
   const parsed = parser.parse(xml) as Record<string, Record<string, unknown>>;
@@ -344,12 +352,21 @@ export function toGuid(id: string): string {
 }
 
 function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+  return (
+    str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;')
+      // XML 1.0 §2.11 REQUIRES a parser to normalise a literal CR (and CRLF) to a
+      // single LF. A transcript authored in Word or on Windows therefore came
+      // back two bytes shorter per line than it went in, sliding every coding
+      // after the first newline. A numeric character reference is the only way
+      // to round-trip a carriage return, because normalisation happens before
+      // entity expansion.
+      .replace(/\r/g, '&#13;')
+  );
 }
 
 export interface ExportCode {
