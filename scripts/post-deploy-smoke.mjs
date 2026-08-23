@@ -182,6 +182,13 @@ const MARKETING_PRERENDER_ROUTES = [
   '/changelog',
   '/accessibility-statement',
   '/guide',
+  // These two are emitted by prerender-methodology.mjs / prerender-training.mjs
+  // as dist/<name>/index.html rather than a flat <name>.html, so Cloudflare
+  // Pages serves them at the SLASHED url and 308-redirects the slashless one.
+  // The trailing slash here is load-bearing: it is the url that returns 200 and
+  // the canonical the pages now declare.
+  '/methodology/',
+  '/training/',
 ];
 
 function extractTitle(html) {
@@ -209,6 +216,14 @@ async function checkMarketingPrerender(frontendUrl) {
       if (!res.ok) {
         failures.push(`${path}: HTTP ${res.status}`);
         continue;
+      }
+      // A listed route must be reachable WITHOUT a redirect. This check exists
+      // because /methodology and /training silently became 308s the moment an
+      // asset directory of the same name appeared in dist - each then declared
+      // a canonical that redirected back to itself, and Google reported both as
+      // "Page with redirect". Following the redirect hid it from this smoke.
+      if (res.redirected) {
+        failures.push(`${path}: redirected to ${res.url} (listed url must serve 200 directly)`);
       }
       const html = await res.text();
       const title = extractTitle(html);

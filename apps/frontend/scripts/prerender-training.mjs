@@ -47,7 +47,10 @@ const body = `<main id="marketing-root">
 const title = 'QualCanvas Training Centre — Tutorials for Qualitative Research';
 const description =
   'Focused QualCanvas tutorials for first setup, transcript coding, analysis, collaboration, privacy, export and complete qualitative-research workflows.';
-const canonical = 'https://qualcanvas.com/training';
+// Trailing slash is deliberate - this is written to dist/training/index.html,
+// which Cloudflare Pages serves at /training/ while 308-redirecting /training.
+// See the same note in prerender-methodology.mjs.
+const canonical = 'https://qualcanvas.com/training/';
 const jsonLd = JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
