@@ -237,6 +237,17 @@ export function searchTranscripts(
   mode: string,
   transcriptIds?: string[],
 ) {
+  // An empty pattern compiles to //gi, which matches at EVERY character
+  // position. One accidental click on an unconfigured Search node returned
+  // 21,319 empty matches and a 4.8 MB result - and because the result is
+  // persisted on the node and GET /canvas/:id embeds computedNodes, that canvas
+  // then shipped 4.8 MB on every load, forever, with deleting the node the only
+  // way out. There is no meaningful "match everything by zero-length string"
+  // query, so refuse it rather than persist it.
+  if (pattern.trim() === '') {
+    throw new AppError('Enter a search pattern before running this analysis', 400);
+  }
+
   const contextWindow = SEARCH_CONTEXT_CHARS;
   const matches: {
     transcriptId: string;
@@ -269,6 +280,14 @@ export function searchTranscripts(
       // Bail out if matching this transcript is taking too long. A cheap
       // wall-clock check catches anything isSafeRegex might have missed.
       if (Date.now() - budgetStart > REGEX_MATCH_BUDGET_MS) break;
+      // A zero-length match is not a result - it is one hit per character
+      // position with matchText:"" and a full context string attached. In
+      // regex mode a pattern like `x*` reaches this the same way an empty
+      // pattern did. Advance past it instead of recording it.
+      if (match[0].length === 0) {
+        regex.lastIndex++;
+        continue;
+      }
       const start = Math.max(0, match.index - contextWindow);
       const end = Math.min(t.content.length, match.index + match[0].length + contextWindow);
       matches.push({
@@ -278,8 +297,6 @@ export function searchTranscripts(
         matchText: match[0],
         context: (start > 0 ? '...' : '') + t.content.slice(start, end) + (end < t.content.length ? '...' : ''),
       });
-      // Prevent infinite loop on zero-length matches
-      if (match[0].length === 0) regex.lastIndex++;
     }
   }
 

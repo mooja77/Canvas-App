@@ -213,6 +213,16 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
                 codedText: c.codedText,
                 note: c.note,
                 annotation: c.annotation,
+                // Provenance MUST survive the clone. Omitting `source` let it
+                // default to 'human', so cloning a canvas rewrote every
+                // AI-accepted coding as hand-made and the IRB disclosure at
+                // GET /canvas/:id/ai/disclosure went from "1 (14.3%) originated
+                // from an accepted AI suggestion" to "0 (0%)". That endpoint
+                // promises figures "computed from stored provenance ... so the
+                // disclosure is reproducible, not self-reported" - after a
+                // clone it was neither. A researcher would then declare, in
+                // good faith, that no AI touched their coding.
+                source: c.source,
               },
             });
           }

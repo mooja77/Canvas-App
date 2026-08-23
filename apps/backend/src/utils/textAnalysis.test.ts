@@ -132,10 +132,17 @@ describe('searchTranscripts', () => {
     expect(result.matches).toHaveLength(0);
   });
 
-  it('handles empty pattern', () => {
-    // Empty pattern matches every position — should not infinite loop
-    const result = searchTranscripts([{ id: 't', title: 'T', content: 'abc' }], '', 'literal');
-    expect(result.matches.length).toBeGreaterThan(0);
+  it('rejects an empty pattern rather than matching every position', () => {
+    // This test previously asserted `matches.length > 0` — it was guarding
+    // against an infinite loop, but in doing so it locked in the flood: one
+    // match per character, each with matchText: ''. That result is persisted
+    // on the node and embedded in every canvas fetch, so a single click on an
+    // unconfigured Search node left a canvas permanently multi-megabyte.
+    // Refusing the query satisfies the original intent (no hang) without
+    // producing the junk.
+    expect(() => searchTranscripts([{ id: 't', title: 'T', content: 'abc' }], '', 'literal')).toThrow(
+      /search pattern/i,
+    );
   });
 });
 
@@ -604,5 +611,35 @@ describe('computeDocumentPortrait', () => {
     const orphan = [{ transcriptId: 't1', questionId: 'zzz', startOffset: 0, endOffset: 10 }];
     const result = computeDocumentPortrait(transcripts, orphan, questions, { transcriptId: 't1' });
     expect(result.strips[0].segments[0].color).toBe('#3B82F6');
+  });
+});
+
+/**
+ * An empty or zero-width search pattern used to return one "match" per
+ * character - 21,319 matches and a 4.8 MB result on a modest canvas, from one
+ * click on an unconfigured node. Because the result is persisted and embedded
+ * in every GET /canvas/:id, that canvas then shipped 4.8 MB on every load
+ * until someone deleted the node.
+ */
+describe('searchTranscripts rejects patterns that match everything', () => {
+  it('refuses an empty pattern instead of matching every character position', () => {
+    expect(() => searchTranscripts(transcripts, '', 'keyword')).toThrow(/search pattern/i);
+  });
+
+  it('refuses a whitespace-only pattern', () => {
+    expect(() => searchTranscripts(transcripts, '   ', 'keyword')).toThrow(/search pattern/i);
+  });
+
+  it('does not record zero-length regex matches', () => {
+    // `x*` matches the empty string at every position. Previously that meant
+    // one result per character, each with matchText: ''.
+    const result = searchTranscripts(transcripts, 'zzz*', 'regex');
+    expect(result.matches.every((m) => m.matchText.length > 0)).toBe(true);
+    expect(result.matches.length).toBeLessThan(10);
+  });
+
+  it('still finds ordinary matches', () => {
+    const result = searchTranscripts(transcripts, 'good', 'literal');
+    expect(result.matches).toHaveLength(1);
   });
 });

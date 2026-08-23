@@ -153,6 +153,7 @@ export default function CanvasWorkspace() {
   const createCoding = useCanvasStore.getState().createCoding;
   const saveLayout = useCanvasStore.getState().saveLayout;
   const [savingLayout, setSavingLayoutState] = useState(() => useCanvasStore.getState().savingLayout);
+  const [layoutSaveFailed, setLayoutSaveFailedState] = useState(() => useCanvasStore.getState().layoutSaveFailed);
   const setSelectedQuestionId = useCanvasStore.getState().setSelectedQuestionId;
   const addRelation = useCanvasStore.getState().addRelation;
   const mergeQuestions = useCanvasStore.getState().mergeQuestions;
@@ -237,6 +238,9 @@ export default function CanvasWorkspace() {
     return useCanvasStore.subscribe((state, previous) => {
       if (state.savingLayout !== previous.savingLayout) {
         setSavingLayoutState(state.savingLayout);
+      }
+      if (state.layoutSaveFailed !== previous.layoutSaveFailed) {
+        setLayoutSaveFailedState(state.layoutSaveFailed);
       }
     });
   }, []);
@@ -3161,7 +3165,18 @@ export default function CanvasWorkspace() {
                       View only
                     </span>
                   ) : (
-                    <span>{savingLayout ? 'Saving...' : 'Saved'}</span>
+                    <span
+                      className={
+                        layoutSaveFailed && !savingLayout ? 'font-medium text-amber-600 dark:text-amber-400' : undefined
+                      }
+                      title={
+                        layoutSaveFailed && !savingLayout
+                          ? 'The last layout save did not reach the server. Move a node to retry; reloading now will lose this arrangement.'
+                          : undefined
+                      }
+                    >
+                      {savingLayout ? 'Saving...' : layoutSaveFailed ? 'Not saved' : 'Saved'}
+                    </span>
                   )}
                   <NotificationBell />
                   {collaboration.isConnected && collaboration.collaborators.length > 0 && (
