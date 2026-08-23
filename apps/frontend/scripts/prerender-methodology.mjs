@@ -242,12 +242,24 @@ writeFileSync(
     title: 'Qualitative Research Methodology Guide · QualCanvas',
     description:
       'A working guide to qualitative analysis: thematic analysis, grounded theory, IPA, intercoder reliability and research ethics — written for the decisions you have to defend.',
-    url: `${ORIGIN}/methodology`,
+    // Trailing slash is deliberate. This file is written to
+    // dist/methodology/index.html, and Cloudflare Pages serves a directory
+    // index at the slashed URL while 308-redirecting the slashless one. A
+    // canonical pointing at /methodology therefore named a URL that redirects
+    // straight back here, so Google discarded it and reported the sitemap
+    // entry as "Page with redirect". Point at what actually serves 200.
+    url: `${ORIGIN}/methodology/`,
     jsonld: JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
       name: 'QualCanvas Methodology',
-      url: `${ORIGIN}/methodology`,
+      // Trailing slash is deliberate. This file is written to
+    // dist/methodology/index.html, and Cloudflare Pages serves a directory
+    // index at the slashed URL while 308-redirecting the slashless one. A
+    // canonical pointing at /methodology therefore named a URL that redirects
+    // straight back here, so Google discarded it and reported the sitemap
+    // entry as "Page with redirect". Point at what actually serves 200.
+    url: `${ORIGIN}/methodology/`,
       hasPart: rendered.map(({ slug, meta }) => ({
         '@type': 'Article',
         headline: meta.title,
