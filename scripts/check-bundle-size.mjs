@@ -5,7 +5,20 @@ const assetsDir = join(process.cwd(), 'apps/frontend/dist/assets');
 const kib = 1024;
 
 const budgets = [
-  { pattern: /^CanvasPage-.*\.js$/, limitKiB: 550 },
+  // Raised 550 -> 560 on 2026-08-24, deliberately and with measurement.
+  //
+  // The accessibility pass added a focus trap to 27 dialogs (WAI-ARIA requires
+  // one wherever aria-modal is claimed) and moved plan gating into the UI so a
+  // Free user sees a lock instead of a failed click. Measured against main:
+  // 558.48 kB -> 565.03 kB, +6.4 KiB, +1.2%. Gzipped: 143.19 -> 145.49 kB.
+  //
+  // Not trimmed back under the old number on purpose: the only way to claw back
+  // ~2 KiB would be lazy-loading modals that are already behind user intent,
+  // which risks regressions for no user-visible gain. The budget exists to catch
+  // accidental bloat - a dependency landing in the wrong chunk - not to block
+  // functional code. New headroom is ~8 KiB; if a change eats that, look at what
+  // it pulled in before raising this again.
+  { pattern: /^CanvasPage-.*\.js$/, limitKiB: 560 },
   { pattern: /^chart-vendor-.*\.js$/, limitKiB: 450 },
   { pattern: /^flow-vendor-.*\.js$/, limitKiB: 220 },
   { pattern: /^react-vendor-.*\.js$/, limitKiB: 220 },
