@@ -45,6 +45,21 @@ codingRoutes.post(
     try {
       const dashboardAccessId = getAuthId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+
+      // A parent must live on the SAME canvas. Without this a caller could
+      // nest a code under a theme in someone else's canvas, or under an id
+      // that does not exist, and the row would still be written.
+      const { parentQuestionId } = req.body as { parentQuestionId?: string | null };
+      if (parentQuestionId) {
+        const parent = await prisma.canvasQuestion.findUnique({
+          where: { id: parentQuestionId },
+          select: { canvasId: true },
+        });
+        if (!parent || parent.canvasId !== req.params.id) {
+          return next(new AppError('Parent code not found in this canvas', 404));
+        }
+      }
+
       const count = await prisma.canvasQuestion.count({ where: { canvasId: req.params.id } });
       const question = await prisma.canvasQuestion.create({
         data: { canvasId: req.params.id, ...req.body, sortOrder: count },
@@ -69,7 +84,7 @@ codingRoutes.put(
         select: { canvasId: true },
       });
       if (!existing || existing.canvasId !== req.params.id) {
-        return next(new AppError('Question not found in this canvas', 404));
+        return next(new AppError('Code not found in this canvas', 404));
       }
       const question = await prisma.canvasQuestion.update({
         where: { id: req.params.qid },
@@ -91,7 +106,7 @@ codingRoutes.delete('/canvas/:id/questions/:qid', validateParams(canvasQuestionP
       select: { canvasId: true },
     });
     if (!existing || existing.canvasId !== req.params.id) {
-      return next(new AppError('Question not found in this canvas', 404));
+      return next(new AppError('Code not found in this canvas', 404));
     }
     await prisma.canvasQuestion.delete({ where: { id: req.params.qid } });
     res.json({ success: true });
@@ -117,10 +132,10 @@ codingRoutes.post(
         prisma.canvasQuestion.findUnique({ where: { id: targetId } }),
       ]);
       if (!source || source.canvasId !== req.params.id) {
-        return next(new AppError('Source question not found in this canvas', 400));
+        return next(new AppError('Source code not found in this canvas', 400));
       }
       if (!target || target.canvasId !== req.params.id) {
-        return next(new AppError('Target question not found in this canvas', 400));
+        return next(new AppError('Target code not found in this canvas', 400));
       }
 
       await prisma.$transaction([
@@ -228,7 +243,7 @@ codingRoutes.post(
         return next(new AppError('Transcript not found in this canvas', 400));
       }
       if (!question || question.canvasId !== req.params.id) {
-        return next(new AppError('Question not found in this canvas', 400));
+        return next(new AppError('Code not found in this canvas', 400));
       }
 
       // The coding loop's core invariant: the offsets and the text must
@@ -388,7 +403,7 @@ codingRoutes.put(
 
       const question = await prisma.canvasQuestion.findUnique({ where: { id: newQuestionId } });
       if (!question || question.canvasId !== req.params.id) {
-        return next(new AppError('Target question not found in this canvas', 400));
+        return next(new AppError('Target code not found in this canvas', 400));
       }
 
       const oldCoding = await prisma.canvasTextCoding.findUnique({ where: { id: req.params.cid } });
@@ -435,7 +450,7 @@ codingRoutes.post(
 
       const question = await prisma.canvasQuestion.findUnique({ where: { id: questionId } });
       if (!question || question.canvasId !== req.params.id) {
-        return next(new AppError('Question not found in this canvas', 400));
+        return next(new AppError('Code not found in this canvas', 400));
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

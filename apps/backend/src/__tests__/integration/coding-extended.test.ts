@@ -430,7 +430,7 @@ describe('Coding extended tests', () => {
       .send({ questionId: 'q-other', pattern: 'test', mode: 'keyword' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/question not found/i);
+    expect(res.body.error).toMatch(/code not found/i);
   });
 
   it('POST /canvas/:id/auto-code accepts optional transcriptIds filter', async () => {
@@ -502,7 +502,7 @@ describe('Coding extended tests', () => {
       .send({ sourceId: 'q-ext', targetId: 'q-local' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/source question not found/i);
+    expect(res.body.error).toMatch(/source code not found/i);
   });
 
   it('POST /canvas/:id/questions/merge rejects target from another canvas', async () => {
@@ -517,7 +517,7 @@ describe('Coding extended tests', () => {
       .send({ sourceId: 'q-local-src', targetId: 'q-ext-tgt' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/target question not found/i);
+    expect(res.body.error).toMatch(/target code not found/i);
   });
 
   it('POST /canvas/:id/questions/merge rejects nonexistent source', async () => {
@@ -753,7 +753,7 @@ describe('Coding extended tests', () => {
       .send({ newQuestionId: 'q-foreign' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/target question not found/i);
+    expect(res.body.error).toMatch(/target code not found/i);
   });
 
   it('PUT /canvas/:id/codings/:cid/reassign rejects nonexistent question', async () => {
@@ -766,6 +766,6 @@ describe('Coding extended tests', () => {
       .send({ newQuestionId: 'nonexistent' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/target question not found/i);
+    expect(res.body.error).toMatch(/target code not found/i);
   });
 });

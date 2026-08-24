@@ -1177,7 +1177,7 @@ export default function CanvasWorkspace() {
       // Transcript -> Question: create coding
       if (sourceId.startsWith('transcript-') && targetId.startsWith('question-')) {
         if (!pendingSelection) {
-          toast.error('Select text in the transcript first, then drag to a question');
+          toast.error('Select text in the transcript first, then drag to a code');
           return;
         }
 
@@ -1232,7 +1232,7 @@ export default function CanvasWorkspace() {
         return;
       }
 
-      toast.error('Invalid connection. Drag from transcript to question, or between cases/questions.');
+      toast.error('Invalid connection. Drag from a transcript to a code, or between cases and codes.');
     },
     [pendingSelection, createCoding, setPendingSelection, activeCanvas?.questions],
   );
@@ -1318,9 +1318,9 @@ export default function CanvasWorkspace() {
   const handleMerge = async () => {
     try {
       await mergeQuestions(mergeConfirm.sourceId, mergeConfirm.targetId);
-      toast.success('Questions merged successfully');
+      toast.success('Codes merged successfully');
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Failed to merge questions'));
+      toast.error(apiErrorMessage(err, 'Failed to merge codes'));
     }
     setMergeConfirm({ show: false, sourceId: '', targetId: '', sourceName: '', targetName: '' });
   };
@@ -2005,7 +2005,7 @@ export default function CanvasWorkspace() {
         if (smartLinkSource?.nodeType === 'transcript') {
           const transcriptId = smartLinkSource.nodeId.replace('transcript-', '');
           if (!pendingSelection) {
-            toast.error('Select text in the transcript first, then drag to create a linked question');
+            toast.error('Select text in the transcript first, then drag to create a linked code');
           } else if (pendingSelection.transcriptId !== transcriptId) {
             toast.error('Selection is from a different transcript');
             setPendingSelection(null);
@@ -2018,7 +2018,7 @@ export default function CanvasWorkspace() {
               pendingSelection.codedText,
             );
             window.getSelection()?.removeAllRanges();
-            toast.success('Question added and text coded');
+            toast.success('Code added and text coded');
             setTimeout(() => pushHistorySnapshot(), 300);
             return;
           }
@@ -2026,14 +2026,14 @@ export default function CanvasWorkspace() {
           const fromType = smartLinkSource.nodeType as 'question' | 'case';
           const fromId = smartLinkSource.nodeId.replace(/^(question|case)-/, '');
           await addRelation(fromType, fromId, 'question', question.id, 'relates to');
-          toast.success('Question added and linked');
+          toast.success('Code added and linked');
           setTimeout(() => pushHistorySnapshot(), 300);
           return;
         }
-        toast.success('Question added');
+        toast.success('Code added');
         setTimeout(() => pushHistorySnapshot(), 300);
       } catch (err) {
-        toast.error(apiErrorMessage(err, 'Failed to add question'));
+        toast.error(apiErrorMessage(err, 'Failed to add code'));
       }
     },
     [
