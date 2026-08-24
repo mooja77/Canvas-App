@@ -405,53 +405,180 @@ export function buildFrameworkMatrix(
 
 // ─── 4. Statistics ───
 
+/**
+ * Maps every code id to the set of code ids in its subtree (itself plus all
+ * descendants), mirroring `buildCodeTree` in the frontend sidebar.
+ *
+ * Codings attach to individual codes, but codes nest under parent "theme"
+ * codes via `parentQuestionId`. Counting only direct codings made every theme
+ * report zero — the sidebar rolled them up, the Codebook table, the CSV and
+ * the Statistics node did not, so a theme with five coded excerpts was handed
+ * to a supervisor as "0 codings, 0% coverage".
+ *
+ * A `parentQuestionId` pointing at a missing or unknown code is treated as a
+ * root, and a cycle is broken by only ever visiting a code once per walk.
+ */
+export function buildQuestionSubtrees(questions: QuestionWithParent[]): Map<string, Set<string>> {
+  const childrenOf = new Map<string, string[]>();
+  const known = new Set(questions.map((q) => q.id));
+  for (const q of questions) {
+    const parent = q.parentQuestionId;
+    if (parent && parent !== q.id && known.has(parent)) {
+      const siblings = childrenOf.get(parent);
+      if (siblings) siblings.push(q.id);
+      else childrenOf.set(parent, [q.id]);
+    }
+  }
+
+  const subtrees = new Map<string, Set<string>>();
+  for (const q of questions) {
+    const collected = new Set<string>([q.id]);
+    const stack = [q.id];
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      for (const child of childrenOf.get(current) ?? []) {
+        if (collected.has(child)) continue; // cycle guard
+        collected.add(child);
+        stack.push(child);
+      }
+    }
+    subtrees.set(q.id, collected);
+  }
+  return subtrees;
+}
+
+/**
+ * Number of transcript characters touched by these codings, counting each
+ * character once. Coverage is a *share of text*, so two codings overlapping
+ * the same passage must not be able to push it past 100%. Offsets are clamped
+ * into the transcript when its length is known.
+ */
+function mergedCodedChars(codings: CodingData[], transcriptLengths?: Map<string, number>): number {
+  const spansByTranscript = new Map<string, [number, number][]>();
+  for (const c of codings) {
+    const limit = transcriptLengths?.get(c.transcriptId);
+    let start = Math.min(c.startOffset, c.endOffset);
+    let end = Math.max(c.startOffset, c.endOffset);
+    if (limit !== undefined) {
+      start = Math.max(0, Math.min(start, limit));
+      end = Math.max(0, Math.min(end, limit));
+    } else {
+      start = Math.max(0, start);
+      end = Math.max(0, end);
+    }
+    if (end <= start) continue;
+    const spans = spansByTranscript.get(c.transcriptId);
+    if (spans) spans.push([start, end]);
+    else spansByTranscript.set(c.transcriptId, [[start, end]]);
+  }
+
+  let total = 0;
+  for (const spans of spansByTranscript.values()) {
+    spans.sort((a, b) => a[0] - b[0]);
+    let [openStart, openEnd] = spans[0];
+    for (let i = 1; i < spans.length; i++) {
+      const [start, end] = spans[i];
+      if (start <= openEnd) {
+        if (end > openEnd) openEnd = end;
+      } else {
+        total += openEnd - openStart;
+        openStart = start;
+        openEnd = end;
+      }
+    }
+    total += openEnd - openStart;
+  }
+  return total;
+}
+
+const round1 = (value: number) => Math.round(value * 10) / 10;
+
+/**
+ * "Coverage" used to mean two different things and differ by ~40x for the same
+ * code: the Codebook/CSV divided coded characters by *every* transcript in the
+ * canvas, while this function divided by only the transcripts the code
+ * happened to appear in — a denominator that shrinks as a code is used less,
+ * inflating the number, and that nothing on screen named.
+ *
+ * One definition now, matching the exported codebook and named in the payload
+ * as `coverageBasis` so the surface can label it:
+ *   groupBy 'question'   — share of ALL transcript characters in the canvas.
+ *   groupBy 'transcript' — share of THAT transcript's characters (the row is
+ *                          the transcript, so the document is the denominator).
+ */
 export function computeStats(
   codings: CodingData[],
-  questions: QuestionData[],
+  questions: QuestionWithParent[],
   transcripts: TranscriptData[],
   groupBy: string,
   questionIds?: string[],
 ) {
-  const filteredCodings = questionIds?.length ? codings.filter((c) => questionIds.includes(c.questionId)) : codings;
+  const subtrees = buildQuestionSubtrees(questions);
+  const transcriptLengths = new Map(transcripts.map((t) => [t.id, t.content.length]));
+
+  // Selecting a theme selects what sits under it. A parent code stands for its
+  // subtree everywhere else in the product, so restricting the analysis to one
+  // must not silently drop its sub-codes' codings.
+  const scopedQuestionIds = questionIds?.length
+    ? new Set(questionIds.flatMap((id) => Array.from(subtrees.get(id) ?? [id])))
+    : null;
+  const filteredCodings = scopedQuestionIds ? codings.filter((c) => scopedQuestionIds.has(c.questionId)) : codings;
 
   const total = filteredCodings.length;
 
   if (groupBy === 'question') {
     const filteredQuestions = questionIds?.length ? questions.filter((q) => questionIds.includes(q.id)) : questions;
 
+    // Corpus denominator: every transcript in the canvas, coded or not.
+    const corpusChars = transcripts.reduce((sum, t) => sum + t.content.length, 0);
+
     const items = filteredQuestions.map((q) => {
-      const qCodings = filteredCodings.filter((c) => c.questionId === q.id);
-      const totalChars = qCodings.reduce((sum, c) => sum + (c.endOffset - c.startOffset), 0);
-      const relevantTranscriptIds = new Set(qCodings.map((c) => c.transcriptId));
-      const totalTranscriptChars = transcripts
-        .filter((t) => relevantTranscriptIds.has(t.id))
-        .reduce((sum, t) => sum + t.content.length, 0);
+      const subtree = subtrees.get(q.id) ?? new Set([q.id]);
+      const subtreeCodings = filteredCodings.filter((c) => subtree.has(c.questionId));
+      const ownCodings = filteredCodings.filter((c) => c.questionId === q.id);
+      const codedChars = mergedCodedChars(subtreeCodings, transcriptLengths);
       return {
         id: q.id,
         label: q.text,
-        count: qCodings.length,
-        percentage: total > 0 ? Math.round((qCodings.length / total) * 100 * 10) / 10 : 0,
-        coverage: totalTranscriptChars > 0 ? Math.round((totalChars / totalTranscriptChars) * 100 * 10) / 10 : 0,
+        // Rolled up over the code's subtree, exactly like the sidebar. Note
+        // that in a hierarchy the percentages of parents and children overlap
+        // and so can sum above 100 — that is the nature of nested codes.
+        count: subtreeCodings.length,
+        /** Codings applied directly to this code, excluding its sub-codes. */
+        directCount: ownCodings.length,
+        percentage: total > 0 ? round1((subtreeCodings.length / total) * 100) : 0,
+        coverage: corpusChars > 0 ? round1((codedChars / corpusChars) * 100) : 0,
       };
     });
 
-    return { items, total };
+    return {
+      items,
+      total,
+      coverageBasis: 'percent-of-all-transcript-characters' as const,
+      coverageLabel: 'Coverage = share of all transcript text in this canvas',
+    };
   }
 
   // Group by transcript
   const items = transcripts.map((t) => {
     const tCodings = filteredCodings.filter((c) => c.transcriptId === t.id);
-    const totalChars = tCodings.reduce((sum, c) => sum + (c.endOffset - c.startOffset), 0);
+    const codedChars = mergedCodedChars(tCodings, transcriptLengths);
     return {
       id: t.id,
       label: t.title,
       count: tCodings.length,
-      percentage: total > 0 ? Math.round((tCodings.length / total) * 100 * 10) / 10 : 0,
-      coverage: t.content.length > 0 ? Math.round((totalChars / t.content.length) * 100 * 10) / 10 : 0,
+      directCount: tCodings.length,
+      percentage: total > 0 ? round1((tCodings.length / total) * 100) : 0,
+      coverage: t.content.length > 0 ? round1((codedChars / t.content.length) * 100) : 0,
     };
   });
 
-  return { items, total };
+  return {
+    items,
+    total,
+    coverageBasis: 'percent-of-this-transcript' as const,
+    coverageLabel: 'Coverage = share of this transcript that is coded',
+  };
 }
 
 // ─── 5. Comparison ───

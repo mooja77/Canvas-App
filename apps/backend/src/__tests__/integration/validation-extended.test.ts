@@ -357,9 +357,12 @@ describe('Validation extended — edge cases', () => {
         .set('Authorization', `Bearer ${jwt}`)
         .send({ name: largeContent });
 
-      // PayloadTooLargeError is caught by the generic error handler → 500
-      // The key assertion: request is rejected, does not create a canvas
-      expect(res.status).toBe(500);
+      // Was 500: PayloadTooLargeError fell through to the generic handler, so
+      // an oversized request looked like a server fault - it told the user
+      // nothing actionable and paged the team through Sentry. The handler now
+      // maps it to its real status. The key assertion is unchanged: the
+      // request is rejected and no canvas is created.
+      expect(res.status).toBe(413);
       expect(res.body.success).toBe(false);
       expect(mockPrisma.codingCanvas.create).not.toHaveBeenCalled();
     });

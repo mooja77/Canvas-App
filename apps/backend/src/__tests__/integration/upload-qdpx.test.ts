@@ -363,7 +363,7 @@ describe('Upload and QDPX integration tests', () => {
   // ─── 10. GET /canvas/:id/export/qdpx returns QDPX buffer ───
   it('GET /canvas/:id/export/qdpx returns QDPX data', async () => {
     const qdpxBuffer = Buffer.from('PK mock zip content');
-    mockExportQdpx.mockResolvedValue(qdpxBuffer);
+    mockExportQdpx.mockResolvedValue({ buffer: qdpxBuffer, notes: [] });
     // Export guard counts transcripts + codings to block empty-canvas exports.
     mockPrisma.canvasTranscript.count.mockResolvedValue(3);
     mockPrisma.canvasTextCoding.count.mockResolvedValue(5);
@@ -484,5 +484,108 @@ describe('Upload and QDPX integration tests', () => {
       .attach('file', Buffer.from('PK mock qdpx'), { filename: 'export.qdpx' });
 
     expect(res.status).toBe(403);
+  });
+  // ─── 16. A wrong-extension upload is the caller's mistake, not a 500 ───
+  it('POST /canvas/:id/import/qdpx rejects a wrong extension with 400, not 500', async () => {
+    // The byte-identical archive under evil.exe used to answer
+    // 500 "Internal server error": multer's fileFilter was handed a plain
+    // Error, which carries no status.
+    const zipFixture = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from(' mock qdpx')]);
+
+    const res = await request(app)
+      .post('/api/canvas/' + canvasId + '/import/qdpx')
+      .set('Authorization', 'Bearer ' + jwt)
+      .attach('file', zipFixture, { filename: 'evil.exe' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/\.qdpx or \.zip/);
+  });
+
+  it('POST /canvas/:id/import/qdpx rejects an extension-less file with 400', async () => {
+    const zipFixture = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from(' mock qdpx')]);
+
+    const res = await request(app)
+      .post('/api/canvas/' + canvasId + '/import/qdpx')
+      .set('Authorization', 'Bearer ' + jwt)
+      .attach('file', zipFixture, { filename: 'noext' });
+
+    expect(res.status).toBe(400);
+  });
+
+  // ─── 17. The export tells the caller what it could not carry ───
+  it('GET /canvas/:id/export/qdpx discloses the losses in a response header', async () => {
+    mockExportQdpx.mockResolvedValue({
+      buffer: Buffer.from('PK mock zip content'),
+      notes: ['2 memos', '1 case'],
+    });
+    mockPrisma.canvasTranscript.count.mockResolvedValue(3);
+    mockPrisma.canvasTextCoding.count.mockResolvedValue(5);
+
+    const res = await request(app)
+      .get('/api/canvas/' + canvasId + '/export/qdpx')
+      .set('Authorization', 'Bearer ' + jwt);
+
+    expect(res.status).toBe(200);
+    expect(res.headers['x-export-notes']).toBe('2 memos; 1 case');
+    expect(res.headers['access-control-expose-headers']).toContain('X-Export-Notes');
+  });
+
+  it('GET /canvas/:id/export/qdpx sends no loss header when nothing was dropped', async () => {
+    mockExportQdpx.mockResolvedValue({ buffer: Buffer.from('PK mock zip content'), notes: [] });
+    mockPrisma.canvasTranscript.count.mockResolvedValue(3);
+    mockPrisma.canvasTextCoding.count.mockResolvedValue(5);
+
+    const res = await request(app)
+      .get('/api/canvas/' + canvasId + '/export/qdpx')
+      .set('Authorization', 'Bearer ' + jwt);
+
+    expect(res.headers['x-export-notes']).toBeUndefined();
+  });
+
+  // ─── 18. Re-import discloses what it recognised rather than double-counting ─
+  it('POST /canvas/:id/import/qdpx reports records it reused instead of duplicating', async () => {
+    mockImportQdpx.mockResolvedValue({
+      codes: 0,
+      sources: 0,
+      codings: 0,
+      unsupported: [],
+      skippedCodings: 0,
+      matchedCodes: 2,
+      matchedSources: 1,
+      duplicateCodings: 1,
+      unmatchedCoders: 0,
+    });
+
+    const zipFixture = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from(' mock qdpx')]);
+    const res = await request(app)
+      .post('/api/canvas/' + canvasId + '/import/qdpx')
+      .set('Authorization', 'Bearer ' + jwt)
+      .attach('file', zipFixture, { filename: 'export.qdpx' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain('Imported 0 codes, 0 sources, 0 codings');
+    expect(res.body.message).toContain('already on this canvas and reused: 2 code(s), 1 source(s), 1 coding(s)');
+  });
+
+  it('POST /canvas/:id/import/qdpx says when coder attribution could not be restored', async () => {
+    mockImportQdpx.mockResolvedValue({
+      codes: 1,
+      sources: 1,
+      codings: 3,
+      unsupported: [],
+      skippedCodings: 0,
+      matchedCodes: 0,
+      matchedSources: 0,
+      duplicateCodings: 0,
+      unmatchedCoders: 3,
+    });
+
+    const zipFixture = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from(' mock qdpx')]);
+    const res = await request(app)
+      .post('/api/canvas/' + canvasId + '/import/qdpx')
+      .set('Authorization', 'Bearer ' + jwt)
+      .attach('file', zipFixture, { filename: 'export.qdpx' });
+
+    expect(res.body.message).toContain('3 coding(s) name a coder with no QualCanvas account');
   });
 });

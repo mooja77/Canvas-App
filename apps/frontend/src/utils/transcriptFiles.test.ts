@@ -49,3 +49,50 @@ describe('parseTranscriptFile', () => {
     expect(out).toEqual([{ title: 'Row 1', content: 'just one column of text' }]);
   });
 });
+
+/**
+ * Every CSV out of Excel, Sheets, Qualtrics or SPSS has a header row.
+ * Importing it produced a transcript titled "Title" whose content was the word
+ * "Content": a junk source that consumed one of the Free plan's five
+ * transcript slots and polluted the word counts and coverage statistics.
+ * SurveyImportModal already treated row 0 as headers, so the two CSV paths in
+ * the app disagreed.
+ */
+describe('CSV header rows', () => {
+  it('does not import the header row as a transcript', () => {
+    const csv = 'Title,Content\n"Interview 1","first content"\n"Interview 2","second content"';
+    const out = parseTranscriptFile('interviews.csv', csv);
+
+    expect(out).toHaveLength(2);
+    expect(out[0]).toEqual({ title: 'Interview 1', content: 'first content' });
+    expect(out.some((e) => e.title === 'Title')).toBe(false);
+  });
+
+  it('recognises the usual spellings and separators', () => {
+    for (const header of ['Title,Content', 'name,text', 'Participant ID,Response', 'file_name,transcript']) {
+      const out = parseTranscriptFile('x.csv', header + '\nP1,a real answer');
+      expect(out).toEqual([{ title: 'P1', content: 'a real answer' }]);
+    }
+  });
+
+  it('keeps the first row when it is data, not a header', () => {
+    const csv = '"Interview 1","first content"\n"Interview 2","second content"';
+    const out = parseTranscriptFile('interviews.csv', csv);
+
+    expect(out).toHaveLength(2);
+    expect(out[0].title).toBe('Interview 1');
+  });
+
+  it('does not eat the only row in a one-line CSV', () => {
+    // Better a single odd-looking transcript than an import that silently
+    // produces nothing.
+    const out = parseTranscriptFile('one.csv', 'Title,Content');
+    expect(out).toEqual([{ title: 'Title', content: 'Content' }]);
+  });
+
+  it('does not mistake a real answer for a header', () => {
+    const csv = 'Notes,Text about the closure\nP2,second';
+    const out = parseTranscriptFile('x.csv', csv);
+    expect(out[0]).toEqual({ title: 'Notes', content: 'Text about the closure' });
+  });
+});

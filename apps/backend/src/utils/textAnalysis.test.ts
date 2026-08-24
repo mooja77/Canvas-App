@@ -242,13 +242,104 @@ describe('computeStats', () => {
     }
   });
 
-  it('coverage uses only relevant transcripts for question grouping', () => {
-    // q2 only has codings in t2, so coverage denominator should only use t2's length
+  it('coverage for a code is a share of the whole corpus, not just the transcripts it appears in', () => {
+    // Regression: coverage used to divide by only the transcripts a code
+    // appeared in (83/88 = 94.3% for q2), while the Codebook table and the
+    // exported CSV divided by every transcript in the canvas. Same code, same
+    // moment, ~3x apart. One denominator now: the corpus.
     const result = computeStats(codings, questions, transcripts, 'question');
     const q2Item = result.items.find((i) => i.id === 'q2');
     expect(q2Item).toBeDefined();
-    // q2 codings cover 0-40 and 42-85 of t2 (length 88) = 83 chars / 88 chars
-    expect(q2Item!.coverage).toBeGreaterThan(0);
+    // q2 covers 0-40 and 42-85 of t2 = 83 chars; corpus = 93 + 88 + 83 = 264.
+    expect(q2Item!.coverage).toBeCloseTo(31.4, 1);
+    expect(result.coverageBasis).toBe('percent-of-all-transcript-characters');
+    expect(result.coverageLabel).toMatch(/all transcript text in this canvas/i);
+  });
+
+  it('names the denominator it used when grouping by transcript', () => {
+    const result = computeStats(codings, questions, transcripts, 'transcript');
+    expect(result.coverageBasis).toBe('percent-of-this-transcript');
+    const t2Item = result.items.find((i) => i.id === 't2');
+    // 83 coded chars of t2's 88.
+    expect(t2Item!.coverage).toBeCloseTo(94.3, 1);
+  });
+
+  it('counts a character once when two codings overlap the same passage', () => {
+    const overlapping = [
+      { id: 'o1', transcriptId: 't1', questionId: 'q1', startOffset: 0, endOffset: 50, codedText: 'a' },
+      { id: 'o2', transcriptId: 't1', questionId: 'q1', startOffset: 20, endOffset: 60, codedText: 'b' },
+    ];
+    const result = computeStats(overlapping, questions, transcripts, 'question');
+    const q1Item = result.items.find((i) => i.id === 'q1');
+    // Union is 0-60 = 60 chars, not 50 + 40 = 90.
+    expect(q1Item!.coverage).toBeCloseTo(round1((60 / 264) * 100), 1);
+  });
+
+  it('clamps an out-of-range coding so per-transcript coverage cannot exceed 100%', () => {
+    const runaway = [
+      { id: 'r1', transcriptId: 't1', questionId: 'q1', startOffset: 0, endOffset: 5000, codedText: 'x' },
+    ];
+    const result = computeStats(runaway, questions, transcripts, 'transcript');
+    const t1Item = result.items.find((i) => i.id === 't1');
+    expect(t1Item!.coverage).toBe(100);
+  });
+});
+
+// Regression for the theme roll-up: codings hang off leaf codes, but the
+// sidebar rolls them up into their parent theme. The Statistics node did not,
+// so a theme with coded sub-codes was reported (and exported) as zero.
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+const nestedQuestions = [
+  { id: 'theme1', text: 'THEME: Personal cost', color: '#DB2777', parentQuestionId: null },
+  { id: 'leaf1', text: 'Financial strain', color: '#DB2777', parentQuestionId: 'theme1' },
+  { id: 'leaf2', text: 'Isolation', color: '#DB2777', parentQuestionId: 'theme1' },
+  { id: 'sub1', text: 'Debt', color: '#DB2777', parentQuestionId: 'leaf1' },
+  { id: 'standalone', text: 'Service fragmentation', color: '#0000FF', parentQuestionId: null },
+];
+
+const nestedCodings = [
+  { id: 'n1', transcriptId: 't1', questionId: 'leaf1', startOffset: 0, endOffset: 10, codedText: 'The progra' },
+  { id: 'n2', transcriptId: 't1', questionId: 'leaf2', startOffset: 20, endOffset: 30, codedText: 'good and h' },
+  { id: 'n3', transcriptId: 't2', questionId: 'sub1', startOffset: 0, endOffset: 10, codedText: 'There were' },
+  { id: 'n4', transcriptId: 't2', questionId: 'standalone', startOffset: 40, endOffset: 50, codedText: 'The situat' },
+];
+
+describe('computeStats — parent theme roll-up', () => {
+  it('rolls descendant codings up into a parent theme instead of reporting zero', () => {
+    const result = computeStats(nestedCodings, nestedQuestions, transcripts, 'question');
+    const theme = result.items.find((i) => i.id === 'theme1')!;
+    // leaf1 + leaf2 + sub1 = 3 codings beneath the theme, 0 applied directly.
+    expect(theme.count).toBe(3);
+    expect(theme.directCount).toBe(0);
+    expect(theme.coverage).toBeGreaterThan(0);
+    // 10 + 10 + 10 = 30 chars of the 264-char corpus.
+    expect(theme.coverage).toBeCloseTo(round1((30 / 264) * 100), 1);
+  });
+
+  it('rolls up through more than one level', () => {
+    const result = computeStats(nestedCodings, nestedQuestions, transcripts, 'question');
+    const leaf1 = result.items.find((i) => i.id === 'leaf1')!;
+    // leaf1's own coding plus its child sub1's.
+    expect(leaf1.count).toBe(2);
+    expect(leaf1.directCount).toBe(1);
+  });
+
+  it('leaves a code with no children reporting its own codings only', () => {
+    const result = computeStats(nestedCodings, nestedQuestions, transcripts, 'question');
+    const standalone = result.items.find((i) => i.id === 'standalone')!;
+    expect(standalone.count).toBe(1);
+    expect(standalone.directCount).toBe(1);
+  });
+
+  it('selecting a theme scopes the analysis to its subtree', () => {
+    const result = computeStats(nestedCodings, nestedQuestions, transcripts, 'question', ['theme1']);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].id).toBe('theme1');
+    // The three sub-code codings are in scope; the standalone code's is not.
+    expect(result.total).toBe(3);
+    expect(result.items[0].count).toBe(3);
+    expect(result.items[0].percentage).toBe(100);
   });
 
   it('filters by question IDs', () => {
@@ -263,6 +354,32 @@ describe('computeStats', () => {
     for (const item of result.items) {
       expect(item.count).toBe(0);
     }
+  });
+});
+
+describe('computeStats — hierarchy edge cases', () => {
+  it('does not hang or double-count when parentQuestionId forms a cycle', () => {
+    const cyclic = [
+      { id: 'a', text: 'A', color: '#000000', parentQuestionId: 'b' },
+      { id: 'b', text: 'B', color: '#000000', parentQuestionId: 'a' },
+    ];
+    const cyclicCodings = [
+      { id: 'z1', transcriptId: 't1', questionId: 'a', startOffset: 0, endOffset: 5, codedText: 'The p' },
+      { id: 'z2', transcriptId: 't1', questionId: 'b', startOffset: 6, endOffset: 11, codedText: 'rogra' },
+    ];
+    const result = computeStats(cyclicCodings, cyclic, transcripts, 'question');
+    expect(result.items.find((i) => i.id === 'a')!.count).toBe(2);
+    expect(result.items.find((i) => i.id === 'b')!.count).toBe(2);
+  });
+
+  it('treats a parentQuestionId pointing at an unknown code as a root', () => {
+    const orphaned = [{ id: 'o', text: 'Orphan', color: '#000000', parentQuestionId: 'does-not-exist' }];
+    const orphanCodings = [
+      { id: 'y1', transcriptId: 't1', questionId: 'o', startOffset: 0, endOffset: 5, codedText: 'The p' },
+    ];
+    const result = computeStats(orphanCodings, orphaned, transcripts, 'question');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].count).toBe(1);
   });
 });
 

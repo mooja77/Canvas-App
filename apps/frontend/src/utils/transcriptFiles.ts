@@ -13,6 +13,72 @@ export interface ParsedEntry {
   content: string;
 }
 
+/**
+ * Column names a spreadsheet header row is made of. Every CSV out of Excel,
+ * Sheets, Qualtrics or SPSS has one, and importing it produced a junk
+ * transcript titled "Title" containing the word "Content" — which consumed a
+ * plan slot and polluted the word counts and coverage statistics.
+ *
+ * Matching a known vocabulary rather than guessing from shape is deliberate:
+ * mistaking a real first response for a header would delete data, which is far
+ * worse than leaving one junk row. `SurveyImportModal` already assumes row 0
+ * is a header; this brings the two CSV paths into agreement for the cases it
+ * can be sure about.
+ */
+const HEADER_LABELS = new Set([
+  'title',
+  'name',
+  'id',
+  'no',
+  'number',
+  'participant',
+  'participantid',
+  'respondent',
+  'respondentid',
+  'responseid',
+  'interviewee',
+  'interview',
+  'speaker',
+  'case',
+  'caseid',
+  'file',
+  'filename',
+  'source',
+  'date',
+  'timestamp',
+  'content',
+  'text',
+  'transcript',
+  'body',
+  'response',
+  'answer',
+  'comment',
+  'comments',
+  'note',
+  'notes',
+  'description',
+  'quote',
+  'verbatim',
+  'column1',
+  'column2',
+  'col1',
+  'col2',
+]);
+
+function normalizeHeaderCell(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '');
+}
+
+/** True when every one of the first two cells reads as a column label. */
+export function looksLikeCsvHeaderRow(fields: string[]): boolean {
+  const cells = fields.slice(0, 2).filter((f) => f.trim() !== '');
+  if (cells.length === 0) return false;
+  return cells.every((c) => HEADER_LABELS.has(normalizeHeaderCell(c)));
+}
+
 export function getExt(fileName: string): string | undefined {
   const parts = fileName.split('.');
   return parts.length > 1 ? parts.pop()?.toLowerCase() : undefined;
@@ -34,7 +100,13 @@ export function parseTranscriptFile(fileName: string, text: string): ParsedEntry
   const baseName = fileName.replace(/\.[^.]+$/i, '') || fileName;
 
   if (ext === 'csv') {
-    return parseCsvRecords(text)
+    const records = parseCsvRecords(text);
+    // Drop a header row, but never the only row there is: a one-line CSV that
+    // happens to read like a header is more likely a mislabelled transcript
+    // than an empty spreadsheet, and returning [] would silently import
+    // nothing.
+    const rows = records.length > 1 && looksLikeCsvHeaderRow(records[0]) ? records.slice(1) : records;
+    return rows
       .map((fields, i) => {
         if (fields.length < 2 || !fields[1]) return { title: `Row ${i + 1}`, content: fields[0] || '' };
         return { title: fields[0] || `Row ${i + 1}`, content: fields[1] };

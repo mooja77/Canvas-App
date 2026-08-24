@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 import { AppError, errorHandler } from './errorHandler.js';
+import { logger } from '../lib/logger.js';
 
 function mockRes(): Response {
   const res = {
@@ -107,5 +108,84 @@ describe('errorHandler — Prisma errors', () => {
     errorHandler(prismaError('P2034'), req, res, next);
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Internal server error' }));
+  });
+});
+
+// body-parser rejects malformed / oversized bodies with an http-errors object.
+// These used to fall through to the blanket 500 branch: the caller got
+// "Internal server error" for their own truncated JSON, and every one of them
+// was logged as a server fault (and so paged through the Sentry hook).
+function bodyParserError(type: string, status: number, message: string): Error {
+  const err = new Error(message) as Error & { type?: string; status?: number; statusCode?: number; expose?: boolean };
+  err.name = 'SyntaxError';
+  err.type = type;
+  err.status = status;
+  err.statusCode = status;
+  err.expose = true;
+  return err;
+}
+
+describe('errorHandler — malformed and oversized request bodies', () => {
+  it('maps entity.parse.failed to 400 with a message naming the real problem', () => {
+    const res = mockRes();
+    errorHandler(bodyParserError('entity.parse.failed', 400, 'Unexpected end of JSON input'), req, res, next);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, error: 'Malformed JSON in request body' }),
+    );
+  });
+
+  it('maps entity.too.large to 413, not 500', () => {
+    const res = mockRes();
+    errorHandler(bodyParserError('entity.too.large', 413, 'request entity too large'), req, res, next);
+    expect(res.status).toHaveBeenCalledWith(413);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, error: 'Request body is too large' }),
+    );
+  });
+
+  it('maps request.aborted to 400', () => {
+    const res = mockRes();
+    errorHandler(bodyParserError('request.aborted', 400, 'request aborted'), req, res, next);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('honours an exposed 4xx status on a non-AppError, non-body-parser error', () => {
+    const res = mockRes();
+    const err = new Error('Unsupported media type') as Error & { status?: number; expose?: boolean };
+    err.status = 415;
+    err.expose = true;
+    errorHandler(err, req, res, next);
+    expect(res.status).toHaveBeenCalledWith(415);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Unsupported media type' }));
+  });
+
+  it('still returns 500 for a 5xx http-errors object (a genuine server fault)', () => {
+    const res = mockRes();
+    const err = new Error('upstream exploded') as Error & { status?: number; expose?: boolean };
+    err.status = 502;
+    err.expose = false;
+    errorHandler(err, req, res, next);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Internal server error' }));
+  });
+
+  it('does not report a client body error to the exception hook (no Sentry page)', () => {
+    const res = mockRes();
+    const onException = vi.fn();
+    const previous = logger.onException;
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    logger.onException = onException;
+    try {
+      errorHandler(bodyParserError('entity.too.large', 413, 'request entity too large'), req, res, next);
+      errorHandler(bodyParserError('entity.parse.failed', 400, 'Unexpected end of JSON input'), req, res, next);
+      expect(onException).not.toHaveBeenCalled();
+      // Control: a genuine unexpected error still reaches the hook.
+      errorHandler(new Error('boom'), req, res, next);
+      expect(onException).toHaveBeenCalledTimes(1);
+    } finally {
+      logger.onException = previous;
+      consoleError.mockRestore();
+    }
   });
 });

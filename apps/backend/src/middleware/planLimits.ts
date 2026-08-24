@@ -1,6 +1,14 @@
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { getPlanLimits } from '../config/plans.js';
+import type { PlanLimits } from '../config/plans.js';
+import {
+  getPlanLimits,
+  allowanceMessage,
+  featureAvailabilityMessage,
+  formatAllowance,
+  higherAllowancePhrase,
+  planLabel,
+} from '../config/plans.js';
 import { resolveUserOpenAiKey, transcriptionMinutesUsedThisMonth } from '../utils/transcriptionMetering.js';
 import {
   isHostedAiEnabled,
@@ -17,10 +25,22 @@ interface PlanLimitError {
   limit: string;
   current: number;
   max: number;
-  upgrade: true;
+  /**
+   * Whether buying a higher plan actually lifts this refusal. False for the
+   * shared AI fair-use ceiling, which every paid tier has identically — a
+   * client that pitches an upgrade there is selling a fix that does not exist.
+   */
+  upgrade: boolean;
 }
 
-function limitResponse(res: Response, message: string, limitName: string, current: number, max: number) {
+function limitResponse(
+  res: Response,
+  message: string,
+  limitName: string,
+  current: number,
+  max: number,
+  opts: { upgrade?: boolean } = {},
+) {
   const body: PlanLimitError = {
     success: false,
     error: message,
@@ -28,9 +48,19 @@ function limitResponse(res: Response, message: string, limitName: string, curren
     limit: limitName,
     current,
     max,
-    upgrade: true,
+    upgrade: opts.upgrade ?? true,
   };
   return res.status(403).json(body);
+}
+
+/**
+ * "The Free plan allows 5 transcripts per canvas — Student, Pro, and Team allow
+ * unlimited." For per-item caps where the remedy is only ever a plan change.
+ * The upgrade half is derived from PLAN_LIMITS so it cannot go stale.
+ */
+function capMessage(plan: string, max: number, subject: string, pick: (limits: PlanLimits) => number): string {
+  const upgrade = higherAllowancePhrase(max, pick);
+  return `The ${planLabel(plan)} plan allows ${formatAllowance(max)} ${subject}${upgrade ? ` — ${upgrade}` : ''}.`;
 }
 
 export async function resolveRequestPlan(req: Request): Promise<string> {
@@ -115,7 +145,12 @@ export function checkCanvasLimit() {
     if (count >= limits.maxCanvases) {
       return limitResponse(
         res,
-        `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxCanvases} canvas${limits.maxCanvases === 1 ? '' : 'es'}`,
+        allowanceMessage(plan, 'Canvases', limits.maxCanvases, (l) => l.maxCanvases, {
+          // Restore-from-trash hits this same gate, and "delete one" is the
+          // remedy that actually frees a slot there (trashed canvases no
+          // longer count) - see checkCanvasLimit's count above.
+          deleteHint: 'delete a canvas you no longer need',
+        }),
         'maxCanvases',
         count,
         limits.maxCanvases,
@@ -138,7 +173,7 @@ export function checkTranscriptLimit() {
     if (count >= limits.maxTranscriptsPerCanvas) {
       return limitResponse(
         res,
-        `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxTranscriptsPerCanvas} transcripts per canvas`,
+        capMessage(plan, limits.maxTranscriptsPerCanvas, 'transcripts per canvas', (l) => l.maxTranscriptsPerCanvas),
         'maxTranscriptsPerCanvas',
         count,
         limits.maxTranscriptsPerCanvas,
@@ -162,7 +197,7 @@ export function checkWordLimit() {
     if (wordCount > limits.maxWordsPerTranscript) {
       return limitResponse(
         res,
-        `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxWordsPerTranscript.toLocaleString()} words per transcript`,
+        capMessage(plan, limits.maxWordsPerTranscript, 'words per transcript', (l) => l.maxWordsPerTranscript),
         'maxWordsPerTranscript',
         wordCount,
         limits.maxWordsPerTranscript,
@@ -185,7 +220,7 @@ export function checkCodeLimit() {
     if (count >= limits.maxCodes) {
       return limitResponse(
         res,
-        `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxCodes} codes`,
+        capMessage(plan, limits.maxCodes, 'codes per canvas', (l) => l.maxCodes),
         'maxCodes',
         count,
         limits.maxCodes,
@@ -201,7 +236,13 @@ export function checkAutoCode() {
     const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.autoCodeEnabled) {
-      return limitResponse(res, 'Auto-code is available on Pro and Team plans', 'autoCodeEnabled', 0, 0);
+      return limitResponse(
+        res,
+        featureAvailabilityMessage('Auto-code', (l) => l.autoCodeEnabled),
+        'autoCodeEnabled',
+        0,
+        0,
+      );
     }
     next();
   };
@@ -218,7 +259,7 @@ export function checkAnalysisType() {
     if (nodeType && !limits.allowedAnalysisTypes.includes(nodeType)) {
       return limitResponse(
         res,
-        `${nodeType} analysis is available on Pro and Team plans`,
+        featureAvailabilityMessage(`${nodeType} analysis`, (l) => l.allowedAnalysisTypes.includes(nodeType)),
         'allowedAnalysisTypes',
         0,
         0,
@@ -243,7 +284,9 @@ export function checkAnalysisTypeOnRun() {
       if (node && !limits.allowedAnalysisTypes.includes(node.nodeType)) {
         return limitResponse(
           res,
-          `${node.nodeType} analysis is available on Pro and Team plans`,
+          featureAvailabilityMessage(`${node.nodeType} analysis`, (l) =>
+            l.allowedAnalysisTypes.includes(node.nodeType),
+          ),
           'allowedAnalysisTypes',
           0,
           0,
@@ -273,7 +316,10 @@ export function checkShareLimit() {
     if (count >= limits.maxShares) {
       return limitResponse(
         res,
-        `${plan === 'free' ? 'Free' : 'Your'} plan allows ${limits.maxShares} share codes`,
+        // Was "Free plan allows 0 share codes" — an allowance, not a remedy.
+        allowanceMessage(plan, 'Share codes', limits.maxShares, (l) => l.maxShares, {
+          deleteHint: 'revoke a share code you no longer need',
+        }),
         'maxShares',
         count,
         limits.maxShares,
@@ -289,7 +335,13 @@ export function checkEthicsAccess() {
     const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.ethicsEnabled) {
-      return limitResponse(res, 'Ethics panel is available on Pro and Team plans', 'ethicsEnabled', 0, 0);
+      return limitResponse(
+        res,
+        featureAvailabilityMessage('The Ethics panel', (l) => l.ethicsEnabled),
+        'ethicsEnabled',
+        0,
+        0,
+      );
     }
     next();
   };
@@ -301,7 +353,13 @@ export function checkCaseAccess() {
     const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.casesEnabled) {
-      return limitResponse(res, 'Cases are available on Pro and Team plans', 'casesEnabled', 0, 0);
+      return limitResponse(
+        res,
+        featureAvailabilityMessage('Cases', (l) => l.casesEnabled, { plural: true }),
+        'casesEnabled',
+        0,
+        0,
+      );
     }
     next();
   };
@@ -313,7 +371,13 @@ export function checkIntercoderAccess() {
     const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.intercoderEnabled) {
-      return limitResponse(res, 'Intercoder agreement is available on Team plans', 'intercoderEnabled', 0, 0);
+      return limitResponse(
+        res,
+        featureAvailabilityMessage('Intercoder agreement', (l) => l.intercoderEnabled),
+        'intercoderEnabled',
+        0,
+        0,
+      );
     }
     next();
   };
@@ -336,7 +400,13 @@ export function checkAiAccess() {
     const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.aiEnabled) {
-      return limitResponse(res, 'AI features are available on Pro and Team plans', 'aiEnabled', 0, 0);
+      return limitResponse(
+        res,
+        featureAvailabilityMessage('AI features', (l) => l.aiEnabled, { plural: true }),
+        'aiEnabled',
+        0,
+        0,
+      );
     }
 
     const userId = req.userId;
@@ -352,12 +422,21 @@ export function checkAiAccess() {
       });
 
       if (usageToday >= limits.aiRequestsPerDay) {
+        // Every paid tier shares this ceiling (AI_REQUESTS_PER_DAY_FAIR_USE),
+        // so an upgrade buys nothing here. Say so, and set upgrade:false, so
+        // neither the copy nor the client offers a fix that does not exist.
+        // (/pricing calling this "Unlimited" is the other half of the same
+        // untruth - see the constant's doc comment in config/plans.ts.)
+        const better = higherAllowancePhrase(limits.aiRequestsPerDay, (l) => l.aiRequestsPerDay);
         return limitResponse(
           res,
-          `Daily AI request limit reached (${limits.aiRequestsPerDay}/day)`,
+          better
+            ? `Daily AI limit reached (${formatAllowance(limits.aiRequestsPerDay)} requests today) — ${better}. It resets at midnight.`
+            : `Daily AI limit reached (${formatAllowance(limits.aiRequestsPerDay)} requests today). This is a fair-use ceiling that applies to every plan, so upgrading will not raise it; it resets at midnight.`,
           'aiRequestsPerDay',
           usageToday,
           limits.aiRequestsPerDay,
+          { upgrade: Boolean(better) },
         );
       }
     }
@@ -400,15 +479,18 @@ export function checkTranscriptionMinutes() {
 
     const used = await transcriptionMinutesUsedThisMonth(userId);
     if (used >= cap) {
-      return limitResponse(
-        res,
+      // Was the one gate that already named Student. It is derived now too, so
+      // it stays true if transcription ever moves between tiers.
+      const moreMinutes = higherAllowancePhrase(cap, (l) => l.transcriptionMinutesPerMonth);
+      const message =
         cap === 0
-          ? 'Audio transcription is available on the Student, Pro, and Team plans — or add your own OpenAI key in AI settings.'
-          : `Monthly transcription limit reached (${cap} min). Add your own OpenAI key for unlimited transcription, or upgrade your plan.`,
-        'transcriptionMinutesPerMonth',
-        used,
-        cap,
-      );
+          ? `${featureAvailabilityMessage('Audio transcription', (l) => l.transcriptionMinutesPerMonth > 0)} Or add your own OpenAI key in AI settings.`
+          : `Monthly transcription limit reached (${cap} min). Add your own OpenAI key for unlimited transcription${
+              moreMinutes ? `, or upgrade — ${moreMinutes} minutes per month` : ''
+            }.`;
+      return limitResponse(res, message, 'transcriptionMinutesPerMonth', used, cap, {
+        upgrade: cap === 0 || Boolean(moreMinutes),
+      });
     }
     next();
   };
@@ -472,7 +554,13 @@ export function checkFileUploadAccess() {
     const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.fileUploadEnabled) {
-      return limitResponse(res, 'File upload is available on Pro and Team plans', 'fileUploadEnabled', 0, 0);
+      return limitResponse(
+        res,
+        featureAvailabilityMessage('File upload', (l) => l.fileUploadEnabled),
+        'fileUploadEnabled',
+        0,
+        0,
+      );
     }
     next();
   };
@@ -487,7 +575,7 @@ export function checkExportFormat(fixedFormat?: string) {
     if (format && !limits.allowedExportFormats.includes(format)) {
       return limitResponse(
         res,
-        `${format.toUpperCase()} export is available on Pro and Team plans`,
+        featureAvailabilityMessage(`${format.toUpperCase()} export`, (l) => l.allowedExportFormats.includes(format)),
         'allowedExportFormats',
         0,
         0,
@@ -503,7 +591,13 @@ export function checkRepositoryAccess() {
     const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.repositoryEnabled) {
-      return limitResponse(res, 'Research Repository is available on Pro and Team plans', 'repositoryEnabled', 0, 0);
+      return limitResponse(
+        res,
+        featureAvailabilityMessage('The Research Repository', (l) => l.repositoryEnabled),
+        'repositoryEnabled',
+        0,
+        0,
+      );
     }
     next();
   };
@@ -515,7 +609,15 @@ export function checkIntegrationsAccess() {
     const plan = await resolveRequestPlan(req);
     const limits = getPlanLimits(plan);
     if (!limits.integrationsEnabled) {
-      return limitResponse(res, 'Integrations are available on Team plans', 'integrationsEnabled', 0, 0);
+      return limitResponse(
+        res,
+        // Derived, so this no longer claims Team has integrations: the flag is
+        // false on every tier because the feature was retired (see plans.ts).
+        featureAvailabilityMessage('Integrations', (l) => l.integrationsEnabled, { plural: true }),
+        'integrationsEnabled',
+        0,
+        0,
+      );
     }
     next();
   };
