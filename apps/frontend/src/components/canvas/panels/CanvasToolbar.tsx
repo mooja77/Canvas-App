@@ -102,7 +102,9 @@ function DropdownItem({
   return (
     <button
       type="button"
-      role="menuitem"
+      // No role="menuitem": CollisionPopover no longer claims role="menu", and
+      // a menuitem outside a menu is invalid ARIA. As a plain button this is
+      // reachable by Tab and announced as a button, which is what it is.
       onClick={onClick}
       disabled={disabled}
       {...buttonProps}
