@@ -144,7 +144,7 @@ test.describe('Canvas Analysis', () => {
     // category "Frameworks & Comparison"). The menu is now portal-rendered
     // by CollisionPopover (Sprint 1B) so the data-tour wrapper is no
     // longer an ancestor — use role + text scoping instead.
-    const menu = page.getByRole('menu').first();
+    const menu = page.getByTestId('collision-popover').first();
     const comparisonBtn = menu.locator('button').filter({ has: page.locator('p', { hasText: /^Comparison$/ }) });
     await comparisonBtn.first().click();
     await expect(page.getByText('Comparison node added')).toBeVisible({ timeout: 5000 });
@@ -186,7 +186,7 @@ test.describe('Canvas Analysis', () => {
     // of document.body, so getByText('Statistics').first() would otherwise
     // resolve to the canvas node label rather than the menu item.
     await openAnalyzeMenu(page);
-    await page.getByRole('menu').first().getByText('Statistics').first().click();
+    await page.getByTestId('collision-popover').first().getByText('Statistics').first().click();
     await page.waitForLoadState('networkidle');
     // The stats node should render — look for it in the DOM
     const statsNode = page.locator('.react-flow__node').filter({ hasText: /Statistics|Coding frequency/i });

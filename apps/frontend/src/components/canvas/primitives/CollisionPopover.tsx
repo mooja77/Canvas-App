@@ -148,6 +148,7 @@ export function CollisionPopover({
         />
         <div
           ref={popoverRef}
+          data-testid="collision-popover"
           className={
             'fixed left-0 right-0 bottom-0 z-[101] max-h-[80vh] overflow-y-auto rounded-t-2xl bg-white px-1 py-2 shadow-2xl dark:bg-gray-800' +
             (reducedMotion ? '' : ' animate-slide-up') +
@@ -178,6 +179,7 @@ export function CollisionPopover({
   return createPortal(
     <div
       ref={popoverRef}
+      data-testid="collision-popover"
       className={
         'rounded-xl bg-white py-1.5 shadow-xl ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700' +
         (className ? ' ' + className : '')

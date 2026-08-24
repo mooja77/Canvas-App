@@ -42,7 +42,7 @@ async function gotoSeededCanvas(page: Page) {
 
 async function openToolsItem(page: Page, itemLabel: string | RegExp) {
   await page.getByRole('button', { name: 'Tools menu' }).first().click();
-  const menu = page.getByRole('menu').first();
+  const menu = page.getByTestId('collision-popover').first();
   await expect(menu).toBeVisible();
   await menu.getByText(itemLabel).first().click();
 }

@@ -37,7 +37,7 @@ async function gotoSeededCanvas(page: Page) {
 
 async function openResearchCalendar(page: Page) {
   await page.getByRole('button', { name: 'Tools menu' }).first().click();
-  const menu = page.getByRole('menu').first();
+  const menu = page.getByTestId('collision-popover').first();
   await expect(menu).toBeVisible();
   await menu
     .getByText(/Research Calendar|Calendar/i)

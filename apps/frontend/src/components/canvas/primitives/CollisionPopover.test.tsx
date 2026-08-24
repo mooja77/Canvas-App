@@ -40,6 +40,15 @@ describe('CollisionPopover ARIA and keyboard model', () => {
     expect(document.querySelector('[aria-modal]')).toBeNull();
   });
 
+  it('exposes a stable test handle, since it no longer has a role to select by', () => {
+    // e2e specs used getByRole('menu') as a HANDLE - to measure viewport clipping
+    // and to click items - not to assert semantics. Removing the false role broke
+    // 25 e2e tests. This id is what they select on now, so it is part of the
+    // component's contract and must not be renamed casually.
+    render(<Harness />);
+    expect(screen.getByTestId('collision-popover')).toBeInTheDocument();
+  });
+
   it('exposes its items as ordinary buttons', () => {
     render(<Harness />);
 
