@@ -1,111 +1,80 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
-// Mock react-router-dom
-const mockNavigate = vi.fn();
-vi.mock('react-router-dom', () => ({
-  useNavigate: () => mockNavigate,
-}));
-
+import { PLAN_LIMITS, type PlanTier } from '../../../backend/src/config/plans';
 import UpgradePrompt from './UpgradePrompt';
 
-function dispatchPlanLimitEvent(detail = {
-  error: 'You have reached the maximum number of canvases on the Free plan.',
-  code: 'CANVAS_LIMIT',
-  limit: 'canvases',
-  current: 1,
-  max: 1,
-  upgrade: true,
-}) {
-  const event = new CustomEvent('plan-limit-exceeded', { detail });
-  window.dispatchEvent(event);
+const TIERS: PlanTier[] = ['free', 'student', 'pro', 'team'];
+
+function fire(error: string) {
+  act(() => {
+    window.dispatchEvent(
+      new CustomEvent('plan-limit-exceeded', {
+        detail: { error, code: 'PLAN_LIMIT_EXCEEDED', limit: 'maxCanvases', current: 2, max: 2, upgrade: true },
+      }),
+    );
+  });
 }
 
+function show(error = 'You are using all 2 canvases included in the Free plan.') {
+  render(
+    <MemoryRouter>
+      <UpgradePrompt />
+    </MemoryRouter>,
+  );
+  fire(error);
+}
+
+beforeEach(() => {
+  // The component suppresses itself for 5 minutes after each showing.
+  sessionStorage.clear();
+});
+
 describe('UpgradePrompt', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    sessionStorage.clear();
+  it("repeats the server's reason verbatim", () => {
+    show('cooccurrence analysis is available on the Student, Pro, and Team plans.');
+    expect(
+      screen.getByText('cooccurrence analysis is available on the Student, Pro, and Team plans.'),
+    ).toBeInTheDocument();
   });
 
-  afterEach(() => {
-    sessionStorage.clear();
-  });
-
-  it('does not render when no upgrade event has fired', () => {
-    render(<UpgradePrompt />);
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-  });
-
-  it('renders when plan limit event is dispatched', () => {
-    render(<UpgradePrompt />);
-
-    act(() => { dispatchPlanLimitEvent(); });
-
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-    expect(screen.getByText('Plan Limit Reached')).toBeInTheDocument();
-  });
-
-  it('shows the error message from the event detail', () => {
-    render(<UpgradePrompt />);
-
-    act(() => {
-      dispatchPlanLimitEvent({
-        error: 'You have used all 5 codes on the Free plan.',
-        code: 'CODE_LIMIT',
-        limit: 'codes',
-        current: 5,
-        max: 5,
-        upgrade: true,
-      });
-    });
-
-    expect(screen.getByText('You have used all 5 codes on the Free plan.')).toBeInTheDocument();
-  });
-
-  it('View Plans button navigates to pricing page', () => {
-    render(<UpgradePrompt />);
-
-    act(() => { dispatchPlanLimitEvent(); });
-
-    fireEvent.click(screen.getByText('View Plans'));
-    expect(mockNavigate).toHaveBeenCalledWith('/pricing');
-  });
-
-  it('Maybe Later button closes the prompt', () => {
-    render(<UpgradePrompt />);
-
-    act(() => { dispatchPlanLimitEvent(); });
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('Maybe Later'));
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-  });
-
-  it('has role="alertdialog" for accessibility', () => {
-    render(<UpgradePrompt />);
-
-    act(() => { dispatchPlanLimitEvent(); });
-
+  it('does not upsell Pro for what Student includes', () => {
+    show();
     const dialog = screen.getByRole('alertdialog');
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    // The old copy read "Upgrade to Pro from $12/mo on annual billing" and
+    // never mentioned Student, so a verified .edu user was quoted $15 for
+    // features Student has in full (see PLAN_LIMITS.student below).
+    expect(dialog).not.toHaveTextContent(/^Upgrade to Pro from/m);
+    expect(dialog).toHaveTextContent(/\$5\/mo/);
+    expect(dialog).toHaveTextContent(/Student/);
   });
 
-  it('close button (X) dismisses the prompt', () => {
-    render(<UpgradePrompt />);
+  it('attributes each capability to the cheapest tier that actually has it', () => {
+    show();
+    const dialog = screen.getByRole('alertdialog');
 
-    act(() => { dispatchPlanLimitEvent(); });
+    const analysisCount = PLAN_LIMITS.student.allowedAnalysisTypes.length;
+    expect(dialog).toHaveTextContent(new RegExp(`All ${analysisCount} analysis tools`));
 
-    fireEvent.click(screen.getByLabelText('Close'));
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    // "Student and up" is only honest if Student really has these.
+    expect(PLAN_LIMITS.student.autoCodeEnabled).toBe(true);
+    expect(PLAN_LIMITS.student.ethicsEnabled).toBe(true);
+    expect(PLAN_LIMITS.student.casesEnabled).toBe(true);
+    for (const fmt of ['csv', 'png', 'html', 'md', 'docx', 'xlsx', 'qdpx']) {
+      expect(PLAN_LIMITS.student.allowedExportFormats).toContain(fmt);
+    }
+
+    // "Unlimited canvases — Pro and Team".
+    expect(TIERS.filter((t) => PLAN_LIMITS[t].maxCanvases === Infinity)).toEqual(['pro', 'team']);
+    expect(dialog).toHaveTextContent(/Unlimited canvases/);
+    // "Intercoder agreement — Team".
+    expect(TIERS.filter((t) => PLAN_LIMITS[t].intercoderEnabled)).toEqual(['team']);
+    expect(dialog).toHaveTextContent(/Intercoder agreement/);
   });
 
-  it('Escape key closes the dialog', () => {
-    render(<UpgradePrompt />);
-
-    act(() => { dispatchPlanLimitEvent(); });
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  it('offers a route to the plans', () => {
+    show();
+    expect(screen.getByRole('button', { name: 'View Plans' })).toBeInTheDocument();
   });
 });

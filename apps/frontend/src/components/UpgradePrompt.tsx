@@ -128,17 +128,33 @@ export default function UpgradePrompt() {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Plan Limit Reached</h3>
           <p className="text-gray-600 dark:text-gray-300 mb-6">{detail.error}</p>
+          {/* The pitch must not contradict the refusal above it. This block used
+              to read "Upgrade to Pro from $12/mo" and list Pro's benefits only,
+              while the server's own copy (config/plans.ts, derived from
+              PLAN_LIMITS) says most gated features are "available on the
+              Student, Pro, and Team plans" — so a verified student was quoted
+              $15 for what Student includes at $5. Every claim below is
+              tier-labelled and pinned to PLAN_LIMITS by UpgradePrompt.test.tsx. */}
           <div className="bg-brand-50 dark:bg-brand-900/20 rounded-lg p-4 mb-6 text-left">
             <p className="text-sm font-medium text-brand-800 dark:text-brand-200 mb-2">
-              Upgrade to Pro from $12/mo on annual billing ($15 month-to-month):
+              Paid plans start at $5/mo — Student, with a verified .edu email. Pro is $15/mo ($12 on annual billing).
             </p>
             <ul className="text-sm text-brand-700 dark:text-brand-300 space-y-1">
-              <li>Unlimited canvases & transcripts</li>
-              <li>All 13 analysis tools</li>
-              <li>Auto-code, ethics panel, cases</li>
-              <li>CSV, PNG, HTML, Markdown exports</li>
+              <li>
+                All 13 analysis tools, auto-code, ethics and cases — <span className="font-medium">Student and up</span>
+              </li>
+              <li>
+                CSV, PNG, HTML, Markdown, Word, Excel and QDPX exports —{' '}
+                <span className="font-medium">Student and up</span>
+              </li>
+              <li>
+                Unlimited canvases — <span className="font-medium">Pro and Team</span>
+              </li>
+              <li>
+                Intercoder agreement (κ / α) — <span className="font-medium">Team</span>
+              </li>
             </ul>
-            <p className="text-xs text-brand-600 dark:text-brand-400 mt-2">40% off with .edu email</p>
+            <p className="text-xs text-brand-600 dark:text-brand-400 mt-2">40% off Pro and Team with a .edu email</p>
           </div>
           <div className="flex gap-3">
             <button

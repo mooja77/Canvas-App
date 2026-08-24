@@ -422,16 +422,32 @@ export default function PricingPage() {
             },
             {
               heading: 'Export + import',
+              // Every row here is asserted against `allowedExportFormats` in
+              // apps/backend/src/config/plans.ts by PricingPage.test.tsx.
               rows: [
                 { feature: 'CSV export', values: ['✓', '✓', '✓', '✓', '✓'] },
                 { feature: 'PNG / HTML / Markdown', values: ['—', '✓', '✓', '✓', '✓'] },
+                // `docx` and `xlsx` have been in every paid tier's
+                // allowedExportFormats all along but were advertised nowhere,
+                // so the refusal a Free user gets ("XLSX export is available on
+                // the Student, Pro, and Team plans") pointed at a page that
+                // never named the format they had just been refused.
+                { feature: 'Word + Excel reports', values: ['—', '✓', '✓', '✓', '✓'] },
                 { feature: 'QDPX (NVivo / ATLAS.ti)', values: ['—', '✓', '✓', '✓', '✓'] },
               ],
             },
             {
               heading: 'Transcription + AI',
               rows: [
-                { feature: 'AI text analysis', values: ['—', 'Unlimited', 'Unlimited', 'Unlimited', 'Unlimited'] },
+                // Not "Unlimited": every paid tier shares the same 1,000/day
+                // fair-use ceiling (AI_REQUESTS_PER_DAY_FAIR_USE in
+                // apps/backend/src/config/plans.ts, enforced by checkAiAccess),
+                // and that module's own comment names "Unlimited" here as a
+                // false claim. PricingPage.test.tsx pins the number to it.
+                {
+                  feature: 'AI text analysis',
+                  values: ['—', '1,000/day fair use', '1,000/day fair use', '1,000/day fair use', 'Custom'],
+                },
                 { feature: 'Audio transcription / mo', values: ['—', '~5 hrs', '~10 hrs', '~50 hrs pooled', 'Custom'] },
                 { feature: 'Bring your own AI key', values: ['—', '✓', '✓', '✓', '✓'] },
               ],

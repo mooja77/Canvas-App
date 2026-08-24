@@ -91,6 +91,7 @@ function DropdownItem({
   onClick,
   active,
   disabled,
+  badge,
   ...buttonProps
 }: {
   icon: React.ReactNode;
@@ -98,6 +99,8 @@ function DropdownItem({
   onClick: () => void;
   active?: boolean;
   disabled?: boolean;
+  /** Trailing marker, e.g. the plan a gated tool needs. */
+  badge?: React.ReactNode;
 } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'onClick' | 'disabled'>) {
   return (
     <button
@@ -112,9 +115,40 @@ function DropdownItem({
     >
       {icon}
       {label}
+      {badge}
     </button>
   );
 }
+
+/** "TEAM" pill + padlock on a menu item the current plan cannot use. */
+function PlanBadge({ plan }: { plan: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="ml-auto flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+    >
+      <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
+        />
+      </svg>
+      {plan}
+    </span>
+  );
+}
+
+/**
+ * Tiers whose plan includes intercoder agreement.
+ *
+ * SOURCE OF TRUTH: `intercoderEnabled` in apps/backend/src/config/plans.ts.
+ * The sentence is what `featureAvailabilityMessage('Intercoder agreement', …)`
+ * produces there; CanvasToolbar.test.tsx asserts both against the backend
+ * module so they cannot drift apart from the 403 they pre-empt.
+ */
+export const INTERCODER_PLANS = ['team'] as const;
+export const INTERCODER_UNAVAILABLE = 'Intercoder agreement is available on the Team plan.';
 
 /** Section header inside a long dropdown — groups the Tools menu so it
  *  reads as Analysis / Workspace / Display rather than one 14-item list. */
@@ -169,6 +203,31 @@ export default function CanvasToolbar({
       return;
     }
     action();
+  };
+  // Intercoder agreement is Team-only (`intercoderEnabled` in
+  // apps/backend/src/config/plans.ts — true on `team` and nothing else). The
+  // menu used to offer it on every plan with no marker: a Pro owner could load
+  // the full coder roster, configure a run, and only then get a red toast, with
+  // an upgrade modal that pitched Pro — which does not unlock it. Mark it, and
+  // refuse before the panel opens. CanvasToolbar.test.tsx pins both the tier
+  // list and this sentence to the backend module.
+  const hasIntercoder = INTERCODER_PLANS.includes(effectivePlan as (typeof INTERCODER_PLANS)[number]);
+  const refuseIntercoder = () => {
+    toast.error(INTERCODER_UNAVAILABLE);
+    // Same event the axios interceptor fires on a real 403, so the refusal
+    // reaches the global upgrade dialog and its "View Plans" button.
+    window.dispatchEvent(
+      new CustomEvent('plan-limit-exceeded', {
+        detail: {
+          error: INTERCODER_UNAVAILABLE,
+          code: 'PLAN_LIMIT_EXCEEDED',
+          limit: 'intercoderEnabled',
+          current: 0,
+          max: 0,
+          upgrade: true,
+        },
+      }),
+    );
   };
   const closeCanvas = useCanvasStore((s) => s.closeCanvas);
   const addQuestion = useCanvasStore((s) => s.addQuestion);
@@ -715,7 +774,10 @@ export default function CanvasToolbar({
                   </svg>
                 }
                 label="Intercoder agreement (κ / α)"
-                onClick={() => setShowIntercoderPanel(true)}
+                badge={hasIntercoder ? undefined : <PlanBadge plan="Team" />}
+                title={hasIntercoder ? undefined : INTERCODER_UNAVAILABLE}
+                aria-label={hasIntercoder ? undefined : `Intercoder agreement (κ / α) — ${INTERCODER_UNAVAILABLE}`}
+                onClick={() => (hasIntercoder ? setShowIntercoderPanel(true) : refuseIntercoder())}
               />
               <DropdownItem
                 icon={

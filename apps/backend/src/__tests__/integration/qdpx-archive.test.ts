@@ -377,3 +377,117 @@ describe('QDPX import - coder attribution', () => {
     expect(result.unmatchedCoders).toBe(0);
   });
 });
+
+/**
+ * Two coders applying the SAME code to the SAME span is not a duplicate — it is
+ * an agreement, and it is the substrate the intercoder statistic is computed
+ * from (`utils/intercoder.ts` counts one observation per segment x code x
+ * coder). The re-import dedupe keyed on transcript+code+span only, so the
+ * second coder's row was silently discarded as a duplicate: an archive written
+ * by QualCanvas for a two-coder canvas imported back as a one-coder canvas, and
+ * Krippendorff's alpha over it is not the same number.
+ */
+describe('QDPX import - two coders on the same span', () => {
+  const canvasId = 'canvas-arch-1';
+
+  /** One selection, one code, two Coding children with different coders. */
+  const TWO_CODER_QDE = NVIVO_SHAPED_QDE.replace(
+    `        <Coding guid="aa960901-8191-4db1-a3dd-a91626d56c4b">
+          <CodeRef targetGUID="4d62f0cc-182f-44b8-a043-339c90779e9e" />
+        </Coding>`,
+    `        <Coding guid="aa960901-8191-4db1-a3dd-a91626d56c4b" creatingUser="${toGuid('owner-1')}">
+          <CodeRef targetGUID="4d62f0cc-182f-44b8-a043-339c90779e9e" />
+        </Coding>
+        <Coding guid="bb960901-8191-4db1-a3dd-a91626d56c4b" creatingUser="${toGuid('collab-2')}">
+          <CodeRef targetGUID="4d62f0cc-182f-44b8-a043-339c90779e9e" />
+        </Coding>`,
+  );
+
+  async function twoCoderZip() {
+    return buildArchive({
+      'project.qde': TWO_CODER_QDE,
+      ['sources/' + SOURCE_GUID + '.txt']: SOURCE_TEXT,
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ id: canvasId, name: 'C', userId: 'owner-1' });
+    mockPrisma.canvasCollaborator.findMany.mockResolvedValue([{ userId: 'collab-2' }]);
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([]);
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([]);
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([]);
+    let n = 0;
+    mockPrisma.canvasQuestion.create.mockImplementation(async ({ data }) => ({ id: 'q' + ++n, ...data }));
+    mockPrisma.canvasTranscript.create.mockImplementation(async ({ data }) => ({ id: 't1', ...data }));
+    mockPrisma.canvasTextCoding.create.mockImplementation(async ({ data }) => ({ id: 'c1', ...data }));
+  });
+
+  it('keeps both coders rather than collapsing the agreement into one row', async () => {
+    const result = await importQdpx(canvasId, await twoCoderZip());
+
+    expect(result.codings).toBe(2);
+    expect(result.duplicateCodings).toBe(0);
+    const coders = mockPrisma.canvasTextCoding.create.mock.calls.map((c) => c[0].data.coderUserId);
+    expect(coders.sort()).toEqual(['collab-2', 'owner-1']);
+  });
+
+  it('still refuses to re-create either row on a second import of the same archive', async () => {
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([
+      { id: 'q1', text: 'Perceived susceptibility', parentQuestionId: null },
+      { id: 'q2', text: 'Personal risk', parentQuestionId: 'q1' },
+    ]);
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([
+      { id: 't1', title: 'videos_selection', content: SOURCE_TEXT, sourceType: 'qdpx-import', sourceId: SOURCE_GUID },
+    ]);
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
+      { transcriptId: 't1', questionId: 'q2', startOffset: 4, endOffset: 10, coderUserId: 'owner-1' },
+      { transcriptId: 't1', questionId: 'q2', startOffset: 4, endOffset: 10, coderUserId: 'collab-2' },
+    ]);
+
+    const result = await importQdpx(canvasId, await twoCoderZip());
+
+    expect(mockPrisma.canvasTextCoding.create).not.toHaveBeenCalled();
+    expect(result.codings).toBe(0);
+    expect(result.duplicateCodings).toBe(2);
+  });
+
+  it('adds the second coder to a span the first coder had already coded', async () => {
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([
+      { id: 'q1', text: 'Perceived susceptibility', parentQuestionId: null },
+      { id: 'q2', text: 'Personal risk', parentQuestionId: 'q1' },
+    ]);
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([
+      { id: 't1', title: 'videos_selection', content: SOURCE_TEXT, sourceType: 'qdpx-import', sourceId: SOURCE_GUID },
+    ]);
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
+      { transcriptId: 't1', questionId: 'q2', startOffset: 4, endOffset: 10, coderUserId: 'owner-1' },
+    ]);
+
+    const result = await importQdpx(canvasId, await twoCoderZip());
+
+    expect(result.codings).toBe(1);
+    expect(result.duplicateCodings).toBe(1);
+    expect(mockPrisma.canvasTextCoding.create.mock.calls[0][0].data.coderUserId).toBe('collab-2');
+  });
+
+  it('treats an unattributed coding as distinct from an attributed one', async () => {
+    // A row with no coder is a different observation from one made by a named
+    // coder; folding them together loses the anonymous coding.
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
+      { transcriptId: 't1', questionId: 'q2', startOffset: 4, endOffset: 10, coderUserId: null },
+    ]);
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([
+      { id: 'q1', text: 'Perceived susceptibility', parentQuestionId: null },
+      { id: 'q2', text: 'Personal risk', parentQuestionId: 'q1' },
+    ]);
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([
+      { id: 't1', title: 'videos_selection', content: SOURCE_TEXT, sourceType: 'qdpx-import', sourceId: SOURCE_GUID },
+    ]);
+
+    const result = await importQdpx(canvasId, await twoCoderZip());
+
+    expect(result.codings).toBe(2);
+    expect(result.duplicateCodings).toBe(0);
+  });
+});

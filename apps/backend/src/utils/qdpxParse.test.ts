@@ -640,3 +640,41 @@ describe('buildQdpxProject - honest disclosure', () => {
     expect(parseQdpxProject(xml).name).toBe('Disclosed');
   });
 });
+
+/**
+ * The agreement case: two coders applying the SAME code to the SAME span. The
+ * writer groups selections by range, so both codings share one
+ * PlainTextSelection and are told apart only by creatingUser. If that is lost
+ * the intercoder statistic computed from the re-imported archive is a
+ * different number from the one computed on the original canvas.
+ */
+describe('QDPX round-trip - two coders agreeing on one span', () => {
+  const project = {
+    name: 'Agreement',
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    codes: [{ id: 'code-1', text: 'Trust', children: [] }],
+    sources: [{ id: 'src-1', title: 'Interview', content: 'the waiting broke me' }],
+    codings: [
+      { id: 'cd-1', transcriptId: 'src-1', questionId: 'code-1', startOffset: 4, endOffset: 11, coderUserId: 'user-a' },
+      { id: 'cd-2', transcriptId: 'src-1', questionId: 'code-1', startOffset: 4, endOffset: 11, coderUserId: 'user-b' },
+    ],
+    users: [
+      { id: 'user-a', name: 'Ana' },
+      { id: 'user-b', name: 'Ben' },
+    ],
+  };
+
+  it('writes one selection carrying a Coding per coder', () => {
+    const xml = buildQdpxXml(project);
+    expect(xml.match(/<PlainTextSelection /g)).toHaveLength(1);
+    expect(xml.match(/<Coding /g)).toHaveLength(2);
+  });
+
+  it('reads both coders back, distinguishable by creatingUser', () => {
+    const parsed = parseQdpxProject(buildQdpxXml(project));
+    const codings = parsed.sources[0].selections.flatMap((s) => s.codings);
+    expect(codings.map((c) => c.creatingUser)).toEqual([toGuid('user-a'), toGuid('user-b')]);
+    // Both point at the same code: that is what makes them an agreement.
+    expect(new Set(codings.map((c) => c.codeGuid)).size).toBe(1);
+  });
+});
