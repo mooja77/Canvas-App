@@ -32,10 +32,14 @@ export default function Screen1_Personalization({ onContinue, onSkip }: Props) {
 
       <div className="space-y-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          <label
+            htmlFor="onboarding-topic"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+          >
             What are you researching?
           </label>
           <input
+            id="onboarding-topic"
             autoFocus
             type="text"
             maxLength={80}
@@ -47,8 +51,16 @@ export default function Screen1_Personalization({ onContinue, onSkip }: Props) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Method?</label>
-          <div className="flex flex-wrap gap-2">
+          {/* Not a <label htmlFor>: this captions a set of BUTTONS, not a form
+              control, and an htmlFor pointing at no element is worse than no
+              association at all. A named group is the correct construct. */}
+          <span
+            id="onboarding-method-label"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+          >
+            Method?
+          </span>
+          <div role="group" aria-labelledby="onboarding-method-label" className="flex flex-wrap gap-2">
             {METHODS.map((m) => (
               <button
                 key={m.id}
@@ -99,7 +111,7 @@ export default function Screen1_Personalization({ onContinue, onSkip }: Props) {
             trackEvent('onboarding_skipped', { at_step: 1 });
             onSkip();
           }}
-          className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
         >
           Skip — I'll set up later
         </button>

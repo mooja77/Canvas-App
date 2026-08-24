@@ -21,15 +21,32 @@ import { useReducedMotion } from '../../../hooks/useReducedMotion';
  * Open state is owned by the parent — this primitive is purely a positioned
  * surface. Escape-to-close + outside-click-to-close are handled here so each
  * call site doesn't reinvent them.
+ *
+ * ARIA: deliberately NOT `role="menu"`.
+ *
+ * It used to be. `role="menu"` puts a screen reader into application mode,
+ * where the user is entitled to Arrow keys, Home/End and typeahead — and none
+ * of that was implemented here, only Escape and outside-click. One consumer
+ * also nested non-`menuitem` children under it, which is invalid ARIA parent/
+ * child. The role was a promise the component did not keep, in the same way
+ * `aria-modal` is a promise about an inert background.
+ *
+ * These are 5-to-10 item dropdowns. Plain Tab through ordinary buttons is a
+ * perfectly good keyboard model for them, and it is the one that actually
+ * works today, so the markup now says that instead. Implementing the full menu
+ * pattern to justify the attribute would be more machinery and more risk for
+ * no user-visible gain.
+ *
+ * The `role="dialog"` / `aria-modal` branch is gone too: no call site ever
+ * passed it, so it rendered in no build. A dialog here would additionally need
+ * a focus trap (see `useFocusTrap`), which a menu-like surface must not have —
+ * Tab is supposed to leave a popover, not cycle inside it.
  */
 
 interface CollisionPopoverProps {
   open: boolean;
   onClose: () => void;
   anchorRef: React.RefObject<HTMLElement | null>;
-  /** Accessible role applied to the surface. Defaults to "menu" since toolbar
-   * dropdowns are the primary consumer. Other call sites can pass "dialog". */
-  role?: 'menu' | 'dialog';
   /** Width of the desktop popover. Mobile bottom-sheet ignores this. */
   width?: number;
   /** Optional className applied to the popover surface in addition to the
@@ -44,7 +61,6 @@ export function CollisionPopover({
   open,
   onClose,
   anchorRef,
-  role = 'menu',
   width = 224,
   className,
   children,
@@ -132,8 +148,7 @@ export function CollisionPopover({
         />
         <div
           ref={popoverRef}
-          role={role}
-          aria-modal={role === 'dialog' ? 'true' : undefined}
+          data-testid="collision-popover"
           className={
             'fixed left-0 right-0 bottom-0 z-[101] max-h-[80vh] overflow-y-auto rounded-t-2xl bg-white px-1 py-2 shadow-2xl dark:bg-gray-800' +
             (reducedMotion ? '' : ' animate-slide-up') +
@@ -164,8 +179,7 @@ export function CollisionPopover({
   return createPortal(
     <div
       ref={popoverRef}
-      role={role}
-      aria-modal={role === 'dialog' ? 'true' : undefined}
+      data-testid="collision-popover"
       className={
         'rounded-xl bg-white py-1.5 shadow-xl ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700' +
         (className ? ' ' + className : '')

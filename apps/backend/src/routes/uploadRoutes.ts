@@ -25,6 +25,7 @@ import { AppError } from '../middleware/errorHandler.js';
 export const uploadRoutes = Router();
 
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const MAX_UPLOAD_MB = MAX_UPLOAD_BYTES / (1024 * 1024);
 const ALLOWED_MEDIA_TYPES = new Set([
   'audio/mpeg',
   'audio/wav',
@@ -36,6 +37,64 @@ const ALLOWED_MEDIA_TYPES = new Set([
   'video/mp4',
   'video/webm',
 ]);
+
+// The browser's `File.type` for an ordinary interview recording is whatever the
+// OS registry says, and for the very same .wav that is `audio/wav` on one
+// machine and `audio/x-wav` on another. AudioUploadModal offers
+// .mp3/.wav/.mp4/.m4a/.ogg/.webm/.flac by EXTENSION, so the server has to
+// accept every mainstream spelling of those seven containers or it rejects
+// files its own picker told the researcher were fine. Content is still
+// magic-byte verified after this, so widening the name map does not widen what
+// can actually be stored.
+const MEDIA_TYPE_ALIASES: Record<string, string> = {
+  'audio/mp3': 'audio/mpeg',
+  'audio/mpeg3': 'audio/mpeg',
+  'audio/x-mpeg': 'audio/mpeg',
+  'audio/x-mpeg-3': 'audio/mpeg',
+  'audio/x-wav': 'audio/wav',
+  'audio/wave': 'audio/wav',
+  'audio/vnd.wave': 'audio/wav',
+  'audio/x-pn-wav': 'audio/wav',
+  'audio/m4a': 'audio/mp4',
+  'audio/x-mp4': 'audio/mp4',
+  'audio/x-flac': 'audio/flac',
+  'audio/x-ogg': 'audio/ogg',
+  'application/ogg': 'audio/ogg',
+  'audio/vorbis': 'audio/ogg',
+  'audio/webm;codecs=opus': 'audio/webm',
+};
+
+// Last resort for the same problem: some Windows installs hand the browser no
+// registered type at all and it sends `application/octet-stream`. Fall back to
+// the file extension rather than 500-ing on a perfectly valid recording.
+const EXTENSION_MEDIA_TYPES: Record<string, string> = {
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.m4a': 'audio/mp4',
+  '.mp4': 'video/mp4',
+  '.ogg': 'audio/ogg',
+  '.oga': 'audio/ogg',
+  '.webm': 'audio/webm',
+  '.flac': 'audio/flac',
+};
+
+const GENERIC_MIME_TYPES = new Set(['application/octet-stream', 'binary/octet-stream', '']);
+
+/**
+ * Resolve a client-declared MIME type to one of ALLOWED_MEDIA_TYPES, or null if
+ * the file is genuinely not a supported recording.
+ */
+export function resolveMediaType(declaredType: string | undefined, fileName: string): string | null {
+  const declared = (declaredType || '').toLowerCase().trim();
+  const canonical = MEDIA_TYPE_ALIASES[declared] ?? declared;
+  if (ALLOWED_MEDIA_TYPES.has(canonical)) return canonical;
+  if (GENERIC_MIME_TYPES.has(declared)) {
+    return EXTENSION_MEDIA_TYPES[path.extname(fileName || '').toLowerCase()] ?? null;
+  }
+  return null;
+}
+
+const SUPPORTED_FORMATS_HINT = 'MP3, WAV, M4A, MP4, OGG, WEBM or FLAC';
 
 function validCanvasStorageKey(canvasId: string, key: string): boolean {
   const escapedCanvasId = canvasId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -89,14 +148,48 @@ async function requireOwnedCanvas(req: Request, _res: Response, next: NextFuncti
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_UPLOAD_BYTES },
-  fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MEDIA_TYPES.has(file.mimetype)) {
+  fileFilter: (req, file, cb) => {
+    const resolved = resolveMediaType(file.mimetype, file.originalname);
+    if (resolved) {
+      // Stash the canonical type so the handler stores `audio/wav`, not the
+      // `audio/x-wav` / octet-stream string the browser happened to send.
+      (req as Request & { resolvedMediaType?: string }).resolvedMediaType = resolved;
       cb(null, true);
     } else {
-      cb(new Error(`File type ${file.mimetype} not supported`));
+      // A bare `new Error` here reached errorHandler as an unrecognised throw
+      // and was rendered as `500 Internal server error`, so a researcher whose
+      // OS spells wav as `audio/x-wav` was told the server had crashed. This is
+      // a client-side mistake with a fixable cause: say so, and say what to do.
+      cb(
+        new AppError(
+          `Unsupported file type "${file.mimetype || 'unknown'}". Upload an audio or video recording in ${SUPPORTED_FORMATS_HINT}.`,
+          415,
+        ),
+      );
     }
   },
 });
+
+/**
+ * Run multer and translate its failures into client errors.
+ *
+ * Multer reports the size cap as a `MulterError` (code LIMIT_FILE_SIZE), which
+ * is not an AppError and not a Prisma error, so errorHandler logged it as an
+ * unexpected fault and returned 500. A 30 MB recording is a user mistake, not a
+ * server fault, and the 25 MB limit was never stated anywhere in the product.
+ */
+function uploadSingleMedia(req: Request, res: Response, next: NextFunction): void {
+  upload.single('file')(req, res, (err: unknown) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return next(new AppError(`File is too large. The maximum upload size is ${MAX_UPLOAD_MB} MB.`, 413));
+      }
+      return next(new AppError(`Upload rejected: ${err.message}`, 400));
+    }
+    return next(err);
+  });
+}
 
 // ─── POST /canvas/:id/upload/presigned ───
 // Get a pre-signed URL for direct client upload to S3
@@ -122,10 +215,12 @@ uploadRoutes.post(
         return res.status(400).json({ success: false, error: 'fileName, contentType and sizeBytes required' });
       }
       if (!ALLOWED_MEDIA_TYPES.has(contentType)) {
-        return res.status(400).json({ success: false, error: 'Unsupported media type' });
+        return res
+          .status(400)
+          .json({ success: false, error: `Unsupported media type. Upload a recording in ${SUPPORTED_FORMATS_HINT}.` });
       }
       if (sizeBytes <= 0 || sizeBytes > MAX_UPLOAD_BYTES) {
-        return res.status(400).json({ success: false, error: 'File must be between 1 byte and 25 MB' });
+        return res.status(400).json({ success: false, error: `File must be between 1 byte and ${MAX_UPLOAD_MB} MB` });
       }
       await ensureStorageAvailable(req, sizeBytes);
 
@@ -170,7 +265,9 @@ uploadRoutes.post(
         return res.status(400).json({ success: false, error: 'Invalid storage key' });
       }
       if (!ALLOWED_MEDIA_TYPES.has(mimeType)) {
-        return res.status(400).json({ success: false, error: 'Unsupported media type' });
+        return res
+          .status(400)
+          .json({ success: false, error: `Unsupported media type. Upload a recording in ${SUPPORTED_FORMATS_HINT}.` });
       }
 
       const object = await storage.head(storageKey).catch(() => null);
@@ -179,7 +276,7 @@ uploadRoutes.post(
       }
       if (object.size <= 0 || object.size > MAX_UPLOAD_BYTES) {
         await storage.delete(storageKey).catch(() => undefined);
-        return res.status(400).json({ success: false, error: 'Uploaded object exceeds the 25 MB limit' });
+        return res.status(400).json({ success: false, error: `Uploaded object exceeds the ${MAX_UPLOAD_MB} MB limit` });
       }
       if (object.contentType && object.contentType !== mimeType) {
         await storage.delete(storageKey).catch(() => undefined);
@@ -236,7 +333,7 @@ uploadRoutes.post(
   validateParams(canvasIdParam),
   checkFileUploadAccess(),
   requireOwnedCanvas,
-  upload.single('file'),
+  uploadSingleMedia,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = getAuthUserId(req);
@@ -244,9 +341,15 @@ uploadRoutes.post(
         return res.status(400).json({ success: false, error: 'No file uploaded' });
       }
 
+      // The canonical type the fileFilter resolved, not the browser's spelling.
+      const mimeType =
+        (req as Request & { resolvedMediaType?: string }).resolvedMediaType ??
+        resolveMediaType(req.file.mimetype, req.file.originalname) ??
+        req.file.mimetype;
+
       // Content-sniff the first bytes so a renamed .exe or .html can't slip
       // through just because multer accepted the MIME string from the client.
-      const kind: 'audio' | 'video' = req.file.mimetype.startsWith('video/') ? 'video' : 'audio';
+      const kind: 'audio' | 'video' = mimeType.startsWith('video/') ? 'video' : 'audio';
       if (!isValidSignature(req.file.buffer, kind)) {
         return res.status(400).json({ success: false, error: 'File contents do not match declared type' });
       }
@@ -259,7 +362,7 @@ uploadRoutes.post(
       const { size } = await storage.upload({
         key,
         body: req.file.buffer,
-        contentType: req.file.mimetype,
+        contentType: mimeType,
       });
 
       let fileUpload;
@@ -270,7 +373,7 @@ uploadRoutes.post(
             userId,
             storageKey: key,
             originalName: req.file.originalname,
-            mimeType: req.file.mimetype,
+            mimeType,
             sizeBytes: size || req.file.size,
             status: 'uploaded',
           },

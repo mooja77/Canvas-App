@@ -1,13 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasCase, CanvasQuestion, CanvasTextCoding } from '@qualcanvas/shared';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface CrossCaseAnalysisModalProps {
   onClose: () => void;
 }
 
 export default function CrossCaseAnalysisModal({ onClose }: CrossCaseAnalysisModalProps) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const [groupByAttr, setGroupByAttr] = useState('');
@@ -188,6 +192,7 @@ export default function CrossCaseAnalysisModal({ onClose }: CrossCaseAnalysisMod
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="cross-case-title"

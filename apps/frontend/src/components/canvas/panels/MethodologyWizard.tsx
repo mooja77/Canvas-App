@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import { useActiveCanvas, useCanvasStore } from '../../../stores/canvasStore';
 import { METHODOLOGY_PARADIGMS, getParadigm } from '../../../data/methodologyParadigms';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface Props {
   onClose: () => void;
@@ -16,6 +17,9 @@ interface Props {
  * only — nothing is enforced on the canvas.
  */
 export default function MethodologyWizard({ onClose }: Props) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const setResearchParadigm = useCanvasStore((s) => s.setResearchParadigm);
@@ -57,6 +61,7 @@ export default function MethodologyWizard({ onClose }: Props) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="methodology-wizard-title"

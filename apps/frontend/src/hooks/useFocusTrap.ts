@@ -24,10 +24,19 @@ export function useFocusTrap(ref: RefObject<HTMLElement | null>, active = true):
     if (!node) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
 
+    // Visibility is judged by computed style, not layout. `offsetParent` is
+    // always null in jsdom because it performs no layout, so a layout-based
+    // filter finds NOTHING under test — the trap silently degrades to "focus
+    // the container and stop", and any test of it passes for the wrong reason.
+    // display/visibility read correctly in both jsdom and a browser, and
+    // aria-hidden/hidden subtrees are unreachable regardless of layout.
     const focusables = () =>
-      Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-        (el) => el.offsetParent !== null || el === document.activeElement,
-      );
+      Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => {
+        if (el === document.activeElement) return true;
+        if (el.closest('[aria-hidden="true"]') || el.closest('[hidden]')) return false;
+        const style = window.getComputedStyle(el);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+      });
 
     // Move focus into the dialog on open (first focusable, else the container).
     const first = focusables()[0];

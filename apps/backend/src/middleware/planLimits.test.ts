@@ -16,6 +16,7 @@ const { mockPrisma } = vi.hoisted(() => ({
   mockPrisma: {
     codingCanvas: { count: vi.fn() },
     canvasShare: { count: vi.fn() },
+    aiUsage: { count: vi.fn() },
   },
 }));
 
@@ -32,12 +33,25 @@ vi.mock('../utils/hostedAiBudget.js', () => ({
   userSpendThisMonthCents: vi.fn(() => 0),
 }));
 
-const { checkCanvasLimit, checkShareLimit } = await import('./planLimits.js');
+const {
+  checkCanvasLimit,
+  checkShareLimit,
+  checkAnalysisType,
+  checkAutoCode,
+  checkAiAccess,
+  checkEthicsAccess,
+  checkIntercoderAccess,
+  checkIntegrationsAccess,
+} = await import('./planLimits.js');
 
-const runMiddleware = async (mw: ReturnType<typeof checkCanvasLimit>, plan = 'free') => {
+const runMiddleware = async (
+  mw: ReturnType<typeof checkCanvasLimit>,
+  plan = 'free',
+  body: Record<string, unknown> = {},
+) => {
   // planLimits reads req.userPlan / req.userId (set by the auth middleware),
   // not req.user.
-  const req = { userId: 'user-1', userPlan: plan, params: {} } as unknown as Request;
+  const req = { userId: 'user-1', userPlan: plan, params: {}, body } as unknown as Request;
   const next = vi.fn() as unknown as NextFunction;
   const res = {
     status: vi.fn().mockReturnThis(),
@@ -51,7 +65,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockPrisma.codingCanvas.count.mockResolvedValue(0);
   mockPrisma.canvasShare.count.mockResolvedValue(0);
+  mockPrisma.aiUsage.count.mockResolvedValue(0);
 });
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const bodyOf = (res: Response): any => (res.json as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0];
 
 describe('checkCanvasLimit', () => {
   it('counts only live canvases, so a trashed one does not hold a slot', async () => {
@@ -89,5 +107,85 @@ describe('checkShareLimit', () => {
     const { next, res } = await runMiddleware(checkShareLimit(), 'student');
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(403);
+  });
+});
+
+/**
+ * §3.2 item 2 of the 2026-08-23 audit: every plan gate hardcoded "Pro and Team"
+ * and omitted Student, so a verified .edu user on the $5 tier was told to buy
+ * the $15 one for features Student already includes in full. The messages are
+ * now DERIVED from PLAN_LIMITS, so these assertions are really "the refusal
+ * agrees with the table it is refusing from".
+ */
+describe('plan-gate refusal copy is derived from PLAN_LIMITS', () => {
+  it('names Student for an analysis type Student includes', async () => {
+    const { res } = await runMiddleware(checkAnalysisType(), 'free', { nodeType: 'matrix' });
+    const message = bodyOf(res).error;
+    expect(message).toContain('Student');
+    expect(message).toContain('Pro');
+    expect(message).toContain('Team');
+  });
+
+  it('names Student for auto-code, ethics and AI', async () => {
+    for (const mw of [checkAutoCode(), checkEthicsAccess(), checkAiAccess()]) {
+      const { res } = await runMiddleware(mw, 'free');
+      expect(bodyOf(res).error).toMatch(/Student, Pro, and Team/);
+    }
+  });
+
+  it('still names Team ALONE for intercoder, which only Team has', async () => {
+    const { res } = await runMiddleware(checkIntercoderAccess(), 'pro');
+    const message = bodyOf(res).error;
+    expect(message).toContain('Team');
+    expect(message).not.toContain('Student');
+    expect(message).not.toContain('Pro');
+  });
+
+  it('does not sell integrations on Team, because no tier has them', async () => {
+    const { res } = await runMiddleware(checkIntegrationsAccess(), 'team');
+    // The old copy said "available on Team plans" while integrationsEnabled is
+    // false on every tier - the exact false claim plans.ts documents retiring.
+    expect(bodyOf(res).error).toBe('Integrations are not available on any plan.');
+  });
+});
+
+/** §3.2 item 12: the share gate reported an allowance instead of a remedy. */
+describe('checkShareLimit refusal offers a remedy', () => {
+  it('tells a Free user which plans include share codes, not just that they have 0', async () => {
+    const { res } = await runMiddleware(checkShareLimit(), 'free');
+    const message = bodyOf(res).error;
+    expect(message).not.toBe('Free plan allows 0 share codes');
+    expect(message).toMatch(/Student allows 2/);
+    expect(message).toMatch(/Team allows unlimited/);
+  });
+
+  it('tells a capped Student to revoke one or upgrade', async () => {
+    mockPrisma.canvasShare.count.mockResolvedValue(2);
+    const { res } = await runMiddleware(checkShareLimit(), 'student');
+    const message = bodyOf(res).error;
+    expect(message).toMatch(/revoke a share code/);
+    expect(message).toMatch(/Pro allows 5/);
+  });
+});
+
+/**
+ * §3.2 item 7: /pricing sells AI text analysis as "Unlimited" while the server
+ * caps every paid tier at the same 1,000/day. The cap is a fair-use guard and
+ * stays, but the refusal must not pitch an upgrade that cannot lift it.
+ */
+describe('the daily AI ceiling does not pitch a useless upgrade', () => {
+  it('says the limit applies to every plan and sets upgrade:false', async () => {
+    mockPrisma.aiUsage.count.mockResolvedValue(1000);
+    const { next, res } = await runMiddleware(checkAiAccess(), 'pro');
+    expect(next).not.toHaveBeenCalled();
+    const body = bodyOf(res);
+    expect(body.upgrade).toBe(false);
+    expect(body.error).toMatch(/applies to every plan/);
+    expect(body.max).toBe(1000);
+  });
+
+  it('still marks genuinely upgradable refusals upgrade:true', async () => {
+    const { res } = await runMiddleware(checkShareLimit(), 'free');
+    expect(bodyOf(res).upgrade).toBe(true);
   });
 });

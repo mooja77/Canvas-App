@@ -117,7 +117,7 @@ test.describe('Canvas Navigation Features', () => {
 
   test('auto-arrange shows canvas arranged toast', async ({ page }) => {
     await page.getByRole('button', { name: 'More canvas actions' }).first().click();
-    await page.getByRole('menuitem', { name: /Auto-arrange layout/i }).click();
+    await page.getByRole('button', { name: /Auto-arrange layout/i }).click();
 
     // Check for either "Canvas arranged" success toast or "No nodes to arrange" info toast
     const successToast = page.getByText('Canvas arranged');

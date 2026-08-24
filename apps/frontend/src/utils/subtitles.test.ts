@@ -95,3 +95,62 @@ describe('isSubtitleExt', () => {
     expect(isSubtitleExt(undefined)).toBe(false);
   });
 });
+
+/**
+ * A caption whose text is only digits is an ANSWER, not a cue index. These are
+ * headcounts, budgets, ages, years and Likert responses - the answers a
+ * researcher is most likely to quote - and they were being deleted silently
+ * from every Zoom, Otter and Teams caption file.
+ */
+describe('numeric caption text survives import', () => {
+  it('keeps numeric answers in an SRT while still stripping cue indices', () => {
+    const srt = [
+      '1',
+      '00:00:01,000 --> 00:00:03,000',
+      'How many staff did you have?',
+      '',
+      '2',
+      '00:00:03,000 --> 00:00:05,000',
+      '14',
+      '',
+      '3',
+      '00:00:05,000 --> 00:00:07,000',
+      'And the budget?',
+      '',
+      '4',
+      '00:00:07,000 --> 00:00:09,000',
+      '250000',
+      '',
+    ].join('\n');
+    expect(parseSubtitles(srt)).toBe('How many staff did you have?\n14\nAnd the budget?\n250000');
+  });
+
+  it('keeps numeric answers in WebVTT, which has no cue-index concept at all', () => {
+    const vtt = [
+      'WEBVTT',
+      '',
+      '00:00:01.000 --> 00:00:03.000',
+      'How old were you?',
+      '',
+      '00:00:03.000 --> 00:00:05.000',
+      '42',
+      '',
+      '00:00:05.000 --> 00:00:07.000',
+      'And now?',
+      '',
+    ].join('\n');
+    expect(parseSubtitles(vtt)).toBe('How old were you?\n42\nAnd now?');
+  });
+
+  it('keeps a numeric answer that is the final cue', () => {
+    const srt = ['1', '00:00:01,000 --> 00:00:03,000', 'How many?', '', '2', '00:00:03,000 --> 00:00:05,000', '7'].join(
+      '\n',
+    );
+    expect(parseSubtitles(srt)).toBe('How many?\n7');
+  });
+
+  it('keeps a multi-line cue whose second line is numeric', () => {
+    const srt = ['1', '00:00:01,000 --> 00:00:03,000', 'We had roughly', '30', ''].join('\n');
+    expect(parseSubtitles(srt)).toBe('We had roughly\n30');
+  });
+});

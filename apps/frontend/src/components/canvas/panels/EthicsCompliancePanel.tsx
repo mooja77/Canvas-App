@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
 import { canvasClient } from '../../../services/api';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import { AUDIT_EXPORT_PAGE_SIZE, buildAuditCsv, fetchAllAuditEntries, type AuditEntry } from './auditLogExport';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface EthicsCompliancePanelProps {
   onClose: () => void;
@@ -58,6 +59,9 @@ const toJournalEntry = (row: any): JournalEntry => ({
 });
 
 export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanelProps) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const [tab, setTab] = useState<Tab>('settings');
@@ -435,6 +439,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         className="modal-content w-[900px] max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-xl backdrop-blur-xl ring-1 ring-black/5 dark:bg-gray-800"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

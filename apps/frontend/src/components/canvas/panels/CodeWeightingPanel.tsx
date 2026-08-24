@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   useActiveCanvas,
   useActiveCanvasId,
@@ -8,6 +8,7 @@ import {
 } from '../../../stores/canvasStore';
 import type { CanvasQuestion } from '@qualcanvas/shared';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface CodeWeightingPanelProps {
   onClose: () => void;
@@ -72,6 +73,9 @@ function StarRating({
 }
 
 export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const activeCanvasId = useActiveCanvasId();
@@ -195,6 +199,7 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         className="modal-content w-full max-w-3xl rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10 max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

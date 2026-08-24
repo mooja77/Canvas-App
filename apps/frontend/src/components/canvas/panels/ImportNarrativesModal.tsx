@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { apiErrorMessage, createWiseShiftBridge } from '../../../services/api';
 import { useCanvasStore } from '../../../stores/canvasStore';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface Narrative {
   id: string;
@@ -18,6 +19,9 @@ interface Props {
 }
 
 export default function ImportNarrativesModal({ onClose }: Props) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const { importNarratives } = useCanvasStore();
 
@@ -124,6 +128,7 @@ export default function ImportNarrativesModal({ onClose }: Props) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="import-narratives-title"

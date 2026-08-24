@@ -16,18 +16,38 @@ export function parseSubtitles(raw: string): string {
   const lines = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   const captions: string[] = [];
 
+  // Caption files have block structure: an optional cue index, then a timing
+  // line, then one or more TEXT lines, then a blank line. Everything after a
+  // timing line and before the next blank is caption text - including a line
+  // that happens to be all digits. Tracking this is the whole fix for numeric
+  // answers being deleted; a line-by-line rule cannot tell "14" the answer
+  // from "14" the cue index.
+  let inCueText = false;
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
-    if (!line) continue;
+    if (!line) {
+      inCueText = false; // blank line ends the cue
+      continue;
+    }
     if (/^WEBVTT/i.test(line)) continue;
     // Skip NOTE / STYLE / REGION blocks up to the next blank line.
     if (/^(NOTE|STYLE|REGION)\b/i.test(line)) {
       while (i + 1 < lines.length && lines[i + 1].trim() !== '') i++;
       continue;
     }
-    if (/^\d+$/.test(line)) continue; // SRT cue index
-    if (line.includes('-->')) continue; // timestamp / cue-settings line
+    // An all-digits line is a cue INDEX only in index position - i.e. before
+    // this cue's timing line. Once we are past the timing line it is caption
+    // TEXT. Skipping every numeric line regardless deleted the answer to "how
+    // many staff did you have?" ("14"), "what was the budget?" ("250000"),
+    // ages, years and Likert responses: silently, and exactly the answers a
+    // researcher is most likely to want to quote.
+    if (!inCueText && /^\d+$/.test(line)) continue; // SRT cue index
+    if (line.includes('-->')) {
+      inCueText = true; // everything up to the next blank is caption text
+      continue; // timestamp / cue-settings line
+    }
 
     // Caption text line: convert voice tags to speaker labels, strip the rest.
     const text = line

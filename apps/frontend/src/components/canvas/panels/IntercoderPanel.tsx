@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
 import { useAuthStore } from '../../../stores/authStore';
 import { canvasApi } from '../../../services/api';
@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import { getParadigm, getIcrStance } from '../../../data/methodologyParadigms';
 import { chooseAgreementMethod } from './agreementMethod';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface IntercoderPanelProps {
   onClose: () => void;
@@ -47,6 +48,9 @@ function interpretScore(k: number): { label: string; color: string } {
 }
 
 export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const currentUserId = useAuthStore((s) => s.userId);
@@ -210,6 +214,7 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="intercoder-panel-title"
@@ -222,8 +227,12 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
             <h3 id="intercoder-panel-title" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               Intercoder Agreement
             </h3>
+            {/* Was "Cohen's κ for two coders, Krippendorff's α for three or
+                more". The server computes Krippendorff's α for every request,
+                so the two-coder half of that sentence named a statistic the
+                product does not implement. */}
             <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              Cohen&rsquo;s κ for two coders, Krippendorff&rsquo;s α for three or more
+              Krippendorff&rsquo;s α, for two or more coders
             </p>
           </div>
           <button

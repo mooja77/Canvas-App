@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 
+// The pricing table is a public claim about what each tier gets. Pin it to the
+// module that actually enforces those claims, so a tier change cannot leave the
+// page selling something the server refuses (or hiding something it allows).
+import { PLAN_LIMITS, AI_REQUESTS_PER_DAY_FAIR_USE, type PlanTier } from '../../../backend/src/config/plans';
+
 // Mock react-router-dom
 const mockNavigate = vi.fn();
 // Mutable auth state so individual tests can exercise legacy vs email auth.
@@ -182,5 +187,96 @@ describe('PricingPage (refresh)', () => {
     expect(screen.getByText('NVivo')).toBeInTheDocument();
     expect(screen.getByText('ATLAS.ti')).toBeInTheDocument();
     expect(screen.getByText('Dedoose')).toBeInTheDocument();
+  });
+});
+
+describe('PricingPage comparison table vs the enforced plan limits', () => {
+  // Columns are Feature | Free | Student | Pro | Team | Institutions, so cell
+  // 0..3 of the value cells line up with TIERS below. Institutions is a
+  // sales-led tier with no PLAN_LIMITS row and is deliberately not asserted.
+  const TIERS: PlanTier[] = ['free', 'student', 'pro', 'team'];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authState.authenticated = false;
+    authState.plan = null;
+    authState.authType = null;
+    authState.email = null;
+    render(<PricingPage />);
+  });
+
+  /** The five value cells of the comparison-table row labelled `feature`. */
+  function cells(feature: string): string[] {
+    const table = screen.getByText('Feature').closest('table');
+    expect(table).not.toBeNull();
+    const row = within(table!).getByText(feature).closest('tr');
+    expect(row).not.toBeNull();
+    return Array.from(row!.querySelectorAll('td'))
+      .slice(1)
+      .map((td) => (td.textContent ?? '').trim());
+  }
+
+  const tick = (yes: boolean) => (yes ? '✓' : '—');
+
+  it('states the canvas cap each tier is actually gated on', () => {
+    const row = cells('Canvases');
+    TIERS.forEach((tier, i) => {
+      const max = PLAN_LIMITS[tier].maxCanvases;
+      expect(row[i]).toBe(max === Infinity ? 'Unlimited' : max.toLocaleString());
+    });
+  });
+
+  it('states the share-code allowance each tier is actually gated on', () => {
+    const row = cells('Share codes');
+    TIERS.forEach((tier, i) => {
+      const max = PLAN_LIMITS[tier].maxShares;
+      expect(row[i]).toBe(max === Infinity ? 'Unlimited' : max === 0 ? '—' : String(max));
+    });
+  });
+
+  it('counts analysis tools from allowedAnalysisTypes', () => {
+    const row = cells('Analysis tools');
+    const all = PLAN_LIMITS.pro.allowedAnalysisTypes.length;
+    expect(row[0]).toBe(String(PLAN_LIMITS.free.allowedAnalysisTypes.length));
+    for (const i of [1, 2, 3]) expect(row[i]).toBe(`All ${all}`);
+  });
+
+  it('shows intercoder reliability on exactly the tiers with intercoderEnabled', () => {
+    const row = cells('Intercoder reliability (κ + α)');
+    TIERS.forEach((tier, i) => expect(row[i]).toBe(tick(PLAN_LIMITS[tier].intercoderEnabled)));
+  });
+
+  it('advertises every export format the tier can actually download', () => {
+    // §3.5 item 8: the export refusal names Student, Pro and Team — the page it
+    // sends people to has to name the same formats those tiers get. `docx` and
+    // `xlsx` were enforced but never advertised.
+    const formatRows: [string, string[]][] = [
+      ['CSV export', ['csv']],
+      ['PNG / HTML / Markdown', ['png', 'html', 'md']],
+      ['Word + Excel reports', ['docx', 'xlsx']],
+      ['QDPX (NVivo / ATLAS.ti)', ['qdpx']],
+    ];
+    for (const [feature, formats] of formatRows) {
+      const row = cells(feature);
+      TIERS.forEach((tier, i) => {
+        const allowed = formats.every((f) => PLAN_LIMITS[tier].allowedExportFormats.includes(f));
+        expect(`${feature} / ${tier}: ${row[i]}`).toBe(`${feature} / ${tier}: ${tick(allowed)}`);
+      });
+    }
+    // And nothing enforced is left off the table entirely.
+    const advertised = new Set(formatRows.flatMap(([, f]) => f));
+    for (const fmt of PLAN_LIMITS.team.allowedExportFormats) expect(advertised).toContain(fmt);
+  });
+
+  it('does not sell AI text analysis as unlimited when it is capped', () => {
+    const row = cells('AI text analysis');
+    const cap = `${AI_REQUESTS_PER_DAY_FAIR_USE.toLocaleString()}/day fair use`;
+    expect(row.join(' ')).not.toMatch(/Unlimited/);
+    TIERS.forEach((tier, i) => {
+      expect(row[i]).toBe(PLAN_LIMITS[tier].aiEnabled ? cap : '—');
+      // The ceiling really is identical on every paid tier — that is why no
+      // upgrade can lift it and why the row must not read "Unlimited".
+      if (PLAN_LIMITS[tier].aiEnabled) expect(PLAN_LIMITS[tier].aiRequestsPerDay).toBe(AI_REQUESTS_PER_DAY_FAIR_USE);
+    });
   });
 });

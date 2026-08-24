@@ -261,11 +261,16 @@ describe('Sharing extended integration tests', () => {
         codingCanvas: { create: vi.fn().mockResolvedValue(clonedCanvas) },
         canvasTranscript: { create: vi.fn().mockResolvedValue({ id: 'tr-new-1' }) },
         canvasQuestion: { create: vi.fn().mockResolvedValue({ id: 'q-new-1' }), update: vi.fn() },
-        canvasMemo: { create: vi.fn() },
-        canvasTextCoding: { create: vi.fn() },
-        canvasCase: { create: vi.fn() },
-        canvasRelation: { create: vi.fn() },
-        canvasComputedNode: { create: vi.fn() },
+        // These must resolve to a row with an id. Prisma's create always does,
+        // and the clone now records old-id -> new-id so that coder attribution
+        // and the saved layout survive being shared. A bare vi.fn() resolves
+        // undefined and crashes the clone with a 500.
+        canvasMemo: { create: vi.fn().mockResolvedValue({ id: 'memo-new-1' }) },
+        canvasTextCoding: { create: vi.fn().mockResolvedValue({ id: 'coding-new-1' }) },
+        canvasCase: { create: vi.fn().mockResolvedValue({ id: 'case-new-1' }) },
+        canvasRelation: { create: vi.fn().mockResolvedValue({ id: 'rel-new-1' }) },
+        canvasComputedNode: { create: vi.fn().mockResolvedValue({ id: 'computed-new-1' }) },
+        canvasNodePosition: { create: vi.fn().mockResolvedValue({ id: 'pos-new-1' }) },
         canvasShare: { update: vi.fn() },
       };
       return fn(tx);
@@ -313,13 +318,14 @@ describe('Sharing extended integration tests', () => {
         codingCanvas: {
           create: vi.fn().mockResolvedValue({ id: 'canvas-count-clone', name: 'Clone', dashboardAccessId }),
         },
-        canvasTranscript: { create: vi.fn() },
-        canvasQuestion: { create: vi.fn(), update: vi.fn() },
-        canvasMemo: { create: vi.fn() },
-        canvasTextCoding: { create: vi.fn() },
-        canvasCase: { create: vi.fn() },
-        canvasRelation: { create: vi.fn() },
-        canvasComputedNode: { create: vi.fn() },
+        canvasTranscript: { create: vi.fn().mockResolvedValue({ id: 'tr-new-2' }) },
+        canvasQuestion: { create: vi.fn().mockResolvedValue({ id: 'q-new-2' }), update: vi.fn() },
+        canvasMemo: { create: vi.fn().mockResolvedValue({ id: 'memo-new-2' }) },
+        canvasTextCoding: { create: vi.fn().mockResolvedValue({ id: 'coding-new-2' }) },
+        canvasCase: { create: vi.fn().mockResolvedValue({ id: 'case-new-2' }) },
+        canvasRelation: { create: vi.fn().mockResolvedValue({ id: 'rel-new-2' }) },
+        canvasComputedNode: { create: vi.fn().mockResolvedValue({ id: 'computed-new-2' }) },
+        canvasNodePosition: { create: vi.fn().mockResolvedValue({ id: 'pos-new-2' }) },
         canvasShare: {
           update: vi.fn().mockImplementation(() => {
             shareUpdateCalled = true;
@@ -412,16 +418,14 @@ describe('Sharing extended integration tests', () => {
   it('POST /canvas/:id/collaborators adds viewer collaborator', async () => {
     const targetUserId = 'user-collab-viewer';
     mockPrisma.canvasCollaborator.count.mockResolvedValue(0);
-    mockPrisma.user.findUnique
-      .mockResolvedValueOnce({ ...mockUser })
-      .mockResolvedValueOnce({
-        id: targetUserId,
-        name: 'Viewer User',
-        email: 'viewer@example.com',
-        plan: 'pro',
-        role: 'researcher',
-        dashboardAccess: null,
-      });
+    mockPrisma.user.findUnique.mockResolvedValueOnce({ ...mockUser }).mockResolvedValueOnce({
+      id: targetUserId,
+      name: 'Viewer User',
+      email: 'viewer@example.com',
+      plan: 'pro',
+      role: 'researcher',
+      dashboardAccess: null,
+    });
     mockPrisma.canvasCollaborator.upsert.mockResolvedValue({
       id: 'collab-2',
       canvasId,

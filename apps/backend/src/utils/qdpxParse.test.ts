@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { parseQdpxProject, describeLosses, buildQdpxXml, toGuid, flattenCodesForInsert } from './qdpxParse.js';
+import {
+  parseQdpxProject,
+  describeLosses,
+  buildQdpxXml,
+  buildQdpxProject,
+  toGuid,
+  flattenCodesForInsert,
+} from './qdpxParse.js';
 
 /**
  * Fixtures here follow the REFI-QDA QDA-XML v1.0 schema (Project.xsd, 18 March
@@ -407,5 +414,267 @@ describe('parseQdpxProject — uncoded quotations', () => {
 
   it('describes them for the researcher', () => {
     expect(describeLosses(parseQdpxProject(withUncoded).unsupported)).toContain('1 uncoded quotation');
+  });
+});
+
+/**
+ * Round-trip fidelity. A QDPX archive is how a researcher hands their project
+ * to a co-author, deposits it with a journal, or moves it to NVivo. If the text
+ * that comes back is not byte-identical to the text that went out, every coding
+ * offset in that source points at different words - and nothing detects it,
+ * because the importer recomputes codedText from the shifted text, so the
+ * `content.slice(start, end) === codedText` invariant still holds on the
+ * corrupted row. Both losses below were real and silent.
+ */
+describe('QDPX text round-trip fidelity', () => {
+  const roundTrip = (content: string): string => {
+    const xml = buildQdpxXml({
+      name: 'Fidelity',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      codes: [{ id: 'code-1', text: 'A code', children: [] }],
+      sources: [{ id: 'src-1', title: 'Interview', content }],
+      codings: [],
+    });
+    const parsed = parseQdpxProject(xml);
+    return parsed.sources[0].plainText ?? '';
+  };
+
+  it('preserves leading and trailing whitespace', () => {
+    // fast-xml-parser trims text nodes unless told not to. This exact string
+    // came back 43 chars instead of 49, sliding both codings on it.
+    const content = '   Leading spaces matter.\n\n\nBlank lines above.   ';
+    const out = roundTrip(content);
+    expect(out).toBe(content);
+    expect(out).toHaveLength(49);
+  });
+
+  it('preserves CRLF line endings from Windows- and Word-authored transcripts', () => {
+    // XML 1.0 section 2.11 makes a parser normalise literal CR and CRLF to a
+    // single LF, so a carriage return only survives as a numeric reference.
+    const content = 'Interviewer: How did it start?\r\nParticipant: Slowly.\r\n';
+    const out = roundTrip(content);
+    expect(out).toBe(content);
+    expect(out.split('\r\n')).toHaveLength(3);
+  });
+
+  it('keeps every coding offset addressing the same words after a round-trip', () => {
+    const content = '  Participant: it was the waiting that broke me.\r\nInterviewer: mm.  ';
+    const start = content.indexOf('the waiting');
+    const end = start + 'the waiting'.length;
+    const out = roundTrip(content);
+    expect(out.slice(start, end)).toBe('the waiting');
+  });
+
+  it('round-trips text that also needs entity escaping', () => {
+    const content = '\r\n  "R&D" <policy> costs 5 & rising\'s worth\r\n';
+    expect(roundTrip(content)).toBe(content);
+  });
+});
+
+/**
+ * XML 1.0 well-formedness. A transcript pasted out of Word or a PDF really does
+ * contain C0 control characters; writing them raw produced a project.qde that
+ * xml.etree.ElementTree rejected with "not well-formed (invalid token)" while
+ * QualCanvas's own lenient parser read it back happily - so the breakage was
+ * invisible from inside the product and the toast still said "exported
+ * successfully".
+ *
+ * XML 1.0 section 2.2: Char ::= #x9 | #xA | #xD | [#x20-#xD7FF] |
+ * [#xE000-#xFFFD] | [#x10000-#x10FFFF]. Section 4.1 makes a character
+ * reference match Char too, so there is no legal encoding for these - they
+ * have to be substituted.
+ */
+describe('buildQdpxProject - XML 1.0 well-formedness', () => {
+  const ILLEGAL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/;
+
+  const withContent = (content: string, title = 'Interview') =>
+    buildQdpxProject({
+      name: 'Control chars',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      codes: [{ id: 'code-1', text: 'A code', children: [] }],
+      sources: [{ id: 'src-1', title, content }],
+      codings: [],
+    });
+
+  // The exact characters the audit found in a stored transcript.
+  const VT = String.fromCharCode(0x0b);
+  const FF = String.fromCharCode(0x0c);
+  const SOH = String.fromCharCode(0x01);
+  const dirty = 'Word paste' + VT + 'line' + FF + 'break' + SOH + 'end';
+
+  it('emits no character XML 1.0 forbids', () => {
+    const { xml } = withContent(dirty);
+    expect(ILLEGAL.test(xml)).toBe(false);
+  });
+
+  it('keeps tab, newline and carriage return, which are legal', () => {
+    const { xml } = withContent('a\tb\nc\rd');
+    const parsed = parseQdpxProject(xml);
+    expect(parsed.sources[0].plainText).toBe('a\tb\nc\rd');
+  });
+
+  it('substitutes rather than deletes, so every coding offset still lands', () => {
+    // Deleting the three characters would slide "end" three units left and
+    // every coding after it with them.
+    const { xml } = withContent(dirty);
+    const back = parseQdpxProject(xml).sources[0].plainText;
+    expect(back).toHaveLength(dirty.length);
+    const start = dirty.indexOf('end');
+    expect(back.slice(start, start + 3)).toBe('end');
+  });
+
+  it('cleans attribute values too, not just element text', () => {
+    const { xml } = withContent('clean text', 'Title' + VT + 'here');
+    expect(ILLEGAL.test(xml)).toBe(false);
+  });
+
+  it('tells the researcher the substitution happened', () => {
+    const { notes } = withContent(dirty);
+    expect(notes.join(' ')).toMatch(/3 character\(s\) that XML 1\.0 cannot represent/);
+  });
+
+  it('says nothing about substitution when the text is clean', () => {
+    const { notes } = withContent('ordinary text');
+    expect(notes.join(' ')).not.toMatch(/cannot represent/);
+  });
+
+  it('round-trips a tab or newline inside an attribute value', () => {
+    // XML 1.0 section 3.3.3 turns a literal tab/LF in an attribute value into
+    // a space before the application sees it.
+    const { xml } = withContent('body', 'Two\tcolumns\nsecond line');
+    expect(parseQdpxProject(xml).sources[0].name).toBe('Two\tcolumns\nsecond line');
+  });
+});
+
+/**
+ * Coder attribution. Without it a Team's multi-coder project exports as
+ * anonymous, which makes the intercoder feature unarchivable: 7/7 codings had a
+ * coderUserId before a round-trip and 0/7 after.
+ */
+describe('QDPX coder attribution', () => {
+  const project = {
+    name: 'Attributed',
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    codes: [{ id: 'code-1', text: 'Trust', children: [] }],
+    sources: [{ id: 'src-1', title: 'Interview', content: 'the waiting broke me' }],
+    codings: [
+      { id: 'cd-1', transcriptId: 'src-1', questionId: 'code-1', startOffset: 4, endOffset: 11, coderUserId: 'user-a' },
+      { id: 'cd-2', transcriptId: 'src-1', questionId: 'code-1', startOffset: 12, endOffset: 17, coderUserId: null },
+    ],
+    users: [{ id: 'user-a', name: 'Dr Ana Ruiz' }],
+  };
+
+  it('writes a Users block naming the coders', () => {
+    const xml = buildQdpxXml(project);
+    expect(xml).toContain('<Users>');
+    expect(xml).toContain('name="Dr Ana Ruiz"');
+    expect(xml).toContain('guid="' + toGuid('user-a') + '"');
+  });
+
+  it('puts Users before CodeBook, as ProjectType requires', () => {
+    const xml = buildQdpxXml(project);
+    expect(xml.indexOf('<Users>')).toBeLessThan(xml.indexOf('<CodeBook>'));
+  });
+
+  it('stamps creatingUser on the coding that has a coder', () => {
+    const xml = buildQdpxXml(project);
+    expect(xml).toContain('creatingUser="' + toGuid('user-a') + '"');
+  });
+
+  it('omits creatingUser rather than inventing one', () => {
+    const xml = buildQdpxXml(project);
+    expect(xml.match(/creatingUser=/g)).toHaveLength(1);
+  });
+
+  it('reads Users and creatingUser back off the wire', () => {
+    const parsed = parseQdpxProject(buildQdpxXml(project));
+    expect(parsed.users).toEqual([{ guid: toGuid('user-a'), name: 'Dr Ana Ruiz' }]);
+    const codings = parsed.sources[0].selections.flatMap((s) => s.codings);
+    expect(codings.map((c) => c.creatingUser)).toEqual([toGuid('user-a'), undefined]);
+  });
+
+  it('emits no Users block when nothing is attributed', () => {
+    const xml = buildQdpxXml({ ...project, users: [], codings: [] });
+    expect(xml).not.toContain('<Users>');
+  });
+});
+
+/**
+ * The export used to claim success while dropping memos, cases, relations,
+ * computed nodes, notes and annotations, and said nothing about which offset
+ * convention its numbers used. Both are disclosed in the file itself, so the
+ * disclosure survives even if nobody reads the HTTP response.
+ */
+describe('buildQdpxProject - honest disclosure', () => {
+  const build = (omitted?: string[]) =>
+    buildQdpxProject({
+      name: 'Disclosed',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      codes: [{ id: 'code-1', text: 'A code', children: [] }],
+      sources: [{ id: 'src-1', title: 'Interview', content: 'text' }],
+      codings: [],
+      omitted,
+    });
+
+  it('declares the UTF-16 offset convention in the document', () => {
+    expect(build().xml).toContain('UTF-16 code-unit indices');
+  });
+
+  it('names what the archive does not carry', () => {
+    const { xml, notes } = build(['2 memos', '1 case']);
+    expect(xml).toContain('NOT included in this archive: 2 memos; 1 case.');
+    expect(notes).toEqual(['2 memos', '1 case']);
+  });
+
+  it('says so plainly when nothing was dropped', () => {
+    const { xml, notes } = build([]);
+    expect(xml).toContain('No content was dropped on export.');
+    expect(notes).toEqual([]);
+  });
+
+  it('keeps the disclosure a legal XML comment', () => {
+    // "--" may not appear inside a comment.
+    const { xml } = build(['1 note -- see below']);
+    const comment = xml.slice(xml.indexOf('<!--') + 4, xml.indexOf('-->'));
+    expect(comment).not.toContain('--');
+    expect(parseQdpxProject(xml).name).toBe('Disclosed');
+  });
+});
+
+/**
+ * The agreement case: two coders applying the SAME code to the SAME span. The
+ * writer groups selections by range, so both codings share one
+ * PlainTextSelection and are told apart only by creatingUser. If that is lost
+ * the intercoder statistic computed from the re-imported archive is a
+ * different number from the one computed on the original canvas.
+ */
+describe('QDPX round-trip - two coders agreeing on one span', () => {
+  const project = {
+    name: 'Agreement',
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    codes: [{ id: 'code-1', text: 'Trust', children: [] }],
+    sources: [{ id: 'src-1', title: 'Interview', content: 'the waiting broke me' }],
+    codings: [
+      { id: 'cd-1', transcriptId: 'src-1', questionId: 'code-1', startOffset: 4, endOffset: 11, coderUserId: 'user-a' },
+      { id: 'cd-2', transcriptId: 'src-1', questionId: 'code-1', startOffset: 4, endOffset: 11, coderUserId: 'user-b' },
+    ],
+    users: [
+      { id: 'user-a', name: 'Ana' },
+      { id: 'user-b', name: 'Ben' },
+    ],
+  };
+
+  it('writes one selection carrying a Coding per coder', () => {
+    const xml = buildQdpxXml(project);
+    expect(xml.match(/<PlainTextSelection /g)).toHaveLength(1);
+    expect(xml.match(/<Coding /g)).toHaveLength(2);
+  });
+
+  it('reads both coders back, distinguishable by creatingUser', () => {
+    const parsed = parseQdpxProject(buildQdpxXml(project));
+    const codings = parsed.sources[0].selections.flatMap((s) => s.codings);
+    expect(codings.map((c) => c.creatingUser)).toEqual([toGuid('user-a'), toGuid('user-b')]);
+    // Both point at the same code: that is what makes them an agreement.
+    expect(new Set(codings.map((c) => c.codeGuid)).size).toBe(1);
   });
 });

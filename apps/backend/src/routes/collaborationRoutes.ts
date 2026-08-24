@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
-import { getPlanLimits } from '../config/plans.js';
+import { getPlanLimits, allowanceMessage } from '../config/plans.js';
 import { validateParams, canvasIdParam, canvasIdUserIdParams } from '../middleware/validation.js';
 import { revokeCanvasAccess } from '../lib/socket.js';
 
@@ -36,26 +36,20 @@ collaborationRoutes.post('/canvas/:id/collaborators', validateParams(canvasIdPar
       throw new AppError('email or userId is required', 400);
     }
 
+    // Role validation must FAIL CLOSED. This used to be
+    // `validRoles.includes(role) ? role : 'editor'`, so any value the server did
+    // not recognise - 'coder' (the word the UI shows the user), 'admin',
+    // 'viewer_readonly', a typo - was silently granted full editor write access
+    // and returned 201 as though the requested role had been applied. A
+    // permission boundary that resolves unknown input to the MORE privileged
+    // side is a defect regardless of who can reach it today.
     const validRoles = ['editor', 'viewer'];
-    const assignedRole = validRoles.includes(role) ? role : 'editor';
-
-    // Check plan limits
-    const plan = req.userPlan || 'free';
-    const limits = getPlanLimits(plan);
-    const currentCount = await prisma.canvasCollaborator.count({
-      where: { canvasId: canvas.id },
-    });
-    if (currentCount >= limits.maxCollaborators) {
-      return res.status(403).json({
-        success: false,
-        error: `Your ${plan} plan allows up to ${limits.maxCollaborators} collaborators per canvas`,
-        code: 'PLAN_LIMIT_EXCEEDED',
-        limit: 'maxCollaborators',
-        current: currentCount,
-        max: limits.maxCollaborators,
-        upgrade: true,
-      });
+    if (role !== undefined && role !== null && !validRoles.includes(role)) {
+      throw new AppError(`Invalid role. Valid roles are: ${validRoles.join(', ')}.`, 400);
     }
+    // An omitted role still means "editor" - that is the documented default of
+    // the invite API, not an unrecognised value being coerced.
+    const assignedRole = typeof role === 'string' && validRoles.includes(role) ? role : 'editor';
 
     // Verify the target user exists
     const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
@@ -66,6 +60,39 @@ collaborationRoutes.post('/canvas/:id/collaborators', validateParams(canvasIdPar
     // Cannot add yourself
     if (userId && targetUserId === userId) {
       throw new AppError('Cannot add yourself as a collaborator', 400);
+    }
+
+    // Plan limit — only for a NEW seat.
+    //
+    // This POST is also the only role-change path in the product (the upsert
+    // below updates the role of an existing collaborator). Counting seats
+    // without excluding the target meant an owner sitting exactly at the cap
+    // could not demote a collaborator to viewer or promote a viewer to editor:
+    // they got PLAN_LIMIT_EXCEEDED current:3 max:3 for an operation that adds
+    // no seat at all, describing a limit they were not exceeding.
+    const existing = await prisma.canvasCollaborator.findUnique({
+      where: { canvasId_userId: { canvasId: canvas.id, userId: targetUserId } },
+      select: { id: true },
+    });
+    if (!existing) {
+      const plan = req.userPlan || 'free';
+      const limits = getPlanLimits(plan);
+      const currentCount = await prisma.canvasCollaborator.count({
+        where: { canvasId: canvas.id },
+      });
+      if (currentCount >= limits.maxCollaborators) {
+        return res.status(403).json({
+          success: false,
+          error: allowanceMessage(plan, 'Collaborators', limits.maxCollaborators, (l) => l.maxCollaborators, {
+            deleteHint: 'remove a collaborator from this canvas',
+          }),
+          code: 'PLAN_LIMIT_EXCEEDED',
+          limit: 'maxCollaborators',
+          current: currentCount,
+          max: limits.maxCollaborators,
+          upgrade: true,
+        });
+      }
     }
 
     // Upsert collaborator (update role if already exists)

@@ -21,9 +21,12 @@ import archiver from 'archiver';
 const { mockPrisma } = vi.hoisted(() => {
   const mockPrisma = {
     codingCanvas: { findUnique: vi.fn() },
-    canvasQuestion: { create: vi.fn() },
-    canvasTranscript: { create: vi.fn() },
-    canvasTextCoding: { create: vi.fn() },
+    canvasCollaborator: { findMany: vi.fn() },
+    // findMany backs the re-import dedupe: the importer reads what the canvas
+    // already holds before it creates anything.
+    canvasQuestion: { create: vi.fn(), findMany: vi.fn() },
+    canvasTranscript: { create: vi.fn(), findMany: vi.fn() },
+    canvasTextCoding: { create: vi.fn(), findMany: vi.fn() },
     // importQdpx runs its writes inside a transaction so a failed import cannot
     // leave a half-populated canvas. Hand the callback the same mock client.
     $transaction: vi.fn(),
@@ -35,6 +38,7 @@ const { mockPrisma } = vi.hoisted(() => {
 vi.mock('../../lib/prisma.js', () => ({ prisma: mockPrisma }));
 
 import { importQdpx } from '../../utils/qdpxImport.js';
+import { toGuid } from '../../utils/qdpxParse.js';
 
 /** Build a .qdpx ZIP in memory from a map of entry name to contents. */
 function buildArchive(entries: Record<string, string | Buffer>): Promise<Buffer> {
@@ -84,7 +88,12 @@ describe('QDPX archive handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     created = [];
-    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ id: canvasId, name: 'C' });
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ id: canvasId, name: 'C', userId: 'owner-1' });
+    mockPrisma.canvasCollaborator.findMany.mockResolvedValue([]);
+    // An empty canvas: nothing to match against, so every record is created.
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([]);
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([]);
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([]);
 
     let n = 0;
     mockPrisma.canvasQuestion.create.mockImplementation(async ({ data }) => {
@@ -204,5 +213,281 @@ describe('QDPX archive handling', () => {
     const result = await importQdpx(canvasId, zip);
 
     expect(result.unsupported).toContain('1 case');
+  });
+});
+
+const SOURCE_GUID = '56a79789-d535-4fb8-bedd-a915504c54ba';
+
+/**
+ * Re-importing the same archive used to duplicate everything: a second import
+ * of an identical file took codes 2 -> 4, transcripts 1 -> 2 and codings
+ * 1 -> 2, and both runs reported the same clean "Imported 2 codes, 1 sources,
+ * 1 codings". A double-click on Import doubled the codebook.
+ */
+describe('QDPX re-import of an archive already on the canvas', () => {
+  const canvasId = 'canvas-arch-1';
+
+  async function nvivoZip() {
+    return buildArchive({
+      'project.qde': NVIVO_SHAPED_QDE,
+      ['sources/' + SOURCE_GUID + '.txt']: SOURCE_TEXT,
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ id: canvasId, name: 'C', userId: 'owner-1' });
+    mockPrisma.canvasCollaborator.findMany.mockResolvedValue([]);
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([]);
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([]);
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([]);
+    let n = 0;
+    mockPrisma.canvasQuestion.create.mockImplementation(async ({ data }) => ({ id: 'q' + ++n, ...data }));
+    mockPrisma.canvasTranscript.create.mockImplementation(async ({ data }) => ({ id: 't1', ...data }));
+    mockPrisma.canvasTextCoding.create.mockImplementation(async ({ data }) => ({ id: 'c1', ...data }));
+  });
+
+  it('records the source GUID on first import so the row can be recognised later', async () => {
+    await importQdpx(canvasId, await nvivoZip());
+    const transcript = mockPrisma.canvasTranscript.create.mock.calls[0][0].data;
+    expect(transcript.sourceId).toBe(SOURCE_GUID);
+    expect(transcript.sourceType).toBe('qdpx-import');
+  });
+
+  it('creates nothing the second time and says what it recognised', async () => {
+    // Exactly what the first import left behind.
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([
+      { id: 'q1', text: 'Perceived susceptibility', parentQuestionId: null },
+      { id: 'q2', text: 'Personal risk', parentQuestionId: 'q1' },
+    ]);
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([
+      {
+        id: 't1',
+        title: 'videos_selection',
+        content: SOURCE_TEXT,
+        sourceType: 'qdpx-import',
+        sourceId: SOURCE_GUID,
+      },
+    ]);
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
+      { transcriptId: 't1', questionId: 'q2', startOffset: 4, endOffset: 10 },
+    ]);
+
+    const result = await importQdpx(canvasId, await nvivoZip());
+
+    expect(mockPrisma.canvasQuestion.create).not.toHaveBeenCalled();
+    expect(mockPrisma.canvasTranscript.create).not.toHaveBeenCalled();
+    expect(mockPrisma.canvasTextCoding.create).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      codes: 0,
+      sources: 0,
+      codings: 0,
+      matchedCodes: 2,
+      matchedSources: 1,
+      duplicateCodings: 1,
+    });
+  });
+
+  it('matches a source imported before the GUID was recorded, by title and text', async () => {
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([
+      { id: 't1', title: 'videos_selection', content: SOURCE_TEXT, sourceType: null, sourceId: null },
+    ]);
+
+    const result = await importQdpx(canvasId, await nvivoZip());
+
+    expect(mockPrisma.canvasTranscript.create).not.toHaveBeenCalled();
+    expect(result.matchedSources).toBe(1);
+  });
+
+  it('still adds a genuinely new code to a canvas that already has the others', async () => {
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([
+      { id: 'q1', text: 'Perceived susceptibility', parentQuestionId: null },
+    ]);
+
+    const result = await importQdpx(canvasId, await nvivoZip());
+
+    expect(result.matchedCodes).toBe(1);
+    expect(result.codes).toBe(1);
+    const created = mockPrisma.canvasQuestion.create.mock.calls.map((c) => c[0].data.text);
+    expect(created).toEqual(['Personal risk']);
+  });
+});
+
+/**
+ * Coder attribution across a QualCanvas -> QDPX -> QualCanvas round-trip. The
+ * GUID is derived from the user id with toGuid, so it can be resolved back -
+ * but only against accounts that could legitimately have coded on this canvas,
+ * so an archive cannot be used to attach codings to an unrelated account.
+ */
+describe('QDPX import - coder attribution', () => {
+  const canvasId = 'canvas-arch-1';
+
+  const qdeWithCoder = (userGuid: string) =>
+    NVIVO_SHAPED_QDE.replace(
+      '<Coding guid="aa960901-8191-4db1-a3dd-a91626d56c4b">',
+      '<Coding guid="aa960901-8191-4db1-a3dd-a91626d56c4b" creatingUser="' + userGuid + '">',
+    );
+
+  async function zipFor(userGuid: string) {
+    return buildArchive({
+      'project.qde': qdeWithCoder(userGuid),
+      ['sources/' + SOURCE_GUID + '.txt']: SOURCE_TEXT,
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ id: canvasId, name: 'C', userId: 'owner-1' });
+    mockPrisma.canvasCollaborator.findMany.mockResolvedValue([{ userId: 'collab-2' }]);
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([]);
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([]);
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([]);
+    let n = 0;
+    mockPrisma.canvasQuestion.create.mockImplementation(async ({ data }) => ({ id: 'q' + ++n, ...data }));
+    mockPrisma.canvasTranscript.create.mockImplementation(async ({ data }) => ({ id: 't1', ...data }));
+    mockPrisma.canvasTextCoding.create.mockImplementation(async ({ data }) => ({ id: 'c1', ...data }));
+  });
+
+  it('restores the coder when the GUID names a collaborator on this canvas', async () => {
+    const result = await importQdpx(canvasId, await zipFor(toGuid('collab-2')));
+
+    const coding = mockPrisma.canvasTextCoding.create.mock.calls[0][0].data;
+    expect(coding.coderUserId).toBe('collab-2');
+    expect(result.unmatchedCoders).toBe(0);
+  });
+
+  it('does not attach a coding to an account unrelated to this canvas', async () => {
+    const result = await importQdpx(canvasId, await zipFor(toGuid('stranger-9')));
+
+    const coding = mockPrisma.canvasTextCoding.create.mock.calls[0][0].data;
+    expect(coding.coderUserId).toBeNull();
+    // ...and the researcher is told the attribution did not survive.
+    expect(result.unmatchedCoders).toBe(1);
+  });
+
+  it('leaves coderUserId null when the archive carries no attribution at all', async () => {
+    const zip = await buildArchive({
+      'project.qde': NVIVO_SHAPED_QDE,
+      ['sources/' + SOURCE_GUID + '.txt']: SOURCE_TEXT,
+    });
+
+    const result = await importQdpx(canvasId, zip);
+
+    expect(mockPrisma.canvasTextCoding.create.mock.calls[0][0].data.coderUserId).toBeNull();
+    expect(result.unmatchedCoders).toBe(0);
+  });
+});
+
+/**
+ * Two coders applying the SAME code to the SAME span is not a duplicate — it is
+ * an agreement, and it is the substrate the intercoder statistic is computed
+ * from (`utils/intercoder.ts` counts one observation per segment x code x
+ * coder). The re-import dedupe keyed on transcript+code+span only, so the
+ * second coder's row was silently discarded as a duplicate: an archive written
+ * by QualCanvas for a two-coder canvas imported back as a one-coder canvas, and
+ * Krippendorff's alpha over it is not the same number.
+ */
+describe('QDPX import - two coders on the same span', () => {
+  const canvasId = 'canvas-arch-1';
+
+  /** One selection, one code, two Coding children with different coders. */
+  const TWO_CODER_QDE = NVIVO_SHAPED_QDE.replace(
+    `        <Coding guid="aa960901-8191-4db1-a3dd-a91626d56c4b">
+          <CodeRef targetGUID="4d62f0cc-182f-44b8-a043-339c90779e9e" />
+        </Coding>`,
+    `        <Coding guid="aa960901-8191-4db1-a3dd-a91626d56c4b" creatingUser="${toGuid('owner-1')}">
+          <CodeRef targetGUID="4d62f0cc-182f-44b8-a043-339c90779e9e" />
+        </Coding>
+        <Coding guid="bb960901-8191-4db1-a3dd-a91626d56c4b" creatingUser="${toGuid('collab-2')}">
+          <CodeRef targetGUID="4d62f0cc-182f-44b8-a043-339c90779e9e" />
+        </Coding>`,
+  );
+
+  async function twoCoderZip() {
+    return buildArchive({
+      'project.qde': TWO_CODER_QDE,
+      ['sources/' + SOURCE_GUID + '.txt']: SOURCE_TEXT,
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ id: canvasId, name: 'C', userId: 'owner-1' });
+    mockPrisma.canvasCollaborator.findMany.mockResolvedValue([{ userId: 'collab-2' }]);
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([]);
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([]);
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([]);
+    let n = 0;
+    mockPrisma.canvasQuestion.create.mockImplementation(async ({ data }) => ({ id: 'q' + ++n, ...data }));
+    mockPrisma.canvasTranscript.create.mockImplementation(async ({ data }) => ({ id: 't1', ...data }));
+    mockPrisma.canvasTextCoding.create.mockImplementation(async ({ data }) => ({ id: 'c1', ...data }));
+  });
+
+  it('keeps both coders rather than collapsing the agreement into one row', async () => {
+    const result = await importQdpx(canvasId, await twoCoderZip());
+
+    expect(result.codings).toBe(2);
+    expect(result.duplicateCodings).toBe(0);
+    const coders = mockPrisma.canvasTextCoding.create.mock.calls.map((c) => c[0].data.coderUserId);
+    expect(coders.sort()).toEqual(['collab-2', 'owner-1']);
+  });
+
+  it('still refuses to re-create either row on a second import of the same archive', async () => {
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([
+      { id: 'q1', text: 'Perceived susceptibility', parentQuestionId: null },
+      { id: 'q2', text: 'Personal risk', parentQuestionId: 'q1' },
+    ]);
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([
+      { id: 't1', title: 'videos_selection', content: SOURCE_TEXT, sourceType: 'qdpx-import', sourceId: SOURCE_GUID },
+    ]);
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
+      { transcriptId: 't1', questionId: 'q2', startOffset: 4, endOffset: 10, coderUserId: 'owner-1' },
+      { transcriptId: 't1', questionId: 'q2', startOffset: 4, endOffset: 10, coderUserId: 'collab-2' },
+    ]);
+
+    const result = await importQdpx(canvasId, await twoCoderZip());
+
+    expect(mockPrisma.canvasTextCoding.create).not.toHaveBeenCalled();
+    expect(result.codings).toBe(0);
+    expect(result.duplicateCodings).toBe(2);
+  });
+
+  it('adds the second coder to a span the first coder had already coded', async () => {
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([
+      { id: 'q1', text: 'Perceived susceptibility', parentQuestionId: null },
+      { id: 'q2', text: 'Personal risk', parentQuestionId: 'q1' },
+    ]);
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([
+      { id: 't1', title: 'videos_selection', content: SOURCE_TEXT, sourceType: 'qdpx-import', sourceId: SOURCE_GUID },
+    ]);
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
+      { transcriptId: 't1', questionId: 'q2', startOffset: 4, endOffset: 10, coderUserId: 'owner-1' },
+    ]);
+
+    const result = await importQdpx(canvasId, await twoCoderZip());
+
+    expect(result.codings).toBe(1);
+    expect(result.duplicateCodings).toBe(1);
+    expect(mockPrisma.canvasTextCoding.create.mock.calls[0][0].data.coderUserId).toBe('collab-2');
+  });
+
+  it('treats an unattributed coding as distinct from an attributed one', async () => {
+    // A row with no coder is a different observation from one made by a named
+    // coder; folding them together loses the anonymous coding.
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
+      { transcriptId: 't1', questionId: 'q2', startOffset: 4, endOffset: 10, coderUserId: null },
+    ]);
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([
+      { id: 'q1', text: 'Perceived susceptibility', parentQuestionId: null },
+      { id: 'q2', text: 'Personal risk', parentQuestionId: 'q1' },
+    ]);
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([
+      { id: 't1', title: 'videos_selection', content: SOURCE_TEXT, sourceType: 'qdpx-import', sourceId: SOURCE_GUID },
+    ]);
+
+    const result = await importQdpx(canvasId, await twoCoderZip());
+
+    expect(result.codings).toBe(2);
+    expect(result.duplicateCodings).toBe(0);
   });
 });

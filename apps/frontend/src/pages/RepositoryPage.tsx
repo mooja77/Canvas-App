@@ -42,7 +42,7 @@ export default function RepositoryPage() {
     try {
       const res = await canvasApi.getRepositories();
       setRepositories(res.data.repositories);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       if (err.response?.status !== 403) {
         toast.error('Failed to load repositories');
@@ -80,7 +80,7 @@ export default function RepositoryPage() {
       setNewRepoDesc('');
       setShowNewRepo(false);
       loadRepositories();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to create repository');
     }
@@ -113,7 +113,7 @@ export default function RepositoryPage() {
       setNewInsightContent('');
       setShowNewInsight(false);
       loadInsights(selectedRepoId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to create insight');
     }
@@ -139,21 +139,16 @@ export default function RepositoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Research Repository</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Collect and organize insights across your research projects.
-            </p>
+            <p className="text-sm text-gray-500 mt-1">Collect and organize insights across your research projects.</p>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              to="/canvas"
-              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-            >
+            <Link to="/canvas" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
               Back to Canvas
             </Link>
             <button
@@ -171,9 +166,7 @@ export default function RepositoryPage() {
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
               Repositories
             </h2>
-            {repositories.length === 0 && (
-              <p className="text-sm text-gray-400 italic">No repositories yet.</p>
-            )}
+            {repositories.length === 0 && <p className="text-sm text-gray-400 italic">No repositories yet.</p>}
             {repositories.map((repo) => (
               <div
                 key={repo.id}
@@ -190,9 +183,7 @@ export default function RepositoryPage() {
                     {repo.description && (
                       <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{repo.description}</p>
                     )}
-                    <span className="text-xs text-gray-400 mt-1 block">
-                      {repo._count?.insights || 0} insights
-                    </span>
+                    <span className="text-xs text-gray-400 mt-1 block">{repo._count?.insights || 0} insights</span>
                   </div>
                   <button
                     onClick={(e) => {
@@ -203,7 +194,12 @@ export default function RepositoryPage() {
                     title="Delete repository"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -229,10 +225,16 @@ export default function RepositoryPage() {
                   className="w-full px-3 py-1.5 text-sm border rounded dark:bg-gray-800 dark:border-gray-600"
                 />
                 <div className="flex gap-2">
-                  <button onClick={handleCreateRepo} className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+                  <button
+                    onClick={handleCreateRepo}
+                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
                     Create
                   </button>
-                  <button onClick={() => setShowNewRepo(false)} className="px-3 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                  <button
+                    onClick={() => setShowNewRepo(false)}
+                    className="px-3 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  >
                     Cancel
                   </button>
                 </div>
@@ -273,10 +275,16 @@ export default function RepositoryPage() {
                       className="w-full px-3 py-1.5 text-sm border rounded dark:bg-gray-800 dark:border-gray-600 h-24 resize-none"
                     />
                     <div className="flex gap-2">
-                      <button onClick={handleCreateInsight} className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700">
+                      <button
+                        onClick={handleCreateInsight}
+                        className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                      >
                         Save
                       </button>
-                      <button onClick={() => setShowNewInsight(false)} className="px-3 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                      <button
+                        onClick={() => setShowNewInsight(false)}
+                        className="px-3 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                      >
                         Cancel
                       </button>
                     </div>
@@ -290,7 +298,11 @@ export default function RepositoryPage() {
                 <div className="space-y-3">
                   {insights.map((insight) => {
                     let tags: string[] = [];
-                    try { tags = JSON.parse(insight.tags); } catch { /* ignore */ }
+                    try {
+                      tags = JSON.parse(insight.tags);
+                    } catch {
+                      /* ignore */
+                    }
                     return (
                       <div
                         key={insight.id}
@@ -303,15 +315,25 @@ export default function RepositoryPage() {
                             className="text-gray-400 hover:text-red-500 p-1 -mt-1"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
                             </svg>
                           </button>
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap">{insight.content}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap">
+                          {insight.content}
+                        </p>
                         {tags.length > 0 && (
                           <div className="flex gap-1 mt-2 flex-wrap">
                             {tags.map((tag, i) => (
-                              <span key={i} className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded">
+                              <span
+                                key={i}
+                                className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded"
+                              >
                                 {tag}
                               </span>
                             ))}
@@ -333,6 +355,6 @@ export default function RepositoryPage() {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

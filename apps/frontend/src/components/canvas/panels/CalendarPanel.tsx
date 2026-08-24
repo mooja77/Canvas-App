@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { calendarApi } from '../../../services/api';
 import type { CalendarEventInput } from '../../../services/api';
@@ -6,6 +6,7 @@ import { useAuthStore } from '../../../stores/authStore';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import ConfirmDialog from '../ConfirmDialog';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface CalendarPanelProps {
   onClose: () => void;
@@ -87,6 +88,9 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function CalendarPanel({ onClose }: CalendarPanelProps) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const authType = useAuthStore((s) => s.authType);
   const emailAuthed = authType === 'email';
@@ -243,6 +247,7 @@ export default function CalendarPanel({ onClose }: CalendarPanelProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
       <div
+        ref={dialogRef}
         className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

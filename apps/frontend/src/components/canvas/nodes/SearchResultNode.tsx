@@ -49,6 +49,7 @@ function SearchResultNode({ data, id, selected }: NodeProps) {
       label={node.label}
       icon={icon}
       color="#059669"
+      runDisabledReason={(config?.pattern ?? '').trim() === '' ? 'Configure a search pattern before running' : null}
       onConfigure={() => {
         setPattern(config?.pattern || '');
         setMode(config?.mode || 'keyword');

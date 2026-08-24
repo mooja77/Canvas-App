@@ -448,7 +448,7 @@ test.describe('UX Phase 1 — Placement & Navigation', () => {
       .first()
       .click();
     // Click the keyboard shortcuts item in the overflow menu.
-    const shortcutsBtn = page.getByRole('menuitem', { name: /Keyboard shortcuts/i });
+    const shortcutsBtn = page.getByRole('button', { name: /Keyboard shortcuts/i });
     await expect(shortcutsBtn).toBeVisible({ timeout: 3000 });
     await shortcutsBtn.click();
 

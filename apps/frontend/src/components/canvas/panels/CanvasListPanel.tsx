@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { useCanvasStore, useCanvasLoading, useTrashedCanvases, useTrashLoading } from '../../../stores/canvasStore';
+import { useAuthStore } from '../../../stores/authStore';
+import { FRONTEND_PLAN_LIMITS, getFrontendPlanLimits, type PlanTier } from '../../../config/planLimits';
 import { useOpenCanvas } from '../../../hooks/useOpenCanvas';
 import { canvasApi } from '../../../services/api';
 import ConfirmDialog from '../ConfirmDialog';
@@ -8,6 +11,72 @@ import CanvasThumbnail from './CanvasThumbnail';
 import toast from 'react-hot-toast';
 
 type SortMode = 'newest' | 'az' | 'codings';
+
+// ─── Plan quota copy ──────────────────────────────────────────────────────
+//
+// The dashboard used to show no quota at all: a Free user at 2/2 saw an
+// enabled "New Canvas" button and learned about the cap only when the submit
+// failed. The numbers come from config/planLimits.ts (drift-tested against
+// apps/backend/src/config/plans.ts), and the upgrade phrase is generated the
+// same way the server generates its refusal — see `higherAllowancePhrase` in
+// backend config/plans.ts. CanvasListPanel.test.tsx asserts the two produce
+// byte-identical strings, so the dashboard warning and the 403 that follows it
+// can never say different things.
+
+const PLAN_LABELS: Record<PlanTier, string> = { free: 'Free', student: 'Student', pro: 'Pro', team: 'Team' };
+const TIER_ORDER: PlanTier[] = ['free', 'student', 'pro', 'team'];
+
+function planLabel(plan: string): string {
+  return PLAN_LABELS[plan as PlanTier] ?? plan;
+}
+
+function joinList(names: string[]): string {
+  if (names.length === 0) return '';
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+}
+
+/**
+ * "Student allows 5, Pro and Team allow unlimited" — the tiers that offer more
+ * canvases than `current`, grouped where their allowance matches. `null` in the
+ * frontend table means the same thing `Infinity` means in the backend one.
+ */
+export function canvasUpgradePhrase(current: number): string {
+  const groups: { value: number | null; tiers: PlanTier[] }[] = [];
+  for (const tier of TIER_ORDER) {
+    if (tier === 'free') continue;
+    const value = FRONTEND_PLAN_LIMITS[tier].maxCanvases;
+    if (value !== null && value <= current) continue;
+    const last = groups[groups.length - 1];
+    if (last && last.value === value) last.tiers.push(tier);
+    else groups.push({ value, tiers: [tier] });
+  }
+  return groups
+    .map(
+      (g) =>
+        `${joinList(g.tiers.map((t) => PLAN_LABELS[t]))} ${g.tiers.length > 1 ? 'allow' : 'allows'} ${
+          g.value === null ? 'unlimited' : g.value.toLocaleString()
+        }`,
+    )
+    .join(', ');
+}
+
+/** The at-cap sentence, matching backend `allowanceMessage(plan, 'Canvases', …)`. */
+export function canvasCapMessage(plan: string, max: number): string {
+  const upgrade = canvasUpgradePhrase(max);
+  const label = planLabel(plan);
+  if (max === 0) {
+    return upgrade
+      ? `Canvases are not included in the ${label} plan — ${upgrade}.`
+      : `Canvases are not included in the ${label} plan.`;
+  }
+  const remedies = ['delete a canvas you no longer need'];
+  if (upgrade) remedies.push(`upgrade (${upgrade})`);
+  return `You are using all ${max.toLocaleString()} canvases included in the ${label} plan. To add another, ${remedies.join(
+    ', or ',
+  )}.`;
+}
 
 // ─── Canvas Templates ───
 const CANVAS_TEMPLATES = [
@@ -189,6 +258,14 @@ export default function CanvasListPanel() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('blank');
   const [showTemplates, setShowTemplates] = useState(false);
 
+  // Plan quota. `canvases` holds LIVE canvases only (GET /canvas filters
+  // deletedAt), which is exactly what backend checkCanvasLimit counts, so the
+  // number shown here is the number the server will gate on.
+  const effectivePlan = useAuthStore((s) => s.effectivePlan ?? s.plan ?? 'free');
+  const maxCanvases = getFrontendPlanLimits(effectivePlan).maxCanvases;
+  const canvasCount = canvases.length;
+  const atCanvasCap = maxCanvases !== null && canvasCount >= maxCanvases;
+
   useEffect(() => {
     fetchCanvases();
   }, [fetchCanvases]);
@@ -266,8 +343,16 @@ export default function CanvasListPanel() {
     try {
       await restoreCanvas(id);
       toast.success('Canvas restored');
-    } catch {
-      toast.error('Failed to restore canvas');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      // Restore goes through the same checkCanvasLimit gate as create, so the
+      // server sends a real reason ("You are using all 2 canvases included in
+      // the Free plan. To add another, delete a canvas you no longer need, or
+      // upgrade …"). The old bare catch threw that away and showed a generic
+      // string, which is all the user saw whenever the global upgrade modal was
+      // inside its 5-minute suppression window. Surface it, like handleCreate
+      // and handleClone already do.
+      toast.error(err?.response?.data?.error || 'Failed to restore canvas');
     }
   };
 
@@ -312,9 +397,21 @@ export default function CanvasListPanel() {
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{t('canvas.codingCanvases')}</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('canvas.workspaceSubtitle')}</p>
+          {maxCanvases !== null && (
+            <p
+              id="canvas-quota"
+              data-testid="canvas-quota"
+              className={`mt-1 text-xs tabular-nums ${
+                atCanvasCap ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-gray-400 dark:text-gray-500'
+              }`}
+            >
+              {canvasCount} of {maxCanvases} canvases used on the {planLabel(effectivePlan)} plan
+            </p>
+          )}
         </div>
         <button
           data-tour="canvas-new-btn"
+          aria-describedby={maxCanvases !== null ? 'canvas-quota' : undefined}
           onClick={() => {
             setShowForm(!showForm);
             setShowTemplates(true);
@@ -333,6 +430,21 @@ export default function CanvasListPanel() {
           )}
         </button>
       </div>
+
+      {/* At-cap notice. Says the same thing the 403 will say, before the user
+          spends a name and a click discovering it. */}
+      {atCanvasCap && maxCanvases !== null && (
+        <div
+          role="status"
+          data-testid="canvas-cap-notice"
+          className="mb-6 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          <span>{canvasCapMessage(effectivePlan, maxCanvases)}</span>
+          <Link to="/pricing" className="font-medium underline underline-offset-2 hover:no-underline">
+            View plans
+          </Link>
+        </div>
+      )}
 
       {showForm && (
         <div className="card mb-6 overflow-hidden animate-slide-up">
@@ -361,7 +473,7 @@ export default function CanvasListPanel() {
                     <TemplateIcon template={template} />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{template.name}</p>
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
                         {template.description}
                       </p>
                       {template.questions.length > 0 && (
@@ -423,7 +535,7 @@ export default function CanvasListPanel() {
                   <button
                     type="button"
                     onClick={() => setShowTemplates(false)}
-                    className="text-xs text-gray-400 hover:text-gray-600"
+                    className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   >
                     Hide templates
                   </button>
@@ -436,7 +548,7 @@ export default function CanvasListPanel() {
 
       {/* Clone from share code - subtle/collapsible */}
       <details className="mb-4 group">
-        <summary className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors select-none">
+        <summary className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors select-none">
           <svg
             className="h-3.5 w-3.5 transition-transform group-open:rotate-90"
             fill="none"
@@ -452,6 +564,8 @@ export default function CanvasListPanel() {
           <input
             type="text"
             className="input flex-1 text-sm"
+            // See the search input above: a placeholder is a hint, not a name.
+            aria-label="Share code"
             placeholder="Paste share code here..."
             value={shareCode}
             onChange={(e) => setShareCode(e.target.value)}
@@ -488,6 +602,11 @@ export default function CanvasListPanel() {
             </svg>
             <input
               type="text"
+              // A placeholder is not an accessible name: it disappears the
+              // moment the user types, and some screen readers ignore it
+              // entirely. Name the control properly and keep the placeholder
+              // as the hint it actually is.
+              aria-label="Search canvases"
               className="input w-full pl-8 text-sm"
               placeholder="Search canvases..."
               value={search}
@@ -579,7 +698,7 @@ export default function CanvasListPanel() {
             >
               Get Started
             </button>
-            <div className="flex items-center gap-6 mt-4 text-xs text-gray-400 dark:text-gray-500">
+            <div className="flex items-center gap-6 mt-4 text-xs text-gray-500 dark:text-gray-400">
               <div className="flex items-center gap-1.5">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold">
                   1
@@ -806,7 +925,7 @@ export default function CanvasListPanel() {
           onClick={handleToggleTrash}
           aria-expanded={showTrash}
           aria-controls="canvas-trash-section"
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           <svg
             className={`h-4 w-4 transition-transform ${showTrash ? 'rotate-90' : ''}`}

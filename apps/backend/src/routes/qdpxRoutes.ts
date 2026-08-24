@@ -1,5 +1,6 @@
-import { Router } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import multer from 'multer';
+import { AppError } from '../middleware/errorHandler.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
 import { exportQdpx } from '../utils/qdpxExport.js';
 import { importQdpx } from '../utils/qdpxImport.js';
@@ -10,20 +11,48 @@ import { prisma } from '../lib/prisma.js';
 
 export const qdpxRoutes = Router();
 
+const MAX_QDPX_BYTES = 20 * 1024 * 1024;
+
 // Multer for QDPX file upload (in memory, max 20MB)
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: MAX_QDPX_BYTES },
   fileFilter: (_req, file, cb) => {
     const allowed = ['.qdpx', '.zip'];
-    const ext = file.originalname.toLowerCase().slice(file.originalname.lastIndexOf('.'));
+    const dot = file.originalname.lastIndexOf('.');
+    // slice(-1) on a name with no dot returned the last character, so an
+    // extension-less upload was compared as e.g. "t" — still rejected, but
+    // for the wrong reason. Treat "no dot" as "no extension" explicitly.
+    const ext = dot === -1 ? '' : file.originalname.toLowerCase().slice(dot);
     if (allowed.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Only .qdpx or .zip files are accepted'));
+      // A plain Error has no status, so errorHandler logged it and answered
+      // 500 "Internal server error" — the researcher saw a server fault for
+      // their own mis-named file. This is a 400.
+      cb(new AppError('Only .qdpx or .zip files are accepted', 400));
     }
   },
 });
+
+/**
+ * Multer reports its own limits (file too large, unexpected field) as a
+ * MulterError, which likewise carries no HTTP status and therefore became a
+ * 500. Translate to the 4xx each one actually is.
+ */
+function uploadQdpxFile(req: Request, res: Response, next: NextFunction): void {
+  upload.single('file')(req, res, (err: unknown) => {
+    if (err instanceof multer.MulterError) {
+      const status = err.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+      const message =
+        err.code === 'LIMIT_FILE_SIZE'
+          ? `QDPX file exceeds the ${Math.round(MAX_QDPX_BYTES / (1024 * 1024))}MB upload limit`
+          : `Invalid file upload: ${err.message}`;
+      return next(new AppError(message, status));
+    }
+    next(err);
+  });
+}
 
 // GET /api/canvas/:id/export/qdpx — Export canvas as QDPX
 qdpxRoutes.get(
@@ -51,10 +80,18 @@ qdpxRoutes.get(
         });
       }
 
-      const buffer = await exportQdpx(req.params.id);
+      const { buffer, notes } = await exportQdpx(req.params.id);
 
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Disposition', 'attachment; filename="canvas-export.qdpx"');
+      // Tell the caller what the archive does not contain. The import path
+      // already discloses its losses; an export that only ever reports success
+      // reads as lossless. The same text is written into project.qde, so the
+      // disclosure survives even when nobody reads the header.
+      if (notes.length > 0) {
+        res.setHeader('X-Export-Notes', notes.join('; ').replace(/[^\x20-\x7E]/g, ' '));
+        res.setHeader('Access-Control-Expose-Headers', 'X-Export-Notes');
+      }
       res.send(buffer);
     } catch (err) {
       next(err);
@@ -67,7 +104,7 @@ qdpxRoutes.post(
   '/canvas/:id/import/qdpx',
   validateParams(canvasIdParam),
   checkExportFormat('qdpx'),
-  upload.single('file'),
+  uploadQdpxFile,
   async (req, res, next) => {
     try {
       const dashboardAccessId = getAuthId(req);
@@ -94,6 +131,22 @@ qdpxRoutes.post(
       }
       if (result.skippedCodings > 0) {
         notes.push(`${result.skippedCodings} coding(s) skipped — unresolved code or source`);
+      }
+      // Re-importing the same archive is a common accident (a double-click on
+      // Import used to double the codebook). Say plainly what was recognised
+      // as already present rather than reporting it as freshly imported.
+      const matched = [
+        result.matchedCodes > 0 ? `${result.matchedCodes} code(s)` : null,
+        result.matchedSources > 0 ? `${result.matchedSources} source(s)` : null,
+        result.duplicateCodings > 0 ? `${result.duplicateCodings} coding(s)` : null,
+      ].filter((s): s is string => s !== null);
+      if (matched.length > 0) {
+        notes.push(`already on this canvas and reused: ${matched.join(', ')}`);
+      }
+      if (result.unmatchedCoders > 0) {
+        notes.push(
+          `${result.unmatchedCoders} coding(s) name a coder with no QualCanvas account — attribution not restored`,
+        );
       }
 
       const summary = `Imported ${result.codes} codes, ${result.sources} sources, ${result.codings} codings`;

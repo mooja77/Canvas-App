@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
@@ -13,6 +13,7 @@ import {
 } from './codebookExportFormat';
 import { useUIStore } from '../../../stores/uiStore';
 import { patchOnboardingState } from '../../onboarding/utils/onboardingState';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface CodebookExportModalProps {
   onClose: () => void;
@@ -21,6 +22,9 @@ interface CodebookExportModalProps {
 type Tab = 'codebook' | 'data';
 
 export default function CodebookExportModal({ onClose }: CodebookExportModalProps) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const markChecklistItemComplete = useUIStore((s) => s.markChecklistItemComplete);
@@ -131,6 +135,7 @@ export default function CodebookExportModal({ onClose }: CodebookExportModalProp
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         className="modal-content w-[800px] max-h-[80vh] flex flex-col rounded-2xl bg-white shadow-xl backdrop-blur-xl ring-1 ring-black/5 dark:bg-gray-800"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

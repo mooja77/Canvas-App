@@ -23,11 +23,25 @@ export interface ParsedCode {
   children: ParsedCode[];
 }
 
+export interface ParsedCoding {
+  codeGuid: string;
+  /** GUID of the <User> that made this coding, per CodingType@creatingUser. */
+  creatingUser?: string;
+}
+
 export interface ParsedSelection {
   guid: string;
   startPosition: number;
   endPosition: number;
+  /** Code GUIDs only, in the same order as `codings`. */
   codeGuids: string[];
+  /** Same references as `codeGuids`, carrying the coder attribution as well. */
+  codings: ParsedCoding[];
+}
+
+export interface ParsedUser {
+  guid: string;
+  name: string;
 }
 
 export interface ParsedSource {
@@ -68,6 +82,8 @@ export interface ParsedProject {
   codes: ParsedCode[];
   totalCodes: number;
   sources: ParsedSource[];
+  /** <Users> declared by the exporting tool, keyed by GUID. */
+  users: ParsedUser[];
   unsupported: UnsupportedCounts;
 }
 
@@ -126,7 +142,7 @@ export function flattenCodesForInsert(codes: ParsedCode[], parentGuid: string | 
 }
 
 /** Elements that may legitimately appear once or many times. */
-const REPEATABLE = ['Code', 'TextSource', 'PlainTextSelection', 'Coding', 'CodeRef'];
+const REPEATABLE = ['Code', 'TextSource', 'PlainTextSelection', 'Coding', 'CodeRef', 'User'];
 
 function toArray<T>(val: T | T[] | undefined | null): T[] {
   if (val === undefined || val === null) return [];
@@ -197,11 +213,15 @@ function countCodes(codes: ParsedCode[]): number {
 }
 
 function parseSelection(node: Record<string, unknown>): ParsedSelection {
-  const codeGuids: string[] = [];
+  const codings: ParsedCoding[] = [];
   for (const coding of toArray(node.Coding as Record<string, unknown>[])) {
+    // CodingType@creatingUser names the researcher who applied the code. It is
+    // the only attribution the standard carries, and discarding it is what made
+    // a multi-coder project unarchivable.
+    const creatingUser = attr(coding, 'creatingUser');
     for (const ref of toArray(coding.CodeRef as Record<string, unknown>[])) {
       const target = attr(ref, 'targetGUID');
-      if (target) codeGuids.push(target);
+      if (target) codings.push({ codeGuid: target, creatingUser });
     }
   }
 
@@ -209,7 +229,8 @@ function parseSelection(node: Record<string, unknown>): ParsedSelection {
     guid: attr(node, 'guid') ?? '',
     startPosition: parseInt(attr(node, 'startPosition') ?? '0', 10) || 0,
     endPosition: parseInt(attr(node, 'endPosition') ?? '0', 10) || 0,
-    codeGuids,
+    codeGuids: codings.map((c) => c.codeGuid),
+    codings,
   };
 }
 
@@ -244,11 +265,13 @@ function applyLegacyCodings(project: Record<string, unknown>, sources: ParsedSou
       const source = byGuid.get(attr(sel, 'sourceGUID') ?? '');
       if (!source) continue;
 
+      const creatingUser = attr(coding, 'creatingUser');
       source.selections.push({
         guid: attr(sel, 'guid') ?? '',
         startPosition: parseInt(attr(sel, 'startPosition') ?? '0', 10) || 0,
         endPosition: parseInt(attr(sel, 'endPosition') ?? '0', 10) || 0,
         codeGuids: [codeGuid],
+        codings: [{ codeGuid, creatingUser }],
       });
     }
   }
@@ -265,6 +288,14 @@ export function parseQdpxProject(xml: string): ParsedProject {
     parseAttributeValue: false,
     processEntities: false, // no external entity expansion (XXE)
     htmlEntities: false,
+    // fast-xml-parser trims text nodes by default, which silently shortened
+    // every source: a transcript stored with leading/trailing whitespace came
+    // back shorter while its codings kept their original offsets, so every
+    // coding in that source slid onto different words. Nothing detected it,
+    // because the importer recomputes codedText from the shifted text and the
+    // content.slice(start,end) === codedText invariant still held on the
+    // corrupted row. QualCanvas could not read back its own valid export.
+    trimValues: false,
   });
 
   const parsed = parser.parse(xml) as Record<string, Record<string, unknown>>;
@@ -286,11 +317,17 @@ export function parseQdpxProject(xml: string): ParsedProject {
   const sources = toArray(sourcesNode?.TextSource as Record<string, unknown>[]).map(parseTextSource);
   applyLegacyCodings(project, sources);
 
+  const usersNode = project.Users as Record<string, unknown> | undefined;
+  const users = toArray(usersNode?.User as Record<string, unknown>[])
+    .map((u) => ({ guid: attr(u, 'guid') ?? '', name: attr(u, 'name') ?? '' }))
+    .filter((u) => u.guid !== '');
+
   return {
     name: attr(project, 'name') ?? 'Imported project',
     codes,
     totalCodes: countCodes(codes),
     sources,
+    users,
     unsupported: {
       ...countUnsupported(project, sourcesNode),
       uncodedSelections: sources.reduce(
@@ -343,13 +380,66 @@ export function toGuid(id: string): string {
   );
 }
 
+/**
+ * Characters XML 1.0 forbids outright. Char ::= #x9 | #xA | #xD |
+ * [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF] (XML 1.0 §2.2), and a
+ * character reference must itself match Char (§4.1), so `&#11;` is illegal too
+ * — there is no way to represent these in a conformant XML 1.0 document.
+ *
+ * Matches: C0 controls other than tab/LF/CR, the two non-characters U+FFFE and
+ * U+FFFF, and unpaired surrogates (a lone half is not a character at all).
+ */
+const XML_ILLEGAL =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+
+/** How many XML-illegal code units a string contains. */
+export function countXmlIllegalChars(str: string): number {
+  return str.match(XML_ILLEGAL)?.length ?? 0;
+}
+
+/**
+ * Replace characters XML 1.0 cannot carry with U+FFFD.
+ *
+ * Text pasted out of Word or a PDF really does contain U+000B, U+000C and
+ * U+0001, and writing them raw produced a project.qde that no other QDA tool
+ * could open — `xml.etree.ElementTree.parse` fails with "not well-formed
+ * (invalid token)" while QualCanvas's own lenient parser read it back happily,
+ * so the breakage was invisible from inside the product.
+ *
+ * U+FFFD is one UTF-16 code unit, exactly like every character it replaces, so
+ * every startPosition/endPosition in the export still addresses the same span.
+ * Silently deleting the characters would have slid every later coding.
+ */
+function sanitizeXmlText(str: string): string {
+  return str.replace(XML_ILLEGAL, '\uFFFD');
+}
+
 function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+  return (
+    sanitizeXmlText(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;')
+      // XML 1.0 §2.11 REQUIRES a parser to normalise a literal CR (and CRLF) to a
+      // single LF. A transcript authored in Word or on Windows therefore came
+      // back two bytes shorter per line than it went in, sliding every coding
+      // after the first newline. A numeric character reference is the only way
+      // to round-trip a carriage return, because normalisation happens before
+      // entity expansion.
+      .replace(/\r/g, '&#13;')
+  );
+}
+
+/**
+ * Escape for an attribute value. XML 1.0 §3.3.3 makes a parser replace every
+ * literal tab, LF and CR inside an attribute value with a space before the
+ * application ever sees it, so a source title or code name containing one
+ * comes back altered. Numeric character references survive that step.
+ */
+function escapeXmlAttr(str: string): string {
+  return escapeXml(str).replace(/\t/g, '&#9;').replace(/\n/g, '&#10;');
 }
 
 export interface ExportCode {
@@ -371,6 +461,13 @@ export interface ExportCoding {
   questionId: string;
   startOffset: number;
   endOffset: number;
+  /** Researcher who applied the code, written out as CodingType@creatingUser. */
+  coderUserId?: string | null;
+}
+
+export interface ExportUser {
+  id: string;
+  name: string;
 }
 
 export interface ExportProject {
@@ -379,6 +476,14 @@ export interface ExportProject {
   codes: ExportCode[];
   sources: ExportSource[];
   codings: ExportCoding[];
+  /** Researchers referenced by the codings, written out as <Users>. */
+  users?: ExportUser[];
+  /**
+   * Content the caller knows is NOT in this archive, already phrased for a
+   * human ("2 memos", "1 case"). Written into the file so the researcher who
+   * opens it later can see what the format could not carry.
+   */
+  omitted?: string[];
 }
 
 /** Colour must match RGBType (#rgb or #rrggbb) or be omitted. */
@@ -387,7 +492,7 @@ function colorAttr(color?: string | null): string {
 }
 
 function codeXml(code: ExportCode, indent: string): string {
-  const open = `${indent}<Code guid="${toGuid(code.id)}" name="${escapeXml(code.text)}" isCodable="true"${colorAttr(code.color)}`;
+  const open = `${indent}<Code guid="${toGuid(code.id)}" name="${escapeXmlAttr(code.text)}" isCodable="true"${colorAttr(code.color)}`;
   if (code.children.length === 0) return `${open} />`;
 
   const children = code.children.map((c) => codeXml(c, `${indent}  `)).join('\n');
@@ -411,7 +516,12 @@ function sourceXml(source: ExportSource, codings: ExportCoding[], indent: string
       const first = group[0];
       const codingXml = group
         .map(
-          (c) => `${indent}    <Coding guid="${toGuid(`${c.id}:coding`)}">
+          // creatingUser is the one place the standard records WHO coded a
+          // passage. Without it a multi-coder project exports as anonymous and
+          // the intercoder work cannot be archived or handed on.
+          (c) => `${indent}    <Coding guid="${toGuid(`${c.id}:coding`)}"${
+            c.coderUserId ? ` creatingUser="${toGuid(c.coderUserId)}"` : ''
+          }>
 ${indent}      <CodeRef targetGUID="${toGuid(c.questionId)}" />
 ${indent}    </Coding>`,
         )
@@ -424,7 +534,7 @@ ${indent}  </PlainTextSelection>`;
     .join('\n');
 
   return [
-    `${indent}<TextSource guid="${toGuid(source.id)}" name="${escapeXml(source.title)}">`,
+    `${indent}<TextSource guid="${toGuid(source.id)}" name="${escapeXmlAttr(source.title)}">`,
     `${indent}  <PlainTextContent>${escapeXml(source.content)}</PlainTextContent>`,
     selections,
     `${indent}</TextSource>`,
@@ -434,11 +544,39 @@ ${indent}  </PlainTextSelection>`;
 }
 
 /**
+ * The offset convention. Nothing in REFI-QDA says whether startPosition counts
+ * characters, bytes or UTF-16 code units, and the exported numbers are UTF-16
+ * code-unit indices (JavaScript string indices). A reader that slices by code
+ * point instead bleeds past the excerpt once the text contains an emoji or any
+ * other astral character. Say so in the file rather than leaving it to be
+ * discovered.
+ */
+const OFFSET_CONVENTION =
+  'PlainTextSelection startPosition/endPosition are UTF-16 code-unit indices into ' +
+  'PlainTextContent, zero-based, end-exclusive (endPosition is the first unit AFTER ' +
+  'the excerpt). Astral characters such as emoji count as two units.';
+
+/** XML comments may not contain "--" or end with "-". */
+function commentSafe(text: string): string {
+  return text.replace(/-{2,}/g, '-').replace(/-$/, '');
+}
+
+export interface BuiltQdpxProject {
+  xml: string;
+  /** Everything this archive does not carry, phrased for a human. */
+  notes: string[];
+}
+
+/**
  * Serialize a project to QDA-XML v1.0. Element order follows ProjectType's
  * xsd:sequence (Users, CodeBook, ..., Sources), which is significant: a
  * validating importer rejects out-of-order children.
+ *
+ * Returns the losses alongside the XML. The import path already goes to
+ * trouble to disclose what it dropped; an export that only ever says
+ * "exported successfully" reads as lossless and is not.
  */
-export function buildQdpxXml(project: ExportProject): string {
+export function buildQdpxProject(project: ExportProject): BuiltQdpxProject {
   const codingsBySource = new Map<string, ExportCoding[]>();
   for (const coding of project.codings) {
     const list = codingsBySource.get(coding.transcriptId);
@@ -449,9 +587,42 @@ export function buildQdpxXml(project: ExportProject): string {
   const codes = project.codes.map((c) => codeXml(c, '      ')).join('\n');
   const sources = project.sources.map((s) => sourceXml(s, codingsBySource.get(s.id) ?? [], '    ')).join('\n');
 
-  return `<?xml version="1.0" encoding="utf-8"?>
-<Project name="${escapeXml(project.name)}" origin="QualCanvas" creationDateTime="${project.createdAt.toISOString()}" xmlns="urn:QDA-XML:project:1.0">
-  <CodeBook>
+  const users = project.users ?? [];
+  const usersXml =
+    users.length === 0
+      ? ''
+      : `  <Users>
+${users.map((u) => `    <User guid="${toGuid(u.id)}" name="${escapeXmlAttr(u.name)}" />`).join('\n')}
+  </Users>
+`;
+
+  const omitted = project.omitted ?? [];
+  const illegal =
+    project.sources.reduce((n, s) => n + countXmlIllegalChars(s.content) + countXmlIllegalChars(s.title), 0) +
+    countXmlIllegalChars(project.name);
+  const substitution =
+    illegal > 0
+      ? `${illegal} character(s) that XML 1.0 cannot represent (control codes) replaced with U+FFFD; ` +
+        'text offsets are unaffected'
+      : null;
+
+  const notes = [...omitted, ...(substitution ? [substitution] : [])];
+
+  const disclosure = [
+    'Exported by QualCanvas.',
+    OFFSET_CONVENTION,
+    omitted.length > 0 ? `NOT included in this archive: ${omitted.join('; ')}.` : 'No content was dropped on export.',
+    ...(substitution ? [`Substitution: ${substitution}.`] : []),
+  ]
+    .map(commentSafe)
+    .join('\n  ');
+
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ${disclosure}
+-->
+<Project name="${escapeXmlAttr(project.name)}" origin="QualCanvas" creationDateTime="${project.createdAt.toISOString()}" xmlns="urn:QDA-XML:project:1.0">
+${usersXml}  <CodeBook>
     <Codes>
 ${codes}
     </Codes>
@@ -461,4 +632,11 @@ ${sources}
   </Sources>
 </Project>
 `;
+
+  return { xml, notes };
+}
+
+/** Convenience wrapper for callers that only want the document. */
+export function buildQdpxXml(project: ExportProject): string {
+  return buildQdpxProject(project).xml;
 }

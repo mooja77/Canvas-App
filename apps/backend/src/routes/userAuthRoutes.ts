@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Response } from 'express';
 import type { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -29,6 +30,76 @@ function trialEndDate(): Date {
   return new Date(Date.now() + TRIAL_LENGTH_DAYS * 24 * 60 * 60 * 1000);
 }
 
+// Mint the backwards-compatibility access code for a new account.
+//
+// MUST be called BEFORE opening the signup transaction, never inside it.
+// bcrypt at 12 rounds is ~250ms of CPU on a libuv worker thread, and the pool
+// has 4 threads by default. Twenty concurrent signups therefore queue this hash
+// for many seconds each — and when the call sat between `tx.user.create` and
+// `tx.dashboardAccess.create` it burned that wait with the interactive
+// transaction already open. Measured against the local Postgres: 20 parallel
+// signups with the hash inside the transaction gave 20/20
+// `P2028 Transaction already closed ... timeout for this transaction was
+// 5000 ms, however 5093 ms passed`, which errorHandler renders as HTTP 500.
+// With the identical workload hashed first and the transaction reduced to two
+// inserts: 20/20 succeeded, and 50/50 succeeded.
+async function mintAccessCodeCredential(): Promise<{ sha256Index: string; bcryptHash: string }> {
+  const accessCode = `USR-${nanoid(12)}`;
+  return {
+    sha256Index: sha256(accessCode),
+    bcryptHash: await bcrypt.hash(accessCode, BCRYPT_ROUNDS),
+  };
+}
+
+// Decide the plan to hold a user on at sign-in.
+//
+// Downgrade only on POSITIVE evidence that a subscription has lapsed — a
+// Subscription row that exists and is not active/trialing. The previous rule
+// ("no active subscription => free") also downgraded accounts that have NO
+// Subscription row at all, which is every plan granted out of band: comped
+// accounts, institutional licences, anything set by hand. Those were silently
+// rewritten to free on the owner's next sign-in with nothing recorded.
+// Genuine lapses are already handled where the evidence lives — the Stripe
+// webhooks in billingRoutes.ts and the stripeReconciliation job both write the
+// downgrade — so this path only ever needs to catch a webhook that was missed,
+// and for that the row is present with a terminal status.
+function planAfterSubscriptionCheck(
+  user: { plan: string; legacyPricing: boolean },
+  subscription: { status: string } | null,
+): string {
+  if (user.legacyPricing) return user.plan;
+  const lapsed = subscription !== null && !['active', 'trialing'].includes(subscription.status);
+  return lapsed ? 'free' : user.plan;
+}
+
+// Persist a sign-in plan change, and record WHY. A plan change the user did not
+// ask for and cannot see is the thing that made this hard to diagnose in
+// production, so it leaves an audit row like every other account-level event.
+async function persistPlanChange(
+  user: { id: string; plan: string },
+  nextPlan: string,
+  subscription: { status: string } | null,
+  ctx: { ip: string; path: string; method?: string },
+): Promise<void> {
+  if (nextPlan === user.plan) return;
+  await prisma.user.update({ where: { id: user.id }, data: { plan: nextPlan } });
+  logAudit({
+    action: 'auth.plan_downgraded',
+    resource: 'user',
+    actorType: 'system',
+    actorId: user.id,
+    ip: ctx.ip,
+    method: ctx.method ?? 'POST',
+    path: ctx.path,
+    meta: JSON.stringify({
+      from: user.plan,
+      to: nextPlan,
+      subscriptionStatus: subscription?.status ?? null,
+      reason: 'subscription_not_active_at_login',
+    }),
+  });
+}
+
 export const userAuthRoutes = Router();
 
 // POST /api/auth/signup — email/password registration
@@ -54,7 +125,13 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
       return res.status(409).json({ success: false, error: 'An account with this email already exists' });
     }
 
-    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    // Both bcrypt hashes are computed here, before the transaction opens, and
+    // concurrently with each other — see mintAccessCodeCredential for the
+    // measurement behind that.
+    const [passwordHash, accessCredential] = await Promise.all([
+      bcrypt.hash(password, BCRYPT_ROUNDS),
+      mintAccessCodeCredential(),
+    ]);
     const initialEmailOptIn = marketingConsent === true;
     const verifyToken = crypto.randomBytes(32).toString('hex');
     const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
@@ -85,14 +162,10 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
       });
 
       // Create a DashboardAccess for backward compat with existing canvas routes
-      const accessCode = `USR-${nanoid(12)}`;
-      const sha256Index = sha256(accessCode);
-      const bcryptHash = await bcrypt.hash(accessCode, BCRYPT_ROUNDS);
-
       await tx.dashboardAccess.create({
         data: {
-          accessCode: sha256Index,
-          accessCodeHash: bcryptHash,
+          accessCode: accessCredential.sha256Index,
+          accessCodeHash: accessCredential.bcryptHash,
           name: name.trim(),
           role: 'researcher',
           expiresAt: new Date('2099-12-31'),
@@ -189,13 +262,11 @@ userAuthRoutes.post('/auth/email-login', authLimiter, async (req, res, next) => 
 
     // Refresh plan from subscription status
     const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
-    const currentPlan =
-      (subscription && ['active', 'trialing'].includes(subscription.status)) || user.legacyPricing ? user.plan : 'free';
-
-    // Sync plan in DB if it differs
-    if (currentPlan !== user.plan) {
-      await prisma.user.update({ where: { id: user.id }, data: { plan: currentPlan } });
-    }
+    const currentPlan = planAfterSubscriptionCheck(user, subscription);
+    await persistPlanChange(user, currentPlan, subscription, {
+      ip: hashedIp,
+      path: '/api/auth/email-login',
+    });
 
     const jwt = signUserToken(user.id, user.role, currentPlan);
 
@@ -267,6 +338,8 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
     let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
     if (!user) {
+      // Hashed before the transaction opens for the same reason as /auth/signup.
+      const accessCredential = await mintAccessCodeCredential();
       // Create new user via Google OAuth
       user = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const newUser = await tx.user.create({
@@ -287,14 +360,10 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
         });
 
         // Create a DashboardAccess for backward compat with existing canvas routes
-        const accessCode = `USR-${nanoid(12)}`;
-        const sha256Index = sha256(accessCode);
-        const bcryptHash = await bcrypt.hash(accessCode, BCRYPT_ROUNDS);
-
         await tx.dashboardAccess.create({
           data: {
-            accessCode: sha256Index,
-            accessCodeHash: bcryptHash,
+            accessCode: accessCredential.sha256Index,
+            accessCodeHash: accessCredential.bcryptHash,
             name: googleName || normalizedEmail.split('@')[0],
             role: 'researcher',
             expiresAt: new Date('2099-12-31'),
@@ -337,12 +406,8 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
     user = user!;
     // Refresh plan from subscription status
     const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
-    const currentPlan =
-      (subscription && ['active', 'trialing'].includes(subscription.status)) || user.legacyPricing ? user.plan : 'free';
-
-    if (currentPlan !== user.plan) {
-      await prisma.user.update({ where: { id: user.id }, data: { plan: currentPlan } });
-    }
+    const currentPlan = planAfterSubscriptionCheck(user, subscription);
+    await persistPlanChange(user, currentPlan, subscription, { ip: hashedIp, path: '/api/auth/google' });
 
     const jwt = signUserToken(user.id, user.role, currentPlan);
 
@@ -588,13 +653,17 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
       });
       if (!user) throw new AppError('User not found', 404);
 
-      // Validate plan matches subscription status (auto-downgrade if expired/canceled)
-      const activeSub = user.subscription && ['active', 'trialing'].includes(user.subscription.status);
-      const validPlan = activeSub || user.legacyPricing ? user.plan : 'free';
-      if (validPlan !== user.plan) {
-        await prisma.user.update({ where: { id: userId }, data: { plan: validPlan } });
-        user.plan = validPlan;
-      }
+      // Validate plan matches subscription status (auto-downgrade if expired/canceled).
+      // Same positive-evidence rule as sign-in: an account with no Subscription
+      // row at all keeps its plan. Reading /account must never be what silently
+      // strips a comped or institutionally licensed user of their tier.
+      const validPlan = planAfterSubscriptionCheck(user, user.subscription);
+      await persistPlanChange(user, validPlan, user.subscription, {
+        ip: sha256(req.ip || req.socket.remoteAddress || 'unknown'),
+        path: '/api/auth/me',
+        method: 'GET',
+      });
+      user.plan = validPlan;
 
       // Count resources for usage.
       //
@@ -612,7 +681,13 @@ userAuthRoutes.get('/auth/me', auth, async (req, res, next) => {
         // Canvases owned only through the legacy access code. Deleting the
         // account does not cascade these, so the delete dialog must say so and
         // let the user choose.
-        prisma.codingCanvas.count({ where: { userId: null, dashboardAccess: { userId }, deletedAt: null } }),
+        // NO `deletedAt` filter. Deletion acts on every legacy canvas including
+        // trashed ones, so this count - which is the number the delete dialog
+        // shows the user - has to describe the same set. When it filtered to
+        // live canvases only, the dialog said "1 canvas" and three were
+        // destroyed; and a lone trashed canvas made the count 0, so the choice
+        // was never offered and participant data quietly survived deletion.
+        prisma.codingCanvas.count({ where: { userId: null, dashboardAccess: { userId } } }),
       ]);
 
       // Trial overlay: same logic as auth middleware — free users with an
@@ -876,78 +951,95 @@ userAuthRoutes.put('/auth/change-password', auth, async (req, res, next) => {
   }
 });
 
+// Every relation that hangs off CodingCanvas. Keep this exhaustive: the page
+// promises "a portable JSON archive of your account, canvases, research
+// content, and audit history", and a relation missing here is research the
+// user cannot get back out.
+//
+// `journalEntries` was absent, so the reflexivity journal - which the panel
+// itself calls "an audit trail for your analytical choices", and which exists
+// nowhere else in any export - was silently excluded. It was easy to miss
+// because schema.prisma declares it after CodingCanvas's `@@index` block
+// rather than with the other relations.
+const CANVAS_EXPORT_INCLUDE = {
+  transcripts: true,
+  questions: true,
+  memos: true,
+  codings: true,
+  nodePositions: true,
+  cases: true,
+  relations: true,
+  computedNodes: true,
+  shares: true,
+  consentRecords: true,
+  aiSuggestions: true,
+  fileUploads: true,
+  textEmbeddings: true,
+  chatMessages: true,
+  summaries: true,
+  collaborators: true,
+  documents: true,
+  trainingDocuments: true,
+  journalEntries: true,
+} as const;
+
+function sendArchive(res: Response, archive: Record<string, unknown>): void {
+  const stamp = new Date().toISOString().slice(0, 10);
+  res.setHeader('Content-Disposition', `attachment; filename="qualcanvas-export-${stamp}.json"`);
+  res.type('application/json').send(JSON.stringify(archive, null, 2));
+}
+
 // GET /api/auth/export — portable account and research-data archive
 userAuthRoutes.get('/auth/export', auth, async (req, res, next) => {
   try {
     const userId = req.userId;
-    if (!userId) throw new AppError('Email account required', 403);
+    const sessionAccessId = req.dashboardAccessId;
 
-    const [account, canvases, auditLogs, notifications, reportSchedules, calendarEvents, trainingAttempts] =
-      await Promise.all([
-        prisma.user.findUnique({
-          where: { id: userId },
-          select: {
-            id: true,
-            email: true,
-            emailVerified: true,
-            name: true,
-            role: true,
-            plan: true,
-            createdAt: true,
-            updatedAt: true,
-            trialEndsAt: true,
-            onboardingState: true,
-            onboardingCompletedAt: true,
-            subscription: true,
-            emailPreference: {
-              select: {
-                lifecycle: true,
-                productUpdates: true,
-                trainingTips: true,
-                inactivityNudges: true,
-                unsubscribedAt: true,
-                createdAt: true,
-                updatedAt: true,
-              },
-            },
-          },
-        }),
+    // Access-code-only sessions used to get a flat 403 here, which left a whole
+    // class of user - the grandfathered legacy accounts - with no way to obtain
+    // their own data at all. They own canvases and generate audit history like
+    // anyone else, so they get the same archive, minus the email-account fields
+    // they do not have.
+    if (!userId) {
+      if (!sessionAccessId) throw new AppError('Authentication required', 401);
+      const access = await prisma.dashboardAccess.findUnique({
+        where: { id: sessionAccessId },
+        select: { id: true, name: true, role: true, createdAt: true, expiresAt: true },
+      });
+      if (!access) throw new AppError('Account not found', 404);
+
+      const [canvases, auditLogs] = await Promise.all([
         prisma.codingCanvas.findMany({
-          where: { OR: [{ userId }, { dashboardAccess: { userId } }] },
-          include: {
-            transcripts: true,
-            questions: true,
-            memos: true,
-            codings: true,
-            nodePositions: true,
-            cases: true,
-            relations: true,
-            computedNodes: true,
-            shares: true,
-            consentRecords: true,
-            aiSuggestions: true,
-            fileUploads: true,
-            textEmbeddings: true,
-            chatMessages: true,
-            summaries: true,
-            collaborators: true,
-            documents: true,
-            trainingDocuments: true,
-          },
+          where: { dashboardAccessId: sessionAccessId },
+          include: CANVAS_EXPORT_INCLUDE,
           orderBy: { createdAt: 'asc' },
         }),
-        prisma.auditLog.findMany({ where: { actorId: userId }, orderBy: { timestamp: 'asc' } }),
-        prisma.notification.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
-        prisma.reportSchedule.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
-        prisma.calendarEvent.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
-        prisma.trainingAttempt.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+        prisma.auditLog.findMany({ where: { actorId: sessionAccessId }, orderBy: { timestamp: 'asc' } }),
       ]);
 
-    if (!account) throw new AppError('User not found', 404);
-    const archive = {
-      format: 'qualcanvas-account-export',
-      version: 1,
-      exportedAt: new Date().toISOString(),
+      return sendArchive(res, {
+        format: 'qualcanvas-account-export',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        authType: 'legacy',
+        account: { ...access, plan: 'pro' },
+        canvases,
+        auditLogs,
+      });
+    }
+
+    // AuditLog rows are keyed to whichever actor performed the action, and for
+    // a linked legacy account that is the DashboardAccess id, not the user id.
+    // Querying `actorId = userId` alone returned `auditLogs: []` for an account
+    // whose access-code sign-ins were all on record - the export claimed there
+    // was no audit history when there was.
+    const linkedAccess = await prisma.dashboardAccess.findUnique({
+      where: { userId },
+      select: { id: true, name: true, role: true, createdAt: true, expiresAt: true },
+    });
+    const actorIds = linkedAccess ? [userId, linkedAccess.id] : [userId];
+
+    const [
       account,
       canvases,
       auditLogs,
@@ -955,10 +1047,74 @@ userAuthRoutes.get('/auth/export', auth, async (req, res, next) => {
       reportSchedules,
       calendarEvents,
       trainingAttempts,
-    };
-    const stamp = new Date().toISOString().slice(0, 10);
-    res.setHeader('Content-Disposition', `attachment; filename="qualcanvas-export-${stamp}.json"`);
-    res.type('application/json').send(JSON.stringify(archive, null, 2));
+      researchRepositories,
+      canvasTemplates,
+    ] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          emailVerified: true,
+          name: true,
+          role: true,
+          plan: true,
+          createdAt: true,
+          updatedAt: true,
+          trialEndsAt: true,
+          onboardingState: true,
+          onboardingCompletedAt: true,
+          subscription: true,
+          emailPreference: {
+            select: {
+              lifecycle: true,
+              productUpdates: true,
+              trainingTips: true,
+              inactivityNudges: true,
+              unsubscribedAt: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+        },
+      }),
+      prisma.codingCanvas.findMany({
+        where: { OR: [{ userId }, { dashboardAccess: { userId } }] },
+        include: CANVAS_EXPORT_INCLUDE,
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.auditLog.findMany({ where: { actorId: { in: actorIds } }, orderBy: { timestamp: 'asc' } }),
+      prisma.notification.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+      prisma.reportSchedule.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+      prisma.calendarEvent.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+      prisma.trainingAttempt.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+      // User-owned and cascade-deleted with the account, so it is the user's
+      // data and it was not in the archive.
+      prisma.researchRepository.findMany({
+        where: { userId },
+        include: { insights: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.canvasTemplate.findMany({ where: { createdBy: userId }, orderBy: { createdAt: 'asc' } }),
+    ]);
+
+    if (!account) throw new AppError('User not found', 404);
+    return sendArchive(res, {
+      format: 'qualcanvas-account-export',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      authType: 'email',
+      account,
+      legacyAccess: linkedAccess,
+      canvases,
+      auditLogs,
+      notifications,
+      reportSchedules,
+      calendarEvents,
+      trainingAttempts,
+      researchRepositories,
+      canvasTemplates,
+    });
   } catch (err) {
     next(err);
   }
@@ -968,7 +1124,58 @@ userAuthRoutes.get('/auth/export', auth, async (req, res, next) => {
 userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
   try {
     const userId = req.userId;
-    if (!userId) throw new AppError('Email account required', 403);
+    const sessionAccessId = req.dashboardAccessId;
+
+    // Access-code-only erasure.
+    //
+    // These accounts held real participant data and had no self-serve way to
+    // erase any of it: this route, /auth/export, /auth/profile and
+    // /auth/change-password all answered 403 "Email account required", and the
+    // Account page rendered no Danger Zone at all. "Link an email first" is not
+    // an acceptable precondition for a deletion request - it makes the user
+    // create MORE personal data in order to remove some.
+    //
+    // The session cookie is already proof that the holder knows the access
+    // code, so the confirmation here is an intent check, not an auth check -
+    // the analogue of typing your email on the account path.
+    if (!userId) {
+      if (!sessionAccessId) throw new AppError('Authentication required', 401);
+      const { confirmation: legacyConfirmation } = req.body ?? {};
+      if (typeof legacyConfirmation !== 'string' || legacyConfirmation.trim().toUpperCase() !== 'DELETE') {
+        return res.status(400).json({
+          success: false,
+          error: 'Type DELETE to confirm erasure of this access-code account and all its canvases',
+        });
+      }
+
+      const access = await prisma.dashboardAccess.findUnique({
+        where: { id: sessionAccessId },
+        select: { id: true, userId: true },
+      });
+      if (!access) throw new AppError('Account not found', 404);
+      if (access.userId) {
+        // Linked to an email account: that account owns the data and its own
+        // deletion flow (password confirmation, Stripe cancellation) has to run.
+        throw new AppError('This access code is linked to an email account — sign in with the email to delete it', 409);
+      }
+
+      const canvases = await prisma.codingCanvas.findMany({
+        where: { dashboardAccessId: sessionAccessId },
+        select: { id: true },
+      });
+      // Physical media first; the DashboardAccess delete cascades the rows and
+      // would otherwise leave orphaned files with no record pointing at them.
+      await deleteStoredUploads({ canvasId: { in: canvases.map((c) => c.id) } });
+      await prisma.dashboardAccess.delete({ where: { id: sessionAccessId } });
+      clearAuthCookie(res);
+
+      return res.json({
+        success: true,
+        message: 'Account deleted',
+        canvasesDeleted: canvases.length,
+        accessCodeRevoked: true,
+      });
+    }
 
     const { password, confirmation, deleteLegacyCanvases } = req.body;
 
@@ -1014,8 +1221,20 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
     // consistent. Previously the upload sweep used the WIDE filter while the
     // canvases themselves survived, so retained canvases silently lost their
     // media and kept only the interview text.
+    // Must match the count that produced the dialog EXACTLY, including
+    // `deletedAt: null`. It did not: the count at the /auth/me usage block
+    // filtered out trashed canvases while this query did not, so a user shown
+    // "Also delete 1 canvas created with your access code" had three destroyed,
+    // two of them restorable from the trash. The mirror was as bad - with the
+    // only legacy canvas in the trash the count was 0, the checkbox never
+    // rendered, and participant data survived a request to permanently delete
+    // everything, with no choice offered.
+    //
+    // Trashed canvases are still the user's data and are still restorable, so
+    // the honest fix is to count and act on the same set: all of them.
+    const legacyCanvasWhere = { userId: null, dashboardAccess: { userId } } as const;
     const legacyCanvases = await prisma.codingCanvas.findMany({
-      where: { userId: null, dashboardAccess: { userId } },
+      where: legacyCanvasWhere,
       select: { id: true },
     });
     const legacyCanvasIds = legacyCanvases.map((canvas) => canvas.id);
@@ -1027,12 +1246,19 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
     });
 
     // Only sweep media for canvases that are actually going away.
+    //
+    // Scope this by CANVAS, never by uploader. An `OR: [{ userId }, ...]` here
+    // reached every FileUpload the account ever created, wherever it lived:
+    // a recording uploaded to a COLLABORATOR'S canvas was destroyed along with
+    // the owner's project, and a recording on a legacy canvas the user had just
+    // asked to KEEP was destroyed while the canvas itself survived - leaving
+    // the interview text with its audio missing. Neither owner was asked or
+    // told. FileUpload.user is ON DELETE SET NULL precisely so the row can
+    // outlive the uploader; the wide filter was overriding that on purpose.
     const canvasIdsBeingDeleted = removeLegacy
       ? [...directCanvases.map((c) => c.id), ...legacyCanvasIds]
       : directCanvases.map((c) => c.id);
-    await deleteStoredUploads({
-      OR: [{ userId }, { canvasId: { in: canvasIdsBeingDeleted } }],
-    });
+    await deleteStoredUploads({ canvasId: { in: canvasIdsBeingDeleted } });
 
     if (removeLegacy && legacyCanvasIds.length > 0) {
       // Explicitly requested, so remove them outright rather than leaving
@@ -1040,16 +1266,53 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
       await prisma.codingCanvas.deleteMany({ where: { id: { in: legacyCanvasIds } } });
     }
 
+    // The linked DashboardAccess row, captured before the cascade nulls its
+    // userId. `DashboardAccess.user` is ON DELETE SET NULL, so `user.delete`
+    // orphans this row rather than removing it - leaving the person's real
+    // name, their role, an expiresAt of 2099-12-31, and a LIVE accessCodeHash
+    // behind. That is not a stale artefact: POST /auth with the original code
+    // still returned 200 and minted a working session on an account that had
+    // been deleted with deleteLegacyCanvases:true.
+    const linkedAccess = await prisma.dashboardAccess.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
     // Cascade delete database records after physical media is gone.
     await prisma.user.delete({ where: { id: userId } });
+
+    const retainedLegacyCanvases = removeLegacy ? 0 : legacyCanvasIds.length;
+    let accessCodeRevoked = false;
+    if (linkedAccess) {
+      if (retainedLegacyCanvases === 0) {
+        // Nothing hangs off it any more (the user's own canvases went with the
+        // cascade, legacy ones were deleted above), so the credential and the
+        // name go too. The Cascade on CodingCanvas.dashboardAccess is why this
+        // is only safe once the retained set is empty.
+        await prisma.dashboardAccess.delete({ where: { id: linkedAccess.id } });
+        accessCodeRevoked = true;
+      } else {
+        // The user asked to KEEP these canvases, and the access code is the
+        // only remaining way to reach them, so it has to keep working. The
+        // display name is personal data with no such justification - scrub it.
+        await prisma.dashboardAccess.update({
+          where: { id: linkedAccess.id },
+          data: { name: 'Deleted account' },
+        });
+      }
+    }
+
+    clearAuthCookie(res);
 
     res.json({
       success: true,
       message: 'Account deleted',
       // Reported so the caller can tell the user what was kept and how to
       // reach it, rather than leaving data they do not know still exists.
-      legacyCanvasesRetained: removeLegacy ? 0 : legacyCanvasIds.length,
+      legacyCanvasesRetained: retainedLegacyCanvases,
       legacyCanvasesDeleted: removeLegacy ? legacyCanvasIds.length : 0,
+      // False means the original access code still opens the retained canvases.
+      accessCodeRevoked,
     });
   } catch (err) {
     next(err);

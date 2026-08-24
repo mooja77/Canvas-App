@@ -58,11 +58,12 @@ export default function HelpMenu({ onShowShortcuts }: { onShowShortcuts: () => v
       </button>
       {open && (
         <div
-          role="menu"
+          // Not role="menu": that promises Arrow/Home/End/typeahead navigation
+          // to a screen reader in application mode, and this menu implements
+          // none of it. Plain buttons in a container Tab correctly today.
           className="absolute bottom-full right-0 z-50 mb-1.5 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
         >
           <button
-            role="menuitem"
             className={item}
             onClick={() => {
               setOpen(false);
@@ -72,7 +73,6 @@ export default function HelpMenu({ onShowShortcuts }: { onShowShortcuts: () => v
             Take the product tour
           </button>
           <button
-            role="menuitem"
             className={item}
             onClick={() => {
               setOpen(false);
@@ -85,7 +85,6 @@ export default function HelpMenu({ onShowShortcuts }: { onShowShortcuts: () => v
             </kbd>
           </button>
           <button
-            role="menuitem"
             className={item}
             onClick={() => {
               setOpen(false);

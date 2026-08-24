@@ -62,6 +62,13 @@ interface CanvasState {
   // UI toggles
   showCodingStripes: boolean;
   savingLayout: boolean;
+  /**
+   * True when the last layout save FAILED. The status chip was a binary
+   * "Saving..." / "Saved", so a failed save fell straight back to "Saved"
+   * while the arrangement existed only in the browser - reload and the work
+   * was gone. The toast lasted ~4s and then there was no signal at all.
+   */
+  layoutSaveFailed: boolean;
   runningNodeId: string | null;
 
   // Actions
@@ -180,6 +187,7 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
     selectedQuestionId: null,
     showCodingStripes: false,
     savingLayout: false,
+    layoutSaveFailed: false,
     runningNodeId: null,
 
     fetchCanvases: async () => {
@@ -556,8 +564,12 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
             collapsed: p.collapsed,
           })),
         });
+        set({ layoutSaveFailed: false });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
+        // Record it, don't just toast it. The toast expires; the unsaved
+        // arrangement does not.
+        set({ layoutSaveFailed: true });
         toast.error(err?.response?.data?.error || 'Layout save failed');
       } finally {
         set({ savingLayout: false });

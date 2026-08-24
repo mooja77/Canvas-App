@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { canvasApi } from '../../../services/api';
 import { useActiveCanvasId } from '../../../stores/canvasStore';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import ConfirmDialog from '../ConfirmDialog';
 import type { CanvasShare } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface Props {
   onClose: () => void;
@@ -19,6 +20,9 @@ interface CollaboratorInfo {
 }
 
 export default function ShareCanvasModal({ onClose }: Props) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   const activeCanvasId = useActiveCanvasId();
   const [shares, setShares] = useState<CanvasShare[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,6 +138,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
 
   return (
     <div
+      ref={dialogRef}
       className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"

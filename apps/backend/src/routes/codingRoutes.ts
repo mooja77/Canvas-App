@@ -669,7 +669,22 @@ codingRoutes.post(
       const dashboardAccessId = getAuthId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
 
-      const { transcriptId, userIds } = req.body;
+      const { transcriptId, userIds: requestedUserIds } = req.body;
+
+      // Dedupe before anything else. buildSegmentCodeObservations keys coders
+      // by id, so [owner, owner] collapsed to ONE coder: every unit then had
+      // m_u = 1, expected disagreement D_e = 0 and alpha = 1 - a "perfect"
+      // agreement over zero comparable units, which the panel renders as
+      // "1.000 / Almost Perfect Agreement" with an Export Report button. The
+      // zod schema's .min(2) counts array entries, not distinct coders, so it
+      // does not catch this.
+      const userIds: string[] = Array.from(new Set<string>(requestedUserIds));
+      if (userIds.length < 2) {
+        throw new AppError(
+          'Agreement needs at least two different coders. The same coder was selected more than once.',
+          400,
+        );
+      }
 
       const transcript = await prisma.canvasTranscript.findUnique({ where: { id: transcriptId } });
       if (!transcript || transcript.canvasId !== req.params.id) {

@@ -457,7 +457,15 @@ test.describe('Scenario B: Grounded Theory — Teacher Burnout', () => {
     );
     if (detail.data.questions.length === 8) {
       expect(siItem).toBeTruthy();
-      expect(siItem.count).toBe(2);
+      // `count` changed meaning: it now rolls up over the code's whole subtree,
+      // matching what the sidebar has always displayed. Before, a parent theme
+      // reported 0 codings and 0% coverage in stats and CSV export while the
+      // sidebar showed its children's work - the audit's §3.1 item 1.
+      // `directCount` carries the old direct-only number, which is what this
+      // assertion was really about, so the original intent is preserved and the
+      // roll-up is asserted alongside it rather than silently accepted.
+      expect(siItem.directCount).toBe(2);
+      expect(siItem.count).toBeGreaterThanOrEqual(siItem.directCount);
     }
   });
 

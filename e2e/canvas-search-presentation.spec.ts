@@ -99,7 +99,7 @@ test.describe('Canvas search + presentation mode', () => {
 
     // Presentation Mode lives in the Tools dropdown.
     await page.getByRole('button', { name: 'Tools menu' }).first().click();
-    const menu = page.getByRole('menu').first();
+    const menu = page.getByTestId('collision-popover').first();
     await expect(menu).toBeVisible();
     await menu
       .getByText(/Presentation Mode/i)

@@ -18,6 +18,9 @@ const { mockPrisma } = vi.hoisted(() => {
     dashboardAccess: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
       upsert: vi.fn(),
     },
     subscription: {
@@ -27,6 +30,13 @@ const { mockPrisma } = vi.hoisted(() => {
     canvasTranscript: { count: vi.fn() },
     canvasQuestion: { count: vi.fn() },
     canvasShare: { count: vi.fn() },
+    auditLog: { findMany: vi.fn().mockResolvedValue([]), create: vi.fn() },
+    notification: { findMany: vi.fn().mockResolvedValue([]) },
+    reportSchedule: { findMany: vi.fn().mockResolvedValue([]) },
+    calendarEvent: { findMany: vi.fn().mockResolvedValue([]) },
+    trainingAttempt: { findMany: vi.fn().mockResolvedValue([]) },
+    researchRepository: { findMany: vi.fn().mockResolvedValue([]) },
+    canvasTemplate: { findMany: vi.fn().mockResolvedValue([]) },
     emailPreference: {
       findUnique: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({}),
@@ -107,8 +117,9 @@ import request from 'supertest';
 import express from 'express';
 import { userAuthRoutes } from '../../routes/userAuthRoutes.js';
 import { errorHandler } from '../../middleware/errorHandler.js';
-import { signUserToken } from '../../utils/jwt.js';
+import { signUserToken, signResearcherToken } from '../../utils/jwt.js';
 import { sha256 } from '../../utils/hashing.js';
+import { logAudit } from '../../middleware/auditLog.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../../lib/email.js';
 import { getStripe } from '../../lib/stripe.js';
 
@@ -258,6 +269,93 @@ describe('User auth integration tests', () => {
       expect(bcrypt.hash).toHaveBeenCalledWith('securepass123', 12);
     });
 
+    // Audit SB-12: "Signup collapses under modest concurrency: 20 simultaneous
+    // requests, 20 HTTP 500s."
+    //
+    // Root cause, measured against the local Postgres rather than guessed: the
+    // DashboardAccess access code was bcrypt-hashed (12 rounds, ~250ms of CPU
+    // on one of libuv's 4 worker threads) BETWEEN `tx.user.create` and
+    // `tx.dashboardAccess.create`. Under 20 concurrent signups that wait
+    // exceeded Prisma's 5s interactive-transaction budget and every request
+    // died with `P2028 Transaction already closed ... the timeout for this
+    // transaction was 5000 ms, however 5093 ms passed`, rendered as a 500.
+    // Verified end to end on the running stack: 20/20 500s before, 20/20 201s
+    // after; the same workload driven straight at Postgres gave 0/20 then
+    // 20/20, and 50/50 with the hashing moved out.
+    it('does no bcrypt work inside the signup transaction', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+      let hashCallsAtTxStart = -1;
+      let hashCallsAtTxEnd = -1;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockPrisma.$transaction.mockImplementation(async (fn: any) => {
+        hashCallsAtTxStart = (bcrypt.hash as ReturnType<typeof vi.fn>).mock.calls.length;
+        const result = await fn({
+          user: {
+            create: vi.fn().mockResolvedValue({
+              id: 'user-1',
+              email: 'newuser@example.com',
+              name: 'Jane Doe',
+              role: 'researcher',
+              plan: 'free',
+              emailVerified: false,
+            }),
+          },
+          dashboardAccess: { create: vi.fn().mockResolvedValue({}) },
+        });
+        hashCallsAtTxEnd = (bcrypt.hash as ReturnType<typeof vi.fn>).mock.calls.length;
+        return result;
+      });
+
+      const res = await request(app).post('/api/auth/signup').send(validPayload);
+
+      expect(res.status).toBe(201);
+      // Both hashes (password + access code) are already done when the
+      // transaction opens, and none is issued while it is open.
+      expect(hashCallsAtTxStart).toBe(2);
+      expect(hashCallsAtTxEnd).toBe(hashCallsAtTxStart);
+    });
+
+    it('does no bcrypt work inside the Google-signup transaction either', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+      mockPrisma.subscription.findUnique.mockResolvedValue(null);
+      mockVerifyIdToken.mockResolvedValue({
+        getPayload: () => ({
+          email: 'googler@example.com',
+          email_verified: true,
+          name: 'Googler',
+          sub: 'google-sub-1',
+        }),
+      });
+      let hashCallsAtTxStart = -1;
+      let hashCallsAtTxEnd = -1;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockPrisma.$transaction.mockImplementation(async (fn: any) => {
+        hashCallsAtTxStart = (bcrypt.hash as ReturnType<typeof vi.fn>).mock.calls.length;
+        const result = await fn({
+          user: {
+            create: vi.fn().mockResolvedValue({
+              id: 'user-g1',
+              email: 'googler@example.com',
+              name: 'Googler',
+              role: 'researcher',
+              plan: 'free',
+              legacyPricing: false,
+              emailVerified: true,
+            }),
+          },
+          dashboardAccess: { create: vi.fn().mockResolvedValue({}) },
+        });
+        hashCallsAtTxEnd = (bcrypt.hash as ReturnType<typeof vi.fn>).mock.calls.length;
+        return result;
+      });
+
+      const res = await request(app).post('/api/auth/google').send({ credential: 'valid-credential' });
+
+      expect(res.status).toBe(200);
+      expect(hashCallsAtTxStart).toBe(1);
+      expect(hashCallsAtTxEnd).toBe(hashCallsAtTxStart);
+    });
+
     it('sends a verification email after signup', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -392,10 +490,10 @@ describe('User auth integration tests', () => {
       });
     });
 
-    it('syncs plan from subscription status on login', async () => {
+    it('downgrades on login when the subscription row says the subscription lapsed', async () => {
       const proUser = { ...mockUser, plan: 'pro' };
       mockPrisma.user.findUnique.mockResolvedValue(proUser);
-      mockPrisma.subscription.findUnique.mockResolvedValue(null); // No active subscription
+      mockPrisma.subscription.findUnique.mockResolvedValue({ status: 'canceled' });
       mockPrisma.user.update.mockResolvedValue({});
       (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
 
@@ -405,12 +503,52 @@ describe('User auth integration tests', () => {
       });
 
       expect(res.status).toBe(200);
-      // Plan should be downgraded to free since no active subscription
       expect(res.body.data.user.plan).toBe('free');
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
         data: { plan: 'free' },
       });
+    });
+
+    // Audit §3.2 item 3: "Login silently downgrades a paid plan."
+    // The old rule was "no ACTIVE subscription => free", which also caught every
+    // account whose paid tier was granted without a Stripe subscription at all
+    // (comped, institutional, set by hand). Absence of a row is not evidence of
+    // a lapse, and the rewrite left no trace anywhere.
+    it('does NOT downgrade a paid plan that has no subscription row at all', async () => {
+      const compedTeamUser = { ...mockUser, plan: 'team' };
+      mockPrisma.user.findUnique.mockResolvedValue(compedTeamUser);
+      mockPrisma.subscription.findUnique.mockResolvedValue(null);
+      (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+      const res = await request(app).post('/api/auth/email-login').send({
+        email: 'test@example.com',
+        password: 'password123',
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.user.plan).toBe('team');
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('records an audit entry when a login downgrades the plan', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser, plan: 'pro' });
+      mockPrisma.subscription.findUnique.mockResolvedValue({ status: 'past_due' });
+      mockPrisma.user.update.mockResolvedValue({});
+      (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+      await request(app).post('/api/auth/email-login').send({
+        email: 'test@example.com',
+        password: 'password123',
+      });
+
+      expect(logAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'auth.plan_downgraded',
+          actorId: 'user-1',
+          meta: expect.stringContaining('"from":"pro"'),
+        }),
+      );
     });
   });
 
@@ -941,6 +1079,241 @@ describe('User auth integration tests', () => {
         // the delete dialog needs it to offer the choice.
         legacyCanvasCount: expect.any(Number),
       });
+    });
+  });
+
+  // ─── GET /auth/export ───────────────────────────────────────────────
+  // Audit SB-9: the page promises "a portable JSON archive of your account,
+  // canvases, research content, and audit history" and delivered neither the
+  // reflexivity journal nor, for a linked legacy account, any audit history.
+  describe('GET /api/auth/export', () => {
+    const exportUser = {
+      id: 'user-exp-1',
+      email: 'exporter@example.com',
+      name: 'Exporter',
+      role: 'researcher',
+      plan: 'pro',
+      emailVerified: true,
+      legacyPricing: false,
+      trialEndsAt: null,
+      createdAt: new Date(),
+      passwordHash: 'x',
+      subscription: null,
+      dashboardAccess: null,
+    };
+
+    it('includes the reflexivity journal entries on every canvas', async () => {
+      const jwt = signUserToken(exportUser.id, 'researcher', 'pro');
+      mockPrisma.user.findUnique.mockResolvedValue(exportUser);
+      mockPrisma.dashboardAccess.findUnique.mockResolvedValue(null);
+      mockPrisma.codingCanvas.findMany.mockResolvedValue([
+        { id: 'canvas-1', journalEntries: [{ id: 'j1', content: 'watch my assumption about mentoring' }] },
+      ]);
+
+      const res = await request(app).get('/api/auth/export').set('Authorization', `Bearer ${jwt}`);
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.codingCanvas.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ include: expect.objectContaining({ journalEntries: true }) }),
+      );
+      expect(res.text).toContain('watch my assumption about mentoring');
+    });
+
+    it('includes audit rows keyed to the linked legacy access code, not just the user id', async () => {
+      const jwt = signUserToken(exportUser.id, 'researcher', 'pro');
+      mockPrisma.user.findUnique.mockResolvedValue(exportUser);
+      mockPrisma.dashboardAccess.findUnique.mockResolvedValue({
+        id: 'da-exp-1',
+        name: 'Legacy Researcher',
+        role: 'researcher',
+        createdAt: new Date(),
+        expiresAt: new Date('2099-12-31'),
+      });
+      mockPrisma.codingCanvas.findMany.mockResolvedValue([]);
+      mockPrisma.auditLog.findMany.mockResolvedValue([{ id: 'a1', action: 'auth.success', actorId: 'da-exp-1' }]);
+
+      const res = await request(app).get('/api/auth/export').set('Authorization', `Bearer ${jwt}`);
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.auditLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { actorId: { in: ['user-exp-1', 'da-exp-1'] } } }),
+      );
+      expect(JSON.parse(res.text).auditLogs).toHaveLength(1);
+    });
+
+    it('includes the user-owned research repositories and templates', async () => {
+      const jwt = signUserToken(exportUser.id, 'researcher', 'pro');
+      mockPrisma.user.findUnique.mockResolvedValue(exportUser);
+      mockPrisma.dashboardAccess.findUnique.mockResolvedValue(null);
+      mockPrisma.codingCanvas.findMany.mockResolvedValue([]);
+      mockPrisma.researchRepository.findMany.mockResolvedValue([{ id: 'repo-1', name: 'Field notes', insights: [] }]);
+      mockPrisma.canvasTemplate.findMany.mockResolvedValue([{ id: 'tpl-1', name: 'My IPA template' }]);
+
+      const res = await request(app).get('/api/auth/export').set('Authorization', `Bearer ${jwt}`);
+
+      const archive = JSON.parse(res.text);
+      expect(archive.researchRepositories).toHaveLength(1);
+      expect(archive.canvasTemplates).toHaveLength(1);
+    });
+
+    // Audit §3.3 item 3: an access-code session got a flat
+    // 403 "Email account required" here, so this class of user had no way to
+    // obtain a copy of their own research data.
+    it('serves an archive to an access-code-only session', async () => {
+      const legacyJwt = signResearcherToken('da-legacy-1', 'researcher');
+      mockPrisma.dashboardAccess.findFirst.mockResolvedValue({
+        id: 'da-legacy-1',
+        name: 'Legacy Only',
+        role: 'researcher',
+        expiresAt: new Date('2099-12-31'),
+      });
+      mockPrisma.dashboardAccess.findUnique.mockResolvedValue({
+        id: 'da-legacy-1',
+        name: 'Legacy Only',
+        role: 'researcher',
+        createdAt: new Date(),
+        expiresAt: new Date('2099-12-31'),
+      });
+      mockPrisma.codingCanvas.findMany.mockResolvedValue([{ id: 'canvas-legacy-1', journalEntries: [] }]);
+      mockPrisma.auditLog.findMany.mockResolvedValue([{ id: 'a1', action: 'auth.success' }]);
+
+      const res = await request(app).get('/api/auth/export').set('Authorization', `Bearer ${legacyJwt}`);
+
+      expect(res.status).toBe(200);
+      const archive = JSON.parse(res.text);
+      expect(archive.authType).toBe('legacy');
+      expect(archive.canvases).toHaveLength(1);
+      expect(archive.auditLogs).toHaveLength(1);
+    });
+  });
+
+  // ─── Deletion leaves no live credential behind ──────────────────────
+  // Audit §3.3 item 1: after DELETE /auth/account the DashboardAccess row
+  // survived with the user's real name and a working accessCodeHash -
+  // POST /auth with the original code still minted a session.
+  describe('DELETE /api/auth/account — linked access code', () => {
+    const deletableUser = {
+      id: 'user-del-1',
+      email: 'deleteme@example.com',
+      passwordHash: '$2a$12$hashedpassword',
+      plan: 'free',
+      role: 'researcher',
+      subscription: null,
+      stripeCustomerId: null,
+      dashboardAccess: null,
+    };
+
+    function arrangeDeletion(legacyCanvases: { id: string }[]) {
+      mockPrisma.user.findUnique.mockResolvedValue(deletableUser);
+      mockPrisma.codingCanvas.findMany.mockImplementation(({ where }: { where: Record<string, unknown> }) =>
+        Promise.resolve(where.userId === null ? legacyCanvases : [{ id: 'direct-1' }]),
+      );
+      mockPrisma.codingCanvas.deleteMany.mockResolvedValue({ count: legacyCanvases.length });
+      mockPrisma.user.delete.mockResolvedValue({ id: deletableUser.id });
+      mockPrisma.dashboardAccess.findUnique.mockResolvedValue({ id: 'da-del-1' });
+      (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+      return signUserToken(deletableUser.id, 'researcher', 'free');
+    }
+
+    it('revokes the access code when nothing is retained', async () => {
+      const jwt = arrangeDeletion([]);
+
+      const res = await request(app)
+        .delete('/api/auth/account')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ password: 'password123' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.accessCodeRevoked).toBe(true);
+      expect(mockPrisma.dashboardAccess.delete).toHaveBeenCalledWith({ where: { id: 'da-del-1' } });
+    });
+
+    it('revokes the access code when the legacy canvases were deleted too', async () => {
+      const jwt = arrangeDeletion([{ id: 'legacy-1' }]);
+
+      const res = await request(app)
+        .delete('/api/auth/account')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ password: 'password123', deleteLegacyCanvases: true });
+
+      expect(res.status).toBe(200);
+      expect(res.body.accessCodeRevoked).toBe(true);
+      expect(mockPrisma.dashboardAccess.delete).toHaveBeenCalledWith({ where: { id: 'da-del-1' } });
+    });
+
+    // The credential has to survive here — it is the only way back to the
+    // canvases the user asked to keep — but the person's name must not.
+    it('keeps the code but scrubs the name when legacy canvases are retained', async () => {
+      const jwt = arrangeDeletion([{ id: 'legacy-1' }, { id: 'legacy-2' }]);
+
+      const res = await request(app)
+        .delete('/api/auth/account')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ password: 'password123' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.legacyCanvasesRetained).toBe(2);
+      expect(res.body.accessCodeRevoked).toBe(false);
+      expect(mockPrisma.dashboardAccess.delete).not.toHaveBeenCalled();
+      expect(mockPrisma.dashboardAccess.update).toHaveBeenCalledWith({
+        where: { id: 'da-del-1' },
+        data: { name: 'Deleted account' },
+      });
+    });
+  });
+
+  // ─── Access-code-only erasure ───────────────────────────────────────
+  // Audit §3.3 item 3: DELETE /auth/account answered 403 for these sessions,
+  // so a legacy user could not erase their own participant data at all.
+  describe('DELETE /api/auth/account — access-code session', () => {
+    function arrangeLegacySession() {
+      mockPrisma.dashboardAccess.findFirst.mockResolvedValue({
+        id: 'da-legacy-2',
+        name: 'Legacy Only',
+        role: 'researcher',
+        expiresAt: new Date('2099-12-31'),
+      });
+      mockPrisma.dashboardAccess.findUnique.mockResolvedValue({ id: 'da-legacy-2', userId: null });
+      mockPrisma.codingCanvas.findMany.mockResolvedValue([{ id: 'c1' }, { id: 'c2' }]);
+      mockPrisma.dashboardAccess.delete.mockResolvedValue({ id: 'da-legacy-2' });
+      return signResearcherToken('da-legacy-2', 'researcher');
+    }
+
+    it('erases the access-code account and its canvases', async () => {
+      const jwt = arrangeLegacySession();
+
+      const res = await request(app)
+        .delete('/api/auth/account')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ confirmation: 'DELETE' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.canvasesDeleted).toBe(2);
+      expect(res.body.accessCodeRevoked).toBe(true);
+      expect(mockPrisma.dashboardAccess.delete).toHaveBeenCalledWith({ where: { id: 'da-legacy-2' } });
+    });
+
+    it('requires the typed confirmation', async () => {
+      const jwt = arrangeLegacySession();
+
+      const res = await request(app).delete('/api/auth/account').set('Authorization', `Bearer ${jwt}`).send({});
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/DELETE/);
+      expect(mockPrisma.dashboardAccess.delete).not.toHaveBeenCalled();
+    });
+
+    it('refuses when the access code belongs to an email account', async () => {
+      const jwt = arrangeLegacySession();
+      mockPrisma.dashboardAccess.findUnique.mockResolvedValue({ id: 'da-legacy-2', userId: 'user-owner' });
+
+      const res = await request(app)
+        .delete('/api/auth/account')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ confirmation: 'DELETE' });
+
+      expect(res.status).toBe(409);
+      expect(mockPrisma.dashboardAccess.delete).not.toHaveBeenCalled();
     });
   });
 });

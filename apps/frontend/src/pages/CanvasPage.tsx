@@ -262,7 +262,7 @@ export default function CanvasPage() {
           </button>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
             title="Sign out"
             aria-label="Sign out"
           >

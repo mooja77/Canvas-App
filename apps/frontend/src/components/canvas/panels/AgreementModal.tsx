@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
 import { canvasApi } from '../../../services/api';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface AgreementModalProps {
   onClose: () => void;
@@ -28,6 +29,9 @@ function interpretF1(f1: number): { label: string; color: string } {
  * the AI's confidence is earned.
  */
 export default function AgreementModal({ onClose }: AgreementModalProps) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const canvas = useActiveCanvas();
   const [data, setData] = useState<AgreementData | null>(null);
@@ -63,6 +67,7 @@ export default function AgreementModal({ onClose }: AgreementModalProps) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="ai-agreement-title"

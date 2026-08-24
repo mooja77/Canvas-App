@@ -1,9 +1,14 @@
+import { useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useUIStore } from '../stores/uiStore';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 // Plan-specific welcome card shown once, right after the setup wizard.
 // Each plan tier gets language and CTAs tailored to what they unlocked.
 export default function PlanWelcome({ onClose }: { onClose: () => void }) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   // effectivePlan carries the trial overlay (a Free user mid-Pro-trial really
   // does have Pro features to be welcomed to); `plan` is the paid tier.
   const plan = useAuthStore((s) => s.effectivePlan ?? s.plan);
@@ -69,6 +74,7 @@ export default function PlanWelcome({ onClose }: { onClose: () => void }) {
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4 backdrop-blur-sm"

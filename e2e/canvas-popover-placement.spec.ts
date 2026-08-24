@@ -39,7 +39,7 @@ for (const bp of BREAKPOINTS) {
     await openCanvas(page);
 
     await page.locator('[data-tour="canvas-btn-ai"] button').click();
-    const menu = page.getByRole('menu').first();
+    const menu = page.getByTestId('collision-popover').first();
     await expect(menu).toBeVisible();
     await page.waitForTimeout(ANIMATION_SETTLE_MS);
 
@@ -59,7 +59,7 @@ for (const bp of BREAKPOINTS) {
       .getByRole('button', { name: /Analyze/i })
       .first()
       .click();
-    const menu = page.getByRole('menu').first();
+    const menu = page.getByTestId('collision-popover').first();
     await expect(menu).toBeVisible();
     await page.waitForTimeout(ANIMATION_SETTLE_MS);
 

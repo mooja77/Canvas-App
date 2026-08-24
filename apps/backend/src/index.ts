@@ -177,9 +177,20 @@ app.post('/api/email/webhooks/resend', express.raw({ type: 'application/json' })
 
 // Larger body limits must be registered before the default parser. Express
 // does not re-parse a request whose body was already consumed.
-app.use('/api/canvas/:id/transcripts', express.json({ limit: '10mb' }));
-app.use('/api/canvas/:id/import-narratives', express.json({ limit: '10mb' }));
-app.use('/api/canvas/:id/import-from-canvas', express.json({ limit: '10mb' }));
+//
+// These must be mounted under BOTH API prefixes. The routers below are mounted
+// on `/api/v1` (the documented prefix) and `/api` (backwards compat), so
+// registering the large-body parser on `/api/...` alone meant a >1MB transcript
+// posted to `/api/v1/...` hit the global 1MB parser and failed as an opaque
+// body-parser error instead of reaching the route and getting the real
+// plan-limit message.
+const LARGE_BODY_PATHS = ['/canvas/:id/transcripts', '/canvas/:id/import-narratives', '/canvas/:id/import-from-canvas'];
+const API_PREFIXES = ['/api', '/api/v1'];
+for (const prefix of API_PREFIXES) {
+  for (const routePath of LARGE_BODY_PATHS) {
+    app.use(`${prefix}${routePath}`, express.json({ limit: '10mb' }));
+  }
+}
 
 // Body parsing — default limit for most routes
 app.use(express.json({ limit: '1mb' }));

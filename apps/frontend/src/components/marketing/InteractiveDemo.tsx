@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
 import { trackEvent } from '../../utils/analytics';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 /**
  * Interactive coding micro-demo per docs/refresh/16-interactive-demo-spec.md.
@@ -182,10 +183,16 @@ function findOffset(needle: string): { start: number; end: number } | null {
 // ─── Component ────────────────────────────────────────────────────────────
 
 export default function InteractiveDemo() {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [applied, setApplied] = useState<AppliedCode[]>([]);
   const [revealed, setRevealed] = useState<string[]>(() => CODES.filter((c) => c.initial).map((c) => c.id));
   const [pendingSelection, setPendingSelection] = useState<Selection | null>(null);
   const [popupPos, setPopupPos] = useState<{ x: number; y: number } | null>(null);
+  // The `active` argument matters here: this component stays mounted and the
+  // dialog appears conditionally, so the effect must re-run when it opens.
+  // Without it the trap initialises once against a null ref and never engages.
+  useFocusTrap(dialogRef, !!pendingSelection && !!popupPos);
   const [hydrated, setHydrated] = useState(false);
   const [announceText, setAnnounceText] = useState('');
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -450,6 +457,7 @@ export default function InteractiveDemo() {
             {/* Floating widget — appears anchored to the selection */}
             {pendingSelection && popupPos && (
               <div
+                ref={dialogRef}
                 role="dialog"
                 aria-modal="false"
                 aria-label="Suggested codes"

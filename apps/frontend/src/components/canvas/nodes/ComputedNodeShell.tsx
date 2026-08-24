@@ -16,6 +16,13 @@ interface ComputedNodeShellProps {
   collapsed?: boolean;
   zoomLevel?: number;
   onConfigure?: () => void;
+  /**
+   * Why this node cannot be run yet, or null when it can. The Run button had
+   * no disabled condition at all, so an unconfigured Search node invited a
+   * click that the server had to refuse - and before the server refused it,
+   * that click persisted a multi-megabyte junk result on the canvas.
+   */
+  runDisabledReason?: string | null;
 }
 
 function ComputedNodeShell({
@@ -29,6 +36,7 @@ function ComputedNodeShell({
   collapsed: collapsedProp,
   zoomLevel: zoomLevelProp,
   onConfigure,
+  runDisabledReason = null,
 }: ComputedNodeShellProps) {
   const runComputedNode = useCanvasStore((s) => s.runComputedNode);
   const deleteComputedNode = useCanvasStore((s) => s.deleteComputedNode);
@@ -123,8 +131,9 @@ function ComputedNodeShell({
           ) : (
             <button
               onClick={handleRun}
-              className="rounded p-1 text-gray-400 hover:text-green-600 dark:text-gray-500 dark:hover:text-green-400"
-              title="Run computation"
+              disabled={!!runDisabledReason}
+              className="rounded p-1 text-gray-400 hover:text-green-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-gray-400 dark:text-gray-500 dark:hover:text-green-400 dark:disabled:hover:text-gray-500"
+              title={runDisabledReason ?? 'Run computation'}
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path

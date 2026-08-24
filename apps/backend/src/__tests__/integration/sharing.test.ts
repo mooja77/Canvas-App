@@ -274,6 +274,7 @@ describe('Sharing integration tests', () => {
       cases: [],
       relations: [],
       computedNodes: [],
+      nodePositions: [],
     };
 
     // findUnique is called twice: once for source canvas (with include), once for unique name check
@@ -299,6 +300,7 @@ describe('Sharing integration tests', () => {
         canvasCase: { create: vi.fn() },
         canvasRelation: { create: vi.fn() },
         canvasComputedNode: { create: vi.fn() },
+        canvasNodePosition: { create: vi.fn() },
         canvasShare: { update: vi.fn() },
       };
       return fn(tx);
@@ -417,5 +419,235 @@ describe('Sharing integration tests', () => {
 
     expect(res.status).toBe(410);
     expect(res.body.success).toBe(false);
+  });
+  // ═══════════════════════════════════════
+  // Share-code expiry (the column and both 410 checks existed; nothing set it)
+  // ═══════════════════════════════════════
+
+  it('POST /canvas/:id/share stores an explicit expiresAt', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasShare.create.mockImplementation(async ({ data }) => ({ id: 'share-exp', ...data }));
+
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const res = await request(app)
+      .post('/api/canvas/' + canvasId + '/share')
+      .set('Authorization', 'Bearer ' + jwt)
+      .send({ expiresAt });
+
+    expect(res.status).toBe(201);
+    expect(mockPrisma.canvasShare.create.mock.calls[0][0].data.expiresAt).toEqual(new Date(expiresAt));
+    expect(new Date(res.body.data.expiresAt).toISOString()).toBe(expiresAt);
+  });
+
+  it('POST /canvas/:id/share accepts a duration instead of an instant', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasShare.create.mockImplementation(async ({ data }) => ({ id: 'share-exp', ...data }));
+
+    const before = Date.now();
+    const res = await request(app)
+      .post('/api/canvas/' + canvasId + '/share')
+      .set('Authorization', 'Bearer ' + jwt)
+      .send({ expiresInDays: 30 });
+
+    expect(res.status).toBe(201);
+    const stored = mockPrisma.canvasShare.create.mock.calls[0][0].data.expiresAt as Date;
+    const days = (stored.getTime() - before) / (24 * 60 * 60 * 1000);
+    expect(days).toBeGreaterThan(29.9);
+    expect(days).toBeLessThan(30.1);
+  });
+
+  it('POST /canvas/:id/share still creates a permanent link when no expiry is asked for', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasShare.create.mockImplementation(async ({ data }) => ({ id: 'share-exp', ...data }));
+
+    const res = await request(app)
+      .post('/api/canvas/' + canvasId + '/share')
+      .set('Authorization', 'Bearer ' + jwt);
+
+    expect(res.status).toBe(201);
+    expect(mockPrisma.canvasShare.create.mock.calls[0][0].data.expiresAt).toBeNull();
+  });
+
+  it('POST /canvas/:id/share rejects an expiry in the past', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+
+    const res = await request(app)
+      .post('/api/canvas/' + canvasId + '/share')
+      .set('Authorization', 'Bearer ' + jwt)
+      .send({ expiresAt: '2020-01-01T00:00:00.000Z' });
+
+    expect(res.status).toBe(400);
+    expect(mockPrisma.canvasShare.create).not.toHaveBeenCalled();
+  });
+
+  it('POST /canvas/:id/share rejects an expiry beyond the one-year cap', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+
+    const res = await request(app)
+      .post('/api/canvas/' + canvasId + '/share')
+      .set('Authorization', 'Bearer ' + jwt)
+      .send({ expiresInDays: 400 });
+
+    expect(res.status).toBe(400);
+    expect(mockPrisma.canvasShare.create).not.toHaveBeenCalled();
+  });
+
+  // ═══════════════════════════════════════
+  // Clone fidelity: layout and coder attribution
+  // ═══════════════════════════════════════
+
+  function cloneFixture(overrides: Record<string, unknown> = {}) {
+    const shareCode = 'SHARE-FIDEL1';
+    mockPrisma.canvasShare.findUnique.mockResolvedValue({
+      id: 'share-fidel',
+      canvasId,
+      shareCode,
+      expiresAt: null,
+    });
+
+    const sourceCanvas = {
+      ...mockCanvas,
+      transcripts: [{ id: 'tr-src', title: 'T', content: 'Hello world', sortOrder: 0, caseId: null }],
+      questions: [{ id: 'q-src', text: 'Q', color: '#000000', sortOrder: 0, parentQuestionId: null }],
+      memos: [],
+      codings: [],
+      cases: [],
+      relations: [],
+      computedNodes: [],
+      nodePositions: [],
+      ...overrides,
+    };
+
+    mockPrisma.codingCanvas.findUnique.mockResolvedValueOnce(sourceCanvas).mockResolvedValueOnce(null);
+
+    const tx = {
+      codingCanvas: { create: vi.fn().mockResolvedValue({ id: 'canvas-cloned', name: 'X', dashboardAccessId }) },
+      canvasTranscript: { create: vi.fn().mockResolvedValue({ id: 'tr-new' }) },
+      canvasQuestion: { create: vi.fn().mockResolvedValue({ id: 'q-new' }), update: vi.fn() },
+      canvasMemo: { create: vi.fn().mockResolvedValue({ id: 'memo-new' }) },
+      canvasTextCoding: { create: vi.fn() },
+      canvasCase: { create: vi.fn().mockResolvedValue({ id: 'case-new' }) },
+      canvasRelation: { create: vi.fn() },
+      canvasComputedNode: { create: vi.fn().mockResolvedValue({ id: 'cn-new' }) },
+      canvasNodePosition: { create: vi.fn() },
+      canvasShare: { update: vi.fn() },
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockPrisma.$transaction.mockImplementation(async (fn: any) => fn(tx));
+
+    return { shareCode, tx };
+  }
+
+  it('POST /canvas/clone/:code copies the canvas layout, remapping node ids', async () => {
+    const { shareCode, tx } = cloneFixture({
+      nodePositions: [
+        {
+          nodeId: 'transcript-tr-src',
+          nodeType: 'transcript',
+          x: 10,
+          y: 20,
+          width: 300,
+          height: 200,
+          collapsed: false,
+        },
+        { nodeId: 'question-q-src', nodeType: 'question', x: 400, y: 50, width: null, height: null, collapsed: true },
+        // A node the clone did not copy must not become a dangling position.
+        { nodeId: 'group-g-1', nodeType: 'group', x: 0, y: 0, width: null, height: null, collapsed: false },
+      ],
+    });
+
+    const res = await request(app)
+      .post('/api/canvas/clone/' + shareCode)
+      .set('Authorization', 'Bearer ' + jwt);
+
+    expect(res.status).toBe(201);
+    const written = tx.canvasNodePosition.create.mock.calls.map((c) => c[0].data);
+    expect(written).toHaveLength(2);
+    expect(written[0]).toMatchObject({ nodeId: 'transcript-tr-new', x: 10, y: 20, width: 300, height: 200 });
+    expect(written[1]).toMatchObject({ nodeId: 'question-q-new', x: 400, y: 50, collapsed: true });
+  });
+
+  it('POST /canvas/clone/:code keeps who coded each passage', async () => {
+    const { shareCode, tx } = cloneFixture({
+      codings: [
+        {
+          id: 'cd-1',
+          transcriptId: 'tr-src',
+          questionId: 'q-src',
+          startOffset: 0,
+          endOffset: 5,
+          codedText: 'Hello',
+          note: null,
+          annotation: null,
+          source: 'human',
+          coderUserId: 'coder-7',
+        },
+      ],
+    });
+
+    const res = await request(app)
+      .post('/api/canvas/clone/' + shareCode)
+      .set('Authorization', 'Bearer ' + jwt);
+
+    expect(res.status).toBe(201);
+    expect(tx.canvasTextCoding.create.mock.calls[0][0].data.coderUserId).toBe('coder-7');
+  });
+
+  // ═══════════════════════════════════════
+  // The public endpoint must not hand out internal ids
+  // ═══════════════════════════════════════
+
+  it('GET /canvas/shared/:code exposes no owner or coder ids', async () => {
+    const shareCode = 'SHARE-PRIVATE';
+    mockPrisma.canvasShare.findUnique.mockResolvedValue({
+      id: 'share-priv',
+      canvasId,
+      shareCode,
+      expiresAt: null,
+    });
+
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({
+      ...mockCanvas,
+      dashboardAccessId,
+      userId,
+      ethicsApprovalId: 'ethics-1',
+      dataRetentionDate: new Date('2030-01-01'),
+      transcripts: [{ id: 'tr-1', title: 'T', content: 'content', sortOrder: 0, caseId: null, createdAt: new Date() }],
+      questions: [{ id: 'q-1', text: 'Q', color: '#fff', sortOrder: 0, parentQuestionId: null }],
+      memos: [],
+      codings: [
+        {
+          id: 'cd-1',
+          transcriptId: 'tr-1',
+          questionId: 'q-1',
+          startOffset: 0,
+          endOffset: 3,
+          codedText: 'con',
+          note: null,
+          annotation: null,
+          source: 'human',
+          coderUserId: 'coder-7',
+          createdAt: new Date(),
+        },
+      ],
+      cases: [],
+      relations: [],
+      computedNodes: [],
+    });
+
+    const res = await request(app).get('/api/canvas/shared/' + shareCode);
+
+    expect(res.status).toBe(200);
+    // The canvas still renders...
+    expect(res.body.data.transcripts).toHaveLength(1);
+    expect(res.body.data.codings[0].codedText).toBe('con');
+    // ...without any of the internal identifiers the raw row carried.
+    const body = JSON.stringify(res.body);
+    for (const secret of [userId, dashboardAccessId, 'ethics-1', 'coder-7']) {
+      expect(body).not.toContain(secret);
+    }
+    expect(res.body.data.codings[0]).not.toHaveProperty('coderUserId');
+    expect(res.body.data).not.toHaveProperty('deletedAt');
+    expect(res.body.data).not.toHaveProperty('dataRetentionDate');
   });
 });
