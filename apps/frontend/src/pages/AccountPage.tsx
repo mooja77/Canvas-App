@@ -500,7 +500,7 @@ export default function AccountPage() {
                   {profile.user.emailVerified !== undefined && (
                     <>
                       <span
-                        className={`ml-2 text-xs font-normal ${profile.user.emailVerified ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}
+                        className={`ml-2 text-xs font-normal ${profile.user.emailVerified ? 'text-green-600 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}
                       >
                         {profile.user.emailVerified ? 'Verified' : 'Unverified'}
                       </span>
@@ -682,7 +682,7 @@ export default function AccountPage() {
                   className={`font-medium ${
                     profile.subscription.status === 'active'
                       ? 'text-green-600 dark:text-green-400'
-                      : 'text-amber-600 dark:text-amber-400'
+                      : 'text-amber-700 dark:text-amber-400'
                   }`}
                 >
                   {profile.subscription.status}
@@ -776,7 +776,7 @@ export default function AccountPage() {
                     <p className="text-xs text-gray-500 dark:text-gray-400">{item.label}</p>
                     {item.perCanvas !== null && (
                       <p
-                        className="text-[10px] text-gray-400 dark:text-gray-500"
+                        className="text-[10px] text-gray-500 dark:text-gray-400"
                         data-testid={`usage-${item.key}-hint`}
                       >
                         {item.perCanvas} per canvas
@@ -1130,7 +1130,7 @@ export default function AccountPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-400 dark:text-gray-500 mb-4 italic">No report schedules configured.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 italic">No report schedules configured.</p>
             )}
 
             <div className="flex items-center gap-3">

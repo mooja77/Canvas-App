@@ -361,7 +361,7 @@ export default function CanvasListPanel() {
                     <TemplateIcon template={template} />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{template.name}</p>
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 leading-relaxed">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
                         {template.description}
                       </p>
                       {template.questions.length > 0 && (
@@ -423,7 +423,7 @@ export default function CanvasListPanel() {
                   <button
                     type="button"
                     onClick={() => setShowTemplates(false)}
-                    className="text-xs text-gray-400 hover:text-gray-600"
+                    className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   >
                     Hide templates
                   </button>
@@ -436,7 +436,7 @@ export default function CanvasListPanel() {
 
       {/* Clone from share code - subtle/collapsible */}
       <details className="mb-4 group">
-        <summary className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors select-none">
+        <summary className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors select-none">
           <svg
             className="h-3.5 w-3.5 transition-transform group-open:rotate-90"
             fill="none"
@@ -452,6 +452,8 @@ export default function CanvasListPanel() {
           <input
             type="text"
             className="input flex-1 text-sm"
+            // See the search input above: a placeholder is a hint, not a name.
+            aria-label="Share code"
             placeholder="Paste share code here..."
             value={shareCode}
             onChange={(e) => setShareCode(e.target.value)}
@@ -488,6 +490,11 @@ export default function CanvasListPanel() {
             </svg>
             <input
               type="text"
+              // A placeholder is not an accessible name: it disappears the
+              // moment the user types, and some screen readers ignore it
+              // entirely. Name the control properly and keep the placeholder
+              // as the hint it actually is.
+              aria-label="Search canvases"
               className="input w-full pl-8 text-sm"
               placeholder="Search canvases..."
               value={search}
@@ -579,7 +586,7 @@ export default function CanvasListPanel() {
             >
               Get Started
             </button>
-            <div className="flex items-center gap-6 mt-4 text-xs text-gray-400 dark:text-gray-500">
+            <div className="flex items-center gap-6 mt-4 text-xs text-gray-500 dark:text-gray-400">
               <div className="flex items-center gap-1.5">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold">
                   1
@@ -806,7 +813,7 @@ export default function CanvasListPanel() {
           onClick={handleToggleTrash}
           aria-expanded={showTrash}
           aria-controls="canvas-trash-section"
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           <svg
             className={`h-4 w-4 transition-transform ${showTrash ? 'rotate-90' : ''}`}
