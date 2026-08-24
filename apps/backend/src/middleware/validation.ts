@@ -93,7 +93,11 @@ export const createTranscriptSchema = z.object({
   // would otherwise let a single transcript blow the LLM context window AND
   // the storage budget. Plan-limit middleware also enforces per-plan word
   // count; this is a hard ceiling.
-  content: z.string().trim().min(1, 'Transcript content is required').max(2_000_000),
+  content: z
+    .string()
+    .min(1, 'Transcript content is required')
+    .max(2_000_000)
+    .refine((v) => v.trim().length > 0, 'Transcript content is required'),
   sourceType: z.string().max(50).optional(),
   sourceId: z.string().max(200).optional(),
 });
@@ -145,13 +149,21 @@ export const updateCanvasQuestionSchema = z.object({
 });
 
 export const createJournalEntrySchema = z.object({
-  content: z.string().trim().min(1, 'Journal entry cannot be empty').max(10000),
+  content: z
+    .string()
+    .min(1, 'Journal entry cannot be empty')
+    .max(10000)
+    .refine((v) => v.trim().length > 0, 'Journal entry cannot be empty'),
   category: z.string().max(50).optional(),
 });
 
 export const createCanvasMemoSchema = z.object({
   title: z.string().max(200).optional(),
-  content: z.string().trim().min(1, 'Memo content is required').max(5000),
+  content: z
+    .string()
+    .min(1, 'Memo content is required')
+    .max(5000)
+    .refine((v) => v.trim().length > 0, 'Memo content is required'),
   color: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)

@@ -257,12 +257,27 @@ describe('whitespace-only input is rejected like empty input', () => {
     }
   });
 
-  it('still accepts real content, and trims it', () => {
+  it('trims the title but leaves content byte-for-byte', () => {
+    // Content must NOT be trimmed: coding offsets are computed by the client
+    // against the exact string it holds, and the server enforces
+    // content.slice(start, end) === codedText. Rewriting the text server-side
+    // shifts every offset - a coding at the very end started failing with 400
+    // when this briefly used .trim().
     const parsed = createTranscriptSchema.safeParse({ title: '  Interview 1  ', content: '  real words  ' });
     expect(parsed.success).toBe(true);
     if (parsed.success) {
       expect(parsed.data.title).toBe('Interview 1');
-      expect(parsed.data.content).toBe('real words');
+      expect(parsed.data.content).toBe('  real words  ');
+    }
+  });
+
+  it('keeps trailing whitespace usable as a coding target', () => {
+    const content = 'The waiting was the hardest part.   ';
+    const parsed = createTranscriptSchema.safeParse({ title: 'T', content });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      // The invariant the coding endpoint enforces still holds at the very end.
+      expect(parsed.data.content.slice(content.length - 10, content.length)).toBe(content.slice(-10));
     }
   });
 });
