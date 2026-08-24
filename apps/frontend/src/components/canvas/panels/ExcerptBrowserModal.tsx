@@ -1,8 +1,9 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding, CanvasTranscript, CanvasCase } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface ExcerptBrowserModalProps {
   onClose: () => void;
@@ -23,6 +24,9 @@ interface EnrichedExcerpt {
 }
 
 export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProps) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const deleteCoding = useCanvasStore((s) => s.deleteCoding);
@@ -207,6 +211,7 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         className="modal-content w-[960px] max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

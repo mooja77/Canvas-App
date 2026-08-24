@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface Props {
   onSubmit: (title: string, content: string) => Promise<void>;
@@ -7,6 +8,9 @@ interface Props {
 }
 
 export default function TranscriptUploadModal({ onSubmit, onClose }: Props) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -29,6 +33,7 @@ export default function TranscriptUploadModal({ onSubmit, onClose }: Props) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="transcript-upload-title"

@@ -1,8 +1,9 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { useCanvasStore, useCanvasQuestions, useCanvasCodings } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface HierarchyPanelProps {
   onClose: () => void;
@@ -16,6 +17,9 @@ interface TreeItem {
 }
 
 export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const questions = useCanvasQuestions();
   const codings = useCanvasCodings();
@@ -164,6 +168,7 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
   return (
     <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="hierarchy-title"

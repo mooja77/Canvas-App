@@ -1,5 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface SurveyImportModalProps {
   isOpen: boolean;
@@ -71,6 +72,12 @@ function parseCSV(content: string): ParsedCSV {
 }
 
 export default function SurveyImportModal({ isOpen, onClose, onImport }: SurveyImportModalProps) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  // The `active` argument matters here: this component stays mounted and the
+  // dialog appears conditionally, so the effect must re-run when it opens.
+  // Without it the trap initialises once against a null ref and never engages.
+  useFocusTrap(dialogRef, isOpen);
   useEscapeToClose(onClose);
   const [csvContent, setCsvContent] = useState('');
   const [titleColumn, setTitleColumn] = useState('');
@@ -176,6 +183,7 @@ export default function SurveyImportModal({ isOpen, onClose, onImport }: SurveyI
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="survey-import-title"

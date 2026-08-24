@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { canvasClient } from '../../../services/api';
 import { useActiveCanvasId } from '../../../stores/canvasStore';
 import { trackEvent } from '../../../utils/analytics';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface Props {
   onClose: () => void;
@@ -33,6 +34,9 @@ interface MethodsStatementResponse {
  * (2025) heuristic for granular AI disclosure.
  */
 export default function MethodsStatementModal({ onClose }: Props) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   const canvasId = useActiveCanvasId();
   const [paragraph, setParagraph] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<MethodsStatementResponse['data']['metadata'] | null>(null);
@@ -92,6 +96,7 @@ export default function MethodsStatementModal({ onClose }: Props) {
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       role="dialog"
       aria-modal="true"

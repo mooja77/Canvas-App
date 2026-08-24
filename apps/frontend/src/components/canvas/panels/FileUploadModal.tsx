@@ -8,6 +8,7 @@ import {
 } from '../../../utils/transcriptFiles';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 function readFileText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -36,6 +37,9 @@ interface Props {
 }
 
 export default function FileUploadModal({ onClose }: Props) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const { addTranscript, refreshCanvas } = useCanvasStore();
   const [entries, setEntries] = useState<ParsedEntry[]>([]);
@@ -121,6 +125,7 @@ export default function FileUploadModal({ onClose }: Props) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="file-upload-title"

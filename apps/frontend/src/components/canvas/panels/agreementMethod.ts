@@ -1,11 +1,23 @@
 // Which intercoder-agreement coefficient applies for a given number of coders.
 //
-// Cohen's κ is defined for exactly two raters. For three or more, Krippendorff's
-// α is the appropriate generalisation (Fleiss' κ and Light's κ have known
-// instabilities — see the methodology chapter). Fewer than two coders cannot
-// produce an agreement statistic at all.
+// This module used to promise **Cohen's κ for exactly two coders** and
+// Krippendorff's α for three or more. The server has only ever implemented one
+// coefficient: `POST /canvas/:id/intercoder/agreement` calls
+// `computeKrippendorffAlpha` unconditionally and returns
+// `method: "Krippendorff's α"` for every request
+// (apps/backend/src/routes/codingRoutes.ts:765).
+//
+// So for the two-coder case — the commonest one by far — the panel named a
+// statistic that was never computed, and a researcher could carry "Cohen's κ"
+// into a methods section on the strength of it. The number itself was correct;
+// only the name was wrong. Naming the coefficient you actually ran is the whole
+// point of a reliability report.
+//
+// α is not a fallback here: for two coders with nominal data it is a proper
+// generalisation of κ, and unlike κ it handles missing judgements. There is no
+// need to implement Cohen's κ to make this honest — only to stop claiming it.
 
-export type AgreementMethod = 'cohen' | 'krippendorff';
+export type AgreementMethod = 'krippendorff';
 
 export interface AgreementChoice {
   canCompute: boolean;
@@ -16,9 +28,6 @@ export interface AgreementChoice {
 export function chooseAgreementMethod(nCoders: number): AgreementChoice {
   if (nCoders < 2) {
     return { canCompute: false, method: null, label: 'Select at least 2 coders' };
-  }
-  if (nCoders === 2) {
-    return { canCompute: true, method: 'cohen', label: "Cohen's κ" };
   }
   return { canCompute: true, method: 'krippendorff', label: "Krippendorff's α" };
 }

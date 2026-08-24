@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import { useAuthStore } from '../../../stores/authStore';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import {
   generateReportDocxBlob,
   generateReportHtml,
@@ -18,6 +19,9 @@ interface RichExportModalProps {
 type ExportFormat = 'docx' | 'html' | 'markdown';
 
 export default function RichExportModal({ onClose }: RichExportModalProps) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const effectivePlan = useAuthStore((state) => state.effectivePlan ?? state.plan ?? 'free');
@@ -109,6 +113,7 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         className="modal-content w-[520px] rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

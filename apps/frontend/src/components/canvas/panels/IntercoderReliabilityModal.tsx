@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding } from '@qualcanvas/shared';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface IntercoderReliabilityModalProps {
   onClose: () => void;
@@ -59,6 +60,9 @@ function interpretKappa(k: number): { label: string; color: string } {
 }
 
 export default function IntercoderReliabilityModal({ onClose }: IntercoderReliabilityModalProps) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const [codeA, setCodeA] = useState('');
@@ -192,6 +196,7 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="intercoder-reliability-title"

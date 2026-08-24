@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { billingApi } from '../services/api';
@@ -14,6 +14,7 @@ import FAQ from '../components/marketing/FAQ';
 import CTAStripe from '../components/marketing/CTAStripe';
 import { trackEvent } from '../utils/analytics';
 import toast from 'react-hot-toast';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 const PRICE_IDS = {
   student: {
@@ -47,9 +48,15 @@ const RESEARCH_DESK_CALENDLY = 'mailto:research@qualcanvas.com?subject=Instituti
  * confidence sells in 2026 (Linear's pricing page makes the same move).
  */
 export default function PricingPage() {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [period, setPeriod] = useState<'monthly' | 'annual'>('annual');
   const [loading, setLoading] = useState(false);
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false);
+  // The `active` argument matters here: this component stays mounted and the
+  // dialog appears conditionally, so the effect must re-run when it opens.
+  // Without it the trap initialises once against a null ref and never engages.
+  useFocusTrap(dialogRef, showDowngradeWarning);
   const [_pendingTier, setPendingTier] = useState<'pro' | 'team' | null>(null);
   const navigate = useNavigate();
   const { authenticated, plan, authType, email } = useAuthStore();
@@ -573,6 +580,7 @@ export default function PricingPage() {
       {/* ─── Downgrade warning modal (preserved verbatim from legacy) ─── */}
       {showDowngradeWarning && (
         <div
+          ref={dialogRef}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
           role="alertdialog"
           aria-modal="true"

@@ -46,6 +46,12 @@ interface AuthState {
     effectivePlan?: string;
     trialEndsAt?: string | null;
     emailVerified?: boolean;
+    /**
+     * Set when this email identity is the SAME person who was already signed
+     * in - i.e. linking an email to an existing access-code account. Carries
+     * the local research data forward instead of wiping it as a new account.
+     */
+    sameIdentity?: boolean;
   }) => void;
   setEmailVerified: (verified: boolean) => void;
   setName: (name: string) => void;
@@ -108,6 +114,29 @@ function clearIfDifferentIdentity(identity: string): void {
   }
 }
 
+/**
+ * Record a new identity string for the SAME person, without wiping anything.
+ *
+ * Linking an email to a legacy access-code account changes the identity key
+ * from `legacy:<dashboardAccessId>` to `email:<userId>`, and
+ * clearIfDifferentIdentity read that as a different account signing in - so
+ * accepting the product's own "Add an email to secure your account" prompt
+ * destroyed the user's sticky notes, code weights, theme groups, node colours,
+ * bookmarks and edge waypoints, none of which have a server copy, plus any
+ * queued offline mutations that had not yet reached the server.
+ *
+ * Nothing about the person changes at link time: same DashboardAccess, same
+ * canvases (the server repoints them to the new userId). So carry the identity
+ * forward instead of treating the upgrade as a stranger.
+ */
+function adoptIdentity(identity: string): void {
+  try {
+    localStorage.setItem(IDENTITY_KEY, identity);
+  } catch {
+    // Ignored - see clearLocalResearchData.
+  }
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -146,7 +175,8 @@ export const useAuthStore = create<AuthState>()(
 
       // Email login — jwt payload intentionally not stored
       setEmailAuth: (data) => {
-        clearIfDifferentIdentity(`email:${data.userId}`);
+        if (data.sameIdentity) adoptIdentity(`email:${data.userId}`);
+        else clearIfDifferentIdentity(`email:${data.userId}`);
         set({
           email: data.email,
           userId: data.userId,

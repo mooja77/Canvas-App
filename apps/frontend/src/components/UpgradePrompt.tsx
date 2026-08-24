@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface PlanLimitDetail {
   error: string;
@@ -11,8 +12,14 @@ interface PlanLimitDetail {
 }
 
 export default function UpgradePrompt() {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [show, setShow] = useState(false);
   const [detail, setDetail] = useState<PlanLimitDetail | null>(null);
+  // The `active` argument matters here: this component stays mounted and the
+  // dialog appears conditionally, so the effect must re-run when it opens.
+  // Without it the trap initialises once against a null ref and never engages.
+  useFocusTrap(dialogRef, show && !!detail);
   const navigate = useNavigate();
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -77,6 +84,7 @@ export default function UpgradePrompt() {
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
       role="alertdialog"
       aria-modal="true"

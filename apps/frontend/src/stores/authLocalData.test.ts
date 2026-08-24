@@ -109,3 +109,59 @@ describe('shared-browser guarantee, now tied to identity', () => {
     expect(researchKeysPresent()).toEqual([]);
   });
 });
+
+/**
+ * Linking an email to an existing access-code account is an UPGRADE, not a
+ * different person signing in. The product actively nudges users into it
+ * ("Add an email to secure your account"), and doing so used to wipe every
+ * local-only artefact they had — including queued writes that had never
+ * reached the server.
+ */
+describe('linking an email to a legacy account is the same person', () => {
+  it('keeps local research data when a legacy session links an email', () => {
+    useAuthStore.getState().setAuth({
+      dashboardCode: 'CANVAS-LEZLW3M9',
+      name: 'Legacy',
+      role: 'owner',
+      dashboardAccessId: 'dash-1',
+    });
+    seedResearchData();
+
+    useAuthStore.getState().setEmailAuth({ ...EMAIL_USER, sameIdentity: true });
+
+    expect(researchKeysPresent().sort()).toEqual(Object.keys(RESEARCH_KEYS).sort());
+  });
+
+  it('keeps the unsynced offline write queue across the link', () => {
+    useAuthStore.getState().setAuth({
+      dashboardCode: 'CANVAS-LEZLW3M9',
+      name: 'Legacy',
+      role: 'owner',
+      dashboardAccessId: 'dash-1',
+    });
+    localStorage.setItem(
+      'qualcanvas-offline-queue',
+      JSON.stringify([{ method: 'POST', url: '/api/v1/canvas/C1/codings' }]),
+    );
+
+    useAuthStore.getState().setEmailAuth({ ...EMAIL_USER, sameIdentity: true });
+
+    expect(localStorage.getItem('qualcanvas-offline-queue')).toContain('/api/v1/canvas/C1/codings');
+  });
+
+  it('still clears when a genuinely different email account signs in', () => {
+    // The shared-browser guarantee must survive the fix: sameIdentity is only
+    // ever set by the link-account flow, never by an ordinary sign-in.
+    useAuthStore.getState().setAuth({
+      dashboardCode: 'CANVAS-LEZLW3M9',
+      name: 'Legacy',
+      role: 'owner',
+      dashboardAccessId: 'dash-1',
+    });
+    seedResearchData();
+
+    useAuthStore.getState().setEmailAuth({ ...EMAIL_USER, email: 'other@example.com', userId: 'user-99' });
+
+    expect(researchKeysPresent()).toEqual([]);
+  });
+});

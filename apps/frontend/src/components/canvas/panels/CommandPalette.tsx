@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useCanvasStore, useActiveCanvas } from '../../../stores/canvasStore';
 import { useUIStore } from '../../../stores/uiStore';
 import { trackEvent } from '../../../utils/analytics';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import type {
   CanvasTranscript,
   CanvasQuestion,
@@ -57,6 +58,9 @@ export default function CommandPalette({
   onShowWeighting,
   onShowCrossCase,
 }: CommandPaletteProps) {
+  // Keep Tab inside the dialog and give focus back to the trigger on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   const activeCanvas = useActiveCanvas();
   const addQuestion = useCanvasStore((s) => s.addQuestion);
   const addMemo = useCanvasStore((s) => s.addMemo);
@@ -650,6 +654,7 @@ export default function CommandPalette({
 
   return (
     <div
+      ref={dialogRef}
       className="modal-backdrop fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh] bg-black/40 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"

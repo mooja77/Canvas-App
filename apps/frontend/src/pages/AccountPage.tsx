@@ -210,7 +210,10 @@ export default function AccountPage() {
       const res = await authApi.updateProfile(data);
       if (emailChanging) {
         toast.success('Email updated — please log in again to verify it.');
-        logout();
+        // preserveLocalData: changing your own email address is not a change of
+        // person. A bare logout() here wiped the same local-only research data
+        // the link-account path used to destroy.
+        logout({ preserveLocalData: true });
         navigate('/login');
         return;
       }
@@ -367,6 +370,12 @@ export default function AccountPage() {
         role: user.role,
         plan: user.plan,
         emailVerified: false,
+        // Same person, upgraded credential - not a new account signing in on a
+        // shared browser. Without this the identity key flips from
+        // legacy:<id> to email:<id> and the store wipes their sticky notes,
+        // weights, colours, bookmarks and unsent offline queue, none of which
+        // exist on the server.
+        sameIdentity: true,
       });
       const refreshed = await authApi.getMe();
       setProfile(refreshed.data.data);
