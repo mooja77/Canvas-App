@@ -78,3 +78,7 @@ eval-reports/
 
 # Local-only prod credentials (never commit)
 recordings/.*-creds.json
+
+# Runtime upload storage. Local dev and test runs drop participant media here;
+# it is never part of the source tree.
+apps/backend/uploads/
