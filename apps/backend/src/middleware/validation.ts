@@ -65,7 +65,7 @@ export const teamIdUserIdParams = z.object({ teamId: cuid, userId: cuid });
 // ─── Team Schemas ───
 
 export const createTeamSchema = z.object({
-  name: z.string().min(1, 'Team name is required').max(200),
+  name: z.string().trim().min(1, 'Team name is required').max(200),
 });
 
 export const inviteMemberSchema = z.object({
@@ -76,7 +76,7 @@ export const inviteMemberSchema = z.object({
 // ─── Coding Canvas Schemas ───
 
 export const createCanvasSchema = z.object({
-  name: z.string().min(1, 'Canvas name is required').max(200),
+  name: z.string().trim().min(1, 'Canvas name is required').max(200),
   description: z.string().max(1000).optional(),
 });
 
@@ -88,12 +88,12 @@ export const updateCanvasSchema = z.object({
 });
 
 export const createTranscriptSchema = z.object({
-  title: z.string().min(1, 'Transcript title is required').max(200),
+  title: z.string().trim().min(1, 'Transcript title is required').max(200),
   // 2 million chars ≈ 400K words. Caps the resource-exhaustion vector that
   // would otherwise let a single transcript blow the LLM context window AND
   // the storage budget. Plan-limit middleware also enforces per-plan word
   // count; this is a hard ceiling.
-  content: z.string().min(1, 'Transcript content is required').max(2_000_000),
+  content: z.string().trim().min(1, 'Transcript content is required').max(2_000_000),
   sourceType: z.string().max(50).optional(),
   sourceId: z.string().max(200).optional(),
 });
@@ -124,7 +124,11 @@ export const updateTranscriptSchema = z.object({
 });
 
 export const createCanvasQuestionSchema = z.object({
-  text: z.string().min(1, 'Question text is required').max(1000),
+  text: z.string().trim().min(1, 'Question text is required').max(1000),
+  // Declared, or zod strips it and the route never sees it: a code created as
+  // a child of a theme silently became a top-level code. The UPDATE schema has
+  // always accepted it, so the two disagreed.
+  parentQuestionId: z.string().nullable().optional(),
   color: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -141,13 +145,13 @@ export const updateCanvasQuestionSchema = z.object({
 });
 
 export const createJournalEntrySchema = z.object({
-  content: z.string().min(1, 'Journal entry cannot be empty').max(10000),
+  content: z.string().trim().min(1, 'Journal entry cannot be empty').max(10000),
   category: z.string().max(50).optional(),
 });
 
 export const createCanvasMemoSchema = z.object({
   title: z.string().max(200).optional(),
-  content: z.string().min(1, 'Memo content is required').max(5000),
+  content: z.string().trim().min(1, 'Memo content is required').max(5000),
   color: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -206,7 +210,7 @@ export const updateCodingSchema = z.object({
 });
 
 export const createCaseSchema = z.object({
-  name: z.string().min(1, 'Case name is required').max(200),
+  name: z.string().trim().min(1, 'Case name is required').max(200),
   attributes: z.record(z.string(), z.string()).optional(),
 });
 

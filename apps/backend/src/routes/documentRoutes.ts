@@ -119,7 +119,7 @@ documentRoutes.post(
       // Verify question belongs to this canvas
       const question = await prisma.canvasQuestion.findUnique({ where: { id: questionId } });
       if (!question || question.canvasId !== req.params.id) {
-        return next(new AppError('Question not found in this canvas', 400));
+        return next(new AppError('Code not found in this canvas', 400));
       }
 
       const region = await prisma.documentRegionCoding.create({

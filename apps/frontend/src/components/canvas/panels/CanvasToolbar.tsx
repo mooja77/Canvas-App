@@ -393,7 +393,7 @@ export default function CanvasToolbar({
       setShowQuestionInput(false);
       toast.success('Question added');
     } catch {
-      toast.error('Failed to add question');
+      toast.error('Failed to add code');
     } finally {
       setAddingQuestion(false);
     }

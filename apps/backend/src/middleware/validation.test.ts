@@ -4,6 +4,7 @@ import {
   validate,
   createCanvasSchema,
   createTranscriptSchema,
+  createCanvasQuestionSchema,
   createCodingSchema,
   createRelationSchema,
   createComputedNodeSchema,
@@ -147,11 +148,7 @@ describe('validate middleware', () => {
 
     it('rejects invalid fromType enum', () => {
       const res = mockRes();
-      mw(
-        mockReq({ fromType: 'memo', fromId: 'c1', toType: 'question', toId: 'q1', label: 'x' }),
-        res,
-        next,
-      );
+      mw(mockReq({ fromType: 'memo', fromId: 'c1', toType: 'question', toId: 'q1', label: 'x' }), res, next);
       expect(res.status).toHaveBeenCalledWith(400);
     });
   });
@@ -172,7 +169,18 @@ describe('validate middleware', () => {
     });
 
     it('accepts all 10 node types', () => {
-      const types = ['search', 'cooccurrence', 'matrix', 'stats', 'comparison', 'wordcloud', 'cluster', 'codingquery', 'sentiment', 'treemap'];
+      const types = [
+        'search',
+        'cooccurrence',
+        'matrix',
+        'stats',
+        'comparison',
+        'wordcloud',
+        'cluster',
+        'codingquery',
+        'sentiment',
+        'treemap',
+      ];
       for (const nodeType of types) {
         vi.resetAllMocks();
         const req = mockReq({ nodeType, label: 'test' });
@@ -224,5 +232,60 @@ describe('validate middleware', () => {
       expect(next).toHaveBeenCalled();
       expect(req.body.extraField).toBeUndefined();
     });
+  });
+});
+
+/**
+ * Whitespace-only input was accepted where empty input is correctly rejected:
+ * `z.string().min(1)` counts "   " as length 3. A whitespace-only transcript
+ * was created, rendered as an empty 0-word node, and consumed a plan slot.
+ * `.trim()` before `.min(1)` rejects it and normalises what gets stored.
+ */
+describe('whitespace-only input is rejected like empty input', () => {
+  const blank = ['   ', '\t\t', '\n\n', ' \t\n '];
+
+  it('rejects whitespace-only transcript content and title', () => {
+    for (const w of blank) {
+      expect(createTranscriptSchema.safeParse({ title: 'T', content: w }).success).toBe(false);
+      expect(createTranscriptSchema.safeParse({ title: w, content: 'real content' }).success).toBe(false);
+    }
+  });
+
+  it('rejects a whitespace-only code name', () => {
+    for (const w of blank) {
+      expect(createCanvasQuestionSchema.safeParse({ text: w }).success).toBe(false);
+    }
+  });
+
+  it('still accepts real content, and trims it', () => {
+    const parsed = createTranscriptSchema.safeParse({ title: '  Interview 1  ', content: '  real words  ' });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.title).toBe('Interview 1');
+      expect(parsed.data.content).toBe('real words');
+    }
+  });
+});
+
+/**
+ * The create schema omitted parentQuestionId, and zod strips undeclared keys
+ * before the route ever sees req.body — so a code created as a child of a theme
+ * silently became a top-level code. The update schema always accepted it, so
+ * the two disagreed about the same field.
+ */
+describe('createCanvasQuestionSchema keeps parentQuestionId', () => {
+  it('preserves a parent id instead of silently dropping it', () => {
+    const parsed = createCanvasQuestionSchema.safeParse({ text: 'Sub-code', parentQuestionId: 'q-parent' });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.parentQuestionId).toBe('q-parent');
+  });
+
+  it('accepts null for an explicitly top-level code', () => {
+    const parsed = createCanvasQuestionSchema.safeParse({ text: 'Top level', parentQuestionId: null });
+    expect(parsed.success).toBe(true);
+  });
+
+  it('is still optional', () => {
+    expect(createCanvasQuestionSchema.safeParse({ text: 'No parent' }).success).toBe(true);
   });
 });

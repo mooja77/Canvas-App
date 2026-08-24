@@ -411,7 +411,7 @@ describe('Data integrity integration tests', () => {
         });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/question not found/i);
+      expect(res.body.error).toMatch(/code not found/i);
     });
 
     it('computed node cannot reference non-existent canvas', async () => {
