@@ -23,6 +23,10 @@ jobs:
       DATABASE_URL: postgresql://qualcanvas:qualcanvas@localhost:55432/qualcanvas_e2e?schema=public
       JWT_SECRET: test-secret-for-ci-pipeline-only
       E2E_TEST: true
+      # Must match ci.yml - see the same note in update-e2e-snapshots.yml.
+      # auth.setup.ts throws without these, so the job refreshes nothing.
+      DEMO_ACCESS_CODE: e2e-only-qualcanvas-code-2026
+      E2E_ACCESS_CODE: e2e-only-qualcanvas-code-2026
     services:
       postgres:
         image: postgres:16
