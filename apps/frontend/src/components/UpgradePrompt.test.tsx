@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-import { PLAN_LIMITS, type PlanTier } from '../../../backend/src/config/plans';
+import { PLAN_LIMITS, type PlanTier } from '@qualcanvas/shared';
 import UpgradePrompt from './UpgradePrompt';
 
 const TIERS: PlanTier[] = ['free', 'student', 'pro', 'team'];

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 // Backend is the source of truth for who gets intercoder agreement.
-import { PLAN_LIMITS, featureAvailabilityMessage, type PlanTier } from '../../../../../backend/src/config/plans';
+import { PLAN_LIMITS, featureAvailabilityMessage, type PlanTier } from '@qualcanvas/shared';
 
 const toastError = vi.fn();
 vi.mock('react-hot-toast', () => ({

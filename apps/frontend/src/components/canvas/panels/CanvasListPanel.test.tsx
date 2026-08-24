@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 // Backend is the source of truth for the canvas cap and for the sentence the
 // 403 carries. Import it so the dashboard warning cannot drift away from the
 // refusal it is meant to pre-empt.
-import { PLAN_LIMITS, allowanceMessage, type PlanTier } from '../../../../../backend/src/config/plans';
+import { PLAN_LIMITS, allowanceMessage, type PlanTier } from '@qualcanvas/shared';
 
 // CanvasListPanel pulls from the canvas store + a few hooks/services. Mock the
 // surface it touches so we can render it in isolation and assert the Trash

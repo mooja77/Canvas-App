@@ -142,7 +142,7 @@ function PlanBadge({ plan }: { plan: string }) {
 /**
  * Tiers whose plan includes intercoder agreement.
  *
- * SOURCE OF TRUTH: `intercoderEnabled` in apps/backend/src/config/plans.ts.
+ * SOURCE OF TRUTH: `intercoderEnabled` in shared/types/plans.ts.
  * The sentence is what `featureAvailabilityMessage('Intercoder agreement', …)`
  * produces there; CanvasToolbar.test.tsx asserts both against the backend
  * module so they cannot drift apart from the 403 they pre-empt.
@@ -205,7 +205,7 @@ export default function CanvasToolbar({
     action();
   };
   // Intercoder agreement is Team-only (`intercoderEnabled` in
-  // apps/backend/src/config/plans.ts — true on `team` and nothing else). The
+  // shared/types/plans.ts — true on `team` and nothing else). The
   // menu used to offer it on every plan with no marker: a Pro owner could load
   // the full coder roster, configure a run, and only then get a red toast, with
   // an upgrade modal that pitched Pro — which does not unlock it. Mark it, and

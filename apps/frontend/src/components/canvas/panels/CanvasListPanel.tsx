@@ -17,7 +17,7 @@ type SortMode = 'newest' | 'az' | 'codings';
 // The dashboard used to show no quota at all: a Free user at 2/2 saw an
 // enabled "New Canvas" button and learned about the cap only when the submit
 // failed. The numbers come from config/planLimits.ts (drift-tested against
-// apps/backend/src/config/plans.ts), and the upgrade phrase is generated the
+// shared/types/plans.ts), and the upgrade phrase is generated the
 // same way the server generates its refusal — see `higherAllowancePhrase` in
 // backend config/plans.ts. CanvasListPanel.test.tsx asserts the two produce
 // byte-identical strings, so the dashboard warning and the 403 that follows it

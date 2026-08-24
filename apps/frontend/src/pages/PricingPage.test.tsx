@@ -4,7 +4,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 // The pricing table is a public claim about what each tier gets. Pin it to the
 // module that actually enforces those claims, so a tier change cannot leave the
 // page selling something the server refuses (or hiding something it allows).
-import { PLAN_LIMITS, AI_REQUESTS_PER_DAY_FAIR_USE, type PlanTier } from '../../../backend/src/config/plans';
+import { PLAN_LIMITS, AI_REQUESTS_PER_DAY_FAIR_USE, type PlanTier } from '@qualcanvas/shared';
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();

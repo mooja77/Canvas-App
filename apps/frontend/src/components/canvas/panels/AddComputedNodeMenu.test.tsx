@@ -4,7 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 // Backend is the source of truth for what each tier may create. Import it so
 // these tests fail the moment the menu's mirror drifts — the same guard
 // config/planLimits.test.ts puts on the numeric caps.
-import { PLAN_LIMITS, featureAvailabilityMessage, type PlanTier } from '../../../../../backend/src/config/plans';
+import { PLAN_LIMITS, featureAvailabilityMessage, type PlanTier } from '@qualcanvas/shared';
 
 const toastError = vi.fn();
 const toastSuccess = vi.fn();

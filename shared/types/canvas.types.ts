@@ -418,7 +418,13 @@ export interface AutoCodeInput {
 
 // ─── User & Billing Types ───
 
-export type PlanTier = 'free' | 'pro' | 'team';
+// PlanTier lives in ./plans.ts, which is the tier data the server actually
+// enforces. The copy that used to sit here was stale — it never gained
+// 'student' after that tier launched, so a Student user could not be typed at
+// all, and a wildcard re-export from the shared index resolved to whichever of
+// the two definitions won.
+import type { PlanTier } from './plans.js';
+export type { PlanTier };
 
 export interface User {
   id: string;
