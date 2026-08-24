@@ -85,7 +85,15 @@ export default function UpgradePrompt() {
   return (
     <div
       ref={dialogRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      // z-[10050], above every other layer in the app. At z-50 this sat BEHIND
+      // the ~20 canvas panels that use z-[9999], the context menu and product
+      // tour at z-[10000] and the walkthrough at z-[10001]. The alertdialog was
+      // in the DOM but elementFromPoint at the centre of the upgrade card
+      // returned the panel underneath, so clicking "View Plans" was intercepted
+      // - every upgrade CTA fired during real work was dead, and the user saw
+      // only a toast. An invisible dialog that also traps focus is worse than
+      // no dialog, so this has to outrank everything it can be raised over.
+      className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/50 backdrop-blur-sm"
       role="alertdialog"
       aria-modal="true"
     >

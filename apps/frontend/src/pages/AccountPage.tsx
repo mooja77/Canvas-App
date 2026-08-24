@@ -432,7 +432,7 @@ export default function AccountPage() {
   const isEmailAuth = profile.authType === 'email';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('account.title')}</h1>
@@ -477,10 +477,14 @@ export default function AccountPage() {
           {isEmailAuth ? (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  htmlFor="account-name"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
                   {t('account.name')}
                 </label>
                 <input
+                  id="account-name"
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
@@ -488,7 +492,10 @@ export default function AccountPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  htmlFor="account-email"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
                   Email
                   {profile.user.emailVerified !== undefined && (
                     <>
@@ -519,6 +526,7 @@ export default function AccountPage() {
                   )}
                 </label>
                 <input
+                  id="account-email"
                   type="email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
@@ -827,8 +835,14 @@ export default function AccountPage() {
             <div className="space-y-3">
               {/* Provider */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Provider</label>
+                <label
+                  htmlFor="ai-provider"
+                  className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1"
+                >
+                  Provider
+                </label>
                 <select
+                  id="ai-provider"
                   value={aiProvider}
                   onChange={(e) => {
                     setAiProvider(e.target.value);
@@ -844,11 +858,12 @@ export default function AccountPage() {
 
               {/* API Key */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                <label htmlFor="ai-api-key" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                   API Key {aiHasKey && !aiApiKey && <span className="text-green-500 ml-1">configured</span>}
                 </label>
                 <div className="relative">
                   <input
+                    id="ai-api-key"
                     type={showAiKey ? 'text' : 'password'}
                     placeholder={
                       aiHasKey
@@ -867,6 +882,8 @@ export default function AccountPage() {
                   <button
                     type="button"
                     onClick={() => setShowAiKey(!showAiKey)}
+                    aria-label={showAiKey ? 'Hide API key' : 'Show API key'}
+                    aria-pressed={showAiKey}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -890,10 +907,11 @@ export default function AccountPage() {
 
               {/* Model (optional) */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                <label htmlFor="ai-model" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                   Model (optional)
                 </label>
                 <input
+                  id="ai-model"
                   type="text"
                   placeholder={
                     aiProvider === 'openai'
@@ -1116,7 +1134,10 @@ export default function AccountPage() {
             )}
 
             <div className="flex items-center gap-3">
+              {/* No visible caption to associate, so name it directly rather
+                  than leaving a select that announces only "combo box". */}
               <select
+                aria-label="Report frequency"
                 value={reportFrequency}
                 onChange={(e) => setReportFrequency(e.target.value)}
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
@@ -1323,6 +1344,6 @@ export default function AccountPage() {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }
