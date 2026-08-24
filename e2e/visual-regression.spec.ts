@@ -340,6 +340,14 @@ test.describe.serial('Visual Regression — Component Snapshots', () => {
     await shareBtn.click();
     const modal = page.locator('[role="dialog"][aria-label="Share Canvas"]');
     await expect(modal).toBeVisible({ timeout: 5000 });
+    // Dialogs now move focus to their first control on open (WAI-ARIA requires
+    // it wherever aria-modal is claimed). That paints a focus ring, which is
+    // real behaviour but not what this snapshot is about — it made 1582 px
+    // differ and turned an intentional accessibility fix into a red baseline.
+    // Drop focus so the shot captures the modal's appearance, not which control
+    // happens to hold focus. Focus behaviour itself is covered by
+    // useFocusTrap.test.tsx.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     const panel = modal.locator(':scope > div').first();
     await expect(panel).toHaveScreenshot('share-modal.png', SCREENSHOT_OPTS);
   });
