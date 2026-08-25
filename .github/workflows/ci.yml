@@ -50,6 +50,32 @@ jobs:
       - run: npm run build
       - run: npm run build:budget
 
+  deploy-image:
+    # Builds the SAME Dockerfile Railway builds, and nothing else.
+    #
+    # Every backend deploy failed from 2026-08-22 to 2026-08-25 while CI stayed
+    # green, and six merges shipped nothing to the API. `npm run build` passes at
+    # the repo root, where every workspace is present; the image copies only
+    # shared/ and apps/frontend/ into its frontend stage, so a frontend file
+    # importing from apps/backend compiles here and fails there. Nothing in CI
+    # ever built the image, so the difference stayed invisible until someone
+    # asked why a merged fix was not live in production.
+    #
+    # That is what this job is for: it fails on the PR, before the merge that
+    # would otherwise stop deploying without telling anyone.
+    name: Deploy Image Builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
