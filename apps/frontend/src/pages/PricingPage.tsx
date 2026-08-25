@@ -423,7 +423,7 @@ export default function PricingPage() {
             {
               heading: 'Export + import',
               // Every row here is asserted against `allowedExportFormats` in
-              // apps/backend/src/config/plans.ts by PricingPage.test.tsx.
+              // shared/types/plans.ts by PricingPage.test.tsx.
               rows: [
                 { feature: 'CSV export', values: ['✓', '✓', '✓', '✓', '✓'] },
                 { feature: 'PNG / HTML / Markdown', values: ['—', '✓', '✓', '✓', '✓'] },
@@ -441,7 +441,7 @@ export default function PricingPage() {
               rows: [
                 // Not "Unlimited": every paid tier shares the same 1,000/day
                 // fair-use ceiling (AI_REQUESTS_PER_DAY_FAIR_USE in
-                // apps/backend/src/config/plans.ts, enforced by checkAiAccess),
+                // shared/types/plans.ts, enforced by checkAiAccess),
                 // and that module's own comment names "Unlimited" here as a
                 // false claim. PricingPage.test.tsx pins the number to it.
                 {

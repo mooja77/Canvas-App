@@ -3,7 +3,7 @@ import { FRONTEND_PLAN_LIMITS, getFrontendPlanLimits } from './planLimits';
 // Backend plans.ts is the source of truth. Import it directly so this test
 // FAILS the moment the frontend copy drifts again — the exact class of bug
 // this batch was opened for.
-import { PLAN_LIMITS, type PlanTier } from '../../../backend/src/config/plans';
+import { PLAN_LIMITS, type PlanTier } from '@qualcanvas/shared';
 
 const TIERS: PlanTier[] = ['free', 'student', 'pro', 'team'];
 

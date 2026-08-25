@@ -1,7 +1,7 @@
 /**
  * Frontend copy of the plan caps.
  *
- * SOURCE OF TRUTH: apps/backend/src/config/plans.ts. This is a hand-mirror,
+ * SOURCE OF TRUTH: shared/types/plans.ts. This is a hand-mirror,
  * kept because the browser needs the numbers to render meters and cap hints
  * before (or without) a round-trip. It exists as ONE module rather than the
  * three drifted inline literals it replaced (AccountPage, StatusBar, and the

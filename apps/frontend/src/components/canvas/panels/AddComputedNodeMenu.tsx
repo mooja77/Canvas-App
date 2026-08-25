@@ -12,7 +12,7 @@ import { CollisionPopover } from '../primitives/CollisionPopover';
 // no disabled state; six of them 403'd on click and the user got a red "Failed
 // to add node" toast next to an upgrade modal that named the wrong plans.
 //
-// SOURCE OF TRUTH: `allowedAnalysisTypes` in apps/backend/src/config/plans.ts,
+// SOURCE OF TRUTH: `allowedAnalysisTypes` in shared/types/plans.ts,
 // enforced by `checkAnalysisType`. Mirrored here — the same way
 // config/planLimits.ts mirrors the numeric caps — because the lock has to
 // render before any round-trip. AddComputedNodeMenu.test.tsx asserts this

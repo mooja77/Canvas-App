@@ -23,7 +23,7 @@
     "lint:fix": "eslint --fix apps/backend/src apps/frontend/src shared",
     "format": "prettier --write \"apps/**/*.{ts,tsx}\" \"shared/**/*.ts\"",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx}\" \"shared/**/*.ts\"",
-    "test": "npm run test -w apps/backend && npm run test -w apps/frontend",
+    "test": "npm run build -w shared && npm run test -w apps/backend && npm run test -w apps/frontend",
     "test:e2e": "npx playwright test --project=setup --project=chromium",
     "test:e2e:all": "npx playwright test",
     "test:e2e:firefox": "npx playwright test --project=setup --project=firefox",
