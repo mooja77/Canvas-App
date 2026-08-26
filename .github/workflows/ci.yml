@@ -11,6 +11,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  dependency-audit:
+    # @prisma/config currently pins deepmerge-ts 7.1.5, which is affected by
+    # GHSA-ggr8-5vv4-36mx. package.json overrides it to the compatible patched
+    # major. Remove the override once Prisma ships @prisma/config with
+    # deepmerge-ts >=8, but keep this audit as a permanent release gate.
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://audit:audit@localhost:5432/audit?schema=public
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Reject high-severity production dependency advisories
+        run: npm audit --omit=dev --audit-level=high
+      - name: Verify Prisma configuration still loads with the patched merger
+        run: npx prisma validate --schema=apps/backend/prisma/schema.prisma
+
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
