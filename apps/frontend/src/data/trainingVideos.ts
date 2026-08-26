@@ -100,7 +100,7 @@ export const trainingVideos: readonly TrainingVideo[] = [
   },
   {
     id: '06',
-    videoId: null,
+    videoId: 'CaAvIwiojoQ',
     title: 'Write Research Memos and Keep an Audit Trail in QualCanvas',
     shortTitle: 'Memos and audit trail',
     outcome: 'Write useful analytical memos and document decisions, ethics boundaries and changes over time.',
@@ -110,7 +110,7 @@ export const trainingVideos: readonly TrainingVideo[] = [
   },
   {
     id: '07',
-    videoId: null,
+    videoId: '5aRoxo1L5Rs',
     title: 'Share a QualCanvas Project and Check Intercoder Agreement',
     shortTitle: 'Share and check agreement',
     outcome: 'Share the right workspace safely, align the codebook and use agreement as a prompt for discussion.',
@@ -120,7 +120,7 @@ export const trainingVideos: readonly TrainingVideo[] = [
   },
   {
     id: '08',
-    videoId: null,
+    videoId: 'gmYvlXRAA7s',
     title: 'Use AI in QualCanvas Without Giving Up Researcher Control',
     shortTitle: 'AI privacy and control',
     outcome: 'Understand what AI actions do, what data is sent and what the researcher must review and disclose.',
@@ -130,7 +130,7 @@ export const trainingVideos: readonly TrainingVideo[] = [
   },
   {
     id: '09',
-    videoId: null,
+    videoId: 'tTCsnj9lBBA',
     title: 'Export QualCanvas Work for a Dissertation, Report or Handoff',
     shortTitle: 'Export for writing or handoff',
     outcome: 'Choose an export format that preserves the evidence and context needed by the next reader.',
@@ -140,7 +140,7 @@ export const trainingVideos: readonly TrainingVideo[] = [
   },
   {
     id: '10',
-    videoId: null,
+    videoId: '42MXb9EG6Pk',
     title: 'The Complete QualCanvas Workflow | Transcript to Research Report',
     shortTitle: 'Complete transcript-to-report workflow',
     outcome: 'See the full sequence from project setup and coding through analysis, memoing, review and export.',
@@ -150,7 +150,7 @@ export const trainingVideos: readonly TrainingVideo[] = [
   },
   {
     id: '11',
-    videoId: null,
+    videoId: 'aJYc172LYiI',
     title: 'QualCanvas for PhD and Dissertation Research | A Defensible Analysis Trail',
     shortTitle: 'QualCanvas for PhD research',
     outcome: 'Organise a method, analysis trail, supervision handoff and final dissertation outputs.',
@@ -160,7 +160,7 @@ export const trainingVideos: readonly TrainingVideo[] = [
   },
   {
     id: '12',
-    videoId: null,
+    videoId: '85kDQgTGSuE',
     title: 'QualCanvas for Methods Teaching and Research Teams',
     shortTitle: 'Methods teaching and research teams',
     outcome: 'Use shared definitions, visible evidence and structured review to teach coding or coordinate a team.',
@@ -170,7 +170,7 @@ export const trainingVideos: readonly TrainingVideo[] = [
   },
   {
     id: '13',
-    videoId: null,
+    videoId: 'SKVGUvdPUJc',
     title: 'Import Open-Text Survey Data into QualCanvas',
     shortTitle: 'Import open-text survey data',
     outcome: 'Import a CSV of open-text responses, map useful columns and prepare responses for safe coding.',
@@ -180,7 +180,7 @@ export const trainingVideos: readonly TrainingVideo[] = [
   },
   {
     id: '14',
-    videoId: null,
+    videoId: 'QqIqNiKnlX4',
     title: 'Build Cases and Compare Participants in QualCanvas',
     shortTitle: 'Cases and cross-case analysis',
     outcome:
@@ -191,7 +191,7 @@ export const trainingVideos: readonly TrainingVideo[] = [
   },
   {
     id: '15',
-    videoId: null,
+    videoId: 'Up3zuowdvjA',
     title: 'Move Qualitative Projects with QDPX | QualCanvas Import and Export',
     shortTitle: 'Move projects with QDPX',
     outcome: 'Use QDPX to transfer a qualitative project, then verify the result in the destination tool.',
@@ -201,7 +201,7 @@ export const trainingVideos: readonly TrainingVideo[] = [
   },
   {
     id: '16',
-    videoId: null,
+    videoId: '5M4Jp1dDYVI',
     title: 'Organise a Busy QualCanvas Workspace | Layout and Shortcuts',
     shortTitle: 'Organise a busy visual canvas',
     outcome: 'Use layout, navigation and shortcut controls to keep a growing visual workspace readable.',
@@ -211,7 +211,7 @@ export const trainingVideos: readonly TrainingVideo[] = [
   },
   {
     id: '17',
-    videoId: null,
+    videoId: 'dYEQduWE3Co',
     title: 'Build a Research Repository Across QualCanvas Projects',
     shortTitle: 'Research repository across projects',
     outcome: 'Curate carefully written insights across projects while preserving links back to the source analysis.',
@@ -221,7 +221,7 @@ export const trainingVideos: readonly TrainingVideo[] = [
   },
   {
     id: '18',
-    videoId: null,
+    videoId: 'I8AHKIpvNtM',
     title: 'QualCanvas for UX, Service and Applied Research',
     shortTitle: 'UX, service and applied research',
     outcome: 'Combine interviews, open-text responses, visible analysis and memos in an applied-research workflow.',

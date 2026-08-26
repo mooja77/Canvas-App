@@ -6,6 +6,13 @@ test('training centre is responsive, accessible and private before play', async 
   const earlyYouTubeRequests: string[] = [];
   let playChosen = false;
 
+  // The production build used by this local preview points at the live API.
+  // Isolate the status indicator so the browser test is not defeated by the
+  // live API correctly rejecting a localhost Origin header.
+  await page.route('https://api.qualcanvas.com/health', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '{"status":"ok"}' }),
+  );
+
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text());
   });
@@ -49,13 +56,12 @@ test('training centre is responsive, accessible and private before play', async 
   const playButtons = page.getByRole('button', { name: /^Play .* connects to YouTube\.$/ });
   const playButtonCount = await playButtons.count();
   const publishingLabels = await page.getByText('Publishing shortly').count();
-  expect(playButtonCount + publishingLabels).toBe(18);
+  expect(playButtonCount).toBe(18);
+  expect(publishingLabels).toBe(0);
 
-  if (playButtonCount > 0) {
-    playChosen = true;
-    await playButtons.first().click();
-    const player = page.locator('iframe').first();
-    await expect(player).toBeVisible();
-    await expect(player).toHaveAttribute('src', /^https:\/\/www\.youtube-nocookie\.com\/embed\//);
-  }
+  playChosen = true;
+  await playButtons.last().click();
+  const player = page.locator('iframe').first();
+  await expect(player).toBeVisible();
+  await expect(player).toHaveAttribute('src', /^https:\/\/www\.youtube-nocookie\.com\/embed\/I8AHKIpvNtM/);
 });
