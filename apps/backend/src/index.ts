@@ -113,6 +113,7 @@ import { startReportScheduler, stopReportScheduler } from './jobs/reportSchedule
 import { startLifecycleEmailScheduler, stopLifecycleEmailScheduler } from './jobs/lifecycleEmailScheduler.js';
 import { startStripeReconciliationScheduler, stopStripeReconciliationScheduler } from './jobs/stripeReconciliation.js';
 import { startAuditRetentionScheduler, stopAuditRetentionScheduler } from './jobs/auditRetention.js';
+import { startCanvasTrashRetentionScheduler, stopCanvasTrashRetentionScheduler } from './jobs/canvasTrashRetention.js';
 import { corsOrigin } from './utils/origins.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -474,6 +475,7 @@ const server = httpServer.listen(PORT, () => {
     // Enforces the 90-day audit-log window published on /trust, /privacy and
     // in the DPA.
     startAuditRetentionScheduler();
+    startCanvasTrashRetentionScheduler();
   }
 });
 
@@ -484,6 +486,7 @@ function shutdown(signal: string) {
   stopLifecycleEmailScheduler();
   stopStripeReconciliationScheduler();
   stopAuditRetentionScheduler();
+  stopCanvasTrashRetentionScheduler();
   server.close(async () => {
     await prisma.$disconnect();
     console.log('Server closed');

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { canvasApi } from '../../../services/api';
+import { canvasApi, getAllCanvases } from '../../../services/api';
 import { useCanvasStore, useActiveCanvasId } from '../../../stores/canvasStore';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import type { CanvasTranscript } from '@qualcanvas/shared';
@@ -33,11 +33,10 @@ export default function CrossCanvasImportModal({ onClose }: Props) {
   const [importing, setImporting] = useState(false);
 
   useEffect(() => {
-    canvasApi
-      .getCanvases()
-      .then((res) => {
+    getAllCanvases()
+      .then((allCanvases) => {
         // Filter out the current canvas
-        const list = (res.data.data || []).filter((c: CanvasSummary) => c.id !== activeCanvasId);
+        const list = allCanvases.filter((c: CanvasSummary) => c.id !== activeCanvasId);
         setCanvases(list);
       })
       .catch(() => toast.error('Failed to load canvases'))

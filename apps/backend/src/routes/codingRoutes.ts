@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import {
@@ -31,8 +32,41 @@ import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../util
 import { checkCodeLimit, checkAutoCode, checkCaseAccess, checkIntercoderAccess } from '../middleware/planLimits.js';
 import { searchTranscripts } from '../utils/textAnalysis.js';
 import { buildSegmentCodeObservations, computeKrippendorffAlpha } from '../utils/intercoder.js';
+import { deleteCanvasNodeArtifacts } from '../utils/canvasNodeCleanup.js';
 
 export const codingRoutes = Router();
+
+async function assertValidQuestionParent(
+  canvasId: string,
+  questionId: string,
+  requestedParentId: string,
+): Promise<void> {
+  if (questionId === requestedParentId) {
+    throw new AppError('A code cannot be its own parent', 400);
+  }
+
+  let currentId: string | null = requestedParentId;
+  const visited = new Set<string>();
+  while (currentId) {
+    if (currentId === questionId) {
+      throw new AppError('That hierarchy change would create a cycle', 400);
+    }
+    if (visited.has(currentId)) {
+      throw new AppError('The existing code hierarchy contains a cycle', 409);
+    }
+    visited.add(currentId);
+
+    const current: { canvasId: string; parentQuestionId: string | null } | null =
+      await prisma.canvasQuestion.findUnique({
+        where: { id: currentId },
+        select: { canvasId: true, parentQuestionId: true },
+      });
+    if (!current || current.canvasId !== canvasId) {
+      throw new AppError('Parent code not found in this canvas', 404);
+    }
+    currentId = current.parentQuestionId;
+  }
+}
 
 // ─── Questions ───
 
@@ -51,13 +85,9 @@ codingRoutes.post(
       // that does not exist, and the row would still be written.
       const { parentQuestionId } = req.body as { parentQuestionId?: string | null };
       if (parentQuestionId) {
-        const parent = await prisma.canvasQuestion.findUnique({
-          where: { id: parentQuestionId },
-          select: { canvasId: true },
-        });
-        if (!parent || parent.canvasId !== req.params.id) {
-          return next(new AppError('Parent code not found in this canvas', 404));
-        }
+        // A new row cannot be part of a cycle yet, but the same validator also
+        // detects a corrupt pre-existing parent chain instead of extending it.
+        await assertValidQuestionParent(req.params.id, '__new_question__', parentQuestionId);
       }
 
       const count = await prisma.canvasQuestion.count({ where: { canvasId: req.params.id } });
@@ -86,6 +116,9 @@ codingRoutes.put(
       if (!existing || existing.canvasId !== req.params.id) {
         return next(new AppError('Code not found in this canvas', 404));
       }
+      if (typeof req.body.parentQuestionId === 'string') {
+        await assertValidQuestionParent(req.params.id, req.params.qid, req.body.parentQuestionId);
+      }
       const question = await prisma.canvasQuestion.update({
         where: { id: req.params.qid },
         data: req.body,
@@ -108,7 +141,10 @@ codingRoutes.delete('/canvas/:id/questions/:qid', validateParams(canvasQuestionP
     if (!existing || existing.canvasId !== req.params.id) {
       return next(new AppError('Code not found in this canvas', 404));
     }
-    await prisma.canvasQuestion.delete({ where: { id: req.params.qid } });
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await deleteCanvasNodeArtifacts(tx, req.params.id, 'question', req.params.qid);
+      await tx.canvasQuestion.delete({ where: { id: req.params.qid } });
+    });
     res.json({ success: true });
   } catch (err) {
     next(err);
@@ -127,6 +163,10 @@ codingRoutes.post(
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
       const { sourceId, targetId } = req.body;
 
+      if (sourceId === targetId) {
+        return next(new AppError('Choose two different codes to merge', 400));
+      }
+
       const [source, target] = await Promise.all([
         prisma.canvasQuestion.findUnique({ where: { id: sourceId } }),
         prisma.canvasQuestion.findUnique({ where: { id: targetId } }),
@@ -138,17 +178,58 @@ codingRoutes.post(
         return next(new AppError('Target code not found in this canvas', 400));
       }
 
-      await prisma.$transaction([
-        prisma.canvasTextCoding.updateMany({
+      // If target is below source, reparenting source's children to target
+      // would make target its own ancestor (or immediate parent).
+      let ancestorId: string | null = target.parentQuestionId;
+      const visited = new Set<string>();
+      while (ancestorId) {
+        if (ancestorId === sourceId) {
+          return next(new AppError('Cannot merge a code into one of its descendants', 400));
+        }
+        if (visited.has(ancestorId)) {
+          return next(new AppError('The existing code hierarchy contains a cycle', 409));
+        }
+        visited.add(ancestorId);
+        const ancestor: { canvasId: string; parentQuestionId: string | null } | null =
+          await prisma.canvasQuestion.findUnique({
+            where: { id: ancestorId },
+            select: { canvasId: true, parentQuestionId: true },
+          });
+        if (!ancestor || ancestor.canvasId !== req.params.id) {
+          return next(new AppError('The target code has an invalid parent', 409));
+        }
+        ancestorId = ancestor.parentQuestionId;
+      }
+
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        await tx.canvasTextCoding.updateMany({
           where: { questionId: sourceId, canvasId: req.params.id },
           data: { questionId: targetId },
-        }),
-        prisma.canvasQuestion.updateMany({
+        });
+        await tx.canvasQuestion.updateMany({
           where: { parentQuestionId: sourceId, canvasId: req.params.id },
           data: { parentQuestionId: targetId },
-        }),
-        prisma.canvasQuestion.delete({ where: { id: sourceId } }),
-      ]);
+        });
+        await tx.canvasRelation.updateMany({
+          where: { canvasId: req.params.id, fromType: 'question', fromId: sourceId },
+          data: { fromId: targetId },
+        });
+        await tx.canvasRelation.updateMany({
+          where: { canvasId: req.params.id, toType: 'question', toId: sourceId },
+          data: { toId: targetId },
+        });
+        await tx.canvasRelation.deleteMany({
+          where: {
+            canvasId: req.params.id,
+            fromType: 'question',
+            fromId: targetId,
+            toType: 'question',
+            toId: targetId,
+          },
+        });
+        await deleteCanvasNodeArtifacts(tx, req.params.id, 'question', sourceId);
+        await tx.canvasQuestion.delete({ where: { id: sourceId } });
+      });
 
       const codingCount = await prisma.canvasTextCoding.count({
         where: { questionId: targetId, canvasId: req.params.id },
@@ -215,7 +296,10 @@ codingRoutes.delete('/canvas/:id/memos/:mid', validateParams(canvasMemoParams), 
     if (!existing || existing.canvasId !== req.params.id) {
       return next(new AppError('Memo not found in this canvas', 404));
     }
-    await prisma.canvasMemo.delete({ where: { id: req.params.mid } });
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await deleteCanvasNodeArtifacts(tx, req.params.id, 'memo', req.params.mid);
+      await tx.canvasMemo.delete({ where: { id: req.params.mid } });
+    });
     res.json({ success: true });
   } catch (err) {
     next(err);
@@ -324,7 +408,8 @@ codingRoutes.put(
   async (req, res, next) => {
     try {
       const dashboardAccessId = getAuthId(req);
-      await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+      const coderUserId = getAuthUserId(req);
+      await getOwnedCanvas(req.params.id, dashboardAccessId, coderUserId);
       const oldCoding = await prisma.canvasTextCoding.findUnique({ where: { id: req.params.cid } });
       if (!oldCoding || oldCoding.canvasId !== req.params.id) {
         return next(new AppError('Coding not found in this canvas', 404));
@@ -445,7 +530,8 @@ codingRoutes.post(
   async (req, res, next) => {
     try {
       const dashboardAccessId = getAuthId(req);
-      await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+      const coderUserId = getAuthUserId(req);
+      await getOwnedCanvas(req.params.id, dashboardAccessId, coderUserId);
       const { questionId, pattern, mode, transcriptIds } = req.body;
 
       const question = await prisma.canvasQuestion.findUnique({ where: { id: questionId } });
@@ -476,11 +562,25 @@ codingRoutes.post(
         startOffset: m.offset,
         endOffset: m.offset + m.matchText.length,
         codedText: m.matchText,
+        source: 'auto',
+        coderUserId,
+        autoCodeKey: sha256(
+          [
+            req.params.id,
+            m.transcriptId,
+            questionId,
+            m.offset,
+            m.offset + m.matchText.length,
+            coderUserId || dashboardAccessId,
+          ].join(':'),
+        ),
       }));
 
-      const created = await prisma.$transaction(
-        codingsToCreate.map((c) => prisma.canvasTextCoding.create({ data: c })),
-      );
+      const insertResult = await prisma.canvasTextCoding.createMany({ data: codingsToCreate, skipDuplicates: true });
+      const codings = await prisma.canvasTextCoding.findMany({
+        where: { autoCodeKey: { in: codingsToCreate.map((c) => c.autoCodeKey) } },
+        orderBy: { createdAt: 'asc' },
+      });
 
       const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
       logAudit({
@@ -492,10 +592,18 @@ codingRoutes.post(
         ip: sha256(rawIp),
         method: 'POST',
         path: req.originalUrl,
-        meta: JSON.stringify({ canvasId: req.params.id, questionId, pattern, mode, matchCount: created.length }),
+        meta: JSON.stringify({ canvasId: req.params.id, questionId, pattern, mode, matchCount: insertResult.count }),
       });
 
-      res.status(201).json({ success: true, data: { created: created.length, codings: created, truncated } });
+      res.status(insertResult.count > 0 ? 201 : 200).json({
+        success: true,
+        data: {
+          created: insertResult.count,
+          codings,
+          truncated,
+          duplicatesSkipped: codingsToCreate.length - insertResult.count,
+        },
+      });
     } catch (err) {
       next(err);
     }
@@ -581,7 +689,10 @@ codingRoutes.delete('/canvas/:id/cases/:caseId', validateParams(canvasCaseParams
     if (!existing || existing.canvasId !== req.params.id) {
       return next(new AppError('Case not found in this canvas', 404));
     }
-    await prisma.canvasCase.delete({ where: { id: req.params.caseId } });
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await deleteCanvasNodeArtifacts(tx, req.params.id, 'case', req.params.caseId);
+      await tx.canvasCase.delete({ where: { id: req.params.caseId } });
+    });
     res.json({ success: true });
   } catch (err) {
     next(err);

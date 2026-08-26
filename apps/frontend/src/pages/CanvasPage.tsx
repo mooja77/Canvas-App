@@ -53,7 +53,9 @@ export default function CanvasPage() {
   // Fetch canvases before choosing the one first-run surface.
   useEffect(() => {
     if (authenticated && !canvasesLoaded) {
-      fetchCanvases().finally(() => setCanvasesLoaded(true));
+      fetchCanvases().then((loaded) => {
+        if (loaded) setCanvasesLoaded(true);
+      });
     }
   }, [authenticated, canvasesLoaded, fetchCanvases]);
 

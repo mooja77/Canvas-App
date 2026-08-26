@@ -257,6 +257,27 @@ export default function CanvasWorkspace() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
+  // Apply collaborator movement directly to the controlled React Flow state.
+  // Updating only the persisted-position slice was not visible because the
+  // same-canvas reconciliation deliberately preserves local node positions.
+  useEffect(() => {
+    const handleRemoteMove = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          canvasId: string;
+          nodeId: string;
+          position: { x: number; y: number };
+        }>
+      ).detail;
+      if (!detail || detail.canvasId !== useCanvasStore.getState().activeCanvasId) return;
+      setNodes((current) =>
+        current.map((node) => (node.id === detail.nodeId ? { ...node, position: detail.position } : node)),
+      );
+    };
+    window.addEventListener('qualcanvas:remote-node-moved', handleRemoteMove);
+    return () => window.removeEventListener('qualcanvas:remote-node-moved', handleRemoteMove);
+  }, [setNodes]);
+
   // Toggle a node's collapsed flag through the CONTROLLED node state (useNodesState),
   // which is what flows into the `nodes={decoratedNodes}` prop. The per-node header
   // button used to write via useReactFlow().setNodes (the React Flow store), but with
@@ -1565,12 +1586,7 @@ export default function CanvasWorkspace() {
     (_event: React.MouseEvent, node: Node) => {
       altDragDuplicatedRef.current = false;
       alignmentOnNodeDragStop();
-      // Broadcast the final position so collaborators receive the move — this
-      // emit was previously never called, so live node moves never propagated.
-      // (The receive side already applies it to the store; rendering the remote
-      // move live for peers additionally needs the same-canvas rebuild to take
-      // the remote position over the stale local one — a delicate change to
-      // hard-won drag/resize-undo logic, left as a follow-up.)
+      // Broadcast the final position so collaborators receive the move.
       if (activeCanvas?.id) collaboration.emitNodeMoved(activeCanvas.id, node.id, node.position);
     },
     [alignmentOnNodeDragStop, collaboration, activeCanvas?.id],

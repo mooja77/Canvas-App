@@ -68,6 +68,14 @@ function asClientRequestError(err: Error): { statusCode: number; message: string
 }
 
 export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction) {
+  // A request timeout can finish the response while an in-flight database or
+  // storage operation is still unwinding. Route-level catch blocks still call
+  // next(err) in that situation; attempting a second JSON response produces
+  // ERR_HTTP_HEADERS_SENT and turns a handled timeout into a noisy server
+  // error. The response already has its final status, so there is nothing left
+  // for this middleware to write.
+  if (res.headersSent || res.writableEnded) return;
+
   const fields = fieldsFromReq(req);
   const requestId = fields.requestId;
 

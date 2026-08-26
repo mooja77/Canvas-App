@@ -18,13 +18,21 @@ import type {
   CanvasComputedNode,
   ComputedNodeType,
 } from '@qualcanvas/shared';
-import { canvasApi } from '../services/api';
+import { canvasApi, getAllCanvases } from '../services/api';
 import { emitSocketEvent } from '../lib/socket';
 import { cacheCanvas, getCachedCanvas, clearCachedCanvas } from '../lib/offlineStorage';
 import { trackEvent } from '../utils/analytics';
 import toast from 'react-hot-toast';
 
 const FIRST_CODING_FLAG = 'qualcanvas-first-coding-fired';
+
+// Layout writes frequently target the same rows (drag stop, resize, collapse,
+// auto-arrange, and new-node placement can all fire close together). Letting
+// those requests overlap makes PostgreSQL transactions wait on one another's
+// row locks and can turn a tiny save into a request timeout. Preserve the
+// caller order and keep later saves queued even when an earlier one fails.
+let layoutSaveQueue: Promise<void> = Promise.resolve();
+let queuedLayoutSaveCount = 0;
 
 interface PendingSelection {
   transcriptId: string;
@@ -48,6 +56,7 @@ interface CanvasState {
     sharedWithMe?: boolean;
   })[];
   trashLoading: boolean;
+  trashError: string | null;
 
   // Active canvas
   activeCanvasId: string | null;
@@ -72,8 +81,8 @@ interface CanvasState {
   runningNodeId: string | null;
 
   // Actions
-  fetchCanvases: () => Promise<void>;
-  createCanvas: (name: string, description?: string) => Promise<CodingCanvas>;
+  fetchCanvases: () => Promise<boolean>;
+  createCanvas: (name: string, description?: string, starterCodes?: string[]) => Promise<CodingCanvas>;
   setResearchParadigm: (paradigm: string | null) => Promise<void>;
   deleteCanvas: (id: string) => Promise<void>;
   openCanvas: (id: string) => Promise<void>;
@@ -181,6 +190,7 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
     error: null,
     trashedCanvases: [],
     trashLoading: false,
+    trashError: null,
     activeCanvasId: null,
     activeCanvas: null,
     pendingSelection: null,
@@ -193,15 +203,17 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
     fetchCanvases: async () => {
       set({ loading: true, error: null });
       try {
-        const res = await canvasApi.getCanvases();
-        set({ canvases: res.data.data, loading: false });
+        const canvases = await getAllCanvases();
+        set({ canvases, loading: false });
+        return true;
       } catch {
         set({ error: 'Failed to load canvases', loading: false });
+        return false;
       }
     },
 
-    createCanvas: async (name, description) => {
-      const res = await canvasApi.createCanvas({ name, description });
+    createCanvas: async (name, description, starterCodes) => {
+      const res = await canvasApi.createCanvas({ name, description, starterCodes });
       const canvas = res.data.data;
       set((s) => ({ canvases: [canvas, ...s.canvases] }));
       return canvas;
@@ -290,12 +302,12 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
     },
 
     fetchTrash: async () => {
-      set({ trashLoading: true });
+      set({ trashLoading: true, trashError: null });
       try {
         const res = await canvasApi.getTrash();
-        set({ trashedCanvases: res.data.data, trashLoading: false });
+        set({ trashedCanvases: res.data.data, trashLoading: false, trashError: null });
       } catch {
-        set({ trashLoading: false });
+        set({ trashLoading: false, trashError: 'Failed to load trash' });
       }
     },
 
@@ -360,6 +372,9 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
               ...s.activeCanvas,
               transcripts: s.activeCanvas.transcripts.filter((t: CanvasTranscript) => t.id !== tid),
               codings: s.activeCanvas.codings.filter((c: CanvasTextCoding) => c.transcriptId !== tid),
+              nodePositions: s.activeCanvas.nodePositions.filter(
+                (p: CanvasNodePosition) => p.nodeId !== `transcript-${tid}` && p.nodeId !== tid,
+              ),
             }
           : null,
       }));
@@ -408,6 +423,13 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
                 .filter((q: CanvasQuestion) => q.id !== qid)
                 .map((q: CanvasQuestion) => (q.parentQuestionId === qid ? { ...q, parentQuestionId: null } : q)),
               codings: s.activeCanvas.codings.filter((c: CanvasTextCoding) => c.questionId !== qid),
+              relations: s.activeCanvas.relations.filter(
+                (r: CanvasRelation) =>
+                  !(r.fromType === 'question' && r.fromId === qid) && !(r.toType === 'question' && r.toId === qid),
+              ),
+              nodePositions: s.activeCanvas.nodePositions.filter(
+                (p: CanvasNodePosition) => p.nodeId !== `question-${qid}` && p.nodeId !== qid,
+              ),
             }
           : null,
       }));
@@ -447,7 +469,13 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
       await canvasApi.deleteMemo(activeCanvasId, mid);
       set((s) => ({
         activeCanvas: s.activeCanvas
-          ? { ...s.activeCanvas, memos: s.activeCanvas.memos.filter((m: CanvasMemo) => m.id !== mid) }
+          ? {
+              ...s.activeCanvas,
+              memos: s.activeCanvas.memos.filter((m: CanvasMemo) => m.id !== mid),
+              nodePositions: s.activeCanvas.nodePositions.filter(
+                (p: CanvasNodePosition) => p.nodeId !== `memo-${mid}` && p.nodeId !== mid,
+              ),
+            }
           : null,
       }));
       emitSocketEvent('canvas:node-deleted', { canvasId: activeCanvasId, data: { nodeId: mid, nodeType: 'memo' } });
@@ -551,19 +579,26 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
       // Viewers can't persist layout (server 403s) — silently skip instead of
       // toasting "Layout save failed" at someone who is read-only by design.
       if (activeCanvas?.myRole === 'viewer') return;
+      const canvasId = activeCanvasId;
+      const payload = {
+        positions: positions.map((p) => ({
+          nodeId: p.nodeId,
+          nodeType: p.nodeType,
+          x: p.x,
+          y: p.y,
+          width: p.width,
+          height: p.height,
+          collapsed: p.collapsed,
+        })),
+      };
+      queuedLayoutSaveCount++;
       set({ savingLayout: true });
+      const request = layoutSaveQueue.then(async () => {
+        await canvasApi.saveLayout(canvasId, payload);
+      });
+      layoutSaveQueue = request.catch(() => undefined);
       try {
-        await canvasApi.saveLayout(activeCanvasId, {
-          positions: positions.map((p) => ({
-            nodeId: p.nodeId,
-            nodeType: p.nodeType,
-            x: p.x,
-            y: p.y,
-            width: p.width,
-            height: p.height,
-            collapsed: p.collapsed,
-          })),
-        });
+        await request;
         set({ layoutSaveFailed: false });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
@@ -572,7 +607,8 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
         set({ layoutSaveFailed: true });
         toast.error(err?.response?.data?.error || 'Layout save failed');
       } finally {
-        set({ savingLayout: false });
+        queuedLayoutSaveCount--;
+        if (queuedLayoutSaveCount === 0) set({ savingLayout: false });
       }
     },
 
@@ -622,6 +658,9 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
               relations: s.activeCanvas.relations.filter(
                 (r: CanvasRelation) =>
                   !(r.fromType === 'case' && r.fromId === caseId) && !(r.toType === 'case' && r.toId === caseId),
+              ),
+              nodePositions: s.activeCanvas.nodePositions.filter(
+                (p: CanvasNodePosition) => p.nodeId !== `case-${caseId}` && p.nodeId !== caseId,
               ),
             }
           : null,
@@ -709,6 +748,9 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
           ? {
               ...s.activeCanvas,
               computedNodes: s.activeCanvas.computedNodes.filter((n: CanvasComputedNode) => n.id !== nodeId),
+              nodePositions: s.activeCanvas.nodePositions.filter(
+                (p: CanvasNodePosition) => p.nodeId !== `computed-${nodeId}` && p.nodeId !== nodeId,
+              ),
             }
           : null,
       }));
@@ -842,3 +884,4 @@ export const useShowCodingStripes = () => useCanvasStore((s) => s.showCodingStri
 export const useRunningNodeId = () => useCanvasStore((s) => s.runningNodeId);
 export const useTrashedCanvases = () => useCanvasStore((s) => s.trashedCanvases);
 export const useTrashLoading = () => useCanvasStore((s) => s.trashLoading);
+export const useTrashError = () => useCanvasStore((s) => s.trashError);

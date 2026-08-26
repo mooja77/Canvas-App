@@ -50,6 +50,7 @@ const { mockPrisma } = vi.hoisted(() => {
       updateMany: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
+      createMany: vi.fn(),
     },
     canvasMemo: {
       findUnique: vi.fn(),
@@ -175,6 +176,9 @@ describe('Coding integration tests', () => {
     vi.clearAllMocks();
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
+    mockPrisma.canvasTextCoding.createMany.mockImplementation(async ({ data }: { data: unknown[] }) => ({
+      count: data.length,
+    }));
   });
 
   // ─── 1. POST /canvas/:id/questions — creates question ───
@@ -522,7 +526,7 @@ describe('Coding integration tests', () => {
         content: 'The theme of resilience emerged in the data. Resilience was a key finding.',
       },
     ]);
-    mockPrisma.$transaction.mockResolvedValue([
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
       {
         id: 'ac-1',
         canvasId,

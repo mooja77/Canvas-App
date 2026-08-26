@@ -178,12 +178,11 @@ model CodingCanvas {
   collaborators     CanvasCollaborator[]
   documents         CanvasDocument[]
   trainingDocuments TrainingDocument[]
+  journalEntries    CanvasJournalEntry[]
 
-  @@unique([dashboardAccessId, name])
   @@index([dashboardAccessId])
   @@index([userId])
   @@index([deletedAt])
-  journalEntries    CanvasJournalEntry[]
 }
 
 model CanvasShare {
@@ -269,14 +268,14 @@ model CanvasMemo {
 /// wrote the entry, since reflexivity is personal to a researcher rather than
 /// a property of the canvas.
 model CanvasJournalEntry {
-  id           String       @id @default(cuid())
-  canvasId     String
-  coderUserId  String?
-  category     String       @default("general")
-  content      String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  canvas       CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  id          String       @id @default(cuid())
+  canvasId    String
+  coderUserId String?
+  category    String       @default("general")
+  content     String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  canvas      CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
 
   @@index([canvasId])
 }
@@ -298,6 +297,9 @@ model CanvasTextCoding {
   // attribution and AI/script-created codings may have no human coder. Enables
   // genuine multi-coder intercoder reliability (Cohen's κ / Krippendorff's α).
   coderUserId  String?
+  // Stable fingerprint for deterministic bulk auto-code rows. Nullable so
+  // hand-created and legacy codings keep their existing multi-coder semantics.
+  autoCodeKey  String?          @unique
   createdAt    DateTime         @default(now())
   canvas       CodingCanvas     @relation(fields: [canvasId], references: [id], onDelete: Cascade)
   transcript   CanvasTranscript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)

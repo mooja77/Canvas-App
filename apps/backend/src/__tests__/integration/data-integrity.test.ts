@@ -67,6 +67,7 @@ const { mockPrisma } = vi.hoisted(() => {
     canvasNodePosition: {
       findUnique: vi.fn(),
       upsert: vi.fn(),
+      deleteMany: vi.fn(),
       count: vi.fn(),
     },
     canvasShare: {
@@ -83,6 +84,8 @@ const { mockPrisma } = vi.hoisted(() => {
       findUnique: vi.fn(),
       create: vi.fn(),
       delete: vi.fn(),
+      deleteMany: vi.fn(),
+      updateMany: vi.fn(),
     },
     auditLog: {
       create: vi.fn(),
@@ -197,6 +200,10 @@ describe('Data integrity integration tests', () => {
     vi.resetAllMocks();
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockPrisma.$transaction.mockImplementation(async (operation: any) =>
+      typeof operation === 'function' ? operation(mockPrisma) : Promise.all(operation),
+    );
     // resetAllMocks wipes the mockReturnValue set at module-init. Re-apply so
     // audit log callsites that hash PII still get a string back.
     const hashing = await import('../../utils/hashing.js');

@@ -152,6 +152,16 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
               : nodeType === 'question'
                 ? ac.codings.filter((c) => c.questionId !== nodeId)
                 : ac.codings,
+          relations:
+            nodeType === 'question' || nodeType === 'case'
+              ? ac.relations.filter(
+                  (r) =>
+                    !(r.fromType === nodeType && r.fromId === nodeId) && !(r.toType === nodeType && r.toId === nodeId),
+                )
+              : ac.relations,
+          nodePositions: ac.nodePositions.filter(
+            (position) => position.nodeId !== `${nodeType}-${nodeId}` && position.nodeId !== nodeId,
+          ),
         },
       });
     };
@@ -165,14 +175,30 @@ export function useCollaboration({ canvasId, enabled = true }: UseCollaborationO
       const ac = store.activeCanvas;
       if (!ac) return;
       const { nodeId, position } = data.data;
+      const existing = ac.nodePositions.find((np) => np.nodeId === nodeId);
       useCanvasStore.setState({
         activeCanvas: {
           ...ac,
-          nodePositions: ac.nodePositions.map((np) =>
-            np.nodeId === nodeId ? { ...np, x: position.x, y: position.y } : np,
-          ),
+          nodePositions: existing
+            ? ac.nodePositions.map((np) => (np.nodeId === nodeId ? { ...np, x: position.x, y: position.y } : np))
+            : [
+                ...ac.nodePositions,
+                {
+                  id: `remote-${nodeId}`,
+                  canvasId: ac.id,
+                  nodeId,
+                  nodeType: nodeId.split('-', 1)[0] || 'unknown',
+                  x: position.x,
+                  y: position.y,
+                },
+              ],
         },
       });
+      window.dispatchEvent(
+        new CustomEvent('qualcanvas:remote-node-moved', {
+          detail: { canvasId: ac.id, nodeId, position },
+        }),
+      );
     };
 
     const handleCodingAdded = (eventData: { userId: string; data: unknown }) => {

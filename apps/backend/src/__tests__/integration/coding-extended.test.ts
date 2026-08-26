@@ -48,6 +48,7 @@ const { mockPrisma } = vi.hoisted(() => {
       updateMany: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
+      createMany: vi.fn(),
     },
     canvasMemo: {
       create: vi.fn(),
@@ -184,6 +185,9 @@ describe('Coding extended tests', () => {
     vi.clearAllMocks();
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
+    mockPrisma.canvasTextCoding.createMany.mockImplementation(async ({ data }: { data: unknown[] }) => ({
+      count: data.length,
+    }));
   });
 
   // ─── Coding creation edge cases ───
@@ -367,7 +371,7 @@ describe('Coding extended tests', () => {
     mockPrisma.canvasTranscript.findMany.mockResolvedValue([
       { id: 'tr-regex', title: 'Transcript', content: 'The participant said "I feel happy" and later "I feel sad".' },
     ]);
-    mockPrisma.$transaction.mockResolvedValue([
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
       {
         id: 'ac-regex-1',
         canvasId,
@@ -441,7 +445,7 @@ describe('Coding extended tests', () => {
     mockPrisma.canvasTranscript.findMany.mockResolvedValue([
       { id: 'tr-filter-1', title: 'Filtered', content: 'The data shows patterns.' },
     ]);
-    mockPrisma.$transaction.mockResolvedValue([
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
       {
         id: 'ac-f1',
         canvasId,
@@ -468,26 +472,48 @@ describe('Coding extended tests', () => {
     );
   });
 
+  it('POST /canvas/:id/auto-code is retry-safe and attributes the coder', async () => {
+    const questionId = 'q-retry';
+    const rows = [{ id: 'ac-retry', canvasId, transcriptId: 'tr-retry', questionId, codedText: 'pattern' }];
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: questionId, canvasId });
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([
+      { id: 'tr-retry', title: 'Retry', content: 'one pattern here' },
+    ]);
+    mockPrisma.canvasTextCoding.createMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue(rows);
+
+    const first = await request(app)
+      .post(`/api/canvas/${canvasId}/auto-code`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ questionId, pattern: 'pattern', mode: 'keyword' });
+    const retry = await request(app)
+      .post(`/api/canvas/${canvasId}/auto-code`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ questionId, pattern: 'pattern', mode: 'keyword' });
+
+    expect(first.status).toBe(201);
+    expect(retry.status).toBe(200);
+    expect(retry.body.data.created).toBe(0);
+    expect(retry.body.data.duplicatesSkipped).toBe(1);
+    expect(mockPrisma.canvasTextCoding.createMany.mock.calls[0][0].data[0]).toMatchObject({
+      coderUserId: userId,
+      source: 'auto',
+    });
+  });
+
   // ─── Question merge edge cases ───
 
   it('POST /canvas/:id/questions/merge rejects merging same question as source and target', async () => {
     const questionId = 'q-same';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
-    mockPrisma.canvasQuestion.findUnique
-      .mockResolvedValueOnce({ id: questionId, canvasId, text: 'Same Q' })
-      .mockResolvedValueOnce({ id: questionId, canvasId, text: 'Same Q' });
-    mockPrisma.$transaction.mockResolvedValue([{}, {}, {}]);
-    mockPrisma.canvasTextCoding.count.mockResolvedValue(0);
 
     const res = await request(app)
       .post(`/api/canvas/${canvasId}/questions/merge`)
       .set('Authorization', `Bearer ${jwt}`)
       .send({ sourceId: questionId, targetId: questionId });
 
-    // Route doesn't explicitly prevent this but transaction will handle it
-    // The delete of source may fail or transaction succeeds — depends on implementation
-    // We just verify it doesn't crash
-    expect([200, 400, 500]).toContain(res.status);
+    expect(res.status).toBe(400);
   });
 
   it('POST /canvas/:id/questions/merge rejects source from another canvas', async () => {
@@ -534,6 +560,21 @@ describe('Coding extended tests', () => {
     expect(res.status).toBe(400);
   });
 
+  it('POST /canvas/:id/questions/merge rejects merging into a descendant', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasQuestion.findUnique
+      .mockResolvedValueOnce({ id: 'q-source', canvasId, parentQuestionId: null })
+      .mockResolvedValueOnce({ id: 'q-child', canvasId, parentQuestionId: 'q-source' });
+
+    const res = await request(app)
+      .post(`/api/canvas/${canvasId}/questions/merge`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ sourceId: 'q-source', targetId: 'q-child' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/descendant/i);
+  });
+
   // ─── Question parent/child hierarchy ───
 
   it('PUT /canvas/:id/questions/:qid sets parentQuestionId', async () => {
@@ -541,6 +582,9 @@ describe('Coding extended tests', () => {
     const parentId = 'q-parent';
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
     mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: childId, canvasId });
+    mockPrisma.canvasQuestion.findUnique
+      .mockResolvedValueOnce({ id: childId, canvasId })
+      .mockResolvedValueOnce({ id: parentId, canvasId, parentQuestionId: null });
     mockPrisma.canvasQuestion.update.mockResolvedValue({
       id: childId,
       canvasId,
@@ -575,6 +619,22 @@ describe('Coding extended tests', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.parentQuestionId).toBeNull();
+  });
+
+  it('PUT /canvas/:id/questions/:qid rejects a parent cycle', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasQuestion.findUnique
+      .mockResolvedValueOnce({ id: 'q-child', canvasId })
+      .mockResolvedValueOnce({ id: 'q-parent', canvasId, parentQuestionId: 'q-child' });
+
+    const res = await request(app)
+      .put(`/api/canvas/${canvasId}/questions/q-child`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ parentQuestionId: 'q-parent' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/cycle/i);
+    expect(mockPrisma.canvasQuestion.update).not.toHaveBeenCalled();
   });
 
   // ─── Case CRUD ───

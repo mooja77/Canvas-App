@@ -24,6 +24,15 @@ describe('AppError', () => {
 });
 
 describe('errorHandler', () => {
+  it('does not write a second response after a request timeout has already replied', () => {
+    const res = mockRes();
+    Object.defineProperty(res, 'headersSent', { value: true });
+
+    expect(() => errorHandler(new Error('late database failure'), req, res, next)).not.toThrow();
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+  });
+
   it('returns statusCode and message for AppError', () => {
     const res = mockRes();
     const err = new AppError('Canvas not found', 404);

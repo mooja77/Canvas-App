@@ -78,6 +78,9 @@ export const inviteMemberSchema = z.object({
 export const createCanvasSchema = z.object({
   name: z.string().trim().min(1, 'Canvas name is required').max(200),
   description: z.string().max(1000).optional(),
+  // Methodology cards create their starter codebook in the same transaction
+  // as the canvas, so a network failure cannot leave a half-seeded project.
+  starterCodes: z.array(z.string().trim().min(1).max(1000)).max(20).optional(),
 });
 
 export const updateCanvasSchema = z.object({

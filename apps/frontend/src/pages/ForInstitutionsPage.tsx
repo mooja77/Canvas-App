@@ -135,7 +135,7 @@ export default function ForInstitutionsPage() {
             },
             {
               title: 'Custom retention',
-              body: 'Projects can record a retention date. Automated purge and a configurable deletion-grace workflow are not currently available.',
+              body: 'Projects can record a research-data retention date. Canvases moved to Trash have a separate 30-day recovery window before automatic permanent deletion.',
             },
             {
               title: 'EU residency',
@@ -199,7 +199,7 @@ export default function ForInstitutionsPage() {
             {
               question: 'Can we configure data retention?',
               answer:
-                'A project can record a retention date for workflow visibility. QualCanvas does not currently auto-purge at that date or provide a 14-day deletion grace period.',
+                'A project can record a research-data retention date for workflow visibility. Separately, deleted canvases remain recoverable in Trash for 30 days and are then permanently removed.',
             },
             {
               question: 'What about AI training on participant transcripts?',

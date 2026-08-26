@@ -20,6 +20,7 @@ const { mockPrisma } = vi.hoisted(() => {
     },
     codingCanvas: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -181,9 +182,17 @@ describe('Sharing integration tests', () => {
   });
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    for (const model of Object.values(mockPrisma)) {
+      if (typeof model === 'function' && 'mockReset' in model) model.mockReset();
+      else if (model && typeof model === 'object') {
+        for (const method of Object.values(model)) {
+          if (typeof method === 'function' && 'mockReset' in method) method.mockReset();
+        }
+      }
+    }
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
+    mockPrisma.codingCanvas.findFirst.mockResolvedValue(null);
   });
 
   // ─── 1. POST /canvas/:id/share — creates share code ───
@@ -565,6 +574,30 @@ describe('Sharing integration tests', () => {
     expect(written).toHaveLength(2);
     expect(written[0]).toMatchObject({ nodeId: 'transcript-tr-new', x: 10, y: 20, width: 300, height: 200 });
     expect(written[1]).toMatchObject({ nodeId: 'question-q-new', x: 400, y: 50, collapsed: true });
+  });
+
+  it('POST /canvas/clone/:code preserves event dates and remaps computed config IDs', async () => {
+    const eventDate = new Date('2026-02-03T00:00:00.000Z');
+    const { shareCode, tx } = cloneFixture({
+      transcripts: [{ id: 'tr-src', title: 'T', content: 'Hello', sortOrder: 0, caseId: null, eventDate }],
+      computedNodes: [
+        {
+          id: 'cn-src',
+          nodeType: 'comparison',
+          label: 'Comparison',
+          config: JSON.stringify({ transcriptIds: ['tr-src'], questionIds: ['q-src'] }),
+        },
+      ],
+    });
+
+    const res = await request(app).post(`/api/canvas/clone/${shareCode}`).set('Authorization', `Bearer ${jwt}`);
+
+    expect(res.status).toBe(201);
+    expect(tx.canvasTranscript.create.mock.calls[0][0].data.eventDate).toEqual(eventDate);
+    expect(JSON.parse(tx.canvasComputedNode.create.mock.calls[0][0].data.config)).toEqual({
+      transcriptIds: ['tr-new'],
+      questionIds: ['q-new'],
+    });
   });
 
   it('POST /canvas/clone/:code keeps who coded each passage', async () => {

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import {
@@ -25,6 +26,7 @@ import {
   computeTimeline,
   computeDocumentPortrait,
 } from '../utils/textAnalysis.js';
+import { deleteCanvasNodeArtifacts } from '../utils/canvasNodeCleanup.js';
 
 export const computedRoutes = Router();
 
@@ -99,7 +101,10 @@ computedRoutes.delete('/canvas/:id/computed/:nodeId', validateParams(canvasCompu
     if (!existing || existing.canvasId !== req.params.id) {
       return next(new AppError('Computed node not found in this canvas', 404));
     }
-    await prisma.canvasComputedNode.delete({ where: { id: req.params.nodeId } });
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await deleteCanvasNodeArtifacts(tx, req.params.id, 'computed', req.params.nodeId);
+      await tx.canvasComputedNode.delete({ where: { id: req.params.nodeId } });
+    });
     res.json({ success: true });
   } catch (err) {
     next(err);

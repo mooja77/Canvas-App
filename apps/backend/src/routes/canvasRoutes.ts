@@ -107,24 +107,43 @@ canvasRoutes.post('/canvas', validate(createCanvasSchema), checkCanvasLimit(), a
   try {
     const dashboardAccessId = getAuthId(req);
     const userId = getAuthUserId(req);
-    const { name, description } = req.body;
+    const {
+      name,
+      description,
+      starterCodes = [],
+    } = req.body as {
+      name: string;
+      description?: string;
+      starterCodes?: string[];
+    };
 
-    const canvas = await prisma.codingCanvas.create({
-      data: {
-        dashboardAccessId,
-        name,
-        description,
-        ...(userId ? { userId } : {}),
-      },
-    });
+    const plan = req.userPlan || 'free';
+    const limits = getPlanLimits(plan);
+    if (limits.maxCodes !== Infinity && starterCodes.length > limits.maxCodes) {
+      return next(new AppError(`This template exceeds your plan's code limit (${limits.maxCodes} codes)`, 403));
+    }
+
+    const createData = {
+      dashboardAccessId,
+      name,
+      description,
+      ...(userId ? { userId } : {}),
+    };
+    const canvas = starterCodes.length
+      ? await prisma.$transaction(async (tx) => {
+          const created = await tx.codingCanvas.create({ data: createData });
+          await tx.canvasQuestion.createMany({
+            data: starterCodes.map((text, sortOrder) => ({ canvasId: created.id, text, sortOrder })),
+          });
+          return created;
+        })
+      : await prisma.codingCanvas.create({ data: createData });
 
     // Post-create guard against the plan-limit race: two parallel requests
     // can both pass checkCanvasLimit() (count was N below limit for both)
     // and then both create, overshooting the cap. Recount and hard-delete
     // anything that pushed us over — belt-and-suspenders on top of the
     // middleware check.
-    const plan = req.userPlan || 'free';
-    const limits = getPlanLimits(plan);
     if (limits.maxCanvases !== Infinity) {
       // Mirrors checkCanvasLimit: trashed canvases do not consume a slot. If
       // this recount disagrees with the middleware, it hard-deletes the row the
@@ -179,17 +198,28 @@ canvasRoutes.get('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async
     // Shared access check (owner or collaborator). The previous inline
     // dashboardAccessId-only comparison locked out invited collaborators.
     await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
+    // Load large projects in bounded pages. Every related collection used to
+    // be materialised into one Prisma result and one JSON response, so the
+    // paid plans' intentionally uncapped projects could exhaust the API long
+    // before the browser received a byte.
+    const rawDetailPage = Number.parseInt(req.query.detailPage as string, 10);
+    const detailPage = Math.max(Number.isFinite(rawDetailPage) ? rawDetailPage : 0, 0);
+    const rawDetailPageSize = Number.parseInt(req.query.detailPageSize as string, 10);
+    const detailPageSize = Math.min(Math.max(Number.isFinite(rawDetailPageSize) ? rawDetailPageSize : 500, 50), 1000);
+    const detailSkip = detailPage * detailPageSize;
+    const detailTake = detailPageSize + 1;
+
     const canvas = await prisma.codingCanvas.findUnique({
       where: { id: req.params.canvasId },
       include: {
-        transcripts: { orderBy: { sortOrder: 'asc' } },
-        questions: { orderBy: { sortOrder: 'asc' } },
-        memos: { orderBy: { createdAt: 'asc' } },
-        codings: { orderBy: { createdAt: 'asc' } },
-        nodePositions: true,
-        cases: { orderBy: { createdAt: 'asc' } },
-        relations: { orderBy: { createdAt: 'asc' } },
-        computedNodes: { orderBy: { createdAt: 'asc' } },
+        transcripts: { orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }], skip: detailSkip, take: detailTake },
+        questions: { orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }], skip: detailSkip, take: detailTake },
+        memos: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], skip: detailSkip, take: detailTake },
+        codings: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], skip: detailSkip, take: detailTake },
+        nodePositions: { orderBy: { id: 'asc' }, skip: detailSkip, take: detailTake },
+        cases: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], skip: detailSkip, take: detailTake },
+        relations: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], skip: detailSkip, take: detailTake },
+        computedNodes: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], skip: detailSkip, take: detailTake },
       },
     });
     if (!canvas) return next(new AppError('Canvas not found', 404));
@@ -208,18 +238,35 @@ canvasRoutes.get('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async
       myRole = collab?.role || 'viewer';
     }
 
+    const page = <T>(rows: T[]): T[] => rows.slice(0, detailPageSize);
+    const hasMore = {
+      transcripts: canvas.transcripts.length > detailPageSize,
+      questions: canvas.questions.length > detailPageSize,
+      memos: canvas.memos.length > detailPageSize,
+      codings: canvas.codings.length > detailPageSize,
+      nodePositions: canvas.nodePositions.length > detailPageSize,
+      cases: canvas.cases.length > detailPageSize,
+      relations: canvas.relations.length > detailPageSize,
+      computedNodes: canvas.computedNodes.length > detailPageSize,
+    };
     const data = {
       ...canvas,
       myRole,
-      cases: canvas.cases.map((c) => ({ ...c, attributes: safeJsonParse(c.attributes) })),
-      computedNodes: canvas.computedNodes.map((n) => ({
+      transcripts: page(canvas.transcripts),
+      questions: page(canvas.questions),
+      memos: page(canvas.memos),
+      codings: page(canvas.codings),
+      nodePositions: page(canvas.nodePositions),
+      cases: page(canvas.cases).map((c) => ({ ...c, attributes: safeJsonParse(c.attributes) })),
+      relations: page(canvas.relations),
+      computedNodes: page(canvas.computedNodes).map((n) => ({
         ...n,
         config: safeJsonParse(n.config),
         result: safeJsonParse(n.result),
       })),
     };
 
-    res.json({ success: true, data });
+    res.json({ success: true, data, detailPagination: { page: detailPage, pageSize: detailPageSize, hasMore } });
   } catch (err) {
     next(err);
   }
@@ -285,6 +332,12 @@ canvasRoutes.post(
       });
       res.json({ success: true, data: restored });
     } catch (err) {
+      // A trashed canvas may share its old name with a new live canvas. Keep
+      // both records safe and explain the conflict rather than turning a
+      // partial-index violation into a 500.
+      if ((err as { code?: string })?.code === 'P2002') {
+        return next(new AppError('A live canvas already uses this name. Rename or delete it before restoring.', 409));
+      }
       next(err);
     }
   },

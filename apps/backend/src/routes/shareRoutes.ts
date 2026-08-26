@@ -8,6 +8,7 @@ import { validateParams, canvasIdParam, canvasShareIdParams, shareCodeParam } fr
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import { checkCanvasLimit, checkShareLimit } from '../middleware/planLimits.js';
 import { getPlanLimits } from '../config/plans.js';
+import { remapComputedConfig } from '../utils/cloneConfig.js';
 
 export const shareRoutes = Router();
 export const canvasPublicRoutes = Router();
@@ -187,8 +188,8 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
     let cloneName = baseName;
     let attempt = 0;
     while (true) {
-      const existing = await prisma.codingCanvas.findUnique({
-        where: { dashboardAccessId_name: { dashboardAccessId, name: cloneName } },
+      const existing = await prisma.codingCanvas.findFirst({
+        where: { dashboardAccessId, name: cloneName, deletedAt: null },
       });
       if (!existing) break;
       attempt++;
@@ -227,6 +228,7 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
               content: t.content,
               sortOrder: t.sortOrder,
               caseId: t.caseId ? caseIdMap.get(t.caseId) || null : null,
+              eventDate: t.eventDate,
               sourceType: 'cross-canvas',
               sourceId: t.id,
             },
@@ -303,7 +305,17 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
 
         for (const n of source.computedNodes) {
           const newN = await tx.canvasComputedNode.create({
-            data: { canvasId: newCanvas.id, nodeType: n.nodeType, label: n.label, config: n.config, result: '{}' },
+            data: {
+              canvasId: newCanvas.id,
+              nodeType: n.nodeType,
+              label: n.label,
+              config: remapComputedConfig(n.config, {
+                transcript: transcriptIdMap,
+                question: questionIdMap,
+                case: caseIdMap,
+              }),
+              result: '{}',
+            },
           });
           computedIdMap.set(n.id, newN.id);
         }

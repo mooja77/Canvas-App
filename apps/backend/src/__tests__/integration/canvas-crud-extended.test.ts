@@ -37,6 +37,7 @@ const { mockPrisma } = vi.hoisted(() => {
     canvasQuestion: {
       findUnique: vi.fn(),
       create: vi.fn(),
+      createMany: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
       delete: vi.fn(),
@@ -61,6 +62,7 @@ const { mockPrisma } = vi.hoisted(() => {
       upsert: vi.fn(),
     },
     canvasCase: {
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -187,6 +189,7 @@ describe('Canvas CRUD extended tests', () => {
     vi.clearAllMocks();
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
+    mockPrisma.canvasCase.findFirst.mockResolvedValue({ id: 'case-1' });
   });
 
   // ─── Canvas Update (PUT /canvas/:canvasId) ───
@@ -533,6 +536,62 @@ describe('Canvas CRUD extended tests', () => {
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
     expect(res.body.data.name).toBe('Minimal Canvas');
+  });
+
+  it('GET /canvas/:id bounds each detail response and reports more pages', async () => {
+    const transcripts = Array.from({ length: 501 }, (_, index) => ({
+      id: `transcript-${index}`,
+      canvasId,
+      title: `Transcript ${index}`,
+      content: 'Synthetic text',
+      sortOrder: index,
+    }));
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({
+      ...mockCanvas,
+      transcripts,
+      questions: [],
+      memos: [],
+      codings: [],
+      nodePositions: [],
+      cases: [],
+      relations: [],
+      computedNodes: [],
+    });
+
+    const res = await request(app).get(`/api/canvas/${canvasId}`).set('Authorization', `Bearer ${jwt}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.transcripts).toHaveLength(500);
+    expect(res.body.detailPagination.hasMore.transcripts).toBe(true);
+    expect(mockPrisma.codingCanvas.findUnique).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({ transcripts: expect.objectContaining({ take: 501, skip: 0 }) }),
+      }),
+    );
+  });
+
+  it('POST /canvas creates methodology starter codes atomically', async () => {
+    const created = { id: 'canvas-template', name: 'Template Canvas', dashboardAccessId, userId };
+    const tx = {
+      codingCanvas: { create: vi.fn().mockResolvedValue(created) },
+      canvasQuestion: { createMany: vi.fn().mockResolvedValue({ count: 2 }) },
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockPrisma.$transaction.mockImplementation(async (callback: any) => callback(tx));
+
+    const res = await request(app)
+      .post('/api/canvas')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ name: 'Template Canvas', starterCodes: ['Initial impressions', 'Recurring patterns'] });
+
+    expect(res.status).toBe(201);
+    expect(tx.canvasQuestion.createMany).toHaveBeenCalledWith({
+      data: [
+        { canvasId: created.id, text: 'Initial impressions', sortOrder: 0 },
+        { canvasId: created.id, text: 'Recurring patterns', sortOrder: 1 },
+      ],
+    });
+    expect(mockPrisma.codingCanvas.create).not.toHaveBeenCalled();
   });
 
   // ─── Transcript import from canvas ───

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCollaboration } from './useCollaboration';
 import { useAuthStore } from '../stores/authStore';
+import { useCanvasStore } from '../stores/canvasStore';
 
 // ─── Socket mock ───
 type EventHandler = (...args: unknown[]) => void;
@@ -183,6 +184,40 @@ describe('useCollaboration', () => {
       x: 100,
       y: 200,
     });
+  });
+
+  it('applies and announces an incoming collaborator node move', () => {
+    setEmailAuth();
+    useCanvasStore.setState({
+      activeCanvasId: 'c1',
+      activeCanvas: {
+        id: 'c1',
+        nodePositions: [],
+        transcripts: [],
+        questions: [],
+        memos: [],
+        codings: [],
+        cases: [],
+        relations: [],
+        computedNodes: [],
+      } as never,
+    });
+    const announced = vi.fn();
+    window.addEventListener('qualcanvas:remote-node-moved', announced);
+    renderHook(() => useCollaboration({ canvasId: 'c1' }));
+
+    act(() => {
+      mockSocket._trigger('canvas:node-moved', {
+        userId: 'user-remote',
+        data: { nodeId: 'question-q1', position: { x: 321, y: 654 } },
+      });
+    });
+
+    expect(useCanvasStore.getState().activeCanvas?.nodePositions).toEqual([
+      expect.objectContaining({ nodeId: 'question-q1', x: 321, y: 654 }),
+    ]);
+    expect(announced).toHaveBeenCalledTimes(1);
+    window.removeEventListener('qualcanvas:remote-node-moved', announced);
   });
 
   it('emitNodeAdded sends canvas:node-added event', () => {

@@ -1,7 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { useCanvasStore, useCanvasLoading, useTrashedCanvases, useTrashLoading } from '../../../stores/canvasStore';
+import {
+  useCanvasStore,
+  useCanvasLoading,
+  useCanvasError,
+  useTrashedCanvases,
+  useTrashLoading,
+  useTrashError,
+} from '../../../stores/canvasStore';
 import { useAuthStore } from '../../../stores/authStore';
 import { FRONTEND_PLAN_LIMITS, getFrontendPlanLimits, type PlanTier } from '../../../config/planLimits';
 import { useOpenCanvas } from '../../../hooks/useOpenCanvas';
@@ -233,6 +240,7 @@ function TemplateIcon({ template }: { template: (typeof CANVAS_TEMPLATES)[0] }) 
 export default function CanvasListPanel() {
   const { t } = useTranslation();
   const loading = useCanvasLoading();
+  const loadError = useCanvasError();
   const canvases = useCanvasStore((s) => s.canvases);
   const fetchCanvases = useCanvasStore((s) => s.fetchCanvases);
   const createCanvas = useCanvasStore((s) => s.createCanvas);
@@ -240,6 +248,7 @@ export default function CanvasListPanel() {
   const openCanvas = useOpenCanvas();
   const trashedCanvases = useTrashedCanvases();
   const trashLoading = useTrashLoading();
+  const trashError = useTrashError();
   const fetchTrash = useCanvasStore((s) => s.fetchTrash);
   const restoreCanvas = useCanvasStore((s) => s.restoreCanvas);
   const permanentDeleteCanvas = useCanvasStore((s) => s.permanentDeleteCanvas);
@@ -303,15 +312,12 @@ export default function CanvasListPanel() {
     setCreating(true);
     try {
       const template = CANVAS_TEMPLATES.find((t) => t.id === selectedTemplate);
-      const canvas = await createCanvas(name.trim(), description.trim() || undefined);
+      const starterCodes = template?.questions ?? [];
+      const canvas = await createCanvas(name.trim(), description.trim() || undefined, starterCodes);
 
-      // If template has predefined questions, add them
-      if (template && template.questions.length > 0) {
-        for (const qText of template.questions) {
-          await canvasApi.addQuestion(canvas.id, { text: qText });
-        }
+      if (starterCodes.length > 0) {
         await openCanvas(canvas.id);
-        toast.success(`Canvas created with ${template.questions.length} starter codes`);
+        toast.success(`Canvas created with ${starterCodes.length} starter codes`);
       } else {
         openCanvas(canvas.id);
       }
@@ -670,7 +676,20 @@ export default function CanvasListPanel() {
         </div>
       )}
 
-      {!loading && canvases.length === 0 && !showForm && (
+      {!loading && loadError && (
+        <div
+          role="alert"
+          className="card mb-4 border-red-200 bg-red-50 p-5 text-center dark:border-red-900 dark:bg-red-950/30"
+        >
+          <p className="text-sm font-medium text-red-800 dark:text-red-200">{loadError}</p>
+          <p className="mt-1 text-xs text-red-600 dark:text-red-300">Your projects have not been changed.</p>
+          <button type="button" className="btn-secondary mt-3 text-sm" onClick={() => void fetchCanvases()}>
+            Try again
+          </button>
+        </div>
+      )}
+
+      {!loading && !loadError && canvases.length === 0 && !showForm && (
         <div className="card py-12 px-8 text-center">
           <div className="gentle-pulse inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-50 dark:bg-brand-900/20 mb-4">
             <svg
@@ -954,7 +973,15 @@ export default function CanvasListPanel() {
         {showTrash && (
           <div id="canvas-trash-section" className="mt-3 space-y-2">
             {trashLoading && <div className="py-4 text-center text-sm text-gray-400">Loading trash...</div>}
-            {!trashLoading && trashedCanvases.length === 0 && (
+            {!trashLoading && trashError && (
+              <div role="alert" className="py-4 text-center text-sm text-red-600 dark:text-red-400">
+                {trashError}.{' '}
+                <button type="button" className="underline" onClick={() => void fetchTrash()}>
+                  Try again
+                </button>
+              </div>
+            )}
+            {!trashLoading && !trashError && trashedCanvases.length === 0 && (
               <div className="py-4 text-center text-sm text-gray-400 dark:text-gray-500">
                 Nothing in the bin. Deleted canvases live here for 30 days.
               </div>

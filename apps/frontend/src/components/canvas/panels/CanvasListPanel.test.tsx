@@ -21,11 +21,15 @@ const canvasState = {
   restoreCanvas: vi.fn(),
   permanentDeleteCanvas: vi.fn(),
 };
+let loadError: string | null = null;
+let trashError: string | null = null;
 vi.mock('../../../stores/canvasStore', () => ({
   useCanvasStore: (selector: (s: typeof canvasState) => unknown) => selector(canvasState),
   useCanvasLoading: () => false,
+  useCanvasError: () => loadError,
   useTrashedCanvases: () => trashed,
   useTrashLoading: () => false,
+  useTrashError: () => trashError,
 }));
 
 let trashed: unknown[] = [];
@@ -71,8 +75,29 @@ beforeEach(() => {
   authState.effectivePlan = 'free';
   authState.plan = null;
   trashed = [];
+  loadError = null;
+  trashError = null;
   toastError.mockClear();
   canvasState.restoreCanvas.mockReset();
+});
+
+describe('CanvasListPanel — truthful failure states', () => {
+  it('shows retry instead of first-run onboarding when the list fails', () => {
+    loadError = 'Failed to load canvases';
+    renderPanel();
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to load canvases');
+    expect(screen.queryByText('Create your first canvas')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(canvasState.fetchCanvases).toHaveBeenCalled();
+  });
+
+  it('does not describe a failed trash request as an empty bin', () => {
+    trashError = 'Failed to load trash';
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: /trash/i }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to load trash');
+    expect(screen.queryByText(/Nothing in the bin/)).not.toBeInTheDocument();
+  });
 });
 
 describe('CanvasListPanel — Trash disclosure a11y', () => {

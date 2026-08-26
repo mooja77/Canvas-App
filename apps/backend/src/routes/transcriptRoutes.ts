@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import {
@@ -14,6 +15,7 @@ import {
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
 import { checkTranscriptLimit, checkWordLimit, resolveRequestPlan } from '../middleware/planLimits.js';
 import { getPlanLimits } from '../config/plans.js';
+import { deleteCanvasNodeArtifacts } from '../utils/canvasNodeCleanup.js';
 
 export const transcriptRoutes = Router();
 
@@ -58,6 +60,16 @@ transcriptRoutes.put(
       });
       if (!existing || existing.canvasId !== req.params.id) {
         return next(new AppError('Transcript not found in this canvas', 404));
+      }
+
+      if (typeof req.body.caseId === 'string') {
+        const caseRecord = await prisma.canvasCase.findFirst({
+          where: { id: req.body.caseId, canvasId: req.params.id },
+          select: { id: true },
+        });
+        if (!caseRecord) {
+          return next(new AppError('Case not found in this canvas', 400));
+        }
       }
 
       // Codings are absolute character offsets into this content. Changing the
@@ -110,7 +122,10 @@ transcriptRoutes.delete(
       if (!existing || existing.canvasId !== req.params.id) {
         return next(new AppError('Transcript not found in this canvas', 404));
       }
-      await prisma.canvasTranscript.delete({ where: { id: req.params.tid } });
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        await deleteCanvasNodeArtifacts(tx, req.params.id, 'transcript', req.params.tid);
+        await tx.canvasTranscript.delete({ where: { id: req.params.tid } });
+      });
       res.json({ success: true });
     } catch (err) {
       next(err);

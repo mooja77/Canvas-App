@@ -24,6 +24,8 @@ function resetStore() {
 
 describe('canvasStore', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(canvasApi.saveLayout).mockResolvedValue({} as never);
     resetStore();
   });
 
@@ -153,6 +155,35 @@ describe('canvasStore', () => {
       });
       await useCanvasStore.getState().saveLayout([]);
       expect(canvasApi.saveLayout).toHaveBeenCalledWith('c1', { positions: [] });
+    });
+
+    it('serializes overlapping layout saves so they cannot contend on the same rows', async () => {
+      useCanvasStore.setState({
+        activeCanvasId: 'c1',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        activeCanvas: { id: 'c1', myRole: 'owner' } as any,
+      });
+      let releaseFirst!: () => void;
+      vi.mocked(canvasApi.saveLayout)
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              releaseFirst = () => resolve({} as never);
+            }),
+        )
+        .mockResolvedValueOnce({} as never);
+
+      const first = useCanvasStore.getState().saveLayout([]);
+      await vi.waitFor(() => expect(canvasApi.saveLayout).toHaveBeenCalledTimes(1));
+      const second = useCanvasStore.getState().saveLayout([]);
+      await Promise.resolve();
+      expect(canvasApi.saveLayout).toHaveBeenCalledTimes(1);
+      expect(useCanvasStore.getState().savingLayout).toBe(true);
+
+      releaseFirst();
+      await Promise.all([first, second]);
+      expect(canvasApi.saveLayout).toHaveBeenCalledTimes(2);
+      expect(useCanvasStore.getState().savingLayout).toBe(false);
     });
   });
 });

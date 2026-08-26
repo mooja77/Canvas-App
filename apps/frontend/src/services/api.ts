@@ -19,6 +19,8 @@ import type {
   AutoCodeInput,
   SuggestCodesInput,
   AutoCodeTranscriptInput,
+  CanvasDetail,
+  CodingCanvas,
 } from '@qualcanvas/shared';
 
 // ─── Canvas API client (points to QualCanvas backend) ───
@@ -119,13 +121,70 @@ export const apiErrorMessage = (err: unknown, fallback: string): string =>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (err as any)?.response?.data?.error || fallback;
 
+const DETAIL_COLLECTIONS = [
+  'transcripts',
+  'questions',
+  'memos',
+  'codings',
+  'nodePositions',
+  'cases',
+  'relations',
+  'computedNodes',
+] as const;
+
+async function getCompleteCanvas(canvasId: string) {
+  const first = await canvasClient.get(`/canvas/${canvasId}`, { params: { detailPage: 0, detailPageSize: 500 } });
+  const merged = first.data.data as CanvasDetail;
+  let hasMore = first.data.detailPagination?.hasMore as Record<string, boolean> | undefined;
+  let detailPage = 1;
+
+  // Each API response is bounded. Aggregate the pages before publishing the
+  // canvas to the store so users never see a misleading half-loaded graph.
+  while (hasMore && Object.values(hasMore).some(Boolean)) {
+    if (detailPage > 10_000) throw new Error('Canvas detail pagination did not terminate');
+    const response = await canvasClient.get(`/canvas/${canvasId}`, {
+      params: { detailPage, detailPageSize: 500 },
+    });
+    const page = response.data.data as CanvasDetail;
+    for (const key of DETAIL_COLLECTIONS) {
+      (merged[key] as unknown[]) = [...(merged[key] as unknown[]), ...(page[key] as unknown[])];
+    }
+    hasMore = response.data.detailPagination?.hasMore;
+    detailPage++;
+  }
+
+  first.data.data = merged;
+  return first;
+}
+
+export async function getAllCanvases(): Promise<
+  (CodingCanvas & { _count?: { transcripts: number; questions: number; codings: number }; sharedWithMe?: boolean })[]
+> {
+  const result: (CodingCanvas & {
+    _count?: { transcripts: number; questions: number; codings: number };
+    sharedWithMe?: boolean;
+  })[] = [];
+  const limit = 200;
+  let offset = 0;
+  let total = Number.POSITIVE_INFINITY;
+  while (offset < total) {
+    const response = await canvasClient.get('/canvas', { params: { limit, offset } });
+    const page = response.data.data || [];
+    result.push(...page);
+    total = Number.isFinite(response.data.total) ? response.data.total : result.length;
+    if (page.length === 0) break;
+    offset += page.length;
+  }
+  return result;
+}
+
 export const canvasApi = {
   // ─── Canvas CRUD ───
-  getCanvases: () => canvasClient.get('/canvas'),
+  getCanvases: (limit = 200, offset = 0) => canvasClient.get('/canvas', { params: { limit, offset } }),
 
   createCanvas: (data: CreateCanvasInput) => canvasClient.post('/canvas', data),
 
-  getCanvas: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}`),
+  getCanvas: getCompleteCanvas,
 
   updateCanvas: (canvasId: string, data: Partial<CreateCanvasInput> & { researchParadigm?: string | null }) =>
     canvasClient.put(`/canvas/${canvasId}`, data),

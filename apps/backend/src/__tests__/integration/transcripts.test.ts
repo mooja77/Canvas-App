@@ -50,6 +50,7 @@ const { mockPrisma } = vi.hoisted(() => {
     },
     canvasShare: { count: vi.fn() },
     canvasMemo: { count: vi.fn() },
+    canvasCase: { findFirst: vi.fn() },
     $transaction: vi.fn(),
     $queryRawUnsafe: vi.fn(),
     $disconnect: vi.fn(),
@@ -166,6 +167,7 @@ describe('Transcript integration tests', () => {
     vi.clearAllMocks();
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
+    mockPrisma.canvasCase.findFirst.mockResolvedValue({ id: 'case-1' });
   });
 
   // ─── 1. POST /canvas/:id/transcripts — creates transcript ───
@@ -308,6 +310,25 @@ describe('Transcript integration tests', () => {
 
     expect(res.status).toBe(200);
     expect(mockPrisma.canvasTextCoding.count).not.toHaveBeenCalled();
+  });
+
+  it('PUT /canvas/:id/transcripts/:tid rejects a case from another canvas', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({
+      id: 'transcript-t1',
+      canvasId,
+      content: 'Interview text.',
+    });
+    mockPrisma.canvasCase.findFirst.mockResolvedValue(null);
+
+    const res = await request(app)
+      .put(`/api/canvas/${canvasId}/transcripts/transcript-t1`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ caseId: 'case-from-another-canvas' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/case not found in this canvas/i);
+    expect(mockPrisma.canvasTranscript.update).not.toHaveBeenCalled();
   });
 
   it('PUT /canvas/:id/transcripts/:tid allows re-sending identical content on a coded transcript', async () => {

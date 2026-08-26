@@ -121,7 +121,9 @@ export default function PrivacyPage() {
               <tr className="border-b border-gray-100 dark:border-gray-800">
                 <td className="py-1">Account + research content</td>
                 <td className="py-1">
-                  Until you delete the account; provider-managed encrypted backups expire separately
+                  While the account/project is active. A canvas moved to Trash is permanently deleted after 30 days;
+                  account deletion removes live projects immediately. Provider-managed encrypted backups expire
+                  separately
                 </td>
               </tr>
               <tr className="border-b border-gray-100 dark:border-gray-800">

@@ -16,6 +16,7 @@ const { mockPrisma } = vi.hoisted(() => {
     },
     codingCanvas: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
     },
     canvasTranscript: {
@@ -171,9 +172,17 @@ describe('Sharing extended integration tests', () => {
   });
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    for (const model of Object.values(mockPrisma)) {
+      if (typeof model === 'function' && 'mockReset' in model) model.mockReset();
+      else if (model && typeof model === 'object') {
+        for (const method of Object.values(model)) {
+          if (typeof method === 'function' && 'mockReset' in method) method.mockReset();
+        }
+      }
+    }
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
+    mockPrisma.codingCanvas.findFirst.mockResolvedValue(null);
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
   });
 

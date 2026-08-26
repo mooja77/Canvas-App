@@ -313,6 +313,7 @@ export interface CanvasDetail extends CodingCanvas {
 export interface CreateCanvasInput {
   name: string;
   description?: string;
+  starterCodes?: string[];
 }
 
 export interface CreateTranscriptInput {
