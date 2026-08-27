@@ -196,6 +196,10 @@ export default function InteractiveDemo() {
   const [hydrated, setHydrated] = useState(false);
   const [announceText, setAnnounceText] = useState('');
   const transcriptRef = useRef<HTMLDivElement>(null);
+  // IndexedDB can be slow to open in an existing browser profile. Do not let
+  // a late empty snapshot erase a code the visitor applied while hydration
+  // was still in flight.
+  const hasLocalChangesRef = useRef(false);
   const reduceMotion = useReducedMotion();
 
   // ── Persistence: load on mount, save on change
@@ -203,7 +207,7 @@ export default function InteractiveDemo() {
     let mounted = true;
     void loadStoredState().then((stored) => {
       if (!mounted) return;
-      if (stored) {
+      if (stored && !hasLocalChangesRef.current) {
         setApplied(stored.applied);
         setRevealed(stored.revealed);
       }
@@ -274,6 +278,7 @@ export default function InteractiveDemo() {
   // ── Apply a code to the pending selection
   const applyCode = (code: Code) => {
     if (!pendingSelection) return;
+    hasLocalChangesRef.current = true;
     setApplied((cur) => [
       ...cur,
       {
@@ -304,6 +309,7 @@ export default function InteractiveDemo() {
 
   // ── Reset the demo
   const resetDemo = async () => {
+    hasLocalChangesRef.current = true;
     setApplied([]);
     setRevealed(CODES.filter((c) => c.initial).map((c) => c.id));
     setPendingSelection(null);
