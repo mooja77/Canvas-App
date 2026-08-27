@@ -26,7 +26,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate --schema=apps/backend/prisma/schema.prisma
-      - run: npm run build --workspace=apps/frontend
+      # The frontend imports @qualcanvas/shared through its compiled dist entry.
+      # A fresh runner has no shared/dist until this workspace is built.
+      - name: Build shared workspace
+        run: npm run build --workspace=shared
+      - name: Build frontend
+        run: npm run build --workspace=apps/frontend
         env:
           # Pin VITE_API_URL explicitly so analytics.ts + services/api.ts never
           # fall back to the relative `/api` default (which on Cloudflare Pages
