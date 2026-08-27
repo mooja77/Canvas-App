@@ -207,7 +207,7 @@ test.describe('Code Management', () => {
     expect(bgColor).toBeTruthy();
   });
 
-  test('add multiple codes and all appear in DOM', async ({ page }) => {
+  test('add multiple codes and show each one on the canvas and in the navigator', async ({ page }) => {
     const codeBtn = page.locator('[data-tour="canvas-btn-question"]');
     await expect(codeBtn).toBeVisible({ timeout: 5000 });
 
@@ -221,30 +221,27 @@ test.describe('Code Management', () => {
       await fitView.click();
       await page.waitForTimeout(800);
     };
-    const questionNodes = page.locator('.react-flow__node[data-id^="question-"]');
+    const addAndVerifyCode = async (name: string) => {
+      await codeBtn.click();
+      const input = page.locator('input[placeholder="Name a new code..."]');
+      await expect(input).toBeVisible({ timeout: 3000 });
+      await input.fill(name);
+      await input.press('Enter');
 
-    await refit();
-    const count0 = await questionNodes.count();
+      // The navigator is not viewport-virtualized, so its named entry is the
+      // reliable signal that the server response reached application state.
+      // Refit only after that signal; fitting immediately after Enter can run
+      // before React Flow receives the new node and leave it culled off-screen.
+      const navigatorCode = page.locator('[data-tour="canvas-navigator"] div[role="button"]').filter({ hasText: name });
+      await expect(navigatorCode).toBeVisible({ timeout: 10000 });
+      await refit();
 
-    await codeBtn.click();
-    let input = page.locator('input[placeholder="Name a new code..."]');
-    await expect(input).toBeVisible({ timeout: 3000 });
-    await input.fill('Multi Code One');
-    await input.press('Enter');
-    await refit();
+      const canvasCode = page.locator('.react-flow__node[data-id^="question-"]').filter({ hasText: name });
+      await expect(canvasCode).toBeVisible({ timeout: 10000 });
+    };
 
-    await expect(questionNodes).toHaveCount(count0 + 1, { timeout: 10000 });
-
-    const count1 = await questionNodes.count();
-
-    await codeBtn.click();
-    input = page.locator('input[placeholder="Name a new code..."]');
-    await expect(input).toBeVisible({ timeout: 3000 });
-    await input.fill('Multi Code Two');
-    await input.press('Enter');
-    await refit();
-
-    await expect(questionNodes).toHaveCount(count1 + 1, { timeout: 10000 });
+    await addAndVerifyCode('Multi Code One');
+    await addAndVerifyCode('Multi Code Two');
   });
 
   test('navigator shows "By count" sorting button', async ({ page }) => {
