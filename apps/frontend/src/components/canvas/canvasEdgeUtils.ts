@@ -25,6 +25,18 @@ export function isDenseEdgeGraph(edgeCount: number): boolean {
  */
 export const LOW_ZOOM_EDGE_HIDE_BELOW = 0.12;
 
+/**
+ * React Flow's viewport culling is useful on large canvases, but enabling it
+ * unconditionally can leave a small graph's edges unmounted when an initial
+ * fit races late node measurement. Small canvases are cheap to render in full
+ * and should favour correctness; large canvases retain the optimisation.
+ */
+export const VISIBLE_ELEMENT_CULL_THRESHOLD = 80;
+
+export function shouldCullOffscreenElements(nodeCount: number): boolean {
+  return nodeCount > VISIBLE_ELEMENT_CULL_THRESHOLD;
+}
+
 export function shouldHideEdgesAtZoom(zoom: number, edgeCount: number): boolean {
   return zoom < LOW_ZOOM_EDGE_HIDE_BELOW && isDenseEdgeGraph(edgeCount);
 }

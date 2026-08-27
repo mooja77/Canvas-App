@@ -5,6 +5,8 @@ import {
   DENSE_EDGE_THRESHOLD,
   shouldHideEdgesAtZoom,
   LOW_ZOOM_EDGE_HIDE_BELOW,
+  shouldCullOffscreenElements,
+  VISIBLE_ELEMENT_CULL_THRESHOLD,
 } from './canvasEdgeUtils';
 
 describe('isDenseEdgeGraph', () => {
@@ -31,6 +33,18 @@ describe('shouldHideEdgesAtZoom', () => {
   it('never hides edges on a non-dense graph, even when zoomed far out', () => {
     expect(shouldHideEdgesAtZoom(0.01, DENSE_EDGE_THRESHOLD)).toBe(false);
     expect(shouldHideEdgesAtZoom(0.01, 5)).toBe(false);
+  });
+});
+
+describe('shouldCullOffscreenElements', () => {
+  it('renders small and threshold-sized canvases without viewport culling', () => {
+    expect(shouldCullOffscreenElements(5)).toBe(false);
+    expect(shouldCullOffscreenElements(VISIBLE_ELEMENT_CULL_THRESHOLD)).toBe(false);
+  });
+
+  it('enables viewport culling above the large-canvas threshold', () => {
+    expect(shouldCullOffscreenElements(VISIBLE_ELEMENT_CULL_THRESHOLD + 1)).toBe(true);
+    expect(shouldCullOffscreenElements(300)).toBe(true);
   });
 });
 

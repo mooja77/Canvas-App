@@ -36,7 +36,12 @@ import QuickAddMenu from './panels/QuickAddMenu';
 import CanvasTabBar from './panels/CanvasTabBar';
 import AiSuggestPanel from './panels/AiSuggestPanel';
 import AiSetupGuide from './panels/AiSetupGuide';
-import { getCodingIdsFromEdgeData, isDenseEdgeGraph, shouldHideEdgesAtZoom } from './canvasEdgeUtils';
+import {
+  getCodingIdsFromEdgeData,
+  isDenseEdgeGraph,
+  shouldCullOffscreenElements,
+  shouldHideEdgesAtZoom,
+} from './canvasEdgeUtils';
 import { decorateNodes } from './canvasNodeDecoration';
 import {
   deleteNodesById,
@@ -2671,7 +2676,7 @@ export default function CanvasWorkspace() {
                   (shouldHideEdgesAtZoom(viewportState.zoom, edges.length) ? ' canvas-hide-edges' : '')
                 }
                 connectionLineComponent={ConnectionLine}
-                onlyRenderVisibleElements
+                onlyRenderVisibleElements={shouldCullOffscreenElements(nodes.length)}
                 proOptions={PRO_OPTIONS}
               >
                 <Background
