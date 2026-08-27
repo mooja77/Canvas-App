@@ -101,14 +101,18 @@ export default function CodingEdge({
           Suppressed on dense graphs (hover still shows the full tooltip). */}
       {!hovered && zoomTier === 'full' && edgeData && !dense && (
         <EdgeLabelRenderer>
-          <div
-            className="nodrag nopan pointer-events-auto absolute"
+          <button
+            type="button"
+            className="nodrag nopan pointer-events-auto absolute z-[1000] flex h-7 w-7 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
             style={{
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
             }}
             onClick={() => setHovered(true)}
+            aria-label={count > 1 ? `Show ${count} coded segments` : 'Show coded segment'}
+            title={count > 1 ? `${count} coded segments` : 'Coded segment'}
           >
-            <div
+            <span
+              aria-hidden="true"
               className="flex items-center justify-center rounded-full shadow-sm cursor-pointer transition-transform hover:scale-110"
               style={{
                 width: 16,
@@ -119,11 +123,10 @@ export default function CodingEdge({
                 fontWeight: 700,
                 lineHeight: 1,
               }}
-              title={count > 1 ? `${count} coded segments` : 'Coded segment'}
             >
               {count > 1 ? count : '\u201C'}
-            </div>
-          </div>
+            </span>
+          </button>
         </EdgeLabelRenderer>
       )}
 

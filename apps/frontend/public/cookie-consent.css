@@ -26,7 +26,9 @@
   font-size: 14px;
   line-height: 1.5;
   color: #1f2937;
-  animation: cc-slide-up 240ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  /* A non-overshooting ease keeps the banner from briefly jumping above its
+     final position and encroaching on the support control during entry. */
+  animation: cc-slide-up 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes cc-slide-up {
@@ -122,7 +124,7 @@
 /* The support widget is fixed to the same corner. Raise it by the banner's
    measured height instead of obscuring either control on desktop or mobile. */
 body.cookie-consent-visible #jms-chat-btn {
-  bottom: calc(var(--cookie-consent-height, 80px) + 16px) !important;
+  bottom: calc(var(--cookie-consent-height, 80px) + 20px) !important;
 }
 
 body.cookie-consent-visible #jms-chat-panel {

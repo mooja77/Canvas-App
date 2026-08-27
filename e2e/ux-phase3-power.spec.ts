@@ -334,7 +334,7 @@ test.describe('UX Phase 3 — Power User Features', () => {
     expect(edgeCount).toBeGreaterThan(0);
 
     await page.getByRole('button', { name: 'Fit View' }).click();
-    const badge = page.locator('[title*="coded segment" i]').first();
+    const badge = page.getByRole('button', { name: /show .*coded segment/i }).first();
     for (let attempt = 0; attempt < 6 && !(await badge.isVisible().catch(() => false)); attempt++) {
       await page.getByRole('button', { name: 'Zoom In' }).click();
       await page.waitForTimeout(250);
