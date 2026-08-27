@@ -72,33 +72,48 @@ async function openCanvasById(page: Page, canvasId: string) {
 
 /** Fit view and ensure edges are rendered in the DOM (handles onlyRenderVisibleElements). */
 async function ensureEdgesVisible(page: import('@playwright/test').Page) {
+  // The seeded Phase 3 canvas contains two transcripts and three codes. A
+  // first-fit performed before both collections arrive can leave every edge
+  // outside React Flow's render window for the rest of the test. The sidebar
+  // counts are data-readiness signals and do not depend on viewport clipping.
+  await expect(page.getByRole('button', { name: 'Sources (2)' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('button', { name: 'Codes (3)' })).toBeVisible({ timeout: 10000 });
+
   await page.getByRole('button', { name: 'Fit View' }).click();
-  // Wait for fitView animation to complete by checking viewport transform stabilizes
+  // Wait for fitView animation and late node measurement to settle. Merely
+  // seeing the same transform in two consecutive polls was too eager on CI.
   await page
     .waitForFunction(
       () => {
         const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
         if (!vp) return false;
-        const t = vp.style.transform;
-        if ((window as any).__lastTransform === t) return true;
-        (window as any).__lastTransform = t;
-        return false;
+        const now = Date.now();
+        const state = (window as any).__edgeViewportState as { transform: string; since: number } | undefined;
+        if (!state || state.transform !== vp.style.transform) {
+          (window as any).__edgeViewportState = { transform: vp.style.transform, since: now };
+          return false;
+        }
+        return now - state.since >= 300;
       },
       undefined,
-      { timeout: 5000 },
+      { timeout: 10000, polling: 100 },
     )
     .catch(() => {});
-  await page.waitForTimeout(500);
 
   // If edges are still not in DOM, try zooming in slightly (edges between far-apart nodes
   // may be clipped by onlyRenderVisibleElements at low zoom)
   let edgeCount = await page.locator('.react-flow__edge').count();
   if (edgeCount === 0) {
-    for (let i = 0; i < 4; i++) {
-      await page.getByRole('button', { name: 'Zoom In' }).click();
-    }
-    await page.waitForTimeout(800);
+    // Re-fit now that all nodes are known, then zoom one step at a time so
+    // React Flow gets a render opportunity between viewport changes.
+    await page.getByRole('button', { name: 'Fit View' }).click();
+    await page.waitForTimeout(500);
     edgeCount = await page.locator('.react-flow__edge').count();
+    for (let i = 0; i < 6 && edgeCount === 0; i++) {
+      await page.getByRole('button', { name: 'Zoom In' }).click();
+      await page.waitForTimeout(250);
+      edgeCount = await page.locator('.react-flow__edge').count();
+    }
   }
   return edgeCount;
 }
