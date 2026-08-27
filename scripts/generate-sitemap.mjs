@@ -57,6 +57,7 @@ const ROUTES = [
   { loc: '/vs', files: [`${src}/pages/VsIndexPage.tsx`], changefreq: 'monthly', priority: '0.8' },
   { loc: '/guide', files: [`${src}/pages/GuidePage.tsx`], changefreq: 'monthly', priority: '0.8' },
   { loc: '/training/', files: [`${src}/pages/TrainingPage.tsx`], changefreq: 'monthly', priority: '0.9' },
+  { loc: '/pilot', files: [`${src}/pages/PilotPage.tsx`, `${src}/App.tsx`], changefreq: 'monthly', priority: '0.7' },
   { loc: '/for-teams', files: [`${src}/pages/ForTeamsPage.tsx`], changefreq: 'monthly', priority: '0.8' },
   { loc: '/for-institutions', files: [`${src}/pages/ForInstitutionsPage.tsx`], changefreq: 'monthly', priority: '0.8' },
 

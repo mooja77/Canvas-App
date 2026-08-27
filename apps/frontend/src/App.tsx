@@ -33,6 +33,7 @@ const ChangelogPage = lazyRoute(() => import('./pages/ChangelogPage'));
 const VsIndexPage = lazyRoute(() => import('./pages/VsIndexPage'));
 const VsCompetitorRedirect = lazyRoute(() => import('./pages/VsCompetitorRedirect'));
 const SubscribePage = lazyRoute(() => import('./pages/SubscribePage'));
+const PilotPage = lazyRoute(() => import('./pages/PilotPage'));
 const MethodologyChapterPage = lazyRoute(() => import('./pages/MethodologyChapterPage'));
 const TrainingPage = lazyRoute(() =>
   import('./pages/TrainingPage').then((module) => ({ default: module.TrainingPage })),
@@ -87,6 +88,7 @@ export default function App() {
               {/* Per-competitor pages aren't published yet — redirect to the /vs index so these URLs don't 404. */}
               <Route path="/vs/:competitor" element={<VsCompetitorRedirect />} />
               <Route path="/subscribe" element={<SubscribePage />} />
+              <Route path="/pilot" element={<PilotPage />} />
               <Route
                 path="/account"
                 element={

@@ -79,7 +79,9 @@ export type AnalyticsEvent =
   // Phase 4 — InteractiveDemo on the landing page.
   | 'interactive_demo_started'
   | 'interactive_demo_code_applied'
-  | 'interactive_demo_completed';
+  | 'interactive_demo_completed'
+  | 'pilot_started'
+  | 'pilot_feedback_submitted';
 
 // Backend lives on a different origin in prod (Railway) than the marketing
 // site (Cloudflare Pages). Mirror the convention used by services/api.ts so

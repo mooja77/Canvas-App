@@ -51,6 +51,12 @@ export default function SiteHeader({ hideAuthCtas = false }: SiteHeaderProps) {
             Training
           </Link>
           <Link
+            to="/pilot"
+            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          >
+            Research pilot
+          </Link>
+          <Link
             to="/pricing"
             className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
           >
@@ -113,6 +119,13 @@ export default function SiteHeader({ hideAuthCtas = false }: SiteHeaderProps) {
             onClick={() => setMobileMenuOpen(false)}
           >
             Training
+          </Link>
+          <Link
+            to="/pilot"
+            className="block py-2 text-sm text-gray-600 dark:text-gray-400"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Research pilot
           </Link>
           <Link
             to="/pricing"

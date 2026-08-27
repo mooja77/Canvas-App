@@ -182,6 +182,7 @@ const MARKETING_PRERENDER_ROUTES = [
   '/changelog',
   '/accessibility-statement',
   '/guide',
+  '/pilot',
   // These two are emitted by prerender-methodology.mjs / prerender-training.mjs
   // as dist/<name>/index.html rather than a flat <name>.html, so Cloudflare
   // Pages serves them at the SLASHED url and 308-redirects the slashless one.

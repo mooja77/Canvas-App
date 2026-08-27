@@ -256,6 +256,7 @@ jobs:
           e2e/network-resilience.spec.ts
           e2e/mobile-responsive.spec.ts
           e2e/pages.spec.ts
+          e2e/pilot-public.spec.ts
           e2e/scenario-k-training.spec.ts
           --project=firefox --project=webkit
           --project=mobile-chrome --project=mobile-safari

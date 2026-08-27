@@ -84,7 +84,32 @@ interface EmailCampaign {
   _count?: { deliveries: number; newsletterDeliveries: number };
 }
 
-type TabId = 'dashboard' | 'users' | 'billing' | 'health' | 'activity' | 'features' | 'emails';
+interface PilotFeedbackEntry {
+  id: string;
+  participantRole: string;
+  sector: string | null;
+  productExperience: string;
+  taskResults: { taskId: string; outcome: string }[];
+  hardestStep: string | null;
+  missingFeature: string | null;
+  adoptionBlocker: string | null;
+  recommendationScore: number;
+  contactEmail: string | null;
+  consentToContact: boolean;
+  createdAt: string;
+}
+
+interface PilotFeedbackData {
+  entries: PilotFeedbackEntry[];
+  total: number;
+  averageRecommendationScore: number | null;
+  roles: Record<string, number>;
+  taskOutcomes: Record<string, Record<string, number>>;
+  page: number;
+  limit: number;
+}
+
+type TabId = 'dashboard' | 'users' | 'billing' | 'health' | 'activity' | 'features' | 'pilot' | 'emails';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -93,6 +118,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'health', label: 'Health' },
   { id: 'activity', label: 'Activity' },
   { id: 'features', label: 'Features' },
+  { id: 'pilot', label: 'Pilot feedback' },
   { id: 'emails', label: 'Emails' },
 ];
 
@@ -842,6 +868,167 @@ function FeaturesTab({ adminKey }: { adminKey: string }) {
   );
 }
 
+const PILOT_TASK_LABELS: Record<string, string> = {
+  'create-project': 'Create project',
+  'add-transcript': 'Add transcript',
+  'code-passages': 'Code passages',
+  'memo-analysis': 'Memo + analysis',
+  export: 'Export',
+};
+
+function PilotFeedbackTab({ adminKey }: { adminKey: string }) {
+  const [data, setData] = useState<PilotFeedbackData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const perPage = 25;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await adminApi.getPilotFeedback(adminKey, { page, limit: perPage });
+      setData(response.data.data);
+    } catch {
+      setError('Failed to load pilot feedback');
+    } finally {
+      setLoading(false);
+    }
+  }, [adminKey, page]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (loading) return <LoadingSpinner />;
+  if (error || !data) return <ErrorMessage message={error || 'No pilot feedback data available.'} />;
+
+  const totalPages = Math.max(1, Math.ceil(data.total / perPage));
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard label="Pilot responses" value={data.total} />
+        <StatCard
+          label="Average recommendation"
+          value={data.averageRecommendationScore === null ? '—' : `${data.averageRecommendationScore.toFixed(1)} / 10`}
+        />
+        <StatCard label="Participant roles" value={Object.keys(data.roles).length} />
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-5 ring-1 ring-gray-200 dark:ring-gray-700">
+        <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Task outcomes</h2>
+        {Object.keys(data.taskOutcomes).length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">No task outcomes yet.</p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            {Object.entries(PILOT_TASK_LABELS).map(([taskId, label]) => {
+              const outcomes = data.taskOutcomes[taskId] || {};
+              return (
+                <div key={taskId} className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{label}</p>
+                  <dl className="mt-3 space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                    <div className="flex justify-between">
+                      <dt>Easy</dt>
+                      <dd>{outcomes.easy || 0}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt>Difficult</dt>
+                      <dd>{outcomes.difficult || 0}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt>Could not complete</dt>
+                      <dd>{outcomes['not-completed'] || 0}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt>Not attempted</dt>
+                      <dd>{outcomes['not-attempted'] || 0}</dd>
+                    </div>
+                  </dl>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        {data.entries.length === 0 ? (
+          <div className="rounded-xl bg-white p-8 text-center text-gray-500 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700">
+            No pilot responses yet. Share <span className="font-mono">https://qualcanvas.com/pilot</span> with invited
+            participants.
+          </div>
+        ) : (
+          data.entries.map((entry) => (
+            <article
+              key={entry.id}
+              className="rounded-xl bg-white p-5 ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">
+                    {entry.participantRole.replaceAll('-', ' ')}
+                    {entry.sector ? ` · ${entry.sector}` : ''}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {entry.productExperience.replaceAll('-', ' ')} · {new Date(entry.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                  {entry.recommendationScore} / 10
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {entry.taskResults.map((result) => (
+                  <span
+                    key={result.taskId}
+                    className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+                  >
+                    {PILOT_TASK_LABELS[result.taskId] || result.taskId}: {result.outcome.replaceAll('-', ' ')}
+                  </span>
+                ))}
+              </div>
+
+              <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+                <FeedbackAnswer label="Hardest step" value={entry.hardestStep} />
+                <FeedbackAnswer label="Missing" value={entry.missingFeature} />
+                <FeedbackAnswer label="Adoption blocker" value={entry.adoptionBlocker} />
+              </dl>
+
+              {entry.contactEmail && entry.consentToContact && (
+                <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+                  Follow-up consent:{' '}
+                  <a className="underline" href={`mailto:${entry.contactEmail}`}>
+                    {entry.contactEmail}
+                  </a>
+                </p>
+              )}
+            </article>
+          ))
+        )}
+      </div>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={data.total}
+        onPrev={() => setPage((current) => Math.max(1, current - 1))}
+        onNext={() => setPage((current) => Math.min(totalPages, current + 1))}
+      />
+    </div>
+  );
+}
+
+function FeedbackAnswer({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div>
+      <dt className="font-medium text-gray-700 dark:text-gray-200">{label}</dt>
+      <dd className="mt-1 whitespace-pre-wrap text-gray-600 dark:text-gray-400">{value || 'No answer'}</dd>
+    </div>
+  );
+}
+
 function EmailsTab({ adminKey }: { adminKey: string }) {
   const [stats, setStats] = useState<EmailStats | null>(null);
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
@@ -1128,6 +1315,7 @@ export default function AdminPage() {
         {activeTab === 'health' && <HealthTab adminKey={adminKey} />}
         {activeTab === 'activity' && <ActivityTab adminKey={adminKey} />}
         {activeTab === 'features' && <FeaturesTab adminKey={adminKey} />}
+        {activeTab === 'pilot' && <PilotFeedbackTab adminKey={adminKey} />}
         {activeTab === 'emails' && <EmailsTab adminKey={adminKey} />}
       </main>
     </div>

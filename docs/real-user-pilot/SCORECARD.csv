@@ -1,0 +1,6 @@
+session_id,date,participant_role,experience,task,completed_without_help,time_seconds,hesitation_or_wrong_turn,help_given,severity,notes
+P01,,postgraduate researcher,first-time,create project,,,,,,
+P01,,postgraduate researcher,first-time,add transcript,,,,,,
+P01,,postgraduate researcher,first-time,code passages,,,,,,
+P01,,postgraduate researcher,first-time,memo and analysis,,,,,,
+P01,,postgraduate researcher,first-time,export,,,,,,

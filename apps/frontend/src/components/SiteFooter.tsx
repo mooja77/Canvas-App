@@ -73,6 +73,11 @@ export default function SiteFooter() {
                 Changelog
               </Link>
             </li>
+            <li>
+              <Link to="/pilot" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                Join the research pilot
+              </Link>
+            </li>
           </ul>
         </div>
 

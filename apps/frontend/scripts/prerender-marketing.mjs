@@ -25,7 +25,7 @@
 //     canonical baked into index.html:18 — which is the whole point.
 //
 // Routes covered: /cite /vs /for-institutions /customers /press /colophon
-// /trust /trust/ai /changelog /accessibility-statement /guide
+// /trust /trust/ai /changelog /accessibility-statement /guide /pilot
 //
 // Deliberately EXCLUDED:
 //   * /pricing — PricingPage trips on useAuthStore during static render.
@@ -134,6 +134,14 @@ const ROUTES = [
     title: 'Guide — QualCanvas',
     description:
       'Complete guide to QualCanvas: transcripts, coding, analysis tools, AI features, collaboration, and more.',
+  },
+  {
+    path: '/pilot',
+    file: 'pilot.html',
+    component: 'PilotPage',
+    title: 'QualCanvas real-user pilot — Test a qualitative research workflow',
+    description:
+      'Take part in a 20–30 minute QualCanvas usability pilot: complete five research tasks and share structured feedback.',
   },
 ];
 

@@ -23,7 +23,7 @@ export default function PrivacyPage() {
         </Link>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Privacy Policy</h1>
         <p className="text-xs text-gray-600 dark:text-gray-300 mb-8">
-          Last updated: 2026-07-18. See also:{' '}
+          Last updated: 2026-08-27. See also:{' '}
           <Link to="/trust" className="text-brand-600 hover:underline">
             Trust
           </Link>{' '}
@@ -64,6 +64,11 @@ export default function PrivacyPage() {
             receive your IP address, browser information and viewing activity under Google&apos;s privacy terms.
           </p>
           <p>
+            <strong>Research-pilot feedback:</strong> role, sector, prior product experience, task outcomes, rating and
+            any optional comments submitted on the pilot page. Feedback is not linked to a QualCanvas account. An email
+            address is collected only when you explicitly consent to one follow-up contact.
+          </p>
+          <p>
             <strong>AI provider keys:</strong> If you BYOK an OpenAI / Anthropic / Google API key, it&apos;s stored
             AES-256-GCM encrypted at rest. The backend decrypts the key only when sending your requested AI call to the
             selected provider; the provider receives the prompt and relevant research excerpts needed for that call.
@@ -80,8 +85,9 @@ export default function PrivacyPage() {
               providing the service and improving it (security, fraud prevention, aggregate analytics).
             </li>
             <li>
-              <strong>Consent (Art. 6(1)(a)):</strong> for analytics cookies and lifecycle / product-update emails.
-              Withdraw at any time via the cookie banner or your account preferences.
+              <strong>Consent (Art. 6(1)(a)):</strong> for analytics cookies and lifecycle / product-update emails. It
+              also applies to an optional pilot follow-up email. Withdraw at any time via the cookie banner, your
+              account preferences, or by emailing privacy@qualcanvas.com.
             </li>
           </ul>
 
@@ -137,6 +143,12 @@ export default function PrivacyPage() {
               <tr className="border-b border-gray-100 dark:border-gray-800">
                 <td className="py-1">Error / telemetry events</td>
                 <td className="py-1">According to the configured Sentry and analytics workspace retention</td>
+              </tr>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <td className="py-1">Research-pilot feedback</td>
+                <td className="py-1">
+                  12 months. Optional contact email is used for one follow-up only and may be deleted earlier on request
+                </td>
               </tr>
             </tbody>
           </table>

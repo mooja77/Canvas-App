@@ -106,6 +106,7 @@ import { adminRoutes } from './routes/adminRoutes.js';
 import { lifecycleEmailRoutes, publicLifecycleEmailRoutes } from './routes/lifecycleEmailRoutes.js';
 import { handleResendWebhook } from './lib/resendWebhook.js';
 import { eventsRoutes } from './routes/eventsRoutes.js';
+import { publicPilotRoutes } from './routes/pilotRoutes.js';
 import { prisma } from './lib/prisma.js';
 import { buildReadinessPayload } from './lib/readiness.js';
 import { initSocketServer } from './lib/socket.js';
@@ -114,6 +115,10 @@ import { startLifecycleEmailScheduler, stopLifecycleEmailScheduler } from './job
 import { startStripeReconciliationScheduler, stopStripeReconciliationScheduler } from './jobs/stripeReconciliation.js';
 import { startAuditRetentionScheduler, stopAuditRetentionScheduler } from './jobs/auditRetention.js';
 import { startCanvasTrashRetentionScheduler, stopCanvasTrashRetentionScheduler } from './jobs/canvasTrashRetention.js';
+import {
+  startPilotFeedbackRetentionScheduler,
+  stopPilotFeedbackRetentionScheduler,
+} from './jobs/pilotFeedbackRetention.js';
 import { corsOrigin } from './utils/origins.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -442,6 +447,10 @@ app.use('/api/admin', adminRoutes);
 // Public lifecycle email routes, e.g. unsubscribe links from email footers.
 app.use('/api/email', publicLifecycleEmailRoutes);
 
+// Public, voluntary real-user pilot feedback. The route is independently
+// rate-limited and validates every field before writing.
+app.use('/api/pilot', publicPilotRoutes);
+
 // Protected lifecycle email preferences
 v1Router.use(auth, auditLog, lifecycleEmailRoutes);
 
@@ -476,6 +485,7 @@ const server = httpServer.listen(PORT, () => {
     // in the DPA.
     startAuditRetentionScheduler();
     startCanvasTrashRetentionScheduler();
+    startPilotFeedbackRetentionScheduler();
   }
 });
 
@@ -487,6 +497,7 @@ function shutdown(signal: string) {
   stopStripeReconciliationScheduler();
   stopAuditRetentionScheduler();
   stopCanvasTrashRetentionScheduler();
+  stopPilotFeedbackRetentionScheduler();
   server.close(async () => {
     await prisma.$disconnect();
     console.log('Server closed');

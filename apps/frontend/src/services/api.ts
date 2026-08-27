@@ -759,6 +759,9 @@ export const adminApi = {
 
   sendEmailCampaign: (adminKey: string, id: string) =>
     canvasClient.post(`/admin/email/campaigns/${id}/send`, {}, adminHeaders(adminKey)),
+
+  getPilotFeedback: (adminKey: string, params?: { page?: number; limit?: number }) =>
+    canvasClient.get('/admin/pilot/feedback', { ...adminHeaders(adminKey), params }),
 };
 
 export interface CanvasTemplate {

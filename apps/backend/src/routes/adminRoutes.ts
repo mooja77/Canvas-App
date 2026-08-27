@@ -143,6 +143,59 @@ adminRoutes.post('/email/campaigns/:id/send', async (req: Request, res: Response
   }
 });
 
+// ─── Real-user pilot feedback ───
+function parsePilotTaskResults(value: string): { taskId: string; outcome: string }[] {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+adminRoutes.get('/pilot/feedback', async (req: Request, res: Response) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 25));
+    const skip = (page - 1) * limit;
+
+    const [entries, total, scoreAggregate, roleGroups, outcomeRows] = await Promise.all([
+      prisma.pilotFeedback.findMany({ orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      prisma.pilotFeedback.count(),
+      prisma.pilotFeedback.aggregate({ _avg: { recommendationScore: true } }),
+      prisma.pilotFeedback.groupBy({ by: ['participantRole'], _count: { id: true } }),
+      prisma.pilotFeedback.findMany({ select: { taskResults: true } }),
+    ]);
+
+    const taskOutcomes: Record<string, Record<string, number>> = {};
+    for (const row of outcomeRows) {
+      const results = parsePilotTaskResults(row.taskResults);
+      for (const result of results) {
+        taskOutcomes[result.taskId] ||= {};
+        taskOutcomes[result.taskId][result.outcome] = (taskOutcomes[result.taskId][result.outcome] || 0) + 1;
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        entries: entries.map((entry) => ({
+          ...entry,
+          taskResults: parsePilotTaskResults(entry.taskResults),
+        })),
+        total,
+        averageRecommendationScore: scoreAggregate._avg.recommendationScore,
+        roles: Object.fromEntries(roleGroups.map((group) => [group.participantRole, group._count.id])),
+        taskOutcomes,
+        page,
+        limit,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: (err as Error).message || 'Failed to load pilot feedback' });
+  }
+});
+
 // ─── GET /dashboard — Aggregate metrics ───
 adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {
   try {

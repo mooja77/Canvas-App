@@ -882,6 +882,28 @@ model NewsletterDelivery {
   @@index([provider, providerMessageId])
 }
 
+// Structured, voluntary feedback from the public real-user pilot. Entries are
+// deliberately independent from User accounts so participants may respond
+// anonymously; contactEmail is stored only when they explicitly opt in.
+model PilotFeedback {
+  id                  String   @id @default(cuid())
+  participantRole     String
+  sector              String?
+  productExperience   String
+  taskResults         String // JSON: [{ taskId, outcome }]
+  hardestStep         String?
+  missingFeature      String?
+  adoptionBlocker     String?
+  recommendationScore Int
+  contactEmail        String?
+  consentToContact    Boolean  @default(false)
+  createdAt           DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([participantRole])
+  @@index([recommendationScore])
+}
+
 // ─── Teams ───
 
 model Team {
