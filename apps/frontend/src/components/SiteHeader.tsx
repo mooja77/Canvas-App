@@ -37,7 +37,7 @@ export default function SiteHeader({ hideAuthCtas = false }: SiteHeaderProps) {
           <span className="font-bold text-gray-900 dark:text-white">QualCanvas</span>
         </Link>
 
-        <div className="hidden sm:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-4">
           <Link
             to="/guide"
             className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
@@ -84,7 +84,7 @@ export default function SiteHeader({ hideAuthCtas = false }: SiteHeaderProps) {
 
         <button
           onClick={() => setMobileMenuOpen((v) => !v)}
-          className="sm:hidden p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+          className="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
           aria-label="Toggle menu"
           aria-expanded={mobileMenuOpen}
         >
@@ -99,7 +99,7 @@ export default function SiteHeader({ hideAuthCtas = false }: SiteHeaderProps) {
       </nav>
 
       {mobileMenuOpen && (
-        <div className="sm:hidden px-4 pb-4 space-y-2 border-b border-gray-200 dark:border-gray-700">
+        <div className="md:hidden px-4 pb-4 space-y-2 border-b border-gray-200 dark:border-gray-700">
           <Link
             to="/guide"
             className="block py-2 text-sm text-gray-600 dark:text-gray-400"

@@ -155,9 +155,9 @@ describe('PricingPage (refresh)', () => {
     expect(screen.getByRole('link', { name: 'Book a call' })).toBeInTheDocument();
   });
 
-  it('mentions the .edu academic discount inline', () => {
+  it('mentions the academic discount inline', () => {
     render(<PricingPage />);
-    expect(screen.getByText(/40% off Pro and Team with a \.edu email/i)).toBeInTheDocument();
+    expect(screen.getByText(/40% off Pro and Team with a verified academic email/i)).toBeInTheDocument();
   });
 
   it('renders the categorical comparison table with all four tier columns', () => {

@@ -1,8 +1,16 @@
 // ─── In-memory presence tracking for collaborative canvases ───
 
 const COLLABORATOR_COLORS = [
-  '#EF4444', '#F97316', '#EAB308', '#22C55E', '#06B6D4',
-  '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#F59E0B',
+  '#EF4444',
+  '#F97316',
+  '#EAB308',
+  '#22C55E',
+  '#06B6D4',
+  '#3B82F6',
+  '#8B5CF6',
+  '#EC4899',
+  '#14B8A6',
+  '#F59E0B',
 ];
 
 export interface PresenceEntry {

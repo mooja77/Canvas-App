@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
+import { isAcademicEmail } from '@qualcanvas/shared';
 import { prisma } from '../lib/prisma.js';
 import { getStripe } from '../lib/stripe.js';
 import { auth } from '../middleware/auth.js';
@@ -94,8 +95,8 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
     }
     const plan = await deriveQualcanvasPlan(stripe, price);
     if (!plan) throw new AppError('Unrecognized plan price', 400);
-    if (plan === 'student' && (!user.emailVerified || !user.email.toLowerCase().endsWith('.edu'))) {
-      throw new AppError('The Student plan requires a verified .edu email address', 403);
+    if (plan === 'student' && (!user.emailVerified || !isAcademicEmail(user.email))) {
+      throw new AppError('The Student plan requires a verified academic email address', 403);
     }
 
     const recordedSubscription = await prisma.subscription.findUnique({ where: { userId } });
@@ -134,7 +135,7 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
       throw new AppError('An active subscription already exists. Manage it from the billing portal.', 409);
     }
 
-    // Auto-apply academic discount for .edu emails.
+    // Auto-apply the academic discount for recognised institution domains.
     // The Student tier is already academically priced ($5), so it must NOT
     // stack the 40% coupon on top (that would drop it to ~$3). The coupon
     // applies only to the full-price Pro/Team plans. `plan` is server-derived
@@ -142,7 +143,7 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
     const discounts: { coupon: string }[] = [];
     if (
       user.emailVerified &&
-      user.email.toLowerCase().endsWith('.edu') &&
+      isAcademicEmail(user.email) &&
       plan !== 'student' &&
       process.env.STRIPE_ACADEMIC_COUPON_ID
     ) {

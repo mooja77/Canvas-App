@@ -560,7 +560,7 @@ export default function LoginPage() {
                 )}
               </button>
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                Start free, upgrade anytime. .edu emails get 40% off Pro.
+                Start free, upgrade anytime. Verified academic emails get 40% off Pro.
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
                 By creating an account, you agree to our{' '}

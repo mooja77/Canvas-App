@@ -10,7 +10,7 @@ const { authState, uiState, aiState } = vi.hoisted(() => ({
     authType: 'email' as 'email' | 'legacy' | null,
   },
   uiState: { featureDiscovery: { aiPromptSeen: false }, markFeatureSeen: vi.fn() },
-  aiState: { configured: false, loaded: true, fetchConfig: vi.fn() },
+  aiState: { configured: false, hostedAiAvailable: false, loaded: true, fetchConfig: vi.fn() },
 }));
 
 vi.mock('../stores/authStore', () => ({
@@ -34,6 +34,7 @@ describe('AiSetupBanner', () => {
     authState.authType = 'email';
     uiState.featureDiscovery.aiPromptSeen = false;
     aiState.configured = false;
+    aiState.hostedAiAvailable = false;
     aiState.loaded = true;
     aiState.fetchConfig.mockClear();
   });
@@ -61,6 +62,12 @@ describe('AiSetupBanner', () => {
 
   it('does not render once a key is already configured', () => {
     aiState.configured = true;
+    render(<AiSetupBanner />);
+    expect(screen.queryByText(CTA)).not.toBeInTheDocument();
+  });
+
+  it('does not ask for a key when the account can use hosted AI', () => {
+    aiState.hostedAiAvailable = true;
     render(<AiSetupBanner />);
     expect(screen.queryByText(CTA)).not.toBeInTheDocument();
   });

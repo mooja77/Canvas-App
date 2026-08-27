@@ -46,7 +46,8 @@ export async function ragQuery(
 
   if (allEmbeddings.length === 0) {
     return {
-      answer: 'No data has been embedded for this canvas yet. Please generate embeddings first by clicking the "Index Data" button.',
+      answer:
+        'No data has been embedded for this canvas yet. Please generate embeddings first by clicking the "Index Data" button.',
       citations: [],
       inputTokens: queryEmbResult.inputTokens,
       outputTokens: 0,
@@ -59,7 +60,8 @@ export async function ragQuery(
 
   if (similar.length === 0) {
     return {
-      answer: 'I could not find relevant information in the canvas data to answer your question. Try rephrasing your query or ensure the canvas data has been indexed.',
+      answer:
+        'I could not find relevant information in the canvas data to answer your question. Try rephrasing your query or ensure the canvas data has been indexed.',
       citations: [],
       inputTokens: queryEmbResult.inputTokens,
       outputTokens: 0,
@@ -116,11 +118,12 @@ function buildContext(chunks: SimilarChunk[]): string {
   const sections: string[] = [];
 
   for (const chunk of chunks) {
-    const label = chunk.sourceType === 'transcript_chunk'
-      ? 'Transcript excerpt'
-      : chunk.sourceType === 'coding'
-        ? 'Coded passage'
-        : 'Memo';
+    const label =
+      chunk.sourceType === 'transcript_chunk'
+        ? 'Transcript excerpt'
+        : chunk.sourceType === 'coding'
+          ? 'Coded passage'
+          : 'Memo';
     sections.push(`[${label} | similarity: ${chunk.similarity.toFixed(2)}]\n${chunk.chunkText}`);
   }
 

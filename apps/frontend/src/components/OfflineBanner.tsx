@@ -18,7 +18,10 @@ export default function OfflineBanner() {
   if (!offline) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[60] bg-amber-500 text-white text-center py-2 text-sm font-medium shadow-lg" role="alert">
+    <div
+      className="fixed top-0 left-0 right-0 z-[60] bg-amber-500 text-white text-center py-2 text-sm font-medium shadow-lg"
+      role="alert"
+    >
       You're offline. Changes won't be saved.
     </div>
   );

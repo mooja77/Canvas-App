@@ -1,489 +1,172 @@
 # Deployment Guide
 
-## 1. Prerequisites
+## Production topology
 
-| Requirement | Version | Notes                                       |
-| ----------- | ------- | ------------------------------------------- |
-| Node.js     | 20+ LTS | Required for build and runtime              |
-| npm         | 9+      | Ships with Node 20                          |
-| PostgreSQL  | 16+     | Production database (Railway provides this) |
-| SQLite      | any     | Local development alternative (zero setup)  |
-| Docker      | 24+     | Optional, for containerized deployment      |
+- Frontend: Vite static build on Cloudflare Pages, project `qualcanvas`.
+- Backend: Node/Express Docker image on Railway.
+- Database: PostgreSQL 16 on Railway.
+- Public site: `https://qualcanvas.com`.
+- API: `https://api.qualcanvas.com/api`.
 
-## 2. Local Development Setup
+The deployment definitions are authoritative:
+
+- `.github/workflows/ci.yml` — release gates;
+- `.github/workflows/deploy-frontend.yml` — Cloudflare Pages publish;
+- `Dockerfile` and `apps/backend/package.json` — Railway image/startup;
+- `apps/backend/prisma/migrations/` — database rollout.
+
+## Local development
+
+Prerequisites: Node 20+, npm 9+, PostgreSQL 16+, and Playwright browsers for
+E2E work.
 
 ```bash
-# 1. Clone the repository
-git clone <repo-url> && cd canvas-app
-
-# 2. Copy environment files
-cp .env.example .env
-cp apps/backend/.env.example apps/backend/.env
-cp apps/frontend/.env.example apps/frontend/.env
-
-# 3. Configure local database (choose one):
-
-# Option A — SQLite (zero setup, recommended for local dev)
-# In apps/backend/.env, set:
-#   DATABASE_URL="file:./canvas-app.db"
-# Note: The Prisma schema provider is "postgresql". Prisma accepts a SQLite
-# URL at runtime, but `prisma migrate dev` may fail. Use `prisma db push`
-# locally, or temporarily change the provider to "sqlite" (do NOT commit).
-
-# Option B — Local PostgreSQL
-# In apps/backend/.env, set:
-#   DATABASE_URL="postgresql://canvas:password@localhost:5432/canvas_app"
-
-# 4. Install dependencies
+git clone <repo-url>
+cd Canvas-App
+copy .env.example .env
 npm install
-
-# 5. Run database migrations and seed demo data
+docker compose up -d db
 npm run db:migrate
 npm run db:seed
-
-# 6. Start development servers (backend :3007 + frontend :5174)
 npm run dev
 ```
 
-### Available Scripts
+Use a PostgreSQL URL. SQLite/file URLs are incompatible with the committed
+Prisma provider.
 
-| Script                     | Description                                                       |
-| -------------------------- | ----------------------------------------------------------------- |
-| `npm run dev`              | Build shared types, then start backend + frontend concurrently    |
-| `npm run dev:backend`      | Start only the backend dev server                                 |
-| `npm run dev:frontend`     | Start only the frontend dev server                                |
-| `npm run build`            | Production build: shared -> backend -> frontend                   |
-| `npm start`                | Start the compiled backend (`apps/backend/dist`)                  |
-| `npm run db:migrate`       | Run Prisma migrations                                             |
-| `npm run db:seed`          | Seed templates and, when configured, a `DEMO_ACCESS_CODE` account |
-| `npm test`                 | Run all unit tests (570 backend + 333 frontend)                   |
-| `npm run test:e2e`         | Run ~564 Playwright E2E tests (Chromium, 39 spec files)           |
-| `npm run test:e2e:all`     | Run E2E tests across all browsers                                 |
-| `npm run test:e2e:firefox` | Run E2E tests on Firefox                                          |
-| `npm run test:e2e:webkit`  | Run E2E tests on WebKit                                           |
-| `npm run test:e2e:mobile`  | Run E2E tests on mobile viewports                                 |
-| `npm run typecheck`        | TypeScript type checking (backend + frontend)                     |
-| `npm run lint`             | ESLint across all packages                                        |
-| `npm run lint:fix`         | ESLint with auto-fix                                              |
-| `npm run format`           | Prettier formatting                                               |
-| `npm run format:check`     | Prettier check (CI-friendly)                                      |
+```dotenv
+DATABASE_URL=postgresql://canvas:canvas_dev_password@localhost:5432/canvas_app?schema=public
+JWT_SECRET=<long-random-secret>
+ENCRYPTION_KEY=<64-hex-characters>
+APP_URL=http://localhost:5174
+ALLOWED_ORIGINS=http://localhost:5174
+```
 
-## 3. Environment Variables
+The frontend defaults to port 5174 and the backend to 3007.
 
-Copy `.env.example` to `.env` and configure. Variables are organized by category below.
+## Environment groups
 
-### Server & Database
+Backend essentials:
 
-| Variable         | Required    | Default       | Description                                                                                                                   |
-| ---------------- | ----------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`       | Yes         | `development` | `development` or `production`                                                                                                 |
-| `PORT`           | No          | `3007`        | Backend server port                                                                                                           |
-| `DATABASE_URL`   | Yes         | —             | PostgreSQL connection string, or `file:./canvas-app.db` for SQLite                                                            |
-| `JWT_SECRET`     | Yes         | —             | 32+ char random string for signing JWTs. Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `ENCRYPTION_KEY` | Recommended | —             | 32-byte hex key for encrypting user API keys. Generate same as JWT_SECRET                                                     |
+- `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV`;
+- `ALLOWED_ORIGINS`, `APP_URL`;
+- `ENCRYPTION_KEY` when user-managed AI keys are enabled;
+- `REGISTRATION_ENABLED=true` to accept production signups.
 
-### CORS & Origins
+Optional backend integrations:
 
-| Variable          | Required    | Default                 | Description                                                  |
-| ----------------- | ----------- | ----------------------- | ------------------------------------------------------------ |
-| `ALLOWED_ORIGINS` | Production  | —                       | Comma-separated frontend URLs for CORS/CSRF                  |
-| `CORS_ORIGIN`     | No          | —                       | Alternative CORS origin (also checked by CSRF middleware)    |
-| `FRONTEND_URL`    | No          | —                       | Alternative frontend URL                                     |
-| `APP_URL`         | Recommended | `http://localhost:5174` | Public app URL for Stripe redirects and password reset links |
+- Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+  `STRIPE_ACADEMIC_COUPON_ID`;
+- email: `RESEND_API_KEY`/`RESEND_WEBHOOK_SECRET` or `SMTP_*`;
+- hosted AI: `OPENAI_API_KEY` plus the documented budget limits;
+- storage: `S3_BUCKET`, `S3_REGION`, credentials and optional endpoint;
+- operations: `ADMIN_API_KEY`, `METRICS_TOKEN`, `SENTRY_DSN`.
 
-### Authentication
+Frontend build variables:
 
-| Variable               | Required | Default | Description                                           |
-| ---------------------- | -------- | ------- | ----------------------------------------------------- |
-| `REGISTRATION_ENABLED` | No       | `false` | Set to `true` to allow new user signups in production |
-| `GOOGLE_CLIENT_ID`     | No       | —       | Google OAuth client ID for Google sign-in             |
+- `VITE_API_URL=https://api.qualcanvas.com/api`;
+- `VITE_GOOGLE_CLIENT_ID`;
+- all `VITE_STRIPE_*_PRICE_ID` values;
+- `VITE_SENTRY_DSN` and `VITE_GIT_SHA`.
 
-### Admin Portal
+Keep `VITE_API_URL` on the `api.qualcanvas.com` subdomain. Moving authentication
+to a third-party Railway hostname makes the httpOnly session cookie third-party
+and breaks sign-in in privacy-focused browsers.
 
-| Variable        | Required  | Default | Description                                                                                                                                                   |
-| --------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ADMIN_API_KEY` | For admin | —       | Secret key for admin portal access (`/admin`). Generate: `openssl rand -hex 32` or `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+## Release gates
 
-> **Note:** The `/admin` route is not included in the sitemap and is not publicly linked. It is a private internal tool. Without `ADMIN_API_KEY` set, admin endpoints return 503.
->
-> **Route mounting order:** Admin routes are mounted _before_ the versioned API router (`v1Router`) in `index.ts`. If you modify route registration, ensure `/api/admin/*` remains above the general v1 router to avoid auth middleware conflicts.
-
-### Stripe / Billing
-
-| Variable                    | Required    | Default | Description                                              |
-| --------------------------- | ----------- | ------- | -------------------------------------------------------- |
-| `STRIPE_SECRET_KEY`         | For billing | —       | Stripe secret key (`sk_test_...` or `sk_live_...`)       |
-| `STRIPE_WEBHOOK_SECRET`     | For billing | —       | Stripe webhook signing secret (`whsec_...`)              |
-| `STRIPE_ACADEMIC_COUPON_ID` | No          | —       | Stripe coupon ID for 40% academic discount (.edu emails) |
-
-### Email (SMTP)
-
-| Variable    | Required   | Default | Description                                                |
-| ----------- | ---------- | ------- | ---------------------------------------------------------- |
-| `SMTP_HOST` | For emails | —       | SMTP server (e.g., `smtp.resend.com`, `smtp.gmail.com`)    |
-| `SMTP_PORT` | For emails | `465`   | SMTP port (465 for SSL, 587 for TLS)                       |
-| `SMTP_USER` | For emails | —       | SMTP username                                              |
-| `SMTP_PASS` | For emails | —       | SMTP password or app-specific password                     |
-| `SMTP_FROM` | For emails | —       | From address (e.g., `QualCanvas <noreply@qualcanvas.com>`) |
-
-If SMTP is not configured, password reset links are logged to the server console (useful for development).
-
-### AI / LLM
-
-| Variable         | Required | Default       | Description                                               |
-| ---------------- | -------- | ------------- | --------------------------------------------------------- |
-| `AI_PROVIDER`    | No       | `openai`      | AI provider (`openai`, `anthropic`, `google`)             |
-| `AI_MODEL`       | No       | `gpt-4o-mini` | Default AI model                                          |
-| `OPENAI_API_KEY` | No       | —             | Server-side fallback API key (users bring their own keys) |
-
-### S3 File Storage
-
-| Variable        | Required | Default     | Description                                                   |
-| --------------- | -------- | ----------- | ------------------------------------------------------------- |
-| `S3_BUCKET`     | No       | —           | S3/R2/MinIO bucket name. Omit for local file storage fallback |
-| `S3_REGION`     | No       | `us-east-1` | S3 region                                                     |
-| `S3_ACCESS_KEY` | No       | —           | S3 access key                                                 |
-| `S3_SECRET_KEY` | No       | —           | S3 secret key                                                 |
-| `S3_ENDPOINT`   | No       | —           | Custom endpoint for R2/MinIO                                  |
-
-### Frontend (Vite)
-
-These must be prefixed with `VITE_` to be available in the browser.
-
-| Variable                            | Required    | Default | Description                                                                               |
-| ----------------------------------- | ----------- | ------- | ----------------------------------------------------------------------------------------- |
-| `VITE_API_URL`                      | No          | `/api`  | API base URL (use `/api` with Vercel proxy, or `http://localhost:3007/api` for local dev) |
-| `VITE_GOOGLE_CLIENT_ID`             | No          | —       | Google OAuth client ID for frontend                                                       |
-| `VITE_WS_URL`                       | No          | —       | WebSocket URL (points to Railway in production)                                           |
-| `VITE_STRIPE_PRO_MONTHLY_PRICE_ID`  | For billing | —       | Stripe price ID for Pro monthly plan                                                      |
-| `VITE_STRIPE_PRO_ANNUAL_PRICE_ID`   | For billing | —       | Stripe price ID for Pro annual plan                                                       |
-| `VITE_STRIPE_TEAM_MONTHLY_PRICE_ID` | For billing | —       | Stripe price ID for Team monthly plan                                                     |
-| `VITE_STRIPE_TEAM_ANNUAL_PRICE_ID`  | For billing | —       | Stripe price ID for Team annual plan                                                      |
-
-## 4. Database Setup
-
-### PostgreSQL (Production)
-
-The Prisma schema uses `provider = "postgresql"`. In production (Railway), a PostgreSQL 16 instance is provisioned automatically.
+Before pushing:
 
 ```bash
-# Run migrations (creates/updates all tables)
-npx prisma migrate deploy
-
-# Seed templates (optionally configure a demo account through DEMO_ACCESS_CODE)
-npx prisma db seed
+npm run format:check
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run build:budget
+npm audit --omit=dev --audit-level=high
 ```
 
-### SQLite (Local Development)
+For changes to user journeys, run focused Playwright coverage in Chromium,
+Firefox, WebKit, mobile Chrome, and mobile Safari. The CI workflow also builds
+the production Docker image and replays migrations on clean PostgreSQL to catch
+differences hidden by workspace-only builds.
 
-For local development without installing PostgreSQL:
+## Frontend deployment (Cloudflare Pages)
+
+A successful CI run on `main` triggers `deploy-frontend.yml`. It checks out the
+exact successful commit, builds the frontend with production variables, and
+runs:
 
 ```bash
-# Set DATABASE_URL in apps/backend/.env
-DATABASE_URL="file:./canvas-app.db"
-
-# Use db push instead of migrate (avoids provider validation issues)
-npx prisma db push --schema=apps/backend/prisma/schema.prisma
-
-# Or use the npm script which runs migrate
-npm run db:migrate
+npx wrangler@4 pages deploy apps/frontend/dist \
+  --project-name=qualcanvas --branch=main \
+  --commit-hash=<sha> --commit-message=<ascii-subject>
 ```
 
-> **Important:** The schema provider must remain `"postgresql"` in the committed code. Prisma accepts a SQLite connection string at runtime, but schema-level commands (`migrate dev`, `db push`) may require temporarily switching the provider. Never commit the provider as `"sqlite"`.
+Required GitHub secrets include `CLOUDFLARE_API_TOKEN`,
+`CLOUDFLARE_ACCOUNT_ID`, Stripe price IDs, Google client ID, and the frontend
+Sentry DSN. Cloudflare Pages handles the SPA fallback, TLS, and the
+`qualcanvas.com` custom domain.
 
-## 5. Docker Deployment
+## Backend deployment (Railway)
 
-### Dockerfile
-
-The multi-stage Dockerfile (`node:20-alpine`) builds in five stages:
-
-1. **deps** — Installs all dependencies (`npm ci --ignore-scripts`)
-2. **build-shared** — Compiles shared types package
-3. **build-frontend** — Builds the Vite frontend (static bundle)
-4. **build-backend** — Compiles the Express backend + copies Prisma schema
-5. **production** — Minimal image with production deps only, built artifacts, and Prisma client
-
-Production image features:
-
-- Runs as non-root `node` user for security
-- Auto-runs `prisma migrate deploy` on startup before starting the server
-- Built-in health check: `wget` to `/health` every 30s (5s timeout, 10s start period, 3 retries)
-- Exposes `PORT` (default 3007)
-
-### Build and Run with Docker Compose
+Railway builds the repository Dockerfile from `main`. The backend start command
+runs pending migrations before Node starts:
 
 ```bash
-# Build the image
-docker build -t qualcanvas .
-
-# Run with docker-compose (starts PostgreSQL 16 + app)
-docker-compose up -d
+cd apps/backend && npm start
 ```
 
-The `docker-compose.yml` defines two services:
+The Railway service must expose the API through `api.qualcanvas.com`, have the
+PostgreSQL service URL in `DATABASE_URL`, and allow `https://qualcanvas.com` in
+`ALLOWED_ORIGINS`. Stripe webhooks target:
 
-| Service | Image                 | Description                                           |
-| ------- | --------------------- | ----------------------------------------------------- |
-| `db`    | `postgres:16-alpine`  | PostgreSQL database with persistent volume (`pgdata`) |
-| `app`   | Built from Dockerfile | Backend + serves frontend, depends on `db`            |
+```text
+https://api.qualcanvas.com/api/billing/webhook
+```
 
-Default compose environment:
+Do not seed production unless explicitly creating approved templates or a
+temporary demo identity.
 
-| Variable               | Default               | Notes                          |
-| ---------------------- | --------------------- | ------------------------------ |
-| `POSTGRES_DB`          | `canvas_app`          | Database name                  |
-| `POSTGRES_USER`        | `canvas`              | Database user                  |
-| `POSTGRES_PASSWORD`    | `canvas_dev_password` | **Change in production!**      |
-| `DATABASE_URL`         | Auto-constructed      | Points to the `db` service     |
-| `REGISTRATION_ENABLED` | `false`               | Set to `true` to allow signups |
+## Health and observability
 
-> **Security:** Always override default credentials in production:
->
-> ```bash
-> POSTGRES_PASSWORD=your_strong_password JWT_SECRET=your_jwt_secret docker-compose up -d
-> ```
+- `GET /health` — liveness and database connectivity.
+- `GET /ready` — readiness with dependency status.
+- `GET /metrics` — public in development; in production requires
+  `Authorization: Bearer <METRICS_TOKEN>` and otherwise intentionally returns 404.
 
-### Docker Environment Variables
-
-Pass additional env vars to the `app` service in `docker-compose.yml`, via a `.env` file in the project root, or with `docker run -e`:
+Post-deploy verification:
 
 ```bash
-docker-compose up -d \
-  -e STRIPE_SECRET_KEY=sk_live_... \
-  -e SMTP_HOST=smtp.resend.com
+npm run smoke:postdeploy
 ```
 
-## 6. Vercel Frontend Deployment
+Also verify the public landing, login, pricing, training, one authenticated
+canvas read/write flow, browser console/network errors, and the live API health
+and readiness endpoints. A green local build is not a production verification.
 
-The frontend is deployed as a static Vite site on Vercel. Configuration is in `vercel.json`:
+## Rollback
 
-```json
-{
-  "buildCommand": "npm run build -w shared && npm run build -w apps/frontend",
-  "outputDirectory": "apps/frontend/dist",
-  "installCommand": "npm install",
-  "framework": "vite"
-}
-```
+- Frontend: redeploy the last known-good commit to Cloudflare Pages.
+- Backend: redeploy the last known-good Railway image/commit.
+- Database: prefer forward-fix additive migrations. Restore a verified Railway
+  backup only when a forward fix cannot preserve data.
 
-### Setup Steps
+Do not roll back application code across a migration that removed or changed
+required columns without first checking schema compatibility.
 
-1. Import the GitHub repo on [vercel.com](https://vercel.com)
-2. Set **Framework**: Vite
-3. Set **Root Directory**: `/` (monorepo root — `vercel.json` handles the rest)
-4. Add environment variables in Vercel dashboard:
-   - `VITE_API_URL=/api` (uses Vercel rewrites to proxy to Railway)
-   - `VITE_GOOGLE_CLIENT_ID` (if using Google OAuth)
-   - `VITE_WS_URL` (Railway WebSocket URL, e.g., `wss://your-app.up.railway.app`)
-   - All `VITE_STRIPE_*` price IDs (if billing is enabled)
-5. Deploy
+## Common failures
 
-### Rewrites
+| Symptom                         | Check                                                                             |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| Prisma rejects `file:` URL      | Use PostgreSQL; SQLite is not supported.                                          |
+| Login works in one browser only | Confirm API is `api.qualcanvas.com`, cookie flags, CORS and CSRF origins.         |
+| Cloudflare deploy did not start | Confirm the CI workflow on the same SHA passed.                                   |
+| Railway is still on an old SHA  | Inspect image build/start logs and migration output.                              |
+| Frontend returns stale assets   | Compare deployed commit hash, service worker version and Pages deployment.        |
+| Stripe state drifts             | Check webhook signature secret, delivery history and idempotency rows.            |
+| `/metrics` returns 404          | Supply the configured bearer token; this is intentional in production.            |
+| Browser E2E cannot start        | Install Playwright browsers and confirm the PostgreSQL E2E service on port 55432. |
 
-Vercel rewrites proxy API and health requests to the Railway backend:
-
-| Source        | Destination                        |
-| ------------- | ---------------------------------- |
-| `/api/:path*` | `https://<railway-url>/api/:path*` |
-| `/health`     | `https://<railway-url>/health`     |
-| `/:path*`     | `/index.html` (SPA fallback)       |
-
-Update the Railway URL in `vercel.json` to match your deployment.
-
-### Custom Domain
-
-1. Add your domain under Vercel Project Settings > Domains
-2. Set DNS: `CNAME` to `cname.vercel-dns.com`
-3. SSL is handled automatically by Vercel
-
-## 7. Railway Backend Deployment
-
-1. Create a new project at [railway.app](https://railway.app)
-2. Add a **PostgreSQL** database service — copy the `DATABASE_URL`
-3. Add a **GitHub Repo** service pointing to this repo
-4. Configure the service:
-   - **Root Directory**: `/` (monorepo root)
-   - **Build Command**: `npm run build`
-   - **Start Command**: `cd apps/backend && npm start`
-5. Add environment variables in the Railway dashboard:
-   - `DATABASE_URL` (from the PostgreSQL service)
-   - `JWT_SECRET` (generate a strong random string)
-   - `NODE_ENV=production`
-   - `ALLOWED_ORIGINS=https://your-vercel-domain.com`
-   - `APP_URL=https://your-vercel-domain.com`
-   - `REGISTRATION_ENABLED=true` (if allowing signups)
-   - `ADMIN_API_KEY` (generate: `openssl rand -hex 32`)
-   - All Stripe, SMTP, and optional variables as needed
-6. Deploy — Railway builds and starts the backend automatically
-7. After first deploy, seed the database from the Railway shell:
-   ```bash
-   cd apps/backend && npx tsx prisma/seed.ts
-   ```
-8. Note your Railway public URL (e.g., `https://canvas-app-production.up.railway.app`)
-
-### Connecting Frontend and Backend
-
-- Set `VITE_API_URL=/api` on Vercel (rewrites proxy to Railway)
-- Set `ALLOWED_ORIGINS=https://your-app.vercel.app` on Railway
-- Set `APP_URL=https://your-app.vercel.app` on Railway
-- Set `VITE_WS_URL=wss://your-app.up.railway.app` on Vercel (for WebSocket)
-
-Railway auto-deploys on every push to the connected branch.
-
-## 8. CI/CD Pipeline
-
-GitHub Actions runs on every push to `main` and every pull request targeting `main`. The workflow (`.github/workflows/ci.yml`) has three sequential jobs:
-
-### Job 1: Type Check
-
-- Runs `npm run typecheck` (TypeScript compilation check for backend + frontend)
-- Uses Node 20 with npm caching
-- Must pass before unit tests run
-
-### Job 2: Unit Tests
-
-- Depends on: Type Check
-- Uses SQLite (`DATABASE_URL=file:./test.db`) — no external database needed
-- Generates Prisma client and runs migrations
-- Runs `npm test` (570 backend + 333 frontend unit tests via Vitest)
-- Environment: `JWT_SECRET` and `ENCRYPTION_KEY` set to CI-only values
-
-### Job 3: E2E Tests
-
-- Depends on: Unit Tests
-- Installs Chromium via Playwright
-- Generates Prisma client, runs migrations, and seeds test data
-- Runs `npm run test:e2e` (~564 Playwright tests across 39 spec files)
-- On failure: uploads `test-results/` as an artifact (retained 7 days)
-
-### Pipeline Summary
-
-```
-push/PR to main
-  |
-  v
-[typecheck] --> [unit-tests] --> [e2e-tests]
-                                      |
-                                      +--> (on failure) upload test artifacts
-```
-
-All jobs run on `ubuntu-latest` with Node 20 and npm caching.
-
-## 9. Health Checks & Monitoring
-
-The backend exposes three unauthenticated monitoring endpoints:
-
-### `GET /health` — Liveness Check
-
-Returns `200` if the server is running and the database is reachable.
-
-```json
-{ "status": "ok", "timestamp": "2025-01-01T00:00:00.000Z" }
-```
-
-Returns `503` if the database is unreachable.
-
-### `GET /ready` — Readiness Check
-
-Returns `200` with version and uptime when the app is ready to serve traffic.
-
-```json
-{ "status": "ready", "version": "1.0.0", "uptime": 123.456 }
-```
-
-Use this for load balancer readiness probes.
-
-### `GET /metrics` — Basic Metrics
-
-Returns uptime, request count, and memory usage.
-
-```json
-{
-  "uptime": 3600,
-  "requestCount": 12345,
-  "memoryUsage": 67108864,
-  "timestamp": "2025-01-01T00:00:00.000Z"
-}
-```
-
-### Docker Health Check
-
-The Dockerfile includes a built-in health check:
-
-```dockerfile
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3007}/health || exit 1
-```
-
-## 10. Background Jobs
-
-### Report Scheduler
-
-The backend runs a report scheduler as a background `setInterval` job (not a separate cron process). It starts automatically when the server boots.
-
-- **File:** `apps/backend/src/jobs/reportScheduler.ts`
-- **Check interval:** Every hour (60 minutes)
-- **Startup delay:** 10 seconds after server start (allows DB connection to settle)
-- **Behavior:** Queries all enabled `ReportSchedule` records, generates HTML reports via `reportGenerator.ts`, and sends them via SMTP (using the same email transport as password resets)
-- **No external scheduler needed:** Works on Railway, Docker, or any host — no cron configuration required
-
-### New Backend Dependencies
-
-| Package          | Purpose                                         |
-| ---------------- | ----------------------------------------------- |
-| `exceljs`        | Excel workbook generation for `.xlsx` export    |
-| `ical-generator` | iCal (.ics) file generation for calendar export |
-
-These are included in the backend `package.json` and installed automatically with `npm install`.
-
-## 11. Troubleshooting
-
-### Common Issues
-
-| Problem                                    | Cause                                                         | Solution                                                                                                                                                             |
-| ------------------------------------------ | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prisma migrate dev` fails with SQLite URL | Provider mismatch: schema says `postgresql`, URL says `file:` | Use `prisma db push` locally, or temporarily change provider to `sqlite` (don't commit)                                                                              |
-| Frontend can't reach API                   | CORS or proxy misconfiguration                                | Check `ALLOWED_ORIGINS` on backend, `VITE_API_URL` on frontend, and Vercel rewrites                                                                                  |
-| JWT errors after deploy                    | Missing or mismatched `JWT_SECRET`                            | Ensure the same `JWT_SECRET` is set in production env vars                                                                                                           |
-| Password reset emails not sent             | SMTP not configured                                           | Set `SMTP_*` env vars, or check server console for logged reset links                                                                                                |
-| Stripe webhooks failing                    | Wrong webhook secret or URL                                   | Verify `STRIPE_WEBHOOK_SECRET` and webhook endpoint URL in Stripe Dashboard                                                                                          |
-| `ENCRYPTION_KEY` errors                    | Key not set or wrong format                                   | Generate a 32-byte hex key: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`                                                               |
-| Docker build fails on `prisma generate`    | Missing schema file in build context                          | Ensure `apps/backend/prisma/` is not in `.dockerignore`                                                                                                              |
-| Registration disabled                      | `REGISTRATION_ENABLED` defaults to `false`                    | Set `REGISTRATION_ENABLED=true` in production env vars                                                                                                               |
-| WebSocket connection fails                 | `VITE_WS_URL` not set or wrong                                | Set `VITE_WS_URL=wss://your-railway-url.up.railway.app` on Vercel                                                                                                    |
-| E2E tests fail locally                     | Playwright browsers not installed                             | Run `npx playwright install --with-deps chromium`                                                                                                                    |
-| Canvas nodes invisible                     | React Flow v12 measurement stall                              | CSS fix applied: `visibility: visible !important` on `.react-flow__node` in `index.css`. If nodes still don't render, ensure the canvas container has `h-full` class |
-| Stale frontend after deploy                | Vercel CDN chunk caching                                      | Clear Vercel CDN cache in dashboard, or redeploy. Users may need hard refresh (Ctrl+Shift+R) to pick up new JS chunks                                                |
-| Stale canvas tabs after deletion           | localStorage retains deleted canvas tab IDs                   | Fixed in code: tab cleanup runs on canvas list fetch, removing tabs for deleted canvases                                                                             |
-
-### Verifying a Deployment
-
-1. Visit `https://your-domain.com` — should show the landing page
-2. Visit `https://your-domain.com/health` — should return `{"status":"ok"}`
-3. Visit `https://your-domain.com/ready` — should return `{"status":"ready"}`
-4. Log in with the environment-supplied demo code (only if one was configured)
-5. Check `https://your-domain.com/metrics` for request counts and memory usage
-
-### Stripe Setup
-
-1. Create a [Stripe](https://stripe.com) account (use test mode for staging)
-2. Create products and prices:
-   - **Pro** plan: monthly and annual prices
-   - **Team** plan: monthly and annual prices (per-seat)
-3. Copy price IDs into `VITE_STRIPE_*` env vars
-4. Set `STRIPE_SECRET_KEY` on the backend
-5. Configure a webhook endpoint in Stripe Dashboard:
-   - URL: `https://your-domain.com/api/billing/webhook`
-   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`
-6. Copy webhook signing secret to `STRIPE_WEBHOOK_SECRET`
-7. (Optional) Create a coupon for academic discount and set `STRIPE_ACADEMIC_COUPON_ID`
-
-### SSL / Custom Domains
-
-- **Railway and Vercel** handle SSL certificates automatically
-- Set `APP_URL` to your production URL for email links and Stripe redirects
-- For custom domains:
-  - **Vercel**: Add domain under Project Settings > Domains
-  - **Railway**: Add custom domain under service Settings > Networking
-  - **DNS**: Point your domain to Vercel (`CNAME` to `cname.vercel-dns.com`)
-- Update `ALLOWED_ORIGINS` to include your custom domain
+Last reviewed: 2026-08-27.

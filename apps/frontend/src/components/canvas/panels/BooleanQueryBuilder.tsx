@@ -13,39 +13,42 @@ interface BooleanQueryBuilderProps {
   onChange: (conditions: BooleanCondition[]) => void;
 }
 
-export default function BooleanQueryBuilder({
-  questions,
-  initialConditions = [],
-  onChange,
-}: BooleanQueryBuilderProps) {
+export default function BooleanQueryBuilder({ questions, initialConditions = [], onChange }: BooleanQueryBuilderProps) {
   const [conditions, setConditions] = useState<BooleanCondition[]>(
-    initialConditions.length > 0 ? initialConditions : [{ questionId: '', operator: 'AND' }]
+    initialConditions.length > 0 ? initialConditions : [{ questionId: '', operator: 'AND' }],
   );
 
-  const updateConditions = useCallback((newConditions: BooleanCondition[]) => {
-    setConditions(newConditions);
-    onChange(newConditions);
-  }, [onChange]);
+  const updateConditions = useCallback(
+    (newConditions: BooleanCondition[]) => {
+      setConditions(newConditions);
+      onChange(newConditions);
+    },
+    [onChange],
+  );
 
   const addCondition = useCallback(() => {
     updateConditions([...conditions, { questionId: '', operator: 'AND' }]);
   }, [conditions, updateConditions]);
 
-  const removeCondition = useCallback((index: number) => {
-    if (conditions.length <= 1) return;
-    const newConds = conditions.filter((_, i) => i !== index);
-    updateConditions(newConds);
-  }, [conditions, updateConditions]);
+  const removeCondition = useCallback(
+    (index: number) => {
+      if (conditions.length <= 1) return;
+      const newConds = conditions.filter((_, i) => i !== index);
+      updateConditions(newConds);
+    },
+    [conditions, updateConditions],
+  );
 
-  const updateCondition = useCallback((index: number, updates: Partial<BooleanCondition>) => {
-    const newConds = conditions.map((c, i) =>
-      i === index ? { ...c, ...updates } : c
-    );
-    updateConditions(newConds);
-  }, [conditions, updateConditions]);
+  const updateCondition = useCallback(
+    (index: number, updates: Partial<BooleanCondition>) => {
+      const newConds = conditions.map((c, i) => (i === index ? { ...c, ...updates } : c));
+      updateConditions(newConds);
+    },
+    [conditions, updateConditions],
+  );
 
   const getQuestionLabel = (questionId: string) => {
-    const q = questions.find(q => q.id === questionId);
+    const q = questions.find((q) => q.id === questionId);
     return q?.text || 'Select a code...';
   };
 
@@ -79,7 +82,7 @@ export default function BooleanQueryBuilder({
             className="flex-1 text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
           >
             <option value="">Select a code...</option>
-            {questions.map(q => (
+            {questions.map((q) => (
               <option key={q.id} value={q.id}>
                 {q.text}
               </option>
@@ -126,15 +129,14 @@ export default function BooleanQueryBuilder({
       <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded text-xs text-gray-600 dark:text-gray-400">
         <span className="font-medium">Query: </span>
         {conditions
-          .filter(c => c.questionId)
+          .filter((c) => c.questionId)
           .map((c, i) => {
             const label = getQuestionLabel(c.questionId);
             if (i === 0) return label;
             if (c.operator === 'NEAR') return ` NEAR(${c.nearDistance || 100}) ${label}`;
             return ` ${c.operator} ${label}`;
           })
-          .join('')
-          || 'No conditions set'}
+          .join('') || 'No conditions set'}
       </div>
     </div>
   );

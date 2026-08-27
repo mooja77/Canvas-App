@@ -61,7 +61,7 @@ export default function TrainingCenterModal({
         passThreshold,
       });
 
-      setTrainingDocs(prev => [...prev, res.data.data]);
+      setTrainingDocs((prev) => [...prev, res.data.data]);
       setShowCreate(false);
       setName('');
       setInstructions('');
@@ -72,15 +72,18 @@ export default function TrainingCenterModal({
     }
   }, [canvasId, name, instructions, selectedTranscriptId, passThreshold]);
 
-  const handleDelete = useCallback(async (docId: string) => {
-    try {
-      await canvasApi.deleteTrainingDocument(canvasId, docId);
-      setTrainingDocs(prev => prev.filter(d => d.id !== docId));
-      toast.success('Training document deleted');
-    } catch {
-      toast.error('Failed to delete training document');
-    }
-  }, [canvasId]);
+  const handleDelete = useCallback(
+    async (docId: string) => {
+      try {
+        await canvasApi.deleteTrainingDocument(canvasId, docId);
+        setTrainingDocs((prev) => prev.filter((d) => d.id !== docId));
+        toast.success('Training document deleted');
+      } catch {
+        toast.error('Failed to delete training document');
+      }
+    },
+    [canvasId],
+  );
 
   if (!isOpen) return null;
 
@@ -90,17 +93,12 @@ export default function TrainingCenterModal({
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-              Training Center
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Training Center</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Create gold-standard documents and test intercoder reliability
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl">
             &times;
           </button>
         </div>
@@ -126,8 +124,8 @@ export default function TrainingCenterModal({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {trainingDocs.map(doc => {
-                    const transcript = transcripts.find(t => t.id === doc.transcriptId);
+                  {trainingDocs.map((doc) => {
+                    const transcript = transcripts.find((t) => t.id === doc.transcriptId);
                     return (
                       <div
                         key={doc.id}
@@ -135,16 +133,12 @@ export default function TrainingCenterModal({
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <h3 className="font-medium text-gray-800 dark:text-gray-200">
-                              {doc.name}
-                            </h3>
+                            <h3 className="font-medium text-gray-800 dark:text-gray-200">{doc.name}</h3>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                               Transcript: {transcript?.title || 'Unknown'}
                             </p>
                             {doc.instructions && (
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                                {doc.instructions}
-                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{doc.instructions}</p>
                             )}
                             <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                               <span>Pass threshold: {(doc.passThreshold * 100).toFixed(0)}%</span>
@@ -168,9 +162,7 @@ export default function TrainingCenterModal({
               {/* Create form */}
               {showCreate && (
                 <div className="mt-4 border border-blue-200 dark:border-blue-800 rounded-lg p-4 bg-blue-50/50 dark:bg-blue-900/20">
-                  <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-                    New Training Document
-                  </h3>
+                  <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">New Training Document</h3>
 
                   <div className="space-y-3">
                     <div>
@@ -184,21 +176,27 @@ export default function TrainingCenterModal({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Transcript *</label>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Transcript *
+                      </label>
                       <select
                         value={selectedTranscriptId}
                         onChange={(e) => setSelectedTranscriptId(e.target.value)}
                         className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                       >
                         <option value="">Select a transcript...</option>
-                        {transcripts.map(t => (
-                          <option key={t.id} value={t.id}>{t.title}</option>
+                        {transcripts.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.title}
+                          </option>
                         ))}
                       </select>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Instructions</label>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Instructions
+                      </label>
                       <textarea
                         value={instructions}
                         onChange={(e) => setInstructions(e.target.value)}

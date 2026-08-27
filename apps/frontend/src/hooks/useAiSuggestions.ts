@@ -24,7 +24,8 @@ export function useAiSuggestions() {
         setSuggestions((prev) => [...newSuggestions, ...prev]);
         return newSuggestions;
       } catch (err: unknown) {
-        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'AI suggestion failed';
+        const msg =
+          (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'AI suggestion failed';
         toast.error(msg);
       } finally {
         setLoading(false);

@@ -20,8 +20,8 @@ export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const authType = useAuthStore(s => s.authType);
-  const authenticated = useAuthStore(s => s.authenticated);
+  const authType = useAuthStore((s) => s.authType);
+  const authenticated = useAuthStore((s) => s.authenticated);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -58,40 +58,52 @@ export default function NotificationBell() {
   const handleMarkAsRead = async (id: string) => {
     try {
       await notificationApi.markAsRead(id);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch { /* ignore */ }
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      /* ignore */
+    }
   };
 
   const handleMarkAllAsRead = async () => {
     setLoading(true);
     try {
       await notificationApi.markAllAsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setLoading(false);
   };
 
   const handleDelete = async (id: string) => {
     try {
       await notificationApi.deleteNotification(id);
-      const removed = notifications.find(n => n.id === id);
-      setNotifications(prev => prev.filter(n => n.id !== id));
+      const removed = notifications.find((n) => n.id === id);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
       if (removed && !removed.read) {
-        setUnreadCount(prev => Math.max(0, prev - 1));
+        setUnreadCount((prev) => Math.max(0, prev - 1));
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   const typeIcon = (type: string) => {
     switch (type) {
-      case 'coding_added': return '{ }';
-      case 'canvas_shared': return '\u{1F4CB}';
-      case 'team_invite': return '\u{1F465}';
-      case 'comment': return '\u{1F4AC}';
-      case 'mention': return '@';
-      default: return '\u{1F514}';
+      case 'coding_added':
+        return '{ }';
+      case 'canvas_shared':
+        return '\u{1F4CB}';
+      case 'team_invite':
+        return '\u{1F465}';
+      case 'comment':
+        return '\u{1F4AC}';
+      case 'mention':
+        return '@';
+      default:
+        return '\u{1F514}';
     }
   };
 
@@ -117,7 +129,10 @@ export default function NotificationBell() {
         title="Notifications"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
             d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
           />
         </svg>
@@ -148,11 +163,9 @@ export default function NotificationBell() {
           {/* Notification list */}
           <div className="overflow-y-auto flex-1">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
-                No notifications yet
-              </div>
+              <div className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">No notifications yet</div>
             ) : (
-              notifications.map(n => (
+              notifications.map((n) => (
                 <div
                   key={n.id}
                   className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 dark:border-gray-750 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors cursor-pointer ${
@@ -164,14 +177,19 @@ export default function NotificationBell() {
                     {typeIcon(n.type)}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${!n.read ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                    <p
+                      className={`text-sm ${!n.read ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}
+                    >
                       {n.title}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{n.message}</p>
                     <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{timeAgo(n.createdAt)}</p>
                   </div>
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(n.id); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(n.id);
+                    }}
                     className="flex-shrink-0 p-1 text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition-colors"
                     title="Delete notification"
                   >

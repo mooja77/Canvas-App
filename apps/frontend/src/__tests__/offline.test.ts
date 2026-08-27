@@ -242,7 +242,7 @@ describe('API interceptors', () => {
 
     // Restore adapter
     canvasClient.defaults.adapter = originalAdapter;
-  });
+  }, 15_000);
 
   it('detects plan limit response (403 PLAN_LIMIT_EXCEEDED)', async () => {
     const { canvasClient } = await import('../services/api');

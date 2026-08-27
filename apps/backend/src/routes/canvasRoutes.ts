@@ -9,6 +9,9 @@ import {
   saveLayoutSchema,
   canvasCanvasIdParam,
   canvasIdParam,
+  canvasArtifactParams,
+  canvasArtifactValueSchemas,
+  updateCanvasArtifactSchema,
 } from '../middleware/validation.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import { checkCanvasLimit } from '../middleware/planLimits.js';
@@ -289,6 +292,63 @@ canvasRoutes.put(
     } catch (err: unknown) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((err as any)?.code === 'P2002') return next(new AppError('A canvas with this name already exists', 409));
+      next(err);
+    }
+  },
+);
+
+// ─── Server-backed visual research artefacts ───
+
+canvasRoutes.get('/canvas/:canvasId/artifacts/:type', validateParams(canvasArtifactParams), async (req, res, next) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
+    const artifact = await prisma.canvasArtifact.findUnique({
+      where: { canvasId_type: { canvasId: req.params.canvasId, type: req.params.type } },
+    });
+    const schema = canvasArtifactValueSchemas[req.params.type as keyof typeof canvasArtifactValueSchemas];
+    const parsed = artifact ? schema.safeParse(safeJsonParse(artifact.data, null)) : null;
+
+    // A malformed legacy/database value is treated as absent rather than sent
+    // to the UI. The next valid write repairs the row.
+    res.json({
+      success: true,
+      data: {
+        type: req.params.type,
+        exists: Boolean(artifact && parsed?.success),
+        value: parsed?.success ? parsed.data : req.params.type === 'code-weights' ? {} : [],
+        updatedAt: artifact?.updatedAt ?? null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+canvasRoutes.put(
+  '/canvas/:canvasId/artifacts/:type',
+  validateParams(canvasArtifactParams),
+  validate(updateCanvasArtifactSchema),
+  async (req, res, next) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
+      const schema = canvasArtifactValueSchemas[req.params.type as keyof typeof canvasArtifactValueSchemas];
+      const parsed = schema.safeParse(req.body.value);
+      if (!parsed.success) {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation failed',
+          details: parsed.error.flatten(),
+        });
+      }
+      const artifact = await prisma.canvasArtifact.upsert({
+        where: { canvasId_type: { canvasId: req.params.canvasId, type: req.params.type } },
+        create: { canvasId: req.params.canvasId, type: req.params.type, data: JSON.stringify(parsed.data) },
+        update: { data: JSON.stringify(parsed.data) },
+      });
+      res.json({ success: true, data: { type: artifact.type, value: parsed.data, updatedAt: artifact.updatedAt } });
+    } catch (err) {
       next(err);
     }
   },

@@ -39,29 +39,38 @@ export function useNodeColors() {
     setColorMap(loadColors(canvasId));
   }, [canvasId]);
 
-  const setNodeColor = useCallback((nodeId: string, color: string) => {
-    if (!canvasId) return;
-    setColorMap(prev => {
-      const next = new Map(prev);
-      next.set(nodeId, color);
-      persistColors(canvasId, next);
-      return next;
-    });
-  }, [canvasId]);
+  const setNodeColor = useCallback(
+    (nodeId: string, color: string) => {
+      if (!canvasId) return;
+      setColorMap((prev) => {
+        const next = new Map(prev);
+        next.set(nodeId, color);
+        persistColors(canvasId, next);
+        return next;
+      });
+    },
+    [canvasId],
+  );
 
-  const clearNodeColor = useCallback((nodeId: string) => {
-    if (!canvasId) return;
-    setColorMap(prev => {
-      const next = new Map(prev);
-      next.delete(nodeId);
-      persistColors(canvasId, next);
-      return next;
-    });
-  }, [canvasId]);
+  const clearNodeColor = useCallback(
+    (nodeId: string) => {
+      if (!canvasId) return;
+      setColorMap((prev) => {
+        const next = new Map(prev);
+        next.delete(nodeId);
+        persistColors(canvasId, next);
+        return next;
+      });
+    },
+    [canvasId],
+  );
 
-  const getNodeColor = useCallback((nodeId: string): string | undefined => {
-    return colorMap.get(nodeId);
-  }, [colorMap]);
+  const getNodeColor = useCallback(
+    (nodeId: string): string | undefined => {
+      return colorMap.get(nodeId);
+    },
+    [colorMap],
+  );
 
   return { colorMap, setNodeColor, clearNodeColor, getNodeColor };
 }

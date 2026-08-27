@@ -14,6 +14,7 @@ const mockGetSettings = vi.mocked(aiSettingsApi.getSettings);
 function resetStore() {
   useAiConfigStore.setState({
     configured: false,
+    hostedAiAvailable: false,
     provider: null,
     loaded: false,
   });
@@ -29,6 +30,7 @@ describe('aiConfigStore', () => {
     it('is not configured and not loaded', () => {
       const state = useAiConfigStore.getState();
       expect(state.configured).toBe(false);
+      expect(state.hostedAiAvailable).toBe(false);
       expect(state.provider).toBeNull();
       expect(state.loaded).toBe(false);
     });
@@ -57,6 +59,16 @@ describe('aiConfigStore', () => {
       const state = useAiConfigStore.getState();
       expect(state.configured).toBe(false);
       expect(state.loaded).toBe(true);
+    });
+
+    it('records when hosted AI is available without exposing a server key', async () => {
+      mockGetSettings.mockResolvedValue({
+        data: { data: { hasApiKey: false, hostedAiAvailable: true, provider: null } },
+      } as never);
+
+      await useAiConfigStore.getState().fetchConfig();
+
+      expect(useAiConfigStore.getState().hostedAiAvailable).toBe(true);
     });
 
     it('sets provider name from API response', async () => {

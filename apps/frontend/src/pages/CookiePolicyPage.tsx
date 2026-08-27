@@ -64,6 +64,16 @@ export default function CookiePolicyPage() {
               </td>
               <td className="py-1">Persists until cleared</td>
             </tr>
+            <tr className="border-b border-gray-100 dark:border-gray-800">
+              <td className="py-1 font-mono text-xs">jms_chat</td>
+              <td className="py-1">Keeps your support-chat conversation available while this browser tab is open.</td>
+              <td className="py-1">Browser session</td>
+            </tr>
+            <tr className="border-b border-gray-100 dark:border-gray-800">
+              <td className="py-1 font-mono text-xs">jms_chat_dismissed</td>
+              <td className="py-1">Remembers that you closed the support-chat button.</td>
+              <td className="py-1">24 hours</td>
+            </tr>
           </tbody>
         </table>
 
@@ -117,7 +127,7 @@ export default function CookiePolicyPage() {
           </li>
         </ul>
 
-        <p className="mt-12 text-xs text-gray-600 dark:text-gray-400">Last updated: 2026-07-18.</p>
+        <p className="mt-12 text-xs text-gray-600 dark:text-gray-400">Last updated: 2026-08-27.</p>
       </main>
     </div>
   );

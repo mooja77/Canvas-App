@@ -67,9 +67,10 @@ interface AuthState {
 }
 
 /**
- * Per-canvas research data that lives ONLY in localStorage - there is no server
- * copy of any of it: reflexivity journals, code weights, sticky notes, theme
- * groups, node colours, bookmarks, edge waypoints, and the offline write queue.
+ * Per-canvas browser caches and UI preferences. Core research artefacts such
+ * as journals, code weights, sticky notes and theme groups have server copies;
+ * node colours, bookmarks, edge waypoints and the offline write queue remain
+ * device-local.
  */
 const LOCAL_RESEARCH_PREFIXES = ['canvas-'];
 const LOCAL_RESEARCH_KEYS = ['qualcanvas-cross-refs', 'qualcanvas-offline-queue'];
@@ -121,9 +122,8 @@ function clearIfDifferentIdentity(identity: string): void {
  * from `legacy:<dashboardAccessId>` to `email:<userId>`, and
  * clearIfDifferentIdentity read that as a different account signing in - so
  * accepting the product's own "Add an email to secure your account" prompt
- * destroyed the user's sticky notes, code weights, theme groups, node colours,
- * bookmarks and edge waypoints, none of which have a server copy, plus any
- * queued offline mutations that had not yet reached the server.
+ * destroyed the user's local research cache, node colours, bookmarks, edge
+ * waypoints, and queued offline mutations before account linking could finish.
  *
  * Nothing about the person changes at link time: same DashboardAccess, same
  * canvases (the server repoints them to the new userId). So carry the identity
@@ -224,9 +224,8 @@ export const useAuthStore = create<AuthState>()(
         //
         // An INVOLUNTARY one must not. An expired 24h JWT (there is no refresh
         // endpoint, so every user hits this) or the 35-minute idle timer would
-        // otherwise destroy the user's reflexivity journals, code weights,
-        // sticky notes, theme groups, node colours and bookmarks - none of
-        // which exist server-side - before they had done anything at all. The
+        // otherwise destroy the user's offline research cache, node colours,
+        // bookmarks and pending writes before they had done anything at all. The
         // shared-browser guarantee is preserved by clearIfDifferentIdentity(),
         // which wipes when a different account signs in.
         if (!options?.preserveLocalData) {

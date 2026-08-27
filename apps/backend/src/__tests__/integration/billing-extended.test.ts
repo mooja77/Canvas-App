@@ -692,6 +692,31 @@ describe('Stripe Billing – Extended Tests', () => {
       delete process.env.STRIPE_ACADEMIC_COUPON_ID;
     });
 
+    it('applies academic discount for a verified non-US academic email', async () => {
+      process.env.STRIPE_ACADEMIC_COUPON_ID = 'coupon_academic';
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: userId,
+        email: 'researcher@tcd.ie',
+        name: 'Irish Researcher',
+        role: 'researcher',
+        plan: 'pro',
+        emailVerified: true,
+        stripeCustomerId: 'cus_academic_ie',
+      });
+      mockStripe.checkout.sessions.create.mockResolvedValue({ url: 'https://checkout.stripe.com/session/academic' });
+
+      const res = await request(app)
+        .post('/api/billing/create-checkout')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ priceId: 'price_pro_monthly' });
+
+      expect(res.status).toBe(200);
+      expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
+        expect.objectContaining({ discounts: [{ coupon: 'coupon_academic' }] }),
+      );
+      delete process.env.STRIPE_ACADEMIC_COUPON_ID;
+    });
+
     it('does not apply academic discount for non-.edu email', async () => {
       process.env.STRIPE_ACADEMIC_COUPON_ID = 'coupon_academic';
       mockPrisma.user.findUnique.mockResolvedValue({

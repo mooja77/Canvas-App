@@ -122,14 +122,39 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
 
       // Escape is always hardcoded (not remappable)
       if (e.key === 'Escape') {
-        if (showCommandPalette) { setShowCommandPalette(false); return; }
-        if (quickAddMenu) { setQuickAddMenu(null); return; }
-        if (showSearch) { setShowSearch(false); setHighlightedNodeIds(new Set()); return; }
-        if (showShortcuts) { setShowShortcuts(false); return; }
-        if (contextMenu) { setContextMenu(null); return; }
-        if (nodeContextMenu) { setNodeContextMenu(null); return; }
-        if (edgeContextMenu) { setEdgeContextMenu(null); return; }
-        if (selectedQuestionId) { setSelectedQuestionId(null); return; }
+        if (showCommandPalette) {
+          setShowCommandPalette(false);
+          return;
+        }
+        if (quickAddMenu) {
+          setQuickAddMenu(null);
+          return;
+        }
+        if (showSearch) {
+          setShowSearch(false);
+          setHighlightedNodeIds(new Set());
+          return;
+        }
+        if (showShortcuts) {
+          setShowShortcuts(false);
+          return;
+        }
+        if (contextMenu) {
+          setContextMenu(null);
+          return;
+        }
+        if (nodeContextMenu) {
+          setNodeContextMenu(null);
+          return;
+        }
+        if (edgeContextMenu) {
+          setEdgeContextMenu(null);
+          return;
+        }
+        if (selectedQuestionId) {
+          setSelectedQuestionId(null);
+          return;
+        }
         setFocusMode(false);
         return;
       }
@@ -167,7 +192,9 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
           if (bm) {
             rfInstanceRef.current?.setViewport(bm, { duration: 300 });
           } else {
-            toast(`Bookmark ${digitMatch[1]} is empty \u2014 save with Ctrl+Shift+${digitMatch[1]}`, { icon: '\u2139\uFE0F' });
+            toast(`Bookmark ${digitMatch[1]} is empty \u2014 save with Ctrl+Shift+${digitMatch[1]}`, {
+              icon: '\u2139\uFE0F',
+            });
           }
           return;
         }
@@ -197,9 +224,13 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
 
       if (matchesShortcut(e, shortcuts.collapseAll)) {
         e.preventDefault();
-        setNodes(nds => {
-          const anyExpanded = nds.some(n => !(n.data as Record<string, unknown>).collapsed && ['transcript', 'question', 'memo', 'case'].includes(n.type || ''));
-          return nds.map(n => {
+        setNodes((nds) => {
+          const anyExpanded = nds.some(
+            (n) =>
+              !(n.data as Record<string, unknown>).collapsed &&
+              ['transcript', 'question', 'memo', 'case'].includes(n.type || ''),
+          );
+          return nds.map((n) => {
             if (['transcript', 'question', 'memo', 'case'].includes(n.type || '')) {
               return { ...n, data: { ...n.data, collapsed: anyExpanded } };
             }
@@ -231,7 +262,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
       }
       if (matchesShortcut(e, shortcuts.commandPalette)) {
         e.preventDefault();
-        setShowCommandPalette(s => !s);
+        setShowCommandPalette((s) => !s);
         return;
       }
       if (matchesShortcut(e, shortcuts.undo)) {
@@ -269,7 +300,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
       }
       if (matchesShortcut(e, shortcuts.showShortcuts)) {
         e.preventDefault();
-        setShowShortcuts(s => !s);
+        setShowShortcuts((s) => !s);
         return;
       }
       if (matchesShortcut(e, shortcuts.fitView)) {
@@ -279,19 +310,21 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
       }
       if (matchesShortcut(e, shortcuts.toggleGrid)) {
         e.preventDefault();
-        setSnapToGrid(s => !s);
+        setSnapToGrid((s) => !s);
         return;
       }
       if (matchesShortcut(e, shortcuts.toggleCollapse)) {
-        const selected = nodes.filter(n => n.selected);
+        const selected = nodes.filter((n) => n.selected);
         if (selected.length === 1) {
           e.preventDefault();
-          setNodes(nds => nds.map(n => {
-            if (n.selected) {
-              return { ...n, data: { ...n.data, collapsed: !(n.data as Record<string, unknown>).collapsed } };
-            }
-            return n;
-          }));
+          setNodes((nds) =>
+            nds.map((n) => {
+              if (n.selected) {
+                return { ...n, data: { ...n.data, collapsed: !(n.data as Record<string, unknown>).collapsed } };
+              }
+              return n;
+            }),
+          );
         }
         return;
       }
@@ -321,7 +354,12 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
       }
 
       // Arrow key panning (no ctrl/alt/meta modifier, shift for larger jump)
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (
+        ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey
+      ) {
         const rfInstance = rfInstanceRef.current;
         if (!rfInstance) return;
         e.preventDefault();

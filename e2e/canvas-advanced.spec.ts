@@ -131,7 +131,7 @@ test.describe('Canvas Advanced Features', () => {
     const pane = page.locator('.react-flow__pane');
     await pane.click();
 
-    await page.keyboard.press('?');
+    await page.keyboard.press('Shift+/');
 
     const modal = page.getByRole('heading', { name: 'Keyboard Shortcuts' });
     await expect(modal).toBeVisible({ timeout: 3000 });

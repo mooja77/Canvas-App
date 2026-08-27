@@ -51,43 +51,93 @@ const ORIGIN = 'https://qualcanvas.com';
 // title/description -> mirror each page's own usePageMeta(...) call, so the
 //                      crawler-facing head matches what the SPA sets on mount.
 const ROUTES = [
-  { path: '/cite', file: 'cite.html', component: 'CitePage',
+  {
+    path: '/cite',
+    file: 'cite.html',
+    component: 'CitePage',
     title: 'How to cite QualCanvas — Citation reference',
-    description: 'BibTeX, APA, Chicago, and RIS citation entries for QualCanvas. Send to your advisor before they ask.' },
-  { path: '/vs', file: 'vs.html', component: 'VsIndexPage',
+    description: 'BibTeX, APA, Chicago, and RIS citation entries for QualCanvas. Send to your advisor before they ask.',
+  },
+  {
+    path: '/vs',
+    file: 'vs.html',
+    component: 'VsIndexPage',
     title: 'Compare QualCanvas — NVivo, ATLAS.ti, Dedoose',
-    description: 'Honest, sourced comparisons. How QualCanvas stacks up against NVivo, ATLAS.ti, and Dedoose. Pricing, features, migration path.' },
-  { path: '/for-institutions', file: 'for-institutions.html', component: 'ForInstitutionsPage',
+    description:
+      'Honest, sourced comparisons. How QualCanvas stacks up against NVivo, ATLAS.ti, and Dedoose. Pricing, features, migration path.',
+  },
+  {
+    path: '/for-institutions',
+    file: 'for-institutions.html',
+    component: 'ForInstitutionsPage',
     title: 'For institutions — QualCanvas',
-    description: 'SSO + SCIM, DPA, BAA, custom retention, EU residency, dedicated research desk. Department-wide qualitative research, procurement-ready.' },
-  { path: '/customers', file: 'customers.html', component: 'CustomersIndexPage',
+    description:
+      'SSO + SCIM, DPA, BAA, custom retention, EU residency, dedicated research desk. Department-wide qualitative research, procurement-ready.',
+  },
+  {
+    path: '/customers',
+    file: 'customers.html',
+    component: 'CustomersIndexPage',
     title: 'Research stories — QualCanvas',
-    description: 'What researchers do with QualCanvas. Real labs, real methods, real artifacts. Anonymized when participants need it.' },
-  { path: '/press', file: 'press.html', component: 'PressPage',
+    description:
+      'What researchers do with QualCanvas. Real labs, real methods, real artifacts. Anonymized when participants need it.',
+  },
+  {
+    path: '/press',
+    file: 'press.html',
+    component: 'PressPage',
     title: 'Press & media — QualCanvas',
-    description: 'Press kit, fact sheet, brand assets, and contact for journalists and library guides covering QualCanvas.' },
-  { path: '/colophon', file: 'colophon.html', component: 'ColophonPage',
+    description:
+      'Press kit, fact sheet, brand assets, and contact for journalists and library guides covering QualCanvas.',
+  },
+  {
+    path: '/colophon',
+    file: 'colophon.html',
+    component: 'ColophonPage',
     title: 'Colophon — QualCanvas',
-    description: 'The fonts, colors, stack, and studio behind QualCanvas.' },
-  { path: '/trust', file: 'trust.html', component: 'TrustPage',
+    description: 'The fonts, colors, stack, and studio behind QualCanvas.',
+  },
+  {
+    path: '/trust',
+    file: 'trust.html',
+    component: 'TrustPage',
     title: 'Trust & Security — QualCanvas',
-    description: 'How QualCanvas handles your research data: hosting, encryption, sub-processors, audit logging, and compliance roadmap.' },
-  { path: '/trust/ai', file: 'trust/ai.html', component: 'TrustAIPage',
+    description:
+      'How QualCanvas handles your research data: hosting, encryption, sub-processors, audit logging, and compliance roadmap.',
+  },
+  {
+    path: '/trust/ai',
+    file: 'trust/ai.html',
+    component: 'TrustAIPage',
     title: 'AI use policy — QualCanvas',
-    description: 'How AI works in QualCanvas: what is sent, what is stored, what is not. Verified against our actual architecture.' },
-  { path: '/changelog', file: 'changelog.html', component: 'ChangelogPage',
+    description:
+      'How AI works in QualCanvas: what is sent, what is stored, what is not. Verified against our actual architecture.',
+  },
+  {
+    path: '/changelog',
+    file: 'changelog.html',
+    component: 'ChangelogPage',
     title: 'Changelog — QualCanvas',
-    description: "What we've shipped, when, with bylines. RSS available. New entry per feature or every two weeks." },
-  { path: '/accessibility-statement', file: 'accessibility-statement.html', component: 'AccessibilityStatementPage',
+    description: "What we've shipped, when, with bylines. RSS available. New entry per feature or every two weeks.",
+  },
+  {
+    path: '/accessibility-statement',
+    file: 'accessibility-statement.html',
+    component: 'AccessibilityStatementPage',
     title: 'Accessibility statement — QualCanvas',
-    description: 'WCAG 2.2 AA conformance across marketing pages. Known limitations documented honestly.' },
-  { path: '/guide', file: 'guide.html', component: 'GuidePage',
+    description: 'WCAG 2.2 AA conformance across marketing pages. Known limitations documented honestly.',
+  },
+  {
+    path: '/guide',
+    file: 'guide.html',
+    component: 'GuidePage',
     title: 'Guide — QualCanvas',
-    description: 'Complete guide to QualCanvas: transcripts, coding, analysis tools, AI features, collaboration, and more.' },
+    description:
+      'Complete guide to QualCanvas: transcripts, coding, analysis tools, AI features, collaboration, and more.',
+  },
 ];
 
-const esc = (s) =>
-  String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 // --- Bundle an entry that renders every page to static markup. ---------------
 // Each page is wrapped in <StaticRouter location={path}> so react-router hooks
@@ -169,8 +219,8 @@ const template = readFileSync(templatePath, 'utf8');
 // fails loudly here rather than silently shipping homepage duplicates.
 const REQUIRED_ANCHORS = [
   /<title>[\s\S]*?<\/title>/,
-  /<link rel="canonical"[^>]*>/,
-  /<meta name="description"[^>]*>/,
+  /<link\s+rel="canonical"[^>]*>/,
+  /<meta\s+name="description"[^>]*>/,
   /<main id="marketing-root">[\s\S]*?<\/main>/,
 ];
 for (const re of REQUIRED_ANCHORS) {
@@ -186,17 +236,14 @@ function renderRouteHtml({ title, description, url, body }) {
 
   html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${t}</title>`);
   // Own canonical, overriding the site-wide one hardcoded in index.html.
-  html = html.replace(/<link rel="canonical"[^>]*>/, `<link rel="canonical" href="${url}" />`);
-  html = html.replace(/<meta name="description"[^>]*>/, `<meta name="description" content="${d}" />`);
-  html = html.replace(/<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${t}" />`);
-  html = html.replace(/<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${d}" />`);
-  html = html.replace(/<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${url}" />`);
+  html = html.replace(/<link\s+rel="canonical"[^>]*>/, `<link rel="canonical" href="${url}" />`);
+  html = html.replace(/<meta\s+name="description"[^>]*>/, `<meta name="description" content="${d}" />`);
+  html = html.replace(/<meta\s+property="og:title"[^>]*>/, `<meta property="og:title" content="${t}" />`);
+  html = html.replace(/<meta\s+property="og:description"[^>]*>/, `<meta property="og:description" content="${d}" />`);
+  html = html.replace(/<meta\s+property="og:url"[^>]*>/, `<meta property="og:url" content="${url}" />`);
   // Real page content for crawlers + first paint. main.tsx strips
   // #marketing-root once React mounts at #root, so the SPA takes over cleanly.
-  html = html.replace(
-    /<main id="marketing-root">[\s\S]*?<\/main>/,
-    `<main id="marketing-root">\n${body}\n    </main>`,
-  );
+  html = html.replace(/<main id="marketing-root">[\s\S]*?<\/main>/, `<main id="marketing-root">\n${body}\n    </main>`);
   return html;
 }
 

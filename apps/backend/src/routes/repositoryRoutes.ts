@@ -119,22 +119,26 @@ repositoryRoutes.post('/repositories/:id/insights', validateParams(repoIdParam),
 });
 
 // DELETE /api/repositories/:repoId/insights/:insightId — Delete insight
-repositoryRoutes.delete('/repositories/:repoId/insights/:insightId', validateParams(repoIdInsightIdParams), async (req, res, next) => {
-  try {
-    const userId = req.userId;
-    if (!userId) throw new AppError('Email authentication required', 401);
+repositoryRoutes.delete(
+  '/repositories/:repoId/insights/:insightId',
+  validateParams(repoIdInsightIdParams),
+  async (req, res, next) => {
+    try {
+      const userId = req.userId;
+      if (!userId) throw new AppError('Email authentication required', 401);
 
-    const repo = await prisma.researchRepository.findUnique({ where: { id: req.params.repoId } });
-    if (!repo) throw new AppError('Repository not found', 404);
-    if (repo.userId !== userId) throw new AppError('Access denied', 403);
+      const repo = await prisma.researchRepository.findUnique({ where: { id: req.params.repoId } });
+      if (!repo) throw new AppError('Repository not found', 404);
+      if (repo.userId !== userId) throw new AppError('Access denied', 403);
 
-    const insight = await prisma.repositoryInsight.findUnique({ where: { id: req.params.insightId } });
-    if (!insight || insight.repositoryId !== req.params.repoId) throw new AppError('Insight not found', 404);
+      const insight = await prisma.repositoryInsight.findUnique({ where: { id: req.params.insightId } });
+      if (!insight || insight.repositoryId !== req.params.repoId) throw new AppError('Insight not found', 404);
 
-    await prisma.repositoryInsight.delete({ where: { id: req.params.insightId } });
+      await prisma.repositoryInsight.delete({ where: { id: req.params.insightId } });
 
-    res.json({ success: true });
-  } catch (err) {
-    next(err);
-  }
-});
+      res.json({ success: true });
+    } catch (err) {
+      next(err);
+    }
+  },
+);

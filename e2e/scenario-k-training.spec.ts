@@ -35,8 +35,11 @@ function headers() {
 // ─── Tests ───
 
 test.describe.serial('Scenario K: Training Center & QDPX', () => {
-
   test.beforeAll(async ({ browser }) => {
+    // This fixture intentionally performs 10 authenticated writes. Keep its
+    // timeout separate from individual product assertions so a busy CI/local
+    // Postgres volume cannot tear the fixture down while requests are active.
+    test.setTimeout(120_000);
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const page = await ctx.newPage();
     await page.goto('http://localhost:5174/canvas');
@@ -109,6 +112,7 @@ test.describe.serial('Scenario K: Training Center & QDPX', () => {
   });
 
   test.afterAll(async ({ browser }) => {
+    test.setTimeout(60_000);
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const page = await ctx.newPage();
     try {
@@ -116,7 +120,9 @@ test.describe.serial('Scenario K: Training Center & QDPX', () => {
         await page.request.delete(`${BASE}/canvas/${id}`, { headers: headers() });
         await page.request.delete(`${BASE}/canvas/${id}/permanent`, { headers: headers() });
       }
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
     await page.close();
     await ctx.close();
   });
@@ -189,9 +195,7 @@ test.describe.serial('Scenario K: Training Center & QDPX', () => {
 
   test('K.5 Submit training attempt — divergent codings', async ({ page }) => {
     // Submit codings that are completely different from gold standard
-    const attemptCodings = [
-      { questionId: codeIds[2], startOffset: 0, endOffset: 30 },
-    ];
+    const attemptCodings = [{ questionId: codeIds[2], startOffset: 0, endOffset: 30 }];
 
     const res = await page.request.post(`${BASE}/canvas/${canvasId}/training/${trainingDocId}/attempt`, {
       headers: headers(),
@@ -252,7 +256,9 @@ test.describe.serial('Scenario K: Training Center & QDPX', () => {
   });
 
   test('K.10 Delete training document', async ({ page }) => {
-    const res = await page.request.delete(`${BASE}/canvas/${canvasId}/training/${trainingDocId}`, { headers: headers() });
+    const res = await page.request.delete(`${BASE}/canvas/${canvasId}/training/${trainingDocId}`, {
+      headers: headers(),
+    });
     expect(res.ok()).toBeTruthy();
 
     // Verify it's gone

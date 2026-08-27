@@ -102,9 +102,7 @@ function TimelineNode({ data, id, selected }: NodeProps) {
                                 className="inline-block w-2 h-2 rounded-full mt-0.5 flex-shrink-0"
                                 style={{ backgroundColor: c.questionColor }}
                               />
-                              <span className="text-gray-600 dark:text-gray-400 line-clamp-2">
-                                {c.codedText}
-                              </span>
+                              <span className="text-gray-600 dark:text-gray-400 line-clamp-2">{c.codedText}</span>
                             </div>
                           ))}
                           {entry.codings.length > 5 && (

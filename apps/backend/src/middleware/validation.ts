@@ -56,6 +56,10 @@ export const canvasIdUserIdParams = z.object({ id: cuid, userId: cuid });
 export const canvasIdDocIdParams = z.object({ id: cuid, docId: cuid });
 export const canvasIdDocIdRegionIdParams = z.object({ id: cuid, docId: cuid, regionId: cuid });
 export const canvasIdJobIdParams = z.object({ id: cuid, jobId: cuid });
+export const canvasArtifactParams = z.object({
+  canvasId: cuid,
+  type: z.enum(['sticky-notes', 'theme-groups', 'code-weights']),
+});
 export const integrationIdParam = z.object({ id: cuid });
 export const repoIdParam = z.object({ id: cuid });
 export const repoIdInsightIdParams = z.object({ repoId: cuid, insightId: cuid });
@@ -210,6 +214,44 @@ export const saveLayoutSchema = z.object({
     )
     .max(2000), // cap the layout upsert transaction, consistent with the other bulk schemas
 });
+
+const artifactCoordinate = z.number().finite().min(-10_000_000).max(10_000_000);
+const artifactDimension = z.number().finite().min(20).max(100_000);
+const artifactColour = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
+
+export const canvasArtifactValueSchemas = {
+  'sticky-notes': z
+    .array(
+      z.object({
+        id: z.string().min(1).max(100),
+        text: z.string().max(20_000),
+        color: artifactColour,
+        x: artifactCoordinate,
+        y: artifactCoordinate,
+        width: artifactDimension,
+        height: artifactDimension,
+      }),
+    )
+    .max(1_000),
+  'theme-groups': z
+    .array(
+      z.object({
+        id: z.string().min(1).max(100),
+        title: z.string().min(1).max(500),
+        color: artifactColour,
+        x: artifactCoordinate,
+        y: artifactCoordinate,
+        width: artifactDimension,
+        height: artifactDimension,
+        memberNodeIds: z.array(z.string().min(1).max(200)).max(5_000).optional(),
+        collapsedAsTheme: z.boolean().optional(),
+      }),
+    )
+    .max(1_000),
+  'code-weights': z.record(z.string().min(1).max(100), z.number().int().min(1).max(5)),
+} as const;
+
+export const updateCanvasArtifactSchema = z.object({ value: z.unknown() });
 
 export const reassignCodingSchema = z.object({
   newQuestionId: z.string().min(1),

@@ -7,7 +7,15 @@ interface RegionCodingOverlayProps {
   questions: CanvasQuestion[];
   regions: DocumentRegionCoding[];
   selectedQuestionId: string | null;
-  onCreateRegion: (region: { questionId: string; pageNumber: number; x: number; y: number; width: number; height: number; note?: string }) => void;
+  onCreateRegion: (region: {
+    questionId: string;
+    pageNumber: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    note?: string;
+  }) => void;
   onDeleteRegion: (regionId: string) => void;
 }
 
@@ -39,20 +47,26 @@ export default function RegionCodingOverlay({
     };
   }, []);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!selectedQuestionId) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const pos = getRelativePosition(e);
-    setDrawing({ startX: pos.x, startY: pos.y, currentX: pos.x, currentY: pos.y });
-  }, [selectedQuestionId, getRelativePosition]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!selectedQuestionId) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const pos = getRelativePosition(e);
+      setDrawing({ startX: pos.x, startY: pos.y, currentX: pos.x, currentY: pos.y });
+    },
+    [selectedQuestionId, getRelativePosition],
+  );
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!drawing) return;
-    e.preventDefault();
-    const pos = getRelativePosition(e);
-    setDrawing(prev => prev ? { ...prev, currentX: pos.x, currentY: pos.y } : null);
-  }, [drawing, getRelativePosition]);
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!drawing) return;
+      e.preventDefault();
+      const pos = getRelativePosition(e);
+      setDrawing((prev) => (prev ? { ...prev, currentX: pos.x, currentY: pos.y } : null));
+    },
+    [drawing, getRelativePosition],
+  );
 
   const handleMouseUp = useCallback(() => {
     if (!drawing || !selectedQuestionId) {
@@ -81,21 +95,23 @@ export default function RegionCodingOverlay({
   }, [drawing, selectedQuestionId, pageNumber, onCreateRegion]);
 
   const getQuestionColor = (questionId: string) => {
-    const q = questions.find(q => q.id === questionId);
+    const q = questions.find((q) => q.id === questionId);
     return q?.color || '#3B82F6';
   };
 
   const getQuestionLabel = (questionId: string) => {
-    const q = questions.find(q => q.id === questionId);
+    const q = questions.find((q) => q.id === questionId);
     return q?.text || 'Unknown';
   };
 
-  const drawingRect = drawing ? {
-    x: Math.min(drawing.startX, drawing.currentX),
-    y: Math.min(drawing.startY, drawing.currentY),
-    width: Math.abs(drawing.currentX - drawing.startX),
-    height: Math.abs(drawing.currentY - drawing.startY),
-  } : null;
+  const drawingRect = drawing
+    ? {
+        x: Math.min(drawing.startX, drawing.currentX),
+        y: Math.min(drawing.startY, drawing.currentY),
+        width: Math.abs(drawing.currentX - drawing.startX),
+        height: Math.abs(drawing.currentY - drawing.startY),
+      }
+    : null;
 
   const selectedColor = selectedQuestionId ? getQuestionColor(selectedQuestionId) : '#3B82F6';
 
@@ -109,7 +125,7 @@ export default function RegionCodingOverlay({
       onMouseLeave={() => setDrawing(null)}
     >
       {/* Existing regions */}
-      {regions.map(region => (
+      {regions.map((region) => (
         <div
           key={region.id}
           className="absolute border-2 rounded-sm group"
@@ -161,9 +177,7 @@ export default function RegionCodingOverlay({
       {/* Instructions */}
       {selectedQuestionId && !drawing && (
         <div className="absolute bottom-2 left-2 right-2 text-center">
-          <span className="bg-black/60 text-white text-xs px-2 py-1 rounded">
-            Draw a rectangle to code a region
-          </span>
+          <span className="bg-black/60 text-white text-xs px-2 py-1 rounded">Draw a rectangle to code a region</span>
         </div>
       )}
     </div>

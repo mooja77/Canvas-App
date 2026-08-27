@@ -15,8 +15,14 @@
   -webkit-backdrop-filter: blur(8px);
   padding: 12px 16px;
   font-family:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
-    Arial, sans-serif;
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: #1f2937;
@@ -24,8 +30,14 @@
 }
 
 @keyframes cc-slide-up {
-  from { transform: translateY(100%); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 #cookie-consent-banner .cc-inner {
@@ -51,7 +63,9 @@
   text-underline-offset: 2px;
 }
 
-#cookie-consent-banner a:hover { color: #4338ca; }
+#cookie-consent-banner a:hover {
+  color: #4338ca;
+}
 
 #cookie-consent-banner .cc-buttons {
   display: flex;
@@ -66,12 +80,17 @@
   font-weight: 500;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background-color 120ms ease, border-color 120ms ease,
-    color 120ms ease, transform 80ms ease;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    transform 80ms ease;
   font-family: inherit;
 }
 
-#cookie-consent-banner .cc-btn:active { transform: translateY(1px); }
+#cookie-consent-banner .cc-btn:active {
+  transform: translateY(1px);
+}
 
 #cookie-consent-banner .cc-btn:focus-visible {
   outline: 2px solid #4f46e5;
@@ -100,6 +119,17 @@
   border-color: #4338ca;
 }
 
+/* The support widget is fixed to the same corner. Raise it by the banner's
+   measured height instead of obscuring either control on desktop or mobile. */
+body.cookie-consent-visible #jms-chat-btn {
+  bottom: calc(var(--cookie-consent-height, 80px) + 16px) !important;
+}
+
+body.cookie-consent-visible #jms-chat-panel {
+  bottom: calc(var(--cookie-consent-height, 80px) + 76px) !important;
+  max-height: calc(100vh - var(--cookie-consent-height, 80px) - 96px) !important;
+}
+
 /* Dark mode via OS preference — this ships before React sets the .dark class. */
 @media (prefers-color-scheme: dark) {
   #cookie-consent-banner {
@@ -113,7 +143,9 @@
     color: #a5b4fc;
   }
 
-  #cookie-consent-banner a:hover { color: #c7d2fe; }
+  #cookie-consent-banner a:hover {
+    color: #c7d2fe;
+  }
 
   #cookie-consent-banner .cc-btn-reject {
     border-color: rgba(255, 255, 255, 0.15);
@@ -135,6 +167,10 @@
   }
   #cookie-consent-banner .cc-buttons {
     justify-content: flex-end;
+  }
+
+  body.cookie-consent-visible #jms-chat-panel {
+    inset: 0 0 var(--cookie-consent-height, 120px) 0 !important;
   }
 }
 

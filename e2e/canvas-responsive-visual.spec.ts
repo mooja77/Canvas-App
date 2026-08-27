@@ -180,9 +180,7 @@ test.describe('Canvas responsive visual fit', () => {
     );
   }
 
-  // Marked .fixme for the same narrow-portrait RF cull deadlock — the
-  // test starts at 390x844 portrait which hits the same code path.
-  test.fixme('finding #18: orientation change re-runs fit and recovers graph', async ({ page }) => {
+  test('finding #18: orientation change re-runs fit and recovers graph', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoSeededCanvas(page);
     await page.waitForTimeout(1500);

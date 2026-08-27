@@ -229,13 +229,12 @@ test.describe('Network Resilience', () => {
     const pane = page.locator('.react-flow__pane');
     await expect(pane).toBeVisible();
 
-    // Try zooming (pure client-side, should work)
-    const box = await pane.boundingBox();
-    if (box) {
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      await page.mouse.wheel(0, -100);
-      await page.waitForTimeout(500);
-    }
+    // Try zooming through the accessible control. Unlike page.mouse.wheel,
+    // this represents an interaction available on touch-only WebKit devices.
+    const zoomIn = page.locator('.react-flow__controls-zoomin');
+    await expect(zoomIn).toBeVisible();
+    await zoomIn.click();
+    await page.waitForTimeout(500);
 
     // Canvas still responsive
     await expect(pane).toBeVisible();

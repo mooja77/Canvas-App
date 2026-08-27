@@ -54,40 +54,49 @@ export function useCanvasRerouteNodes() {
     setRerouteNodes(loadReroutes(canvasId));
   }, [canvasId]);
 
-  const addReroute = useCallback((x: number, y: number, originalEdgeId?: string): RerouteNodeData => {
-    const node: RerouteNodeData = {
-      id: `reroute-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      x,
-      y,
-      originalEdgeId,
-    };
-    if (canvasId) {
-      setRerouteNodes(prev => {
-        const next = [...prev, node];
+  const addReroute = useCallback(
+    (x: number, y: number, originalEdgeId?: string): RerouteNodeData => {
+      const node: RerouteNodeData = {
+        id: `reroute-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        x,
+        y,
+        originalEdgeId,
+      };
+      if (canvasId) {
+        setRerouteNodes((prev) => {
+          const next = [...prev, node];
+          persistReroutes(canvasId, next);
+          return next;
+        });
+      }
+      return node;
+    },
+    [canvasId],
+  );
+
+  const removeReroute = useCallback(
+    (id: string) => {
+      if (!canvasId) return;
+      setRerouteNodes((prev) => {
+        const next = prev.filter((r) => r.id !== id);
         persistReroutes(canvasId, next);
         return next;
       });
-    }
-    return node;
-  }, [canvasId]);
+    },
+    [canvasId],
+  );
 
-  const removeReroute = useCallback((id: string) => {
-    if (!canvasId) return;
-    setRerouteNodes(prev => {
-      const next = prev.filter(r => r.id !== id);
-      persistReroutes(canvasId, next);
-      return next;
-    });
-  }, [canvasId]);
-
-  const updateReroutePosition = useCallback((id: string, x: number, y: number) => {
-    if (!canvasId) return;
-    setRerouteNodes(prev => {
-      const next = prev.map(r => r.id === id ? { ...r, x, y } : r);
-      persistReroutes(canvasId, next);
-      return next;
-    });
-  }, [canvasId]);
+  const updateReroutePosition = useCallback(
+    (id: string, x: number, y: number) => {
+      if (!canvasId) return;
+      setRerouteNodes((prev) => {
+        const next = prev.map((r) => (r.id === id ? { ...r, x, y } : r));
+        persistReroutes(canvasId, next);
+        return next;
+      });
+    },
+    [canvasId],
+  );
 
   return { rerouteNodes, addReroute, removeReroute, updateReroutePosition };
 }

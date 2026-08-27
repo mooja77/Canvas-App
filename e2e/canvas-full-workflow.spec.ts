@@ -219,18 +219,8 @@ test.describe('Canvas Full Workflow', () => {
     await page.keyboard.press('Shift+/'); // ? is Shift+/
 
     // Should see a modal with keyboard shortcuts
-    const shortcutModal = page.getByText(/Keyboard Shortcuts/i);
-    const isVisible = await shortcutModal
-      .first()
-      .isVisible({ timeout: 3000 })
-      .catch(() => false);
-
-    if (!isVisible) {
-      test.skip(true, 'precondition not met: !isVisible');
-      return;
-    }
-
-    expect(isVisible).toBe(true);
+    const shortcutModal = page.getByRole('heading', { name: 'Keyboard Shortcuts' });
+    await expect(shortcutModal).toBeVisible({ timeout: 3000 });
 
     // Close with Escape
     await page.keyboard.press('Escape');

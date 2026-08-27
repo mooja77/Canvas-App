@@ -13,25 +13,9 @@ test.describe('Mobile Responsive', () => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
-    // On mobile, a hamburger menu button should appear
-    const hamburger = page
-      .locator('button[aria-label*="menu" i], button[aria-label*="Menu"], button[aria-label*="navigation" i]')
-      .or(page.locator('[data-testid="mobile-menu"]'));
-
-    // Desktop nav links should be hidden or the hamburger should be visible
-    const hasHamburger = await hamburger
-      .first()
-      .isVisible({ timeout: 3000 })
-      .catch(() => false);
-
-    // Alternatively, check that desktop inline nav is hidden
-    const desktopNav = page.locator('nav a[href="/pricing"]');
-    const navHidden = await desktopNav
-      .first()
-      .isHidden({ timeout: 2000 })
-      .catch(() => false);
-
-    expect(hasHamburger || navHidden).toBe(true);
+    const hamburger = page.locator('button[aria-label="Toggle menu"]');
+    await expect(hamburger).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('nav .md\\:flex a[href="/pricing"]')).toBeHidden();
   });
 
   test('landing page hamburger menu opens and closes', async ({ page }) => {
@@ -42,31 +26,32 @@ test.describe('Mobile Responsive', () => {
     // Find the hamburger / mobile menu button
     const hamburger = page.locator('button[aria-label="Toggle menu"]');
 
-    if (!(await hamburger.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip(true, 'precondition not met: !(await hamburger.isVisible({ timeout: 3000 }).catch(() => false))');
-      return;
-    }
+    await expect(hamburger).toBeVisible({ timeout: 5000 });
 
     // Click hamburger to open menu
     await hamburger.click();
 
-    // The mobile nav menu div should appear (sm:hidden div with links)
-    const mobileMenu = page.locator('.sm\\:hidden').filter({ has: page.locator('a') });
-    const menuVisible = await mobileMenu
-      .first()
-      .isVisible({ timeout: 3000 })
-      .catch(() => false);
-
-    // Alternatively check for guide link text appearing
-    const guideLink = page.locator('a').filter({ hasText: 'Guide' });
-    const hasGuide = await guideLink
-      .first()
-      .isVisible({ timeout: 2000 })
-      .catch(() => false);
-    expect(menuVisible || hasGuide).toBe(true);
+    const mobileGuide = page.locator('.md\\:hidden a[href="/guide"]:visible');
+    await expect(mobileGuide).toBeVisible();
 
     // Close menu by clicking the toggle again
     await hamburger.click();
+    await expect(mobileGuide).not.toBeVisible();
+  });
+
+  test('landing navigation switches at the tablet breakpoint', async ({ page }) => {
+    await page.setViewportSize({ width: 700, height: 900 });
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
+
+    const hamburger = page.locator('button[aria-label="Toggle menu"]');
+    const desktopPricing = page.locator('nav .md\\:flex a[href="/pricing"]');
+    await expect(hamburger).toBeVisible();
+    await expect(desktopPricing).toBeHidden();
+
+    await page.setViewportSize({ width: 800, height: 900 });
+    await expect(hamburger).toBeHidden();
+    await expect(desktopPricing).toBeVisible();
   });
 
   test('login page is usable at mobile width', async ({ page }) => {

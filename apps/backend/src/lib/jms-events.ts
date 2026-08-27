@@ -10,18 +10,18 @@ interface JmsEvent {
   properties?: Record<string, unknown>;
 }
 
-const INGEST_URL = "https://admin.jmsdevlab.com/api/events/ingest";
-const APP_ID = "qualcanvas";
+const INGEST_URL = 'https://admin.jmsdevlab.com/api/events/ingest';
+const APP_ID = 'qualcanvas';
 
 export async function trackJmsEvent(event: JmsEvent): Promise<void> {
   const adminKey = process.env.ADMIN_API_KEY;
   if (!adminKey) return; // soft-fail when key is not set
   try {
     const res = await fetch(INGEST_URL, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "content-type": "application/json",
-        "x-admin-key": adminKey,
+        'content-type': 'application/json',
+        'x-admin-key': adminKey,
       },
       body: JSON.stringify({
         app_id: APP_ID,

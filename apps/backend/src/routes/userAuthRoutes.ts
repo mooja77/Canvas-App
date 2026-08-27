@@ -981,6 +981,7 @@ const CANVAS_EXPORT_INCLUDE = {
   documents: true,
   trainingDocuments: true,
   journalEntries: true,
+  artifacts: true,
 } as const;
 
 function sendArchive(res: Response, archive: Record<string, unknown>): void {

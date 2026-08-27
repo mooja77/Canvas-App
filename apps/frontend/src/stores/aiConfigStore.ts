@@ -3,6 +3,7 @@ import { aiSettingsApi } from '../services/api';
 
 interface AiConfigState {
   configured: boolean;
+  hostedAiAvailable: boolean;
   provider: string | null;
   loaded: boolean;
   setConfigured: (configured: boolean, provider?: string) => void;
@@ -11,11 +12,11 @@ interface AiConfigState {
 
 export const useAiConfigStore = create<AiConfigState>()((set, get) => ({
   configured: false,
+  hostedAiAvailable: false,
   provider: null,
   loaded: false,
 
-  setConfigured: (configured, provider) =>
-    set({ configured, provider: provider || null }),
+  setConfigured: (configured, provider) => set({ configured, provider: provider || null }),
 
   fetchConfig: async () => {
     if (get().loaded) return;
@@ -24,11 +25,12 @@ export const useAiConfigStore = create<AiConfigState>()((set, get) => ({
       const data = res.data.data;
       set({
         configured: data?.hasApiKey || false,
+        hostedAiAvailable: data?.hostedAiAvailable || false,
         provider: data?.provider || null,
         loaded: true,
       });
     } catch {
-      set({ configured: false, provider: null, loaded: true });
+      set({ configured: false, hostedAiAvailable: false, provider: null, loaded: true });
     }
   },
 }));

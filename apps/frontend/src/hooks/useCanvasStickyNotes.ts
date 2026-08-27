@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useActiveCanvasId } from '../stores/canvasStore';
+import { useCanvasArtifact } from './useCanvasArtifact';
 
 export interface StickyNote {
   id: string;
@@ -13,36 +14,21 @@ export interface StickyNote {
 
 const STORAGE_KEY_PREFIX = 'canvas-stickies-';
 const STICKY_COLORS = ['#FEF3C7', '#FCE7F3', '#DBEAFE', '#D1FAE5', '#EDE9FE', '#FEE2E2'];
-
-function getStorageKey(canvasId: string): string {
-  return `${STORAGE_KEY_PREFIX}${canvasId}`;
-}
-
-function loadNotes(canvasId: string): StickyNote[] {
-  try {
-    const raw = localStorage.getItem(getStorageKey(canvasId));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (n: unknown) =>
-        typeof n === 'object' &&
-        n !== null &&
-        typeof (n as StickyNote).id === 'string' &&
-        typeof (n as StickyNote).text === 'string',
-    ) as StickyNote[];
-  } catch {
-    return [];
-  }
-}
-
-function persistNotes(canvasId: string, notes: StickyNote[]): void {
-  try {
-    localStorage.setItem(getStorageKey(canvasId), JSON.stringify(notes));
-  } catch {
-    // localStorage may be full
-  }
-}
+const EMPTY_NOTES: StickyNote[] = [];
+const isStickyNotes = (value: unknown): value is StickyNote[] =>
+  Array.isArray(value) &&
+  value.every(
+    (note) =>
+      typeof note === 'object' &&
+      note !== null &&
+      typeof (note as StickyNote).id === 'string' &&
+      typeof (note as StickyNote).text === 'string' &&
+      typeof (note as StickyNote).color === 'string' &&
+      typeof (note as StickyNote).x === 'number' &&
+      typeof (note as StickyNote).y === 'number' &&
+      typeof (note as StickyNote).width === 'number' &&
+      typeof (note as StickyNote).height === 'number',
+  );
 
 let nextNoteId = 1;
 
@@ -55,54 +41,39 @@ export interface UseCanvasStickyNotesReturn {
 
 export function useCanvasStickyNotes(): UseCanvasStickyNotesReturn {
   const canvasId = useActiveCanvasId();
-  const [stickyNotes, setStickyNotes] = useState<StickyNote[]>([]);
-
-  useEffect(() => {
-    if (!canvasId) {
-      setStickyNotes([]);
-      return;
-    }
-    setStickyNotes(loadNotes(canvasId));
-  }, [canvasId]);
+  const [stickyNotes, setStickyNotes] = useCanvasArtifact({
+    canvasId,
+    type: 'sticky-notes',
+    storageKeyPrefix: STORAGE_KEY_PREFIX,
+    fallback: EMPTY_NOTES,
+    validate: isStickyNotes,
+  });
 
   const addStickyNote = useCallback(
     (x: number, y: number): string => {
       if (!canvasId) return '';
       const id = `sticky-${Date.now()}-${nextNoteId++}`;
       const color = STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)];
-      const note: StickyNote = { id, text: '', color, x, y, width: 180, height: 140 };
-      setStickyNotes((prev) => {
-        const next = [...prev, note];
-        persistNotes(canvasId, next);
-        return next;
-      });
+      setStickyNotes((previous) => [...previous, { id, text: '', color, x, y, width: 180, height: 140 }]);
       return id;
     },
-    [canvasId],
+    [canvasId, setStickyNotes],
   );
 
   const removeStickyNote = useCallback(
     (id: string) => {
-      if (!canvasId) return;
-      setStickyNotes((prev) => {
-        const next = prev.filter((n) => n.id !== id);
-        persistNotes(canvasId, next);
-        return next;
-      });
+      if (canvasId) setStickyNotes((previous) => previous.filter((note) => note.id !== id));
     },
-    [canvasId],
+    [canvasId, setStickyNotes],
   );
 
   const updateStickyNote = useCallback(
     (id: string, updates: Partial<Omit<StickyNote, 'id'>>) => {
-      if (!canvasId) return;
-      setStickyNotes((prev) => {
-        const next = prev.map((n) => (n.id === id ? { ...n, ...updates } : n));
-        persistNotes(canvasId, next);
-        return next;
-      });
+      if (canvasId) {
+        setStickyNotes((previous) => previous.map((note) => (note.id === id ? { ...note, ...updates } : note)));
+      }
     },
-    [canvasId],
+    [canvasId, setStickyNotes],
   );
 
   return { stickyNotes, addStickyNote, removeStickyNote, updateStickyNote };

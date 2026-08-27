@@ -60,7 +60,7 @@ export function chunkText(text: string, maxTokens = 500, overlapTokens = 50): Te
     start = end - overlapChars;
     if (start >= text.length) break;
     // Prevent infinite loop
-    if (start <= (end - maxChars)) {
+    if (start <= end - maxChars) {
       start = end;
     }
   }
@@ -107,22 +107,24 @@ export function findSimilarChunks(
   topK = 5,
   minSimilarity = 0.3,
 ): SimilarChunk[] {
-  const scored = embeddings.map((e) => {
-    let embeddingVec: number[];
-    try {
-      embeddingVec = JSON.parse(e.embedding);
-    } catch {
-      return null;
-    }
-    const similarity = cosineSimilarity(queryEmbedding, embeddingVec);
-    return {
-      sourceType: e.sourceType,
-      sourceId: e.sourceId,
-      chunkIndex: e.chunkIndex,
-      chunkText: e.chunkText,
-      similarity,
-    };
-  }).filter((item): item is SimilarChunk => item !== null && item.similarity >= minSimilarity);
+  const scored = embeddings
+    .map((e) => {
+      let embeddingVec: number[];
+      try {
+        embeddingVec = JSON.parse(e.embedding);
+      } catch {
+        return null;
+      }
+      const similarity = cosineSimilarity(queryEmbedding, embeddingVec);
+      return {
+        sourceType: e.sourceType,
+        sourceId: e.sourceId,
+        chunkIndex: e.chunkIndex,
+        chunkText: e.chunkText,
+        similarity,
+      };
+    })
+    .filter((item): item is SimilarChunk => item !== null && item.similarity >= minSimilarity);
 
   scored.sort((a, b) => b.similarity - a.similarity);
   return scored.slice(0, topK);

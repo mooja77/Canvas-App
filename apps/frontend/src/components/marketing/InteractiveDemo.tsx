@@ -392,7 +392,7 @@ export default function InteractiveDemo() {
   }, [applied]);
 
   return (
-    <div className="relative" onMouseUp={captureSelection} onTouchEnd={captureSelection}>
+    <div className="relative">
       <div className="relative rounded-2xl overflow-hidden ring-1 ring-gray-200 dark:ring-gray-700 bg-white dark:bg-gray-900 shadow-2xl shadow-ink-900/5">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px]">
           {/* ── Transcript pane ── */}
@@ -403,6 +403,8 @@ export default function InteractiveDemo() {
 
             <div
               ref={transcriptRef}
+              onMouseUp={captureSelection}
+              onTouchEnd={captureSelection}
               className="text-base sm:text-lg leading-relaxed text-gray-800 dark:text-gray-200 selection:bg-ochre-200 dark:selection:bg-ochre-900 select-text"
               style={{ fontVariationSettings: "'wght' 400" }}
               aria-label="Interview transcript — select a span to apply a code"

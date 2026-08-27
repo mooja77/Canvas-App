@@ -14,15 +14,13 @@ interface FilePreviewModalProps {
 }
 
 export default function FilePreviewModal({ files, onImport, onClose }: FilePreviewModalProps) {
-  const [items, setItems] = useState<FilePreviewItem[]>(
-    files.map(f => ({ file: f, preview: '', selected: true }))
-  );
+  const [items, setItems] = useState<FilePreviewItem[]>(files.map((f) => ({ file: f, preview: '', selected: true })));
 
   const toggleItem = (idx: number) => {
-    setItems(prev => prev.map((item, i) => i === idx ? { ...item, selected: !item.selected } : item));
+    setItems((prev) => prev.map((item, i) => (i === idx ? { ...item, selected: !item.selected } : item)));
   };
 
-  const selectedCount = items.filter(i => i.selected).length;
+  const selectedCount = items.filter((i) => i.selected).length;
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -52,13 +50,9 @@ export default function FilePreviewModal({ files, onImport, onClose }: FilePrevi
               />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{item.file.name}</p>
-                <p className="text-[10px] text-gray-400">
-                  {(item.file.size / 1024).toFixed(1)} KB
-                </p>
+                <p className="text-[10px] text-gray-400">{(item.file.size / 1024).toFixed(1)} KB</p>
               </div>
-              <span className="text-[10px] text-gray-400 uppercase">
-                {item.file.name.split('.').pop()}
-              </span>
+              <span className="text-[10px] text-gray-400 uppercase">{item.file.name.split('.').pop()}</span>
             </label>
           ))}
         </div>
@@ -66,11 +60,14 @@ export default function FilePreviewModal({ files, onImport, onClose }: FilePrevi
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
           <span className="text-xs text-gray-400">{selectedCount} selected</span>
           <div className="flex gap-2">
-            <button onClick={onClose} className="rounded-lg px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button
+              onClick={onClose}
+              className="rounded-lg px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
               Cancel
             </button>
             <button
-              onClick={() => onImport(items.filter(i => i.selected).map(i => i.file))}
+              onClick={() => onImport(items.filter((i) => i.selected).map((i) => i.file))}
               disabled={selectedCount === 0}
               className="btn-primary px-3 py-1.5 text-xs disabled:opacity-50"
             >

@@ -188,8 +188,8 @@ export default function TrustAIPage() {
    ↓
 Browser sends the prompt + spans to QualCanvas backend (encrypted in transit)
    ↓
-Backend reads the user's stored API key (or falls back to QualCanvas's
-key if the user hasn't configured BYOK) and forwards to provider
+Backend reads the user's stored API key. If hosted AI is enabled for the
+account and BYOK is not configured, it uses the budget-limited QualCanvas key
    ↓
 Provider returns suggestions
    ↓

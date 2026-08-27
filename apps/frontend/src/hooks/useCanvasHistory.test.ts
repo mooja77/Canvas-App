@@ -70,19 +70,29 @@ describe('useCanvasHistory', () => {
 
     const states = [makeNodes(1, 's0'), makeNodes(2, 's1'), makeNodes(3, 's2')];
 
-    act(() => { result.current.pushState(states[0], []); });
+    act(() => {
+      result.current.pushState(states[0], []);
+    });
     vi.advanceTimersByTime(400);
-    act(() => { result.current.pushState(states[1], []); });
+    act(() => {
+      result.current.pushState(states[1], []);
+    });
     vi.advanceTimersByTime(400);
-    act(() => { result.current.pushState(states[2], []); });
+    act(() => {
+      result.current.pushState(states[2], []);
+    });
 
     // Undo twice to get back to states[0]
     let undone: ReturnType<typeof result.current.undo> = null;
-    act(() => { undone = result.current.undo(); });
+    act(() => {
+      undone = result.current.undo();
+    });
     expect(undone!.nodes).toHaveLength(2);
     expect(undone!.nodes[0].id).toBe('s1-0');
 
-    act(() => { undone = result.current.undo(); });
+    act(() => {
+      undone = result.current.undo();
+    });
     expect(undone!.nodes).toHaveLength(1);
     expect(undone!.nodes[0].id).toBe('s0-0');
     expect(result.current.canUndo).toBe(false);
@@ -94,15 +104,23 @@ describe('useCanvasHistory', () => {
     const nodes0 = makeNodes(1, 'a');
     const nodes1 = makeNodes(2, 'b');
 
-    act(() => { result.current.pushState(nodes0, []); });
+    act(() => {
+      result.current.pushState(nodes0, []);
+    });
     vi.advanceTimersByTime(400);
-    act(() => { result.current.pushState(nodes1, []); });
+    act(() => {
+      result.current.pushState(nodes1, []);
+    });
 
-    act(() => { result.current.undo(); });
+    act(() => {
+      result.current.undo();
+    });
     expect(result.current.canRedo).toBe(true);
 
     let redone: ReturnType<typeof result.current.redo> = null;
-    act(() => { redone = result.current.redo(); });
+    act(() => {
+      redone = result.current.redo();
+    });
     expect(redone).not.toBeNull();
     expect(redone!.nodes).toHaveLength(2);
     expect(redone!.nodes[0].id).toBe('b-0');
@@ -116,15 +134,23 @@ describe('useCanvasHistory', () => {
     const nodes1 = makeNodes(2, 'b');
     const nodes2 = makeNodes(3, 'c');
 
-    act(() => { result.current.pushState(nodes0, []); });
+    act(() => {
+      result.current.pushState(nodes0, []);
+    });
     vi.advanceTimersByTime(400);
-    act(() => { result.current.pushState(nodes1, []); });
+    act(() => {
+      result.current.pushState(nodes1, []);
+    });
 
-    act(() => { result.current.undo(); });
+    act(() => {
+      result.current.undo();
+    });
     expect(result.current.canRedo).toBe(true);
 
     vi.advanceTimersByTime(400);
-    act(() => { result.current.pushState(nodes2, []); });
+    act(() => {
+      result.current.pushState(nodes2, []);
+    });
     expect(result.current.canRedo).toBe(false);
   });
 
@@ -133,37 +159,53 @@ describe('useCanvasHistory', () => {
 
     for (let i = 0; i < 55; i++) {
       vi.advanceTimersByTime(400);
-      act(() => { result.current.pushState(makeNodes(1, `n${i}`), []); });
+      act(() => {
+        result.current.pushState(makeNodes(1, `n${i}`), []);
+      });
     }
 
     expect(result.current.canUndo).toBe(true);
 
     // Undo 49 times (pointer goes from 49 down to 0)
     for (let i = 0; i < 49; i++) {
-      act(() => { result.current.undo(); });
+      act(() => {
+        result.current.undo();
+      });
     }
     expect(result.current.canUndo).toBe(false);
 
     // Trying one more undo returns null
     let undone: ReturnType<typeof result.current.undo> = null;
-    act(() => { undone = result.current.undo(); });
+    act(() => {
+      undone = result.current.undo();
+    });
     expect(undone).toBeNull();
   });
 
   it('clearHistory — canUndo and canRedo become false', () => {
     const { result } = renderHook(() => useCanvasHistory());
 
-    act(() => { result.current.pushState(makeNodes(1, 'first'), []); });
+    act(() => {
+      result.current.pushState(makeNodes(1, 'first'), []);
+    });
     vi.advanceTimersByTime(400);
-    act(() => { result.current.pushState(makeNodes(2, 'second'), []); });
+    act(() => {
+      result.current.pushState(makeNodes(2, 'second'), []);
+    });
     vi.advanceTimersByTime(400);
-    act(() => { result.current.pushState(makeNodes(3, 'third'), []); });
+    act(() => {
+      result.current.pushState(makeNodes(3, 'third'), []);
+    });
 
-    act(() => { result.current.undo(); });
+    act(() => {
+      result.current.undo();
+    });
     expect(result.current.canUndo).toBe(true);
     expect(result.current.canRedo).toBe(true);
 
-    act(() => { result.current.clearHistory(); });
+    act(() => {
+      result.current.clearHistory();
+    });
     expect(result.current.canUndo).toBe(false);
     expect(result.current.canRedo).toBe(false);
   });
@@ -172,18 +214,26 @@ describe('useCanvasHistory', () => {
     const { result } = renderHook(() => useCanvasHistory());
 
     // First push to establish baseline
-    act(() => { result.current.pushState(makeNodes(1, 'base'), []); });
+    act(() => {
+      result.current.pushState(makeNodes(1, 'base'), []);
+    });
 
     // Two rapid pushes within debounce window (300ms)
     vi.advanceTimersByTime(400); // past debounce
-    act(() => { result.current.pushState(makeNodes(2, 'rapid1'), []); });
+    act(() => {
+      result.current.pushState(makeNodes(2, 'rapid1'), []);
+    });
     vi.advanceTimersByTime(50); // within 300ms debounce
-    act(() => { result.current.pushState(makeNodes(3, 'rapid2'), []); });
+    act(() => {
+      result.current.pushState(makeNodes(3, 'rapid2'), []);
+    });
 
     // Only the base + one debounced entry should exist (rapid2 replaced rapid1)
     // So undo once should get us back to base
     let undone: ReturnType<typeof result.current.undo> = null;
-    act(() => { undone = result.current.undo(); });
+    act(() => {
+      undone = result.current.undo();
+    });
     expect(undone!.nodes).toHaveLength(1);
     expect(undone!.nodes[0].id).toBe('base-0');
 
@@ -195,17 +245,23 @@ describe('useCanvasHistory', () => {
     const { result } = renderHook(() => useCanvasHistory());
 
     const nodes = makeNodes(1, 'orig');
-    act(() => { result.current.pushState(nodes, []); });
+    act(() => {
+      result.current.pushState(nodes, []);
+    });
 
     // Mutate the original
     nodes[0].position.x = 9999;
     nodes[0].id = 'mutated';
 
     vi.advanceTimersByTime(400);
-    act(() => { result.current.pushState(makeNodes(1, 'second'), []); });
+    act(() => {
+      result.current.pushState(makeNodes(1, 'second'), []);
+    });
 
     let undone: ReturnType<typeof result.current.undo> = null;
-    act(() => { undone = result.current.undo(); });
+    act(() => {
+      undone = result.current.undo();
+    });
 
     // Should get the original unmutated values
     expect(undone!.nodes[0].position.x).toBe(0);

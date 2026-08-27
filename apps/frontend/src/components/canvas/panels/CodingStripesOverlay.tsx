@@ -16,17 +16,17 @@ export default function CodingStripesOverlay({
 }: CodingStripesOverlayProps) {
   const colorMap = useMemo(() => {
     const map = new Map<string, string>();
-    questions.forEach(q => map.set(q.id, q.color));
+    questions.forEach((q) => map.set(q.id, q.color));
     return map;
   }, [questions]);
 
   // Group codings by question for stripe lanes
   const stripes = useMemo(() => {
-    const qIds = [...new Set(codings.map(c => c.questionId))];
+    const qIds = [...new Set(codings.map((c) => c.questionId))];
     return qIds.map((qId, laneIndex) => {
       const color = colorMap.get(qId) || '#6B7280';
-      const qCodings = codings.filter(c => c.questionId === qId);
-      const segments = qCodings.map(c => ({
+      const qCodings = codings.filter((c) => c.questionId === qId);
+      const segments = qCodings.map((c) => ({
         top: (c.startOffset / contentLength) * containerHeight,
         height: Math.max(2, ((c.endOffset - c.startOffset) / contentLength) * containerHeight),
       }));
@@ -38,7 +38,7 @@ export default function CodingStripesOverlay({
 
   return (
     <div className="absolute left-0 top-0 h-full flex" style={{ width: stripes.length * 6 }}>
-      {stripes.map(stripe => (
+      {stripes.map((stripe) => (
         <div key={stripe.qId} className="relative" style={{ width: 5, marginRight: 1 }}>
           {stripe.segments.map((seg, i) => (
             <div

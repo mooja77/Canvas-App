@@ -124,15 +124,23 @@ export function matchesShortcut(e: KeyboardEvent, combo: string): boolean {
   const hasAlt = e.altKey;
 
   if (needsCtrl !== hasCtrl) return false;
-  if (needsShift !== hasShift) return false;
+  // Browsers report the physical Shift modifier for symbols such as `?`,
+  // even though the shortcut itself is most naturally written as `?`. Treat
+  // that Shift as part of producing the symbol, while still rejecting an
+  // unexpected Shift for letter/number shortcuts such as `f`.
+  const eventKey = e.key.toLowerCase();
+  // Firefox exposes Shift+/ as key "/" with code "Slash", while Chromium
+  // exposes the produced character "?". Accept both browser event shapes.
+  const isQuestionMarkKey = key === '?' && (eventKey === '?' || (hasShift && e.code === 'Slash'));
+  const shiftProducesSymbol =
+    hasShift && !needsShift && key.length === 1 && !/[a-z0-9]/i.test(key) && (eventKey === key || isQuestionMarkKey);
+  if (needsShift !== hasShift && !shiftProducesSymbol) return false;
   if (needsAlt !== hasAlt) return false;
 
   // Normalize the event key for comparison
-  const eventKey = e.key.toLowerCase();
-
   // Special key mappings
   if (key === 'delete') return eventKey === 'delete' || eventKey === 'backspace';
-  if (key === '?') return eventKey === '?';
+  if (key === '?') return isQuestionMarkKey;
   if (key === '.') return eventKey === '.';
 
   return eventKey === key;

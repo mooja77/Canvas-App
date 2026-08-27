@@ -20,7 +20,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <div>Hello world</div>
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(screen.getByText('Hello world')).toBeInTheDocument();
   });
@@ -29,7 +29,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary>
         <ThrowingChild shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe('ErrorBoundary', () => {
     const { rerender } = render(
       <ErrorBoundary>
         <ThrowingChild shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
@@ -56,7 +56,7 @@ describe('ErrorBoundary', () => {
     rerender(
       <ErrorBoundary>
         <ThrowingChild shouldThrow={false} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
 
     // The boundary should have reset and now render the child
@@ -74,7 +74,7 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary fallback={<div>Custom error UI</div>}>
         <ThrowingChild shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(screen.getByText('Custom error UI')).toBeInTheDocument();
     expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument();
@@ -85,12 +85,12 @@ describe('ErrorBoundary', () => {
     render(
       <ErrorBoundary onError={onError}>
         <ThrowingChild shouldThrow={true} />
-      </ErrorBoundary>
+      </ErrorBoundary>,
     );
     expect(onError).toHaveBeenCalledTimes(1);
     expect(onError).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Test explosion' }),
-      expect.objectContaining({ componentStack: expect.any(String) })
+      expect.objectContaining({ componentStack: expect.any(String) }),
     );
   });
 });

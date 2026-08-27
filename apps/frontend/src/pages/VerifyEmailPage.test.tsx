@@ -6,8 +6,10 @@ import VerifyEmailPage from './VerifyEmailPage';
 const mockSearchParams = new URLSearchParams();
 vi.mock('react-router-dom', () => ({
   useSearchParams: () => [mockSearchParams],
-  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode;[key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
+  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
   ),
 }));
 
@@ -87,9 +89,7 @@ describe('VerifyEmailPage', () => {
       expect(screen.getByText('Verification Failed')).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText('Invalid verification link. Please check your email and try again.')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Invalid verification link. Please check your email and try again.')).toBeInTheDocument();
     expect(mockVerifyEmail).not.toHaveBeenCalled();
   });
 
@@ -105,8 +105,6 @@ describe('VerifyEmailPage', () => {
     });
 
     // Falls back to default message when response.data.error is not available
-    expect(
-      screen.getByText('Verification failed. The link may have expired.')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Verification failed. The link may have expired.')).toBeInTheDocument();
   });
 });

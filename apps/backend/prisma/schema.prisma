@@ -2,14 +2,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// NOTE: The provider is set to "postgresql" for production (Railway).
-// Local development uses SQLite via DATABASE_URL="file:./canvas-app.db" in .env.
-// Prisma accepts the SQLite URL at runtime even with provider="postgresql", but
-// `prisma db push` and `prisma migrate dev` may fail locally because they
-// validate the provider against the connection string. To work around this:
-//   1. Temporarily change provider to "sqlite" before running db push locally, OR
-//   2. Use a local PostgreSQL instance and set DATABASE_URL accordingly.
-// Do NOT commit a provider change to "sqlite" — production depends on "postgresql".
+// QualCanvas uses PostgreSQL in every environment. Keep local development on a
+// disposable local PostgreSQL database so schema validation and migrations
+// exercise the same provider and constraints as production.
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -179,10 +174,28 @@ model CodingCanvas {
   documents         CanvasDocument[]
   trainingDocuments TrainingDocument[]
   journalEntries    CanvasJournalEntry[]
+  artifacts         CanvasArtifact[]
 
   @@index([dashboardAccessId])
   @@index([userId])
   @@index([deletedAt])
+}
+
+/// Server-backed canvas data used by visual research tools whose shape is
+/// naturally document-like (sticky notes, theme groups and coding weights).
+/// One JSON document per type keeps updates atomic and lets existing
+/// localStorage data migrate without fabricating relational identifiers.
+model CanvasArtifact {
+  id        String       @id @default(cuid())
+  canvasId  String
+  type      String
+  data      String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  canvas    CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@unique([canvasId, type])
+  @@index([canvasId])
 }
 
 model CanvasShare {

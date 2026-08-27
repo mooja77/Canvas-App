@@ -68,6 +68,7 @@ export default function AccountPage() {
   const [aiApiKey, setAiApiKey] = useState('');
   const [aiModel, setAiModel] = useState('');
   const [aiHasKey, setAiHasKey] = useState(false);
+  const [aiHostedAvailable, setAiHostedAvailable] = useState(false);
   const [aiSaving, setAiSaving] = useState(false);
   const [_aiTesting, _setAiTesting] = useState(false);
   const [showAiKey, setShowAiKey] = useState(false);
@@ -138,6 +139,7 @@ export default function AccountPage() {
           setAiProvider(data.provider || 'openai');
           setAiModel(data.model || '');
           setAiHasKey(data.hasApiKey || false);
+          setAiHostedAvailable(data.hostedAiAvailable || false);
         }
       })
       .catch(() => {
@@ -372,9 +374,8 @@ export default function AccountPage() {
         emailVerified: false,
         // Same person, upgraded credential - not a new account signing in on a
         // shared browser. Without this the identity key flips from
-        // legacy:<id> to email:<id> and the store wipes their sticky notes,
-        // weights, colours, bookmarks and unsent offline queue, none of which
-        // exist on the server.
+        // legacy:<id> to email:<id> and the store wipes their local caches,
+        // colours, bookmarks and unsent offline queue mid-upgrade.
         sameIdentity: true,
       });
       const refreshed = await authApi.getMe();
@@ -828,8 +829,10 @@ export default function AccountPage() {
               </h2>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-              Connect your own AI provider API key to use AI-powered features like coding suggestions, research
-              assistant, and transcription. Your key is encrypted and never shared.
+              {aiHostedAvailable
+                ? 'Hosted AI is available for this account. Adding your own provider key is optional and gives you direct control of provider billing and limits.'
+                : 'Connect your own AI provider key to use AI-powered features like coding suggestions, research assistant, and transcription.'}{' '}
+              Your key is encrypted and never shared.
             </p>
 
             <div className="space-y-3">
@@ -860,6 +863,7 @@ export default function AccountPage() {
               <div>
                 <label htmlFor="ai-api-key" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                   API Key {aiHasKey && !aiApiKey && <span className="text-green-500 ml-1">configured</span>}
+                  {!aiHasKey && aiHostedAvailable && <span className="text-purple-500 ml-1">optional</span>}
                 </label>
                 <div className="relative">
                   <input

@@ -29,14 +29,16 @@ export interface DocumentPortraitNodeData {
 function DocumentPortraitNode({ data, selected }: NodeProps) {
   const nodeData = data as unknown as DocumentPortraitNodeData;
   const { label, result, collapsed } = nodeData;
-  const zoomTier = useUIStore(s => s.zoomTier);
+  const zoomTier = useUIStore((s) => s.zoomTier);
   const strips = result?.strips || [];
 
   if (zoomTier === 'minimal') {
     return (
-      <div className={`px-2 py-1 rounded text-xs font-medium truncate max-w-[120px] bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700 ${
-        selected ? 'ring-2 ring-blue-500' : ''
-      }`}>
+      <div
+        className={`px-2 py-1 rounded text-xs font-medium truncate max-w-[120px] bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-700 ${
+          selected ? 'ring-2 ring-blue-500' : ''
+        }`}
+      >
         <Handle type="target" position={Position.Left} className="!w-1.5 !h-1.5" />
         <Handle type="source" position={Position.Right} className="!w-1.5 !h-1.5" />
         {label}
@@ -56,12 +58,8 @@ function DocumentPortraitNode({ data, selected }: NodeProps) {
 
       {/* Header */}
       <div className="px-3 py-2 bg-purple-50 dark:bg-purple-900/30 rounded-t-lg border-b border-purple-100 dark:border-purple-800">
-        <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-200 truncate">
-          {label}
-        </h3>
-        <p className="text-xs text-purple-600 dark:text-purple-400">
-          Document Portrait
-        </p>
+        <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-200 truncate">{label}</h3>
+        <p className="text-xs text-purple-600 dark:text-purple-400">Document Portrait</p>
       </div>
 
       {/* Portrait strips */}
@@ -74,9 +72,7 @@ function DocumentPortraitNode({ data, selected }: NodeProps) {
           ) : (
             strips.map((strip) => (
               <div key={strip.transcriptId} className="space-y-1">
-                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
-                  {strip.transcriptTitle}
-                </p>
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{strip.transcriptTitle}</p>
                 {/* The portrait strip */}
                 <div className="relative h-6 bg-gray-100 dark:bg-gray-700 rounded overflow-hidden border border-gray-200 dark:border-gray-600">
                   {strip.segments.map((seg, i) => (

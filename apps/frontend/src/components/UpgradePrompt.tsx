@@ -137,7 +137,8 @@ export default function UpgradePrompt() {
               tier-labelled and pinned to PLAN_LIMITS by UpgradePrompt.test.tsx. */}
           <div className="bg-brand-50 dark:bg-brand-900/20 rounded-lg p-4 mb-6 text-left">
             <p className="text-sm font-medium text-brand-800 dark:text-brand-200 mb-2">
-              Paid plans start at $5/mo — Student, with a verified .edu email. Pro is $15/mo ($12 on annual billing).
+              Paid plans start at $5/mo — Student, with a verified academic email. Pro is $15/mo ($12 on annual
+              billing).
             </p>
             <ul className="text-sm text-brand-700 dark:text-brand-300 space-y-1">
               <li>
@@ -154,7 +155,9 @@ export default function UpgradePrompt() {
                 Intercoder agreement (κ / α) — <span className="font-medium">Team</span>
               </li>
             </ul>
-            <p className="text-xs text-brand-600 dark:text-brand-400 mt-2">40% off Pro and Team with a .edu email</p>
+            <p className="text-xs text-brand-600 dark:text-brand-400 mt-2">
+              40% off Pro and Team with a verified academic email
+            </p>
           </div>
           <div className="flex gap-3">
             <button

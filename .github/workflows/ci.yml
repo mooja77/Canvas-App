@@ -57,6 +57,18 @@ jobs:
       - run: npm ci
       - run: npm run lint
 
+  format:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -100,11 +112,11 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
-    needs: [typecheck, lint]
+    needs: [typecheck, lint, format]
     env:
       JWT_SECRET: test-secret-for-ci-pipeline-only
       ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
-      DATABASE_URL: file:./test.db
+      DATABASE_URL: postgresql://test:test@localhost:5432/test?schema=public
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -196,6 +208,61 @@ jobs:
         if: failure()
         with:
           name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+
+  e2e-cross-browser:
+    name: E2E Cross-browser Critical Paths
+    runs-on: ubuntu-latest
+    needs: [build, unit-tests]
+    timeout-minutes: 35
+    env:
+      DATABASE_URL: postgresql://qualcanvas:qualcanvas@localhost:55432/qualcanvas_e2e?schema=public
+      JWT_SECRET: test-secret-for-ci-pipeline-only
+      E2E_TEST: true
+      DEMO_ACCESS_CODE: e2e-only-qualcanvas-code-2026
+      E2E_ACCESS_CODE: e2e-only-qualcanvas-code-2026
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qualcanvas
+          POSTGRES_PASSWORD: qualcanvas
+          POSTGRES_DB: qualcanvas_e2e
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U qualcanvas -d qualcanvas_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npx prisma generate --schema=apps/backend/prisma/schema.prisma
+      - run: npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma
+      - run: npm run db:seed -w apps/backend
+      - name: Run critical journeys in desktop and mobile engines
+        run: >-
+          npx playwright test
+          e2e/auth-flows.spec.ts
+          e2e/canvas-full-workflow.spec.ts
+          e2e/network-resilience.spec.ts
+          e2e/mobile-responsive.spec.ts
+          e2e/pages.spec.ts
+          e2e/scenario-k-training.spec.ts
+          --project=firefox --project=webkit
+          --project=mobile-chrome --project=mobile-safari
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: playwright-cross-browser-report
           path: |
             playwright-report/
             test-results/

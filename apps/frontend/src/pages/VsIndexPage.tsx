@@ -49,7 +49,7 @@ const TARGETS: VsTarget[] = [
     slug: 'dedoose',
     competitor: 'Dedoose',
     quickVerdict:
-      "Dedoose's active-month billing is genuinely flexible. If you code in bursts (a month here, a month there) Dedoose can be cheaper. QualCanvas is steadier — pay-as-you-need, .edu discount applied automatically, real-time collab built in instead of as an upgrade.",
+      "Dedoose's active-month billing is genuinely flexible. If you code in bursts (a month here, a month there) Dedoose can be cheaper. QualCanvas is steadier — pay-as-you-need, academic discount applied automatically for recognised institution emails, real-time collab built in instead of as an upgrade.",
     pricing: '$15/mo Pro ($12/mo annual equivalent) vs $17.95 active month',
     pricingSource: 'dedoose.com/home/pricing, 2026',
     status: 'draft',

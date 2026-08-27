@@ -39,20 +39,26 @@ export function useCodeBookmarks() {
     setBookmarkedIds(loadBookmarks(canvasId));
   }, [canvasId]);
 
-  const toggleBookmark = useCallback((questionId: string) => {
-    if (!canvasId) return;
-    setBookmarkedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(questionId)) next.delete(questionId);
-      else next.add(questionId);
-      persistBookmarks(canvasId, next);
-      return next;
-    });
-  }, [canvasId]);
+  const toggleBookmark = useCallback(
+    (questionId: string) => {
+      if (!canvasId) return;
+      setBookmarkedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(questionId)) next.delete(questionId);
+        else next.add(questionId);
+        persistBookmarks(canvasId, next);
+        return next;
+      });
+    },
+    [canvasId],
+  );
 
-  const isBookmarked = useCallback((questionId: string): boolean => {
-    return bookmarkedIds.has(questionId);
-  }, [bookmarkedIds]);
+  const isBookmarked = useCallback(
+    (questionId: string): boolean => {
+      return bookmarkedIds.has(questionId);
+    },
+    [bookmarkedIds],
+  );
 
   return { bookmarkedIds, toggleBookmark, isBookmarked };
 }

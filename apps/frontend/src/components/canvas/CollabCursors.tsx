@@ -27,19 +27,8 @@ export default function CollabCursors({ cursors }: CollabCursorsProps) {
           }}
         >
           {/* Cursor arrow SVG */}
-          <svg
-            width="16"
-            height="20"
-            viewBox="0 0 16 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M0 0L16 12L8 12L5 20L0 0Z"
-              fill={cursor.color}
-              stroke="white"
-              strokeWidth="1"
-            />
+          <svg width="16" height="20" viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 0L16 12L8 12L5 20L0 0Z" fill={cursor.color} stroke="white" strokeWidth="1" />
           </svg>
           {/* Name label */}
           <div

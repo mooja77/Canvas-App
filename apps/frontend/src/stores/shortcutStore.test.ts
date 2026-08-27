@@ -1,10 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  useShortcutStore,
-  DEFAULT_SHORTCUTS,
-  matchesShortcut,
-  eventToCombo,
-} from './shortcutStore';
+import { useShortcutStore, DEFAULT_SHORTCUTS, matchesShortcut, eventToCombo } from './shortcutStore';
 
 function resetStore() {
   useShortcutStore.setState({ shortcuts: { ...DEFAULT_SHORTCUTS } });
@@ -12,10 +7,11 @@ function resetStore() {
 
 function makeKeyboardEvent(
   key: string,
-  opts: { ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean; metaKey?: boolean } = {}
+  opts: { code?: string; ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean; metaKey?: boolean } = {},
 ): KeyboardEvent {
   return new KeyboardEvent('keydown', {
     key,
+    code: opts.code,
     ctrlKey: opts.ctrlKey ?? false,
     shiftKey: opts.shiftKey ?? false,
     altKey: opts.altKey ?? false,
@@ -143,8 +139,23 @@ describe('matchesShortcut', () => {
   });
 
   it('matches ? key', () => {
+    const e = makeKeyboardEvent('?', { shiftKey: true });
+    expect(matchesShortcut(e, '?')).toBe(true);
+  });
+
+  it('matches a normalized ? event without a physical modifier flag', () => {
     const e = makeKeyboardEvent('?');
     expect(matchesShortcut(e, '?')).toBe(true);
+  });
+
+  it('matches Firefox Shift+/ event shape as ?', () => {
+    const e = makeKeyboardEvent('/', { code: 'Slash', shiftKey: true });
+    expect(matchesShortcut(e, '?')).toBe(true);
+  });
+
+  it('does not treat Shift as implicit for letter shortcuts', () => {
+    const e = makeKeyboardEvent('F', { shiftKey: true });
+    expect(matchesShortcut(e, 'f')).toBe(false);
   });
 
   it('matches . key with ctrl', () => {

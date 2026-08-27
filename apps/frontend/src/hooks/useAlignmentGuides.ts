@@ -72,8 +72,10 @@ export function useAlignmentGuides() {
         if (Math.abs(dragVal - otherVal) < SNAP_THRESHOLD) {
           if (snapX === undefined) snapX = otherVal + snapOffset;
           guides.push({
-            x1: otherVal, y1: -CANVAS_EXTENT,
-            x2: otherVal, y2: CANVAS_EXTENT,
+            x1: otherVal,
+            y1: -CANVAS_EXTENT,
+            x2: otherVal,
+            y2: CANVAS_EXTENT,
             orientation: 'vertical',
           });
           break; // one vertical guide per other node
@@ -97,8 +99,10 @@ export function useAlignmentGuides() {
         if (Math.abs(dragVal - otherVal) < SNAP_THRESHOLD) {
           if (snapY === undefined) snapY = otherVal + snapOffset;
           guides.push({
-            x1: -CANVAS_EXTENT, y1: otherVal,
-            x2: CANVAS_EXTENT, y2: otherVal,
+            x1: -CANVAS_EXTENT,
+            y1: otherVal,
+            x2: CANVAS_EXTENT,
+            y2: otherVal,
             orientation: 'horizontal',
           });
           break; // one horizontal guide per other node
@@ -108,7 +112,7 @@ export function useAlignmentGuides() {
 
     // Deduplicate guides by position
     const seen = new Set<string>();
-    const uniqueGuides = guides.filter(g => {
+    const uniqueGuides = guides.filter((g) => {
       const key = `${g.orientation}-${g.orientation === 'vertical' ? g.x1 : g.y1}`;
       if (seen.has(key)) return false;
       seen.add(key);

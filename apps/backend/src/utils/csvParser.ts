@@ -80,21 +80,16 @@ function parseCSVRows(csvContent: string): string[][] {
  * @param columnMapping  Which columns to use for title, content, and (optionally) case
  * @returns Array of parsed rows suitable for creating transcripts
  */
-export function parseSurveyCSV(
-  csvContent: string,
-  columnMapping: ColumnMapping,
-): ParsedRow[] {
+export function parseSurveyCSV(csvContent: string, columnMapping: ColumnMapping): ParsedRow[] {
   const rows = parseCSVRows(csvContent);
   if (rows.length < 2) {
     throw new Error('CSV must contain at least a header row and one data row');
   }
 
-  const headers = rows[0].map(h => h.toLowerCase().trim());
+  const headers = rows[0].map((h) => h.toLowerCase().trim());
   const titleIdx = headers.indexOf(columnMapping.titleColumn.toLowerCase().trim());
   const contentIdx = headers.indexOf(columnMapping.contentColumn.toLowerCase().trim());
-  const caseIdx = columnMapping.caseColumn
-    ? headers.indexOf(columnMapping.caseColumn.toLowerCase().trim())
-    : -1;
+  const caseIdx = columnMapping.caseColumn ? headers.indexOf(columnMapping.caseColumn.toLowerCase().trim()) : -1;
 
   if (titleIdx === -1) {
     throw new Error(`Title column "${columnMapping.titleColumn}" not found in CSV headers: ${rows[0].join(', ')}`);

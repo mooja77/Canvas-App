@@ -1,11 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useActiveCanvasId } from '../stores/canvasStore';
+import { useCanvasArtifact } from './useCanvasArtifact';
 
-/**
- * Metadata for a visual group on the canvas.
- * Stores initial position/size so groups render immediately.
- * The layout save system also persists position (posMap takes precedence).
- */
 export interface CanvasGroup {
   id: string;
   title: string;
@@ -14,48 +10,26 @@ export interface CanvasGroup {
   y: number;
   width: number;
   height: number;
-  /** Node IDs that belong to this group/theme */
   memberNodeIds?: string[];
-  /** Whether the group is collapsed as a theme summary card */
   collapsedAsTheme?: boolean;
 }
 
 const STORAGE_KEY_PREFIX = 'canvas-groups-';
-
-function getStorageKey(canvasId: string): string {
-  return `${STORAGE_KEY_PREFIX}${canvasId}`;
-}
-
-function loadGroups(canvasId: string): CanvasGroup[] {
-  try {
-    const raw = localStorage.getItem(getStorageKey(canvasId));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (g: unknown) =>
-        typeof g === 'object' &&
-        g !== null &&
-        typeof (g as CanvasGroup).id === 'string' &&
-        typeof (g as CanvasGroup).title === 'string' &&
-        typeof (g as CanvasGroup).color === 'string' &&
-        typeof (g as CanvasGroup).x === 'number' &&
-        typeof (g as CanvasGroup).y === 'number' &&
-        typeof (g as CanvasGroup).width === 'number' &&
-        typeof (g as CanvasGroup).height === 'number',
-    ) as CanvasGroup[];
-  } catch {
-    return [];
-  }
-}
-
-function persistGroups(canvasId: string, groups: CanvasGroup[]): void {
-  try {
-    localStorage.setItem(getStorageKey(canvasId), JSON.stringify(groups));
-  } catch {
-    // localStorage may be full or unavailable
-  }
-}
+const EMPTY_GROUPS: CanvasGroup[] = [];
+const isCanvasGroups = (value: unknown): value is CanvasGroup[] =>
+  Array.isArray(value) &&
+  value.every(
+    (group) =>
+      typeof group === 'object' &&
+      group !== null &&
+      typeof (group as CanvasGroup).id === 'string' &&
+      typeof (group as CanvasGroup).title === 'string' &&
+      typeof (group as CanvasGroup).color === 'string' &&
+      typeof (group as CanvasGroup).x === 'number' &&
+      typeof (group as CanvasGroup).y === 'number' &&
+      typeof (group as CanvasGroup).width === 'number' &&
+      typeof (group as CanvasGroup).height === 'number',
+  );
 
 let nextGroupId = 1;
 
@@ -69,97 +43,72 @@ export interface UseCanvasGroupsReturn {
   expandGroup: (id: string) => void;
 }
 
-/**
- * Manages visual groups on the canvas.
- *
- * Group metadata (title, color, position, size) is persisted in localStorage per canvas.
- * The layout save system also stores position; posMap data takes precedence when available.
- */
+/** Server-backed visual groups with local caching for offline continuity. */
 export function useCanvasGroups(): UseCanvasGroupsReturn {
   const canvasId = useActiveCanvasId();
-  const [groups, setGroups] = useState<CanvasGroup[]>([]);
-
-  useEffect(() => {
-    if (!canvasId) {
-      setGroups([]);
-      return;
-    }
-    setGroups(loadGroups(canvasId));
-  }, [canvasId]);
+  const [groups, setGroups] = useCanvasArtifact({
+    canvasId,
+    type: 'theme-groups',
+    storageKeyPrefix: STORAGE_KEY_PREFIX,
+    fallback: EMPTY_GROUPS,
+    validate: isCanvasGroups,
+  });
 
   const addGroup = useCallback(
     (title: string, color: string, x: number, y: number, width: number, height: number): string => {
       if (!canvasId) return '';
       const id = `g-${Date.now()}-${nextGroupId++}`;
-      const newGroup: CanvasGroup = { id, title, color, x, y, width, height };
-      setGroups((prev) => {
-        const next = [...prev, newGroup];
-        persistGroups(canvasId, next);
-        return next;
-      });
+      setGroups((previous) => [...previous, { id, title, color, x, y, width, height }]);
       return id;
     },
-    [canvasId],
+    [canvasId, setGroups],
   );
 
   const removeGroup = useCallback(
     (id: string) => {
-      if (!canvasId) return;
-      setGroups((prev) => {
-        const next = prev.filter((g) => g.id !== id);
-        persistGroups(canvasId, next);
-        return next;
-      });
+      if (canvasId) setGroups((previous) => previous.filter((group) => group.id !== id));
     },
-    [canvasId],
+    [canvasId, setGroups],
   );
 
   const updateGroup = useCallback(
     (id: string, updates: Partial<Omit<CanvasGroup, 'id'>>) => {
-      if (!canvasId) return;
-      setGroups((prev) => {
-        const next = prev.map((g) => (g.id === id ? { ...g, ...updates } : g));
-        persistGroups(canvasId, next);
-        return next;
-      });
+      if (canvasId) {
+        setGroups((previous) => previous.map((group) => (group.id === id ? { ...group, ...updates } : group)));
+      }
     },
-    [canvasId],
+    [canvasId, setGroups],
   );
 
   const setGroupMembers = useCallback(
     (id: string, memberNodeIds: string[]) => {
-      if (!canvasId) return;
-      setGroups(prev => {
-        const next = prev.map(g => g.id === id ? { ...g, memberNodeIds } : g);
-        persistGroups(canvasId, next);
-        return next;
-      });
+      if (canvasId) {
+        setGroups((previous) => previous.map((group) => (group.id === id ? { ...group, memberNodeIds } : group)));
+      }
     },
-    [canvasId],
+    [canvasId, setGroups],
   );
 
   const collapseGroupAsTheme = useCallback(
     (id: string) => {
-      if (!canvasId) return;
-      setGroups(prev => {
-        const next = prev.map(g => g.id === id ? { ...g, collapsedAsTheme: true } : g);
-        persistGroups(canvasId, next);
-        return next;
-      });
+      if (canvasId) {
+        setGroups((previous) =>
+          previous.map((group) => (group.id === id ? { ...group, collapsedAsTheme: true } : group)),
+        );
+      }
     },
-    [canvasId],
+    [canvasId, setGroups],
   );
 
   const expandGroup = useCallback(
     (id: string) => {
-      if (!canvasId) return;
-      setGroups(prev => {
-        const next = prev.map(g => g.id === id ? { ...g, collapsedAsTheme: false } : g);
-        persistGroups(canvasId, next);
-        return next;
-      });
+      if (canvasId) {
+        setGroups((previous) =>
+          previous.map((group) => (group.id === id ? { ...group, collapsedAsTheme: false } : group)),
+        );
+      }
     },
-    [canvasId],
+    [canvasId, setGroups],
   );
 
   return { groups, addGroup, removeGroup, updateGroup, setGroupMembers, collapseGroupAsTheme, expandGroup };

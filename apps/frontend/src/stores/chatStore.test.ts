@@ -72,7 +72,9 @@ describe('chatStore', () => {
 
     it('sets loading=true during API call', async () => {
       let resolvePromise: (v: unknown) => void;
-      const pending = new Promise((resolve) => { resolvePromise = resolve; });
+      const pending = new Promise((resolve) => {
+        resolvePromise = resolve;
+      });
       mockChatQuery.mockReturnValue(pending as never);
 
       const promise = useChatStore.getState().sendMessage('c1', 'test');
@@ -81,8 +83,12 @@ describe('chatStore', () => {
       resolvePromise!({
         data: {
           data: {
-            id: 'a1', canvasId: 'c1', role: 'assistant', content: 'response',
-            citations: [], createdAt: new Date().toISOString(),
+            id: 'a1',
+            canvasId: 'c1',
+            role: 'assistant',
+            content: 'response',
+            citations: [],
+            createdAt: new Date().toISOString(),
           },
         },
       });
@@ -165,7 +171,9 @@ describe('chatStore', () => {
   describe('indexCanvas', () => {
     it('sets indexing=true during indexing and indexed=true on success', async () => {
       let resolvePromise: (v: unknown) => void;
-      const pending = new Promise((resolve) => { resolvePromise = resolve; });
+      const pending = new Promise((resolve) => {
+        resolvePromise = resolve;
+      });
       mockEmbedCanvasData.mockReturnValue(pending as never);
 
       const promise = useChatStore.getState().indexCanvas('c1');

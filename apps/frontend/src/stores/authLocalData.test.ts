@@ -4,11 +4,10 @@ import { useAuthStore } from './authStore';
 /**
  * Guards the distinction between a DELIBERATE logout and an INVOLUNTARY one.
  *
- * Per-canvas research data - reflexivity journals, code weights, sticky notes,
- * theme groups, node colours, bookmarks, edge waypoints - lives only in
- * localStorage. There is no server copy. Wiping it when a 24h JWT expires, or
- * when the 35-minute idle timer fires, destroys the user's work before they
- * have done anything.
+ * Browser caches, device-local preferences and pending offline writes must
+ * survive an involuntary logout. Some research artefacts have a server copy,
+ * but clearing the cache during session recovery still causes data loss for
+ * unsent work and device-only preferences.
  */
 
 const RESEARCH_KEYS = {

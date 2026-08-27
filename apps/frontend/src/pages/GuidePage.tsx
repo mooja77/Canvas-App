@@ -576,8 +576,8 @@ const SECTIONS: GuideSection[] = [
             <strong>Free:</strong> 2 canvases, 5 transcripts, 10 codes, and 4 analysis tools.
           </li>
           <li>
-            <strong>Student ($5/mo):</strong> Verified .edu. 5 canvases, all 13 analysis tools, auto-code, ethics +
-            cases, ~5 hrs transcription.
+            <strong>Student ($5/mo):</strong> Verified academic email. 5 canvases, all 13 analysis tools, auto-code,
+            ethics + cases, ~5 hrs transcription.
           </li>
           <li>
             <strong>Pro ($15/mo):</strong> Unlimited everything, all 13 analysis tools, AI features, ethics panel, 5
@@ -589,8 +589,8 @@ const SECTIONS: GuideSection[] = [
           </li>
         </ul>
         <ProTip>
-          Students get the dedicated Student plan at $5/mo with a verified .edu email; faculty and staff get 40% off Pro
-          and Team automatically at checkout. Annual billing saves ~20%.
+          Students get the dedicated Student plan at $5/mo with a verified academic email; faculty and staff get 40% off
+          Pro and Team automatically at checkout. Annual billing saves ~20%.
         </ProTip>
       </>
     ),

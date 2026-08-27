@@ -36,7 +36,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
   usePageMeta(
     'QualCanvas — Code interviews like you think. Visually.',
-    'A visual workspace for coding transcripts, finding themes, and writing memos you can defend in front of a committee. Free tier. 40% off .edu.',
+    'A visual workspace for coding transcripts, finding themes, and writing memos you can defend in front of a committee. Free tier. Verified academic pricing.',
   );
 
   useEffect(() => {
@@ -222,7 +222,7 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-12">
           <StatBlock number={13} label="Analysis tools" />
           <StatBlock number={50000} label="Words per transcript" />
-          <StatBlock number="40%" label="Discount on .edu" />
+          <StatBlock number="40%" label="Academic discount" />
         </div>
       </section>
 
@@ -297,7 +297,7 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { name: 'Free', price: '$0', bullet: '2 canvases · 10 codes · CSV export' },
-            { name: 'Student', price: '$5', bullet: 'Verified .edu · All 13 tools · Auto-code' },
+            { name: 'Student', price: '$5', bullet: 'Verified academic email · All 13 tools · Auto-code' },
             { name: 'Pro', price: '$15', bullet: 'Unlimited · All 13 tools · Auto-code · Ethics' },
             { name: 'Team', price: '$39', bullet: 'Everything in Pro · Intercoder κ · Per-seat' },
           ].map((tier) => (
@@ -322,8 +322,8 @@ export default function LandingPage() {
           ))}
         </div>
         <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-8">
-          <span className="font-medium">40% off Pro and Team with a .edu email.</span> Applied automatically at
-          checkout.
+          <span className="font-medium">40% off Pro and Team with a verified academic email.</span> Applied
+          automatically at checkout.
         </p>
         <p className="text-center mt-2">
           <Link
@@ -416,7 +416,7 @@ export default function LandingPage() {
       {/* ─── 10. CTA stripe ─── */}
       <CTAStripe
         headline="Start coding. Free."
-        sub="No credit card. .edu discount automatic. Cancel any time."
+        sub="No credit card. Academic discount automatic. Cancel any time."
         primary={
           <button
             onClick={handleStartFree}

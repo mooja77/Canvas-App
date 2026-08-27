@@ -18,7 +18,7 @@ interface TranscriptionStatusPanelProps {
 
 export default function TranscriptionStatusPanel({ jobId, onClose }: TranscriptionStatusPanelProps) {
   const activeCanvasId = useActiveCanvasId();
-  const refreshCanvas = useCanvasStore(s => s.refreshCanvas);
+  const refreshCanvas = useCanvasStore((s) => s.refreshCanvas);
   const [job, setJob] = useState<TranscriptionJob | null>(null);
   const [accepting, setAccepting] = useState(false);
 
@@ -67,8 +67,18 @@ export default function TranscriptionStatusPanel({ jobId, onClose }: Transcripti
     <div className="absolute top-4 right-4 z-50 w-72 rounded-xl border border-blue-200 bg-white shadow-xl dark:border-blue-800 dark:bg-gray-900">
       <div className="flex items-center justify-between border-b border-blue-100 px-3 py-2 dark:border-blue-800">
         <div className="flex items-center gap-2">
-          <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+          <svg
+            className="h-4 w-4 text-blue-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"
+            />
           </svg>
           <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Transcription</span>
         </div>
@@ -83,9 +93,7 @@ export default function TranscriptionStatusPanel({ jobId, onClose }: Transcripti
         {(!job || job.status === 'queued' || job.status === 'processing') && (
           <div className="flex flex-col items-center gap-2 py-3">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-200 border-t-blue-500" />
-            <p className="text-xs text-gray-500">
-              {job?.status === 'processing' ? 'Transcribing...' : 'Queued...'}
-            </p>
+            <p className="text-xs text-gray-500">{job?.status === 'processing' ? 'Transcribing...' : 'Queued...'}</p>
             <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-700">
               <div
                 className="h-1.5 rounded-full bg-blue-500 transition-all"
@@ -98,7 +106,8 @@ export default function TranscriptionStatusPanel({ jobId, onClose }: Transcripti
         {job?.status === 'completed' && (
           <>
             <div className="mb-2 max-h-32 overflow-y-auto rounded-lg bg-gray-50 p-2 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-              {job.resultText?.slice(0, 500)}{(job.resultText?.length || 0) > 500 ? '...' : ''}
+              {job.resultText?.slice(0, 500)}
+              {(job.resultText?.length || 0) > 500 ? '...' : ''}
             </div>
             <button
               onClick={handleAccept}

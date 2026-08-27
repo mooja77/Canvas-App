@@ -15,7 +15,7 @@ function getKey(): Buffer {
   if (!hex || hex.length !== 64) {
     throw new Error(
       'ENCRYPTION_KEY must be a 64-character hex string (32 bytes). ' +
-      'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"',
+        "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
     );
   }
   return Buffer.from(hex, 'hex');

@@ -8,15 +8,17 @@ import '../lib/llm-anthropic.js';
 import '../lib/llm-google.js';
 import { validate, updateAiSettingsSchema } from '../middleware/validation.js';
 import { sensitiveValidationLimiter } from '../middleware/rateLimiters.js';
+import { isHostedAiEnabled } from '../utils/hostedAiBudget.js';
 
 export const aiSettingsRoutes = Router();
 
 // ─── GET /ai-settings — Get user's AI config (never returns the actual key) ───
 aiSettingsRoutes.get('/ai-settings', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const hostedAiAvailable = isHostedAiEnabled();
     if (!req.userId) {
       // Legacy access-code auth has no userId — return graceful "not configured"
-      return res.json({ success: true, data: { hasApiKey: false } });
+      return res.json({ success: true, data: { hasApiKey: false, hostedAiAvailable: false } });
     }
 
     const config = await prisma.userAiConfig.findUnique({
@@ -29,7 +31,7 @@ aiSettingsRoutes.get('/ai-settings', async (req: Request, res: Response, next: N
     });
 
     if (!config) {
-      return res.json({ success: true, data: { hasApiKey: false } });
+      return res.json({ success: true, data: { hasApiKey: false, hostedAiAvailable } });
     }
 
     res.json({
@@ -39,6 +41,7 @@ aiSettingsRoutes.get('/ai-settings', async (req: Request, res: Response, next: N
         model: config.model,
         embeddingModel: config.embeddingModel,
         hasApiKey: true,
+        hostedAiAvailable,
       },
     });
   } catch (err) {

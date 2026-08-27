@@ -60,11 +60,12 @@ export async function transcribeAudio(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const verboseResponse = response as any;
-  const segments: TranscriptionSegment[] = verboseResponse.segments?.map((seg: { start: number; end: number; text: string }) => ({
-    start: seg.start,
-    end: seg.end,
-    text: seg.text.trim(),
-  })) || [];
+  const segments: TranscriptionSegment[] =
+    verboseResponse.segments?.map((seg: { start: number; end: number; text: string }) => ({
+      start: seg.start,
+      end: seg.end,
+      text: seg.text.trim(),
+    })) || [];
 
   const duration = verboseResponse.duration || segments[segments.length - 1]?.end || 0;
 

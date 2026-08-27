@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { isAcademicEmail } from '@qualcanvas/shared';
 import { billingApi } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 import PageShell from '../components/marketing/PageShell';
@@ -42,7 +43,7 @@ const RESEARCH_DESK_CALENDLY = 'mailto:research@qualcanvas.com?subject=Instituti
  *   - Pro→Team / Team→Pro / Pro→Free downgrade warning modal
  *
  * Replaces the visual chrome (Tier 2), adds a 4th "Institutions" card,
- * adds an .edu discount strip, replaces the binary checkmark table with a
+ * adds an academic discount strip, replaces the binary checkmark table with a
  * categorical ComparisonTable, and surfaces a sourced CompetitorRow strip
  * versus NVivo / ATLAS.ti / Dedoose. The "Most Popular" badge is gone —
  * confidence sells in 2026 (Linear's pricing page makes the same move).
@@ -62,7 +63,7 @@ export default function PricingPage() {
   const { authenticated, plan, authType, email } = useAuthStore();
   usePageMeta(
     'Pricing — QualCanvas',
-    'Free, Student ($5/mo, .edu), Pro ($15/mo), Team ($39/seat/mo), and Institutions plans. 40% off .edu on Pro/Team. Compare against NVivo, ATLAS.ti, Dedoose.',
+    'Free, Student ($5/mo with a verified academic email), Pro ($15/mo), Team ($39/seat/mo), and Institutions plans. 40% academic discount on Pro/Team. Compare against NVivo, ATLAS.ti, Dedoose.',
   );
 
   useEffect(() => {
@@ -111,11 +112,11 @@ export default function PricingPage() {
     }
   };
 
-  // Student is the verified-academic tier ($5/mo). The CTA gates on a .edu
-  // email: unauthenticated visitors are sent to register (where they'll sign
-  // up with their .edu address); authenticated non-.edu users are told it's
+  // Student is the verified-academic tier ($5/mo). The CTA gates on a
+  // recognised institution email: unauthenticated visitors are sent to
+  // register; authenticated users without one are told it's
   // academic-only rather than silently allowed to check out at the student
-  // price. The backend separately refuses to stack the 40% .edu coupon on the
+  // price. The backend separately refuses to stack the 40% academic coupon on the
   // student price (already-academic pricing).
   const handleStudentSelect = () => {
     if (!authenticated) {
@@ -129,8 +130,8 @@ export default function PricingPage() {
       navigate('/account');
       return;
     }
-    if (!(email || '').toLowerCase().endsWith('.edu')) {
-      toast.error('The Student plan requires a verified .edu email address.');
+    if (!isAcademicEmail(email || '')) {
+      toast.error('The Student plan requires a verified academic email address.');
       return;
     }
     handleUpgrade('student');
@@ -240,7 +241,7 @@ export default function PricingPage() {
             name="Student"
             price={period === 'annual' ? '$4' : '$5'}
             pricePeriod={period === 'annual' ? 'per month, billed annually ($48/yr)' : '$5 / month'}
-            audience="Verified .edu — for students"
+            audience="Verified academic email — for students"
             features={[
               '5 canvases',
               'AI auto-code',
@@ -249,7 +250,7 @@ export default function PricingPage() {
               '~5 hrs transcription / mo',
             ]}
             isCurrent={plan === 'student'}
-            footnote="Requires a verified .edu email."
+            footnote="Requires a verified academic email."
             cta={
               plan === 'student' ? (
                 currentPlanCta
@@ -360,12 +361,14 @@ export default function PricingPage() {
           />
         </div>
 
-        {/* .edu discount strip */}
+        {/* Academic discount strip */}
         <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
           <span className="font-medium text-gray-900 dark:text-white">Students: $5/mo on the Student plan.</span>{' '}
           Faculty and staff get{' '}
-          <span className="font-medium text-gray-900 dark:text-white">40% off Pro and Team with a .edu email</span>,
-          applied automatically at checkout.
+          <span className="font-medium text-gray-900 dark:text-white">
+            40% off Pro and Team with a verified academic email
+          </span>
+          , applied automatically at checkout.
         </div>
       </div>
 
@@ -459,7 +462,7 @@ export default function PricingPage() {
                   feature: 'Email response',
                   values: ['Best effort', 'Best effort', '48h', '24h priority', 'Dedicated'],
                 },
-                { feature: '.edu pricing', values: ['—', 'Built in', '40% off', '40% off', 'Custom'] },
+                { feature: 'Academic pricing', values: ['—', 'Built in', '40% off', '40% off', 'Custom'] },
               ],
             },
           ]}
@@ -470,7 +473,7 @@ export default function PricingPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
         <CompetitorRow
           eyebrow="How we compare"
-          qualcanvas={{ pricing: '$5–15/mo · published', note: 'On this page. $5 students, 40% off .edu.' }}
+          qualcanvas={{ pricing: '$5–15/mo · published', note: 'On this page. $5 students, 40% academic discount.' }}
           competitors={[
             { name: 'NVivo', pricing: '~$1,200/yr · gated', href: 'https://shop.lumivero.com', vsSlug: 'nvivo' },
             {
@@ -535,7 +538,7 @@ export default function PricingPage() {
             {
               question: 'How does the academic discount work?',
               answer:
-                'Students get the dedicated Student plan at $5/mo — sign up with a verified .edu email. Faculty and staff on Pro or Team get 40% off automatically at checkout via a Stripe coupon when they use a .edu email. No paperwork either way.',
+                'Students get the dedicated Student plan at $5/mo with a verified institution email. Faculty and staff on Pro or Team get 40% off automatically at checkout with a recognised academic email. Eligibility is based on the verified institution address; contact support if your institution uses an unrecognised domain.',
             },
             {
               question: 'What happens to my data if I downgrade?',
@@ -562,7 +565,7 @@ export default function PricingPage() {
       {/* ─── CTA stripe ─── */}
       <CTAStripe
         headline="Start coding. Free."
-        sub="No credit card. .edu discount automatic. Cancel any time."
+        sub="No credit card. Academic discount automatic. Cancel any time."
         primary={
           <button
             onClick={handleFreeSelect}

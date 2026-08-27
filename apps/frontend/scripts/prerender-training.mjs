@@ -67,19 +67,13 @@ const jsonLd = JSON.stringify({
 let html = readFileSync(resolve(dist, 'index.html'), 'utf8');
 html = html
   .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
-  .replace(/<meta name="description" content="[^"]*"\s*\/>/, `<meta name="description" content="${description}" />`)
-  .replace(/<link rel="canonical" href="[^"]*"\s*\/>/, `<link rel="canonical" href="${canonical}" />`)
-  .replace(/<meta property="og:url" content="[^"]*"\s*\/>/, `<meta property="og:url" content="${canonical}" />`)
-  .replace(/<meta property="og:title" content="[^"]*"\s*\/>/, `<meta property="og:title" content="${title}" />`)
-  .replace(
-    /<meta property="og:description" content="[^"]*"\s*\/>/,
-    `<meta property="og:description" content="${description}" />`,
-  )
-  .replace(/<meta name="twitter:title" content="[^"]*"\s*\/>/, `<meta name="twitter:title" content="${title}" />`)
-  .replace(
-    /<meta name="twitter:description" content="[^"]*"\s*\/>/,
-    `<meta name="twitter:description" content="${description}" />`,
-  )
+  .replace(/<meta\s+name="description"[^>]*>/, `<meta name="description" content="${description}" />`)
+  .replace(/<link\s+rel="canonical"[^>]*>/, `<link rel="canonical" href="${canonical}" />`)
+  .replace(/<meta\s+property="og:url"[^>]*>/, `<meta property="og:url" content="${canonical}" />`)
+  .replace(/<meta\s+property="og:title"[^>]*>/, `<meta property="og:title" content="${title}" />`)
+  .replace(/<meta\s+property="og:description"[^>]*>/, `<meta property="og:description" content="${description}" />`)
+  .replace(/<meta\s+name="twitter:title"[^>]*>/, `<meta name="twitter:title" content="${title}" />`)
+  .replace(/<meta\s+name="twitter:description"[^>]*>/, `<meta name="twitter:description" content="${description}" />`)
   .replace('</head>', `<script type="application/ld+json">${jsonLd}</script></head>`)
   .replace(/<main id="marketing-root">[\s\S]*?<\/main>/, body);
 

@@ -177,7 +177,7 @@ export default function ForTeamsPage() {
             {
               question: 'Can students on a methods course use Team?',
               answer:
-                'Yes. The .edu discount applies to eligible Team subscriptions. The per-seat structure supports methods courses, but instructors should confirm their participant count and data-governance requirements before purchase.',
+                'Yes. The verified-academic-email discount applies to eligible Team subscriptions. The per-seat structure supports methods courses, but instructors should confirm their participant count and data-governance requirements before purchase.',
             },
             {
               question: 'How is intercoder κ calculated?',

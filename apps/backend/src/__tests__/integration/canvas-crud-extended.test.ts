@@ -61,6 +61,10 @@ const { mockPrisma } = vi.hoisted(() => {
     canvasNodePosition: {
       upsert: vi.fn(),
     },
+    canvasArtifact: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+    },
     canvasCase: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
@@ -315,6 +319,65 @@ describe('Canvas CRUD extended tests', () => {
 
     expect(res.status).toBe(409);
     expect(res.body.error).toMatch(/already exists/i);
+  });
+
+  // ─── Server-backed canvas artefacts ───
+
+  it('GET /canvas/:canvasId/artifacts/:type returns a validated saved value', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasArtifact.findUnique.mockResolvedValue({
+      id: 'artifact-1',
+      canvasId,
+      type: 'sticky-notes',
+      data: JSON.stringify([
+        { id: 'sticky-1', text: 'A hunch', color: '#FEF3C7', x: 10, y: 20, width: 180, height: 140 },
+      ]),
+      updatedAt: new Date('2026-08-27T10:00:00.000Z'),
+    });
+
+    const res = await request(app)
+      .get(`/api/canvas/${canvasId}/artifacts/sticky-notes`)
+      .set('Authorization', `Bearer ${jwt}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.exists).toBe(true);
+    expect(res.body.data.value[0].text).toBe('A hunch');
+  });
+
+  it('PUT /canvas/:canvasId/artifacts/:type upserts valid code weights', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasArtifact.upsert.mockResolvedValue({
+      id: 'artifact-2',
+      canvasId,
+      type: 'code-weights',
+      data: '{"coding-1":5}',
+      updatedAt: new Date(),
+    });
+
+    const res = await request(app)
+      .put(`/api/canvas/${canvasId}/artifacts/code-weights`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ value: { 'coding-1': 5 } });
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.canvasArtifact.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { canvasId_type: { canvasId, type: 'code-weights' } },
+        update: { data: '{"coding-1":5}' },
+      }),
+    );
+  });
+
+  it('PUT /canvas/:canvasId/artifacts/:type rejects malformed or out-of-range values', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+
+    const res = await request(app)
+      .put(`/api/canvas/${canvasId}/artifacts/code-weights`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ value: { 'coding-1': 99 } });
+
+    expect(res.status).toBe(400);
+    expect(mockPrisma.canvasArtifact.upsert).not.toHaveBeenCalled();
   });
 
   // ─── Canvas Layout (PUT /canvas/:id/layout) ───

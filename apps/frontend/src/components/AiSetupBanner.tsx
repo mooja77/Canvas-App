@@ -14,7 +14,7 @@ export default function AiSetupBanner() {
   const authType = useAuthStore((s) => s.authType);
   const seen = useUIStore((s) => s.featureDiscovery.aiPromptSeen);
   const markSeen = useUIStore((s) => s.markFeatureSeen);
-  const { configured, loaded, fetchConfig } = useAiConfigStore();
+  const { configured, hostedAiAvailable, loaded, fetchConfig } = useAiConfigStore();
   const [dismissed, setDismissed] = useState(false);
 
   // Derived from the shared plan-limits mirror rather than a hand-listed set of
@@ -35,7 +35,8 @@ export default function AiSetupBanner() {
   // until they link an email — the Account page's AI Settings section is
   // email-auth only. Showing them the "add a key" CTA would dead-end on /account,
   // so gate the banner on email auth.
-  const eligible = authType === 'email' && aiEntitled && loaded && !configured && !seen && !dismissed;
+  const eligible =
+    authType === 'email' && aiEntitled && loaded && !configured && !hostedAiAvailable && !seen && !dismissed;
   if (!eligible) return null;
 
   const handleDismiss = () => {

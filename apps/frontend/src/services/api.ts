@@ -238,6 +238,12 @@ export const canvasApi = {
   // ─── Layout ───
   saveLayout: (canvasId: string, data: SaveLayoutInput) => canvasClient.put(`/canvas/${canvasId}/layout`, data),
 
+  getArtifact: (canvasId: string, type: 'sticky-notes' | 'theme-groups' | 'code-weights') =>
+    canvasClient.get(`/canvas/${canvasId}/artifacts/${type}`),
+
+  saveArtifact: <T>(canvasId: string, type: 'sticky-notes' | 'theme-groups' | 'code-weights', value: T) =>
+    canvasClient.put(`/canvas/${canvasId}/artifacts/${type}`, { value }),
+
   // ─── Cases ───
   createCase: (canvasId: string, data: CreateCaseInput) => canvasClient.post(`/canvas/${canvasId}/cases`, data),
 

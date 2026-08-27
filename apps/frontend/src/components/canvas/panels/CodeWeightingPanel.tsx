@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   useActiveCanvas,
   useActiveCanvasId,
@@ -9,24 +9,20 @@ import {
 import type { CanvasQuestion } from '@qualcanvas/shared';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
+import { useCanvasArtifact } from '../../../hooks/useCanvasArtifact';
 
 interface CodeWeightingPanelProps {
   onClose: () => void;
 }
 
-// Store weights in localStorage per canvas
-function getWeights(canvasId: string): Record<string, number> {
-  try {
-    const raw = localStorage.getItem(`canvas-weights-${canvasId}`);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveWeights(canvasId: string, weights: Record<string, number>) {
-  localStorage.setItem(`canvas-weights-${canvasId}`, JSON.stringify(weights));
-}
+const EMPTY_WEIGHTS: Record<string, number> = {};
+const isCodeWeights = (value: unknown): value is Record<string, number> =>
+  typeof value === 'object' &&
+  value !== null &&
+  !Array.isArray(value) &&
+  Object.values(value).every(
+    (weight) => typeof weight === 'number' && Number.isInteger(weight) && weight >= 1 && weight <= 5,
+  );
 
 function StarRating({
   value,
@@ -82,16 +78,15 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
   const questions = useCanvasQuestions();
   const codings = useCanvasCodings();
   const transcripts = useCanvasTranscripts();
-  const [weights, setWeightsState] = useState<Record<string, number>>({});
+  const [weights, setWeightsState] = useCanvasArtifact({
+    canvasId: activeCanvasId,
+    type: 'code-weights',
+    storageKeyPrefix: 'canvas-weights-',
+    fallback: EMPTY_WEIGHTS,
+    validate: isCodeWeights,
+  });
   const [filterCode, setFilterCode] = useState('');
   const [sortBy, setSortBy] = useState<'source' | 'code' | 'weight'>('source');
-
-  // Load weights from localStorage
-  useEffect(() => {
-    if (activeCanvasId) {
-      setWeightsState(getWeights(activeCanvasId));
-    }
-  }, [activeCanvasId]);
 
   const setWeight = useCallback(
     (codingId: string, weight: number) => {
@@ -100,11 +95,10 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
         const next = { ...prev };
         if (weight === 0) delete next[codingId];
         else next[codingId] = weight;
-        saveWeights(activeCanvasId, next);
         return next;
       });
     },
-    [activeCanvasId],
+    [activeCanvasId, setWeightsState],
   );
 
   // Build enriched codings list
