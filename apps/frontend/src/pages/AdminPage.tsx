@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { adminApi } from '../services/api';
+import ActivationTab from '../components/admin/ActivationTab';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 // ─── Types ───
@@ -109,10 +110,11 @@ interface PilotFeedbackData {
   limit: number;
 }
 
-type TabId = 'dashboard' | 'users' | 'billing' | 'health' | 'activity' | 'features' | 'pilot' | 'emails';
+type TabId = 'dashboard' | 'activation' | 'users' | 'billing' | 'health' | 'activity' | 'features' | 'pilot' | 'emails';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
+  { id: 'activation', label: 'Activation' },
   { id: 'users', label: 'Users' },
   { id: 'billing', label: 'Billing' },
   { id: 'health', label: 'Health' },
@@ -1310,6 +1312,7 @@ export default function AdminPage() {
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {activeTab === 'dashboard' && <DashboardTab adminKey={adminKey} />}
+        {activeTab === 'activation' && <ActivationTab adminKey={adminKey} />}
         {activeTab === 'users' && <UsersTab adminKey={adminKey} />}
         {activeTab === 'billing' && <BillingTab adminKey={adminKey} />}
         {activeTab === 'health' && <HealthTab adminKey={adminKey} />}

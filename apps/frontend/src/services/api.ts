@@ -723,6 +723,9 @@ function adminHeaders(adminKey: string) {
 export const adminApi = {
   getDashboard: (adminKey: string) => canvasClient.get('/admin/dashboard', adminHeaders(adminKey)),
 
+  getUsage: (adminKey: string, params?: { period?: string }) =>
+    canvasClient.get('/admin/usage', { ...adminHeaders(adminKey), params }),
+
   getUsers: (
     adminKey: string,
     params?: { page?: number; perPage?: number; search?: string; sortField?: string; sortDir?: string },

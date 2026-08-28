@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { timingSafeEqual } from 'crypto';
 import rateLimit from 'express-rate-limit';
+import { buildActivationFunnel } from '../lib/activationFunnel.js';
 import { prisma } from '../lib/prisma.js';
 import { createEmailCampaign, getEmailStats, listEmailCampaigns, sendCampaign } from '../lib/lifecycleEmail.js';
 
@@ -703,9 +704,10 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
     const daysMatch = periodParam.match(/^(\d+)d$/);
     const days = daysMatch ? Math.min(365, Math.max(1, parseInt(daysMatch[1]))) : 30;
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const cohortWhere = { ...realUsersWhere, createdAt: { gte: since } };
 
     const [
-      newUsers,
+      cohortUsers,
       activeCanvasUsers,
       totalCanvasesCreated,
       totalTranscriptsCreated,
@@ -714,26 +716,36 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
       computedByType,
       aiByFeature,
       actionsByDay,
-      signupsByDay,
+      canvasMilestones,
+      transcriptMilestones,
+      codingMilestones,
       aiCostTotal,
       topUsers,
     ] = await Promise.all([
-      // New signups in period
-      prisma.user.count({ where: { ...realUsersWhere, createdAt: { gte: since } } }),
+      // Real-user signup cohort for this reporting window.
+      prisma.user.findMany({
+        where: cohortWhere,
+        select: { id: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
       // Active users (canvas updated in period)
       prisma.codingCanvas.findMany({
-        where: { updatedAt: { gte: since }, userId: { not: null } },
+        where: { updatedAt: { gte: since }, user: { is: realUsersWhere } },
         select: { userId: true },
         distinct: ['userId'],
       }),
-      // Canvases created in period
-      prisma.codingCanvas.count({ where: { createdAt: { gte: since } } }),
-      // Transcripts created in period
-      prisma.canvasTranscript.count({ where: { createdAt: { gte: since } } }),
-      // Codings created in period
-      prisma.canvasTextCoding.count({ where: { createdAt: { gte: since } } }),
-      // Computed node runs in period
-      prisma.canvasComputedNode.count({ where: { updatedAt: { gte: since } } }),
+      // Real-user content created in period. Demo, smoke and internal accounts
+      // must not inflate the growth dashboard.
+      prisma.codingCanvas.count({ where: { createdAt: { gte: since }, user: { is: realUsersWhere } } }),
+      prisma.canvasTranscript.count({
+        where: { createdAt: { gte: since }, canvas: { user: { is: realUsersWhere } } },
+      }),
+      prisma.canvasTextCoding.count({
+        where: { createdAt: { gte: since }, canvas: { user: { is: realUsersWhere } } },
+      }),
+      prisma.canvasComputedNode.count({
+        where: { updatedAt: { gte: since }, canvas: { user: { is: realUsersWhere } } },
+      }),
       // Computed nodes by type in period
       prisma.canvasComputedNode.groupBy({
         by: ['nodeType'],
@@ -753,11 +765,19 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
         where: { timestamp: { gte: since } },
         _count: { id: true },
       }),
-      // Daily signups — get raw data, aggregate in JS
-      prisma.user.findMany({
-        where: { ...realUsersWhere, createdAt: { gte: since } },
-        select: { createdAt: true },
-        orderBy: { createdAt: 'asc' },
+      // First-use milestones for the same signup cohort. The pure aggregator
+      // below deduplicates each user and selects their earliest timestamp.
+      prisma.codingCanvas.findMany({
+        where: { user: { is: cohortWhere } },
+        select: { userId: true, createdAt: true },
+      }),
+      prisma.canvasTranscript.findMany({
+        where: { canvas: { user: { is: cohortWhere } } },
+        select: { createdAt: true, canvas: { select: { userId: true } } },
+      }),
+      prisma.canvasTextCoding.findMany({
+        where: { canvas: { user: { is: cohortWhere } } },
+        select: { createdAt: true, canvas: { select: { userId: true } } },
       }),
       // Total AI cost in period
       prisma.aiUsage.aggregate({
@@ -774,16 +794,16 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
       }),
     ]);
 
-    // Filter active users to exclude test accounts
-    const activeIds = activeCanvasUsers.map((c) => c.userId).filter((id): id is string => Boolean(id));
-    const activeEmails = activeIds.length
-      ? await prisma.user.findMany({ where: { id: { in: activeIds } }, select: { email: true } })
-      : [];
-    const activeUsers = activeEmails.filter((u) => !isTestEmail(u.email)).length;
+    const activeUsers = activeCanvasUsers.length;
+    const activation = buildActivationFunnel(cohortUsers, {
+      canvas: canvasMilestones,
+      transcript: transcriptMilestones.map((row) => ({ userId: row.canvas.userId, createdAt: row.createdAt })),
+      coding: codingMilestones.map((row) => ({ userId: row.canvas.userId, createdAt: row.createdAt })),
+    });
 
     // Build daily signup trend
     const signupTrend: Record<string, number> = {};
-    for (const u of signupsByDay) {
+    for (const u of cohortUsers) {
       const day = u.createdAt.toISOString().slice(0, 10);
       signupTrend[day] = (signupTrend[day] || 0) + 1;
     }
@@ -806,10 +826,11 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
         period: `${days}d`,
         since: since.toISOString(),
         users: {
-          newSignups: newUsers,
+          newSignups: cohortUsers.length,
           activeUsers,
           signupTrend,
         },
+        activation,
         content: {
           canvasesCreated: totalCanvasesCreated,
           transcriptsCreated: totalTranscriptsCreated,

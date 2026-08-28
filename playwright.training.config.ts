@@ -1,11 +1,15 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  // Public-route checks do not need the authenticated E2E database. Keep the
-  // training and consent boundaries runnable against the production preview
+  // Public-route and mocked-admin checks do not need the authenticated E2E
+  // database. Keep these boundaries runnable against the production preview
   // even when Docker/Postgres is unavailable on a review machine.
   testDir: '.',
-  testMatch: [/e2e-public[\\/]training\.spec\.ts$/, /e2e[\\/]cookie-consent\.spec\.ts$/],
+  testMatch: [
+    /e2e-public[\\/]training\.spec\.ts$/,
+    /e2e-public[\\/]admin-activation\.spec\.ts$/,
+    /e2e[\\/]cookie-consent\.spec\.ts$/,
+  ],
   fullyParallel: false,
   workers: 1,
   retries: 0,
