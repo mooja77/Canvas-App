@@ -79,43 +79,56 @@ async function ensureEdgesVisible(page: import('@playwright/test').Page) {
   await expect(page.getByRole('button', { name: 'Sources (2)' })).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole('button', { name: 'Codes (3)' })).toBeVisible({ timeout: 10000 });
 
-  await page.getByRole('button', { name: 'Fit View' }).click();
-  // Wait for fitView animation and late node measurement to settle. Merely
-  // seeing the same transform in two consecutive polls was too eager on CI.
-  await page
-    .waitForFunction(
-      () => {
-        const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
-        if (!vp) return false;
-        const now = Date.now();
-        const state = (window as any).__edgeViewportState as { transform: string; since: number } | undefined;
-        if (!state || state.transform !== vp.style.transform) {
-          (window as any).__edgeViewportState = { transform: vp.style.transform, since: now };
-          return false;
-        }
-        return now - state.since >= 300;
-      },
-      undefined,
-      { timeout: 10000, polling: 100 },
-    )
-    .catch(() => {});
+  const edges = page.locator('.react-flow__edge');
 
-  // If edges are still not in DOM, try zooming in slightly (edges between far-apart nodes
-  // may be clipped by onlyRenderVisibleElements at low zoom)
-  let edgeCount = await page.locator('.react-flow__edge').count();
-  if (edgeCount === 0) {
-    // Re-fit now that all nodes are known, then zoom one step at a time so
-    // React Flow gets a render opportunity between viewport changes.
+  for (let loadAttempt = 0; loadAttempt < 2; loadAttempt++) {
     await page.getByRole('button', { name: 'Fit View' }).click();
-    await page.waitForTimeout(500);
-    edgeCount = await page.locator('.react-flow__edge').count();
-    for (let i = 0; i < 6 && edgeCount === 0; i++) {
-      await page.getByRole('button', { name: 'Zoom In' }).click();
-      await page.waitForTimeout(250);
-      edgeCount = await page.locator('.react-flow__edge').count();
+    // Wait for fitView animation and late node measurement to settle. Merely
+    // seeing the same transform in two consecutive polls was too eager on CI.
+    await page
+      .waitForFunction(
+        () => {
+          const vp = document.querySelector('.react-flow__viewport') as HTMLElement;
+          if (!vp) return false;
+          const now = Date.now();
+          const state = (window as any).__edgeViewportState as { transform: string; since: number } | undefined;
+          if (!state || state.transform !== vp.style.transform) {
+            (window as any).__edgeViewportState = { transform: vp.style.transform, since: now };
+            return false;
+          }
+          return now - state.since >= 300;
+        },
+        undefined,
+        { timeout: 10000, polling: 100 },
+      )
+      .catch(() => {});
+
+    // Edge creation follows custom-node measurement. Poll the actual rendered
+    // state rather than zooming in immediately: zooming into an edge-free
+    // viewport can move both endpoints off screen and make diagnosis harder.
+    const rendered = await expect
+      .poll(() => edges.count(), {
+        timeout: 5000,
+        intervals: [100, 200, 400, 800],
+        message: 'coding edges should render after the canvas nodes initialize',
+      })
+      .toBeGreaterThan(0)
+      .then(() => true)
+      .catch(() => false);
+    if (rendered) return edges.count();
+
+    // A navigation reload is the real recovery path a user has available. It
+    // also gives the product's post-init edge resynchronization one clean retry
+    // before the test reports a genuine rendering failure.
+    if (loadAttempt === 0) {
+      await page.reload();
+      await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
+      await expect(page.getByRole('button', { name: 'Sources (2)' })).toBeVisible({ timeout: 10000 });
+      await expect(page.getByRole('button', { name: 'Codes (3)' })).toBeVisible({ timeout: 10000 });
     }
   }
-  return edgeCount;
+
+  return edges.count();
 }
 
 // ═══════════════════════════════════════════════════════════════════

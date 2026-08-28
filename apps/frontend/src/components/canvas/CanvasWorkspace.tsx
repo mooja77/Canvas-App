@@ -525,6 +525,13 @@ export default function CanvasWorkspace() {
   // ReactFlow doesn't see prop identity flip every render (which causes it
   // to re-register internal listeners).
   const [minimapReady, setMinimapReady] = useState(false);
+  // The canvas data can finish loading before React Flow has initialized its
+  // viewport and measured the custom nodes. Keep the post-initialization edge
+  // sync behind a ref so onInit stays stable while still using the latest
+  // canvas payload. Without this recovery, a rare mount-order race could show
+  // every node and coding count but no connecting edges until a page reload.
+  const syncEdgesAfterInitRef = useRef<() => void>(() => {});
+  const flowReadyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleRfInit = useCallback(
     (instance: ReactFlowInstance) => {
       rfInstanceRef.current = instance;
@@ -532,9 +539,20 @@ export default function CanvasWorkspace() {
       // Defer minimap reveal until after RF has populated its internal
       // viewport state. Without this the minimap paints blank for a few
       // frames (live QA finding #4 — perceived flicker).
-      setTimeout(() => setMinimapReady(true), 120);
+      if (flowReadyTimeoutRef.current) clearTimeout(flowReadyTimeoutRef.current);
+      flowReadyTimeoutRef.current = setTimeout(() => {
+        setMinimapReady(true);
+        syncEdgesAfterInitRef.current();
+      }, 120);
     },
     [scheduleViewportSync],
+  );
+
+  useEffect(
+    () => () => {
+      if (flowReadyTimeoutRef.current) clearTimeout(flowReadyTimeoutRef.current);
+    },
+    [],
   );
   const handleRfMove = useCallback(
     (_event: unknown, viewport: { x: number; y: number; zoom: number }) => {
@@ -998,6 +1016,19 @@ export default function CanvasWorkspace() {
 
     return [...codingEdges, ...relationEdges];
   }, [activeCanvasId, acQuestions, acCodings, acRelations]);
+
+  useEffect(() => {
+    syncEdgesAfterInitRef.current = () => {
+      // Always provide a fresh array. React Flow resolves custom edge
+      // endpoints from its newly measured internal nodes, so replaying the
+      // controlled edge set after initialization closes the mount-order race.
+      setEdges(buildEdges());
+    };
+
+    return () => {
+      syncEdgesAfterInitRef.current = () => {};
+    };
+  }, [buildEdges, setEdges]);
 
   // Search-dim + muted decoration applied as a cheap derived layer over the
   // structural `nodes`. This is what we hand to React Flow. Keeping it separate
