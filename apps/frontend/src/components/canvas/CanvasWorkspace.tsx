@@ -525,12 +525,6 @@ export default function CanvasWorkspace() {
   // ReactFlow doesn't see prop identity flip every render (which causes it
   // to re-register internal listeners).
   const [minimapReady, setMinimapReady] = useState(false);
-  // The canvas data can finish loading before React Flow has initialized its
-  // viewport and measured the custom nodes. Keep the post-initialization edge
-  // sync behind a ref so onInit stays stable while still using the latest
-  // canvas payload. Without this recovery, a rare mount-order race could show
-  // every node and coding count but no connecting edges until a page reload.
-  const syncEdgesAfterInitRef = useRef<() => void>(() => {});
   const flowReadyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleRfInit = useCallback(
     (instance: ReactFlowInstance) => {
@@ -542,7 +536,6 @@ export default function CanvasWorkspace() {
       if (flowReadyTimeoutRef.current) clearTimeout(flowReadyTimeoutRef.current);
       flowReadyTimeoutRef.current = setTimeout(() => {
         setMinimapReady(true);
-        syncEdgesAfterInitRef.current();
       }, 120);
     },
     [scheduleViewportSync],
@@ -1017,19 +1010,6 @@ export default function CanvasWorkspace() {
     return [...codingEdges, ...relationEdges];
   }, [activeCanvasId, acQuestions, acCodings, acRelations]);
 
-  useEffect(() => {
-    syncEdgesAfterInitRef.current = () => {
-      // Always provide a fresh array. React Flow resolves custom edge
-      // endpoints from its newly measured internal nodes, so replaying the
-      // controlled edge set after initialization closes the mount-order race.
-      setEdges(buildEdges());
-    };
-
-    return () => {
-      syncEdgesAfterInitRef.current = () => {};
-    };
-  }, [buildEdges, setEdges]);
-
   // Search-dim + muted decoration applied as a cheap derived layer over the
   // structural `nodes`. This is what we hand to React Flow. Keeping it separate
   // from buildNodes means a search keystroke (which only changes
@@ -1088,12 +1068,12 @@ export default function CanvasWorkspace() {
   useEffect(() => {
     const canvasId = activeCanvasId ?? null;
     const isNewCanvas = canvasId !== loadedCanvasIdRef.current;
+    const newEdges = buildEdges();
 
     if (isNewCanvas) {
       // Full rebuild on canvas switch or initial load
       clearHistory();
       const newNodes = buildNodes();
-      const newEdges = buildEdges();
       setNodes(newNodes);
       setEdges(newEdges);
       lastBuiltNodesFnRef.current = buildNodes;
@@ -1110,10 +1090,15 @@ export default function CanvasWorkspace() {
       return;
     }
 
-    // Same canvas — rebuild edges only if their inputs changed.
-    if (buildEdges !== lastBuiltEdgesFnRef.current) {
+    // Same canvas — rebuild edges if their inputs changed. Also recover an
+    // unexpectedly empty controlled edge set when the canvas payload still
+    // contains valid edges. React Strict Mode replays effects: the first setup
+    // can mark the canvas loaded, then its state update can be discarded before
+    // the replay. Without this idempotent empty-state check, the second setup
+    // sees the same canvas/builder and leaves every coding edge absent.
+    if (buildEdges !== lastBuiltEdgesFnRef.current || (edgesRef.current.length === 0 && newEdges.length > 0)) {
       lastBuiltEdgesFnRef.current = buildEdges;
-      setEdges(buildEdges());
+      setEdges(newEdges);
     }
 
     // Same canvas — rebuild nodes only if node-relevant data changed; otherwise

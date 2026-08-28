@@ -17,7 +17,11 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: 0,
+  // CI browsers occasionally encounter a one-off scheduling/network race.
+  // One retry both distinguishes that from a repeatable product failure and
+  // makes `trace: on-first-retry` below useful for diagnosis. Local runs stay
+  // fail-fast.
+  retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: 'list',
   timeout: 30000,
