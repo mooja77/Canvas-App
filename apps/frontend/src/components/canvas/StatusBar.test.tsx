@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 
 type Transcript = { content: string };
 
@@ -69,5 +69,14 @@ describe('StatusBar word cap', () => {
     canvasState.transcripts = [words(200), words(9600)];
     render(<StatusBar />);
     expect(screen.getByTestId('status-bar-word-pct')).toHaveTextContent('96%');
+  });
+
+  it('labels browser network state accurately instead of claiming WebSocket connectivity', () => {
+    render(<StatusBar />);
+
+    expect(screen.getByTitle('Browser online')).toHaveTextContent('online');
+
+    act(() => window.dispatchEvent(new Event('offline')));
+    expect(screen.getByTitle('Browser offline — changes will sync when you reconnect')).toHaveTextContent('offline');
   });
 });

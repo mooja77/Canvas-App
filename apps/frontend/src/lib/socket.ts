@@ -25,6 +25,12 @@ export function getSocket(_token: string): Socket {
     // handshake. The server-side socket middleware reads it from headers.
     withCredentials: true,
     transports: ['websocket', 'polling'],
+    // Some institutional networks, VPNs, browser policies, and embedded
+    // browser environments block the WebSocket upgrade while still allowing
+    // long-polling. Engine.IO otherwise stops after the first transport fails,
+    // so explicitly try the remaining transport instead of silently losing
+    // realtime collaboration.
+    tryAllTransports: true,
     reconnection: true,
     reconnectionAttempts: 10,
     reconnectionDelay: 1000,

@@ -8,7 +8,7 @@ import { getFrontendPlanLimits } from '../../config/planLimits';
  * Sprint G slice — bottom status bar.
  *
  * Slim 24-px bar at the foot of the canvas, surfaces real-time counters +
- * plan usage + WebSocket health + a tip pointing to Cmd+K. Lives outside
+ * plan usage + browser network health + a tip pointing to Cmd+K. Lives outside
  * the React Flow viewport so it never overlaps content. Hidden on minimal-
  * zoom tier to avoid noise when the canvas is zoomed out for orientation.
  */
@@ -17,11 +17,11 @@ export default function StatusBar() {
   const plan = useAuthStore((s) => s.plan);
   const effectivePlan = useAuthStore((s) => s.effectivePlan);
   const zoomTier = useUIStore((s) => s.zoomTier);
-  const [wsOnline, setWsOnline] = useState(true);
+  const [networkOnline, setNetworkOnline] = useState(() => navigator.onLine);
 
   useEffect(() => {
-    const onOnline = () => setWsOnline(true);
-    const onOffline = () => setWsOnline(false);
+    const onOnline = () => setNetworkOnline(true);
+    const onOffline = () => setNetworkOnline(false);
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
     return () => {
@@ -92,11 +92,13 @@ export default function StatusBar() {
       </div>
       <div className="flex items-center gap-3">
         <span
-          className={`flex items-center gap-1 ${wsOnline ? '' : 'text-rose-500 dark:text-rose-400'}`}
-          title={wsOnline ? 'Connected' : 'Offline — changes will sync when you reconnect'}
+          className={`flex items-center gap-1 ${networkOnline ? '' : 'text-rose-500 dark:text-rose-400'}`}
+          title={networkOnline ? 'Browser online' : 'Browser offline — changes will sync when you reconnect'}
         >
-          <span className={`inline-block h-1.5 w-1.5 rounded-full ${wsOnline ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-          {wsOnline ? 'connected' : 'offline'}
+          <span
+            className={`inline-block h-1.5 w-1.5 rounded-full ${networkOnline ? 'bg-emerald-500' : 'bg-rose-500'}`}
+          />
+          {networkOnline ? 'online' : 'offline'}
         </span>
         <span className="hidden sm:inline">
           press <kbd className="rounded bg-gray-200 dark:bg-gray-700 px-1 py-0.5 font-mono text-[9px]">Ctrl+K</kbd> for
