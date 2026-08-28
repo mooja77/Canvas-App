@@ -25,3 +25,8 @@ Instrument every new CTA. Use the existing `trackEvent()` utility (`analytics.ts
 | `changelog_subscribed`           | clicked RSS link                            | (none)                                           |
 | `citation_copied`                | clicked copy on `/cite`                     | `format` (`bibtex`/`apa`/`chicago`/`ris`)        |
 | `accessibility_statement_viewed` | `/accessibility-statement` page viewed      | (none)                                           |
+| `training_page_viewed`           | `/training` page mount                      | `page`                                           |
+| `training_video_started`         | privacy-enhanced player loaded by user      | `video_id`, `category`, `surface`                |
+| `training_youtube_clicked`       | direct watch or channel link clicked        | `video_id`/`action`, `category`, `surface`       |
+| `training_playlist_clicked`      | public playlist link clicked                | `playlist`, `surface`                            |
+| `training_cta_clicked`           | training or in-app learning CTA clicked     | `action`, `video_id` (when relevant), `surface`  |

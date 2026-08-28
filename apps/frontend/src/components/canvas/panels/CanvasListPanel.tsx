@@ -16,6 +16,7 @@ import { canvasApi } from '../../../services/api';
 import ConfirmDialog from '../ConfirmDialog';
 import CanvasThumbnail from './CanvasThumbnail';
 import toast from 'react-hot-toast';
+import { trackEvent } from '../../../utils/analytics';
 
 type SortMode = 'newest' | 'az' | 'codings';
 
@@ -717,6 +718,20 @@ export default function CanvasListPanel() {
             >
               Get Started
             </button>
+            <Link
+              to="/training#learning-path"
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-medium text-brand-600 underline underline-offset-2 hover:text-brand-700 dark:text-brand-300 dark:hover:text-brand-200"
+              onClick={() =>
+                trackEvent('training_cta_clicked', {
+                  action: 'open_learning_path',
+                  surface: 'empty_canvas_list',
+                })
+              }
+            >
+              Prefer a guided start? Watch the 13-minute first-project path ↗
+            </Link>
             <div className="flex items-center gap-6 mt-4 text-xs text-gray-500 dark:text-gray-400">
               <div className="flex items-center gap-1.5">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold">

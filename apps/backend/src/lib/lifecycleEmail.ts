@@ -327,15 +327,15 @@ export function lifecycleTemplate(
     return {
       category: 'trainingTips' as EmailCategory,
       eventKey: 'training_tip_3d_v1',
-      subject: 'Try the QualCanvas training workflow',
-      title: 'Make coding quality easier to review',
-      preview: 'Use training documents to align coders before the main analysis.',
-      ctaLabel: 'Read the guide',
-      ctaUrl: appLink('/guide'),
+      subject: 'Your short QualCanvas first-project path',
+      title: 'See the complete workflow in under 15 minutes',
+      preview: 'Eight focused videos take you from a first canvas to a defensible handoff.',
+      ctaLabel: 'Follow the first-project path',
+      ctaUrl: appLink('/training#learning-path'),
       bodyHtml: `
         <p style="margin:0 0 18px;">Hi ${name},</p>
-        <p style="margin:0 0 18px;">For student projects, team coding, or QA-heavy research, create a short training document first. A gold-standard example gives coders a clear target before they start the main dataset.</p>
-        <p style="margin:0;">It is also useful for onboarding new researchers into an existing codebook.</p>`,
+        <p style="margin:0 0 18px;">If the empty canvas feels unfamiliar, follow the eight-video first-project path. It covers project setup, transcripts, coding, analysis, memos, export and the complete workflow using only fictional demonstration data.</p>
+        <p style="margin:0;">Each lesson is focused, and you can keep QualCanvas open beside the video while you practise with a small synthetic project.</p>`,
     };
   }
 

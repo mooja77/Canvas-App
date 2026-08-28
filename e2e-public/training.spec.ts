@@ -12,6 +12,9 @@ test('training centre is responsive, accessible and private before play', async 
   await page.route('https://api.qualcanvas.com/health', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: '{"status":"ok"}' }),
   );
+  await page.route('https://api.qualcanvas.com/api/v1/events/track', (route) =>
+    route.fulfill({ status: 204, body: '' }),
+  );
 
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text());

@@ -1,13 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './e2e-public',
-  testMatch: /training\.spec\.ts/,
+  // Public-route checks do not need the authenticated E2E database. Keep the
+  // training and consent boundaries runnable against the production preview
+  // even when Docker/Postgres is unavailable on a review machine.
+  testDir: '.',
+  testMatch: [/e2e-public[\\/]training\.spec\.ts$/, /e2e[\\/]cookie-consent\.spec\.ts$/],
   fullyParallel: false,
   workers: 1,
   retries: 0,
   reporter: 'list',
-  timeout: 45_000,
+  // WebKit cold-starts slowly on some Windows hosts; assertions themselves
+  // remain short, but allow the first navigation to complete reliably.
+  timeout: 90_000,
   use: {
     baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',

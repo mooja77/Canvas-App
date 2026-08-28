@@ -41,4 +41,32 @@ test.describe('Cookie consent analytics boundary', () => {
     await expect(page.locator('script#google-tag-manager')).toHaveCount(0);
     expect(gtmRequests).toBe(0);
   });
+
+  test('reopens settings and withdraws an accepted choice', async ({ page }) => {
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem('consent-test-seeded') === '1') return;
+      sessionStorage.setItem('consent-test-seeded', '1');
+      localStorage.setItem('jms_cookie_consent', 'accepted');
+      document.cookie = '_ga=test-value; path=/';
+    });
+    await page.route(gtmPattern, (route) => route.fulfill({ contentType: 'application/javascript', body: '' }));
+
+    await page.goto('/cookies');
+    await expect(page.getByRole('region', { name: 'Cookie consent' })).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Cookie settings' }).click();
+    const banner = page.getByRole('region', { name: 'Cookie consent' });
+    await expect(banner).toBeVisible();
+    await expect(banner).toContainText('currently on');
+
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      banner.getByRole('button', { name: 'Reject non-essential cookies' }).click(),
+    ]);
+
+    await expect(page.getByRole('region', { name: 'Cookie consent' })).toHaveCount(0);
+    expect(await page.evaluate(() => localStorage.getItem('jms_cookie_consent'))).toBe('rejected');
+    expect(await page.evaluate(() => document.cookie)).not.toContain('_ga=');
+    await expect(page.locator('script#google-tag-manager')).toHaveCount(0);
+  });
 });

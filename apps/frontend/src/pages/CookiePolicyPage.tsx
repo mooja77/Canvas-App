@@ -54,8 +54,8 @@ export default function CookiePolicyPage() {
             </tr>
             <tr className="border-b border-gray-100 dark:border-gray-800">
               <td className="py-1 font-mono text-xs">jms_cookie_consent</td>
-              <td className="py-1">Records your consent choice on this banner.</td>
-              <td className="py-1">1 year</td>
+              <td className="py-1">Local-storage record of your optional analytics choice.</td>
+              <td className="py-1">Until you change it or clear site data</td>
             </tr>
             <tr className="border-b border-gray-100 dark:border-gray-800">
               <td className="py-1 font-mono text-xs">qualcanvas-* / canvas-*</td>
@@ -77,10 +77,11 @@ export default function CookiePolicyPage() {
           </tbody>
         </table>
 
-        <h2>Analytics &amp; observability</h2>
+        <h2>Optional analytics &amp; conversion measurement</h2>
         <p>
-          Google Analytics consent remains denied until you accept the banner. Cookieless Plausible analytics loads on
-          public marketing pages and does not use an advertising identifier.
+          Google Analytics, Google Ads conversion measurement and Meta conversion measurement remain disabled until you
+          accept the banner. Cookieless Plausible analytics loads on public marketing pages and does not use an
+          advertising identifier.
         </p>
         <table className="w-full text-sm">
           <thead>
@@ -97,25 +98,45 @@ export default function CookiePolicyPage() {
               <td className="py-1">2 years</td>
             </tr>
             <tr className="border-b border-gray-100 dark:border-gray-800">
-              <td className="py-1 font-mono text-xs">sentry-trace</td>
-              <td className="py-1">Sentry error correlation across frontend + backend.</td>
-              <td className="py-1">Session</td>
+              <td className="py-1 font-mono text-xs">_gcl_*</td>
+              <td className="py-1">Google Ads — consented conversion attribution.</td>
+              <td className="py-1">Up to 90 days</td>
+            </tr>
+            <tr className="border-b border-gray-100 dark:border-gray-800">
+              <td className="py-1 font-mono text-xs">_fbp / _fbc</td>
+              <td className="py-1">Meta — consented conversion attribution.</td>
+              <td className="py-1">Up to 90 days</td>
             </tr>
           </tbody>
         </table>
 
-        <h2>Cookies we do NOT set</h2>
+        <h2>Operational observability</h2>
+        <p>
+          Sentry may use a short-lived <code>sentry-trace</code> value to connect frontend and backend errors. We use
+          this for service reliability, not advertising, and QualCanvas does not enable Sentry Session Replay because
+          research content can be sensitive.
+        </p>
+
+        <h2>Boundaries</h2>
         <ul>
-          <li>No advertising / cross-site tracking pixels.</li>
+          <li>No optional analytics or advertising measurement is loaded before you accept.</li>
           <li>No third-party social-button cookies on logged-out pages.</li>
           <li>No fingerprinting beyond what Cloudflare / Sentry use for security &amp; error attribution.</li>
         </ul>
 
         <h2>Managing cookies</h2>
+        <button
+          type="button"
+          className="not-prose mb-4 rounded-lg border border-brand-300 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 dark:border-brand-700 dark:text-brand-300 dark:hover:bg-brand-950/30"
+          onClick={() => window.dispatchEvent(new Event('qualcanvas:open-cookie-preferences'))}
+        >
+          Cookie settings
+        </button>
         <ul>
           <li>
-            <strong>In-app:</strong> open the consent banner via the footer &quot;Cookie Preferences&quot; link to
-            toggle analytics on/off.
+            <strong>In-app:</strong> open the consent banner via the footer &quot;Cookie settings&quot; link to turn
+            optional measurement on or off. Withdrawing consent stops the measurement container and clears known
+            first-party analytics cookies.
           </li>
           <li>
             <strong>In your browser:</strong> standard browser settings let you delete or block any of these. Deleting

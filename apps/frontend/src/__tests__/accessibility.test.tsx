@@ -128,6 +128,7 @@ vi.mock('react-hot-toast', () => ({
 vi.mock('@heroicons/react/24/outline', () => ({
   SunIcon: (props: Record<string, unknown>) => <svg data-testid="sun-icon" {...props} />,
   MoonIcon: (props: Record<string, unknown>) => <svg data-testid="moon-icon" {...props} />,
+  AcademicCapIcon: (props: Record<string, unknown>) => <svg data-testid="training-icon" {...props} />,
   ArrowRightStartOnRectangleIcon: (props: Record<string, unknown>) => <svg data-testid="logout-icon" {...props} />,
 }));
 

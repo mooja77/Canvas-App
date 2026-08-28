@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { TrainingVideo } from '../../data/trainingVideos';
+import { trackEvent } from '../../utils/analytics';
 
 interface YouTubeVideoCardProps {
   video: TrainingVideo;
@@ -28,7 +29,14 @@ export function YouTubeVideoCard({ video, featured = false }: YouTubeVideoCardPr
           <button
             type="button"
             className="group absolute inset-0 h-full w-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-            onClick={() => setPlayerLoaded(true)}
+            onClick={() => {
+              trackEvent('training_video_started', {
+                video_id: video.id,
+                category: video.category,
+                surface: 'training_library',
+              });
+              setPlayerLoaded(true);
+            }}
             aria-label={`Play ${video.shortTitle}. This connects to YouTube.`}
           >
             <img className="h-full w-full object-cover" src={video.thumbnail} alt="" loading="lazy" />
@@ -66,6 +74,13 @@ export function YouTubeVideoCard({ video, featured = false }: YouTubeVideoCardPr
             href={watchUrl}
             target="_blank"
             rel="noreferrer"
+            onClick={() =>
+              trackEvent('training_youtube_clicked', {
+                video_id: video.id,
+                category: video.category,
+                surface: 'training_library',
+              })
+            }
           >
             Watch directly on YouTube
             <span aria-hidden="true">↗</span>

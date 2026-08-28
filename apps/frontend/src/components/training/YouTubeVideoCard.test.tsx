@@ -1,7 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { YouTubeVideoCard } from './YouTubeVideoCard';
 import type { TrainingVideo } from '../../data/trainingVideos';
+
+const analytics = vi.hoisted(() => ({ trackEvent: vi.fn() }));
+vi.mock('../../utils/analytics', () => ({ trackEvent: analytics.trackEvent }));
 
 const video: TrainingVideo = {
   id: 'test',
@@ -15,6 +18,10 @@ const video: TrainingVideo = {
 };
 
 describe('YouTubeVideoCard', () => {
+  beforeEach(() => {
+    analytics.trackEvent.mockClear();
+  });
+
   it('does not contact YouTube until the viewer chooses play', () => {
     const { container } = render(<YouTubeVideoCard video={video} />);
 
@@ -23,13 +30,22 @@ describe('YouTubeVideoCard', () => {
 
     const player = screen.getByTitle('Test the player video player');
     expect(player).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/abcdefghijk?rel=0');
+    expect(analytics.trackEvent).toHaveBeenCalledWith('training_video_started', {
+      video_id: 'test',
+      category: 'Start here',
+      surface: 'training_library',
+    });
   });
 
   it('links to the public YouTube watch page', () => {
     render(<YouTubeVideoCard video={video} />);
-    expect(screen.getByRole('link', { name: /watch directly on youtube/i })).toHaveAttribute(
-      'href',
-      'https://www.youtube.com/watch?v=abcdefghijk',
-    );
+    const link = screen.getByRole('link', { name: /watch directly on youtube/i });
+    expect(link).toHaveAttribute('href', 'https://www.youtube.com/watch?v=abcdefghijk');
+    fireEvent.click(link);
+    expect(analytics.trackEvent).toHaveBeenCalledWith('training_youtube_clicked', {
+      video_id: 'test',
+      category: 'Start here',
+      surface: 'training_library',
+    });
   });
 });

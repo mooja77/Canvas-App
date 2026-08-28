@@ -133,6 +133,19 @@ describe('lifecycle email reporting', () => {
     expect(isPermanentEmailFailure('temporary upstream timeout')).toBe(false);
   });
 
+  it('routes the three-day training tip to the public first-project path', () => {
+    const template = lifecycleTemplate('training_tip_3d', {
+      id: 'u1',
+      email: 'learner@example.com',
+      name: 'Learner',
+    });
+
+    expect(template.subject).toBe('Your short QualCanvas first-project path');
+    expect(template.ctaUrl).toBe('http://localhost:5174/training#learning-path');
+    expect(template.ctaLabel).toBe('Follow the first-project path');
+    expect(template.bodyHtml).toContain('fictional demonstration data');
+  });
+
   it('requests both account and newsletter delivery counts per campaign', async () => {
     mockPrisma.emailCampaign.findMany.mockResolvedValue([]);
 

@@ -17,8 +17,9 @@ import ActivityBar, { type ActivityId } from '../components/canvas/ActivityBar';
 import ActivitySidebar from '../components/canvas/ActivitySidebar';
 import { useFeatureFlag } from '../stores/featureFlagsStore';
 import { resolveFirstRunSurface } from '../components/onboarding/firstRunSurface';
-import { SunIcon, MoonIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
+import { SunIcon, MoonIcon, ArrowRightStartOnRectangleIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { trackEvent } from '../utils/analytics';
 
 export default function CanvasPage() {
   const { authenticated, name, logout, authType, emailVerified, userId } = useAuthStore();
@@ -245,6 +246,22 @@ export default function CanvasPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <a
+            href="/training#learning-path"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-brand-600 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-brand-300"
+            aria-label="Open training centre in a new tab"
+            onClick={() =>
+              trackEvent('training_cta_clicked', {
+                action: 'open_training_centre',
+                surface: 'canvas_header',
+              })
+            }
+          >
+            <AcademicCapIcon className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Training</span>
+          </a>
           <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-gray-50 dark:bg-gray-700/50">
             <div
               className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-[10px] font-bold text-white shadow-sm"

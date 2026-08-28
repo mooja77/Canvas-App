@@ -6,6 +6,8 @@
 (function () {
   'use strict';
 
+  var CONSENT_KEY = 'jms_cookie_consent';
+
   // Default consent state — deny all until user accepts
   window.dataLayer = window.dataLayer || [];
   function gtag() {
@@ -27,6 +29,61 @@
     document.head.appendChild(script);
   }
 
+  function readConsent() {
+    try {
+      return localStorage.getItem(CONSENT_KEY);
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function writeConsent(value) {
+    try {
+      localStorage.setItem(CONSENT_KEY, value);
+    } catch (_error) {
+      // A blocked localStorage write must not prevent the current page from
+      // applying the user's choice. The banner will reappear next visit.
+    }
+  }
+
+  function grantAnalyticsConsent() {
+    gtag('consent', 'update', {
+      analytics_storage: 'granted',
+      ad_storage: 'granted',
+      ad_user_data: 'granted',
+      ad_personalization: 'granted',
+    });
+    loadGoogleTagManager();
+  }
+
+  function denyAnalyticsConsent() {
+    gtag('consent', 'update', {
+      analytics_storage: 'denied',
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+    });
+  }
+
+  function clearOptionalAnalyticsCookies() {
+    var optionalPrefixes = ['_ga', '_gid', '_gat', '_gcl_', '_fbp', '_fbc'];
+    document.cookie.split(';').forEach(function (rawCookie) {
+      var name = rawCookie.split('=')[0].trim();
+      if (
+        !optionalPrefixes.some(function (prefix) {
+          return name.indexOf(prefix) === 0;
+        })
+      )
+        return;
+      var expired = name + '=; Max-Age=0; path=/; SameSite=Lax';
+      document.cookie = expired;
+      // Production analytics cookies may have been written for the parent
+      // domain. Expire both host-only and parent-domain variants.
+      document.cookie = expired + '; domain=qualcanvas.com';
+      document.cookie = expired + '; domain=.qualcanvas.com';
+    });
+  }
+
   // Set default consent BEFORE GTM loads any tags
   gtag('consent', 'default', {
     analytics_storage: 'denied',
@@ -39,23 +96,21 @@
   });
 
   // Check if consent was already given
-  var consent = localStorage.getItem('jms_cookie_consent');
+  var consent = readConsent();
   if (consent === 'accepted') {
-    gtag('consent', 'update', {
-      analytics_storage: 'granted',
-      ad_storage: 'granted',
-      ad_user_data: 'granted',
-      ad_personalization: 'granted',
-    });
-    loadGoogleTagManager();
-    return; // Don't show banner
-  }
-  if (consent === 'rejected') {
-    return; // Don't show banner, consent stays denied
+    grantAnalyticsConsent();
   }
 
   // Create and show banner after DOM is ready
   function showBanner() {
+    var existingBanner = document.getElementById('cookie-consent-banner');
+    if (existingBanner) {
+      var existingButton = existingBanner.querySelector('button');
+      if (existingButton) existingButton.focus();
+      return;
+    }
+
+    var currentConsent = readConsent();
     var banner = document.createElement('div');
     banner.id = 'cookie-consent-banner';
     banner.setAttribute('role', 'region');
@@ -69,9 +124,16 @@
     } else {
       document.body.classList.add('cookie-consent-visible');
     }
+    var preferenceSummary =
+      currentConsent === 'accepted'
+        ? 'Optional analytics and conversion measurement are currently on. '
+        : currentConsent === 'rejected'
+          ? 'Optional analytics and conversion measurement are currently off. '
+          : 'We use optional analytics and conversion measurement only with your permission. ';
     banner.innerHTML =
       '<div class="cc-inner">' +
-      '<p>We use cookies for analytics and to improve your experience. ' +
+      '<p>' +
+      preferenceSummary +
       '<a href="/cookies">Cookie Policy</a></p>' +
       '<div class="cc-buttons">' +
       '<button id="cc-reject" class="cc-btn cc-btn-reject" type="button" aria-label="Reject non-essential cookies">Reject</button>' +
@@ -101,26 +163,33 @@
     }
 
     document.getElementById('cc-accept').addEventListener('click', function () {
-      localStorage.setItem('jms_cookie_consent', 'accepted');
-      gtag('consent', 'update', {
-        analytics_storage: 'granted',
-        ad_storage: 'granted',
-        ad_user_data: 'granted',
-        ad_personalization: 'granted',
-      });
-      loadGoogleTagManager();
+      writeConsent('accepted');
+      grantAnalyticsConsent();
       dismissBanner();
     });
 
     document.getElementById('cc-reject').addEventListener('click', function () {
-      localStorage.setItem('jms_cookie_consent', 'rejected');
+      var wasAccepted = readConsent() === 'accepted';
+      writeConsent('rejected');
+      denyAnalyticsConsent();
+      clearOptionalAnalyticsCookies();
       dismissBanner();
+      // Once GTM has executed, removing its script element cannot unload the
+      // running container. Reload only for a withdrawal from an accepted
+      // state; a first-time rejection remains instantaneous.
+      if (wasAccepted) window.location.reload();
     });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', showBanner);
-  } else {
-    showBanner();
+  window.addEventListener('qualcanvas:open-cookie-preferences', showBanner);
+
+  // Existing choices remain quiet on normal page loads. The footer can still
+  // call showBanner through the event above so either choice can be changed.
+  if (consent !== 'accepted' && consent !== 'rejected') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', showBanner);
+    } else {
+      showBanner();
+    }
   }
 })();

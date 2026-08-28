@@ -158,6 +158,15 @@ export default function SiteFooter() {
               </Link>
             </li>
             <li>
+              <button
+                type="button"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                onClick={() => window.dispatchEvent(new Event('qualcanvas:open-cookie-preferences'))}
+              >
+                Cookie settings
+              </button>
+            </li>
+            <li>
               <Link
                 to="/accessibility-statement"
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"

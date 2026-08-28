@@ -81,7 +81,14 @@ export type AnalyticsEvent =
   | 'interactive_demo_code_applied'
   | 'interactive_demo_completed'
   | 'pilot_started'
-  | 'pilot_feedback_submitted';
+  | 'pilot_feedback_submitted'
+  // Training acquisition and activation funnel. Parameters identify only the
+  // public lesson or UI surface; never send project names or research data.
+  | 'training_page_viewed'
+  | 'training_video_started'
+  | 'training_youtube_clicked'
+  | 'training_playlist_clicked'
+  | 'training_cta_clicked';
 
 // Backend lives on a different origin in prod (Railway) than the marketing
 // site (Cloudflare Pages). Mirror the convention used by services/api.ts so

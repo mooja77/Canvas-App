@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PageShell from '../components/marketing/PageShell';
 import { YouTubeVideoCard } from '../components/training/YouTubeVideoCard';
@@ -9,6 +10,7 @@ import {
   youtubeChannelUrl,
 } from '../data/trainingVideos';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { trackEvent } from '../utils/analytics';
 
 const learningPath = firstProjectLearningPath.map((id) => {
   const video = trainingVideos.find((candidate) => candidate.id === id);
@@ -50,6 +52,10 @@ export function TrainingPage() {
     'Learn QualCanvas with focused videos for first projects, transcripts, survey data, cases, analysis, repositories, collaboration, privacy, export and applied research.',
   );
 
+  useEffect(() => {
+    trackEvent('training_page_viewed', { page: '/training' });
+  }, []);
+
   return (
     <PageShell>
       <section
@@ -72,12 +78,24 @@ export function TrainingPage() {
               <a
                 href="#learning-path"
                 className="rounded-lg bg-amber-500 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-amber-400"
+                onClick={() =>
+                  trackEvent('training_cta_clicked', {
+                    action: 'open_learning_path',
+                    surface: 'training_hero',
+                  })
+                }
               >
                 Follow the first-project path
               </a>
               <a
                 href="#video-library"
                 className="rounded-lg border border-slate-600 px-5 py-3 text-sm font-semibold text-white hover:border-slate-400"
+                onClick={() =>
+                  trackEvent('training_cta_clicked', {
+                    action: 'browse_library',
+                    surface: 'training_hero',
+                  })
+                }
               >
                 Browse all videos
               </a>
@@ -126,6 +144,13 @@ export function TrainingPage() {
               <a
                 className="mt-4 inline-block text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
                 href={`#video-${video.id}`}
+                onClick={() =>
+                  trackEvent('training_cta_clicked', {
+                    action: 'open_learning_path_lesson',
+                    video_id: video.id,
+                    surface: 'first_project_path',
+                  })
+                }
               >
                 Go to lesson
               </a>
@@ -153,6 +178,13 @@ export function TrainingPage() {
                 <a
                   href={`#video-${route.videoId}`}
                   className="mt-4 inline-block text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
+                  onClick={() =>
+                    trackEvent('training_cta_clicked', {
+                      action: 'open_audience_route',
+                      video_id: route.videoId,
+                      surface: 'audience_routes',
+                    })
+                  }
                 >
                   Open this route
                 </a>
@@ -192,6 +224,12 @@ export function TrainingPage() {
                   target="_blank"
                   rel="noreferrer"
                   className="mt-4 inline-flex text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
+                  onClick={() =>
+                    trackEvent('training_playlist_clicked', {
+                      playlist: playlist.title,
+                      surface: 'training_playlists',
+                    })
+                  }
                 >
                   Open playlist on YouTube ↗
                 </a>
@@ -216,6 +254,12 @@ export function TrainingPage() {
             target="_blank"
             rel="noreferrer"
             className="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
+            onClick={() =>
+              trackEvent('training_youtube_clicked', {
+                action: 'open_channel',
+                surface: 'training_library',
+              })
+            }
           >
             Visit the QualCanvas YouTube channel ↗
           </a>
@@ -246,6 +290,38 @@ export function TrainingPage() {
               </section>
             );
           })}
+        </div>
+      </section>
+
+      <section
+        className="border-t border-gray-200 bg-slate-950 text-white dark:border-gray-800"
+        aria-labelledby="training-cta-heading"
+      >
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-12 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-400">
+              Put the lesson into practice
+            </p>
+            <h2 id="training-cta-heading" className="mt-2 text-2xl font-bold">
+              Start a small, synthetic first project.
+            </h2>
+            <p className="mt-3 leading-7 text-slate-300">
+              Create a canvas, add one short transcript and code three passages. You can use the free plan and replace
+              the practice material when you are ready.
+            </p>
+          </div>
+          <Link
+            to="/canvas"
+            className="inline-flex w-fit shrink-0 rounded-lg bg-amber-500 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-amber-400"
+            onClick={() =>
+              trackEvent('training_cta_clicked', {
+                action: 'start_first_project',
+                surface: 'training_bottom_cta',
+              })
+            }
+          >
+            Start your first project
+          </Link>
         </div>
       </section>
 

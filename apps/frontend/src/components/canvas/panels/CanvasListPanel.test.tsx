@@ -100,6 +100,16 @@ describe('CanvasListPanel — truthful failure states', () => {
   });
 });
 
+describe('CanvasListPanel — first-project help', () => {
+  it('offers the focused learning path before a first canvas exists', () => {
+    renderPanel();
+    expect(screen.getByRole('link', { name: /13-minute first-project path/i })).toHaveAttribute(
+      'href',
+      '/training#learning-path',
+    );
+  });
+});
+
 describe('CanvasListPanel — Trash disclosure a11y', () => {
   beforeEach(() => {
     canvasState.fetchTrash.mockClear();
