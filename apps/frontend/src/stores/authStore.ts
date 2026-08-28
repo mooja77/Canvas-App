@@ -10,8 +10,8 @@ interface AuthState {
   authenticated: boolean;
   authType: AuthType | null;
 
-  // Legacy access-code auth
-  dashboardCode: string | null;
+  // Legacy access-code auth. The reusable code itself is deliberately never
+  // retained after the server exchanges it for the httpOnly session cookie.
   dashboardAccessId: string | null;
 
   // Email auth
@@ -29,13 +29,7 @@ interface AuthState {
   // `jwt` remains an optional action field solely for migration compatibility
   // with old callers. The backend no longer returns tokens in response bodies;
   // authentication is carried only by an httpOnly cookie.
-  setAuth: (data: {
-    dashboardCode: string;
-    jwt?: string;
-    name: string;
-    role: string;
-    dashboardAccessId: string;
-  }) => void;
+  setAuth: (data: { jwt?: string; name: string; role: string; dashboardAccessId: string }) => void;
   setEmailAuth: (data: {
     jwt?: string;
     email: string;
@@ -145,7 +139,6 @@ export const useAuthStore = create<AuthState>()(
       authenticated: false,
       authType: null,
 
-      dashboardCode: null,
       dashboardAccessId: null,
 
       email: null,
@@ -161,7 +154,6 @@ export const useAuthStore = create<AuthState>()(
         // one's local research data. See clearIfDifferentIdentity.
         clearIfDifferentIdentity(`legacy:${data.dashboardAccessId}`);
         set({
-          dashboardCode: data.dashboardCode,
           name: data.name,
           role: data.role,
           dashboardAccessId: data.dashboardAccessId,
@@ -188,7 +180,6 @@ export const useAuthStore = create<AuthState>()(
           emailVerified: data.emailVerified ?? false,
           authenticated: true,
           authType: 'email',
-          dashboardCode: null,
           dashboardAccessId: null,
         });
       },
@@ -237,7 +228,6 @@ export const useAuthStore = create<AuthState>()(
           }
         }
         set({
-          dashboardCode: null,
           name: null,
           role: null,
           dashboardAccessId: null,
@@ -254,6 +244,45 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'qualcanvas-auth',
+      version: 1,
+      // Persist only the non-secret profile fields used to avoid UI flicker
+      // while /auth/me validates the httpOnly cookie. In particular, legacy
+      // access codes and historical response-body JWTs must never reach
+      // localStorage.
+      partialize: (state) => ({
+        name: state.name,
+        role: state.role,
+        authenticated: state.authenticated,
+        authType: state.authType,
+        dashboardAccessId: state.dashboardAccessId,
+        email: state.email,
+        userId: state.userId,
+        plan: state.plan,
+        effectivePlan: state.effectivePlan,
+        trialEndsAt: state.trialEndsAt,
+        emailVerified: state.emailVerified,
+      }),
+      // Version 0 persisted the entire store and could contain a reusable
+      // dashboardCode or JWT. Delete both during the upgrade before Zustand
+      // merges the snapshot into the current store.
+      migrate: (persistedState) => {
+        if (!persistedState || typeof persistedState !== 'object') return persistedState as AuthState;
+        const sanitized = { ...(persistedState as Record<string, unknown>) };
+        delete sanitized.dashboardCode;
+        delete sanitized.jwt;
+        return sanitized as unknown as AuthState;
+      },
+      // Sanitize same-version snapshots too, protecting users whose storage
+      // was copied or partially upgraded before this release.
+      merge: (persistedState, currentState) => {
+        const persisted =
+          persistedState && typeof persistedState === 'object'
+            ? { ...(persistedState as Record<string, unknown>) }
+            : {};
+        delete persisted.dashboardCode;
+        delete persisted.jwt;
+        return { ...currentState, ...persisted } as AuthState;
+      },
       onRehydrateStorage: () => {
         return (state) => {
           // Auth is now carried by an httpOnly cookie, not by anything we can
@@ -262,11 +291,9 @@ export const useAuthStore = create<AuthState>()(
           // /auth/me lands). If no cookie is present server-side, the first
           // API call returns 401 and the 401 interceptor clears state.
           if (state) {
-            // Strip any stale jwt that older versions persisted.
-            if (!import.meta.env.VITE_E2E) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              delete (state as any).jwt;
-            }
+            const legacyState = state as unknown as Record<string, unknown>;
+            delete legacyState.dashboardCode;
+            if (!import.meta.env.VITE_E2E) delete legacyState.jwt;
           }
         };
       },

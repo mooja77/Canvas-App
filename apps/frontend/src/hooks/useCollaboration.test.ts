@@ -51,7 +51,6 @@ function resetAuth() {
     role: null,
     authenticated: false,
     authType: null,
-    dashboardCode: null,
     dashboardAccessId: null,
     email: null,
     userId: null,
@@ -84,7 +83,6 @@ describe('useCollaboration', () => {
 
   it('does not connect for non-email auth (access-code users)', () => {
     useAuthStore.getState().setAuth({
-      dashboardCode: 'CODE',
       jwt: 'legacy-jwt',
       name: 'Legacy User',
       role: 'admin',

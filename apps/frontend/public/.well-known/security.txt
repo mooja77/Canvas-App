@@ -1,0 +1,5 @@
+Contact: mailto:security@qualcanvas.com
+Expires: 2027-08-27T23:59:59Z
+Canonical: https://qualcanvas.com/.well-known/security.txt
+Policy: https://qualcanvas.com/trust
+Preferred-Languages: en

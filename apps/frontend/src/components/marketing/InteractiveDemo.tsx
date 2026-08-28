@@ -545,7 +545,7 @@ export default function InteractiveDemo() {
                     text-gray-400 dark:text-gray-500
                     hover:text-gray-700 dark:hover:text-gray-300
                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2
-                    rounded px-1.5 py-0.5
+                    min-h-6 rounded px-2 py-1
                   "
                   aria-label="Reset interactive demo"
                 >

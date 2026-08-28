@@ -7,9 +7,9 @@ export default function NotFoundPage() {
   const { t } = useTranslation();
   usePageMeta('Page Not Found — QualCanvas', 'The page you are looking for does not exist.');
 
-  // This is a SPA: unknown routes still serve index.html with a 200, so Google
-  // sees a "soft 404". Tell crawlers not to index this page (follow links so
-  // equity still flows). Removed on unmount so real pages stay indexable.
+  // Direct unknown requests now receive public/404.html with HTTP 404. This
+  // component still handles unknown client-side navigations inside an already
+  // loaded SPA document, so keep those transitions noindex as well.
   useEffect(() => {
     const meta = document.createElement('meta');
     meta.name = 'robots';

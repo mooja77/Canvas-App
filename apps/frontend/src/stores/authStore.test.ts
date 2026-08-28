@@ -7,7 +7,6 @@ function resetStore() {
     role: null,
     authenticated: false,
     authType: null,
-    dashboardCode: null,
     dashboardAccessId: null,
     email: null,
     userId: null,
@@ -36,9 +35,9 @@ describe('authStore', () => {
       expect(state.plan).toBeNull();
     });
 
-    it('has no legacy auth fields', () => {
+    it('has no reusable legacy credential in state', () => {
       const state = useAuthStore.getState();
-      expect(state.dashboardCode).toBeNull();
+      expect(state).not.toHaveProperty('dashboardCode');
       expect(state.dashboardAccessId).toBeNull();
     });
   });
@@ -46,7 +45,6 @@ describe('authStore', () => {
   describe('setAuth (legacy)', () => {
     it('sets legacy auth state and marks as authenticated', () => {
       useAuthStore.getState().setAuth({
-        dashboardCode: 'DEMO-CODE',
         jwt: 'legacy-jwt-token',
         name: 'Test User',
         role: 'admin',
@@ -58,7 +56,7 @@ describe('authStore', () => {
       expect(state.authType).toBe('legacy');
       expect(state.name).toBe('Test User');
       expect(state.role).toBe('admin');
-      expect(state.dashboardCode).toBe('DEMO-CODE');
+      expect(state).not.toHaveProperty('dashboardCode');
       expect(state.dashboardAccessId).toBe('access-123');
       expect(state.plan).toBe('pro'); // Legacy users grandfathered to Pro
     });
@@ -68,7 +66,6 @@ describe('authStore', () => {
     it('sets email auth state and clears legacy fields', () => {
       // First set legacy auth to ensure it gets cleared
       useAuthStore.getState().setAuth({
-        dashboardCode: 'OLD-CODE',
         jwt: 'old-jwt',
         name: 'Old User',
         role: 'admin',
@@ -93,7 +90,7 @@ describe('authStore', () => {
       expect(state.role).toBe('user');
       expect(state.plan).toBe('free');
       // Legacy fields should be cleared
-      expect(state.dashboardCode).toBeNull();
+      expect(state).not.toHaveProperty('dashboardCode');
       expect(state.dashboardAccessId).toBeNull();
     });
   });
@@ -160,7 +157,6 @@ describe('authStore', () => {
   describe('logout', () => {
     it('clears all auth state after legacy login', () => {
       useAuthStore.getState().setAuth({
-        dashboardCode: 'CODE',
         jwt: 'jwt',
         name: 'User',
         role: 'admin',
@@ -174,7 +170,7 @@ describe('authStore', () => {
       expect(state.authType).toBeNull();
       expect(state.name).toBeNull();
       expect(state.role).toBeNull();
-      expect(state.dashboardCode).toBeNull();
+      expect(state).not.toHaveProperty('dashboardCode');
       expect(state.dashboardAccessId).toBeNull();
       expect(state.email).toBeNull();
       expect(state.userId).toBeNull();
@@ -239,7 +235,6 @@ describe('authStore', () => {
 
     it('returns false after logout from legacy auth', () => {
       useAuthStore.getState().setAuth({
-        dashboardCode: 'CODE',
         jwt: 'jwt',
         name: 'User',
         role: 'admin',
@@ -345,7 +340,6 @@ describe('authStore', () => {
 
     it('overwrites legacy auth when switching to email auth', () => {
       useAuthStore.getState().setAuth({
-        dashboardCode: 'LEGACY-CODE',
         jwt: 'legacy-jwt',
         name: 'Legacy User',
         role: 'admin',
@@ -363,9 +357,56 @@ describe('authStore', () => {
 
       const state = useAuthStore.getState();
       expect(state.authType).toBe('email');
-      expect(state.dashboardCode).toBeNull();
+      expect(state).not.toHaveProperty('dashboardCode');
       expect(state.dashboardAccessId).toBeNull();
       expect(state.email).toBe('new@example.com');
+    });
+  });
+
+  describe('persisted auth data', () => {
+    it('never writes a reusable access code or response-body JWT to localStorage', () => {
+      useAuthStore.getState().setAuth({
+        jwt: 'legacy-jwt-token',
+        name: 'Legacy User',
+        role: 'admin',
+        dashboardAccessId: 'access-123',
+      });
+
+      const raw = localStorage.getItem('qualcanvas-auth');
+      expect(raw).not.toBeNull();
+      expect(raw).not.toContain('legacy-jwt-token');
+      const persisted = JSON.parse(raw!);
+      expect(persisted.state).not.toHaveProperty('dashboardCode');
+      expect(persisted.state).not.toHaveProperty('jwt');
+      expect(persisted.state.dashboardAccessId).toBe('access-123');
+    });
+
+    it('strips credentials from a version 0 snapshot during rehydration', async () => {
+      localStorage.setItem(
+        'qualcanvas-auth',
+        JSON.stringify({
+          version: 0,
+          state: {
+            dashboardCode: 'REUSABLE-SECRET',
+            jwt: 'STALE-JWT',
+            authenticated: true,
+            authType: 'legacy',
+            name: 'Legacy User',
+            role: 'admin',
+            dashboardAccessId: 'access-123',
+          },
+        }),
+      );
+
+      await useAuthStore.persist.rehydrate();
+
+      const state = useAuthStore.getState() as unknown as Record<string, unknown>;
+      expect(state).not.toHaveProperty('dashboardCode');
+      expect(state).not.toHaveProperty('jwt');
+      expect(state.dashboardAccessId).toBe('access-123');
+      const rewritten = localStorage.getItem('qualcanvas-auth');
+      expect(rewritten).not.toContain('REUSABLE-SECRET');
+      expect(rewritten).not.toContain('STALE-JWT');
     });
   });
 });

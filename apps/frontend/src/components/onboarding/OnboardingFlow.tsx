@@ -7,6 +7,8 @@ import { templateApi, type CanvasTemplate } from '../../services/api';
 import { trackEvent } from '../../utils/analytics';
 import { markOnboardingComplete, patchOnboardingState } from './utils/onboardingState';
 import { useCanvasStore } from '../../stores/canvasStore';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface Props {
   onClose: () => void;
@@ -33,6 +35,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
   const [busy, setBusy] = useState(false);
   const [preferredMethod, setPreferredMethod] = useState<string>(initialState?.personalization?.method || 'interviews');
   const startedAtRef = useRef<number>(Date.now());
+  const dialogRef = useRef<HTMLDivElement>(null);
   const openCanvas = useCanvasStore((s) => s.openCanvas);
   const fetchCanvases = useCanvasStore((s) => s.fetchCanvases);
   const createCanvas = useCanvasStore((s) => s.createCanvas);
@@ -62,6 +65,13 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
     },
     [onClose],
   );
+
+  const handleEscape = useCallback(() => {
+    // Do not abandon a canvas while its creation request is in flight.
+    if (!busy) void finish('skipped');
+  }, [busy, finish]);
+  useEscapeToClose(handleEscape);
+  useFocusTrap(dialogRef, true);
 
   const handlePersonalization = useCallback((answers: { researchTopic: string; method: string; solo: boolean }) => {
     trackEvent('onboarding_step_completed', {
@@ -126,9 +136,18 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-3xl rounded-2xl bg-white dark:bg-gray-900 shadow-2xl p-6 sm:p-8">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboarding-dialog-title"
+        className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-900 sm:p-8"
+      >
+        <h1 id="onboarding-dialog-title" className="sr-only">
+          Set up your QualCanvas workspace
+        </h1>
         {/* Progress dots */}
-        <div className="flex items-center justify-center gap-2 mb-6">
+        <div className="mb-6 flex items-center justify-center gap-2" aria-hidden="true">
           {[1, 2].map((n) => (
             <div
               key={n}

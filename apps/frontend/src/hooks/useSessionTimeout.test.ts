@@ -24,7 +24,6 @@ describe('useSessionTimeout', () => {
       role: null,
       authenticated: false,
       authType: null,
-      dashboardCode: null,
       dashboardAccessId: null,
       email: null,
       userId: null,

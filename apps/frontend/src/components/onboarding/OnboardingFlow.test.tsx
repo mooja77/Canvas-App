@@ -76,6 +76,8 @@ describe('OnboardingFlow', () => {
     expect(mocks.patchState).toHaveBeenCalledWith(
       expect.objectContaining({ currentStep: 1, startedAt: expect.any(String) }),
     );
+    const dialog = screen.getByRole('dialog', { name: 'Set up your QualCanvas workspace' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
   });
 
   it('creates and opens a canvas when the user chooses the blank starting point', async () => {
@@ -110,6 +112,22 @@ describe('OnboardingFlow', () => {
       expect.objectContaining({ completionMode: 'skipped', completedAtClient: expect.any(String) }),
     );
     expect(mocks.createCanvas).not.toHaveBeenCalled();
+    expect(mocks.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats Escape as an intentional persisted skip', async () => {
+    render(
+      <MemoryRouter>
+        <OnboardingFlow onClose={mocks.onClose} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => expect(mocks.markComplete).toHaveBeenCalledTimes(1));
+    expect(mocks.patchState).toHaveBeenCalledWith(
+      expect.objectContaining({ completionMode: 'skipped', completedAtClient: expect.any(String) }),
+    );
     expect(mocks.onClose).toHaveBeenCalledTimes(1);
   });
 });

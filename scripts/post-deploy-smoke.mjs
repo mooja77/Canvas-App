@@ -171,8 +171,10 @@ const HOMEPAGE_TITLE = 'QualCanvas — Visual Coding for Interview Research';
 // the requested URL — otherwise the SPA fallback is being served (regression:
 // Google sees them as homepage duplicates again).
 const MARKETING_PRERENDER_ROUTES = [
+  '/pricing',
   '/cite',
   '/vs',
+  '/for-teams',
   '/for-institutions',
   '/customers',
   '/press',
@@ -183,14 +185,25 @@ const MARKETING_PRERENDER_ROUTES = [
   '/accessibility-statement',
   '/guide',
   '/pilot',
+  '/privacy',
+  '/terms',
+  '/cookies',
+  '/subscribe',
   // These two are emitted by prerender-methodology.mjs / prerender-training.mjs
   // as dist/<name>/index.html rather than a flat <name>.html, so Cloudflare
   // Pages serves them at the SLASHED url and 308-redirects the slashless one.
   // The trailing slash here is load-bearing: it is the url that returns 200 and
   // the canonical the pages now declare.
   '/methodology/',
+  '/methodology/foundations',
+  '/methodology/thematic-analysis',
+  '/methodology/grounded-theory',
+  '/methodology/ipa',
+  '/methodology/intercoder-reliability',
+  '/methodology/ethics-in-practice',
   '/training/',
 ];
+const NOINDEX_PRERENDER_ROUTES = ['/login'];
 
 function extractTitle(html) {
   const m = html.match(/<title>([\s\S]*?)<\/title>/i);
@@ -202,6 +215,13 @@ function extractCanonical(html) {
   if (!m) return null;
   const href = m[0].match(/href=["']([^"']+)["']/i);
   return href ? href[1].trim() : null;
+}
+
+function extractRobots(html) {
+  const m = html.match(/<meta[^>]+name=["']robots["'][^>]*>/i);
+  if (!m) return null;
+  const content = m[0].match(/content=["']([^"']+)["']/i);
+  return content ? content[1].trim() : null;
 }
 
 // Fetch the raw HTML for each prerendered marketing route (no JS executed, the
@@ -248,6 +268,73 @@ async function checkMarketingPrerender(frontendUrl) {
   return { ok: failures.length === 0, frontendUrl, checked: MARKETING_PRERENDER_ROUTES.length, failures };
 }
 
+async function checkNoindexPrerender(frontendUrl) {
+  const failures = [];
+  for (const path of NOINDEX_PRERENDER_ROUTES) {
+    try {
+      const res = await fetch(`${frontendUrl}${path}`, {
+        redirect: 'follow',
+        headers: { 'User-Agent': 'Googlebot/2.1' },
+      });
+      const html = await res.text();
+      const title = extractTitle(html);
+      const canonical = extractCanonical(html);
+      const robots = extractRobots(html);
+      if (!res.ok) failures.push(`${path}: HTTP ${res.status}`);
+      if (!title || title === HOMEPAGE_TITLE) failures.push(`${path}: missing distinct route title`);
+      if (canonical !== `${PRERENDER_ORIGIN}${path}`) {
+        failures.push(`${path}: canonical is "${canonical}", expected "${PRERENDER_ORIGIN}${path}"`);
+      }
+      if (!robots || !/\bnoindex\b/i.test(robots)) failures.push(`${path}: missing noindex robots directive`);
+    } catch (err) {
+      failures.push(`${path}: fetch failed — ${err.message}`);
+    }
+  }
+  return { ok: failures.length === 0, frontendUrl, checked: NOINDEX_PRERENDER_ROUTES.length, failures };
+}
+
+async function checkPublicResourcesAndRouting(frontendUrl) {
+  const failures = [];
+  try {
+    const llms = await fetch(`${frontendUrl}/llms.txt`);
+    const llmsBody = await llms.text();
+    if (!llms.ok || !llmsBody.startsWith('# QualCanvas')) {
+      failures.push(`/llms.txt: expected a 200 text document beginning with "# QualCanvas"`);
+    }
+
+    const favicon = await fetch(`${frontendUrl}/favicon.ico`);
+    const faviconType = favicon.headers.get('content-type') || '';
+    if (!favicon.ok || !faviconType.startsWith('image/') || (await favicon.arrayBuffer()).byteLength === 0) {
+      failures.push(`/favicon.ico: expected a non-empty 200 image response (got ${favicon.status} ${faviconType})`);
+    }
+
+    const security = await fetch(`${frontendUrl}/.well-known/security.txt`);
+    const securityBody = await security.text();
+    if (!security.ok || !securityBody.includes('Contact: mailto:security@qualcanvas.com')) {
+      failures.push('/.well-known/security.txt: missing valid security contact document');
+    }
+
+    const sitemap = await fetch(`${frontendUrl}/sitemap.xml`);
+    const sitemapBody = await sitemap.text();
+    if (!sitemap.ok || sitemapBody.includes('<loc>https://qualcanvas.com/login</loc>')) {
+      failures.push('/sitemap.xml: auth-only /login route must not be indexed');
+    }
+
+    const validAppDeepLink = await fetch(`${frontendUrl}/canvas/smoke-test-id`, { redirect: 'manual' });
+    if (validAppDeepLink.status !== 200) {
+      failures.push(`/canvas/:id: SPA deep link returned ${validAppDeepLink.status}, expected 200`);
+    }
+
+    const missing = await fetch(`${frontendUrl}/this-route-must-not-exist-smoke`, { redirect: 'manual' });
+    if (missing.status !== 404) {
+      failures.push(`/unknown route: returned ${missing.status}, expected a real HTTP 404`);
+    }
+  } catch (err) {
+    failures.push(`resource/routing fetch failed — ${err.message}`);
+  }
+  return { ok: failures.length === 0, frontendUrl, failures };
+}
+
 async function main() {
   const ready = await checkBackendReady();
   const browser = await chromium.launch({ headless: true });
@@ -263,10 +350,19 @@ async function main() {
       marketingPrerenderResults.push(await checkMarketingPrerender(frontendUrl));
     }
 
+    const noindexPrerenderResults = [];
+    const publicResourceResults = [];
+    for (const frontendUrl of frontendUrls) {
+      noindexPrerenderResults.push(await checkNoindexPrerender(frontendUrl));
+      publicResourceResults.push(await checkPublicResourcesAndRouting(frontendUrl));
+    }
+
     const result = {
       ok:
         frontendResults.every((entry) => entry.ok) &&
-        marketingPrerenderResults.every((entry) => entry.ok),
+        marketingPrerenderResults.every((entry) => entry.ok) &&
+        noindexPrerenderResults.every((entry) => entry.ok) &&
+        publicResourceResults.every((entry) => entry.ok),
       backend: {
         url: backendUrl,
         status: ready.status,
@@ -275,6 +371,8 @@ async function main() {
       },
       frontends: frontendResults,
       marketingPrerender: marketingPrerenderResults,
+      noindexPrerender: noindexPrerenderResults,
+      publicResourcesAndRouting: publicResourceResults,
     };
 
     console.log(JSON.stringify(result, null, 2));

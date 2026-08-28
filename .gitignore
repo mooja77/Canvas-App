@@ -53,6 +53,7 @@ youtube-training/**/qa/pilot/
 apps/backend/prisma/migrations/*.db
 
 .vercel
+.wrangler/
 
 # Security - environment files (keep .env.production for Vite build)
 .env.local

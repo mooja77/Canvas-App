@@ -29,10 +29,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const src = 'apps/frontend/src';
 const OUT = path.join(repoRoot, 'apps/frontend/public/sitemap.xml');
 
-const chapter = (slug) => [
-  `${src}/pages/MethodologyChapterPage.tsx`,
-  `${src}/content/methodology/${slug}.tsx`,
-];
+const chapter = (slug) => [`${src}/pages/MethodologyChapterPage.tsx`, `${src}/content/methodology/${slug}.tsx`];
 
 // loc is written exactly as listed. Two of these carry a trailing slash on
 // purpose: `public/methodology/` and `public/training/` exist as asset
@@ -41,19 +38,44 @@ const chapter = (slug) => [
 const ROUTES = [
   // Conversion path
   { loc: '/', files: [`${src}/pages/LandingPage.tsx`], changefreq: 'weekly', priority: '1.0' },
-  { loc: '/pricing', files: [`${src}/pages/PricingPage.tsx`, 'apps/backend/src/config/plans.ts'], changefreq: 'monthly', priority: '0.9' },
+  {
+    loc: '/pricing',
+    files: [`${src}/pages/PricingPage.tsx`, 'apps/backend/src/config/plans.ts'],
+    changefreq: 'monthly',
+    priority: '0.9',
+  },
   { loc: '/cite', files: [`${src}/pages/CitePage.tsx`], changefreq: 'monthly', priority: '0.7' },
 
   // Content surfaces
   { loc: '/methodology/', files: [`${src}/pages/MethodologyIndexPage.tsx`], changefreq: 'weekly', priority: '0.9' },
   { loc: '/methodology/foundations', files: chapter('foundations'), changefreq: 'monthly', priority: '0.8' },
-  { loc: '/methodology/thematic-analysis', files: chapter('thematic-analysis'), changefreq: 'monthly', priority: '0.8' },
+  {
+    loc: '/methodology/thematic-analysis',
+    files: chapter('thematic-analysis'),
+    changefreq: 'monthly',
+    priority: '0.8',
+  },
   { loc: '/methodology/grounded-theory', files: chapter('grounded-theory'), changefreq: 'monthly', priority: '0.8' },
   { loc: '/methodology/ipa', files: chapter('ipa'), changefreq: 'monthly', priority: '0.8' },
-  { loc: '/methodology/intercoder-reliability', files: chapter('intercoder-reliability'), changefreq: 'monthly', priority: '0.8' },
-  { loc: '/methodology/ethics-in-practice', files: chapter('ethics-in-practice'), changefreq: 'monthly', priority: '0.8' },
+  {
+    loc: '/methodology/intercoder-reliability',
+    files: chapter('intercoder-reliability'),
+    changefreq: 'monthly',
+    priority: '0.8',
+  },
+  {
+    loc: '/methodology/ethics-in-practice',
+    files: chapter('ethics-in-practice'),
+    changefreq: 'monthly',
+    priority: '0.8',
+  },
   { loc: '/customers', files: [`${src}/pages/CustomersIndexPage.tsx`], changefreq: 'weekly', priority: '0.8' },
-  { loc: '/changelog', files: [`${src}/pages/ChangelogPage.tsx`, 'apps/frontend/public/changelog'], changefreq: 'weekly', priority: '0.6' },
+  {
+    loc: '/changelog',
+    files: [`${src}/pages/ChangelogPage.tsx`, 'apps/frontend/public/changelog'],
+    changefreq: 'weekly',
+    priority: '0.6',
+  },
   { loc: '/vs', files: [`${src}/pages/VsIndexPage.tsx`], changefreq: 'monthly', priority: '0.8' },
   { loc: '/guide', files: [`${src}/pages/GuidePage.tsx`], changefreq: 'monthly', priority: '0.8' },
   { loc: '/training/', files: [`${src}/pages/TrainingPage.tsx`], changefreq: 'monthly', priority: '0.9' },
@@ -67,13 +89,17 @@ const ROUTES = [
   { loc: '/privacy', files: [`${src}/pages/PrivacyPage.tsx`], changefreq: 'yearly', priority: '0.4' },
   { loc: '/terms', files: [`${src}/pages/TermsPage.tsx`], changefreq: 'yearly', priority: '0.4' },
   { loc: '/cookies', files: [`${src}/pages/CookiePolicyPage.tsx`], changefreq: 'yearly', priority: '0.4' },
-  { loc: '/accessibility-statement', files: [`${src}/pages/AccessibilityStatementPage.tsx`], changefreq: 'yearly', priority: '0.4' },
+  {
+    loc: '/accessibility-statement',
+    files: [`${src}/pages/AccessibilityStatementPage.tsx`],
+    changefreq: 'yearly',
+    priority: '0.4',
+  },
   { loc: '/colophon', files: [`${src}/pages/ColophonPage.tsx`], changefreq: 'yearly', priority: '0.3' },
 
   // Other entry points
   { loc: '/press', files: [`${src}/pages/PressPage.tsx`], changefreq: 'monthly', priority: '0.5' },
   { loc: '/subscribe', files: [`${src}/pages/SubscribePage.tsx`], changefreq: 'monthly', priority: '0.5' },
-  { loc: '/login', files: [`${src}/pages/LoginPage.tsx`], changefreq: 'monthly', priority: '0.5' },
 ];
 
 function lastCommitDate(files) {

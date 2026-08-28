@@ -100,7 +100,6 @@ describe('shared-browser guarantee, now tied to identity', () => {
     useAuthStore.getState().logout({ preserveLocalData: true });
 
     useAuthStore.getState().setAuth({
-      dashboardCode: 'CODE',
       name: 'Legacy',
       role: 'owner',
       dashboardAccessId: 'dash-9',
@@ -119,7 +118,6 @@ describe('shared-browser guarantee, now tied to identity', () => {
 describe('linking an email to a legacy account is the same person', () => {
   it('keeps local research data when a legacy session links an email', () => {
     useAuthStore.getState().setAuth({
-      dashboardCode: 'CANVAS-LEZLW3M9',
       name: 'Legacy',
       role: 'owner',
       dashboardAccessId: 'dash-1',
@@ -133,7 +131,6 @@ describe('linking an email to a legacy account is the same person', () => {
 
   it('keeps the unsynced offline write queue across the link', () => {
     useAuthStore.getState().setAuth({
-      dashboardCode: 'CANVAS-LEZLW3M9',
       name: 'Legacy',
       role: 'owner',
       dashboardAccessId: 'dash-1',
@@ -152,7 +149,6 @@ describe('linking an email to a legacy account is the same person', () => {
     // The shared-browser guarantee must survive the fix: sameIdentity is only
     // ever set by the link-account flow, never by an ordinary sign-in.
     useAuthStore.getState().setAuth({
-      dashboardCode: 'CANVAS-LEZLW3M9',
       name: 'Legacy',
       role: 'owner',
       dashboardAccessId: 'dash-1',

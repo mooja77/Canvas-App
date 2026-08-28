@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 // Mock react-router-dom
 const mockNavigate = vi.fn();
 const mockSearchParams = new URLSearchParams();
+const authStoreMocks = vi.hoisted(() => ({ setAuth: vi.fn(), setEmailAuth: vi.fn() }));
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
   useSearchParams: () => [mockSearchParams],
@@ -37,8 +38,7 @@ vi.mock('react-i18next', () => ({
 
 // Mock authStore
 vi.mock('../stores/authStore', () => ({
-  useAuthStore: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({ setAuth: vi.fn(), setEmailAuth: vi.fn() }),
+  useAuthStore: (selector: (s: Record<string, unknown>) => unknown) => selector(authStoreMocks),
 }));
 
 // Mock api
@@ -65,6 +65,7 @@ describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchParams.delete('expired');
+    mockSearchParams.delete('mode');
   });
 
   it('renders email and password fields marked as required', () => {
@@ -104,6 +105,34 @@ describe('LoginPage', () => {
     expect(signUpTab).toBeInTheDocument();
   });
 
+  it('supports the standard arrow, Home, and End keys across authentication tabs', () => {
+    render(<LoginPage />);
+    const signInTab = screen.getByRole('tab', { name: 'Sign In' });
+    const signUpTab = screen.getByRole('tab', { name: 'Sign Up' });
+
+    signInTab.focus();
+    fireEvent.keyDown(signInTab, { key: 'ArrowRight' });
+    expect(signUpTab).toHaveAttribute('aria-selected', 'true');
+    expect(signUpTab).toHaveFocus();
+
+    fireEvent.keyDown(signUpTab, { key: 'Home' });
+    expect(signInTab).toHaveAttribute('aria-selected', 'true');
+    expect(signInTab).toHaveFocus();
+
+    fireEvent.keyDown(signInTab, { key: 'End' });
+    expect(signUpTab).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.keyDown(signUpTab, { key: 'ArrowLeft' });
+    expect(signInTab).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('keeps the password visibility control keyboard reachable with a usable target', () => {
+    render(<LoginPage />);
+    const toggle = screen.getByRole('button', { name: 'Show password' });
+    expect(toggle).toHaveProperty('tabIndex', 0);
+    expect(toggle).toHaveClass('h-10', 'w-10');
+  });
+
   it('Sign Up tab shows name field marked as required', () => {
     render(<LoginPage />);
     // Click Sign Up tab
@@ -121,6 +150,29 @@ describe('LoginPage', () => {
     // Click to expand
     fireEvent.click(screen.getByText('Sign In with Code'));
     expect(screen.getByPlaceholderText('Enter your access code')).toBeInTheDocument();
+  });
+
+  it('does not retain the reusable access code after a successful exchange', async () => {
+    (authApi.login as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        data: { jwt: undefined, name: 'Workshop User', role: 'user', dashboardAccessId: 'access-1' },
+      },
+    });
+
+    render(<LoginPage />);
+    fireEvent.click(screen.getByText('Sign In with Code'));
+    const input = screen.getByLabelText(/^Access code/);
+    fireEvent.change(input, { target: { value: 'SECRET-CODE' } });
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(authStoreMocks.setAuth).toHaveBeenCalledTimes(1));
+    expect(authStoreMocks.setAuth).toHaveBeenCalledWith({
+      jwt: undefined,
+      name: 'Workshop User',
+      role: 'user',
+      dashboardAccessId: 'access-1',
+    });
+    expect(authStoreMocks.setAuth.mock.calls[0][0]).not.toHaveProperty('dashboardCode');
   });
 
   it('Forgot password link present', () => {

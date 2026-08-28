@@ -71,7 +71,32 @@ export default function LoginPage() {
   usePageMeta('Sign In — QualCanvas', 'Sign in to QualCanvas with email, Google, or access code.');
 
   const googleButtonRef = useRef<HTMLDivElement>(null);
+  const loginTabRef = useRef<HTMLButtonElement>(null);
+  const registerTabRef = useRef<HTMLButtonElement>(null);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  const selectAuthMode = useCallback((nextMode: 'login' | 'register', moveFocus = false) => {
+    setMode(nextMode);
+    if (moveFocus) {
+      const nextTab = nextMode === 'login' ? loginTabRef.current : registerTabRef.current;
+      nextTab?.focus();
+    }
+  }, []);
+
+  const handleTabKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>) => {
+      let nextMode: 'login' | 'register' | null = null;
+      if (event.key === 'Home') nextMode = 'login';
+      else if (event.key === 'End') nextMode = 'register';
+      else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        nextMode = event.currentTarget.id === 'auth-tab-login' ? 'register' : 'login';
+      }
+      if (!nextMode) return;
+      event.preventDefault();
+      selectAuthMode(nextMode, true);
+    },
+    [selectAuthMode],
+  );
 
   const handleGoogleCallback = useCallback(
     async (response: { credential: string }) => {
@@ -214,7 +239,9 @@ export default function LoginPage() {
     try {
       const res = await authApi.login(code.trim());
       const { jwt, name: userName, role, dashboardAccessId } = res.data.data;
-      setAuth({ dashboardCode: code.trim(), jwt, name: userName, role, dashboardAccessId });
+      // The backend has exchanged the reusable code for an httpOnly cookie;
+      // retain only the non-secret account identity needed by the UI.
+      setAuth({ jwt, name: userName, role, dashboardAccessId });
       toast.success(`Welcome back, ${userName}!`);
       navigate('/canvas');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -258,12 +285,14 @@ export default function LoginPage() {
             aria-label="Authentication mode"
           >
             <button
+              ref={loginTabRef}
               role="tab"
               id="auth-tab-login"
               aria-controls="auth-panel-login"
               aria-selected={mode === 'login'}
               tabIndex={mode === 'login' ? 0 : -1}
-              onClick={() => setMode('login')}
+              onClick={() => selectAuthMode('login')}
+              onKeyDown={handleTabKeyDown}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
                 mode === 'login'
                   ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300'
@@ -273,12 +302,14 @@ export default function LoginPage() {
               {t('auth.signIn')}
             </button>
             <button
+              ref={registerTabRef}
               role="tab"
               id="auth-tab-register"
               aria-controls="auth-panel-register"
               aria-selected={mode === 'register'}
               tabIndex={mode === 'register' ? 0 : -1}
-              onClick={() => setMode('register')}
+              onClick={() => selectAuthMode('register')}
+              onKeyDown={handleTabKeyDown}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
                 mode === 'register'
                   ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300'
@@ -360,8 +391,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    tabIndex={-1}
+                    className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:text-gray-300"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
@@ -488,8 +518,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    tabIndex={-1}
+                    className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:text-gray-300"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
@@ -581,7 +610,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowAccessCode(!showAccessCode)}
-              className="w-full text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center justify-center gap-1"
+              className="flex min-h-11 w-full items-center justify-center gap-1 py-2.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
             >
               <svg
                 className={`h-4 w-4 transition-transform ${showAccessCode ? 'rotate-180' : ''}`}

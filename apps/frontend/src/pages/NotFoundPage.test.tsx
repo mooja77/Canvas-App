@@ -12,7 +12,7 @@ describe('NotFoundPage', () => {
     document.querySelectorAll('meta[name="robots"]').forEach((m) => m.remove());
   });
 
-  it('marks the 404 page noindex so soft-404s (SPA returns 200) are not indexed', () => {
+  it('marks client-side not-found transitions noindex', () => {
     render(
       <MemoryRouter>
         <NotFoundPage />

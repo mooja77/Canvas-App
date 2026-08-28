@@ -24,13 +24,9 @@
 //   * carries its OWN <title> and its OWN canonical, overriding the site-wide
 //     canonical baked into index.html:18 — which is the whole point.
 //
-// Routes covered: /cite /vs /for-institutions /customers /press /colophon
-// /trust /trust/ai /changelog /accessibility-statement /guide /pilot
-//
-// Deliberately EXCLUDED:
-//   * /pricing — PricingPage trips on useAuthStore during static render.
-//   * /for-teams — imports useNavigate/Link; dropped so it cannot throw the
-//     build. (It is not in the covered set; simply not rendered.)
+// Routes covered include every indexable marketing/legal URL in sitemap.xml,
+// plus a noindex shell for /login. Keeping these lists aligned prevents raw
+// HTTP clients and crawlers from receiving homepage metadata for deep links.
 //
 // Runs as part of `npm run build`, after prerender-methodology.mjs, so
 // deploy-frontend.yml picks it up unchanged.
@@ -51,6 +47,14 @@ const ORIGIN = 'https://qualcanvas.com';
 // title/description -> mirror each page's own usePageMeta(...) call, so the
 //                      crawler-facing head matches what the SPA sets on mount.
 const ROUTES = [
+  {
+    path: '/pricing',
+    file: 'pricing.html',
+    component: 'PricingPage',
+    title: 'Pricing — QualCanvas',
+    description:
+      'Free, Student ($5/mo with a verified academic email), Pro ($15/mo), Team ($39/seat/mo), and Institutions plans. 40% academic discount on Pro/Team. Compare against NVivo, ATLAS.ti, Dedoose.',
+  },
   {
     path: '/cite',
     file: 'cite.html',
@@ -73,6 +77,14 @@ const ROUTES = [
     title: 'For institutions — QualCanvas',
     description:
       'SSO + SCIM, DPA, BAA, custom retention, EU residency, dedicated research desk. Department-wide qualitative research, procurement-ready.',
+  },
+  {
+    path: '/for-teams',
+    file: 'for-teams.html',
+    component: 'ForTeamsPage',
+    title: 'For research groups — QualCanvas',
+    description:
+      'Manage a research group, collaborate on shared canvases, calculate intercoder reliability, and review project audit trails.',
   },
   {
     path: '/customers',
@@ -143,6 +155,44 @@ const ROUTES = [
     description:
       'Take part in a 20–30 minute QualCanvas usability pilot: complete five research tasks and share structured feedback.',
   },
+  {
+    path: '/privacy',
+    file: 'privacy.html',
+    component: 'PrivacyPage',
+    title: 'Privacy Policy — QualCanvas',
+    description:
+      'How QualCanvas collects, uses, and protects researcher data, including data-subject rights and transfers.',
+  },
+  {
+    path: '/terms',
+    file: 'terms.html',
+    component: 'TermsPage',
+    title: 'Terms of Service — QualCanvas',
+    description: 'QualCanvas terms of service for qualitative research platform users.',
+  },
+  {
+    path: '/cookies',
+    file: 'cookies.html',
+    component: 'CookiePolicyPage',
+    title: 'Cookie Policy — QualCanvas',
+    description: 'The cookies QualCanvas sets, why we set them, and how to opt out.',
+  },
+  {
+    path: '/subscribe',
+    file: 'subscribe.html',
+    component: 'SubscribePage',
+    title: 'Subscribe to the methodology field guide — QualCanvas',
+    description:
+      'One chapter a month. Six chapters covering thematic analysis, grounded theory, IPA, intercoder reliability, ethics. Free, citeable.',
+  },
+  {
+    path: '/login',
+    file: 'login.html',
+    component: 'LoginPage',
+    title: 'Sign In — QualCanvas',
+    description: 'Sign in to QualCanvas with email, Google, or access code.',
+    robots: 'noindex, follow',
+  },
 ];
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -209,6 +259,10 @@ await build({
     'react-router-dom',
     'react-i18next',
     'i18next',
+    // API clients are imported by pricing/login/subscribe but never called
+    // during render. Keep Axios external so esbuild does not rewrite its
+    // Node-only form-data dependency into an ESM dynamic require.
+    'axios',
   ],
 });
 
@@ -237,7 +291,7 @@ for (const re of REQUIRED_ANCHORS) {
   }
 }
 
-function renderRouteHtml({ title, description, url, body }) {
+function renderRouteHtml({ title, description, url, body, robots }) {
   let html = template;
   const t = esc(title);
   const d = esc(description);
@@ -249,6 +303,12 @@ function renderRouteHtml({ title, description, url, body }) {
   html = html.replace(/<meta\s+property="og:title"[^>]*>/, `<meta property="og:title" content="${t}" />`);
   html = html.replace(/<meta\s+property="og:description"[^>]*>/, `<meta property="og:description" content="${d}" />`);
   html = html.replace(/<meta\s+property="og:url"[^>]*>/, `<meta property="og:url" content="${url}" />`);
+  if (robots) {
+    const robotsTag = `<meta name="robots" content="${esc(robots)}" />`;
+    html = /<meta\s+name="robots"[^>]*>/i.test(html)
+      ? html.replace(/<meta\s+name="robots"[^>]*>/i, robotsTag)
+      : html.replace('</head>', `    ${robotsTag}\n  </head>`);
+  }
   // Real page content for crawlers + first paint. main.tsx strips
   // #marketing-root once React mounts at #root, so the SPA takes over cleanly.
   html = html.replace(/<main id="marketing-root">[\s\S]*?<\/main>/, `<main id="marketing-root">\n${body}\n    </main>`);
@@ -274,7 +334,13 @@ for (const route of ROUTES) {
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(
     outPath,
-    renderRouteHtml({ title: route.title, description: route.description, url, body: result.html }),
+    renderRouteHtml({
+      title: route.title,
+      description: route.description,
+      url,
+      body: result.html,
+      robots: route.robots,
+    }),
     'utf8',
   );
   count++;
