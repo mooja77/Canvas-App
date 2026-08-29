@@ -285,7 +285,7 @@ export default function CodebookExportModal({ onClose }: CodebookExportModalProp
                         {row.annotation || '—'}
                       </td>
                       <td className="px-3 py-2 text-gray-500 dark:text-gray-400">{row.caseName || '—'}</td>
-                      <td className="px-3 py-2 text-gray-400 tabular-nums">{row.createdAt}</td>
+                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400 tabular-nums">{row.createdAt}</td>
                     </tr>
                   ))
                 )}

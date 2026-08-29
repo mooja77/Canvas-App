@@ -3067,7 +3067,7 @@ export default function CanvasWorkspace() {
             {!focusMode && (
               <div
                 data-tour="canvas-status-bar"
-                className="flex shrink-0 items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-400 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-500"
+                className="flex shrink-0 items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-600 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-400"
               >
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1">

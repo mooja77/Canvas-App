@@ -147,9 +147,11 @@ canvas read/write flow, browser console/network errors, and the live API health
 and readiness endpoints. A green local build is not a production verification.
 
 The disposable-account activation check exercises the real signup, onboarding,
-transcript and first-coding journey, runs Axe on the resulting canvas, stores its
-report and screenshots in the operating-system temporary directory, and deletes
-the synthetic account in a `finally` block:
+transcript, two-code, statistics-analysis, and coded-data CSV export journey. It
+confirms the first-user checklist reaches 5/5, validates the downloaded CSV,
+runs Axe on the resulting canvas, stores its report and screenshots in the
+operating-system temporary directory, and deletes the synthetic account in a
+`finally` block:
 
 ```bash
 npm run qa:production-activation
