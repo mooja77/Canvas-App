@@ -266,8 +266,14 @@ try {
   await exportDialog.waitFor({ state: 'visible', timeout: 10_000 });
   await exportDialog.getByRole('button', { name: /All Coded Data/ }).click();
   const downloadPromise = page.waitForEvent('download', { timeout: 20_000 });
+  const onboardingPatchPromise = page.waitForResponse(
+    (response) => response.url().endsWith('/api/user/onboarding') && response.request().method() === 'PATCH',
+    { timeout: 20_000 },
+  );
   await exportDialog.getByRole('button', { name: 'Download CSV' }).click();
-  const download = await downloadPromise;
+  const [download, onboardingPatch] = await Promise.all([downloadPromise, onboardingPatchPromise]);
+  if (onboardingPatch.status() !== 200)
+    throw new Error(`Export checklist persistence returned HTTP ${onboardingPatch.status()}`);
   const downloadedCsvPath = path.join(outputDirectory, 'coded-data-export.csv');
   await download.saveAs(downloadedCsvPath);
   const exportedCsv = fs.readFileSync(downloadedCsvPath, 'utf8');
@@ -283,6 +289,14 @@ try {
     .first()
     .textContent()
     .catch(() => null);
+  const checklistHiddenAfterCompletion = (await page.getByText('Get started', { exact: true }).count()) === 0;
+  const persistedOnboarding = await page.evaluate(async (apiUrl) => {
+    const response = await fetch(`${apiUrl}/user/onboarding`, { credentials: 'include' });
+    return { status: response.status, body: await response.json() };
+  }, apiOrigin);
+  const persistedChecklistComplete = Array.isArray(persistedOnboarding.body?.data?.state?.checklistComplete)
+    ? persistedOnboarding.body.data.state.checklistComplete
+    : [];
   await screenshot('10-activation-complete');
 
   const axe = await new AxeBuilder({ page }).analyze();
@@ -302,10 +316,18 @@ try {
     () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
   );
 
+  const activationChecklistComplete =
+    checklistAfterExport === '5 of 5 complete' ||
+    (checklistHiddenAfterCompletion &&
+      checklistAfterAnalysis === '4 of 5 complete' &&
+      persistedOnboarding.status === 200 &&
+      persistedChecklistComplete.includes('export-csv'));
   const verificationErrors = [
-    ...(checklistAfterExport === '5 of 5 complete'
+    ...(activationChecklistComplete
       ? []
-      : [`Activation checklist ended at ${checklistAfterExport ?? 'an unreadable state'}, expected 5 of 5 complete`]),
+      : [
+          `Activation checklist did not complete (visible state: ${checklistAfterExport ?? 'hidden'}, persisted items: ${persistedChecklistComplete.join(', ') || 'none'})`,
+        ]),
     ...(noHorizontalOverflow ? [] : ['The canvas has horizontal overflow']),
     ...(seriousAccessibilityViolations.length === 0
       ? []
@@ -326,6 +348,8 @@ try {
     checklistAfterSecondCode,
     checklistAfterAnalysis,
     checklistAfterExport,
+    checklistHiddenAfterCompletion,
+    persistedChecklistComplete,
     exportedCsvBytes: Buffer.byteLength(exportedCsv),
     noHorizontalOverflow,
     seriousAccessibilityViolations,
