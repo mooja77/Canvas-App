@@ -179,9 +179,7 @@ test.describe('Code Management', () => {
   test('code appears in navigator sidebar with name', async ({ page }) => {
     await ensureNavigatorOpen(page);
 
-    const codeItems = page.locator('[data-tour="canvas-navigator"] div[role="button"]').filter({
-      has: page.locator('.rounded-full'),
-    });
+    const codeItems = page.locator('[data-tour="canvas-navigator"] [data-testid="code-navigator-row"]');
 
     const count = await codeItems.count();
     if (count === 0) {
@@ -197,7 +195,9 @@ test.describe('Code Management', () => {
   test('code gets a color shown as colored dot in navigator', async ({ page }) => {
     await ensureNavigatorOpen(page);
 
-    const colorDots = page.locator('[data-tour="canvas-navigator"] div[role="button"] .rounded-full').first();
+    const colorDots = page
+      .locator('[data-tour="canvas-navigator"] [data-testid="code-navigator-row"] .rounded-full')
+      .first();
     if (!(await colorDots.isVisible({ timeout: 3000 }).catch(() => false))) {
       test.skip(true, 'precondition not met: !(await colorDots.isVisible({ timeout: 3000 }).catch(() => false))');
       return;
@@ -232,7 +232,9 @@ test.describe('Code Management', () => {
       // reliable signal that the server response reached application state.
       // Refit only after that signal; fitting immediately after Enter can run
       // before React Flow receives the new node and leave it culled off-screen.
-      const navigatorCode = page.locator('[data-tour="canvas-navigator"] div[role="button"]').filter({ hasText: name });
+      const navigatorCode = page
+        .locator('[data-tour="canvas-navigator"] [data-testid="code-navigator-row"]')
+        .filter({ hasText: name });
       await expect(navigatorCode).toBeVisible({ timeout: 10000 });
       await refit();
 
@@ -247,9 +249,7 @@ test.describe('Code Management', () => {
   test('navigator shows "By count" sorting button', async ({ page }) => {
     await ensureNavigatorOpen(page);
 
-    const codeItems = page.locator('[data-tour="canvas-navigator"] div[role="button"]').filter({
-      has: page.locator('.rounded-full'),
-    });
+    const codeItems = page.locator('[data-tour="canvas-navigator"] [data-testid="code-navigator-row"]');
     if ((await codeItems.count()) === 0) {
       test.skip(true, 'precondition not met: (await codeItems.count()) === 0');
       return;
@@ -262,19 +262,19 @@ test.describe('Code Management', () => {
   test('click code in navigator selects it', async ({ page }) => {
     await ensureNavigatorOpen(page);
 
-    const codeItems = page.locator('[data-tour="canvas-navigator"] div[role="button"]').filter({
-      has: page.locator('.rounded-full'),
-    });
+    const codeItems = page.locator('[data-tour="canvas-navigator"] [data-testid="code-navigator-row"]');
     const count = await codeItems.count();
     if (count === 0) {
       test.skip(true, 'precondition not met: count === 0');
       return;
     }
 
-    await codeItems.first().click();
+    await codeItems.first().getByTestId('code-navigator-select').click();
 
     // After clicking, the item should have selected/highlighted state
-    const selectedItem = page.locator('[data-tour="canvas-navigator"] div[role="button"][class*="brand"]');
+    const selectedItem = page.locator(
+      '[data-tour="canvas-navigator"] [data-testid="code-navigator-row"][data-selected="true"]',
+    );
     await expect(selectedItem).toBeAttached({ timeout: 3000 });
 
     // A question node should exist

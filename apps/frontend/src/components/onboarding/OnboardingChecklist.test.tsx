@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import OnboardingChecklist from './OnboardingChecklist';
@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
     id: 'canvas-1',
     name: 'Study',
     codings: [] as unknown[],
+    transcripts: [] as unknown[],
     questions: [] as unknown[],
     computedNodes: [] as unknown[],
   },
@@ -44,6 +45,10 @@ function renderChecklist() {
 
 beforeEach(() => {
   localStorage.clear();
+  mocks.activeCanvas.transcripts = [];
+  mocks.activeCanvas.codings = [];
+  mocks.activeCanvas.questions = [];
+  mocks.activeCanvas.computedNodes = [];
   useUIStore.setState({
     onboardingOwnerId: 'user-b',
     onboardingChecklistDismissed: false,
@@ -60,6 +65,7 @@ describe('OnboardingChecklist export task', () => {
 
     expect(screen.getByText('0 of 5 complete')).toBeTruthy();
     // Nothing done means the card stays expanded.
+    expect(screen.getByText('Add your first transcript')).toBeTruthy();
     expect(screen.getByText('Code your first excerpt')).toBeTruthy();
   });
 
@@ -69,5 +75,25 @@ describe('OnboardingChecklist export task', () => {
     renderChecklist();
 
     expect(screen.getByText('1 of 5 complete')).toBeTruthy();
+  });
+
+  it('counts a transcript as the first activation step and keeps valid sibling controls', () => {
+    mocks.activeCanvas.transcripts = [{ id: 'transcript-1' }];
+
+    const { container } = renderChecklist();
+
+    expect(screen.getByText('1 of 5 complete')).toBeTruthy();
+    expect(container.querySelector('button button')).toBeNull();
+  });
+
+  it('opens the real transcript picker from the first task', () => {
+    const listener = vi.fn();
+    window.addEventListener('qualcanvas:open-transcript-picker', listener);
+    renderChecklist();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add your first transcript' }));
+
+    expect(listener).toHaveBeenCalledOnce();
+    window.removeEventListener('qualcanvas:open-transcript-picker', listener);
   });
 });

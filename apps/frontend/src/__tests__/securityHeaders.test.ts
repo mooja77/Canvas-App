@@ -27,6 +27,13 @@ describe('production security headers', () => {
     expect(csp).toContain("object-src 'none'");
   });
 
+  it('permits secure WebSocket collaboration only on the API origin', () => {
+    expect(directive('connect-src')).toContain('wss://api.qualcanvas.com');
+    expect(directive('connect-src').filter((source) => source.startsWith('wss:'))).toEqual([
+      'wss://api.qualcanvas.com',
+    ]);
+  });
+
   it('permits the exact post-consent GA4, Ads and Meta runtime origins', () => {
     expect(directive('script-src')).toEqual(
       expect.arrayContaining([

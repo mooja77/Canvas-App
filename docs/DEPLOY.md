@@ -146,6 +146,19 @@ Also verify the public landing, login, pricing, training, one authenticated
 canvas read/write flow, browser console/network errors, and the live API health
 and readiness endpoints. A green local build is not a production verification.
 
+The disposable-account activation check exercises the real signup, onboarding,
+transcript and first-coding journey, runs Axe on the resulting canvas, stores its
+report and screenshots in the operating-system temporary directory, and deletes
+the synthetic account in a `finally` block:
+
+```bash
+npm run qa:production-activation
+```
+
+It defaults to `https://qualcanvas.com` with an excluded `@example.com` address.
+Use `QUALCANVAS_QA_ORIGIN`, `QUALCANVAS_QA_API_ORIGIN` and
+`QUALCANVAS_QA_OUTPUT` only when validating another approved environment.
+
 ## Rollback
 
 - Frontend: redeploy the last known-good commit to Cloudflare Pages.
@@ -169,4 +182,4 @@ required columns without first checking schema compatibility.
 | `/metrics` returns 404          | Supply the configured bearer token; this is intentional in production.            |
 | Browser E2E cannot start        | Install Playwright browsers and confirm the PostgreSQL E2E service on port 55432. |
 
-Last reviewed: 2026-08-27.
+Last reviewed: 2026-08-29.

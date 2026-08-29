@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useCanvasStore } from '../../stores/canvasStore';
-import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useMobile } from '../../hooks/useMobile';
 
@@ -18,7 +16,6 @@ import { useMobile } from '../../hooks/useMobile';
  * activation checklist belongs on tablet/desktop where there's room.
  */
 export default function OnboardingChecklist() {
-  const navigate = useNavigate();
   const isMobile = useMobile();
   // null = "no explicit choice yet" → default open only while nothing is done;
   // once the user has completed a step the card starts collapsed so it stops
@@ -26,10 +23,6 @@ export default function OnboardingChecklist() {
   const [collapsed, setCollapsed] = useState<boolean | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const activeCanvas = useCanvasStore((s) => s.activeCanvas);
-  // effectivePlan overlays a trialing free user as 'pro'; `plan` stays the real
-  // paid tier. Reading `plan` here gave trialing users Free copy while
-  // PlanWelcome greeted them with Pro in the same flow.
-  const plan = useAuthStore((s) => s.effectivePlan ?? s.plan);
   const onboardingChecklistDismissed = useUIStore((s) => s.onboardingChecklistDismissed);
   const dismissOnboardingChecklist = useUIStore((s) => s.dismissOnboardingChecklist);
   // Account-scoped, server-backed (onboardingState.checklistComplete). This
@@ -43,11 +36,17 @@ export default function OnboardingChecklist() {
   }, [onboardingChecklistDismissed]);
 
   const tasks = useMemo(() => {
+    const transcripts = activeCanvas?.transcripts ?? [];
     const codings = activeCanvas?.codings ?? [];
     const questions = activeCanvas?.questions ?? [];
     const computedNodes = activeCanvas?.computedNodes ?? [];
-    const isPro = plan !== null && plan !== 'free';
     return [
+      {
+        id: 'first-transcript',
+        label: 'Add your first transcript',
+        done: transcripts.length > 0,
+        action: () => window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker')),
+      },
       {
         id: 'first-coded-excerpt',
         label: 'Code your first excerpt',
@@ -72,24 +71,8 @@ export default function OnboardingChecklist() {
         done: checklistComplete.includes('export-csv'),
         action: null,
       },
-      isPro
-        ? {
-            id: 'invite-collaborator',
-            label: 'Invite a coder',
-            done: false,
-            // The invite flow lives in the canvas Share modal (PR #134) —
-            // /account has no invite UI.
-            action: () =>
-              window.dispatchEvent(new CustomEvent('qualcanvas:open-canvas-modal', { detail: { modal: 'share' } })),
-          }
-        : {
-            id: 'upgrade-sharing',
-            label: 'Upgrade for sharing',
-            done: false,
-            action: () => navigate('/pricing'),
-          },
     ];
-  }, [activeCanvas, plan, navigate, checklistComplete]);
+  }, [activeCanvas, checklistComplete]);
 
   const completedCount = tasks.filter((t) => t.done).length;
   const allDone = completedCount === tasks.length;
@@ -107,47 +90,59 @@ export default function OnboardingChecklist() {
     // sat on top of Help / notifications / zoom and swallowed their clicks
     // (round-5 audit; exactly the controls a first-time user needs).
     <div className="fixed bottom-12 right-4 z-40 w-72 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg">
-      <button
-        type="button"
-        onClick={() => setCollapsed(!isCollapsed)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left"
-      >
-        <div>
-          <div className="text-xs font-semibold text-gray-900 dark:text-white">Get started</div>
-          <div className="text-[10px] text-gray-500 dark:text-gray-400">
-            {completedCount} of {tasks.length} complete
+      <div className="flex items-stretch">
+        <button
+          type="button"
+          onClick={() => setCollapsed(!isCollapsed)}
+          className="flex flex-1 items-center justify-between px-4 py-3 text-left"
+          aria-expanded={!isCollapsed}
+          aria-controls="onboarding-checklist-tasks"
+        >
+          <div>
+            <div className="text-xs font-semibold text-gray-900 dark:text-white">Get started</div>
+            <div className="text-[10px] text-gray-500 dark:text-gray-400">
+              {completedCount} of {tasks.length} complete
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              dismissOnboardingChecklist();
-              setDismissed(true);
-            }}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-            title="Dismiss checklist"
-            aria-label="Dismiss checklist"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
-          </button>
           <svg
-            className={`h-4 w-4 text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
+            className={`h-4 w-4 text-gray-500 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
             fill="none"
             viewBox="0 0 24 24"
             strokeWidth={1.5}
             stroke="currentColor"
+            aria-hidden="true"
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
           </svg>
-        </div>
-      </button>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            dismissOnboardingChecklist();
+            setDismissed(true);
+          }}
+          className="px-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          title="Dismiss checklist"
+          aria-label="Dismiss checklist"
+        >
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="1.5"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
 
       {!isCollapsed && (
-        <ul className="border-t border-gray-100 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+        <ul
+          id="onboarding-checklist-tasks"
+          className="border-t border-gray-100 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700"
+        >
           {tasks.map((task) => (
             <li key={task.id} className="px-4 py-2">
               {task.action ? (
@@ -158,7 +153,7 @@ export default function OnboardingChecklist() {
                 >
                   <ChecklistDot done={task.done} />
                   <span
-                    className={`text-xs ${task.done ? 'text-gray-400 line-through' : 'text-gray-700 dark:text-gray-200'}`}
+                    className={`text-xs ${task.done ? 'text-gray-500 line-through dark:text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}
                   >
                     {task.label}
                   </span>
@@ -167,7 +162,7 @@ export default function OnboardingChecklist() {
                 <div className="flex items-center gap-2">
                   <ChecklistDot done={task.done} />
                   <span
-                    className={`text-xs ${task.done ? 'text-gray-400 line-through' : 'text-gray-700 dark:text-gray-200'}`}
+                    className={`text-xs ${task.done ? 'text-gray-500 line-through dark:text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}
                   >
                     {task.label}
                   </span>

@@ -112,39 +112,23 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
     return (
       <div key={item.question.id}>
         <div
-          role="button"
-          tabIndex={0}
-          className={`flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left transition-all duration-75 group relative cursor-pointer ${
+          data-testid="code-navigator-row"
+          data-selected={isSelected}
+          className={`flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left transition-all duration-75 group relative ${
             isSelected ? 'bg-brand-50 dark:bg-brand-900/20 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
           }`}
           style={{ paddingLeft: `${8 + depth * 16}px` }}
-          onClick={() => {
-            setSelectedQuestionId(isSelected ? null : item.question.id);
-            onFocusNode(`question-${item.question.id}`);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setSelectedQuestionId(isSelected ? null : item.question.id);
-              onFocusNode(`question-${item.question.id}`);
-            }
-          }}
         >
           {hasChildren && (
-            <span
-              role="button"
-              tabIndex={0}
+            <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 toggleExpand(item.question.id);
               }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.stopPropagation();
-                  toggleExpand(item.question.id);
-                }
-              }}
               className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+              aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${item.question.text}`}
+              aria-expanded={isExpanded}
             >
               <svg
                 className={`h-3 w-3 text-gray-400 transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`}
@@ -155,23 +139,58 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
               </svg>
-            </span>
+            </button>
           )}
           {!hasChildren && <span className="w-4" />}
-          <div
-            className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-white/50 dark:ring-gray-800/50"
-            style={{ backgroundColor: item.question.color }}
-          />
-          <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1" title={item.question.text}>
-            {item.question.text}
-          </span>
           <button
+            type="button"
+            data-testid="code-navigator-select"
+            className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+            onClick={() => {
+              setSelectedQuestionId(isSelected ? null : item.question.id);
+              onFocusNode(`question-${item.question.id}`);
+            }}
+            aria-pressed={isSelected}
+          >
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-white/50 dark:ring-gray-800/50"
+              style={{ backgroundColor: item.question.color }}
+              aria-hidden="true"
+            />
+            <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1" title={item.question.text}>
+              {item.question.text}
+            </span>
+
+            {/* Frequency bar + count */}
+            <span className="flex items-center gap-1.5 shrink-0" aria-label={`${item.codingCount} codings`}>
+              <span className="w-12 h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden" aria-hidden="true">
+                <span
+                  className="block h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${barWidth}%`,
+                    backgroundColor: item.question.color,
+                    opacity: 0.6,
+                  }}
+                />
+              </span>
+              <span className="text-[10px] text-gray-500 dark:text-gray-400 tabular-nums w-5 text-right">
+                {item.codingCount}
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               toggleBookmark(item.question.id);
             }}
-            className={`shrink-0 p-0.5 rounded transition-colors ${isBookmarked(item.question.id) ? 'text-yellow-500' : 'text-gray-300 opacity-0 group-hover:opacity-100 hover:text-yellow-400'}`}
+            className={`shrink-0 p-0.5 rounded transition-colors ${isBookmarked(item.question.id) ? 'text-yellow-500' : 'text-gray-500 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 hover:text-yellow-500'}`}
             title={isBookmarked(item.question.id) ? 'Remove from favorites' : 'Add to favorites'}
+            aria-label={
+              isBookmarked(item.question.id)
+                ? `Remove ${item.question.text} from favorites`
+                : `Add ${item.question.text} to favorites`
+            }
           >
             <svg
               className="h-3 w-3"
@@ -187,23 +206,6 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
               />
             </svg>
           </button>
-
-          {/* Frequency bar + count */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <div className="w-12 h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-300"
-                style={{
-                  width: `${barWidth}%`,
-                  backgroundColor: item.question.color,
-                  opacity: 0.6,
-                }}
-              />
-            </div>
-            <span className="text-[10px] text-gray-400 dark:text-gray-500 tabular-nums w-5 text-right">
-              {item.codingCount}
-            </span>
-          </div>
         </div>
         {hasChildren && isExpanded && (
           <div className="animate-slide-down">{item.children.map((child) => renderTreeItem(child, depth + 1))}</div>
@@ -224,7 +226,7 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
           className={`flex-1 px-3 py-2 text-[11px] font-medium transition-colors ${
             activeTab === 'codes'
               ? 'text-brand-600 dark:text-brand-400 border-b-2 border-brand-500'
-              : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
           }`}
         >
           Codes ({questions.length})
@@ -234,7 +236,7 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
           className={`flex-1 px-3 py-2 text-[11px] font-medium transition-colors ${
             activeTab === 'sources'
               ? 'text-brand-600 dark:text-brand-400 border-b-2 border-brand-500'
-              : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
           }`}
         >
           Sources ({transcripts.length})
@@ -245,7 +247,7 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
             className={`flex-1 px-3 py-2 text-[11px] font-medium transition-colors ${
               activeTab === 'cases'
                 ? 'text-brand-600 dark:text-brand-400 border-b-2 border-brand-500'
-                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
             }`}
           >
             Cases ({cases.length})
@@ -287,13 +289,13 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setSortMode('count')}
-                      className={`text-[9px] px-1.5 py-0.5 rounded ${sortMode === 'count' ? 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200' : 'text-gray-400 hover:text-gray-600'}`}
+                      className={`text-[9px] px-1.5 py-0.5 rounded ${sortMode === 'count' ? 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
                     >
                       By count
                     </button>
                     <button
                       onClick={() => setSortMode('name')}
-                      className={`text-[9px] px-1.5 py-0.5 rounded ${sortMode === 'name' ? 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200' : 'text-gray-400 hover:text-gray-600'}`}
+                      className={`text-[9px] px-1.5 py-0.5 rounded ${sortMode === 'name' ? 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
                     >
                       A-Z
                     </button>
@@ -537,7 +539,7 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
 
       {/* Summary footer */}
       <div className="border-t border-gray-200 dark:border-gray-700 px-3 py-2">
-        <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500">
+        <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
           <span>
             {totalCodingCount} coding{totalCodingCount !== 1 ? 's' : ''}
           </span>

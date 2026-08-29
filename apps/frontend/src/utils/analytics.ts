@@ -112,6 +112,9 @@ export function trackEvent(eventName: AnalyticsEvent, params?: Record<string, un
       body: JSON.stringify({ event: eventName, params: params || {} }),
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
+      // Preserve small activation events when navigation follows immediately.
+      // Without keepalive browsers abort this best-effort request on unload.
+      keepalive: true,
     }).catch(() => {
       // Silent failure. Analytics is best-effort.
     });

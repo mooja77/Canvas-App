@@ -561,12 +561,12 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
           <div className="border-t border-blue-100 px-3 py-1.5 dark:border-blue-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
               {codings.length > 0 && (
-                <span className="text-[10px] text-blue-500 dark:text-blue-400">
+                <span className="text-[10px] text-blue-600 dark:text-blue-400">
                   {codings.length} segment{codings.length !== 1 ? 's' : ''}
                 </span>
               )}
               {uniqueQuestionCount > 0 && (
-                <span className="text-[10px] text-purple-400 dark:text-purple-500">
+                <span className="text-[10px] text-purple-600 dark:text-purple-400">
                   {uniqueQuestionCount} code{uniqueQuestionCount !== 1 ? 's' : ''}
                 </span>
               )}

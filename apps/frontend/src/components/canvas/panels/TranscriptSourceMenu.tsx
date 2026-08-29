@@ -84,6 +84,15 @@ export default function TranscriptSourceMenu() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  useEffect(() => {
+    const openTranscriptPicker = () => {
+      setActiveModal(null);
+      setOpen(true);
+    };
+    window.addEventListener('qualcanvas:open-transcript-picker', openTranscriptPicker);
+    return () => window.removeEventListener('qualcanvas:open-transcript-picker', openTranscriptPicker);
+  }, []);
+
   const handleSelect = (key: string) => {
     setOpen(false);
     setActiveModal(key);
@@ -103,6 +112,7 @@ export default function TranscriptSourceMenu() {
     <>
       <div className="relative" ref={ref}>
         <button
+          type="button"
           data-tour="canvas-btn-transcript"
           onClick={() => setOpen(!open)}
           className="btn-canvas btn-glow-blue flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
@@ -131,6 +141,7 @@ export default function TranscriptSourceMenu() {
           <div className="dropdown-enter absolute left-0 top-full z-50 mt-1 w-64 rounded-xl border border-gray-200/60 bg-white/95 shadow-node backdrop-blur-xl dark:border-gray-700 dark:bg-gray-800/95">
             {SOURCE_OPTIONS.map((opt) => (
               <button
+                type="button"
                 key={opt.key}
                 onClick={() => handleSelect(opt.key)}
                 className="btn-canvas flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors duration-100 hover:bg-gray-50 dark:hover:bg-gray-750 first:rounded-t-xl last:rounded-b-xl"

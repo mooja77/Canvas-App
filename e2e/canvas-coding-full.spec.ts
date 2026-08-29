@@ -256,18 +256,18 @@ test.describe('Coding Workflow', () => {
       }
     }
 
-    const codeItems = page.locator('[data-tour="canvas-navigator"] div[role="button"]').filter({
-      has: page.locator('.rounded-full'),
-    });
+    const codeItems = page.locator('[data-tour="canvas-navigator"] [data-testid="code-navigator-row"]');
     const count = await codeItems.count();
     if (count === 0) {
       test.skip(true, 'precondition not met: count === 0');
       return;
     }
 
-    await codeItems.first().click();
+    await codeItems.first().getByTestId('code-navigator-select').click();
 
-    const selectedItem = page.locator('[data-tour="canvas-navigator"] div[role="button"][class*="brand"]');
+    const selectedItem = page.locator(
+      '[data-tour="canvas-navigator"] [data-testid="code-navigator-row"][data-selected="true"]',
+    );
     await expect(selectedItem).toBeAttached({ timeout: 3000 });
   });
 
@@ -279,13 +279,13 @@ test.describe('Coding Workflow', () => {
     }
 
     const researchItem = page
-      .locator('[data-tour="canvas-navigator"] div[role="button"]')
+      .locator('[data-tour="canvas-navigator"] [data-testid="code-navigator-row"]')
       .filter({ hasText: 'Research Methods' });
     if (!(await researchItem.isVisible({ timeout: 3000 }).catch(() => false))) {
       test.skip(true, 'precondition not met: !(await researchItem.isVisible({ timeout: 3000 }).catch(() => false))');
       return;
     }
-    await researchItem.click();
+    await researchItem.getByTestId('code-navigator-select').click();
 
     // Note: do NOT click "Fit View" here. Selecting the code opens the
     // Coded Segments panel, and until the panel-docking fix (PR #28) lands the

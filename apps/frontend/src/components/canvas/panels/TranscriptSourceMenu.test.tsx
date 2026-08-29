@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import TranscriptSourceMenu from './TranscriptSourceMenu';
 
 // The transcript-source modals are rendered from inside the canvas toolbar row,
@@ -19,5 +19,15 @@ describe('TranscriptSourceMenu — modals escape the toolbar containing block', 
     expect(dialog).toBeInTheDocument();
     // Portaled to document.body => NOT inside the component's own subtree.
     expect(container.contains(dialog)).toBe(false);
+  });
+
+  it('opens the source picker when the activation checklist requests it', () => {
+    render(<TranscriptSourceMenu />);
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker'));
+    });
+
+    expect(screen.getByText('Paste Text')).toBeInTheDocument();
   });
 });

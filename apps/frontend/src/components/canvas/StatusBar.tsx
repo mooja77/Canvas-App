@@ -66,7 +66,7 @@ export default function StatusBar() {
               title={`Your plan allows ${wordCap.toLocaleString()} words per transcript. This is your longest one.`}
             >
               longest {longestTranscript.toLocaleString()}
-              <span className="text-gray-400">/{wordCap.toLocaleString()}</span>
+              <span className="text-gray-500 dark:text-gray-400">/{wordCap.toLocaleString()}</span>
             </span>
           </>
         )}
@@ -101,8 +101,11 @@ export default function StatusBar() {
           {networkOnline ? 'online' : 'offline'}
         </span>
         <span className="hidden sm:inline">
-          press <kbd className="rounded bg-gray-200 dark:bg-gray-700 px-1 py-0.5 font-mono text-[9px]">Ctrl+K</kbd> for
-          commands
+          press{' '}
+          <kbd className="rounded bg-gray-200 px-1 py-0.5 font-mono text-[9px] text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+            Ctrl+K
+          </kbd>{' '}
+          for commands
         </span>
       </div>
     </div>
