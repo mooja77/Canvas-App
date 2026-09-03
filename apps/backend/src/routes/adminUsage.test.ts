@@ -32,7 +32,7 @@ vi.mock('../lib/lifecycleEmail.js', () => ({
   sendCampaign: vi.fn(),
 }));
 
-import { adminRoutes, realUsersWhere } from './adminRoutes.js';
+import { adminRoutes } from './adminRoutes.js';
 
 const REAL_USER = 'real-user-1';
 const signedUp = new Date('2026-09-01T00:00:00.000Z');
@@ -54,12 +54,18 @@ describe('GET /admin/usage - real-user exclusion on every aggregate', () => {
 
     mockPrisma.user.findMany.mockImplementation(async (args: { where?: Record<string, unknown> }) => {
       const where = args.where ?? {};
+      // Signup cohort for the window. Checked first: the cohort filter now
+      // carries the derived id list AND createdAt, so testing `id` first would
+      // swallow it.
+      if (where.createdAt) return [{ id: REAL_USER, createdAt: signedUp }];
       // Top-user email lookup.
       if (where.id) return [{ id: REAL_USER, email: 'real@ucc.ie', name: 'Real' }];
-      // Signup cohort for the window.
-      if (where.createdAt) return [{ id: REAL_USER, createdAt: signedUp }];
-      // Real-user id list.
-      return [{ id: REAL_USER }];
+      // Real-user id list: every address, filtered in JS by the one predicate.
+      return [
+        { id: REAL_USER, email: 'real@ucc.ie' },
+        { id: 'fixture-1', email: 'jamie.ux.test@startup.io' },
+        { id: 'fixture-2', email: 'mary.oshaughnessy@wiseshift.demo' },
+      ];
     });
     mockPrisma.codingCanvas.findMany.mockResolvedValue([]);
     mockPrisma.codingCanvas.count.mockResolvedValue(0);
@@ -80,7 +86,8 @@ describe('GET /admin/usage - real-user exclusion on every aggregate', () => {
     const res = await getUsage();
     expect(res.status).toBe(200);
 
-    // Relation-backed model: same relation filter the counts use.
+    // Relation-backed model: same derived filter the headline counts use.
+    const realUsersWhere = { id: { in: [REAL_USER] } };
     expect(whereOf(mockPrisma.canvasComputedNode.groupBy)).toMatchObject({
       canvas: { user: { is: realUsersWhere } },
     });
@@ -94,9 +101,10 @@ describe('GET /admin/usage - real-user exclusion on every aggregate', () => {
     expect(whereOf(mockPrisma.auditLog.groupBy, 0)).toMatchObject({ actorId: byRealUser });
     expect(whereOf(mockPrisma.auditLog.groupBy, 1)).toMatchObject({ actorId: byRealUser });
 
-    // The id list itself is built from realUsersWhere.
+    // The id list is built by reading every address and applying the one
+    // predicate, which is what makes the two definitions impossible to drift.
     const idListCall = mockPrisma.user.findMany.mock.calls.find(
-      (call) => (call[0] as WhereArg).where === realUsersWhere,
+      (call) => (call[0] as { select?: { email?: boolean } }).select?.email === true,
     );
     expect(idListCall).toBeDefined();
   });

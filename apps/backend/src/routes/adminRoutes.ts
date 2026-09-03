@@ -5,69 +5,28 @@ import rateLimit from 'express-rate-limit';
 import { buildActivationFunnel } from '../lib/activationFunnel.js';
 import { prisma } from '../lib/prisma.js';
 import { createEmailCampaign, getEmailStats, listEmailCampaigns, sendCampaign } from '../lib/lifecycleEmail.js';
+import { getRealUserIds, isTestAccountEmail } from '../utils/testAccounts.js';
 
 export const adminRoutes = Router();
 
-// ─── Test user filtering (per TEST-USER-FILTER.md standard) ───
-const TEST_EMAIL_PATTERNS = [
-  '@example.com',
-  '@test.com',
-  '@mailinator.com',
-  '@x.com',
-  '@staffhubtest.com',
-  '@spamshield.app',
-  '@jewelvalue.app',
-  '@smartcashapp.net',
-  '@staffhubapp.com',
-  '@mygrowthmap.net',
-  '@shopify.com',
-];
-
-const TEST_EMAIL_CONTAINS = ['test', 'demo', 'e2e', 'smoke', 'qa', 'cors-', 'fake', 'seed'];
-
-const INTERNAL_EMAILS = ['mooja77@gmail.com', 'john@mooresjewellers.com', 'john@jmsdevlab.com'];
-
-function isTestEmail(email: string): boolean {
-  if (!email) return true;
-  const lower = email.toLowerCase();
-  if (INTERNAL_EMAILS.includes(lower)) return true;
-  if (lower.endsWith('.test')) return true;
-  if (TEST_EMAIL_PATTERNS.some((p) => lower.endsWith(p))) return true;
-  if (TEST_EMAIL_CONTAINS.some((p) => lower.includes(p))) return true;
-  if (lower.match(/mooja77\+.*@gmail\.com/)) return true;
-  return false;
-}
-
-// Prisma WHERE clause to exclude test users.
+// ─── Test user filtering ───
 //
-// Anchored, not substring: the old `contains: 'test' | 'qa' | 'seed' | ...`
-// filter silently dropped real researchers from every cohort, funnel and
-// count (`researcher@qu.edu.qa`, `maria.testa@unibo.it`, `j.seedorf@uva.nl`,
-// `contest.winner@ucc.ie`). A test account is one whose LOCAL PART starts
-// with a fixture prefix, carries a `+test`/`+e2e`/`+qa` plus-tag, or whose
-// DOMAIN is a reserved/fixture domain.
-const TEST_LOCAL_PART_PREFIXES = ['test', 'demo', 'qa-', 'qa_', 'seed', 'e2e', 'smoke', 'cors-', 'fake'];
-const TEST_PLUS_TAGS = ['+test', '+e2e', '+qa'];
-const TEST_DOMAINS = ['@example.com', '@example.org', '@test.local', '@qualcanvas.test', ...TEST_EMAIL_PATTERNS];
-const insensitive = 'insensitive' as const;
-export const realUsersWhere: Prisma.UserWhereInput = {
-  AND: [
-    { email: { notIn: INTERNAL_EMAILS, mode: insensitive } },
-    // Owner plus-aliases (mooja77+anything@gmail.com) are internal too.
-    {
-      NOT: {
-        AND: [
-          { email: { startsWith: 'mooja77+', mode: insensitive } },
-          { email: { endsWith: '@gmail.com', mode: insensitive } },
-        ],
-      },
-    },
-    ...TEST_LOCAL_PART_PREFIXES.map((prefix) => ({ email: { not: { startsWith: prefix }, mode: insensitive } })),
-    ...TEST_PLUS_TAGS.map((tag) => ({ email: { not: { contains: tag }, mode: insensitive } })),
-    { email: { not: { endsWith: '.test' }, mode: insensitive } },
-    ...TEST_DOMAINS.map((domain) => ({ email: { not: { endsWith: domain }, mode: insensitive } })),
-  ],
-};
+// The rules live in utils/testAccounts.ts. This file used to carry two
+// definitions of "fixture account" that disagreed with each other: a substring
+// predicate behind the user list and an anchored Prisma clause behind the
+// funnel. The same page reported two different real-user counts, and four
+// seeded fixtures leaked into the activation cohort. Both now derive from
+// isTestAccountEmail, so they cannot drift apart again.
+const isTestEmail = isTestAccountEmail;
+
+/**
+ * Prisma filter selecting non-fixture accounts, derived from the predicate
+ * rather than restating it. Call once per request; see getRealUserIds for why
+ * it reads the table and when that stops being the right trade.
+ */
+async function realUserFilter(): Promise<Prisma.UserWhereInput> {
+  return { id: { in: await getRealUserIds(prisma) } };
+}
 
 // ─── Rate limit: 30 req/min ───
 const isTestEnv = process.env.NODE_ENV === 'test' || process.env.E2E_TEST === 'true';
@@ -205,6 +164,7 @@ adminRoutes.get('/pilot/feedback', async (req: Request, res: Response) => {
 // ─── GET /dashboard — Aggregate metrics ───
 adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {
   try {
+    const realUsersWhere = await realUserFilter();
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -543,6 +503,7 @@ adminRoutes.get('/users/:id', async (req: Request, res: Response) => {
 // ─── GET /billing — Billing metrics ───
 adminRoutes.get('/billing', async (_req: Request, res: Response) => {
   try {
+    const realUsersWhere = await realUserFilter();
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const PLAN_PRICES: Record<string, number> = { pro: 12, team: 29 };
 
@@ -709,6 +670,7 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
     const daysMatch = periodParam.match(/^(\d+)d$/);
     const days = daysMatch ? Math.min(365, Math.max(1, parseInt(daysMatch[1]))) : 30;
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const realUsersWhere = await realUserFilter();
     const cohortWhere = { ...realUsersWhere, createdAt: { gte: since } };
 
     // AuditLog.actorId and AiUsage.userId carry no relation to User, so the
@@ -718,7 +680,7 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
     // `user: { is: realUsersWhere }`. Before this, the feature/AI/action/top-user
     // breakdowns counted demo, smoke and internal accounts that the headline
     // counts next to them excluded.
-    const realUserIds = (await prisma.user.findMany({ where: realUsersWhere, select: { id: true } })).map((u) => u.id);
+    const realUserIds = await getRealUserIds(prisma);
     const byRealUser = { in: realUserIds };
 
     const [
