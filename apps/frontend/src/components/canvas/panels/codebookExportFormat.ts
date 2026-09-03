@@ -47,18 +47,35 @@ export function buildDataTsv(rows: DataRow[]): string {
   return [DATA_TSV_HEADER, ...body].join('\n');
 }
 
+// Every column goes through escapeCsvField, including colour, counts, offsets
+// and dates. Interpolating "safe-looking" columns raw let a colour that escaped
+// validation upstream (e.g. `=1+1,x` via QDPX import) split the row and land
+// as a live formula.
 export function buildCodebookCsv(entries: CodebookEntry[]): string {
-  const rows = entries.map(
-    (e) =>
-      `${escapeCsvField(e.name)},${e.color},${escapeCsvField(e.parentTheme)},${e.frequency},${e.coveragePercent}%,${escapeCsvField(e.examples.join(' | '))}`,
+  const rows = entries.map((e) =>
+    [e.name, e.color, e.parentTheme, String(e.frequency), `${e.coveragePercent}%`, e.examples.join(' | ')]
+      .map(escapeCsvField)
+      .join(','),
   );
   return UTF8_BOM + [CODEBOOK_CSV_HEADER, ...rows].join('\n');
 }
 
 export function buildDataCsv(rows: DataRow[]): string {
-  const body = rows.map(
-    (r) =>
-      `${escapeCsvField(r.transcriptTitle)},${escapeCsvField(r.codeName)},${r.codeColor},${escapeCsvField(r.parentTheme)},${escapeCsvField(r.codedText)},${r.startOffset},${r.endOffset},${escapeCsvField(r.annotation)},${escapeCsvField(r.caseName)},${r.createdAt}`,
+  const body = rows.map((r) =>
+    [
+      r.transcriptTitle,
+      r.codeName,
+      r.codeColor,
+      r.parentTheme,
+      r.codedText,
+      String(r.startOffset),
+      String(r.endOffset),
+      r.annotation,
+      r.caseName,
+      r.createdAt,
+    ]
+      .map(escapeCsvField)
+      .join(','),
   );
   return UTF8_BOM + [DATA_CSV_HEADER, ...body].join('\n');
 }

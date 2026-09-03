@@ -132,6 +132,23 @@ const DETAIL_COLLECTIONS = [
   'computedNodes',
 ] as const;
 
+/**
+ * Both pagers below use offsets, so a row deleted (or, for the canvas list
+ * ordered by updatedAt, touched) between two requests shifts a row already
+ * received into the next page (bug hunt 2026-09-02 M1/M2). Keep the first
+ * copy of each id; rows without an id are kept as they are.
+ */
+function dedupeById<T>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const id = (row as { id?: unknown } | null)?.id;
+    if (typeof id !== 'string') return true;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
 async function getCompleteCanvas(canvasId: string) {
   const first = await canvasClient.get(`/canvas/${canvasId}`, { params: { detailPage: 0, detailPageSize: 500 } });
   const merged = first.data.data as CanvasDetail;
@@ -151,6 +168,9 @@ async function getCompleteCanvas(canvasId: string) {
     }
     hasMore = response.data.detailPagination?.hasMore;
     detailPage++;
+  }
+  for (const key of DETAIL_COLLECTIONS) {
+    (merged[key] as unknown[]) = dedupeById(merged[key] as unknown[]);
   }
 
   first.data.data = merged;
@@ -175,8 +195,14 @@ export async function getAllCanvases(): Promise<
     if (page.length === 0) break;
     offset += page.length;
   }
-  return result;
+  return dedupeById(result);
 }
+
+// A layout PUT that never answers (proxy stall, dropped connection with no
+// RST) otherwise sits in the per-canvas save queue forever and the status
+// chip stays on "Saving" (bug hunt 2026-09-02 M3). The route is a handful of
+// upserts; 15 s is far beyond its normal latency.
+const LAYOUT_SAVE_TIMEOUT_MS = 15_000;
 
 export const canvasApi = {
   // ─── Canvas CRUD ───
@@ -236,7 +262,8 @@ export const canvasApi = {
     canvasClient.put(`/canvas/${canvasId}/codings/${codingId}`, data),
 
   // ─── Layout ───
-  saveLayout: (canvasId: string, data: SaveLayoutInput) => canvasClient.put(`/canvas/${canvasId}/layout`, data),
+  saveLayout: (canvasId: string, data: SaveLayoutInput) =>
+    canvasClient.put(`/canvas/${canvasId}/layout`, data, { timeout: LAYOUT_SAVE_TIMEOUT_MS }),
 
   getArtifact: (canvasId: string, type: 'sticky-notes' | 'theme-groups' | 'code-weights') =>
     canvasClient.get(`/canvas/${canvasId}/artifacts/${type}`),

@@ -10,6 +10,7 @@ import {
   planLabel,
 } from '../config/plans.js';
 import { resolveUserOpenAiKey, transcriptionMinutesUsedThisMonth } from '../utils/transcriptionMetering.js';
+import { OWNER_PLAN_INCLUDE, resolveCanvasOwnerPlan } from '../utils/ownerPlan.js';
 import {
   isHostedAiEnabled,
   hostedDailyCeilingCents,
@@ -74,12 +75,7 @@ export async function resolveRequestPlan(req: Request): Promise<string> {
         userId: true,
         dashboardAccessId: true,
         deletedAt: true,
-        user: { select: { plan: true, emailVerified: true, trialEndsAt: true } },
-        dashboardAccess: {
-          select: {
-            user: { select: { plan: true, emailVerified: true, trialEndsAt: true } },
-          },
-        },
+        ...OWNER_PLAN_INCLUDE,
         collaborators: requesterUserId
           ? {
               where: { userId: requesterUserId },
@@ -97,16 +93,9 @@ export async function resolveRequestPlan(req: Request): Promise<string> {
         (requesterUserId && Array.isArray(canvas.collaborators) && canvas.collaborators.length > 0));
     if (!hasAccess) return req.userPlan || 'free';
 
-    const owner = canvas?.user ?? canvas?.dashboardAccess?.user;
-    if (owner) {
-      const trialActive =
-        owner.emailVerified &&
-        owner.plan === 'free' &&
-        owner.trialEndsAt instanceof Date &&
-        owner.trialEndsAt.getTime() > Date.now();
-      return trialActive ? 'pro' : owner.plan;
-    }
-    if (canvas) return 'pro';
+    // Owner's plan, trial overlay included; an unlinked legacy owner is
+    // grandfathered to Pro. GET /canvas/:id reports the same helper's answer.
+    if (canvas) return resolveCanvasOwnerPlan(canvas);
   }
   return req.userPlan || 'free';
 }

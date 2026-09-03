@@ -171,8 +171,18 @@
     document.getElementById('cc-reject').addEventListener('click', function () {
       var wasAccepted = readConsent() === 'accepted';
       writeConsent('rejected');
+      // Re-read rather than trust the write: a blocked localStorage write
+      // leaves the previous value in place.
+      var persisted = readConsent() === 'rejected';
       denyAnalyticsConsent();
       clearOptionalAnalyticsCookies();
+      if (wasAccepted && !persisted) {
+        // Storage still says "accepted". A reload would re-inject GTM from
+        // that stored choice with no banner to say the withdrawal failed, so
+        // keep the banner up and stay on this page (Consent Mode is denied
+        // for the rest of it).
+        return;
+      }
       dismissBanner();
       // Once GTM has executed, removing its script element cannot unload the
       // running container. Reload only for a withdrawal from an accepted

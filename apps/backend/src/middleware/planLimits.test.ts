@@ -14,7 +14,7 @@ import type { Request, Response, NextFunction } from 'express';
 
 const { mockPrisma } = vi.hoisted(() => ({
   mockPrisma: {
-    codingCanvas: { count: vi.fn() },
+    codingCanvas: { count: vi.fn(), findUnique: vi.fn() },
     canvasShare: { count: vi.fn() },
     aiUsage: { count: vi.fn() },
   },
@@ -42,7 +42,9 @@ const {
   checkEthicsAccess,
   checkIntercoderAccess,
   checkIntegrationsAccess,
+  resolveRequestPlan,
 } = await import('./planLimits.js');
+const { resolveCanvasOwnerPlan, canvasOwnerPlanPayload } = await import('../utils/ownerPlan.js');
 
 const runMiddleware = async (
   mw: ReturnType<typeof checkCanvasLimit>,
@@ -187,5 +189,82 @@ describe('the daily AI ceiling does not pitch a useless upgrade', () => {
   it('still marks genuinely upgradable refusals upgrade:true', async () => {
     const { res } = await runMiddleware(checkShareLimit(), 'free');
     expect(bodyOf(res).upgrade).toBe(true);
+  });
+});
+
+/**
+ * Bug hunt 2026-09-02 M6: the server gates canvas-scoped limits on the canvas
+ * OWNER's plan, but the UI gated on the VIEWER's. GET /canvas/:id now reports
+ * the owner's plan, computed by the same helper the middleware uses so the two
+ * cannot drift.
+ */
+describe('resolveCanvasOwnerPlan — one resolution shared by middleware and detail route', () => {
+  const ownerUser = (plan: string, extra: Partial<{ emailVerified: boolean; trialEndsAt: Date | null }> = {}) => ({
+    plan,
+    emailVerified: true,
+    trialEndsAt: null,
+    ...extra,
+  });
+
+  it('returns the owner user plan', () => {
+    expect(resolveCanvasOwnerPlan({ user: ownerUser('team'), dashboardAccess: null })).toBe('team');
+  });
+
+  it('applies the trial overlay exactly like the auth middleware', () => {
+    const inTrial = ownerUser('free', { trialEndsAt: new Date(Date.now() + 86_400_000) });
+    expect(resolveCanvasOwnerPlan({ user: inTrial, dashboardAccess: null })).toBe('pro');
+    const expired = ownerUser('free', { trialEndsAt: new Date(Date.now() - 86_400_000) });
+    expect(resolveCanvasOwnerPlan({ user: expired, dashboardAccess: null })).toBe('free');
+    const unverified = ownerUser('free', { emailVerified: false, trialEndsAt: new Date(Date.now() + 86_400_000) });
+    expect(resolveCanvasOwnerPlan({ user: unverified, dashboardAccess: null })).toBe('free');
+  });
+
+  it('falls through to the linked access-code user, then to grandfathered Pro', () => {
+    expect(resolveCanvasOwnerPlan({ user: null, dashboardAccess: { user: ownerUser('student') } })).toBe('student');
+    expect(resolveCanvasOwnerPlan({ user: null, dashboardAccess: { user: null } })).toBe('pro');
+    expect(resolveCanvasOwnerPlan({ user: null, dashboardAccess: null })).toBe('pro');
+  });
+
+  it('builds the detail payload with the limits JSON-safe (Infinity -> null)', () => {
+    const payload = canvasOwnerPlanPayload({ user: ownerUser('team'), dashboardAccess: null });
+    expect(payload.effectivePlan).toBe('team');
+    expect(payload.limits.maxCanvases).toBeNull();
+    expect(payload.limits.maxWordsPerTranscript).toBe(50000);
+    expect(payload.limits.intercoderEnabled).toBe(true);
+    expect(JSON.parse(JSON.stringify(payload))).toEqual(payload);
+  });
+});
+
+describe('resolveRequestPlan — a collaborator is governed by the OWNER plan, not their own', () => {
+  const canvasOwnedBy = (plan: string) => ({
+    userId: 'owner-1',
+    dashboardAccessId: 'owner-access',
+    deletedAt: null,
+    user: { plan, emailVerified: true, trialEndsAt: null },
+    dashboardAccess: null,
+    collaborators: [{ id: 'collab-row' }],
+  });
+  const collaboratorReq = (viewerPlan: string) =>
+    ({
+      params: { canvasId: 'canvas-1' },
+      userId: 'collaborator-1',
+      dashboardAccessId: 'collaborator-access',
+      userPlan: viewerPlan,
+    }) as unknown as Request;
+
+  it('a Free collaborator on a Team canvas gets Team', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue(canvasOwnedBy('team'));
+    await expect(resolveRequestPlan(collaboratorReq('free'))).resolves.toBe('team');
+  });
+
+  it('a Pro collaborator on a Free canvas gets Free', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue(canvasOwnedBy('free'));
+    await expect(resolveRequestPlan(collaboratorReq('pro'))).resolves.toBe('free');
+  });
+
+  it('agrees with the pure helper on the same row', async () => {
+    const row = canvasOwnedBy('student');
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue(row);
+    await expect(resolveRequestPlan(collaboratorReq('free'))).resolves.toBe(resolveCanvasOwnerPlan(row));
   });
 });

@@ -12,9 +12,11 @@ import {
   canvasArtifactParams,
   canvasArtifactValueSchemas,
   updateCanvasArtifactSchema,
+  canvasDetailQuerySchema,
 } from '../middleware/validation.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import { checkCanvasLimit } from '../middleware/planLimits.js';
+import { OWNER_PLAN_INCLUDE, canvasOwnerPlanPayload } from '../utils/ownerPlan.js';
 import { getPlanLimits } from '../config/plans.js';
 import { trackJmsEvent } from '../lib/jms-events.js';
 import { deleteStoredUploads } from '../utils/fileCleanup.js';
@@ -205,16 +207,23 @@ canvasRoutes.get('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async
     // be materialised into one Prisma result and one JSON response, so the
     // paid plans' intentionally uncapped projects could exhaust the API long
     // before the browser received a byte.
-    const rawDetailPage = Number.parseInt(req.query.detailPage as string, 10);
-    const detailPage = Math.max(Number.isFinite(rawDetailPage) ? rawDetailPage : 0, 0);
-    const rawDetailPageSize = Number.parseInt(req.query.detailPageSize as string, 10);
-    const detailPageSize = Math.min(Math.max(Number.isFinite(rawDetailPageSize) ? rawDetailPageSize : 500, 50), 1000);
+    // Validated, not clamped: `detailPage=1e20` used to reach Prisma as a
+    // `skip` the driver cannot encode -> 500.
+    const detailQuery = canvasDetailQuerySchema.safeParse(req.query);
+    if (!detailQuery.success) {
+      return next(new AppError('detailPage must be an integer 0..1000000 and detailPageSize 50..1000', 400));
+    }
+    const detailPage = detailQuery.data.detailPage ?? 0;
+    const detailPageSize = detailQuery.data.detailPageSize ?? 500;
     const detailSkip = detailPage * detailPageSize;
     const detailTake = detailPageSize + 1;
 
     const canvas = await prisma.codingCanvas.findUnique({
       where: { id: req.params.canvasId },
       include: {
+        // Owner's plan columns, for `ownerPlan` below (M6). Same fragment
+        // resolveRequestPlan selects, so the gate and the report agree.
+        ...OWNER_PLAN_INCLUDE,
         transcripts: { orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }], skip: detailSkip, take: detailTake },
         questions: { orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }], skip: detailSkip, take: detailTake },
         memos: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], skip: detailSkip, take: detailTake },
@@ -252,9 +261,19 @@ canvasRoutes.get('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async
       relations: canvas.relations.length > detailPageSize,
       computedNodes: canvas.computedNodes.length > detailPageSize,
     };
+    // Every canvas-scoped limit is enforced against the OWNER's plan
+    // (resolveRequestPlan), never the requester's. Tell the client which plan
+    // that is, so a Free collaborator on a Team canvas is not shown caps and
+    // locks the server would never apply — and a Pro collaborator on a Free
+    // canvas is warned before the 403. The owner columns themselves stay
+    // server-side.
+    const { user: ownerUser, dashboardAccess: ownerAccess, ...canvasFields } = canvas;
+    const ownerPlan = canvasOwnerPlanPayload({ user: ownerUser, dashboardAccess: ownerAccess });
+
     const data = {
-      ...canvas,
+      ...canvasFields,
       myRole,
+      ownerPlan,
       transcripts: page(canvas.transcripts),
       questions: page(canvas.questions),
       memos: page(canvas.memos),

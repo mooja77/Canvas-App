@@ -21,14 +21,27 @@ const IRISH_ACADEMIC_DOMAINS = new Set([
   'ul.ie',
 ]);
 
+// A hostname label: ASCII letters, digits and hyphens only. Anything else
+// (a zero-width space, NUL, a non-breaking space) is not a label, so a domain
+// like `evil.com<ZWSP>.edu` never reaches the suffix checks.
+const LABEL = /^[a-z0-9-]+$/;
+
 export function isAcademicEmail(email: string): boolean {
   const normalized = email.trim().toLowerCase();
   const at = normalized.lastIndexOf('@');
   if (at <= 0 || at === normalized.length - 1 || normalized.indexOf('@') !== at) return false;
   const domain = normalized.slice(at + 1).replace(/\.$/, '');
-  if (!domain || domain.includes('..')) return false;
-  if (domain.endsWith('.edu')) return true;
-  if (/(?:^|\.)(?:ac|edu)\.[a-z]{2}$/.test(domain)) return true;
+  if (!domain) return false;
+  const labels = domain.split('.');
+  if (!labels.every((label) => LABEL.test(label))) return false;
+
+  // An academic suffix needs at least one institution label in front of it:
+  // `mit.edu` and `cam.ac.uk` are universities, bare `edu` / `ac.uk` /
+  // `edu.au` / `edu.ie` are not.
+  const last = labels[labels.length - 1];
+  const secondLast = labels[labels.length - 2];
+  if (labels.length >= 2 && last === 'edu') return true;
+  if (labels.length >= 3 && (secondLast === 'ac' || secondLast === 'edu') && /^[a-z]{2}$/.test(last)) return true;
   return [...IRISH_ACADEMIC_DOMAINS].some(
     (institution) => domain === institution || domain.endsWith(`.${institution}`),
   );

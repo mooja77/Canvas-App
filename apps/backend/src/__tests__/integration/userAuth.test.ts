@@ -210,6 +210,28 @@ describe('User auth integration tests', () => {
       expect(res.body.error).toMatch(/email/i);
     });
 
+    // L7: `includes('@')` let a zero-width space smuggle a `.edu` suffix past
+    // the academic-domain check. Signup must reject anything outside
+    // printable ASCII and anything that is not a syntactically valid address.
+    it.each([
+      ['zero-width space before .edu', 'x@evil.com\u200B.edu'],
+      ['NUL byte', 'x@evil.com\u0000.edu'],
+      ['non-breaking space', 'x@evil.com\u00A0.edu'],
+      ['missing domain label', 'x@.edu'],
+      ['two @ signs', 'x@ucc.ie@evil.com'],
+    ])('rejects %s with 400', async (_label, email) => {
+      mockPrisma.user.findUnique.mockClear();
+      const res = await request(app).post('/api/auth/signup').send({
+        email,
+        password: 'securepass123',
+        name: 'Test',
+      });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/email/i);
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+    });
+
     it('rejects password shorter than 8 characters', async () => {
       const res = await request(app).post('/api/auth/signup').send({
         email: 'test@example.com',
@@ -838,6 +860,31 @@ describe('User auth integration tests', () => {
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/no fields/i);
     });
+
+    // L7: same smuggling guard as signup on the email-change path.
+    it.each([
+      ['zero-width space before .edu', 'x@evil.com\u200B.edu'],
+      ['non-breaking space', 'x@evil.com .edu'],
+      ['no @', 'not-an-email'],
+    ])('rejects %s with 400', async (_label, email) => {
+      const jwt = signUserToken('user-1', 'researcher', 'free');
+      // Both the auth middleware and the route's own lookup read the user.
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        passwordHash: '$2a$12$hashedpassword',
+        plan: 'free',
+        role: 'researcher',
+        dashboardAccess: null,
+      });
+      mockPrisma.user.update.mockClear();
+
+      const res = await request(app).put('/api/auth/profile').set('Authorization', `Bearer ${jwt}`).send({ email });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/email/i);
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
   });
 
   // ─── DELETE /auth/account ───────────────────────────────────────────
@@ -1265,6 +1312,40 @@ describe('User auth integration tests', () => {
   // ─── Access-code-only erasure ───────────────────────────────────────
   // Audit §3.3 item 3: DELETE /auth/account answered 403 for these sessions,
   // so a legacy user could not erase their own participant data at all.
+  // L7 follow-up: link-account is the third path that accepts an email and it
+  // still only checked `includes('@')`, so a zero-width space could smuggle a
+  // `.edu` suffix onto an email that then became a grandfathered Pro user.
+  describe('POST /api/auth/link-account', () => {
+    function arrangeLegacySession() {
+      mockPrisma.dashboardAccess.findFirst.mockResolvedValue({
+        id: 'da-legacy-link',
+        name: 'Legacy Linker',
+        role: 'researcher',
+        expiresAt: new Date('2099-12-31'),
+      });
+      mockPrisma.dashboardAccess.findUnique.mockResolvedValue({ id: 'da-legacy-link', userId: null });
+      return signResearcherToken('da-legacy-link', 'researcher');
+    }
+
+    it.each([
+      ['zero-width space before .edu', 'x@evil.com\u200B.edu'],
+      ['non-breaking space', 'x@evil.com\u00A0.edu'],
+      ['no @', 'not-an-email'],
+    ])('rejects %s with 400 before touching the database', async (_label, email) => {
+      const jwt = arrangeLegacySession();
+
+      const res = await request(app)
+        .post('/api/auth/link-account')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ email, password: 'password123' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/email/i);
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    });
+  });
+
   describe('DELETE /api/auth/account — access-code session', () => {
     function arrangeLegacySession() {
       mockPrisma.dashboardAccess.findFirst.mockResolvedValue({

@@ -678,3 +678,126 @@ describe('QDPX round-trip - two coders agreeing on one span', () => {
     expect(new Set(codings.map((c) => c.codeGuid)).size).toBe(1);
   });
 });
+
+describe('parseQdpxProject - selection offsets that are not integers (L8)', () => {
+  const withOffsets = (start: string, end: string) => `<?xml version="1.0" encoding="utf-8"?>
+<Project name="Offsets" xmlns="urn:QDA-XML:project:1.0">
+  <CodeBook><Codes>
+    <Code guid="11111111-1111-4111-8111-111111111111" name="Barriers" isCodable="true" />
+  </Codes></CodeBook>
+  <Sources>
+    <TextSource guid="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" name="Interview 1">
+      <PlainTextContent>The bus never comes on time.</PlainTextContent>
+      <PlainTextSelection guid="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" startPosition="${start}" endPosition="${end}">
+        <Coding guid="cccccccc-cccc-4ccc-8ccc-cccccccccccc">
+          <CodeRef targetGUID="11111111-1111-4111-8111-111111111111" />
+        </Coding>
+      </PlainTextSelection>
+    </TextSource>
+  </Sources>
+</Project>`;
+
+  it('skips a selection whose startPosition is not numeric instead of fabricating a coding at 0', () => {
+    const parsed = parseQdpxProject(withOffsets('abc', '7'));
+    expect(parsed.sources[0].selections).toHaveLength(0);
+  });
+
+  it('skips a selection with a fractional offset instead of truncating it', () => {
+    const parsed = parseQdpxProject(withOffsets('2.9', '7'));
+    expect(parsed.sources[0].selections).toHaveLength(0);
+  });
+
+  it('skips a negative offset', () => {
+    const parsed = parseQdpxProject(withOffsets('-1', '7'));
+    expect(parsed.sources[0].selections).toHaveLength(0);
+  });
+
+  it('accepts exponent notation that denotes an integer (Number("1e1") is 10)', () => {
+    const parsed = parseQdpxProject(withOffsets('1e1', '12'));
+    expect(parsed.sources[0].selections).toHaveLength(1);
+    expect(parsed.sources[0].selections[0].startPosition).toBe(10);
+  });
+
+  it('counts the skipped selection in the disclosure so the loss is reported', () => {
+    const parsed = parseQdpxProject(withOffsets('abc', '2.9'));
+    expect(parsed.unsupported.invalidSelections).toBe(1);
+    expect(describeLosses(parsed.unsupported)).toContain('1 selection with an unreadable text range');
+  });
+
+  it('skips a legacy top-level Coding whose TextSelection offsets are not integers', () => {
+    const legacy = `<?xml version="1.0" encoding="utf-8"?>
+<Project name="Legacy" xmlns="urn:QDA-XML:project:1.0">
+  <CodeBook>
+    <Code guid="11111111-1111-4111-8111-111111111111" name="Barriers" isCodable="true" />
+  </CodeBook>
+  <Sources>
+    <TextSource guid="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" name="Interview 1" plainTextContent="The bus never comes on time." />
+  </Sources>
+  <Codings>
+    <Coding guid="cccccccc-cccc-4ccc-8ccc-cccccccccccc" codeGUID="11111111-1111-4111-8111-111111111111">
+      <TextSelection guid="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" sourceGUID="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" startPosition="four" endPosition="7" />
+    </Coding>
+  </Codings>
+</Project>`;
+    const parsed = parseQdpxProject(legacy);
+    expect(parsed.sources[0].selections).toHaveLength(0);
+    expect(parsed.unsupported.invalidSelections).toBe(1);
+  });
+});
+
+describe('parseQdpxProject - numeric character references outside Unicode (L9)', () => {
+  const named = (name: string) => `<?xml version="1.0" encoding="utf-8"?>
+<Project name="${name}" xmlns="urn:QDA-XML:project:1.0">
+  <CodeBook><Codes /></CodeBook>
+</Project>`;
+
+  it('leaves &#x110000; as literal text instead of throwing RangeError', () => {
+    const parsed = parseQdpxProject(named('x&#x110000;y'));
+    expect(parsed.name).toBe('x&#x110000;y');
+  });
+
+  it('leaves a decimal reference above U+10FFFF as literal text', () => {
+    const parsed = parseQdpxProject(named('x&#1114112;y'));
+    expect(parsed.name).toBe('x&#1114112;y');
+  });
+
+  it('leaves a lone surrogate reference as literal text', () => {
+    const parsed = parseQdpxProject(named('x&#xD800;y'));
+    expect(parsed.name).toBe('x&#xD800;y');
+  });
+
+  it('still decodes the last valid code point and ordinary references', () => {
+    const parsed = parseQdpxProject(named('a&#x10FFFF;b&#65;c&#x1F600;'));
+    expect(parsed.name).toBe('a\u{10FFFF}bAc\u{1F600}');
+  });
+});
+
+describe('buildQdpxProject - U+FFFD disclosure covers code names (L10)', () => {
+  const project = {
+    name: 'Clean',
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    codes: [
+      {
+        id: 'code-1',
+        text: 'Bad\u0001name',
+        children: [{ id: 'code-2', text: 'Nested\u0002\u0003', children: [] }],
+      },
+    ],
+    sources: [{ id: 's1', title: 'Clean', content: 'Clean text' }],
+    codings: [],
+  };
+
+  it('counts illegal characters in nested code names', () => {
+    const { xml, notes } = buildQdpxProject(project);
+    expect(notes.some((n) => n.startsWith('3 character(s)'))).toBe(true);
+    expect(xml).toContain('Substitution: 3 character(s)');
+  });
+
+  it('still says nothing when the code names are clean', () => {
+    const { notes } = buildQdpxProject({
+      ...project,
+      codes: [{ id: 'code-1', text: 'Fine', children: [{ id: 'code-2', text: 'Also fine', children: [] }] }],
+    });
+    expect(notes.some((n) => /character\(s\)/.test(n))).toBe(false);
+  });
+});

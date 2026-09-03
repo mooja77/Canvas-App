@@ -20,14 +20,27 @@ interface ParsedRow {
  * Handles RFC 4180: quoted fields, escaped double-quotes, newlines in quoted values.
  */
 function parseCSVRows(csvContent: string): string[][] {
+  // Excel's "CSV UTF-8" and Qualtrics prefix the file with a byte-order mark.
+  // Left in place it became part of the first header: invisible in the error
+  // message ('"id" not found in headers: id, ...') and, when the header is
+  // quoted, sitting BEFORE the opening quote so the quote was read literally.
+  //
+  // Line endings are normalised up front: CRLF (Windows) and a lone CR
+  // (classic Mac; some R and SPSS exports) both become LF. This is done on the
+  // raw text, quoted fields included, deliberately: a literal carriage return
+  // inside a quoted survey answer is vanishingly rare and turning it into LF
+  // is harmless, whereas a file with CR row separators used to parse as one
+  // header row and be rejected outright.
+  const text = csvContent.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+
   const rows: string[][] = [];
   let current = '';
   let inQuotes = false;
   let row: string[] = [];
 
-  for (let i = 0; i < csvContent.length; i++) {
-    const ch = csvContent[i];
-    const next = csvContent[i + 1];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
 
     if (inQuotes) {
       if (ch === '"' && next === '"') {
@@ -47,12 +60,6 @@ function parseCSVRows(csvContent: string): string[][] {
       } else if (ch === ',') {
         row.push(current.trim());
         current = '';
-      } else if (ch === '\r' && next === '\n') {
-        row.push(current.trim());
-        rows.push(row);
-        row = [];
-        current = '';
-        i++; // skip \n
       } else if (ch === '\n') {
         row.push(current.trim());
         rows.push(row);

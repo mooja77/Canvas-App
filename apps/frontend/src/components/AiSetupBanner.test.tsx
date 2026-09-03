@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { PLAN_LIMITS, serializePlanLimits, type CanvasOwnerPlan, type PlanTier } from '@qualcanvas/shared';
 
 // The banner reads from three Zustand stores via selectors. Back each with a
 // mutable state object so individual tests can flip a single field.
-const { authState, uiState, aiState } = vi.hoisted(() => ({
+const { authState, uiState, aiState, canvasState } = vi.hoisted(() => ({
   authState: {
     plan: 'pro' as string,
     effectivePlan: null as string | null,
@@ -11,10 +12,14 @@ const { authState, uiState, aiState } = vi.hoisted(() => ({
   },
   uiState: { featureDiscovery: { aiPromptSeen: false }, markFeatureSeen: vi.fn() },
   aiState: { configured: false, hostedAiAvailable: false, loaded: true, fetchConfig: vi.fn() },
+  canvasState: { activeCanvas: null as { ownerPlan?: CanvasOwnerPlan } | null },
 }));
 
 vi.mock('../stores/authStore', () => ({
   useAuthStore: (selector: (s: typeof authState) => unknown) => selector(authState),
+}));
+vi.mock('../stores/canvasStore', () => ({
+  useCanvasStore: (selector: (s: typeof canvasState) => unknown) => selector(canvasState),
 }));
 vi.mock('../stores/uiStore', () => ({
   useUIStore: (selector: (s: typeof uiState) => unknown) => selector(uiState),
@@ -32,6 +37,7 @@ describe('AiSetupBanner', () => {
     authState.plan = 'pro';
     authState.effectivePlan = null;
     authState.authType = 'email';
+    canvasState.activeCanvas = null;
     uiState.featureDiscovery.aiPromptSeen = false;
     aiState.configured = false;
     aiState.hostedAiAvailable = false;
@@ -94,5 +100,30 @@ describe('AiSetupBanner', () => {
     authState.effectivePlan = 'pro';
     render(<AiSetupBanner />);
     expect(screen.getByText(CTA)).toBeInTheDocument();
+  });
+
+  // M6 (bug hunt 2026-09-02): checkAiAccess gates on the canvas OWNER's plan
+  // (resolveRequestPlan), so AI entitlement inside an open canvas follows the
+  // owner. The key itself is still per user, so the CTA is still useful.
+  describe('follows the open canvas owner plan', () => {
+    const ownerPlanOf = (tier: PlanTier): CanvasOwnerPlan => ({
+      effectivePlan: tier,
+      limits: serializePlanLimits(PLAN_LIMITS[tier]),
+    });
+
+    it('shows the CTA to a Free viewer inside a Team canvas', () => {
+      authState.plan = 'free';
+      canvasState.activeCanvas = { ownerPlan: ownerPlanOf('team') };
+      render(<AiSetupBanner />);
+      expect(screen.getByText(CTA)).toBeInTheDocument();
+      expect(aiState.fetchConfig).toHaveBeenCalled();
+    });
+
+    it('hides the CTA from a Pro viewer inside a Free canvas, where AI would 403', () => {
+      authState.plan = 'pro';
+      canvasState.activeCanvas = { ownerPlan: ownerPlanOf('free') };
+      render(<AiSetupBanner />);
+      expect(screen.queryByText(CTA)).not.toBeInTheDocument();
+    });
   });
 });

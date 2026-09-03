@@ -36,7 +36,17 @@ import { deleteCanvasNodeArtifacts } from '../utils/canvasNodeCleanup.js';
 
 export const codingRoutes = Router();
 
+type QuestionReader = Pick<Prisma.TransactionClient, 'canvasQuestion'>;
+
+/**
+ * Walk the parent chain from `requestedParentId` upward and reject anything
+ * that would put `questionId` on its own ancestry. Pass the transaction client
+ * when the caller is about to write: the walk and the write must see the same
+ * committed state, otherwise two concurrent re-parents can each pass the check
+ * and together commit a cycle (see the PUT handler).
+ */
 async function assertValidQuestionParent(
+  db: QuestionReader,
   canvasId: string,
   questionId: string,
   requestedParentId: string,
@@ -46,21 +56,30 @@ async function assertValidQuestionParent(
   }
 
   let currentId: string | null = requestedParentId;
+  const path: string[] = [];
   const visited = new Set<string>();
   while (currentId) {
     if (currentId === questionId) {
       throw new AppError('That hierarchy change would create a cycle', 400);
     }
     if (visited.has(currentId)) {
-      throw new AppError('The existing code hierarchy contains a cycle', 409);
+      // Name the members so a client can repair the data: setting any one of
+      // them to parent null breaks the loop. Nothing else can, because every
+      // hierarchy edit on this canvas walks through the same loop and 409s.
+      const cycle = path.slice(path.indexOf(currentId));
+      throw new AppError(
+        `The existing code hierarchy contains a cycle: ${[...cycle, currentId].join(' -> ')}. ` +
+          `Set the parent of one of these codes to null to repair it.`,
+        409,
+      );
     }
     visited.add(currentId);
+    path.push(currentId);
 
-    const current: { canvasId: string; parentQuestionId: string | null } | null =
-      await prisma.canvasQuestion.findUnique({
-        where: { id: currentId },
-        select: { canvasId: true, parentQuestionId: true },
-      });
+    const current: { canvasId: string; parentQuestionId: string | null } | null = await db.canvasQuestion.findUnique({
+      where: { id: currentId },
+      select: { canvasId: true, parentQuestionId: true },
+    });
     if (!current || current.canvasId !== canvasId) {
       throw new AppError('Parent code not found in this canvas', 404);
     }
@@ -87,7 +106,7 @@ codingRoutes.post(
       if (parentQuestionId) {
         // A new row cannot be part of a cycle yet, but the same validator also
         // detects a corrupt pre-existing parent chain instead of extending it.
-        await assertValidQuestionParent(req.params.id, '__new_question__', parentQuestionId);
+        await assertValidQuestionParent(prisma, req.params.id, '__new_question__', parentQuestionId);
       }
 
       const count = await prisma.canvasQuestion.count({ where: { canvasId: req.params.id } });
@@ -116,13 +135,20 @@ codingRoutes.put(
       if (!existing || existing.canvasId !== req.params.id) {
         return next(new AppError('Code not found in this canvas', 404));
       }
-      if (typeof req.body.parentQuestionId === 'string') {
-        await assertValidQuestionParent(req.params.id, req.params.qid, req.body.parentQuestionId);
-      }
-      const question = await prisma.canvasQuestion.update({
-        where: { id: req.params.qid },
-        data: req.body,
-      });
+      const requestedParentId: unknown = req.body.parentQuestionId;
+      const question =
+        typeof requestedParentId === 'string'
+          ? // Check + write in one transaction behind a row lock on the canvas.
+            // Two concurrent re-parents (A under B, B under A) each passed the
+            // walk against the pre-edit rows and both committed, leaving a
+            // cycle that made every later hierarchy edit on the canvas 409.
+            // The lock serialises them so the second walk sees the first write.
+            await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+              await tx.$executeRaw`SELECT id FROM "CodingCanvas" WHERE id = ${req.params.id} FOR UPDATE`;
+              await assertValidQuestionParent(tx, req.params.id, req.params.qid, requestedParentId);
+              return tx.canvasQuestion.update({ where: { id: req.params.qid }, data: req.body });
+            })
+          : await prisma.canvasQuestion.update({ where: { id: req.params.qid }, data: req.body });
       res.json({ success: true, data: question });
     } catch (err) {
       next(err);

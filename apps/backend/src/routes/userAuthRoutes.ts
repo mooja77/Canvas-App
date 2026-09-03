@@ -17,8 +17,25 @@ import { sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
 import { isLifecycleSendingEnabledFor, lifecycleTemplate, sendLifecycleEmail } from '../lib/lifecycleEmail.js';
 import { logError } from '../lib/logger.js';
 import { deleteStoredUploads } from '../utils/fileCleanup.js';
+import { z } from 'zod';
 
 const BCRYPT_ROUNDS = 12;
+
+// Email addresses accepted on signup and profile change. `.email()` gives the
+// syntactic check; the refinement rejects any character outside printable
+// ASCII so that a zero-width space (or NUL, or NBSP) cannot smuggle a `.edu`
+// suffix past the academic-domain check used for the Student plan.
+const PRINTABLE_ASCII = /^[\x21-\x7e]+$/;
+const emailSchema = z
+  .string()
+  .trim()
+  .max(254)
+  .email()
+  .refine((value) => PRINTABLE_ASCII.test(value));
+
+function isValidEmailAddress(value: unknown): value is string {
+  return typeof value === 'string' && emailSchema.safeParse(value).success;
+}
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 
 // New email/Google signups get 14 days of Pro features. The trial is in-app
@@ -107,7 +124,7 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
   try {
     const { email, password, name, marketingConsent } = req.body;
 
-    if (!email || typeof email !== 'string' || !email.includes('@')) {
+    if (!isValidEmailAddress(email)) {
       return res.status(400).json({ success: false, error: 'Valid email is required' });
     }
     if (!password || typeof password !== 'string' || password.length < 8) {
@@ -759,7 +776,9 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
     if (!dashboardAccessId) throw new AppError('Authentication required', 401);
 
     const { email, password, name } = req.body;
-    if (!email || typeof email !== 'string' || !email.includes('@')) {
+    // Same guard as signup and profile change: a linked email becomes a
+    // grandfathered Pro user, so it must not be smuggleable either.
+    if (!isValidEmailAddress(email)) {
       return res.status(400).json({ success: false, error: 'Valid email is required' });
     }
     if (!password || typeof password !== 'string' || password.length < 8) {
@@ -866,7 +885,7 @@ userAuthRoutes.put('/auth/profile', auth, async (req, res, next) => {
 
     let emailChanged = false;
     if (email !== undefined) {
-      if (typeof email !== 'string' || !email.includes('@')) {
+      if (!isValidEmailAddress(email)) {
         return res.status(400).json({ success: false, error: 'Valid email is required' });
       }
       const normalizedEmail = email.toLowerCase().trim();

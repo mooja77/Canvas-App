@@ -151,4 +151,41 @@ describe('CSV export', () => {
     expect(parsed[1][0]).toBe('Coopération');
     expect(parsed[1][2]).toBe('Réseau');
   });
+
+  // M11: every column goes through escapeCsvField, not only the text ones. A
+  // colour that slipped past validation (QDPX import, see M7) must neither
+  // split the row nor land as a live formula.
+  it('escapes and neutralises a hostile colour in the codebook CSV', () => {
+    const hostile: CodebookEntry[] = [
+      { name: 'Trust', color: '=1+1,x', parentTheme: 'Theme', frequency: 3, coveragePercent: 2.5, examples: ['ex'] },
+    ];
+    const parsed = parseDelimited(buildCodebookCsv(hostile).replace(/^\uFEFF/, ''), ',');
+    expect(parsed[1]).toHaveLength(6);
+    expect(parsed[1][1]).toBe("'=1+1,x");
+    expect(parsed[1][3]).toBe('3');
+    expect(parsed[1][4]).toBe('2.5%');
+  });
+
+  it('escapes and neutralises a hostile colour in the data CSV', () => {
+    const hostile: DataRow[] = [
+      {
+        transcriptTitle: 'T',
+        codeName: 'C',
+        codeColor: '=1+1,x',
+        parentTheme: 'P',
+        codedText: 'text',
+        startOffset: 10,
+        endOffset: 20,
+        annotation: '',
+        caseName: '',
+        createdAt: '2026-09-02',
+      },
+    ];
+    const parsed = parseDelimited(buildDataCsv(hostile).replace(/^\uFEFF/, ''), ',');
+    expect(parsed[1]).toHaveLength(10);
+    expect(parsed[1][2]).toBe("'=1+1,x");
+    expect(parsed[1][5]).toBe('10');
+    expect(parsed[1][6]).toBe('20');
+    expect(parsed[1][9]).toBe('2026-09-02');
+  });
 });

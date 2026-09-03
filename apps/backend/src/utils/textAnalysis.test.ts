@@ -11,7 +11,9 @@ import {
   computeSentiment,
   computeTreemap,
   computeDocumentPortrait,
+  regexChunks,
 } from './textAnalysis.js';
+import { AppError } from '../middleware/errorHandler.js';
 
 // ─── Test Data Fixtures ───
 
@@ -117,9 +119,19 @@ describe('searchTranscripts', () => {
     }
   });
 
-  it('handles invalid regex gracefully', () => {
-    const result = searchTranscripts(transcripts, '[invalid', 'regex');
-    expect(result.matches).toHaveLength(0);
+  it('reports an invalid regex as a 400 carrying the SyntaxError text, not as zero matches (M8)', () => {
+    // This test used to assert 0 matches: the compile error was swallowed by
+    // a try/catch-continue, so the researcher saw "no results" and never
+    // learned the pattern was broken.
+    let caught: unknown;
+    try {
+      searchTranscripts(transcripts, '[invalid', 'regex');
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(AppError);
+    expect((caught as AppError).statusCode).toBe(400);
+    expect((caught as AppError).message).toMatch(/unterminated character class/i);
   });
 
   it('is case-insensitive', () => {
@@ -143,6 +155,130 @@ describe('searchTranscripts', () => {
     expect(() => searchTranscripts([{ id: 't', title: 'T', content: 'abc' }], '', 'literal')).toThrow(
       /search pattern/i,
     );
+  });
+});
+
+describe('searchTranscripts - regex safety and error reporting (H5, M8)', () => {
+  const one = (content: string) => [{ id: 't', title: 'T', content }];
+
+  function catchError(fn: () => unknown): AppError | null {
+    try {
+      fn();
+      return null;
+    } catch (err) {
+      return err as AppError;
+    }
+  }
+
+  it('rejects an unsafe pattern with a 400 instead of silently returning nothing', () => {
+    const err = catchError(() => searchTranscripts(one('aaaa'), '(a+)+$', 'regex'));
+    expect(err).toBeInstanceOf(AppError);
+    expect(err?.statusCode).toBe(400);
+    expect(err?.message).toBe('Regex pattern is too complex or potentially unsafe');
+  });
+
+  it.each(['(a+?)+$', '(a*?)+$', '(a?)+$', '(a{1,3})+$', '(a+)+?$', '(a{2,})*$'])(
+    'rejects the nested-quantifier form %s that the old check missed',
+    (pattern) => {
+      const err = catchError(() => searchTranscripts(one('aaaa'), pattern, 'regex'));
+      expect(err?.statusCode).toBe(400);
+    },
+  );
+
+  it.each(['a*a*b', '.*.*x', '\\w+\\w*x', 'a+?a*b'])(
+    'rejects the same atom quantified twice in a row (%s), which is cubic unanchored',
+    (pattern) => {
+      // Measured: a*a*b on ONE 2,000-character chunk of a's = 5.9 s.
+      const err = catchError(() => searchTranscripts(one('aaaa'), pattern, 'regex'));
+      expect(err?.statusCode).toBe(400);
+    },
+  );
+
+  it('stops a pattern the static check misses after ONE slow exec and reports it as a 400', () => {
+    // \w+\s*\w+x passes every static rule (the atoms differ) but is cubic on a
+    // run of word characters: 5.1 s per 2,000-character chunk, measured. On a
+    // 900-character run one exec costs a few hundred ms - over the 100 ms
+    // budget - so the search must stop there. Before this guard the same exec
+    // was repeated for every chunk of every transcript, and the researcher
+    // got silently truncated results after the wait.
+    const run = 'a'.repeat(900);
+    const transcripts = [
+      { id: 't1', title: 'One', content: `${run}\n${run}\n${run}` },
+      { id: 't2', title: 'Two', content: run },
+    ];
+    const started = performance.now();
+    const err = catchError(() => searchTranscripts(transcripts, '\\w+\\s*\\w+x', 'regex'));
+    const elapsed = performance.now() - started;
+    expect(err?.statusCode).toBe(400);
+    expect(err?.message).toMatch(/took too long/i);
+    // Four chunks would be four slow execs; one abort is one.
+    expect(elapsed).toBeLessThan(4000);
+  });
+
+  it("either rejects (a+?)+$ or finishes it in under 200 ms on 28 a's (H5)", () => {
+    // Measured before the fix: 5.36 s for ONE exec, which the between-exec
+    // budget never got a chance to interrupt.
+    const content = 'a'.repeat(28) + '!';
+    const started = performance.now();
+    const err = catchError(() => searchTranscripts(one(content), '(a+?)+$', 'regex'));
+    const elapsed = performance.now() - started;
+    if (err) expect(err.statusCode).toBe(400);
+    else expect(elapsed).toBeLessThan(200);
+  });
+
+  it('reports an invalid literal-mode pattern the same way (never zero results)', () => {
+    // Literal mode escapes metacharacters, so this cannot normally fail to
+    // compile; the contract is that nothing in this function swallows a
+    // compile error.
+    const result = searchTranscripts(one('a[b'), '[b', 'literal');
+    expect(result.matches.map((m) => m.matchText)).toEqual(['[b']);
+  });
+
+  it('accepts an astral character class via the u flag (M8)', () => {
+    const result = searchTranscripts(one('so happy 😁 today'), '[😀-😂]', 'regex');
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].matchText).toBe('😁');
+    expect(result.matches[0].offset).toBe(9);
+  });
+
+  it('falls back to a non-unicode compile when the pattern is only valid without u', () => {
+    // `\-` outside a character class is an identity escape: legal in legacy
+    // mode, a SyntaxError under the u flag.
+    const result = searchTranscripts(one('a-b'), 'a\\-b', 'regex');
+    expect(result.matches.map((m) => m.matchText)).toEqual(['a-b']);
+  });
+
+  it('does not loop forever on a zero-length match at an astral character', () => {
+    const result = searchTranscripts(one('😀😀'), 'x*', 'regex');
+    expect(result.matches).toHaveLength(0);
+  });
+
+  it('finds a regex match deep inside a long transcript with the right offset and context', () => {
+    const filler = 'lorem ipsum dolor sit amet\n'.repeat(400).slice(0, 4500);
+    const content = filler + 'NEEDLE-42' + ' tail text';
+    const result = searchTranscripts(one(content), 'needle-\\d+', 'regex');
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].offset).toBe(4500);
+    expect(result.matches[0].matchText).toBe('NEEDLE-42');
+    expect(result.matches[0].context).toContain('NEEDLE-42 tail text');
+    expect(content.slice(result.matches[0].offset, result.matches[0].offset + 9)).toBe('NEEDLE-42');
+  });
+
+  it('never hands a single regex exec more than 2,000 characters', () => {
+    const content = 'x'.repeat(3000) + '\n' + 'y'.repeat(2500) + '\n' + 'z'.repeat(10);
+    const chunks = regexChunks(content);
+    expect(chunks.length).toBeGreaterThan(1);
+    for (const [start, end] of chunks) expect(end - start).toBeLessThanOrEqual(2000);
+    // The chunks tile the string exactly.
+    expect(chunks[0][0]).toBe(0);
+    expect(chunks[chunks.length - 1][1]).toBe(content.length);
+    for (let i = 1; i < chunks.length; i++) expect(chunks[i][0]).toBe(chunks[i - 1][1]);
+  });
+
+  it('prefers to break chunks at a line boundary', () => {
+    const content = 'a'.repeat(1500) + '\n' + 'b'.repeat(1500);
+    const chunks = regexChunks(content);
+    expect(chunks[0]).toEqual([0, 1501]);
   });
 });
 

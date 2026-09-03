@@ -19,4 +19,22 @@ describe('parseCsvRecords', () => {
       ['C', 'D'],
     ]);
   });
+
+  // M9: a bare inch mark mid-field must not open a quoted field. Before the
+  // fix `6" tall` swallowed every following row into one field (3 -> 1).
+  it('treats a double quote inside an unquoted field as a literal character', () => {
+    expect(parseCsvRecords('Title,Content\nP1,I am 6" tall\nP2,second\nP3,third')).toEqual([
+      ['Title', 'Content'],
+      ['P1', 'I am 6" tall'],
+      ['P2', 'second'],
+      ['P3', 'third'],
+    ]);
+  });
+
+  it('still opens a quoted field when the quote is the first character', () => {
+    expect(parseCsvRecords('P1,"a, b"\nP2,c')).toEqual([
+      ['P1', 'a, b'],
+      ['P2', 'c'],
+    ]);
+  });
 });

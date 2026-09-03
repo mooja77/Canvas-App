@@ -1,5 +1,5 @@
 import { useCanvasStore } from '../../../stores/canvasStore';
-import { useAuthStore } from '../../../stores/authStore';
+import { useCanvasPlan } from '../../../hooks/useCanvasPlan';
 import { trackEvent } from '../../../utils/analytics';
 import { canvasClient } from '../../../services/api';
 import toast from 'react-hot-toast';
@@ -14,9 +14,8 @@ import toast from 'react-hot-toast';
  */
 export default function QualityPanel() {
   const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
-  const plan = useAuthStore((s) => s.plan);
-  const effectivePlan = useAuthStore((s) => s.effectivePlan);
-  const isProOrTeam = ['pro', 'team'].includes(effectivePlan ?? plan ?? 'free');
+  // Ethics and intercoder are gated server-side on the canvas OWNER's plan (M6).
+  const isProOrTeam = ['pro', 'team'].includes(useCanvasPlan());
 
   const openModal = (modal: string) => {
     window.dispatchEvent(new CustomEvent('qualcanvas:open-canvas-modal', { detail: { modal } }));

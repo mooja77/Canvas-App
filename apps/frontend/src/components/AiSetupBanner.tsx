@@ -2,25 +2,27 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useUIStore } from '../stores/uiStore';
 import { useAiConfigStore } from '../stores/aiConfigStore';
-import { getFrontendPlanLimits } from '../config/planLimits';
+import { useCanvasPlanLimits } from '../hooks/useCanvasPlan';
 
 // Non-blocking banner for AI-entitled users whose AI key isn't set yet. Points
 // them to the AI setup flow once; dismissal is per-session (we don't want to
 // permanently hide it in case they revisit the setup later).
 export default function AiSetupBanner() {
-  // effectivePlan carries the trial overlay; `plan` is what the user actually
-  // pays for. AI entitlement follows the overlay, matching resolveRequestPlan.
-  const plan = useAuthStore((s) => s.effectivePlan ?? s.plan);
   const authType = useAuthStore((s) => s.authType);
   const seen = useUIStore((s) => s.featureDiscovery.aiPromptSeen);
   const markSeen = useUIStore((s) => s.markFeatureSeen);
   const { configured, hostedAiAvailable, loaded, fetchConfig } = useAiConfigStore();
   const [dismissed, setDismissed] = useState(false);
 
-  // Derived from the shared plan-limits mirror rather than a hand-listed set of
-  // tier names — the old `plan === 'pro' || plan === 'team'` test silently
-  // excluded Student, a tier explicitly sold on full AI (aiEnabled: true).
-  const aiEntitled = getFrontendPlanLimits(plan).aiEnabled;
+  // Derived from the plan limits rather than a hand-listed set of tier names —
+  // the old `plan === 'pro' || plan === 'team'` test silently excluded Student,
+  // a tier explicitly sold on full AI (aiEnabled: true).
+  //
+  // `checkAiAccess` resolves the plan from the canvas OWNER when a canvas is
+  // open (M6), so entitlement follows the open canvas; with no canvas open
+  // this is the viewer's own effective plan (trial overlay included). The key
+  // itself is still per user, which is why the CTA still applies.
+  const aiEntitled = useCanvasPlanLimits().aiEnabled;
 
   useEffect(() => {
     // AI keys are stored per email-auth user, so only AI-entitled email accounts

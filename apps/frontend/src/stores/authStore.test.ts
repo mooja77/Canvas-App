@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAuthStore } from './authStore';
 
 function resetStore() {
@@ -407,6 +407,31 @@ describe('authStore', () => {
       const rewritten = localStorage.getItem('qualcanvas-auth');
       expect(rewritten).not.toContain('REUSABLE-SECRET');
       expect(rewritten).not.toContain('STALE-JWT');
+    });
+
+    // L5: the post-rehydration sweep used to skip `jwt` when VITE_E2E was set.
+    // migrate/merge already strip the persisted copy, so the only thing that
+    // gate ever protected was a stale in-memory field, and E2E must not keep it.
+    it('drops a stale in-memory jwt on rehydration even when VITE_E2E is set', async () => {
+      vi.stubEnv('VITE_E2E', 'true');
+      try {
+        useAuthStore.setState({ jwt: 'IN-MEMORY-JWT' } as unknown as Partial<ReturnType<typeof useAuthStore.getState>>);
+        localStorage.setItem(
+          'qualcanvas-auth',
+          JSON.stringify({
+            version: 1,
+            state: { authenticated: true, authType: 'email', name: 'E2E User', role: 'researcher' },
+          }),
+        );
+
+        await useAuthStore.persist.rehydrate();
+
+        const state = useAuthStore.getState() as unknown as Record<string, unknown>;
+        expect(state).not.toHaveProperty('jwt');
+        expect(state.name).toBe('E2E User');
+      } finally {
+        vi.unstubAllEnvs();
+      }
     });
   });
 });

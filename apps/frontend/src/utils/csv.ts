@@ -34,7 +34,10 @@ export function parseCsvRecords(text: string): string[][] {
       continue;
     }
 
-    if (ch === '"') {
+    // RFC 4180: a quote only opens a quoted field at the very start of the
+    // field. Mid-field quotes (an inch mark in `6" tall`) are literal; treating
+    // them as openers swallowed every following row into one field.
+    if (ch === '"' && field.length === 0) {
       inQuotes = true;
     } else if (ch === ',') {
       pushField();
