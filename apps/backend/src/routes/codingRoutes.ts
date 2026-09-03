@@ -570,18 +570,19 @@ codingRoutes.post(
       if (transcriptIds?.length) where.id = { in: transcriptIds };
       const transcripts = await prisma.canvasTranscript.findMany({ where });
 
-      const searchResult = searchTranscripts(transcripts, pattern, mode);
+      // Cap the number of codings created in one run so a broad pattern across
+      // large transcripts can't spike DB load with an unbounded transaction.
+      // Search itself keeps only this many matches; the rest are counted.
+      const AUTO_CODE_MAX = 2000;
+      const searchResult = searchTranscripts(transcripts, pattern, mode, undefined, { maxMatches: AUTO_CODE_MAX });
       const matches = searchResult.matches;
 
       if (matches.length === 0) {
         return res.json({ success: true, data: { created: 0, matches: [] } });
       }
 
-      // Cap the number of codings created in one run so a broad pattern across
-      // large transcripts can't spike DB load with an unbounded transaction.
-      const AUTO_CODE_MAX = 2000;
-      const truncated = matches.length > AUTO_CODE_MAX;
-      const codingsToCreate = matches.slice(0, AUTO_CODE_MAX).map((m) => ({
+      const truncated = searchResult.truncated;
+      const codingsToCreate = matches.map((m) => ({
         canvasId: req.params.id,
         transcriptId: m.transcriptId,
         questionId,

@@ -3,11 +3,49 @@ import {
   getCodingIdsFromEdgeData,
   isDenseEdgeGraph,
   DENSE_EDGE_THRESHOLD,
+  resolveEdgeSync,
   shouldHideEdgesAtZoom,
   LOW_ZOOM_EDGE_HIDE_BELOW,
   shouldCullOffscreenElements,
   VISIBLE_ELEMENT_CULL_THRESHOLD,
 } from './canvasEdgeUtils';
+
+// Bug hunt 2026-09-02: could the empty-recovery branch of the same-canvas edge
+// sync resurrect an edge for a coding that no longer exists? `freshEdges` is
+// buildEdges() of the store as it is in that effect run, and the sync only ever
+// publishes that derivation, so the answer is no. These pin the decision table.
+describe('resolveEdgeSync', () => {
+  const edgeFor = (codingId: string) => ({ id: `coding-bundle-t1::${codingId}`, data: { codingId } });
+
+  it('re-publishes the CURRENT derivation when the controlled set was emptied client-side', () => {
+    // Backspace (React Flow's default deleteKeyCode) removed the only edge
+    // without deleting its coding; the store still holds the coding.
+    const fresh = [edgeFor('q1')];
+    const result = resolveEdgeSync(false, [], fresh);
+    expect(result).toBe(fresh);
+  });
+
+  it('cannot bring back an edge whose coding was deleted from the store', () => {
+    // The coding is gone, so the derivation is empty: nothing to recover.
+    expect(resolveEdgeSync(false, [], [])).toBeNull();
+    // And when the deletion itself changed the builder, the empty set is published.
+    expect(resolveEdgeSync(true, [edgeFor('q1')], [])).toEqual([]);
+  });
+
+  it('publishes the fresh derivation whenever the builder inputs changed', () => {
+    const fresh = [edgeFor('q1'), edgeFor('q2')];
+    expect(resolveEdgeSync(true, [edgeFor('q1')], fresh)).toBe(fresh);
+  });
+
+  it('leaves a partially hidden edge set alone (recovery is only for an empty set)', () => {
+    expect(resolveEdgeSync(false, [edgeFor('q1')], [edgeFor('q1'), edgeFor('q2')])).toBeNull();
+  });
+
+  it('is a no-op when nothing changed', () => {
+    const current = [edgeFor('q1')];
+    expect(resolveEdgeSync(false, current, [edgeFor('q1')])).toBeNull();
+  });
+});
 
 describe('isDenseEdgeGraph', () => {
   it('treats small edge counts as not dense', () => {

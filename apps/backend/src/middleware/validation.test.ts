@@ -14,6 +14,8 @@ import {
   canvasDetailQuerySchema,
   onboardingPatchBodySchema,
   ONBOARDING_CHECKLIST_TASK_IDS,
+  canvasArtifactValueSchemas,
+  CODE_WEIGHTS_MAX_KEYS,
 } from './validation.js';
 
 function mockReq(body: unknown): Request {
@@ -434,5 +436,35 @@ describe('onboardingPatchBodySchema (L4)', () => {
       'export-csv',
       'dismissed',
     ]);
+  });
+});
+
+describe('code-weights artifact schema caps the number of keys', () => {
+  const schema = canvasArtifactValueSchemas['code-weights'];
+  const weights = (n: number) => Object.fromEntries(Array.from({ length: n }, (_, i) => [`code-${i}`, 3]));
+
+  it('accepts exactly the cap', () => {
+    expect(CODE_WEIGHTS_MAX_KEYS).toBe(5_000);
+    expect(schema.safeParse(weights(CODE_WEIGHTS_MAX_KEYS)).success).toBe(true);
+  });
+
+  it('rejects one over the cap (previously bounded only by the 1 MB body limit)', () => {
+    const result = schema.safeParse(weights(CODE_WEIGHTS_MAX_KEYS + 1));
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toMatch(/5000 code weights/);
+  });
+
+  it.each([
+    ['zero', 0],
+    ['six', 6],
+    ['a fraction', 2.5],
+    ['a string', '3'],
+  ])('rejects a weight of %s', (_label, value) => {
+    expect(schema.safeParse({ 'code-1': value }).success).toBe(false);
+  });
+
+  it('accepts weights 1 through 5 and an empty map', () => {
+    expect(schema.safeParse({ a: 1, b: 2, c: 3, d: 4, e: 5 }).success).toBe(true);
+    expect(schema.safeParse({}).success).toBe(true);
   });
 });

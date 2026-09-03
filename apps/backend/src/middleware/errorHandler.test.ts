@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+import express from 'express';
+import request from 'supertest';
 import type { Request, Response, NextFunction } from 'express';
 import { AppError, errorHandler } from './errorHandler.js';
 import { logger } from '../lib/logger.js';
@@ -26,11 +28,66 @@ describe('AppError', () => {
 describe('errorHandler', () => {
   it('does not write a second response after a request timeout has already replied', () => {
     const res = mockRes();
+    // A timeout that replied with res.status(408).json(...) has both sent
+    // headers and ended the body.
     Object.defineProperty(res, 'headersSent', { value: true });
+    Object.defineProperty(res, 'writableEnded', { value: true });
+    const destroy = vi.fn();
+    Object.defineProperty(res, 'destroy', { value: destroy });
 
     expect(() => errorHandler(new Error('late database failure'), req, res, next)).not.toThrow();
     expect(res.status).not.toHaveBeenCalled();
     expect(res.json).not.toHaveBeenCalled();
+    expect(destroy).not.toHaveBeenCalled();
+  });
+
+  it('tears the connection down when headers are out but the body never finished', () => {
+    const res = mockRes();
+    Object.defineProperty(res, 'headersSent', { value: true });
+    Object.defineProperty(res, 'writableEnded', { value: false });
+    const destroy = vi.fn();
+    Object.defineProperty(res, 'destroy', { value: destroy });
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      errorHandler(new Error('failed mid-stream'), req, res, next);
+    } finally {
+      consoleError.mockRestore();
+    }
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+    expect(destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not leave a client hanging when a route fails after writing part of the body', async () => {
+    // Bug hunt 2026-09-02: with a bare `if (res.headersSent) return` the
+    // response was never ended or destroyed. Measured with this exact route:
+    // the client waited for its own 2,000 ms deadline (ECONNABORTED) instead
+    // of seeing the connection close.
+    const app = express();
+    app.get('/stream', (_req, res, nextFn) => {
+      res.setHeader('Content-Type', 'application/json');
+      res.write('{"partial":');
+      nextFn(new Error('boom mid-stream'));
+    });
+    app.use(errorHandler);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const started = Date.now();
+    let failure: (Error & { code?: string }) | null = null;
+    try {
+      await request(app).get('/stream').timeout({ deadline: 5_000 });
+    } catch (err) {
+      failure = err as Error & { code?: string };
+    } finally {
+      consoleError.mockRestore();
+    }
+
+    // The request must fail (a broken response, not a stalled one), promptly,
+    // and not because the client gave up waiting.
+    expect(failure).not.toBeNull();
+    expect(failure!.code).not.toBe('ECONNABORTED');
+    expect(Date.now() - started).toBeLessThan(2_000);
   });
 
   it('returns statusCode and message for AppError', () => {

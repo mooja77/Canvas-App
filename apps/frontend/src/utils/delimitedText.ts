@@ -25,10 +25,15 @@ export const UTF8_BOM = '\uFEFF';
  * remaining option is the leading apostrophe: every spreadsheet treats it as
  * "the rest is text", strips it on display, and keeps the value inert.
  *
+ * Leading whitespace does not reliably protect the cell: some import paths
+ * (Excel's CSV import wizard, LibreOffice with "trim spaces") strip it before
+ * deciding whether the cell is a formula, so ` =1+1` is treated exactly like
+ * `=1+1`. The guard therefore looks at the first NON-whitespace character.
+ *
  * Only cells that would otherwise be evaluated are touched, so ordinary text
  * is byte-identical to before.
  */
-const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+const FORMULA_PREFIX = /^\s*[=+\-@\t\r]/;
 
 export function neutralizeFormula(value: string): string {
   return FORMULA_PREFIX.test(value) ? `'${value}` : value;

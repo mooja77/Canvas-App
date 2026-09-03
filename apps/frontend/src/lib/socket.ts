@@ -13,9 +13,16 @@ const SOCKET_URL =
  */
 
 export function getSocket(_token: string): Socket {
-  if (socket?.connected) return socket;
+  // `active` is true while the initial handshake is in flight and while the
+  // manager is in reconnection back-off; it drops to false once the socket is
+  // rejected (connect_error from the auth middleware), told to go away by the
+  // server, gives up reconnecting, or is disconnected by us. Only replacing a
+  // socket in that dead state stops a second caller during the handshake (a
+  // canvas switch, Strict Mode's effect replay) from tearing the pending
+  // connection down and opening another one (bug hunt 2026-09-02).
+  if (socket && (socket.connected || socket.active)) return socket;
 
-  // Disconnect old socket if it exists but isn't connected
+  // Discard a socket that will never connect on its own
   if (socket) {
     socket.disconnect();
   }

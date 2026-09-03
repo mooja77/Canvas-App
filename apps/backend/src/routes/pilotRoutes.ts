@@ -70,11 +70,16 @@ const pilotFeedbackLimiter = rateLimit({
   message: { success: false, error: 'Too many feedback submissions; please try again tomorrow' },
 });
 
+// One response for real and honeypot submissions. The honeypot used to answer
+// 202 against the real path's 201, which told a bot exactly which field it had
+// tripped over.
+const ACCEPTED_RESPONSE = { success: true, message: 'Thank you. Your feedback has been recorded.' } as const;
+
 publicPilotRoutes.post('/feedback', pilotFeedbackLimiter, validate(pilotFeedbackSchema), async (req, res, next) => {
   try {
     const data = req.body as z.infer<typeof pilotFeedbackSchema>;
     if (data.website) {
-      return res.status(202).json({ success: true, message: 'Thank you. Your feedback has been recorded.' });
+      return res.status(201).json(ACCEPTED_RESPONSE);
     }
 
     await prisma.pilotFeedback.create({
@@ -92,7 +97,7 @@ publicPilotRoutes.post('/feedback', pilotFeedbackLimiter, validate(pilotFeedback
       },
     });
 
-    res.status(201).json({ success: true, message: 'Thank you. Your feedback has been recorded.' });
+    res.status(201).json(ACCEPTED_RESPONSE);
   } catch (error) {
     next(error);
   }

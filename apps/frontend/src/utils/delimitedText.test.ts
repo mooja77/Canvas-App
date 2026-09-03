@@ -51,6 +51,25 @@ describe('formula injection guard', () => {
     expect(escapeTsvField('=one\ntwo')).toBe('"\'=one\ntwo"');
   });
 
+  // Bug hunt 2026-09-02: some spreadsheet import paths trim leading whitespace
+  // before deciding whether a cell is a formula, so ` =1+1` must be defused as
+  // if the space were not there.
+  it('defuses a formula prefix hidden behind leading whitespace', () => {
+    expect(neutralizeFormula(' =1+1')).toBe("' =1+1");
+    expect(neutralizeFormula('   ' + HYPERLINK)).toBe("'   " + HYPERLINK);
+    expect(neutralizeFormula(' \t=cmd')).toBe("' \t=cmd");
+    expect(neutralizeFormula('  -12')).toBe("'  -12");
+    expect(neutralizeFormula('  @SUM(A1)')).toBe("'  @SUM(A1)");
+    expect(escapeCsvField(' =1+1')).toBe('"\' =1+1"');
+    expect(escapeTsvField(' =1+1')).toBe("' =1+1");
+  });
+
+  it('leaves whitespace-led ordinary text and whitespace-only cells untouched', () => {
+    for (const value of [' They trusted us', '   ', ' ', '  a=b', ' 2026-08-18', '\n', ' x - y']) {
+      expect(neutralizeFormula(value)).toBe(value);
+    }
+  });
+
   it('a negative number in a numeric column is quoted as text, not evaluated', () => {
     // A minus sign is a formula prefix. The apostrophe is the cost of not
     // letting "-2+3" evaluate; a spreadsheet strips it on display.

@@ -12,6 +12,13 @@
  * (rather than exactly repeating) are not de-duplicated here — only exact
  * consecutive repeats are collapsed.
  */
+/**
+ * A timing line has a timestamp (something containing a digit) on BOTH sides
+ * of the arrow. A bare `includes('-->')` dropped caption text such as
+ * "then --> we went home".
+ */
+const TIMING_LINE = /^\S*\d\S*\s+-->\s+\S*\d/;
+
 export function parseSubtitles(raw: string): string {
   const lines = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   const captions: string[] = [];
@@ -48,11 +55,16 @@ export function parseSubtitles(raw: string): string {
     // many staff did you have?" ("14"), "what was the budget?" ("250000"),
     // ages, years and Likert responses: silently, and exactly the answers a
     // researcher is most likely to want to quote.
-    if (!inCueText && /^\d+$/.test(line)) continue; // SRT cue index
-    // A timing line has a timestamp (something containing a digit) on BOTH
-    // sides of the arrow. A bare `includes('-->')` dropped caption text such
-    // as "then --> we went home".
-    if (/^\S*\d\S*\s+-->\s+\S*\d/.test(line)) {
+    if (/^\d+$/.test(line)) {
+      if (!inCueText) continue; // SRT cue index
+      // Some Zoom / Otter exports omit the blank line between cues, so the
+      // next cue's index sits directly under this cue's text (bug hunt
+      // 2026-09-02). A bare integer immediately followed by a timing line is
+      // that index, not a numeric answer; an answer is followed by more text,
+      // a blank line, another index, or the end of the file.
+      if (i + 1 < lines.length && TIMING_LINE.test(lines[i + 1].trim())) continue;
+    }
+    if (TIMING_LINE.test(line)) {
       inCueText = true; // everything up to the next blank is caption text
       continue; // timestamp / cue-settings line
     }

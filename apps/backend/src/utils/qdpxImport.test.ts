@@ -98,3 +98,114 @@ describe('importQdpx - code colour validation (M7)', () => {
     expect(await importedColor('#1234567')).toBe(DEFAULT_CODE_COLOR);
   });
 });
+
+/**
+ * Line-ending convention for foreign archives (bug hunt 2026-09-02).
+ *
+ * XML 1.0 section 2.11 has every conformant parser normalise a literal CR or
+ * CRLF in element content to LF, and fast-xml-parser does. So the offsets of
+ * an inline <PlainTextContent> source are, per the spec, counted against the
+ * LF-normalised text. A separate .txt entry referenced by plainTextPath (how
+ * NVivo writes sources) is read byte-for-byte, so CRLF-counted offsets on it
+ * are exact. An exporter that inlines literal CRLF but counts the CR bytes
+ * produces a file that misaligns in every conformant importer; that case is
+ * a documented limitation, not something we guess at.
+ */
+describe('importQdpx - CRLF sources and offset convention', () => {
+  const CODE = '11111111-1111-4111-8111-111111111111';
+  const SOURCE = '22222222-2222-4222-8222-222222222222';
+  const crlfText = 'Line one\r\nLine two\r\nLine three coded here\r\nLine four.\r\n';
+  const lfText = crlfText.replace(/\r\n/g, '\n');
+
+  function project(sourceAttrs: string, inline: string, start: number, end: number): string {
+    return `<?xml version="1.0" encoding="utf-8"?>
+<Project name="CRLF" xmlns="urn:QDA-XML:project:1.0">
+  <CodeBook><Codes><Code guid="${CODE}" name="C" isCodable="true" /></Codes></CodeBook>
+  <Sources>
+    <TextSource guid="${SOURCE}" name="S"${sourceAttrs}>${inline}<PlainTextSelection guid="33333333-3333-4333-8333-333333333333" startPosition="${start}" endPosition="${end}"><Coding guid="44444444-4444-4444-8444-444444444444"><CodeRef targetGUID="${CODE}" /></Coding></PlainTextSelection></TextSource>
+  </Sources>
+</Project>`;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ id: 'canvas-1', name: 'C', userId: 'owner-1' });
+    mockPrisma.canvasCollaborator.findMany.mockResolvedValue([]);
+    mockPrisma.canvasQuestion.findMany.mockResolvedValue([]);
+    mockPrisma.canvasTranscript.findMany.mockResolvedValue([]);
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([]);
+    mockPrisma.canvasQuestion.create.mockImplementation(async ({ data }) => ({ id: 'q1', ...data }));
+    mockPrisma.canvasTranscript.create.mockImplementation(async ({ data }) => ({ id: 't1', ...data }));
+    mockPrisma.canvasTextCoding.create.mockImplementation(async ({ data }) => ({ id: 'c1', ...data }));
+  });
+
+  const importedTranscript = () => mockPrisma.canvasTranscript.create.mock.calls[0][0].data as { content: string };
+  const importedCoding = () =>
+    mockPrisma.canvasTextCoding.create.mock.calls[0]?.[0].data as
+      | { codedText: string; startOffset: number; endOffset: number }
+      | undefined;
+
+  it('keeps CRLF in a separate .txt source and resolves CRLF-counted offsets exactly', async () => {
+    const start = crlfText.indexOf('coded here');
+    const zip = await buildArchive({
+      'project.qde': project(` plainTextPath="internal://${SOURCE}.txt"`, '', start, start + 'coded here'.length),
+      [`sources/${SOURCE}.txt`]: crlfText,
+    });
+
+    const result = await importQdpx('canvas-1', zip);
+
+    expect(result).toMatchObject({ sources: 1, codings: 1, skippedCodings: 0 });
+    expect(importedTranscript().content).toBe(crlfText);
+    expect(importedCoding()).toMatchObject({ codedText: 'coded here', startOffset: start });
+  });
+
+  it('normalises literal CRLF inside <PlainTextContent> to LF and resolves LF-counted offsets', async () => {
+    const start = lfText.indexOf('coded here');
+    const zip = await buildArchive({
+      'project.qde': project(
+        '',
+        `<PlainTextContent>${crlfText}</PlainTextContent>`,
+        start,
+        start + 'coded here'.length,
+      ),
+    });
+
+    const result = await importQdpx('canvas-1', zip);
+
+    expect(result).toMatchObject({ sources: 1, codings: 1, skippedCodings: 0 });
+    expect(importedTranscript().content).toBe(lfText);
+    expect(importedCoding()).toMatchObject({ codedText: 'coded here', startOffset: start });
+  });
+
+  it('documents the limitation: CRLF-counted offsets on an inline literal-CRLF source misalign', async () => {
+    // Measured: two CRLF lines before the selection shift it by two. (A
+    // selection that runs past the normalised end is skipped by the existing
+    // past-the-end guard rather than misaligned, hence the trailing line.)
+    const start = crlfText.indexOf('coded here');
+    const zip = await buildArchive({
+      'project.qde': project(
+        '',
+        `<PlainTextContent>${crlfText}</PlainTextContent>`,
+        start,
+        start + 'coded here'.length,
+      ),
+    });
+
+    await importQdpx('canvas-1', zip);
+
+    expect(importedCoding()?.codedText).toBe('ded here\nL');
+  });
+
+  it('preserves a CR written as a character reference, which is how a conformant exporter keeps one', async () => {
+    const escaped = crlfText.replace(/\r/g, '&#13;');
+    const start = crlfText.indexOf('coded here');
+    const zip = await buildArchive({
+      'project.qde': project('', `<PlainTextContent>${escaped}</PlainTextContent>`, start, start + 'coded here'.length),
+    });
+
+    await importQdpx('canvas-1', zip);
+
+    expect(importedTranscript().content).toBe(crlfText);
+    expect(importedCoding()).toMatchObject({ codedText: 'coded here', startOffset: start });
+  });
+});

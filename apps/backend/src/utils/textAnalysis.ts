@@ -134,7 +134,7 @@ function advancePastEmptyMatch(regex: RegExp, input: string): void {
 
 // Configuration constants
 const SEARCH_CONTEXT_CHARS = 50;
-const MAX_SEARCH_MATCHES = 100;
+export const MAX_SEARCH_MATCHES = 100;
 const MAX_WORD_FREQUENCY_RESULTS = 100;
 const MIN_WORD_LENGTH = 3;
 const MAX_MATRIX_EXCERPTS = 5;
@@ -338,7 +338,14 @@ export function searchTranscripts(
   pattern: string,
   mode: string,
   transcriptIds?: string[],
+  options: { maxMatches?: number } = {},
 ) {
+  // The result is persisted on the Search node and embedded in every canvas
+  // fetch, so it has to stay small no matter what the pattern is. Measured
+  // before this cap: a one-letter search over 200k words (1.38M chars) returned
+  // 220,000 matches, 43.3 MB of JSON. Matches past the cap are counted but not
+  // returned; callers see `totalMatches` and `truncated`.
+  const maxMatches = options.maxMatches ?? MAX_SEARCH_MATCHES;
   // An empty pattern compiles to //gi, which matches at EVERY character
   // position. One accidental click on an unconfigured Search node returned
   // 21,319 empty matches and a 4.8 MB result - and because the result is
@@ -358,6 +365,7 @@ export function searchTranscripts(
     matchText: string;
     context: string;
   }[] = [];
+  let totalMatches = 0;
 
   const filtered = transcriptIds?.length ? transcripts.filter((t) => transcriptIds.includes(t.id)) : transcripts;
 
@@ -406,6 +414,8 @@ export function searchTranscripts(
           advancePastEmptyMatch(regex, slice);
           continue;
         }
+        totalMatches++;
+        if (matches.length >= maxMatches) continue;
         // Offsets and context are reported against the whole transcript, not
         // the chunk, so the caller cannot tell chunking happened.
         const offset = chunkStart + match.index;
@@ -422,7 +432,7 @@ export function searchTranscripts(
     }
   }
 
-  return { matches };
+  return { matches, totalMatches, truncated: totalMatches > matches.length };
 }
 
 // ─── 2. Co-occurrence ───

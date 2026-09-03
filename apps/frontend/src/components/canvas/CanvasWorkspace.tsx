@@ -39,6 +39,7 @@ import AiSetupGuide from './panels/AiSetupGuide';
 import {
   getCodingIdsFromEdgeData,
   isDenseEdgeGraph,
+  resolveEdgeSync,
   shouldCullOffscreenElements,
   shouldHideEdgesAtZoom,
 } from './canvasEdgeUtils';
@@ -1090,15 +1091,14 @@ export default function CanvasWorkspace() {
       return;
     }
 
-    // Same canvas — rebuild edges if their inputs changed. Also recover an
-    // unexpectedly empty controlled edge set when the canvas payload still
-    // contains valid edges. React Strict Mode replays effects: the first setup
-    // can mark the canvas loaded, then its state update can be discarded before
-    // the replay. Without this idempotent empty-state check, the second setup
-    // sees the same canvas/builder and leaves every coding edge absent.
-    if (buildEdges !== lastBuiltEdgesFnRef.current || (edgesRef.current.length === 0 && newEdges.length > 0)) {
+    // Same canvas — rebuild edges if their inputs changed, and recover an
+    // unexpectedly empty controlled edge set while the store still has edges
+    // (see resolveEdgeSync for the Strict Mode replay this guards against and
+    // why re-showing a client-side-hidden edge is correct).
+    const syncedEdges = resolveEdgeSync(buildEdges !== lastBuiltEdgesFnRef.current, edgesRef.current, newEdges);
+    if (syncedEdges) {
       lastBuiltEdgesFnRef.current = buildEdges;
-      setEdges(newEdges);
+      setEdges(syncedEdges);
     }
 
     // Same canvas — rebuild nodes only if node-relevant data changed; otherwise

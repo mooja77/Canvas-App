@@ -88,7 +88,21 @@ describe('public pilot feedback route', () => {
       .post('/pilot/feedback')
       .send({ ...validPayload, website: 'https://spam.invalid' });
 
-    expect(response.status).toBe(202);
+    expect(response.status).toBe(201);
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('answers a honeypot submission exactly like a real one, so a bot cannot detect the trap', async () => {
+    // Bug hunt 2026-09-02: the honeypot returned 202 against the real path's
+    // 201 - a one-byte fingerprint of which field had tripped it.
+    const real = await request(makeApp()).post('/pilot/feedback').send(validPayload);
+    const trapped = await request(makeApp())
+      .post('/pilot/feedback')
+      .send({ ...validPayload, website: 'https://spam.invalid' });
+
+    expect(trapped.status).toBe(real.status);
+    expect(trapped.body).toEqual(real.body);
+    expect(trapped.headers['content-type']).toBe(real.headers['content-type']);
+    expect(mockCreate).toHaveBeenCalledTimes(1);
   });
 });

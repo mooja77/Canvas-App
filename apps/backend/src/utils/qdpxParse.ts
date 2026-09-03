@@ -288,6 +288,16 @@ function parseTextSource(node: Record<string, unknown>, tally: ParseTally): Pars
     name: attr(node, 'name') ?? 'Untitled source',
     // Spec puts the text in a child element. Older QualCanvas exports put it in
     // a plainTextContent attribute, so fall back to that.
+    //
+    // Line endings: XML 1.0 section 2.11 has every parser turn a literal CR or
+    // CRLF in element content into LF, and fast-xml-parser does (measured: 3
+    // CRLFs in, 3 LFs out). So selection offsets in an inline source are, per
+    // the spec, counted against the LF-normalised text; a file whose offsets
+    // count the CRLF bytes of the pre-serialisation text is malformed and
+    // misaligns by one per preceding line here and in every other conformant
+    // importer. We do not second-guess it: a CR the exporter meant to keep is
+    // written as &#13; (which decodeXmlEntities restores), and a source stored
+    // as a separate .txt via plainTextPath is read byte-for-byte, CRLF intact.
     plainText: childText(node, 'PlainTextContent') ?? attr(node, 'plainTextContent') ?? '',
     plainTextPath: attr(node, 'plainTextPath'),
     selections: toArray(node.PlainTextSelection as Record<string, unknown>[])

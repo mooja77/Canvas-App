@@ -224,6 +224,8 @@ const artifactCoordinate = z.number().finite().min(-10_000_000).max(10_000_000);
 const artifactDimension = z.number().finite().min(20).max(100_000);
 const artifactColour = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
 
+export const CODE_WEIGHTS_MAX_KEYS = 5_000;
+
 export const canvasArtifactValueSchemas = {
   'sticky-notes': z
     .array(
@@ -253,7 +255,14 @@ export const canvasArtifactValueSchemas = {
       }),
     )
     .max(1_000),
-  'code-weights': z.record(z.string().min(1).max(100), z.number().int().min(1).max(5)),
+  // One weight per code. Keys are code ids; a canvas has at most a few hundred
+  // codes, so the cap is generous, but without it the only bound was the 1 MB
+  // body limit — roughly 50,000 entries persisted and re-sent on every load.
+  'code-weights': z
+    .record(z.string().min(1).max(100), z.number().int().min(1).max(5))
+    .refine((weights) => Object.keys(weights).length <= CODE_WEIGHTS_MAX_KEYS, {
+      message: `At most ${CODE_WEIGHTS_MAX_KEYS} code weights`,
+    }),
 } as const;
 
 export const updateCanvasArtifactSchema = z.object({ value: z.unknown() });

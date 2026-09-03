@@ -23,12 +23,11 @@ vi.mock('./ComputedNodeShell', () => ({
 const mockUpdateComputedNode = vi.fn();
 const storeState: Record<string, any> = {
   updateComputedNode: (...args: unknown[]) => mockUpdateComputedNode(...args),
+  computedNodes: [{ id: 'cn1', label: 'Text Search', config: { pattern: 'care', mode: 'keyword' }, result: null }],
 };
 vi.mock('../../../stores/canvasStore', () => ({
   useCanvasStore: (selector?: (s: any) => any) => (selector ? selector(storeState) : storeState),
-  useCanvasComputedNodes: () => [
-    { id: 'cn1', label: 'Text Search', config: { pattern: 'care', mode: 'keyword' }, result: null },
-  ],
+  useCanvasComputedNodes: () => storeState.computedNodes,
 }));
 
 import SearchResultNode from './SearchResultNode';
@@ -65,5 +64,41 @@ describe('SearchResultNode config save', () => {
 
     await waitFor(() => expect(screen.queryByPlaceholderText('Search pattern...')).not.toBeInTheDocument());
     expect(mockToastError).not.toHaveBeenCalled();
+  });
+});
+
+describe('SearchResultNode truncation notice', () => {
+  const match = (i: number) => ({
+    transcriptId: 't1',
+    transcriptTitle: 'Interview 1',
+    offset: i,
+    matchText: 'e',
+    context: 'the e here',
+  });
+
+  it('says how many matches exist when the server capped the payload', () => {
+    storeState.computedNodes = [
+      {
+        id: 'cn1',
+        label: 'Text Search',
+        config: { pattern: 'e', mode: 'keyword' },
+        result: { matches: Array.from({ length: 100 }, (_, i) => match(i)), totalMatches: 220000, truncated: true },
+      },
+    ];
+    renderNode();
+    expect(screen.getByText('220,000 matches, showing the first 100')).toBeInTheDocument();
+  });
+
+  it('keeps the plain count for results that predate the cap', () => {
+    storeState.computedNodes = [
+      {
+        id: 'cn1',
+        label: 'Text Search',
+        config: { pattern: 'e', mode: 'keyword' },
+        result: { matches: [match(0), match(1)] },
+      },
+    ];
+    renderNode();
+    expect(screen.getByText('2 matches')).toBeInTheDocument();
   });
 });

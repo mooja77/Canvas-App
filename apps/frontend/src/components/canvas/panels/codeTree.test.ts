@@ -98,3 +98,46 @@ describe('buildCodeTree — rolled-up counts', () => {
     expect(tree.map((t) => t.question.text)).toEqual(['Alpha', 'Beta']);
   });
 });
+
+// Bug hunt 2026-09-02: a parent cycle (A under B, B under A) made both codes
+// vanish from the sidebar - each was pushed under the other, so neither was a
+// root and the tree never reached either. Cycle members are shown as roots so
+// the researcher can see them and repair the hierarchy (mirrors the visited-set
+// rule in the backend's qdpxExport buildCodeTree).
+describe('buildCodeTree - parent cycles', () => {
+  it('shows both members of a 2-cycle as roots instead of hiding them', () => {
+    const tree = buildCodeTree([q('a', 'A', 'b'), q('b', 'B', 'a'), q('flat', 'Flat')], [coding('1', 'a')], 'name');
+    expect(tree.map((t) => t.question.id)).toEqual(['a', 'b', 'flat']);
+    const a = tree.find((t) => t.question.id === 'a')!;
+    expect(a.children).toEqual([]);
+    expect(a.codingCount).toBe(1);
+  });
+
+  it('shows every member of a 3-cycle exactly once', () => {
+    const tree = buildCodeTree([q('a', 'A', 'c'), q('b', 'B', 'a'), q('c', 'C', 'b')], [], 'name');
+    expect(tree.map((t) => t.question.id)).toEqual(['a', 'b', 'c']);
+    expect(tree.every((t) => t.children.length === 0)).toBe(true);
+  });
+
+  it('treats a self-parented code as a root', () => {
+    const tree = buildCodeTree([q('a', 'A', 'a')], [], 'name');
+    expect(tree.map((t) => t.question.id)).toEqual(['a']);
+  });
+
+  it('still nests a well-formed child beneath a cycle member and rolls its count up', () => {
+    const tree = buildCodeTree(
+      [q('a', 'A', 'b'), q('b', 'B', 'a'), q('child', 'Child', 'a')],
+      [coding('1', 'child'), coding('2', 'child')],
+      'name',
+    );
+    expect(tree.map((t) => t.question.id)).toEqual(['a', 'b']);
+    const a = tree.find((t) => t.question.id === 'a')!;
+    expect(a.children.map((c) => c.question.id)).toEqual(['child']);
+    expect(a.codingCount).toBe(2);
+  });
+
+  it('still treats a code whose parent no longer exists as a root', () => {
+    const tree = buildCodeTree([q('orphan', 'Orphan', 'gone')], [], 'name');
+    expect(tree.map((t) => t.question.id)).toEqual(['orphan']);
+  });
+});
