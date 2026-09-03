@@ -4,12 +4,28 @@
   <subtitle>What we've shipped. New entry per feature or every two weeks.</subtitle>
   <link href="https://qualcanvas.com/changelog/feed.xml" rel="self"/>
   <link href="https://qualcanvas.com/changelog"/>
-  <updated>2026-05-15T00:00:00Z</updated>
+  <updated>2026-09-03T00:00:00Z</updated>
   <id>https://qualcanvas.com/changelog/</id>
   <author>
     <name>QualCanvas</name>
   </author>
   <generator uri="https://qualcanvas.com">QualCanvas marketing pipeline</generator>
+
+  <entry>
+    <title>Reliability release: 43 verified defects fixed</title>
+    <link href="https://qualcanvas.com/changelog"/>
+    <id>https://qualcanvas.com/changelog#2026-09-03-reliability</id>
+    <updated>2026-09-03T00:00:00Z</updated>
+    <summary>A full-app bug hunt run by execution: every finding was reproduced with a failing test before it was fixed. Artifact merging on slow loads, canvas load races, collaborator plan limits, Text Search validation and caps, Excel and Qualtrics CSV import, QDPX code cycles, and Backspace no longer hiding items without deleting them.</summary>
+  </entry>
+
+  <entry>
+    <title>Academic pricing for Irish institutions</title>
+    <link href="https://qualcanvas.com/changelog"/>
+    <id>https://qualcanvas.com/changelog#2026-08-27-academic-ie</id>
+    <updated>2026-08-27T00:00:00Z</updated>
+    <summary>Student pricing and the 40% academic discount on Pro and Team now cover verified addresses at Irish universities and institutes of technology, alongside .edu and the international .ac and .edu country domains.</summary>
+  </entry>
 
   <entry>
     <title>Methodology field guide — six chapters live</title>

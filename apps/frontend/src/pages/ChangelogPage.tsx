@@ -29,6 +29,34 @@ interface ChangelogEntry {
 
 const ENTRIES: ChangelogEntry[] = [
   {
+    date: '2026-09-03',
+    title: 'Reliability release: 43 verified defects fixed',
+    body: 'A full-app bug hunt run by execution, not inspection: every finding was reproduced with a failing test before it was fixed, and the tests now live in the suite. Most of the work is invisible when it works, which is the point. The notable behaviour changes are below.',
+    highlights: [
+      'Sticky notes, theme groups and code weights merge with the server copy instead of overwriting it when a load is slow or fails',
+      'Opening a canvas while another is still loading can no longer show the wrong canvas',
+      'Collaborators see the limits of the canvas owner’s plan, which is what the server enforces',
+      'Text Search rejects unsafe or malformed patterns with a reason instead of silently returning nothing, and caps very large result sets with a count',
+      'CSV survey import accepts Excel and Qualtrics files (byte-order mark plus quoted header); caption import keeps lines that start with Note, Style or Region',
+      'QDPX export keeps every code even when the hierarchy contains a cycle, and the code tree shows cycle members so they can be repaired',
+      'Backspace on a selected node or edge no longer hides it without deleting anything; deletion always goes through the confirm dialog',
+    ],
+    fixes: [
+      'Concurrent hierarchy edits could create a cycle that blocked every later edit',
+      'A canvas restored from Trash during the 30-day purge could still be deleted',
+      'Admin usage and activation figures included test accounts and missed collaborator codings',
+    ],
+    author: 'The team',
+    readMin: 2,
+  },
+  {
+    date: '2026-08-27',
+    title: 'Academic pricing for Irish institutions',
+    body: 'Student pricing and the 40% academic discount on Pro and Team were previously limited to .edu addresses. They now apply to verified addresses at Irish universities and institutes of technology as well (atu.ie, dcu.ie, iadt.ie, mic.ul.ie, mtu.ie, mu.ie, ncad.ie, rcsi.ie, setu.ie, tcd.ie, tus.ie, ucc.ie, ucd.ie, universityofgalway.ie, ul.ie), alongside the international .ac and .edu country domains. Verification is by email; the address must be deliverable.',
+    author: 'The team',
+    readMin: 1,
+  },
+  {
     date: '2026-05-15',
     title: 'Methodology field guide — six chapters live',
     body: 'Full set of methodology chapters at /methodology, written in target voice with real citations and visible draft-state disclaimers ahead of external peer review. ~11,000 words across the six chapters, lazy-loaded on chapter pages so the main bundle stays unchanged.',
