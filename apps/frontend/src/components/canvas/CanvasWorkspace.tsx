@@ -2653,6 +2653,13 @@ export default function CanvasWorkspace() {
               <ReactFlow
                 nodes={decoratedNodes}
                 edges={edges}
+                // React Flow's own Backspace/Delete handling only removes the
+                // selected node or edge from the controlled state: the coding
+                // (or transcript, code, ...) behind it was never deleted, so it
+                // reappeared on the next sync and looked like a ghost. Deletion
+                // goes through the app's own Delete shortcut and context menus,
+                // which confirm and then delete the record on the server.
+                deleteKeyCode={null}
                 onNodesChange={handleNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}

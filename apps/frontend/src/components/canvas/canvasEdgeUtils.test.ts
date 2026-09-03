@@ -18,8 +18,10 @@ describe('resolveEdgeSync', () => {
   const edgeFor = (codingId: string) => ({ id: `coding-bundle-t1::${codingId}`, data: { codingId } });
 
   it('re-publishes the CURRENT derivation when the controlled set was emptied client-side', () => {
-    // Backspace (React Flow's default deleteKeyCode) removed the only edge
-    // without deleting its coding; the store still holds the coding.
+    // Something removed the only edge from the controlled set without deleting
+    // its coding, and the store still holds the coding. Backspace used to do
+    // exactly this, until CanvasWorkspace set deleteKeyCode={null}; undo to a
+    // layout snapshot can still reach this state, so the branch stays.
     const fresh = [edgeFor('q1')];
     const result = resolveEdgeSync(false, [], fresh);
     expect(result).toBe(fresh);
