@@ -6,6 +6,11 @@ export type CanvasArtifactType = 'sticky-notes' | 'theme-groups' | 'code-weights
 const SAVE_DELAY_MS = 350;
 const pendingSaves = new Map<string, ReturnType<typeof setTimeout>>();
 const dirtyKey = (storageKey: string): string => `${storageKey}-server-dirty`;
+/**
+ * The newest value handed to the server path for each storage key, whether or
+ * not localStorage accepted it. Compared by identity in `clearDirtyIfCurrent`.
+ */
+const latestEdits = new Map<string, unknown>();
 
 function readStored<T>(storageKey: string, fallback: T, validate: (value: unknown) => value is T): T {
   try {
@@ -43,11 +48,22 @@ function clearDirty(storageKey: string): void {
 }
 
 /**
- * Clear the dirty marker only if the stored copy is still the value that was
- * just saved, so an older request finishing after a newer edit cannot clear
- * the newer edit's marker.
+ * Clear the dirty marker only if nothing local is newer than the value that
+ * was just saved, so an older request finishing after a newer edit cannot
+ * clear the newer edit's marker.
+ *
+ * "Newer" is judged first by identity against the latest edit handed to the
+ * server path, then by the stored copy. The identity check matters when
+ * localStorage rejected the edit's local copy (quota): the stored copy is then
+ * an OLDER value that never matches, and comparing only against it left the
+ * marker set for good, so every later load merged that stale copy back over
+ * the server and reverted the edit it had just saved (bug hunt 2026-09-02).
  */
 function clearDirtyIfCurrent<T>(storageKey: string, savedValue: T): void {
+  if (latestEdits.get(storageKey) === savedValue) {
+    clearDirty(storageKey);
+    return;
+  }
   try {
     if (localStorage.getItem(storageKey) === JSON.stringify(savedValue)) clearDirty(storageKey);
   } catch {
@@ -85,6 +101,7 @@ function cancelScheduledSave(canvasId: string, type: CanvasArtifactType): void {
 function scheduleSave<T>(canvasId: string, type: CanvasArtifactType, storageKey: string, value: T): void {
   const key = saveKey(canvasId, type);
   cancelScheduledSave(canvasId, type);
+  latestEdits.set(storageKey, value);
   markDirty(storageKey);
   pendingSaves.set(
     key,
@@ -201,6 +218,7 @@ async function reconcileWithServer<T>(options: ReconcileOptions<T>): Promise<voi
     // the server when browser storage is unavailable.
     cancelScheduledSave(canvasId, type);
   }
+  latestEdits.set(storageKey, next);
   markDirty(storageKey);
   try {
     await canvasApi.saveArtifact(canvasId, type, next);

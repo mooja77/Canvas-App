@@ -41,6 +41,34 @@ export function shouldHideEdgesAtZoom(zoom: number, edgeCount: number): boolean 
   return zoom < LOW_ZOOM_EDGE_HIDE_BELOW && isDenseEdgeGraph(edgeCount);
 }
 
+/**
+ * Same-canvas edge sync (CanvasWorkspace's canvas-data effect): decide what to
+ * publish into React Flow's controlled edge set, or `null` to leave it alone.
+ *
+ * `freshEdges` is `buildEdges()` evaluated in the SAME effect run, i.e. one
+ * edge per coding bundle / relation that exists in the store right now. So
+ * whatever this returns can only ever describe entities that still exist:
+ * it re-publishes the current derivation, never a cached set.
+ *
+ * - The builder changed identity (its store inputs changed): publish.
+ * - Empty-recovery: the controlled set is empty while the store still has
+ *   edges. React Strict Mode replays effects: the first setup can mark the
+ *   canvas loaded, then its state update can be discarded before the replay,
+ *   so the second setup sees the same canvas/builder and would leave every
+ *   coding edge absent. It also re-shows edges that a client-only path (React
+ *   Flow's default Backspace delete, an undo to a snapshot taken before the
+ *   coding existed) hid without deleting the underlying coding; that is
+ *   correct, since the coding is still there and still counted everywhere
+ *   else. A coding deleted through the store yields no fresh edge and cannot
+ *   come back.
+ * - Otherwise (one of several edges hidden client-side, nothing changed): null.
+ */
+export function resolveEdgeSync<E>(builderChanged: boolean, currentEdges: readonly E[], freshEdges: E[]): E[] | null {
+  if (builderChanged) return freshEdges;
+  if (currentEdges.length === 0 && freshEdges.length > 0) return freshEdges;
+  return null;
+}
+
 export function getCodingIdsFromEdgeData(edgeData: Record<string, unknown> | undefined): string[] {
   if (!edgeData) return [];
 

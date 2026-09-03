@@ -155,6 +155,60 @@ describe('numeric caption text survives import', () => {
   });
 });
 
+// Bug hunt 2026-09-02: some Zoom / Otter SRT exports omit the blank line
+// between cues, so the next cue's index sits directly under the previous cue's
+// text. Being past a timing line, it was emitted as caption text ("2").
+describe('SRT cues without blank separator lines', () => {
+  it('drops the cue index that directly follows the previous cue text', () => {
+    const srt = [
+      '1',
+      '00:00:01,000 --> 00:00:03,000',
+      'First cue.',
+      '2',
+      '00:00:03,000 --> 00:00:05,000',
+      'Second cue.',
+      '3',
+      '00:00:05,000 --> 00:00:07,000',
+      'Third cue.',
+    ].join('\n');
+    expect(parseSubtitles(srt)).toBe('First cue.\nSecond cue.\nThird cue.');
+  });
+
+  it('keeps a numeric answer that is followed by the next cue index', () => {
+    const srt = [
+      '1',
+      '00:00:01,000 --> 00:00:03,000',
+      'How many staff did you have?',
+      '2',
+      '00:00:03,000 --> 00:00:05,000',
+      '14',
+      '3',
+      '00:00:05,000 --> 00:00:07,000',
+      'And the budget?',
+    ].join('\n');
+    expect(parseSubtitles(srt)).toBe('How many staff did you have?\n14\nAnd the budget?');
+  });
+
+  it('keeps a numeric caption line that is NOT followed by a timing line', () => {
+    const srt = ['1', '00:00:01,000 --> 00:00:03,000', 'We had roughly', '30', 'people.', ''].join('\n');
+    expect(parseSubtitles(srt)).toBe('We had roughly\n30\npeople.');
+  });
+
+  it('handles the same missing separators in a WebVTT file with numeric cue identifiers', () => {
+    const vtt = [
+      'WEBVTT',
+      '',
+      '1',
+      '00:00:01.000 --> 00:00:03.000',
+      'One.',
+      '2',
+      '00:00:03.000 --> 00:00:05.000',
+      'Two.',
+    ].join('\n');
+    expect(parseSubtitles(vtt)).toBe('One.\nTwo.');
+  });
+});
+
 // M10: NOTE / STYLE / REGION are case-sensitive WebVTT block keywords and only
 // exist between cues. Caption text that happens to start with "Note", "Style"
 // or "Region" (or even upper-case NOTE inside a cue) is interview content.

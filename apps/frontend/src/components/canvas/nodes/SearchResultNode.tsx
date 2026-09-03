@@ -96,7 +96,12 @@ function SearchResultNode({ data, id, selected }: NodeProps) {
         ) : (
           <div className="space-y-2">
             <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              {result.matches.length} match{result.matches.length !== 1 ? 'es' : ''}
+              {/* The server caps the payload (a single-letter search over a
+                  large canvas measured 43 MB uncapped); say so rather than
+                  present the first page as the whole answer. */}
+              {result.truncated && typeof result.totalMatches === 'number'
+                ? `${result.totalMatches.toLocaleString()} matches, showing the first ${result.matches.length}`
+                : `${result.matches.length} match${result.matches.length !== 1 ? 'es' : ''}`}
             </p>
             {result.matches.slice(0, 20).map((m, i) => (
               <div key={i} className="rounded border border-gray-100 dark:border-gray-700 p-2">

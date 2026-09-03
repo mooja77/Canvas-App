@@ -224,6 +224,77 @@ describe('useCanvasArtifact', () => {
     expect(localStorage.getItem('test-canvas-1-server-dirty')).toBeNull();
   });
 
+  // Bug hunt 2026-09-02: when localStorage rejected the local copy of an edit
+  // (quota) but the PUT succeeded, the `-server-dirty` marker stayed set
+  // because the stored copy never matched the saved value. Every later load
+  // then merged the STALE stored copy back over the server, reverting the
+  // edit that had already been saved.
+  it('clears the dirty marker after a successful save even when the local write hit the storage quota', async () => {
+    getArtifact.mockResolvedValue({ data: { data: { exists: true, value: ['A'] } } } as never);
+    saveArtifact.mockResolvedValue({} as never);
+    const options = {
+      canvasId: 'canvas-1',
+      type: 'sticky-notes' as const,
+      storageKeyPrefix: 'test-',
+      fallback: EMPTY,
+      validate: isStrings,
+    };
+    const first = renderHook(() => useCanvasArtifact(options));
+    await waitFor(() => expect(first.result.current[0]).toEqual(['A']));
+    expect(localStorage.getItem('test-canvas-1')).toBe('["A"]');
+
+    // The edit's own local write is the next setItem; it fails. The marker
+    // write and everything after succeed.
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+      throw new DOMException('quota', 'QuotaExceededError');
+    });
+    act(() => first.result.current[1](['A', 'B']));
+    expect(first.result.current[0]).toEqual(['A', 'B']);
+    await waitFor(() => expect(saveArtifact).toHaveBeenCalledWith('canvas-1', 'sticky-notes', ['A', 'B']));
+    await flush();
+    setItem.mockRestore();
+
+    // The stored copy is stale (the write failed) ...
+    expect(localStorage.getItem('test-canvas-1')).toBe('["A"]');
+    // ... so it must NOT be flagged as holding unsaved work.
+    expect(localStorage.getItem('test-canvas-1-server-dirty')).toBeNull();
+
+    // Next load: the server copy is the truth; nothing is pushed back.
+    first.unmount();
+    saveArtifact.mockClear();
+    getArtifact.mockResolvedValue({ data: { data: { exists: true, value: ['A', 'B'] } } } as never);
+    const second = renderHook(() => useCanvasArtifact(options));
+    await waitFor(() => expect(second.result.current[0]).toEqual(['A', 'B']));
+    await flush();
+    expect(saveArtifact).not.toHaveBeenCalled();
+    expect(localStorage.getItem('test-canvas-1')).toBe('["A","B"]');
+  });
+
+  it('keeps the dirty marker when the save fails after a quota-rejected local write', async () => {
+    getArtifact.mockResolvedValue({ data: { data: { exists: true, value: ['A'] } } } as never);
+    saveArtifact.mockRejectedValue(new Error('offline'));
+    const { result } = renderHook(() =>
+      useCanvasArtifact({
+        canvasId: 'canvas-1',
+        type: 'sticky-notes',
+        storageKeyPrefix: 'test-',
+        fallback: EMPTY,
+        validate: isStrings,
+      }),
+    );
+    await waitFor(() => expect(result.current[0]).toEqual(['A']));
+
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+      throw new DOMException('quota', 'QuotaExceededError');
+    });
+    act(() => result.current[1](['A', 'B']));
+    await waitFor(() => expect(saveArtifact).toHaveBeenCalled());
+    await flush();
+    setItem.mockRestore();
+
+    expect(localStorage.getItem('test-canvas-1-server-dirty')).toBe('1');
+  });
+
   it('H2: still pushes a pre-mount dirty local copy wholesale when the server has no row', async () => {
     localStorage.setItem('test-canvas-1', '["legacy"]');
     localStorage.setItem('test-canvas-1-server-dirty', '1');

@@ -74,7 +74,20 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
   // ERR_HTTP_HEADERS_SENT and turns a handled timeout into a noisy server
   // error. The response already has its final status, so there is nothing left
   // for this middleware to write.
-  if (res.headersSent || res.writableEnded) return;
+  if (res.writableEnded) return;
+
+  // Headers are out but the body never finished: a route wrote part of a
+  // streamed body and then failed. Nothing can be written that the client
+  // would read as an error, and returning here used to leave the connection
+  // open — measured: a route that wrote a partial body then called next(err)
+  // hung until the client's own deadline. Do what Express's finalhandler does
+  // in this state and tear the connection down, so the client sees a broken
+  // response rather than a stalled one.
+  if (res.headersSent) {
+    logError(err, fieldsFromReq(req));
+    res.destroy();
+    return;
+  }
 
   const fields = fieldsFromReq(req);
   const requestId = fields.requestId;

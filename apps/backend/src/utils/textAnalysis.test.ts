@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   searchTranscripts,
+  MAX_SEARCH_MATCHES,
   computeCooccurrence,
   buildFrameworkMatrix,
   computeStats,
@@ -155,6 +156,48 @@ describe('searchTranscripts', () => {
     expect(() => searchTranscripts([{ id: 't', title: 'T', content: 'abc' }], '', 'literal')).toThrow(
       /search pattern/i,
     );
+  });
+});
+
+describe('searchTranscripts caps the returned matches (result is persisted on the node)', () => {
+  // 200k words across 8 transcripts, the shape of a real interview study.
+  const corpus = (() => {
+    const words = ['the', 'participant', 'said', 'that', 'experience', 'felt', 'really', 'different', 'when', 'they'];
+    return Array.from({ length: 8 }, (_, t) => ({
+      id: `t${t}`,
+      title: `Transcript ${t}`,
+      content: Array.from({ length: 25_000 }, (_, i) => words[(i + t) % words.length]).join(' '),
+    }));
+  })();
+
+  it('returns at most MAX_SEARCH_MATCHES, reports the true total and flags truncation', () => {
+    // Measured before the cap: 220,000 matches, 43.3 MB of JSON for this
+    // exact search - embedded in every fetch of the canvas, forever.
+    const result = searchTranscripts(corpus, 'e', 'literal');
+    expect(MAX_SEARCH_MATCHES).toBe(100);
+    expect(result.matches).toHaveLength(MAX_SEARCH_MATCHES);
+    expect(result.totalMatches).toBe(220_000);
+    expect(result.truncated).toBe(true);
+    expect(JSON.stringify(result).length).toBeLessThan(100_000);
+  });
+
+  it('keeps the first matches in transcript order, with their real offsets', () => {
+    const result = searchTranscripts(corpus, 'participant', 'literal');
+    expect(result.matches[0]).toMatchObject({ transcriptId: 't0', offset: corpus[0].content.indexOf('participant') });
+    expect(result.matches.every((m) => m.transcriptId === 't0')).toBe(true);
+  });
+
+  it('does not flag a result that fits', () => {
+    const result = searchTranscripts([{ id: 't', title: 'T', content: 'one two one' }], 'one', 'literal');
+    expect(result.matches).toHaveLength(2);
+    expect(result).toMatchObject({ totalMatches: 2, truncated: false });
+  });
+
+  it('lets a caller that needs more (auto-code) raise the cap', () => {
+    const result = searchTranscripts(corpus, 'participant', 'literal', undefined, { maxMatches: 2_000 });
+    expect(result.matches).toHaveLength(2_000);
+    expect(result.totalMatches).toBe(20_000);
+    expect(result.truncated).toBe(true);
   });
 });
 

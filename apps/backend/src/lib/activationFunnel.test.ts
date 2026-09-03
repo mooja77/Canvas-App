@@ -112,4 +112,30 @@ describe('buildActivationFunnel', () => {
 
     expect(result.stages[1]?.medianHoursToReach).toBe(0);
   });
+
+  it('credits a coding to the coder, not the owner of the canvas it sits on', () => {
+    // u2 was invited as a Coder onto a canvas owned by someone outside the
+    // cohort, and coded there. Attributing that coding to the owner meant u2
+    // could never activate no matter how much coding they did.
+    const result = buildActivationFunnel(
+      [
+        { id: 'u1', createdAt: start },
+        { id: 'u2', createdAt: start },
+      ],
+      {
+        canvas: [],
+        transcript: [],
+        coding: [
+          { userId: 'outside', coderUserId: 'u2', createdAt: afterHours(4) },
+          // An unattributed (legacy/AI) coding still counts for the owner.
+          { userId: 'u1', coderUserId: null, createdAt: afterHours(2) },
+          // A non-cohort coder on a cohort member's canvas credits nobody.
+          { userId: 'u1', coderUserId: 'outside', createdAt: afterHours(1) },
+        ],
+      },
+    );
+
+    expect(result).toMatchObject({ cohortSize: 2, activatedUsers: 2, activationRate: 100 });
+    expect(result.stages[3]).toMatchObject({ key: 'coding', users: 2, medianHoursToReach: 3 });
+  });
 });

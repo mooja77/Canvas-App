@@ -6,8 +6,20 @@ export interface ActivationCohortMember {
 }
 
 export interface ActivationMilestoneRecord {
+  /** The canvas owner: the user the milestone falls back to. */
   userId: string | null;
+  /**
+   * The user who actually performed the milestone, when the record knows it
+   * (CanvasTextCoding.coderUserId). A collaborator's coding counts for the
+   * collaborator, not for the owner of the canvas it happens to be on.
+   */
+  coderUserId?: string | null;
   createdAt: Date;
+}
+
+/** Whose milestone this is: the actor when attributed, else the canvas owner. */
+function milestoneUserId(record: ActivationMilestoneRecord): string | null {
+  return record.coderUserId ?? record.userId;
 }
 
 export interface ActivationStage {
@@ -54,9 +66,10 @@ function summarizeMilestone(
   const earliestByUser = new Map<string, Date>();
 
   for (const record of records) {
-    if (!record.userId || !cohort.has(record.userId)) continue;
-    const current = earliestByUser.get(record.userId);
-    if (!current || record.createdAt < current) earliestByUser.set(record.userId, record.createdAt);
+    const userId = milestoneUserId(record);
+    if (!userId || !cohort.has(userId)) continue;
+    const current = earliestByUser.get(userId);
+    if (!current || record.createdAt < current) earliestByUser.set(userId, record.createdAt);
   }
 
   const hoursToReach: number[] = [];

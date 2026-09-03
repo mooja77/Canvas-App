@@ -711,6 +711,16 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const cohortWhere = { ...realUsersWhere, createdAt: { gte: since } };
 
+    // AuditLog.actorId and AiUsage.userId carry no relation to User, so the
+    // real-user exclusion every other aggregate expresses as a relation filter
+    // has to be an id list here. Legacy access-code actors (dashboardAccess
+    // ids) fall outside it, exactly as their userId-less canvases fall outside
+    // `user: { is: realUsersWhere }`. Before this, the feature/AI/action/top-user
+    // breakdowns counted demo, smoke and internal accounts that the headline
+    // counts next to them excluded.
+    const realUserIds = (await prisma.user.findMany({ where: realUsersWhere, select: { id: true } })).map((u) => u.id);
+    const byRealUser = { in: realUserIds };
+
     const [
       cohortUsers,
       activeCanvasUsers,
@@ -754,20 +764,20 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
       // Computed nodes by type in period
       prisma.canvasComputedNode.groupBy({
         by: ['nodeType'],
-        where: { createdAt: { gte: since } },
+        where: { createdAt: { gte: since }, canvas: { user: { is: realUsersWhere } } },
         _count: { id: true },
       }),
       // AI usage by feature in period
       prisma.aiUsage.groupBy({
         by: ['feature'],
-        where: { createdAt: { gte: since } },
+        where: { createdAt: { gte: since }, userId: byRealUser },
         _count: { id: true },
         _sum: { inputTokens: true, outputTokens: true, costCents: true },
       }),
       // Daily actions (audit log volume by day)
       prisma.auditLog.groupBy({
         by: ['action'],
-        where: { timestamp: { gte: since } },
+        where: { timestamp: { gte: since }, actorId: byRealUser },
         _count: { id: true },
       }),
       // First-use milestones for the same signup cohort. The pure aggregator
@@ -780,19 +790,25 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
         where: { canvas: { user: { is: cohortWhere } } },
         select: { createdAt: true, canvas: { select: { userId: true } } },
       }),
+      // A coding belongs to whoever made it. A cohort member invited as a
+      // Coder on someone else's canvas activates through their own codings,
+      // which live on a canvas the cohort filter would otherwise never select;
+      // only an unattributed (legacy/AI) coding falls back to the canvas owner.
       prisma.canvasTextCoding.findMany({
-        where: { canvas: { user: { is: cohortWhere } } },
-        select: { createdAt: true, canvas: { select: { userId: true } } },
+        where: {
+          OR: [{ coder: { is: cohortWhere } }, { coderUserId: null, canvas: { user: { is: cohortWhere } } }],
+        },
+        select: { createdAt: true, coderUserId: true, canvas: { select: { userId: true } } },
       }),
       // Total AI cost in period
       prisma.aiUsage.aggregate({
-        where: { createdAt: { gte: since } },
+        where: { createdAt: { gte: since }, userId: byRealUser },
         _sum: { costCents: true, inputTokens: true, outputTokens: true },
       }),
       // Top 10 most active users by action count in period
       prisma.auditLog.groupBy({
         by: ['actorId'],
-        where: { timestamp: { gte: since }, actorId: { not: null } },
+        where: { timestamp: { gte: since }, actorId: byRealUser },
         _count: { id: true },
         orderBy: { _count: { id: 'desc' } },
         take: 10,
@@ -803,7 +819,11 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
     const activation = buildActivationFunnel(cohortUsers, {
       canvas: canvasMilestones,
       transcript: transcriptMilestones.map((row) => ({ userId: row.canvas.userId, createdAt: row.createdAt })),
-      coding: codingMilestones.map((row) => ({ userId: row.canvas.userId, createdAt: row.createdAt })),
+      coding: codingMilestones.map((row) => ({
+        userId: row.canvas.userId,
+        coderUserId: row.coderUserId,
+        createdAt: row.createdAt,
+      })),
     });
 
     // Build daily signup trend

@@ -83,3 +83,13 @@ recordings/.*-creds.json
 # Runtime upload storage. Local dev and test runs drop participant media here;
 # it is never part of the source tree.
 apps/backend/uploads/
+
+# Session artefacts dropped at the repo root by browser/QA sessions
+/*.jpeg
+/*.jpg
+/*.png
+/live-*.yml
+/openai-*.yml
+/pro-*.yml
+/team-*.yml
+/recordings/

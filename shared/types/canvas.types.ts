@@ -165,6 +165,12 @@ export interface SearchResult {
     matchText: string;
     context: string;
   }[];
+  /**
+   * Matches found before the response cap was applied. Older stored results
+   * predate the cap and omit both fields; treat absence as "not truncated".
+   */
+  totalMatches?: number;
+  truncated?: boolean;
 }
 
 export interface CooccurrenceResult {
