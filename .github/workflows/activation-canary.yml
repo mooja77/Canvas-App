@@ -1,0 +1,109 @@
+name: Activation canary
+
+# Drives a real first-use journey against PRODUCTION once a week: sign up,
+# onboard, add a transcript, code two excerpts, run an analysis, export CSV,
+# then delete the account again.
+#
+# Why it exists: the signup-to-first-coding path was broken or unattractive for
+# eleven weeks (last real signup 2026-06-17) and nothing told anyone. Unit and
+# E2E suites run against a test database and a built bundle, so neither can see
+# a production-only fault: a missing environment variable on Railway, a stale
+# service-worker bundle on Cloudflare Pages, a Content-Security-Policy header
+# that blocks a real request. This is the only check that exercises the live
+# stack the way a new researcher does.
+#
+# What it writes to production: one account per run, named
+# activation-journey-<timestamp>@example.com, deleted in the script's `finally`
+# block. That address is on a reserved domain, so utils/testAccounts.ts already
+# excludes it from every admin count even if a deletion fails. The job fails
+# loudly when cleanup does not complete so the row can be removed by hand.
+#
+# Optional repo secrets:
+#   QUALCANVAS_QA_EMAIL / QUALCANVAS_QA_PASSWORD  Pin the account instead of
+#     generating one per run. Leave unset for the default, which is safer:
+#     a fresh address each week cannot collide with a real signup.
+
+on:
+  schedule:
+    # Mondays 07:15 UTC, before the working week starts in Ireland.
+    - cron: '15 7 * * 1'
+  workflow_dispatch:
+    inputs:
+      app_origin:
+        description: 'Frontend origin to exercise'
+        required: false
+        default: 'https://qualcanvas.com'
+      api_origin:
+        description: 'Backend API base'
+        required: false
+        default: 'https://api.qualcanvas.com/api'
+
+concurrency:
+  # Never let two runs create accounts at the same time.
+  group: activation-canary
+  cancel-in-progress: false
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Run the activation journey against production
+        id: journey
+        # Keep stdout: the cleanup result is logged there, not written to
+        # report.json, and it is the line that says whether a production row
+        # was left behind. pipefail so a tee cannot mask a failing run.
+        run: |
+          mkdir -p activation-report
+          set -o pipefail
+          npm run qa:production-activation 2>&1 | tee activation-report/run.log
+        env:
+          QUALCANVAS_QA_ORIGIN: ${{ inputs.app_origin || 'https://qualcanvas.com' }}
+          QUALCANVAS_QA_API_ORIGIN: ${{ inputs.api_origin || 'https://api.qualcanvas.com/api' }}
+          QUALCANVAS_QA_EMAIL: ${{ secrets.QUALCANVAS_QA_EMAIL }}
+          QUALCANVAS_QA_PASSWORD: ${{ secrets.QUALCANVAS_QA_PASSWORD }}
+          QUALCANVAS_QA_OUTPUT: ${{ github.workspace }}/activation-report
+
+      # Screenshots and report.json explain a failure without a local repro.
+      - name: Upload the run report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: activation-report-${{ github.run_id }}
+          path: activation-report
+          if-no-files-found: warn
+          retention-days: 30
+
+      # The script deletes its own account in a `finally`, but a crashed
+      # process or a failing DELETE leaves a row in production. A leftover row
+      # is not counted in any admin figure (reserved domain), but it should not
+      # sit there unnoticed either, so fail the job and name the account.
+      - name: Confirm the canary account was removed
+        if: always()
+        run: |
+          log="activation-report/run.log"
+          if [ ! -f "$log" ]; then
+            echo "::warning::No run log; the job died before the script started. Nothing was created."
+            exit 0
+          fi
+          cleanup=$(grep -o '{"cleanup":.*}' "$log" | tail -1)
+          if [ -z "$cleanup" ]; then
+            echo "::error::The script never reported cleanup, so an account may be left in production. Check /admin > Users for an activation-journey address and delete it."
+            exit 1
+          fi
+          echo "$cleanup"
+          created=$(node -e "process.stdout.write(String(JSON.parse(process.argv[1]).cleanup.accountCreated))" "$cleanup")
+          deleted=$(node -e "process.stdout.write(String(JSON.parse(process.argv[1]).cleanup.accountDeleted))" "$cleanup")
+          if [ "$created" = "true" ] && [ "$deleted" != "true" ]; then
+            echo "::error::The canary account was created but not deleted. Check /admin > Users for an activation-journey address and delete it."
+            exit 1
+          fi
+          echo "Cleanup confirmed."
