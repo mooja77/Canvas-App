@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import type { Prisma } from '@prisma/client';
 import { timingSafeEqual } from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { buildActivationFunnel } from '../lib/activationFunnel.js';
@@ -37,30 +38,34 @@ function isTestEmail(email: string): boolean {
   return false;
 }
 
-// Prisma WHERE clause to exclude test users
-const realUsersWhere = {
+// Prisma WHERE clause to exclude test users.
+//
+// Anchored, not substring: the old `contains: 'test' | 'qa' | 'seed' | ...`
+// filter silently dropped real researchers from every cohort, funnel and
+// count (`researcher@qu.edu.qa`, `maria.testa@unibo.it`, `j.seedorf@uva.nl`,
+// `contest.winner@ucc.ie`). A test account is one whose LOCAL PART starts
+// with a fixture prefix, carries a `+test`/`+e2e`/`+qa` plus-tag, or whose
+// DOMAIN is a reserved/fixture domain.
+const TEST_LOCAL_PART_PREFIXES = ['test', 'demo', 'qa-', 'qa_', 'seed', 'e2e', 'smoke', 'cors-', 'fake'];
+const TEST_PLUS_TAGS = ['+test', '+e2e', '+qa'];
+const TEST_DOMAINS = ['@example.com', '@example.org', '@test.local', '@qualcanvas.test', ...TEST_EMAIL_PATTERNS];
+const insensitive = 'insensitive' as const;
+export const realUsersWhere: Prisma.UserWhereInput = {
   AND: [
-    { email: { notIn: INTERNAL_EMAILS } },
-    { email: { not: { contains: 'test' } } },
-    { email: { not: { contains: 'demo' } } },
-    { email: { not: { contains: 'e2e' } } },
-    { email: { not: { contains: 'smoke' } } },
-    { email: { not: { contains: 'qa' } } },
-    { email: { not: { contains: 'cors-' } } },
-    { email: { not: { contains: 'fake' } } },
-    { email: { not: { contains: 'seed' } } },
-    { email: { not: { endsWith: '.test' } } },
-    { email: { not: { endsWith: '@example.com' } } },
-    { email: { not: { endsWith: '@test.com' } } },
-    { email: { not: { endsWith: '@mailinator.com' } } },
-    { email: { not: { endsWith: '@x.com' } } },
-    { email: { not: { endsWith: '@shopify.com' } } },
-    { email: { not: { endsWith: '@staffhubtest.com' } } },
-    { email: { not: { endsWith: '@spamshield.app' } } },
-    { email: { not: { endsWith: '@jewelvalue.app' } } },
-    { email: { not: { endsWith: '@smartcashapp.net' } } },
-    { email: { not: { endsWith: '@staffhubapp.com' } } },
-    { email: { not: { endsWith: '@mygrowthmap.net' } } },
+    { email: { notIn: INTERNAL_EMAILS, mode: insensitive } },
+    // Owner plus-aliases (mooja77+anything@gmail.com) are internal too.
+    {
+      NOT: {
+        AND: [
+          { email: { startsWith: 'mooja77+', mode: insensitive } },
+          { email: { endsWith: '@gmail.com', mode: insensitive } },
+        ],
+      },
+    },
+    ...TEST_LOCAL_PART_PREFIXES.map((prefix) => ({ email: { not: { startsWith: prefix }, mode: insensitive } })),
+    ...TEST_PLUS_TAGS.map((tag) => ({ email: { not: { contains: tag }, mode: insensitive } })),
+    { email: { not: { endsWith: '.test' }, mode: insensitive } },
+    ...TEST_DOMAINS.map((domain) => ({ email: { not: { endsWith: domain }, mode: insensitive } })),
   ],
 };
 

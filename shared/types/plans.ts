@@ -183,6 +183,25 @@ export function getPlanLimits(plan: string): PlanLimits {
   return PLAN_LIMITS.free;
 }
 
+/**
+ * `PlanLimits` as it survives a JSON round-trip. `Infinity` has no JSON
+ * encoding (`JSON.stringify(Infinity)` is `null`), so every uncapped number
+ * travels as `null` — the same convention the frontend mirror
+ * (config/planLimits.ts) already uses for "no cap".
+ */
+export type PlanLimitsJson = {
+  [K in keyof PlanLimits]: PlanLimits[K] extends number ? number | null : PlanLimits[K];
+};
+
+/** Explicitly map Infinity -> null so the wire shape is a stated contract, not a JSON accident. */
+export function serializePlanLimits(limits: PlanLimits): PlanLimitsJson {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(limits)) {
+    out[key] = typeof value === 'number' && !Number.isFinite(value) ? null : value;
+  }
+  return out as PlanLimitsJson;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Refusal copy, DERIVED from PLAN_LIMITS above.
 //

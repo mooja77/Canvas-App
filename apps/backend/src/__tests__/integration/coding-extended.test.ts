@@ -80,6 +80,7 @@ const { mockPrisma } = vi.hoisted(() => {
     },
     canvasShare: { count: vi.fn() },
     $transaction: vi.fn(),
+    $executeRaw: vi.fn(),
     $queryRawUnsafe: vi.fn(),
     $disconnect: vi.fn(),
   };
@@ -189,6 +190,13 @@ describe('Coding extended tests', () => {
       count: data.length,
     }));
   });
+
+  // Re-parenting runs its cycle walk + update inside one transaction behind a
+  // canvas row lock; the mock client stands in for the transaction client.
+  // Scoped per test (clearAllMocks keeps implementations): other tests here
+  // rely on the bare vi.fn() transaction that never runs its callback.
+  const runTransactionsInline = () =>
+    mockPrisma.$transaction.mockImplementationOnce(async (fn: (tx: typeof mockPrisma) => unknown) => fn(mockPrisma));
 
   // ─── Coding creation edge cases ───
 
@@ -580,6 +588,7 @@ describe('Coding extended tests', () => {
   it('PUT /canvas/:id/questions/:qid sets parentQuestionId', async () => {
     const childId = 'q-child';
     const parentId = 'q-parent';
+    runTransactionsInline();
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
     mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: childId, canvasId });
     mockPrisma.canvasQuestion.findUnique
@@ -622,6 +631,7 @@ describe('Coding extended tests', () => {
   });
 
   it('PUT /canvas/:id/questions/:qid rejects a parent cycle', async () => {
+    runTransactionsInline();
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
     mockPrisma.canvasQuestion.findUnique
       .mockResolvedValueOnce({ id: 'q-child', canvasId })

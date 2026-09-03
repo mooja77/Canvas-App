@@ -17,6 +17,7 @@ import type {
   CanvasRelation,
   CanvasComputedNode,
   ComputedNodeType,
+  SaveLayoutInput,
 } from '@qualcanvas/shared';
 import { canvasApi, getAllCanvases } from '../services/api';
 import { emitSocketEvent } from '../lib/socket';
@@ -31,8 +32,37 @@ const FIRST_CODING_FLAG = 'qualcanvas-first-coding-fired';
 // those requests overlap makes PostgreSQL transactions wait on one another's
 // row locks and can turn a tiny save into a request timeout. Preserve the
 // caller order and keep later saves queued even when an earlier one fails.
-let layoutSaveQueue: Promise<void> = Promise.resolve();
+//
+// Bug hunt 2026-09-02 M3: the queue was global, so one hung PUT blocked every
+// later layout save on every canvas. It is now one chain per canvas, and a
+// save that is still queued (not started) when a newer save for the same
+// canvas arrives is folded into that newer one so only one request goes out.
+// The layout route upserts per nodeId and callers send partial payloads
+// (quick-add sends a single node), so folding must carry over the older
+// payload's nodes that the newer one does not mention - dropping them would
+// lose a placement.
+const layoutSaveQueues = new Map<string, Promise<void>>();
+interface QueuedLayoutSave {
+  payload: SaveLayoutInput;
+  started: boolean;
+  superseded: boolean;
+}
+/** Latest not-yet-started save per canvas; the candidate for folding. */
+const queuedLayoutSaves = new Map<string, QueuedLayoutSave>();
 let queuedLayoutSaveCount = 0;
+
+function mergeLayoutPayloads(older: SaveLayoutInput, newer: SaveLayoutInput): SaveLayoutInput {
+  const newerIds = new Set(newer.positions.map((p) => p.nodeId));
+  return { positions: [...newer.positions, ...older.positions.filter((p) => !newerIds.has(p.nodeId))] };
+}
+
+// Bug hunt 2026-09-02 H3: openCanvas/refreshCanvas had no request-generation
+// guard, so a slower earlier load landed after the canvas the user actually
+// chose and replaced it (refreshCanvas fires on every socket reconnect, so
+// `activeCanvasId` = B with `activeCanvas` = A was reachable). Every loader
+// captures the sequence before awaiting and applies its result only if no
+// newer open/close has happened since.
+let loadSeq = 0;
 
 interface PendingSelection {
   transcriptId: string;
@@ -239,9 +269,12 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
     },
 
     openCanvas: async (id) => {
+      const seq = ++loadSeq;
+      const isCurrent = () => seq === loadSeq;
       set({ loading: true, error: null });
       try {
         const res = await canvasApi.getCanvas(id);
+        if (!isCurrent()) return;
         set({ activeCanvasId: id, activeCanvas: res.data.data, loading: false, pendingSelection: null });
         // Cache for offline use
         cacheCanvas(res.data.data).catch(() => {});
@@ -257,12 +290,16 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
           // Access was refused or the canvas is gone: drop the local copy so
           // it can't be served later either.
           await clearCachedCanvas(id).catch(() => {});
+          if (!isCurrent()) return;
           const message =
             status === 403 ? 'You no longer have access to this canvas' : 'This canvas is no longer available';
           set({ error: message, loading: false, activeCanvasId: null, activeCanvas: null, pendingSelection: null });
           toast.error(message);
           return;
         }
+
+        // A stale failure must not disturb the canvas that loaded after it.
+        if (!isCurrent()) return;
 
         if (status !== undefined && status < 500) {
           // Any other 4xx (401 expired session, 429 rate limit, ...) is still
@@ -275,6 +312,7 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
 
         // No response at all (network down) or a 5xx outage — offline fallback.
         const cached = await getCachedCanvas(id).catch(() => null);
+        if (!isCurrent()) return;
         if (cached) {
           set({ activeCanvasId: id, activeCanvas: cached, loading: false, pendingSelection: null });
           toast('Loaded from offline cache', { icon: '\u{1F4F1}' });
@@ -286,14 +324,28 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
     },
 
     closeCanvas: () => {
-      set({ activeCanvasId: null, activeCanvas: null, pendingSelection: null, selectedQuestionId: null });
+      // Invalidate any open/refresh still in flight so it cannot resurrect
+      // the canvas after the user left it. That in-flight open owned
+      // `loading`, so reset it here; nothing else will.
+      loadSeq++;
+      set({
+        activeCanvasId: null,
+        activeCanvas: null,
+        loading: false,
+        pendingSelection: null,
+        selectedQuestionId: null,
+      });
     },
 
     refreshCanvas: async () => {
       const { activeCanvasId } = get();
       if (!activeCanvasId) return;
+      // Capture, don't bump: a refresh must not invalidate an openCanvas that
+      // is already in flight for the canvas the user is switching to.
+      const seq = loadSeq;
       try {
         const res = await canvasApi.getCanvas(activeCanvasId);
+        if (seq !== loadSeq || get().activeCanvasId !== activeCanvasId) return;
         set({ activeCanvas: res.data.data });
       } catch (err) {
         console.error('[canvasStore] refreshCanvas failed:', err);
@@ -591,15 +643,36 @@ export const useCanvasStore = createWithEqualityFn<CanvasState>(
           collapsed: p.collapsed,
         })),
       };
+      const ticket: QueuedLayoutSave = { payload, started: false, superseded: false };
+      const prior = queuedLayoutSaves.get(canvasId);
+      if (prior && !prior.started) {
+        // Fold the still-queued save into this one and send a single request.
+        prior.superseded = true;
+        ticket.payload = mergeLayoutPayloads(prior.payload, payload);
+      }
+      queuedLayoutSaves.set(canvasId, ticket);
       queuedLayoutSaveCount++;
       set({ savingLayout: true });
-      const request = layoutSaveQueue.then(async () => {
-        await canvasApi.saveLayout(canvasId, payload);
+      const queue = layoutSaveQueues.get(canvasId) ?? Promise.resolve();
+      const request = queue.then(async () => {
+        ticket.started = true;
+        if (queuedLayoutSaves.get(canvasId) === ticket) queuedLayoutSaves.delete(canvasId);
+        if (ticket.superseded) return false;
+        await canvasApi.saveLayout(canvasId, ticket.payload);
+        return true;
       });
-      layoutSaveQueue = request.catch(() => undefined);
+      const tail: Promise<void> = request.then(
+        () => undefined,
+        () => undefined,
+      );
+      layoutSaveQueues.set(canvasId, tail);
+      void tail.then(() => {
+        if (layoutSaveQueues.get(canvasId) === tail) layoutSaveQueues.delete(canvasId);
+      });
       try {
-        await request;
-        set({ layoutSaveFailed: false });
+        const performed = await request;
+        // A folded save reports through the request that carried it.
+        if (performed) set({ layoutSaveFailed: false });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         // Record it, don't just toast it. The toast expires; the unsaved

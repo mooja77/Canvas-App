@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import type { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { validate, onboardingPatchBodySchema, onboardingStatePatchSchema } from '../middleware/validation.js';
 import { getAuthId, getAuthUserId, safeJsonParse } from '../utils/routeHelpers.js';
 import { checkCanvasLimit } from '../middleware/planLimits.js';
 import { getPlanLimits } from '../config/plans.js';
@@ -205,25 +207,32 @@ templateRoutes.get('/user/onboarding', async (req, res, next) => {
 });
 
 // PATCH /user/onboarding — merge a partial update into onboardingState.
-// Body: { state: { step?, dismissedTooltips?, checklistComplete?, ... } }
-templateRoutes.patch('/user/onboarding', async (req, res, next) => {
+// Body: { state: { currentStep?, dismissedTooltips?, checklistComplete?, ... } }
+// The body is schema-validated (onboardingPatchBodySchema): unknown keys,
+// unknown checklist ids, oversized arrays and non-integer steps are 400, so
+// the stored JSON can only hold the shape the frontend reads back.
+templateRoutes.patch('/user/onboarding', validate(onboardingPatchBodySchema), async (req, res, next) => {
   try {
     const userId = getAuthUserId(req);
     if (!userId) return next(new AppError('Onboarding is only tracked for email-authenticated users', 400));
 
-    const { state: patch } = req.body as { state?: Record<string, unknown> };
-    if (!patch || typeof patch !== 'object') {
-      return next(new AppError('state must be an object', 400));
-    }
+    const { state: patch } = req.body as { state: z.infer<typeof onboardingStatePatchSchema> };
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { onboardingState: true },
     });
-    const current = user?.onboardingState ? safeJsonParse(user.onboardingState, {}) : {};
-    // Shallow merge is enough for the screens we track; deeper structures
-    // (dismissedTooltips: []) get replaced atomically by the frontend.
-    const merged = { ...current, ...patch };
+    const current: Record<string, unknown> = user?.onboardingState ? safeJsonParse(user.onboardingState, {}) : {};
+    // Shallow merge for the scalar keys. checklistComplete is a UNION with the
+    // stored set: completion never goes backwards, so a second device that
+    // hydrated before the first one's export cannot erase the server's ticks.
+    const merged: Record<string, unknown> = { ...current, ...patch };
+    if (patch.checklistComplete) {
+      const stored = Array.isArray(current.checklistComplete)
+        ? current.checklistComplete.filter((v): v is string => typeof v === 'string')
+        : [];
+      merged.checklistComplete = Array.from(new Set([...stored, ...patch.checklistComplete]));
+    }
     // Cap stored size — the frontend should never need more than a few KB.
     const serialized = JSON.stringify(merged);
     if (serialized.length > 16_384) {

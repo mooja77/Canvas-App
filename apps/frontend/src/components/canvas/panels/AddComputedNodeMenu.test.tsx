@@ -4,7 +4,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 // Backend is the source of truth for what each tier may create. Import it so
 // these tests fail the moment the menu's mirror drifts — the same guard
 // config/planLimits.test.ts puts on the numeric caps.
-import { PLAN_LIMITS, featureAvailabilityMessage, type PlanTier } from '@qualcanvas/shared';
+import {
+  PLAN_LIMITS,
+  featureAvailabilityMessage,
+  serializePlanLimits,
+  type CanvasOwnerPlan,
+  type PlanTier,
+} from '@qualcanvas/shared';
 
 const toastError = vi.fn();
 const toastSuccess = vi.fn();
@@ -13,9 +19,12 @@ vi.mock('react-hot-toast', () => ({
 }));
 
 const addComputedNode = vi.fn();
+const canvasState = {
+  addComputedNode,
+  activeCanvas: null as { ownerPlan?: CanvasOwnerPlan } | null,
+};
 vi.mock('../../../stores/canvasStore', () => ({
-  useCanvasStore: (selector: (s: { addComputedNode: typeof addComputedNode }) => unknown) =>
-    selector({ addComputedNode }),
+  useCanvasStore: (selector: (s: typeof canvasState) => unknown) => selector(canvasState),
 }));
 
 const authState = { effectivePlan: 'free' as string | null, plan: null as string | null };
@@ -133,6 +142,54 @@ describe('AddComputedNodeMenu — paid tiers', () => {
     openMenu();
     fireEvent.click(screen.getByRole('button', { name: /^Co-occurrence/ }));
     expect(addComputedNode).toHaveBeenCalledWith('cooccurrence', 'Co-occurrence');
+  });
+});
+
+// M6 (bug hunt 2026-09-02): checkAnalysisType gates on the canvas OWNER's
+// plan (resolveRequestPlan), so the locks must follow the open canvas, not
+// the viewer's own subscription.
+describe('AddComputedNodeMenu — locks follow the canvas owner plan', () => {
+  const ownerPlanOf = (tier: PlanTier): CanvasOwnerPlan => ({
+    effectivePlan: tier,
+    limits: serializePlanLimits(PLAN_LIMITS[tier]),
+  });
+
+  beforeEach(() => {
+    toastError.mockClear();
+    addComputedNode.mockClear();
+  });
+
+  it('a Free viewer on a Team canvas gets every tool unlocked and the request goes through', () => {
+    authState.effectivePlan = 'free';
+    authState.plan = 'free';
+    canvasState.activeCanvas = { ownerPlan: ownerPlanOf('team') };
+    addComputedNode.mockResolvedValue({ id: 'n1' });
+    openMenu();
+    expect(document.querySelectorAll('button[data-locked="true"]')).toHaveLength(0);
+    fireEvent.click(screen.getByRole('button', { name: /^Co-occurrence/ }));
+    expect(addComputedNode).toHaveBeenCalledWith('cooccurrence', 'Co-occurrence');
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('a Pro viewer on a Free canvas is warned locally instead of getting a 403', () => {
+    authState.effectivePlan = 'pro';
+    authState.plan = 'pro';
+    canvasState.activeCanvas = { ownerPlan: ownerPlanOf('free') };
+    openMenu();
+    expect(document.querySelectorAll('button[data-locked="true"]')).toHaveLength(FREE_LOCKED.length);
+    fireEvent.click(screen.getByRole('button', { name: /^Framework Matrix —/ }));
+    expect(addComputedNode).not.toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalledWith(
+      'Framework Matrix analysis is available on the Student, Pro, and Team plans.',
+    );
+  });
+
+  it('falls back to the viewer plan when the canvas carries no ownerPlan', () => {
+    authState.effectivePlan = 'free';
+    authState.plan = 'free';
+    canvasState.activeCanvas = { ownerPlan: undefined };
+    openMenu();
+    expect(document.querySelectorAll('button[data-locked="true"]')).toHaveLength(FREE_LOCKED.length);
   });
 });
 

@@ -10,6 +10,10 @@ import {
   createComputedNodeSchema,
   autoCodeSchema,
   saveLayoutSchema,
+  updateCanvasQuestionSchema,
+  canvasDetailQuerySchema,
+  onboardingPatchBodySchema,
+  ONBOARDING_CHECKLIST_TASK_IDS,
 } from './validation.js';
 
 function mockReq(body: unknown): Request {
@@ -302,5 +306,133 @@ describe('createCanvasQuestionSchema keeps parentQuestionId', () => {
 
   it('is still optional', () => {
     expect(createCanvasQuestionSchema.safeParse({ text: 'No parent' }).success).toBe(true);
+  });
+});
+
+/**
+ * L1 (bug hunt 2026-09-02): `parentQuestionId: ''` passed z.string() and hit
+ * the foreign key as P2003 -> 500 on both create and update. The empty string
+ * means "no parent": it is coerced to null. Anything that is not id-shaped
+ * (spaces, slashes, objects) is a 400 instead of a Prisma error.
+ */
+describe('parentQuestionId is a cuid-shaped id or null (L1)', () => {
+  it.each([
+    ['create', createCanvasQuestionSchema, { text: 'Code' }],
+    ['update', updateCanvasQuestionSchema, {}],
+  ] as const)('%s: coerces the empty string to null', (_label, schema, base) => {
+    const parsed = schema.safeParse({ ...base, parentQuestionId: '' });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.parentQuestionId).toBeNull();
+  });
+
+  it.each([
+    ['create', createCanvasQuestionSchema, { text: 'Code' }],
+    ['update', updateCanvasQuestionSchema, {}],
+  ] as const)('%s: rejects ids that are not id-shaped', (_label, schema, base) => {
+    for (const bad of ['has space', 'a/b', 'x'.repeat(65), 42, { id: 'q1' }, ['q1']]) {
+      expect(schema.safeParse({ ...base, parentQuestionId: bad }).success).toBe(false);
+    }
+  });
+
+  it('still accepts a real cuid, null and undefined', () => {
+    expect(updateCanvasQuestionSchema.safeParse({ parentQuestionId: 'cmf1x2y3z0000abcdefghijkl' }).success).toBe(true);
+    expect(updateCanvasQuestionSchema.safeParse({ parentQuestionId: null }).success).toBe(true);
+    expect(updateCanvasQuestionSchema.safeParse({}).success).toBe(true);
+  });
+});
+
+/**
+ * L2: GET /canvas/:id detail paging used parseInt + clamp, so
+ * `detailPage=99999999999999999999` reached Prisma as an unencodable `skip`
+ * (500) and `detailPage=abc` silently became page 0.
+ */
+describe('canvasDetailQuerySchema (L2)', () => {
+  it('accepts absent, empty and in-range values', () => {
+    expect(canvasDetailQuerySchema.safeParse({})).toEqual({ success: true, data: {} });
+    expect(canvasDetailQuerySchema.safeParse({ detailPage: '', detailPageSize: '' })).toEqual({
+      success: true,
+      data: {},
+    });
+    expect(canvasDetailQuerySchema.safeParse({ detailPage: '3', detailPageSize: '500' })).toEqual({
+      success: true,
+      data: { detailPage: 3, detailPageSize: 500 },
+    });
+    expect(canvasDetailQuerySchema.safeParse({ detailPage: '1000000', detailPageSize: '1000' }).success).toBe(true);
+    expect(canvasDetailQuerySchema.safeParse({ detailPage: '0', detailPageSize: '50' }).success).toBe(true);
+  });
+
+  it.each([
+    ['overflowing page', { detailPage: '99999999999999999999' }],
+    ['page above the ceiling', { detailPage: '1000001' }],
+    ['negative page', { detailPage: '-1' }],
+    ['fractional page', { detailPage: '1.5' }],
+    ['non-numeric page', { detailPage: 'abc' }],
+    ['repeated page param', { detailPage: ['1', '2'] }],
+    ['page size below the floor', { detailPageSize: '10' }],
+    ['page size above the ceiling', { detailPageSize: '1001' }],
+    ['non-numeric page size', { detailPageSize: 'lots' }],
+  ])('rejects %s', (_label, query) => {
+    expect(canvasDetailQuerySchema.safeParse(query).success).toBe(false);
+  });
+});
+
+/**
+ * L4: PATCH /user/onboarding stored whatever it was sent (unknown ids,
+ * `__proto__`, arrays for scalars). The body schema is strict.
+ */
+describe('onboardingPatchBodySchema (L4)', () => {
+  it('accepts every key the frontend actually sends', () => {
+    const parsed = onboardingPatchBodySchema.safeParse({
+      state: {
+        currentStep: 2,
+        startedAt: '2026-09-02T10:00:00.000Z',
+        dismissedTooltips: ['tip-a', 'tip-b'],
+        checklistComplete: ['first-transcript', 'export-csv', 'dismissed'],
+        completionMode: 'skipped',
+        completedAtClient: '2026-09-02T10:05:00+01:00',
+        templateChoice: { id: 'tmpl-1', name: 'Interviews' },
+        personalization: { researchTopic: 'burnout', method: 'interviews', solo: true },
+      },
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it('accepts a null templateChoice and an empty state', () => {
+    expect(onboardingPatchBodySchema.safeParse({ state: { templateChoice: null } }).success).toBe(true);
+    expect(onboardingPatchBodySchema.safeParse({ state: {} }).success).toBe(true);
+  });
+
+  it.each([
+    ['an unknown top-level key', { state: { currentStep: 1 }, extra: true }],
+    ['an unknown state key', { state: { favouriteColour: 'blue' } }],
+    ['a __proto__ key', JSON.parse('{"state":{"__proto__":{"polluted":true}}}')],
+    ['a checklist id that is not a task', { state: { checklistComplete: ['made-up'] } }],
+    ['a checklist that is not an array', { state: { checklistComplete: 'export-csv' } }],
+    ['a negative step', { state: { currentStep: -1 } }],
+    ['a step above 50', { state: { currentStep: 51 } }],
+    ['a fractional step', { state: { currentStep: 1.5 } }],
+    ['a string step', { state: { currentStep: '2' } }],
+    ['an unknown completion mode', { state: { completionMode: 'abandoned' } }],
+    [
+      'more than 100 dismissed tooltips',
+      { state: { dismissedTooltips: Array.from({ length: 101 }, (_, i) => `t${i}`) } },
+    ],
+    ['a tooltip id over 64 chars', { state: { dismissedTooltips: ['x'.repeat(65)] } }],
+    ['a non-ISO startedAt', { state: { startedAt: 'yesterday' } }],
+    ['a missing state', {}],
+    ['a non-object state', { state: 'done' }],
+  ])('rejects %s', (_label, body) => {
+    expect(onboardingPatchBodySchema.safeParse(body).success).toBe(false);
+  });
+
+  it('lists exactly the checklist task ids the frontend renders', () => {
+    expect([...ONBOARDING_CHECKLIST_TASK_IDS]).toEqual([
+      'first-transcript',
+      'first-coded-excerpt',
+      'create-theme',
+      'run-analysis',
+      'export-csv',
+      'dismissed',
+    ]);
   });
 });

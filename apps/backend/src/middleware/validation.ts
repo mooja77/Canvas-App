@@ -39,6 +39,11 @@ const cuid = z
   .min(1)
   .max(64)
   .regex(/^[A-Za-z0-9_-]+$/, 'ID contains invalid characters');
+
+// A code's parent is a cuid-shaped id or null. The empty string reached Prisma
+// verbatim (it passed z.string()) and failed the foreign key as P2003 -> 500 on
+// both create and update. Coerce '' to null: the client means "no parent".
+const parentQuestionIdField = z.preprocess((v) => (v === '' ? null : v), cuid.nullable().optional());
 export const canvasIdParam = z.object({ id: cuid });
 export const canvasCanvasIdParam = z.object({ canvasId: cuid });
 export const canvasTranscriptParams = z.object({ id: cuid, tid: cuid });
@@ -139,7 +144,7 @@ export const createCanvasQuestionSchema = z.object({
   // Declared, or zod strips it and the route never sees it: a code created as
   // a child of a theme silently became a top-level code. The UPDATE schema has
   // always accepted it, so the two disagreed.
-  parentQuestionId: z.string().nullable().optional(),
+  parentQuestionId: parentQuestionIdField,
   color: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -152,7 +157,7 @@ export const updateCanvasQuestionSchema = z.object({
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .optional(),
-  parentQuestionId: z.string().nullable().optional(),
+  parentQuestionId: parentQuestionIdField,
 });
 
 export const createJournalEntrySchema = z.object({
@@ -405,3 +410,57 @@ export const updateAiSettingsSchema = z.object({
   model: z.string().max(100).optional(),
   embeddingModel: z.string().max(100).optional(),
 });
+
+// GET /canvas/:id detail pagination. These used to be parseInt + clamp, which
+// silently mapped nonsense to a default and let `detailPage=1e20` reach Prisma
+// as a `skip` that overflows the driver -> 500. Nonsense is now a 400.
+const nonNegativeIntQuery = (max: number) =>
+  z.preprocess(
+    (v) => (v === undefined || v === '' ? undefined : v),
+    z.coerce.number().int().min(0).max(max).optional(),
+  );
+export const canvasDetailQuerySchema = z.object({
+  detailPage: nonNegativeIntQuery(1_000_000),
+  detailPageSize: z.preprocess(
+    (v) => (v === undefined || v === '' ? undefined : v),
+    z.coerce.number().int().min(50).max(1000).optional(),
+  ),
+});
+
+// PATCH /user/onboarding. Task ids mirror
+// apps/frontend/src/components/onboarding/OnboardingChecklist.tsx; 'dismissed'
+// is the sentinel the ui store writes when the card is closed for good.
+export const ONBOARDING_CHECKLIST_TASK_IDS = [
+  'first-transcript',
+  'first-coded-excerpt',
+  'create-theme',
+  'run-analysis',
+  'export-csv',
+  'dismissed',
+] as const;
+
+const shortString = (max: number) => z.string().trim().min(1).max(max);
+export const onboardingStatePatchSchema = z
+  .object({
+    currentStep: z.number().int().min(0).max(50).optional(),
+    dismissedTooltips: z.array(z.string().min(1).max(64)).max(100).optional(),
+    checklistComplete: z.array(z.enum(ONBOARDING_CHECKLIST_TASK_IDS)).max(50).optional(),
+    completionMode: z.enum(['completed', 'skipped']).optional(),
+    startedAt: z.string().datetime({ offset: true }).optional(),
+    completedAtClient: z.string().datetime({ offset: true }).optional(),
+    templateChoice: z
+      .object({ id: shortString(64), name: shortString(200) })
+      .strict()
+      .nullable()
+      .optional(),
+    personalization: z
+      .object({
+        researchTopic: z.string().max(500).optional(),
+        method: z.string().max(100).optional(),
+        solo: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export const onboardingPatchBodySchema = z.object({ state: onboardingStatePatchSchema }).strict();

@@ -293,7 +293,7 @@ export const useAuthStore = create<AuthState>()(
           if (state) {
             const legacyState = state as unknown as Record<string, unknown>;
             delete legacyState.dashboardCode;
-            if (!import.meta.env.VITE_E2E) delete legacyState.jwt;
+            delete legacyState.jwt;
           }
         };
       },

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { canvasApi } from '../../../services/api';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../../../stores/authStore';
+import { useCanvasPlan } from '../../../hooks/useCanvasPlan';
 
 interface QdpxExportButtonProps {
   canvasId: string;
@@ -9,7 +9,8 @@ interface QdpxExportButtonProps {
 
 export default function QdpxExportButton({ canvasId }: QdpxExportButtonProps) {
   const [exporting, setExporting] = useState(false);
-  const effectivePlan = useAuthStore((state) => state.effectivePlan ?? state.plan ?? 'free');
+  // `checkExportFormat('qdpx')` gates on the canvas OWNER's plan (M6).
+  const effectivePlan = useCanvasPlan();
 
   const handleExport = async () => {
     if (effectivePlan === 'free') {

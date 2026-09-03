@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
 import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
-import { useAuthStore } from '../../../stores/authStore';
+import { useCanvasPlan } from '../../../hooks/useCanvasPlan';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import {
   generateReportDocxBlob,
@@ -24,7 +24,8 @@ export default function RichExportModal({ onClose }: RichExportModalProps) {
   useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
-  const effectivePlan = useAuthStore((state) => state.effectivePlan ?? state.plan ?? 'free');
+  // Same gate as the toolbar's Export menu: follows the canvas OWNER's plan (M6).
+  const effectivePlan = useCanvasPlan();
   // Word first — it's the format researchers actually need for supervisors,
   // committees, and repositories.
   const [format, setFormat] = useState<ExportFormat>('docx');

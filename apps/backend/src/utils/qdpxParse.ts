@@ -75,6 +75,12 @@ export interface UnsupportedCounts {
   videoSources: number;
   /** Selections with no coding — a marked passage we cannot represent. */
   uncodedSelections: number;
+  /**
+   * Selections whose startPosition/endPosition is not a non-negative integer
+   * ("abc", "2.9", "-1"). Skipped rather than coerced: parseInt used to turn
+   * "abc" into 0 and fabricate a coding at the top of the source.
+   */
+  invalidSelections: number;
 }
 
 export interface ParsedProject {
@@ -100,6 +106,7 @@ const LOSS_LABELS: Record<keyof UnsupportedCounts, [string, string]> = {
   audioSources: ['audio source', 'audio sources'],
   videoSources: ['video source', 'video sources'],
   uncodedSelections: ['uncoded quotation', 'uncoded quotations'],
+  invalidSelections: ['selection with an unreadable text range', 'selections with unreadable text ranges'],
 };
 
 /** Human-readable list of what an import will drop, e.g. "2 variables". */
@@ -170,15 +177,24 @@ const NAMED_ENTITIES: Record<string, string> = {
 function decodeXmlEntities(str: string): string {
   return str.replace(/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g, (match, body: string) => {
     if (body.startsWith('#x') || body.startsWith('#X')) {
-      const code = parseInt(body.slice(2), 16);
-      return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+      return decodeCodePoint(parseInt(body.slice(2), 16), match);
     }
     if (body.startsWith('#')) {
-      const code = parseInt(body.slice(1), 10);
-      return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+      return decodeCodePoint(parseInt(body.slice(1), 10), match);
     }
     return NAMED_ENTITIES[body] ?? match;
   });
+}
+
+/**
+ * A numeric character reference that names nothing - above U+10FFFF, or a
+ * surrogate half - is left as the literal entity text. String.fromCodePoint
+ * throws RangeError on both, and that raw message used to surface as the 400
+ * for the whole import.
+ */
+function decodeCodePoint(code: number, original: string): string {
+  const isScalarValue = Number.isInteger(code) && code >= 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff);
+  return isScalarValue ? String.fromCodePoint(code) : original;
 }
 
 function attr(node: Record<string, unknown>, name: string): string | undefined {
@@ -212,7 +228,39 @@ function countCodes(codes: ParsedCode[]): number {
   return codes.reduce((n, c) => n + 1 + countCodes(c.children), 0);
 }
 
-function parseSelection(node: Record<string, unknown>): ParsedSelection {
+/** Tallies that accumulate across one parse and end up in `unsupported`. */
+interface ParseTally {
+  invalidSelections: number;
+}
+
+/**
+ * Read a selection offset. The schema types startPosition/endPosition as
+ * integers; anything else ("abc", "2.9", "-1", missing) is null so the caller
+ * skips the selection. Number() rather than parseInt: parseInt("2.9") is 2 and
+ * parseInt("abc") is NaN-then-0, which silently moved or fabricated codings.
+ * Number("1e1") is 10 - an integer, and accepted as one.
+ */
+function parseOffset(raw: string | undefined): number | null {
+  if (raw === undefined || raw.trim() === '') return null;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
+/** Both offsets, or null (and a tally mark) if either is unreadable. */
+function parseOffsets(node: Record<string, unknown>, tally: ParseTally): { start: number; end: number } | null {
+  const start = parseOffset(attr(node, 'startPosition'));
+  const end = parseOffset(attr(node, 'endPosition'));
+  if (start === null || end === null) {
+    tally.invalidSelections++;
+    return null;
+  }
+  return { start, end };
+}
+
+function parseSelection(node: Record<string, unknown>, tally: ParseTally): ParsedSelection | null {
+  const offsets = parseOffsets(node, tally);
+  if (!offsets) return null;
+
   const codings: ParsedCoding[] = [];
   for (const coding of toArray(node.Coding as Record<string, unknown>[])) {
     // CodingType@creatingUser names the researcher who applied the code. It is
@@ -227,14 +275,14 @@ function parseSelection(node: Record<string, unknown>): ParsedSelection {
 
   return {
     guid: attr(node, 'guid') ?? '',
-    startPosition: parseInt(attr(node, 'startPosition') ?? '0', 10) || 0,
-    endPosition: parseInt(attr(node, 'endPosition') ?? '0', 10) || 0,
+    startPosition: offsets.start,
+    endPosition: offsets.end,
     codeGuids: codings.map((c) => c.codeGuid),
     codings,
   };
 }
 
-function parseTextSource(node: Record<string, unknown>): ParsedSource {
+function parseTextSource(node: Record<string, unknown>, tally: ParseTally): ParsedSource {
   return {
     guid: attr(node, 'guid') ?? '',
     name: attr(node, 'name') ?? 'Untitled source',
@@ -242,7 +290,9 @@ function parseTextSource(node: Record<string, unknown>): ParsedSource {
     // a plainTextContent attribute, so fall back to that.
     plainText: childText(node, 'PlainTextContent') ?? attr(node, 'plainTextContent') ?? '',
     plainTextPath: attr(node, 'plainTextPath'),
-    selections: toArray(node.PlainTextSelection as Record<string, unknown>[]).map(parseSelection),
+    selections: toArray(node.PlainTextSelection as Record<string, unknown>[])
+      .map((sel) => parseSelection(sel, tally))
+      .filter((sel): sel is ParsedSelection => sel !== null),
   };
 }
 
@@ -251,7 +301,7 @@ function parseTextSource(node: Record<string, unknown>): ParsedSource {
  * <Coding codeGUID> holding <TextSelection sourceGUID>. Fold those onto the
  * sources they reference so the rest of the pipeline sees one shape.
  */
-function applyLegacyCodings(project: Record<string, unknown>, sources: ParsedSource[]): void {
+function applyLegacyCodings(project: Record<string, unknown>, sources: ParsedSource[], tally: ParseTally): void {
   const codingsNode = project.Codings as Record<string, unknown> | undefined;
   if (!codingsNode) return;
 
@@ -265,11 +315,14 @@ function applyLegacyCodings(project: Record<string, unknown>, sources: ParsedSou
       const source = byGuid.get(attr(sel, 'sourceGUID') ?? '');
       if (!source) continue;
 
+      const offsets = parseOffsets(sel, tally);
+      if (!offsets) continue;
+
       const creatingUser = attr(coding, 'creatingUser');
       source.selections.push({
         guid: attr(sel, 'guid') ?? '',
-        startPosition: parseInt(attr(sel, 'startPosition') ?? '0', 10) || 0,
-        endPosition: parseInt(attr(sel, 'endPosition') ?? '0', 10) || 0,
+        startPosition: offsets.start,
+        endPosition: offsets.end,
         codeGuids: [codeGuid],
         codings: [{ codeGuid, creatingUser }],
       });
@@ -313,9 +366,10 @@ export function parseQdpxProject(xml: string): ParsedProject {
     : toArray(codeBook?.Code as Record<string, unknown>[]);
   const codes = codeNodes.map(parseCode);
 
+  const tally: ParseTally = { invalidSelections: 0 };
   const sourcesNode = project.Sources as Record<string, unknown> | undefined;
-  const sources = toArray(sourcesNode?.TextSource as Record<string, unknown>[]).map(parseTextSource);
-  applyLegacyCodings(project, sources);
+  const sources = toArray(sourcesNode?.TextSource as Record<string, unknown>[]).map((s) => parseTextSource(s, tally));
+  applyLegacyCodings(project, sources, tally);
 
   const usersNode = project.Users as Record<string, unknown> | undefined;
   const users = toArray(usersNode?.User as Record<string, unknown>[])
@@ -334,6 +388,7 @@ export function parseQdpxProject(xml: string): ParsedProject {
         (n, s) => n + s.selections.filter((sel) => sel.codeGuids.length === 0).length,
         0,
       ),
+      invalidSelections: tally.invalidSelections,
     },
   };
 }
@@ -361,6 +416,7 @@ function countUnsupported(
     audioSources: countChildren(sourcesNode, 'AudioSource'),
     videoSources: countChildren(sourcesNode, 'VideoSource'),
     uncodedSelections: 0, // filled in by the caller, which has the parsed sources
+    invalidSelections: 0, // likewise, tallied while the sources were parsed
   };
 }
 
@@ -556,6 +612,11 @@ const OFFSET_CONVENTION =
   'PlainTextContent, zero-based, end-exclusive (endPosition is the first unit AFTER ' +
   'the excerpt). Astral characters such as emoji count as two units.';
 
+/** XML-illegal code units across a code tree's names, recursively. */
+function countIllegalInCodeNames(codes: ExportCode[]): number {
+  return codes.reduce((n, c) => n + countXmlIllegalChars(c.text) + countIllegalInCodeNames(c.children), 0);
+}
+
 /** XML comments may not contain "--" or end with "-". */
 function commentSafe(text: string): string {
   return text.replace(/-{2,}/g, '-').replace(/-$/, '');
@@ -597,9 +658,15 @@ ${users.map((u) => `    <User guid="${toGuid(u.id)}" name="${escapeXmlAttr(u.nam
 `;
 
   const omitted = project.omitted ?? [];
+  // Every string escapeXml/escapeXmlAttr sanitises must be counted here, or
+  // the disclosure under-reports: code names (nested) and user names were
+  // sanitised but not counted, so an archive whose only control character sat
+  // in a code name said "No content was dropped".
   const illegal =
     project.sources.reduce((n, s) => n + countXmlIllegalChars(s.content) + countXmlIllegalChars(s.title), 0) +
-    countXmlIllegalChars(project.name);
+    countXmlIllegalChars(project.name) +
+    countIllegalInCodeNames(project.codes) +
+    users.reduce((n, u) => n + countXmlIllegalChars(u.name), 0);
   const substitution =
     illegal > 0
       ? `${illegal} character(s) that XML 1.0 cannot represent (control codes) replaced with U+FFFD; ` +

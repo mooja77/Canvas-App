@@ -11,7 +11,7 @@ import { canvasApi } from '../../../services/api';
 import FeatureTooltip from '../../FeatureTooltip';
 import { CollisionPopover } from '../primitives/CollisionPopover';
 import { useMobile } from '../../../hooks/useMobile';
-import { useAuthStore } from '../../../stores/authStore';
+import { useCanvasPlan } from '../../../hooks/useCanvasPlan';
 
 const AutoCodeModal = lazy(() => import('./AutoCodeModal'));
 const CaseManagerPanel = lazy(() => import('./CaseManagerPanel'));
@@ -195,7 +195,10 @@ export default function CanvasToolbar({
   // F8 — on phone-class viewports we collapse Survey / Share / Export into the
   // existing "More" overflow so the toolbar no longer wraps to 3 rows.
   const isMobile = useMobile();
-  const effectivePlan = useAuthStore((state) => state.effectivePlan ?? state.plan ?? 'free');
+  // Export formats and intercoder access are enforced against the canvas
+  // OWNER's plan (checkExportFormat / checkIntercoderAccess via
+  // resolveRequestPlan), so both gates follow the open canvas (M6).
+  const effectivePlan = useCanvasPlan();
   const hasRichExports = effectivePlan !== 'free';
   const requireRichExport = (action: () => void) => {
     if (!hasRichExports) {

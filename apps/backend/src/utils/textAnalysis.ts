@@ -8,13 +8,26 @@ import { AppError } from '../middleware/errorHandler.js';
 /**
  * Check if a regex pattern is safe from ReDoS attacks.
  * Rejects patterns with constructs known to enable catastrophic backtracking.
- * Defense in depth: matchers also enforce a wall-clock budget.
+ *
+ * A static check cannot be complete, so it is one of three layers: the
+ * pattern check here, the per-exec input cap (REGEX_CHUNK_CHARS) and the
+ * between-exec wall-clock budget (REGEX_MATCH_BUDGET_MS) in searchTranscripts.
  */
 function isSafeRegex(pattern: string): boolean {
   if (pattern.length > 200) return false;
-  // Nested quantifiers: (group+)+ , (group*)* , (group+){n,m}
-  if (/\([^)]*[+*]\)\s*[+*]/.test(pattern)) return false;
-  if (/\([^)]*[+*]\)\s*\{/.test(pattern)) return false;
+  // Nested quantifiers: a group that ends in a quantifier and is itself
+  // quantified. Covers greedy and lazy forms and bounded repeats -
+  // (a+)+, (a*)*, (a?)+, (a+?)+, (a*?)+, (a{1,3})+, (a{2,})*, (a+)+?,
+  // (a+){2,5}. The earlier form only looked for `+` or `*` before the `)`, so
+  // `(a+?)+$` sailed through and cost 5.36 s on 28 characters. A group made
+  // merely OPTIONAL - (\d+)?, (a+)? - is not nested repetition and stays legal;
+  // researchers write that shape constantly.
+  if (/\([^)]*(?:[+*?]|\{\d+(?:,\d*)?\})\)\s*[+*{]/.test(pattern)) return false;
+  // The same atom quantified twice in a row - a*a*, .*.*, \w+\w* - matches
+  // nothing a single quantifier would not, but backtracks over every split of
+  // the run, and unanchored that is cubic: a*a*b measured 5.9 s on ONE
+  // 2,000-character chunk. Atom = escape, character class or a plain char.
+  if (/((?:\\.|\[[^\]]*\]|[^()\\[\]|*+?{}]))[*+]\??\1[*+{]/.test(pattern)) return false;
   // Overlapping alternation under a quantifier: (a|a)+, (a|aa)+, (ab|abc)+
   if (/\([^()]*\|[^()]*\)\s*[+*{]/.test(pattern)) {
     return false;
@@ -26,9 +39,98 @@ function isSafeRegex(pattern: string): boolean {
   return true;
 }
 
-// Cap per-transcript regex work. Even if isSafeRegex misses something, no
-// single transcript can burn more than this many wall-clock ms.
+// Wall-clock budget for regex work, in ms. Used two ways in searchTranscripts:
+//   - per transcript, checked between execs: once exceeded, the rest of that
+//     transcript is skipped (results may be partial);
+//   - per exec: a SINGLE exec over that budget means the pattern is
+//     super-linear on this text, and the search is refused with a 400 rather
+//     than repeated on every remaining chunk and transcript.
+// Neither can interrupt an exec that is already running; see REGEX_CHUNK_CHARS.
 const REGEX_MATCH_BUDGET_MS = 100;
+
+/**
+ * Largest slice of a transcript a single regex exec may see, in regex mode.
+ *
+ * A JavaScript regex exec cannot be interrupted, so a super-linear pattern
+ * that slips past isSafeRegex is bounded by the INPUT it gets rather than by a
+ * timer. This cap is a mitigation, not a guarantee - measured on a run of
+ * identical characters with no match: a*a*b (now rejected statically) took
+ * 5.9 s on 2,000 characters; \w+\s*\w+x, which passes every static rule,
+ * 5.1 s; a*a*a*b 15 s on just 300. What the cap plus the per-exec budget
+ * check DO guarantee is that such a pattern costs one exec on one chunk,
+ * then a 400, instead of one per chunk per transcript.
+ *
+ * The cost, accepted for regex mode only:
+ *   - a match that spans a chunk boundary is missed;
+ *   - `^` and `$` also match at chunk boundaries.
+ * Chunks break at the last line end inside the window whenever there is one,
+ * so in practice both only affect a paragraph longer than 2,000 characters.
+ * Literal mode (escaped pattern, linear) runs over the whole transcript.
+ */
+export const REGEX_CHUNK_CHARS = 2000;
+
+/**
+ * Tile `content` into [start, end) slices of at most `maxChars` characters,
+ * preferring to break just after a newline. The slices are contiguous and
+ * cover the whole string; an empty string yields no slices.
+ */
+export function regexChunks(content: string, maxChars = REGEX_CHUNK_CHARS): [number, number][] {
+  const chunks: [number, number][] = [];
+  let start = 0;
+  while (start < content.length) {
+    let end = Math.min(content.length, start + maxChars);
+    if (end < content.length) {
+      const newline = content.lastIndexOf('\n', end - 1);
+      if (newline >= start) end = newline + 1;
+    }
+    chunks.push([start, end]);
+    start = end;
+  }
+  return chunks;
+}
+
+/**
+ * Compile the researcher's pattern, or explain why it cannot be used.
+ *
+ * Both failures used to be thrown inside a try/catch-continue in the
+ * transcript loop, so an unsafe or malformed pattern produced "0 results" and
+ * the researcher was never told. They are now 400s with the reason.
+ */
+function compileSearchRegex(pattern: string, mode: string): RegExp {
+  if (mode === 'regex' && !isSafeRegex(pattern)) {
+    throw new AppError('Regex pattern is too complex or potentially unsafe', 400);
+  }
+  const source = mode === 'regex' ? pattern : pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // The u flag makes an astral range such as [😀-😂] mean what it says;
+  // without it the class is four lone surrogates and the pattern is a
+  // SyntaxError. The u flag also rejects identity escapes such as \- that
+  // legacy mode accepts, so fall back to a plain compile once.
+  try {
+    return new RegExp(source, 'giu');
+  } catch {
+    try {
+      return new RegExp(source, 'gi');
+    } catch (err) {
+      const detail =
+        err instanceof Error ? err.message.replace(/^Invalid regular expression: /, '') : 'not a valid pattern';
+      throw new AppError(`Invalid regex pattern: ${detail}`, 400);
+    }
+  }
+}
+
+/**
+ * Step past a zero-length match. In unicode mode a lastIndex that lands
+ * inside a surrogate pair is pulled back to the pair's start by the engine,
+ * so advancing by one code unit there would re-match forever.
+ */
+function advancePastEmptyMatch(regex: RegExp, input: string): void {
+  const i = regex.lastIndex;
+  const lead = input.charCodeAt(i);
+  const trail = input.charCodeAt(i + 1);
+  const astral = regex.unicode && lead >= 0xd800 && lead <= 0xdbff && trail >= 0xdc00 && trail <= 0xdfff;
+  regex.lastIndex = astral ? i + 2 : i + 1;
+}
 
 // Configuration constants
 const SEARCH_CONTEXT_CHARS = 50;
@@ -259,44 +361,64 @@ export function searchTranscripts(
 
   const filtered = transcriptIds?.length ? transcripts.filter((t) => transcriptIds.includes(t.id)) : transcripts;
 
-  for (const t of filtered) {
-    let regex: RegExp;
-    try {
-      if (mode === 'regex') {
-        if (!isSafeRegex(pattern)) {
-          throw new AppError('Regex pattern is too complex or potentially unsafe', 400);
-        }
-        regex = new RegExp(pattern, 'gi');
-      } else {
-        regex = new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-      }
-    } catch {
-      continue;
-    }
+  // Validate and compile once, outside any per-transcript error handling, so
+  // a bad pattern is reported rather than turned into an empty result.
+  const regex = compileSearchRegex(pattern, mode);
+  const chunkChars = mode === 'regex' ? REGEX_CHUNK_CHARS : Number.MAX_SAFE_INTEGER;
 
-    let match: RegExpExecArray | null;
+  for (const t of filtered) {
     const budgetStart = Date.now();
-    while ((match = regex.exec(t.content)) !== null) {
-      // Bail out if matching this transcript is taking too long. A cheap
-      // wall-clock check catches anything isSafeRegex might have missed.
-      if (Date.now() - budgetStart > REGEX_MATCH_BUDGET_MS) break;
-      // A zero-length match is not a result - it is one hit per character
-      // position with matchText:"" and a full context string attached. In
-      // regex mode a pattern like `x*` reaches this the same way an empty
-      // pattern did. Advance past it instead of recording it.
-      if (match[0].length === 0) {
-        regex.lastIndex++;
-        continue;
+    const withinBudget = () => Date.now() - budgetStart <= REGEX_MATCH_BUDGET_MS;
+
+    for (const [chunkStart, chunkEnd] of regexChunks(t.content, chunkChars)) {
+      // Checked here as well as between execs: an exec that found nothing
+      // exits the inner loop without passing the check below, and must not
+      // be followed by another chunk once the transcript is over budget.
+      if (!withinBudget()) break;
+      const whole = chunkStart === 0 && chunkEnd === t.content.length;
+      const slice = whole ? t.content : t.content.slice(chunkStart, chunkEnd);
+      regex.lastIndex = 0;
+
+      let match: RegExpExecArray | null;
+      for (;;) {
+        // Bail out if matching this transcript is taking too long. A cheap
+        // wall-clock check catches anything isSafeRegex might have missed.
+        if (!withinBudget()) break;
+
+        const execStart = Date.now();
+        match = regex.exec(slice);
+        // One exec over the whole budget on at most REGEX_CHUNK_CHARS
+        // characters is only possible for a super-linear pattern. Refuse it
+        // now, with the reason, rather than pay the same price on every
+        // remaining chunk and transcript and then return partial results.
+        if (Date.now() - execStart > REGEX_MATCH_BUDGET_MS) {
+          throw new AppError(
+            'Regex pattern took too long to run on this text and was stopped; simplify the pattern',
+            400,
+          );
+        }
+        if (match === null) break;
+        // A zero-length match is not a result - it is one hit per character
+        // position with matchText:"" and a full context string attached. In
+        // regex mode a pattern like `x*` reaches this the same way an empty
+        // pattern did. Advance past it instead of recording it.
+        if (match[0].length === 0) {
+          advancePastEmptyMatch(regex, slice);
+          continue;
+        }
+        // Offsets and context are reported against the whole transcript, not
+        // the chunk, so the caller cannot tell chunking happened.
+        const offset = chunkStart + match.index;
+        const start = Math.max(0, offset - contextWindow);
+        const end = Math.min(t.content.length, offset + match[0].length + contextWindow);
+        matches.push({
+          transcriptId: t.id,
+          transcriptTitle: t.title,
+          offset,
+          matchText: match[0],
+          context: (start > 0 ? '...' : '') + t.content.slice(start, end) + (end < t.content.length ? '...' : ''),
+        });
       }
-      const start = Math.max(0, match.index - contextWindow);
-      const end = Math.min(t.content.length, match.index + match[0].length + contextWindow);
-      matches.push({
-        transcriptId: t.id,
-        transcriptTitle: t.title,
-        offset: match.index,
-        matchText: match[0],
-        context: (start > 0 ? '...' : '') + t.content.slice(start, end) + (end < t.content.length ? '...' : ''),
-      });
     }
   }
 

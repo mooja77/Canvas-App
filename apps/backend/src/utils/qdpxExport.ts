@@ -15,11 +15,33 @@ interface QuestionRow {
   parentQuestionId: string | null;
 }
 
+/**
+ * Does following parentQuestionId from `id` ever arrive back at `id`?
+ *
+ * The API refuses to create a cycle, but the check is not atomic (two
+ * concurrent PUTs can each pass it), so rows with A->B->A do exist. Walking
+ * such a chain never reaches a root, and the old tree builder attached each
+ * member of the cycle to the other: neither was ever pushed to `roots`, so
+ * both codes vanished from the archive and every coding on them dangled.
+ */
+function isInParentCycle(id: string, parentOf: Map<string, string | null>): boolean {
+  const seen = new Set<string>();
+  let current = parentOf.get(id) ?? null;
+  while (current) {
+    if (current === id) return true;
+    if (seen.has(current)) return false; // a cycle further up, not through `id`
+    seen.add(current);
+    current = parentOf.get(current) ?? null;
+  }
+  return false;
+}
+
 /** Rebuild the code hierarchy from flat rows so it can be written out nested. */
 function buildCodeTree(rows: QuestionRow[]): ExportCode[] {
   const nodes = new Map<string, ExportCode>(
     rows.map((r) => [r.id, { id: r.id, text: r.text, color: r.color, children: [] }]),
   );
+  const parentOf = new Map<string, string | null>(rows.map((r) => [r.id, r.parentQuestionId]));
 
   const roots: ExportCode[] = [];
   for (const row of rows) {
@@ -27,8 +49,10 @@ function buildCodeTree(rows: QuestionRow[]): ExportCode[] {
     if (!node) continue;
 
     const parent = row.parentQuestionId ? nodes.get(row.parentQuestionId) : undefined;
-    // A code whose parent was deleted is treated as a root rather than dropped.
-    if (parent && parent !== node) parent.children.push(node);
+    // A code whose parent was deleted is treated as a root rather than dropped,
+    // and so is every member of a parent cycle. Their well-formed descendants
+    // still nest beneath them, so every code appears exactly once.
+    if (parent && parent !== node && !isInParentCycle(row.id, parentOf)) parent.children.push(node);
     else roots.push(node);
   }
   return roots;

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useCanvasStore } from '../../../stores/canvasStore';
-import { useAuthStore } from '../../../stores/authStore';
+import { useCanvasPlan } from '../../../hooks/useCanvasPlan';
 import type { PlanTier } from '../../../config/planLimits';
 import type { ComputedNodeType } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
@@ -142,7 +142,9 @@ const _NODE_OPTIONS = NODE_CATEGORIES.flatMap((c) => c.nodes);
 
 export default function AddComputedNodeMenu() {
   const addComputedNode = useCanvasStore((s) => s.addComputedNode);
-  const effectivePlan = useAuthStore((s) => s.effectivePlan ?? s.plan ?? 'free');
+  // `checkAnalysisType` gates on the canvas OWNER's plan (M6), so the locks
+  // follow the open canvas rather than the viewer's own subscription.
+  const effectivePlan = useCanvasPlan();
   const allowedTypes = ANALYSIS_TYPES_BY_PLAN[effectivePlan as PlanTier] ?? ANALYSIS_TYPES_BY_PLAN.free;
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement | null>(null);

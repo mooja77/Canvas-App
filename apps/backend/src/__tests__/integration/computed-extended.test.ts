@@ -548,7 +548,7 @@ describe('Computed node extended tests', () => {
   });
 
   // ─── 10. search with invalid regex continues without error ───
-  it('search run with invalid regex pattern returns empty matches gracefully', async () => {
+  it('search run with invalid regex pattern is rejected with 400, not silently empty', async () => {
     const nodeId = 'node-search-bad-regex';
     setupCommonMocks();
     mockPrisma.canvasComputedNode.findUnique.mockResolvedValue({
@@ -570,9 +570,10 @@ describe('Computed node extended tests', () => {
       .post(`/api/canvas/${canvasId}/computed/${nodeId}/run`)
       .set('Authorization', `Bearer ${jwt}`);
 
-    expect(res.status).toBe(200);
-    // Invalid regex is caught and continues — returns empty matches
-    expect(res.body.data.result.matches).toEqual([]);
+    // An invalid pattern used to be swallowed by a catch-and-continue, so the
+    // researcher saw "0 results" and never learned the pattern was broken.
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/Invalid regex pattern/);
   });
 
   // ─── 11. matrix framework with cases x codes ───

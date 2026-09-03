@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useActiveCanvas } from '../../stores/canvasStore';
-import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
-import { getFrontendPlanLimits } from '../../config/planLimits';
+import { useCanvasPlan, useCanvasPlanLimits } from '../../hooks/useCanvasPlan';
 
 /**
  * Sprint G slice — bottom status bar.
@@ -14,8 +13,10 @@ import { getFrontendPlanLimits } from '../../config/planLimits';
  */
 export default function StatusBar() {
   const canvas = useActiveCanvas();
-  const plan = useAuthStore((s) => s.plan);
-  const effectivePlan = useAuthStore((s) => s.effectivePlan);
+  // The per-transcript word cap is enforced against the canvas OWNER's plan
+  // (M6), so a collaborator's gauge follows the canvas, not their own tier.
+  const effective = useCanvasPlan();
+  const wordCap = useCanvasPlanLimits().maxWordsPerTranscript;
   const zoomTier = useUIStore((s) => s.zoomTier);
   const [networkOnline, setNetworkOnline] = useState(() => navigator.onLine);
 
@@ -42,8 +43,6 @@ export default function StatusBar() {
   // dividing by a per-transcript cap told compliant users they were over their
   // limit as soon as they added a third document.
   const longestTranscript = transcriptWordCounts.length ? Math.max(...transcriptWordCounts) : 0;
-  const effective = effectivePlan ?? plan ?? 'free';
-  const wordCap = getFrontendPlanLimits(effective).maxWordsPerTranscript;
   const wordPct = wordCap ? Math.min(100, Math.round((longestTranscript / wordCap) * 100)) : null;
 
   return (
@@ -63,7 +62,7 @@ export default function StatusBar() {
             <span
               className="tabular-nums"
               data-testid="status-bar-word-cap"
-              title={`Your plan allows ${wordCap.toLocaleString()} words per transcript. This is your longest one.`}
+              title={`This canvas's plan allows ${wordCap.toLocaleString()} words per transcript. This is the longest one.`}
             >
               longest {longestTranscript.toLocaleString()}
               <span className="text-gray-500 dark:text-gray-400">/{wordCap.toLocaleString()}</span>
@@ -78,7 +77,7 @@ export default function StatusBar() {
                 ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
                 : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
             }`}
-            title="Your longest transcript is nearing your plan's per-transcript word limit"
+            title="The longest transcript is nearing this canvas's per-transcript word limit"
           >
             {wordPct}% of cap
           </span>

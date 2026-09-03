@@ -2,7 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 // Backend is the source of truth for who gets intercoder agreement.
-import { PLAN_LIMITS, featureAvailabilityMessage, type PlanTier } from '@qualcanvas/shared';
+import {
+  PLAN_LIMITS,
+  featureAvailabilityMessage,
+  serializePlanLimits,
+  type CanvasOwnerPlan,
+  type PlanTier,
+} from '@qualcanvas/shared';
 
 const toastError = vi.fn();
 vi.mock('react-hot-toast', () => ({
@@ -11,6 +17,14 @@ vi.mock('react-hot-toast', () => ({
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }) }));
 
+const activeCanvas: {
+  id: string;
+  name: string;
+  myRole: string;
+  questions: unknown[];
+  transcripts: unknown[];
+  ownerPlan?: CanvasOwnerPlan;
+} = { id: 'c1', name: 'Canvas', myRole: 'owner', questions: [], transcripts: [] };
 const canvasState: Record<string, unknown> = {
   closeCanvas: vi.fn(),
   addQuestion: vi.fn(),
@@ -18,10 +32,11 @@ const canvasState: Record<string, unknown> = {
   addTranscript: vi.fn(),
   refreshCanvas: vi.fn(),
   toggleCodingStripes: vi.fn(),
+  activeCanvas,
 };
 vi.mock('../../../stores/canvasStore', () => ({
   useCanvasStore: (selector: (s: typeof canvasState) => unknown) => selector(canvasState),
-  useActiveCanvas: () => ({ id: 'c1', name: 'Canvas', myRole: 'owner', questions: [], transcripts: [] }),
+  useActiveCanvas: () => activeCanvas,
   useShowCodingStripes: () => false,
 }));
 
@@ -74,6 +89,7 @@ describe('CanvasToolbar — intercoder on a non-Team plan', () => {
   beforeEach(() => {
     authState.effectivePlan = 'pro';
     authState.plan = null;
+    activeCanvas.ownerPlan = undefined;
     toastError.mockClear();
   });
 
@@ -107,6 +123,7 @@ describe('CanvasToolbar — intercoder on Team', () => {
   beforeEach(() => {
     authState.effectivePlan = 'team';
     authState.plan = null;
+    activeCanvas.ownerPlan = undefined;
     toastError.mockClear();
   });
 
@@ -116,5 +133,46 @@ describe('CanvasToolbar — intercoder on Team', () => {
     expect(item).toBeInTheDocument();
     fireEvent.click(item);
     expect(toastError).not.toHaveBeenCalled();
+  });
+});
+
+// M6 (bug hunt 2026-09-02): checkIntercoderAccess and checkExportFormat gate on
+// the canvas OWNER's plan, so the toolbar must gate on the open canvas, not on
+// the viewer's own subscription.
+describe('CanvasToolbar — gates follow the canvas owner plan', () => {
+  const ownerPlanOf = (tier: PlanTier): CanvasOwnerPlan => ({
+    effectivePlan: tier,
+    limits: serializePlanLimits(PLAN_LIMITS[tier]),
+  });
+
+  beforeEach(() => {
+    toastError.mockClear();
+  });
+
+  it('a Free collaborator on a Team canvas gets intercoder unmarked and rich export allowed', () => {
+    authState.effectivePlan = 'free';
+    authState.plan = 'free';
+    activeCanvas.ownerPlan = ownerPlanOf('team');
+    openTools();
+    const item = screen.getByRole('button', { name: 'Intercoder agreement (κ / α)' });
+    fireEvent.click(item);
+    expect(toastError).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export and import' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Export Report/ }));
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('a Team subscriber collaborating on a Free canvas is refused before the 403', () => {
+    authState.effectivePlan = 'team';
+    authState.plan = 'team';
+    activeCanvas.ownerPlan = ownerPlanOf('free');
+    openTools();
+    fireEvent.click(screen.getByRole('button', { name: /^Intercoder agreement/ }));
+    expect(toastError).toHaveBeenCalledWith(INTERCODER_UNAVAILABLE);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export and import' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Export Report/ }));
+    expect(toastError).toHaveBeenCalledWith('This export format is available on Student, Pro, and Team plans.');
   });
 });

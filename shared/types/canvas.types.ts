@@ -1,3 +1,5 @@
+import type { PlanLimitsJson } from './plans.js';
+
 // ─── Coding Canvas Types ───
 
 export interface CodingCanvas {
@@ -306,6 +308,21 @@ export interface CanvasDetail extends CodingCanvas {
   computedNodes: CanvasComputedNode[];
   /** The requesting user's relationship to this canvas: 'owner', 'editor', or 'viewer'. */
   myRole?: 'owner' | 'editor' | 'viewer';
+  /**
+   * The plan that governs this canvas. The server gates every canvas-scoped
+   * limit (transcripts, codes, words, analysis types, exports, ethics,
+   * intercoder, AI) on the OWNER's effective plan — a collaborator's own plan
+   * is irrelevant inside someone else's canvas. Optional so older servers and
+   * cached copies still load; clients fall back to the viewer's plan then.
+   */
+  ownerPlan?: CanvasOwnerPlan;
+}
+
+/** See `CanvasDetail.ownerPlan`. */
+export interface CanvasOwnerPlan {
+  /** Owner's plan after the free-trial overlay — what `resolveRequestPlan` returns. */
+  effectivePlan: string;
+  limits: PlanLimitsJson;
 }
 
 // ─── Input Types ───

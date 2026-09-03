@@ -154,3 +154,93 @@ describe('numeric caption text survives import', () => {
     expect(parseSubtitles(srt)).toBe('We had roughly\n30');
   });
 });
+
+// M10: NOTE / STYLE / REGION are case-sensitive WebVTT block keywords and only
+// exist between cues. Caption text that happens to start with "Note", "Style"
+// or "Region" (or even upper-case NOTE inside a cue) is interview content.
+describe('block keywords vs caption text', () => {
+  it('keeps cue text starting with "Note" (mixed case) instead of dropping it to the next blank line', () => {
+    const vtt = [
+      'WEBVTT',
+      '',
+      '00:00.000 --> 00:02.000',
+      'Note that I was very tired by then.',
+      'It was late.',
+      '',
+      '00:02.000 --> 00:04.000',
+      'Style was never the point.',
+      '',
+      '00:04.000 --> 00:06.000',
+      'Region managers were told nothing.',
+      '',
+    ].join('\n');
+    expect(parseSubtitles(vtt)).toBe(
+      'Note that I was very tired by then.\nIt was late.\nStyle was never the point.\nRegion managers were told nothing.',
+    );
+  });
+
+  it('keeps upper-case NOTE when it is inside cue text', () => {
+    const vtt = ['WEBVTT', '', '00:00.000 --> 00:02.000', 'NOTE TO SELF, she said.', 'Then she laughed.', ''].join(
+      '\n',
+    );
+    expect(parseSubtitles(vtt)).toBe('NOTE TO SELF, she said.\nThen she laughed.');
+  });
+
+  it('still skips STYLE and REGION blocks in header position', () => {
+    const vtt = [
+      'WEBVTT',
+      '',
+      'STYLE',
+      '::cue { color: yellow }',
+      '',
+      'REGION',
+      'id:fred width:40%',
+      '',
+      'NOTE comment',
+      '',
+      '00:00.000 --> 00:02.000',
+      'Real words.',
+      '',
+    ].join('\n');
+    expect(parseSubtitles(vtt)).toBe('Real words.');
+  });
+
+  it('does not treat "NOTE:" or "NOTES" between cues as a block keyword', () => {
+    const vtt = [
+      'WEBVTT',
+      '',
+      '00:00.000 --> 00:02.000',
+      'One.',
+      '',
+      'NOTES',
+      '',
+      '00:02.000 --> 00:04.000',
+      'Two.',
+      '',
+    ].join('\n');
+    // NOTES is not a NOTE block; being outside a cue it is kept as text
+    // rather than silently deleting content up to the next blank line.
+    expect(parseSubtitles(vtt)).toBe('One.\nNOTES\nTwo.');
+  });
+});
+
+// L13: only a real timing line (digits on both sides of the arrow) is a
+// timing line, and only real tags are stripped.
+describe('prose arrows and angle brackets', () => {
+  it('keeps a caption line that contains "-->" as prose', () => {
+    const vtt = ['WEBVTT', '', '00:00.000 --> 00:02.000', 'then --> we went home', ''].join('\n');
+    expect(parseSubtitles(vtt)).toBe('then --> we went home');
+  });
+
+  it('keeps "a < b then c > d" intact', () => {
+    const vtt = ['WEBVTT', '', '00:00.000 --> 00:02.000', 'a < b then c > d', ''].join('\n');
+    expect(parseSubtitles(vtt)).toBe('a < b then c > d');
+  });
+
+  it('still recognises SRT and WebVTT timing lines and strips real tags', () => {
+    const srt = ['1', '00:00:01,000 --> 00:00:03,000', '<i>emphasis</i> <b>bold</b> <00:00:01.500>late', ''].join('\n');
+    expect(parseSubtitles(srt)).toBe('emphasis bold late');
+    const vtt = ['WEBVTT', '', '00:00.000 --> 00:02.000 align:start', '<v Ann>Hi</v>', ''].join('\n');
+    expect(parseSubtitles(vtt)).toBe('Ann: Hi');
+  });
+});

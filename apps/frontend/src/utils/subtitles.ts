@@ -32,8 +32,13 @@ export function parseSubtitles(raw: string): string {
       continue;
     }
     if (/^WEBVTT/i.test(line)) continue;
-    // Skip NOTE / STYLE / REGION blocks up to the next blank line.
-    if (/^(NOTE|STYLE|REGION)\b/i.test(line)) {
+    // Skip NOTE / STYLE / REGION blocks up to the next blank line. Per the
+    // WebVTT spec these keywords are case-sensitive, must be followed by
+    // whitespace or end of line, and only start a block BETWEEN cues. Caption
+    // text that begins "Note that..." / "Style was..." / "Region managers..."
+    // (or an upper-case NOTE inside a cue) is interview content, and matching
+    // it case-insensitively deleted everything up to the next blank line.
+    if (!inCueText && /^(NOTE|STYLE|REGION)(?:\s|$)/.test(line)) {
       while (i + 1 < lines.length && lines[i + 1].trim() !== '') i++;
       continue;
     }
@@ -44,15 +49,21 @@ export function parseSubtitles(raw: string): string {
     // ages, years and Likert responses: silently, and exactly the answers a
     // researcher is most likely to want to quote.
     if (!inCueText && /^\d+$/.test(line)) continue; // SRT cue index
-    if (line.includes('-->')) {
+    // A timing line has a timestamp (something containing a digit) on BOTH
+    // sides of the arrow. A bare `includes('-->')` dropped caption text such
+    // as "then --> we went home".
+    if (/^\S*\d\S*\s+-->\s+\S*\d/.test(line)) {
       inCueText = true; // everything up to the next blank is caption text
       continue; // timestamp / cue-settings line
     }
 
     // Caption text line: convert voice tags to speaker labels, strip the rest.
+    // Only real markup is removed: `<tag ...>` / `</tag>` and `<hh:mm...>`
+    // timestamp tags. A generic `<[^>]+>` turned "a < b then c > d" into "a  d".
     const text = line
       .replace(/<v\s+([^>]+?)>/gi, (_m, speaker: string) => `${speaker.trim()}: `)
-      .replace(/<[^>]+>/g, '') // remaining tags: <c>, <00:00:00.000>, </v>, etc.
+      .replace(/<\/?[a-zA-Z][^>]*>/g, '') // remaining tags: <c>, <i>, </v>, etc.
+      .replace(/<\d{2}:[^>]*>/g, '') // timestamp tags: <00:00:01.500>
       .replace(/&nbsp;/gi, ' ')
       .replace(/&amp;/gi, '&')
       .replace(/&lt;/gi, '<')
