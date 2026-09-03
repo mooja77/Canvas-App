@@ -18,7 +18,15 @@ const budgets = [
   // accidental bloat - a dependency landing in the wrong chunk - not to block
   // functional code. New headroom is ~8 KiB; if a change eats that, look at what
   // it pulled in before raising this again.
-  { pattern: /^CanvasPage-.*\.js$/, limitKiB: 560 },
+  //
+  // Raised 560 -> 575 on 2026-09-03, measured the same way. The bug-hunt fixes
+  // (docs/BUG-HUNT-2026-09-02.md) added the owner-plan gate hook used by seven
+  // canvas components, id-merging for server artifacts, the load-sequence guard
+  // and the per-canvas layout-save queue: 565.03 kB -> 574.12 kB, +8.9 KiB;
+  // gzipped 145.49 -> 148.59 kB. The chunk was inspected for pulled-in
+  // dependencies (none: zero zod references, no new vendor code); it is all
+  // functional code. Headroom is again ~14 KiB.
+  { pattern: /^CanvasPage-.*\.js$/, limitKiB: 575 },
   { pattern: /^chart-vendor-.*\.js$/, limitKiB: 450 },
   { pattern: /^flow-vendor-.*\.js$/, limitKiB: 220 },
   { pattern: /^react-vendor-.*\.js$/, limitKiB: 220 },
