@@ -72,11 +72,26 @@ function normalizeHeaderCell(value: string): string {
     .replace(/[\s_-]+/g, '');
 }
 
+/**
+ * A survey platform names its answer columns after the question, so the cell
+ * reads `Q1 - What worked?` rather than anything in the vocabulary above. That
+ * left every Qualtrics and SurveyMonkey export importing its header row as the
+ * researcher's first transcript, even though the identifier column beside it
+ * was recognised.
+ *
+ * The `Q<number>` opening is the part that is safe to match: it is the
+ * convention those tools use, and a participant's answer does not begin with a
+ * question number. The question text after it is not inspected at all.
+ */
+function isQuestionColumnLabel(value: string): boolean {
+  return /^q\s*\d+[a-z]?\b/i.test(value.trim());
+}
+
 /** True when every one of the first two cells reads as a column label. */
 export function looksLikeCsvHeaderRow(fields: string[]): boolean {
   const cells = fields.slice(0, 2).filter((f) => f.trim() !== '');
   if (cells.length === 0) return false;
-  return cells.every((c) => HEADER_LABELS.has(normalizeHeaderCell(c)));
+  return cells.every((c) => HEADER_LABELS.has(normalizeHeaderCell(c)) || isQuestionColumnLabel(c));
 }
 
 export function getExt(fileName: string): string | undefined {
