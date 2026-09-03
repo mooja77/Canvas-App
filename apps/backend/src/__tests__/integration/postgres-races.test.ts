@@ -35,7 +35,7 @@ import { randomUUID } from 'crypto';
 import { prisma } from '../../lib/prisma.js';
 import { auth } from '../../middleware/auth.js';
 import { canvasRoutes } from '../../routes/canvasRoutes.js';
-import { realUsersWhere } from '../../routes/adminRoutes.js';
+import { getRealUserIds } from '../../utils/testAccounts.js';
 import { errorHandler } from '../../middleware/errorHandler.js';
 import { signUserToken } from '../../utils/jwt.js';
 
@@ -207,8 +207,14 @@ describe.skipIf(!DB_URL)('real Postgres regressions (bug hunt 2026-09-02)', () =
     });
   });
 
-  describe('L3: realUsersWhere counts real researchers and excludes fixtures', () => {
-    const real = ['researcher@qu.edu.qa', 'maria.testa@unibo.it', 'j.seedorf@uva.nl', 'contest.winner@ucc.ie'];
+  describe('the real-user filter counts researchers and excludes fixtures', () => {
+    const real = [
+      'researcher@qu.edu.qa',
+      'maria.testa@unibo.it',
+      'j.seedorf@uva.nl',
+      'contest.winner@ucc.ie',
+      'p.demoulin@ulb.be',
+    ];
     const fixtures = [
       'testuser-1@example.com',
       'qa-bot@x.com',
@@ -223,6 +229,13 @@ describe.skipIf(!DB_URL)('real Postgres regressions (bug hunt 2026-09-02)', () =
       'anna+e2e@gmail.com',
       'anna+qa@gmail.com',
       'Test.Upper@ucc.ie',
+      // Fixtures the earlier anchored-prefix rules let through, which is how
+      // four of them reached the activation cohort while the user list beside
+      // it excluded them.
+      'jamie.ux.test@startup.io',
+      'dr.chen.test@university.edu',
+      'marcus.student.test@gmail.com',
+      'mary.oshaughnessy@wiseshift.demo',
     ];
     const all = [...real, ...fixtures];
     const createdIds: string[] = [];
@@ -242,13 +255,14 @@ describe.skipIf(!DB_URL)('real Postgres regressions (bug hunt 2026-09-02)', () =
       await prisma.user.deleteMany({ where: { id: { in: createdIds } } });
     });
 
-    it('applies the anchored rules on Postgres', async () => {
-      const counted = await prisma.user.findMany({
-        where: { AND: [realUsersWhere, { email: { in: all } }] },
-        select: { email: true },
-        orderBy: { email: 'asc' },
+    it('resolves to exactly the real researchers against Postgres', async () => {
+      const realIds = new Set(await getRealUserIds(prisma));
+      const rows = await prisma.user.findMany({
+        where: { email: { in: all } },
+        select: { id: true, email: true },
       });
-      expect(counted.map((u) => u.email).sort()).toEqual([...real].sort());
+      const counted = rows.filter((u) => realIds.has(u.id)).map((u) => u.email);
+      expect(counted.sort()).toEqual([...real].sort());
     });
   });
 });
