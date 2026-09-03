@@ -1,4 +1,11 @@
-export function parseCsvRecords(text: string): string[][] {
+export function parseCsvRecords(source: string): string[][] {
+  // Excel's "CSV UTF-8" and Qualtrics both write a byte-order mark, and both
+  // quote every field. The mark sits before the first field's opening quote, so
+  // `field.length === 0` was false when that quote arrived and the field became
+  // the literal `"Title"`. Header detection then failed and the header row was
+  // imported as a transcript, which is the first thing a researcher saw. The
+  // backend survey parser already strips it; this path never did.
+  const text = source.charCodeAt(0) === 0xfeff ? source.slice(1) : source;
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
