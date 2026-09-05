@@ -13,10 +13,13 @@ only place this personal data belongs. Descriptions below match rows in that tab
 3. Anyone the first group introduces. Use email 3.
 
 **What the account data already tells us, and what the pilot must therefore probe.** Every lapsed account created
-one or two canvases and then never returned; not one is recorded as active after signup day. So the drop-off is
-not at signup or at project creation, it is somewhere between an empty canvas and a first coded excerpt. Task 3
-of the study (code a passage) is the one to watch hardest, and the neutral prompt to have ready is "what were you
-expecting to happen when you clicked that?" One person signed up twice the same day on two different addresses,
+one or two canvases and then never returned; not one is recorded as active after signup day. The activation
+funnel (`/admin`, fixture accounts excluded, measured 2026-09-04) puts the loss precisely: eleven users created a
+project, six ever added a transcript, and all six of those went on to code. So the drop-off is not at signup,
+not at project creation, and not at coding. It is at getting text in. Task 2 of the study (add a transcript) is
+the one to watch hardest, and the neutral prompt to have ready is "what were you expecting to happen when you
+clicked that?" (PDF, Word, CSV and caption-file import all shipped 2026-09-03 to -05, after these accounts
+lapsed, so ask what format their transcripts were in.) One person signed up twice the same day on two different addresses,
 which usually means a failed login or verification loop; if that participant answers, ask what happened the first
 time before running the tasks.
 
