@@ -101,8 +101,9 @@ export function getExt(fileName: string): string | undefined {
 
 export function isSupportedTranscriptFile(fileName: string): boolean {
   const ext = getExt(fileName);
-  // .docx is read+extracted to text by the caller (mammoth) before parsing.
-  return ext === 'txt' || ext === 'csv' || ext === 'docx' || isSubtitleExt(ext);
+  // .docx and .pdf are binary; the caller extracts them to text (mammoth and
+  // unpdf respectively) before this module parses anything.
+  return ext === 'txt' || ext === 'csv' || ext === 'docx' || ext === 'pdf' || isSubtitleExt(ext);
 }
 
 /**

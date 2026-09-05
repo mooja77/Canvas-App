@@ -39,6 +39,7 @@
     "react-router-dom": "^7.18.2",
     "recharts": "^2.15.0",
     "socket.io-client": "^4.8.3",
+    "unpdf": "^1.8.1",
     "zod": "^4.4.3",
     "zustand": "^5.0.3"
   },
