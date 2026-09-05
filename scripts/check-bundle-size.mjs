@@ -30,6 +30,19 @@ const budgets = [
   { pattern: /^chart-vendor-.*\.js$/, limitKiB: 450 },
   { pattern: /^flow-vendor-.*\.js$/, limitKiB: 220 },
   { pattern: /^react-vendor-.*\.js$/, limitKiB: 220 },
+  // The PDF text engine, 1,633 KiB raw / 519 KiB gzipped. It is listed
+  // explicitly rather than by raising the catch-all, because the catch-all is
+  // what stops an ordinary chunk growing unnoticed and that job still matters.
+  //
+  // Why the size is accepted: it is lazy-imported (utils/pdfText.ts, reached
+  // only when someone actually opens a PDF), so nobody pays for it on load and
+  // a researcher pays once, cached thereafter. The precedent is mammoth, the
+  // Word reader, already carried the same way at 490 KiB. The alternative was
+  // hand-rolling a PDF text extractor — font encodings, CID maps, FlateDecode
+  // — which would be wrong on real files in ways this is not. PDF is the
+  // format transcription services and ethics committees hand people, and the
+  // activation funnel shows this step losing nearly half of all users.
+  { pattern: /^pdfjs-.*\.js$/, limitKiB: 1750 },
   { pattern: /^.*\.js$/, limitKiB: 700 },
 ];
 

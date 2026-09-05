@@ -19,15 +19,21 @@ function readFileText(file: File): Promise<string> {
   });
 }
 
-// .docx is a binary (zipped XML) format, so we read it as an ArrayBuffer and
-// extract plain text with mammoth. mammoth is lazy-imported so it only loads
-// the (sizeable) parser when a researcher actually uploads a Word doc.
+// .docx and .pdf are binary, so they are read as an ArrayBuffer and extracted
+// to plain text. Both parsers are lazy-imported so they only load when a
+// researcher actually opens that kind of file, and neither enters the canvas
+// bundle.
 async function extractFileText(file: File): Promise<string> {
-  if (getExt(file.name) === 'docx') {
+  const ext = getExt(file.name);
+  if (ext === 'docx') {
     const mammoth = (await import('mammoth')).default;
     const arrayBuffer = await file.arrayBuffer();
     const { value } = await mammoth.extractRawText({ arrayBuffer });
     return value;
+  }
+  if (ext === 'pdf') {
+    const { extractPdfText } = await import('../../../utils/pdfText');
+    return extractPdfText(await file.arrayBuffer());
   }
   return readFileText(file);
 }
@@ -56,27 +62,53 @@ export default function FileUploadModal({ onClose }: Props) {
     const supported = files.filter((f) => isSupportedTranscriptFile(f.name));
     const rejected = files.length - supported.length;
     if (supported.length === 0) {
-      toast.error('Supported formats: .docx, .txt, .csv, .vtt, .srt');
+      toast.error('Supported formats: .pdf, .docx, .txt, .csv, .vtt, .srt');
       return;
     }
     if (rejected > 0) toast(`Skipped ${rejected} unsupported file${rejected > 1 ? 's' : ''}`);
 
-    Promise.all(supported.map((f) => extractFileText(f).then((text) => ({ name: f.name, text }))))
-      .then((read) => {
+    // allSettled, not all: dropping a folder of interviews where one file is a
+    // scan used to reject the whole batch and report "Failed to read one or
+    // more files", losing the nine that were fine and saying nothing about the
+    // one that was not. Read what can be read, and name what could not.
+    Promise.allSettled(supported.map((f) => extractFileText(f).then((text) => ({ name: f.name, text }))))
+      .then((results) => {
         const collected: ParsedEntry[] = [];
         const names: string[] = [];
         let emptyCount = 0;
-        for (const { name, text } of read) {
+        const failures: { name: string; reason: string }[] = [];
+
+        results.forEach((result, i) => {
+          if (result.status === 'rejected') {
+            const reason = result.reason;
+            failures.push({
+              name: supported[i].name,
+              reason: reason instanceof Error ? reason.message : 'could not be read',
+            });
+            return;
+          }
+          const { name, text } = result.value;
           const parsed = parseTranscriptFile(name, text);
           if (parsed.length === 0) {
             emptyCount++;
-            continue;
+            return;
           }
           collected.push(...parsed);
           names.push(name);
+        });
+
+        // One failure gets its real explanation, which for a PDF says what to
+        // do about it. Several get named without a wall of toasts.
+        if (failures.length === 1) {
+          toast.error(`${failures[0].name}: ${failures[0].reason}`, { duration: 8000 });
+        } else if (failures.length > 1) {
+          toast.error(`Could not read ${failures.length} files: ${failures.map((f) => f.name).join(', ')}`, {
+            duration: 8000,
+          });
         }
+
         if (collected.length === 0) {
-          toast.error('No transcript content found in the selected file(s)');
+          if (failures.length === 0) toast.error('No transcript content found in the selected file(s)');
           return;
         }
         if (emptyCount > 0) toast(`Skipped ${emptyCount} empty file${emptyCount > 1 ? 's' : ''}`);
@@ -137,9 +169,9 @@ export default function FileUploadModal({ onClose }: Props) {
             Upload File
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Import transcripts from Word (.docx), .txt, .csv, or subtitle files (.vtt / .srt from Zoom, Otter, Teams) —
-            select or drop multiple at once to import a whole folder of interviews. CSV files should have title in
-            column 1 and content in column 2.
+            Import transcripts from PDF, Word (.docx), .txt, .csv, or subtitle files (.vtt / .srt from Zoom, Otter,
+            Teams) — select or drop multiple at once to import a whole folder of interviews. CSV files should have title
+            in column 1 and content in column 2. A scanned PDF has no selectable text and needs OCR first.
           </p>
         </div>
 
@@ -179,12 +211,12 @@ export default function FileUploadModal({ onClose }: Props) {
                 Browse files
               </button>
               <p className="mt-2 text-xs text-gray-400">
-                Supports .docx, .txt, .csv, .vtt, .srt — select multiple at once
+                Supports .pdf, .docx, .txt, .csv, .vtt, .srt — select multiple at once
               </p>
               <input
                 ref={inputRef}
                 type="file"
-                accept=".docx,.txt,.csv,.vtt,.srt"
+                accept=".pdf,.docx,.txt,.csv,.vtt,.srt"
                 multiple
                 onChange={handleFileSelect}
                 className="hidden"
