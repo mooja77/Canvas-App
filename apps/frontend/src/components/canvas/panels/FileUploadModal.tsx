@@ -36,7 +36,21 @@ async function extractFileText(file: File): Promise<string> {
     const { extractPdfText } = await import('../../../utils/pdfText');
     return extractPdfText(await file.arrayBuffer());
   }
+  if (ext === 'xlsx') {
+    // The first sheet is re-serialised as CSV so the CSV transcript parser,
+    // which already understands Qualtrics and Excel survey exports, handles it.
+    const { readXlsxRecords, recordsToCsv } = await import('../../../utils/xlsxText');
+    return recordsToCsv(await readXlsxRecords(await file.arrayBuffer()));
+  }
   return readFileText(file);
+}
+
+/**
+ * The parser keys on the extension, and an .xlsx has been turned into CSV text
+ * by the time it gets there.
+ */
+function parseName(file: File): string {
+  return getExt(file.name) === 'xlsx' ? file.name.replace(/\.xlsx$/i, '.csv') : file.name;
 }
 
 interface Props {
@@ -63,7 +77,7 @@ export default function FileUploadModal({ onClose }: Props) {
     const supported = files.filter((f) => isSupportedTranscriptFile(f.name));
     const rejected = files.length - supported.length;
     if (supported.length === 0) {
-      toast.error('Supported formats: .pdf, .docx, .txt, .csv, .vtt, .srt');
+      toast.error('Supported formats: .pdf, .docx, .xlsx, .txt, .csv, .vtt, .srt');
       return;
     }
     if (rejected > 0) toast(`Skipped ${rejected} unsupported file${rejected > 1 ? 's' : ''}`);
@@ -89,7 +103,7 @@ export default function FileUploadModal({ onClose }: Props) {
             return;
           }
           const { name, text } = result.value;
-          const parsed = parseTranscriptFile(name, text);
+          const parsed = parseTranscriptFile(parseName(supported[i]), text);
           if (parsed.length === 0) {
             emptyCount++;
             return;
@@ -173,9 +187,10 @@ export default function FileUploadModal({ onClose }: Props) {
             Upload File
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Import transcripts from PDF, Word (.docx), .txt, .csv, or subtitle files (.vtt / .srt from Zoom, Otter,
-            Teams) — select or drop multiple at once to import a whole folder of interviews. CSV files should have title
-            in column 1 and content in column 2. A scanned PDF has no selectable text and needs OCR first.
+            Import transcripts from PDF, Word (.docx), Excel (.xlsx), .txt, .csv, or subtitle files (.vtt / .srt from
+            Zoom, Otter, Teams) — select or drop multiple at once to import a whole folder of interviews. Spreadsheets
+            should have title in column 1 and content in column 2; survey exports with one response per row work as-is.
+            A scanned PDF has no selectable text and needs OCR first.
           </p>
         </div>
 
@@ -215,12 +230,12 @@ export default function FileUploadModal({ onClose }: Props) {
                 Browse files
               </button>
               <p className="mt-2 text-xs text-gray-400">
-                Supports .pdf, .docx, .txt, .csv, .vtt, .srt — select multiple at once
+                Supports .pdf, .docx, .xlsx, .txt, .csv, .vtt, .srt — select multiple at once
               </p>
               <input
                 ref={inputRef}
                 type="file"
-                accept=".pdf,.docx,.txt,.csv,.vtt,.srt"
+                accept=".pdf,.docx,.xlsx,.txt,.csv,.vtt,.srt"
                 multiple
                 onChange={handleFileSelect}
                 className="hidden"

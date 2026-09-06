@@ -14,6 +14,8 @@ describe('getExt / isSupportedTranscriptFile', () => {
     expect(isSupportedTranscriptFile('a.srt')).toBe(true);
     expect(isSupportedTranscriptFile('a.docx')).toBe(true);
     expect(isSupportedTranscriptFile('a.pdf')).toBe(true);
+    expect(isSupportedTranscriptFile('a.xlsx')).toBe(true);
+    expect(isSupportedTranscriptFile('a.xls')).toBe(false); // legacy binary Excel not supported
     expect(isSupportedTranscriptFile('a.doc')).toBe(false); // legacy .doc not supported
   });
 });

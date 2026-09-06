@@ -58,6 +58,7 @@
         <li><strong>PDF</strong>Text is extracted from the PDF's text layer, one line per line on the page. A scanned or photographed PDF has no text layer and is refused with a note to run it through OCR first.</li>
         <li><strong>Word (.docx)</strong>Upload the file as-is. Text is extracted for coding; formatting, comments and tracked changes are not carried over.</li>
         <li><strong>Plain text (.txt)</strong>Anything your tool can export as text, including Descript and Rev transcript exports.</li>
+        <li><strong>Excel (.xlsx)</strong>The first sheet is read the same way as a CSV: title in column 1 and content in column 2, or a survey export with one response per row. Formulas contribute their last calculated value; dates arrive as Excel serial numbers, as they would in a CSV export.</li>
         <li><strong>CSV</strong>One row per response — useful for survey open-ends and other short-answer data.</li>
       </ul>
 
