@@ -9,6 +9,7 @@ import {
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
+import { apiErrorMessage } from '../../../services/api';
 
 function readFileText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -47,7 +48,7 @@ export default function FileUploadModal({ onClose }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
-  const { addTranscript, refreshCanvas } = useCanvasStore();
+  const { importNarratives } = useCanvasStore();
   const [entries, setEntries] = useState<ParsedEntry[]>([]);
   const [fileNames, setFileNames] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
@@ -136,16 +137,19 @@ export default function FileUploadModal({ onClose }: Props) {
     setImporting(true);
     setProgress(0);
 
+    // One transactional request rather than one addTranscript call per entry.
+    // The per-entry loop left a half-imported batch when entry 6 of 10 hit the
+    // plan cap or a dropped connection, and reported only "Import failed" with
+    // no count. import-narratives checks the plan limits up front and writes
+    // every transcript in a single transaction: all of them land, or none do,
+    // and the server's message says why.
     try {
-      for (let i = 0; i < entries.length; i++) {
-        await addTranscript(entries[i].title, entries[i].content);
-        setProgress(i + 1);
-      }
-      await refreshCanvas();
+      await importNarratives(entries.map((e) => ({ title: e.title, content: e.content, sourceType: 'file' })));
+      setProgress(entries.length);
       toast.success(`Imported ${entries.length} transcript${entries.length > 1 ? 's' : ''}`);
       onClose();
-    } catch {
-      toast.error('Import failed');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Import failed. Nothing was imported.'), { duration: 8000 });
     } finally {
       setImporting(false);
     }

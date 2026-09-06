@@ -1,0 +1,9 @@
+# Cloudflare Pages redirects (processed before static assets).
+# /register never existed as a route; four static pages linked to it and
+# every "Try free" click 404ed. The app signs up at /login?mode=register.
+/register /login?mode=register 301
+# Retired static marketing pages (2026-09-06): their claims were never put
+# through the claim-safety review and each has a maintained SPA equivalent.
+/features /guide 301
+/use-cases/research-teams /for-teams 301
+/use-cases/ux-research / 301

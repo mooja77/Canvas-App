@@ -65,6 +65,10 @@ export default function App() {
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
+              {/* Never a route, but four static pages linked to it and the 404 is what a
+                  "Try free" click got. public/_redirects catches it at the edge; this
+                  catches in-app navigation and any host that is not Cloudflare. */}
+              <Route path="/register" element={<Navigate to="/login?mode=register" replace />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/cite" element={<CitePage />} />
               <Route path="/colophon" element={<ColophonPage />} />

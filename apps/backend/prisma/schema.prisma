@@ -92,6 +92,7 @@ model CanvasTemplate {
 
   @@unique([name, createdBy])
   @@index([isPublic, category])
+  @@index([createdBy])
 }
 
 model UserAiConfig {
@@ -270,6 +271,8 @@ model CanvasMemo {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   canvas    CodingCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+
+  @@index([canvasId])
 }
 
 /// Reflexivity journal entries.
@@ -452,6 +455,7 @@ model CanvasCollaborator {
   @@unique([canvasId, userId])
   @@index([canvasId])
   @@index([userId])
+  @@index([invitedBy])
 }
 
 // ─── Documents & Region Coding ───
@@ -559,6 +563,7 @@ model TranscriptionJob {
 
   @@index([canvasId])
   @@index([status])
+  @@index([fileUploadId])
 }
 
 // ─── Research Assistant ───
