@@ -100,7 +100,9 @@ export default function LandingPage() {
               See the method →
             </Link>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-5">No credit card. Free forever for basic use.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-5">
+            No credit card. Free forever for basic use. Every new account opens on a small coded study.
+          </p>
         </div>
       </section>
 

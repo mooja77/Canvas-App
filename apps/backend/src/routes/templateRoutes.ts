@@ -66,6 +66,17 @@ templateRoutes.post('/canvas/templates/:templateId/instantiate', checkCanvasLimi
     const sampleMemos = template.sampleMemos
       ? (safeJsonParse(template.sampleMemos, []) as { title: string; content: string }[])
       : [];
+    const additionalTranscripts = template.additionalTranscripts
+      ? (safeJsonParse(template.additionalTranscripts, []) as { title: string; content: string }[])
+      : [];
+    const sampleCodings = template.sampleCodings
+      ? (safeJsonParse(template.sampleCodings, []) as {
+          transcript: number;
+          question: number;
+          text: string;
+          note?: string;
+        }[])
+      : [];
 
     const name = (canvasName?.trim() || template.name).slice(0, 120);
     const description = `Created from template: ${template.name}`;
@@ -83,9 +94,10 @@ templateRoutes.post('/canvas/templates/:templateId/instantiate', checkCanvasLimi
 
       // Seed codes (CanvasQuestion rows). sortOrder preserves the template
       // author's intended order in the codebook sidebar.
+      const questionIds: string[] = [];
       for (let i = 0; i < sampleQuestions.length; i++) {
         const q = sampleQuestions[i];
-        await tx.canvasQuestion.create({
+        const created = await tx.canvasQuestion.create({
           data: {
             canvasId: c.id,
             text: q.text.slice(0, 200),
@@ -93,17 +105,53 @@ templateRoutes.post('/canvas/templates/:templateId/instantiate', checkCanvasLimi
             sortOrder: i,
           },
         });
+        questionIds.push(created.id);
       }
 
       if (includeSampleData) {
-        await tx.canvasTranscript.create({
-          data: {
-            canvasId: c.id,
-            title: `Sample — ${template.name}`,
-            content: template.sampleTranscript,
-            sortOrder: 0,
-          },
-        });
+        // A small study, not a single file: the template's transcript plus any
+        // further ones it carries. sourceType 'sample' lets the plan caps and
+        // the activation checklist tell seeded material from the user's own.
+        const seeds = [
+          { title: `Sample — ${template.name}`, content: template.sampleTranscript },
+          ...additionalTranscripts.map((t) => ({ title: t.title.slice(0, 200), content: t.content })),
+        ];
+        const transcriptRows: { id: string; content: string }[] = [];
+        for (let i = 0; i < seeds.length; i++) {
+          const row = await tx.canvasTranscript.create({
+            data: {
+              canvasId: c.id,
+              title: seeds[i].title,
+              content: seeds[i].content,
+              sortOrder: i,
+              sourceType: 'sample',
+            },
+          });
+          transcriptRows.push({ id: row.id, content: seeds[i].content });
+        }
+        // Seeded coded excerpts, so the first thing a new researcher sees is a
+        // coded canvas. Offsets are located here rather than stored, so the
+        // fixture stays readable; an excerpt the text no longer contains is
+        // skipped rather than mis-anchored (a test guards the fixtures).
+        for (const sc of sampleCodings) {
+          const t = transcriptRows[sc.transcript];
+          const questionId = questionIds[sc.question];
+          if (!t || !questionId) continue;
+          const start = t.content.indexOf(sc.text);
+          if (start < 0) continue;
+          await tx.canvasTextCoding.create({
+            data: {
+              canvasId: c.id,
+              transcriptId: t.id,
+              questionId,
+              startOffset: start,
+              endOffset: start + sc.text.length,
+              codedText: sc.text,
+              note: sc.note ?? null,
+              source: 'sample',
+            },
+          });
+        }
 
         for (const m of sampleMemos) {
           await tx.canvasMemo.create({

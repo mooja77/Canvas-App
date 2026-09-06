@@ -44,13 +44,16 @@ export default function OnboardingChecklist() {
       {
         id: 'first-transcript',
         label: 'Add your first transcript',
-        done: transcripts.length > 0,
+        // Starter templates seed transcripts and coded excerpts with source
+        // 'sample'. The arc is about the researcher's own first steps, so those
+        // are ignored here; otherwise two of five tasks would be done on arrival.
+        done: transcripts.some((t) => t.sourceType !== 'sample'),
         action: () => window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker')),
       },
       {
         id: 'first-coded-excerpt',
         label: 'Code your first excerpt',
-        done: codings.length > 0,
+        done: codings.some((c) => c.source !== 'sample'),
         action: null,
       },
       {

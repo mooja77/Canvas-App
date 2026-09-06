@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'prisma/**/*.test.ts'],
     env: {
       JWT_SECRET: 'test-secret-for-vitest-do-not-use-in-production',
     },

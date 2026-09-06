@@ -19,9 +19,12 @@ vi.mock('react-hot-toast', () => ({
 }));
 
 const addComputedNode = vi.fn();
+type Coding = { source?: string };
+/** Ten of the researcher's own codings: past the first-run disclosure. */
+const SEASONED: Coding[] = Array.from({ length: 10 }, () => ({ source: 'human' }));
 const canvasState = {
   addComputedNode,
-  activeCanvas: null as { ownerPlan?: CanvasOwnerPlan } | null,
+  activeCanvas: { codings: SEASONED } as { ownerPlan?: CanvasOwnerPlan; codings?: Coding[] } | null,
 };
 vi.mock('../../../stores/canvasStore', () => ({
   useCanvasStore: (selector: (s: typeof canvasState) => unknown) => selector(canvasState),
@@ -162,7 +165,7 @@ describe('AddComputedNodeMenu — locks follow the canvas owner plan', () => {
   it('a Free viewer on a Team canvas gets every tool unlocked and the request goes through', () => {
     authState.effectivePlan = 'free';
     authState.plan = 'free';
-    canvasState.activeCanvas = { ownerPlan: ownerPlanOf('team') };
+    canvasState.activeCanvas = { ownerPlan: ownerPlanOf('team'), codings: SEASONED };
     addComputedNode.mockResolvedValue({ id: 'n1' });
     openMenu();
     expect(document.querySelectorAll('button[data-locked="true"]')).toHaveLength(0);
@@ -174,7 +177,7 @@ describe('AddComputedNodeMenu — locks follow the canvas owner plan', () => {
   it('a Pro viewer on a Free canvas is warned locally instead of getting a 403', () => {
     authState.effectivePlan = 'pro';
     authState.plan = 'pro';
-    canvasState.activeCanvas = { ownerPlan: ownerPlanOf('free') };
+    canvasState.activeCanvas = { ownerPlan: ownerPlanOf('free'), codings: SEASONED };
     openMenu();
     expect(document.querySelectorAll('button[data-locked="true"]')).toHaveLength(FREE_LOCKED.length);
     fireEvent.click(screen.getByRole('button', { name: /^Framework Matrix —/ }));
@@ -187,7 +190,7 @@ describe('AddComputedNodeMenu — locks follow the canvas owner plan', () => {
   it('falls back to the viewer plan when the canvas carries no ownerPlan', () => {
     authState.effectivePlan = 'free';
     authState.plan = 'free';
-    canvasState.activeCanvas = { ownerPlan: undefined };
+    canvasState.activeCanvas = { ownerPlan: undefined, codings: SEASONED };
     openMenu();
     expect(document.querySelectorAll('button[data-locked="true"]')).toHaveLength(FREE_LOCKED.length);
   });
@@ -206,5 +209,53 @@ describe('AddComputedNodeMenu — failure copy', () => {
     openMenu();
     fireEvent.click(screen.getByRole('button', { name: /^Statistics/ }));
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('Viewers cannot modify this canvas'));
+  });
+});
+
+describe('AddComputedNodeMenu — first-run disclosure', () => {
+  const ownerPlanOf = (tier: PlanTier): CanvasOwnerPlan => ({
+    effectivePlan: tier,
+    limits: serializePlanLimits(PLAN_LIMITS[tier]),
+  });
+
+  beforeEach(() => {
+    authState.effectivePlan = 'student';
+    authState.plan = 'student';
+    localStorage.removeItem('qualcanvas:analyze-show-all');
+  });
+
+  it('shows only the four tools that get used until ten excerpts are coded', () => {
+    canvasState.activeCanvas = { ownerPlan: ownerPlanOf('student'), codings: [{ source: 'human' }] };
+    openMenu();
+    for (const name of ['Text Search', 'Word Cloud', 'Sentiment', 'Statistics']) {
+      expect(screen.getByRole('button', { name: new RegExp(`^${name}`) })).toBeTruthy();
+    }
+    expect(screen.queryByRole('button', { name: /^Co-occurrence/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Framework Matrix/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /^Show all 10 analysis tools/ })).toBeTruthy();
+  });
+
+  it('does not count seeded sample codings towards the threshold', () => {
+    canvasState.activeCanvas = {
+      ownerPlan: ownerPlanOf('student'),
+      codings: Array.from({ length: 12 }, () => ({ source: 'sample' })),
+    };
+    openMenu();
+    expect(screen.queryByRole('button', { name: /^Clustering/ })).toBeNull();
+  });
+
+  it("shows everything once ten of the researcher's own excerpts exist", () => {
+    canvasState.activeCanvas = { ownerPlan: ownerPlanOf('student'), codings: SEASONED };
+    openMenu();
+    expect(screen.getByRole('button', { name: /^Clustering/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Show all/ })).toBeNull();
+  });
+
+  it('reveals everything on request and remembers the choice', () => {
+    canvasState.activeCanvas = { ownerPlan: ownerPlanOf('student'), codings: [] };
+    openMenu();
+    fireEvent.click(screen.getByRole('button', { name: /^Show all/ }));
+    expect(screen.getByRole('button', { name: /^Theme Map/ })).toBeTruthy();
+    expect(localStorage.getItem('qualcanvas:analyze-show-all')).toBe('1');
   });
 });

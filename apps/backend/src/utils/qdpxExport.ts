@@ -106,7 +106,8 @@ export async function exportQdpx(canvasId: string): Promise<QdpxExportResult> {
   ]);
   const codingNotes = canvas.codings.filter((c) => c.note && c.note.trim() !== '').length;
   const annotations = canvas.codings.filter((c) => c.annotation && c.annotation.trim() !== '').length;
-  const aiCodings = canvas.codings.filter((c) => c.source && c.source !== 'human').length;
+  // 'ai' only: seeded sample codings carry source 'sample' and are not machine coding.
+  const aiCodings = canvas.codings.filter((c) => c.source === 'ai').length;
   const unnamedCoders = canvas.codings.filter((c) => c.coderUserId && !namedCoderIds.has(c.coderUserId)).length;
 
   const omitted = [

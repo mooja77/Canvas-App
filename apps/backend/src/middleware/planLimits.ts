@@ -11,6 +11,15 @@ import {
 } from '../config/plans.js';
 import { resolveUserOpenAiKey, transcriptionMinutesUsedThisMonth } from '../utils/transcriptionMetering.js';
 import { OWNER_PLAN_INCLUDE, resolveCanvasOwnerPlan } from '../utils/ownerPlan.js';
+
+// Transcripts seeded by a starter template. They never count against a plan's
+// transcript cap: three sample interviews must not eat three of a Free user's
+// five slots before they have added a file of their own.
+const SAMPLE_SOURCE = 'sample';
+// Prisma's `NOT: { sourceType: 'sample' }` compiles to `NOT (sourceType = 'sample')`,
+// which is NULL, i.e. false, for the ordinary rows whose sourceType is null. Spell
+// out the null case so a researcher's own transcripts keep counting.
+const OWN_TRANSCRIPTS = { OR: [{ sourceType: null }, { sourceType: { not: SAMPLE_SOURCE } }] };
 import {
   isHostedAiEnabled,
   hostedDailyCeilingCents,
@@ -157,7 +166,7 @@ export function checkTranscriptLimit() {
     if (limits.maxTranscriptsPerCanvas === Infinity) return next();
 
     const canvasId = req.params.id || req.params.canvasId;
-    const count = await prisma.canvasTranscript.count({ where: { canvasId } });
+    const count = await prisma.canvasTranscript.count({ where: { canvasId, ...OWN_TRANSCRIPTS } });
 
     if (count >= limits.maxTranscriptsPerCanvas) {
       return limitResponse(

@@ -10,6 +10,7 @@ import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import { apiErrorMessage } from '../../../services/api';
+import { trackEvent } from '../../../utils/analytics';
 
 function readFileText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -100,6 +101,12 @@ export default function FileUploadModal({ onClose }: Props) {
               name: supported[i].name,
               reason: reason instanceof Error ? reason.message : 'could not be read',
             });
+            trackEvent('transcript_import', {
+              stage: 'read',
+              outcome: 'failed',
+              format: getExt(supported[i].name) ?? 'unknown',
+              reason: reason instanceof Error ? reason.name : 'unknown',
+            });
             return;
           }
           const { name, text } = result.value;
@@ -122,6 +129,15 @@ export default function FileUploadModal({ onClose }: Props) {
           });
         }
 
+        trackEvent('transcript_import', {
+          stage: 'read',
+          outcome: collected.length > 0 ? 'parsed' : 'empty',
+          files: supported.length,
+          formats: [...new Set(supported.map((f) => getExt(f.name) ?? 'unknown'))].sort().join(','),
+          entries: collected.length,
+          failed: failures.length,
+          rejected,
+        });
         if (collected.length === 0) {
           if (failures.length === 0) toast.error('No transcript content found in the selected file(s)');
           return;
@@ -160,9 +176,17 @@ export default function FileUploadModal({ onClose }: Props) {
     try {
       await importNarratives(entries.map((e) => ({ title: e.title, content: e.content, sourceType: 'file' })));
       setProgress(entries.length);
+      trackEvent('transcript_import', { stage: 'import', outcome: 'imported', entries: entries.length });
       toast.success(`Imported ${entries.length} transcript${entries.length > 1 ? 's' : ''}`);
       onClose();
     } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      trackEvent('transcript_import', {
+        stage: 'import',
+        outcome: 'failed',
+        entries: entries.length,
+        status: status ?? 0,
+      });
       toast.error(apiErrorMessage(err, 'Import failed. Nothing was imported.'), { duration: 8000 });
     } finally {
       setImporting(false);

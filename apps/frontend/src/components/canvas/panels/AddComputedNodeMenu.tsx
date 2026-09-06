@@ -43,6 +43,27 @@ export const ANALYSIS_TYPES_BY_PLAN: Record<PlanTier, readonly string[]> = {
 };
 
 const PLAN_LABELS: Record<PlanTier, string> = { free: 'Free', student: 'Student', pro: 'Pro', team: 'Team' };
+
+/**
+ * First-run disclosure. Usage in production is seven runs of Statistics, six
+ * Word Clouds, three Sentiment and two Text Search; the other tools have one
+ * run or none. A new researcher on an empty canvas was offered all thirteen at
+ * once. Until they have coded ten excerpts of their own, the menu shows the
+ * four that get used and a single "show all" row; after that, everything.
+ * The choice is remembered per browser once made. Bypassed under the E2E build
+ * so the suite can drive every tool on a fresh canvas; unit tests cover it.
+ */
+export const FIRST_RUN_TYPES: readonly string[] = ['search', 'wordcloud', 'sentiment', 'stats'];
+export const FIRST_RUN_CODING_THRESHOLD = 10;
+const SHOW_ALL_KEY = 'qualcanvas:analyze-show-all';
+
+function readShowAll(): boolean {
+  try {
+    return localStorage.getItem(SHOW_ALL_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 const TIER_ORDER: PlanTier[] = ['free', 'student', 'pro', 'team'];
 
 /** Paid tiers that may create `type`, cheapest first. Free is never listed —
@@ -148,6 +169,27 @@ export default function AddComputedNodeMenu() {
   const allowedTypes = ANALYSIS_TYPES_BY_PLAN[effectivePlan as PlanTier] ?? ANALYSIS_TYPES_BY_PLAN.free;
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement | null>(null);
+  // Codings the researcher made themselves: seeded sample codings do not count.
+  const ownCodings = useCanvasStore((s) => (s.activeCanvas?.codings ?? []).filter((c) => c.source !== 'sample').length);
+  const [showAll, setShowAll] = useState(readShowAll);
+  const narrowed = !import.meta.env.VITE_E2E && !showAll && ownCodings < FIRST_RUN_CODING_THRESHOLD;
+  const categories = narrowed
+    ? NODE_CATEGORIES.map((cat) => ({
+        ...cat,
+        nodes: cat.nodes.filter((n) => FIRST_RUN_TYPES.includes(n.type)),
+      })).filter((cat) => cat.nodes.length > 0)
+    : NODE_CATEGORIES;
+  const hiddenCount =
+    NODE_CATEGORIES.reduce((n, cat) => n + cat.nodes.length, 0) -
+    categories.reduce((n, cat) => n + cat.nodes.length, 0);
+  const revealAll = () => {
+    setShowAll(true);
+    try {
+      localStorage.setItem(SHOW_ALL_KEY, '1');
+    } catch {
+      // per-browser convenience only
+    }
+  };
 
   const handleAdd = async (type: ComputedNodeType, label: string) => {
     try {
@@ -223,7 +265,7 @@ export default function AddComputedNodeMenu() {
 
       <CollisionPopover open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} width={288}>
         <div className="p-1.5">
-          {NODE_CATEGORIES.map((cat, ci) => (
+          {categories.map((cat, ci) => (
             <div key={cat.title}>
               {ci > 0 && <div className="mx-2 my-1 border-t border-gray-100 dark:border-gray-700/50" />}
               <div className="flex items-center gap-1.5 px-2.5 py-1.5 text-gray-400 dark:text-gray-500">
@@ -285,6 +327,23 @@ export default function AddComputedNodeMenu() {
               })}
             </div>
           ))}
+          {narrowed && hiddenCount > 0 && (
+            <>
+              <div className="mx-2 my-1 border-t border-gray-100 dark:border-gray-700/50" />
+              <button
+                type="button"
+                onClick={revealAll}
+                className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs text-gray-500 transition-colors duration-100 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+              >
+                <span>
+                  Show all {hiddenCount + categories.reduce((n, cat) => n + cat.nodes.length, 0)} analysis tools
+                </span>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                  {hiddenCount} more unlock after {FIRST_RUN_CODING_THRESHOLD} coded excerpts
+                </span>
+              </button>
+            </>
+          )}
         </div>
       </CollisionPopover>
     </div>

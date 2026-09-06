@@ -30,6 +30,18 @@ interface ChangelogEntry {
 const ENTRIES: ChangelogEntry[] = [
   {
     date: '2026-09-06',
+    title: 'Every new project opens on a coded study',
+    body: 'Half of the people who created a project never added a transcript, and everyone who did went on to code. So the empty canvas is gone for new accounts: each starter template now seeds three short interviews (or two batches of survey responses) with excerpts already coded, so the first thing a researcher sees is what a coded canvas looks like. Sample material is marked as such: it never counts against the Free plan’s transcript cap, and the getting-started checklist only ticks off steps you take yourself.',
+    highlights: [
+      'The Analyze menu shows the four tools researchers actually use until you have coded ten excerpts of your own; the rest are one click away and appear on their own after that',
+      'The methodology chapters and the landing page now say what you get: a small coded study to try the method on before bringing your own transcripts',
+      'Excel workbooks (.xlsx) import directly, and every import attempt is measured so the next format gap shows up in a dashboard rather than a bug report',
+    ],
+    author: 'The team',
+    readMin: 1,
+  },
+  {
+    date: '2026-09-06',
     title: 'Second bug hunt: the demo is back, and every "Try free" button works',
     body: 'A production-first sweep three days after the last one. Live checks found two things a visitor could hit: the demo access code had quietly expired in July, and four old marketing pages sent every sign-up click to a page that does not exist. Both are fixed. The rest is housekeeping listed below.',
     highlights: [

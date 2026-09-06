@@ -12,6 +12,14 @@
   <generator uri="https://qualcanvas.com">QualCanvas marketing pipeline</generator>
 
   <entry>
+    <title>Every new project opens on a coded study</title>
+    <link href="https://qualcanvas.com/changelog"/>
+    <id>https://qualcanvas.com/changelog#2026-09-06-coded-study</id>
+    <updated>2026-09-06T00:00:00Z</updated>
+    <summary>Starter templates now seed three short interviews with excerpts already coded, marked as sample so they never count against plan caps or the checklist. The Analyze menu shows four tools until ten excerpts are coded. Import attempts are measured.</summary>
+  </entry>
+
+  <entry>
     <title>Second bug hunt: the demo is back, and every "Try free" button works</title>
     <link href="https://qualcanvas.com/changelog"/>
     <id>https://qualcanvas.com/changelog#2026-09-06-bug-hunt-2</id>
