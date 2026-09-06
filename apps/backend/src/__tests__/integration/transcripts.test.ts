@@ -218,8 +218,10 @@ describe('Transcript integration tests', () => {
       .send({ title: 'Interview Beta', content: 'Content of beta.' });
 
     expect(res.status).toBe(201);
+    // Sample transcripts seeded by a starter template are excluded from the
+    // cap, so the count carries a NOT clause on sourceType.
     expect(mockPrisma.canvasTranscript.count).toHaveBeenCalledWith({
-      where: { canvasId },
+      where: { canvasId, NOT: { sourceType: 'sample' } },
     });
   });
 

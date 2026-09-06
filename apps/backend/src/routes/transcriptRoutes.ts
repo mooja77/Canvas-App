@@ -17,6 +17,11 @@ import { checkTranscriptLimit, checkWordLimit, resolveRequestPlan } from '../mid
 import { getPlanLimits } from '../config/plans.js';
 import { deleteCanvasNodeArtifacts } from '../utils/canvasNodeCleanup.js';
 
+// Transcripts seeded by a starter template. They never count against a plan's
+// transcript cap: three sample interviews must not eat three of a Free user's
+// five slots before they have added a file of their own.
+const SAMPLE_SOURCE = 'sample';
+
 export const transcriptRoutes = Router();
 
 // ─── Transcripts ───
@@ -31,7 +36,9 @@ transcriptRoutes.post(
     try {
       const dashboardAccessId = getAuthId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
-      const count = await prisma.canvasTranscript.count({ where: { canvasId: req.params.id } });
+      const count = await prisma.canvasTranscript.count({
+        where: { canvasId: req.params.id, NOT: { sourceType: SAMPLE_SOURCE } },
+      });
       const transcript = await prisma.canvasTranscript.create({
         data: { canvasId: req.params.id, ...req.body, sortOrder: count },
       });
@@ -145,7 +152,9 @@ transcriptRoutes.post(
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
       const { narratives } = req.body;
 
-      const count = await prisma.canvasTranscript.count({ where: { canvasId: req.params.id } });
+      const count = await prisma.canvasTranscript.count({
+        where: { canvasId: req.params.id, NOT: { sourceType: SAMPLE_SOURCE } },
+      });
 
       // Plan limit checks for bulk import.
       //
@@ -226,7 +235,9 @@ transcriptRoutes.post(
         return res.json({ success: true, data: [] });
       }
 
-      const count = await prisma.canvasTranscript.count({ where: { canvasId: req.params.id } });
+      const count = await prisma.canvasTranscript.count({
+        where: { canvasId: req.params.id, NOT: { sourceType: SAMPLE_SOURCE } },
+      });
 
       // Plan limit checks for cross-canvas import — owner-resolved, as above.
       const plan = await resolveRequestPlan(req);

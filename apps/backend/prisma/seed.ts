@@ -43,6 +43,8 @@ async function main() {
       sampleQuestions: JSON.stringify(tmpl.sampleQuestions),
       sampleTranscript: tmpl.sampleTranscript,
       sampleMemos: tmpl.sampleMemos ? JSON.stringify(tmpl.sampleMemos) : null,
+      additionalTranscripts: tmpl.additionalTranscripts ? JSON.stringify(tmpl.additionalTranscripts) : null,
+      sampleCodings: tmpl.sampleCodings ? JSON.stringify(tmpl.sampleCodings) : null,
       isPublic: true,
     };
 

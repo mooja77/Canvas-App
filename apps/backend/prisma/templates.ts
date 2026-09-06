@@ -10,6 +10,20 @@ export interface TemplateSeed {
   sampleQuestions: { text: string; color: string }[];
   sampleTranscript: string;
   sampleMemos?: { title: string; content: string }[];
+  /**
+   * Further transcripts seeded alongside sampleTranscript, so the starter
+   * canvas looks like a small study rather than a single file. Index 0 in
+   * sampleCodings is sampleTranscript; index 1.. are these, in order.
+   */
+  additionalTranscripts?: { title: string; content: string }[];
+  /**
+   * Coded excerpts seeded on the sample transcripts, so a new researcher sees
+   * a coded canvas before bringing any data of their own. `text` must occur
+   * verbatim in the referenced transcript (a test asserts this); `question`
+   * indexes sampleQuestions. Instantiated with source 'sample', which the
+   * activation checklist and plan caps ignore.
+   */
+  sampleCodings?: { transcript: number; question: number; text: string; note?: string }[];
 }
 
 export const TEMPLATES: TemplateSeed[] = [
@@ -40,6 +54,54 @@ Participant: Honestly, defeated. Like the tool was working against me instead of
 Interviewer: Has that changed how you choose tools now?
 
 Participant: Yeah, a hundred percent. The first thing I ask now is "can I share this with one click, even with someone who doesn't have an account?" If the answer is no, it's a hard pass. I don't have time to teach colleagues new software just to give me 30 minutes of feedback.`,
+    additionalTranscripts: [
+      {
+        title: 'Interview 2 — postdoc, health sciences',
+        content: `Interviewer: Tell me about the last time you felt frustrated using your team's research tools.
+
+Participant: Last month. We had three of us coding the same twelve interviews and the software only let one person have the project open at a time. So we set up a rota. Monday was mine, Tuesday was Priya's, and so on. If you thought of something on someone else's day you wrote it on a sticky note and hoped you would remember what you meant.
+
+Interviewer: What happened to the sticky notes?
+
+Participant: Half of them ended up in the codebook and half of them ended up in the bin. Nobody knows which half. That is the bit that bothers me, honestly, more than the waiting. We cannot show a reviewer how a code came to exist.
+
+Interviewer: Did you raise it with anyone?
+
+Participant: With the lab manager, yes. The answer was that the licence is what it is and there is no budget until the next grant cycle. So we work around it. Everyone works around it.
+
+Interviewer: If you could change one thing?
+
+Participant: I would want the disagreement to be visible. Not resolved for us, just visible. When Priya and I code the same passage differently, that difference is the interesting part. Right now it disappears into whoever saved last.`,
+      },
+      {
+        title: 'Interview 3 — second-year PhD, education',
+        content: `Interviewer: Tell me about the last time you felt frustrated using your team's research tools.
+
+Participant: I am not sure frustrated is the word. Lost, maybe. I did a two-day training course on the software in September and by November I had forgotten most of it. So I went back to Word. Highlighter colours, one colour per theme, comments in the margin.
+
+Interviewer: How is that working?
+
+Participant: It works until it doesn't. I had eleven colours at one point and I could not tell the yellows apart. My supervisor asked me how many excerpts I had under one theme and I genuinely did not know. I had to count them by hand.
+
+Interviewer: What did you do?
+
+Participant: I made a spreadsheet. Theme, quote, page number. Which is basically what the software does, except now I maintain it by hand and it is always slightly out of date.
+
+Interviewer: Is there anything about the Word approach you prefer?
+
+Participant: I can see the whole transcript. The software kept chopping it into segments and I lost the sense of the conversation. That surprised me. I thought I wanted structure and it turns out I wanted the page.`,
+      },
+    ],
+    sampleCodings: [
+      { transcript: 0, question: 0, text: "I couldn't figure out how to export it in a way she could open" },
+      { transcript: 0, question: 1, text: 'So I just took screenshots' },
+      { transcript: 0, question: 2, text: 'Honestly, defeated.' },
+      { transcript: 1, question: 1, text: 'So we set up a rota.' },
+      { transcript: 1, question: 0, text: 'We cannot show a reviewer how a code came to exist.' },
+      { transcript: 1, question: 3, text: 'that difference is the interesting part' },
+      { transcript: 2, question: 1, text: 'Highlighter colours, one colour per theme, comments in the margin.' },
+      { transcript: 2, question: 3, text: 'I thought I wanted structure and it turns out I wanted the page.' },
+    ],
     sampleMemos: [
       {
         title: 'Reflexive memo prompt',
@@ -74,6 +136,52 @@ Participant: Deep work is anything that needs more than one tab open. Synthesis,
 Interviewer: That's a useful test. Has the boundary moved over time?
 
 Participant: A little. Early in my career I thought everything was deep work and got nothing done. Now I'm more honest about what's actually cognitively expensive.`,
+    additionalTranscripts: [
+      {
+        title: 'Interview 2 — design researcher, fintech',
+        content: `Interviewer: Walk me through how you decide which study to prioritize on any given day.
+
+Participant: There is a spreadsheet. Every request gets a row: who asked, what decision it unblocks, when that decision is being made. If there is no decision attached I push back. Politely. "What will you do differently depending on the answer?" If they cannot say, it goes to the bottom.
+
+Interviewer: Does that hold up under pressure?
+
+Participant: Mostly. The exception is anything the CEO asks for. That jumps the queue whether or not there is a decision behind it, and I have stopped pretending otherwise.
+
+Interviewer: How do you feel about that?
+
+Participant: Pragmatic, I suppose. It is one request a quarter. If I spent my credibility fighting it I would have none left for the requests that matter.
+
+Interviewer: What counts as a request that matters?
+
+Participant: One where the team is genuinely split. If everyone already agrees, research is theatre. If they disagree and the disagreement is about users, that is where a week of interviews changes something.`,
+      },
+      {
+        title: 'Interview 3 — research lead, public sector',
+        content: `Interviewer: Walk me through how you decide which study to prioritize on any given day.
+
+Participant: I don't, really. The roadmap does. We plan research a quarter ahead against the service roadmap, and my day is whatever phase the current study is in. Recruitment week, fieldwork week, analysis week.
+
+Interviewer: What happens when something urgent comes in?
+
+Participant: It waits for the next planning round, unless it is a safety issue. People find that rigid at first. Then they notice that the studies actually finish, which was not true before we did it this way.
+
+Interviewer: What did it look like before?
+
+Participant: Six studies open, none of them written up. Everyone busy, nothing landed. I could show you the folder. It is a graveyard of discussion guides.
+
+Interviewer: How did you make the change?
+
+Participant: I stopped saying yes. That was the whole intervention. It took about three months for people to believe I meant it.`,
+      },
+    ],
+    sampleCodings: [
+      { transcript: 0, question: 0, text: "It's mostly reactive, if I'm being honest." },
+      { transcript: 0, question: 3, text: 'Deep work is anything that needs more than one tab open.' },
+      { transcript: 1, question: 0, text: 'Every request gets a row' },
+      { transcript: 1, question: 3, text: 'If everyone already agrees, research is theatre.' },
+      { transcript: 2, question: 0, text: 'The roadmap does.' },
+      { transcript: 2, question: 1, text: 'I stopped saying yes.' },
+    ],
     sampleMemos: [
       {
         title: 'Constant comparison',
@@ -113,6 +221,53 @@ Participant: I didn't know there were filters. Oh — yeah. "Type: Project." OK 
 Moderator: That's useful. Anything else you'd flag?
 
 Participant: The empty state when there's no results. It just says "no results." I'd love a "did you mean..." or even just suggested alternative searches. Right now I just feel stuck.`,
+    additionalTranscripts: [
+      {
+        title: 'Session 2 — analyst, agency side',
+        content: `Moderator: Show me what you'd do first when you open the dashboard.
+
+Participant: Recent projects. I live in the recent list. If it is not in the top five I have to go looking, and looking means the sidebar, which I do not love.
+
+Moderator: What is it about the sidebar?
+
+Participant: It folds. Every time I come back it has folded itself up again and I have to open the section I was in. Small thing. Twenty times a day small thing.
+
+Moderator: Try finding last quarter's usability study for me.
+
+Participant: OK. Not in recents. Sidebar, Studies, and... it is sorted by name. I do not remember the name. I remember it was March. Can I sort by date? There, sort by date. Found it. That was four clicks for something I expected to be one.
+
+Moderator: What would one click look like?
+
+Participant: A search that understands "March" or "usability". Or honestly just remembering how I sorted it last time.`,
+      },
+      {
+        title: 'Session 3 — product manager, first week',
+        content: `Moderator: Show me what you'd do first when you open the dashboard.
+
+Participant: I would panic slightly. There is a lot here. I think I would click the big blue button because it is the big blue button. "New project." Hm, I do not want a new project, I want to find the one the team already made.
+
+Moderator: Where would you look?
+
+Participant: I am going to try the search. "onboarding". OK, a lot of results. Some of these are people's names? Oh, it is searching everything. I only wanted projects.
+
+Moderator: What would you expect instead?
+
+Participant: Projects first, then everything else in a separate section. Or a filter I can actually see. I found the filter now, but only because you asked me to keep looking. On my own I would have messaged someone on the team and asked for the link.
+
+Moderator: Is that what you usually do?
+
+Participant: In the first week, always. It is faster than learning the tool, and nobody minds. By month two it starts to feel embarrassing.`,
+      },
+    ],
+    sampleCodings: [
+      { transcript: 0, question: 0, text: 'I never remember where anything is' },
+      { transcript: 0, question: 3, text: "I didn't know there were filters." },
+      { transcript: 0, question: 2, text: 'Right now I just feel stuck.' },
+      { transcript: 1, question: 0, text: 'It folds.' },
+      { transcript: 1, question: 1, text: 'A search that understands "March" or "usability".' },
+      { transcript: 2, question: 0, text: 'it is searching everything. I only wanted projects.' },
+      { transcript: 2, question: 2, text: 'By month two it starts to feel embarrassing.' },
+    ],
     sampleMemos: [
       {
         title: 'Severity rubric',
@@ -145,6 +300,39 @@ Ticket #4825: Feature request: bulk archive. I have 200+ stale projects from las
 Ticket #4826: My collaborator can edit my project but can't add new pages. The permission says "editor." Is that a bug or by design? Either way it's confusing.
 
 Ticket #4827: PDF export hangs on big projects. 50+ pages just spins forever. I had to chunk the export which took an extra hour.`,
+    additionalTranscripts: [
+      {
+        title: 'Tickets — week 2',
+        content: `Ticket #4901: PDF export worked yesterday and today it is greyed out again. Same project, same browser. I have a client review at 3.
+
+Ticket #4902: Is there a way to give someone view-only access? I do not want my stakeholders editing, just reading.
+
+Ticket #4903: Small thing: the duplicate project button copies everything except the tags. I re-tag by hand every time.
+
+Ticket #4904: Feature request: let me archive a whole folder. I asked about bulk archive before and was told it was coming.
+
+Ticket #4905: The editor role is confusing. My colleague is an editor and cannot rename pages. Please either fix the role or rename it.`,
+      },
+      {
+        title: 'Tickets — week 3',
+        content: `Ticket #5010: Export to PDF fails silently on projects with more than about forty pages. No error, just nothing. I split the project in two to get around it.
+
+Ticket #5011: Thank you for the view-only link, that fixed my stakeholder problem. Would be even better if the link could expire.
+
+Ticket #5012: Bulk archive, again. It has been three months.
+
+Ticket #5013: Comments vanish when I duplicate a project. I have now lost the same thread twice.`,
+      },
+    ],
+    sampleCodings: [
+      { transcript: 0, question: 0, text: "I can't export my project to PDF. The button is grayed out." },
+      { transcript: 0, question: 1, text: "I'm just emailing them screenshots" },
+      { transcript: 0, question: 2, text: 'Feature request: bulk archive.' },
+      { transcript: 1, question: 0, text: 'PDF export worked yesterday and today it is greyed out again.' },
+      { transcript: 1, question: 2, text: 'let me archive a whole folder' },
+      { transcript: 2, question: 1, text: 'I split the project in two to get around it.' },
+      { transcript: 2, question: 3, text: 'It has been three months.' },
+    ],
     sampleMemos: [
       {
         title: 'Recurring themes',
@@ -179,6 +367,39 @@ Score: 9 — "I evaluated five tools and this was the only one that actually und
 Score: 3 — "I cannot figure out how to delete a project. There's no obvious way. I have like a dozen test projects cluttering my dashboard and customer support said 'use the trash icon' but I don't see one anywhere."
 
 Score: 10 — "The Cohen's Kappa calculator alone is worth the price. I used to do this in Excel and it was always a disaster."`,
+    additionalTranscripts: [
+      {
+        title: 'NPS comments — Q2',
+        content: `Score: 7 — "Solid. The collaboration features are the reason we stay. The export options are the reason I keep a second tool around."
+
+Score: 2 — "Lost a session's work to a crash. Support was kind but the work is gone. I will come back when it is stable."
+
+Score: 9 — "Inter-rater reliability out of the box. My methods chapter practically wrote itself."
+
+Score: 5 — "Fine on a laptop, painful on a tablet. Half my reading happens on a tablet."
+
+Score: 10 — "The AI suggestions are eerily good and, more importantly, easy to reject when they are not."`,
+      },
+      {
+        title: 'NPS comments — Q3',
+        content: `Score: 8 — "Deleting projects is still weirdly hidden, but everything else has improved. Docx export was the thing I asked for and it arrived."
+
+Score: 3 — "Two crashes this month. I now save every ten minutes out of fear, which is not a feature."
+
+Score: 9 — "Best tool I have used for team coding. Pricing is fair for a lab."
+
+Score: 10 — "Switched from spreadsheets. Never going back."`,
+      },
+    ],
+    sampleCodings: [
+      { transcript: 0, question: 1, text: 'The collaborative coding is something I literally couldn' },
+      { transcript: 0, question: 2, text: 'Crashed twice during a recording session' },
+      { transcript: 0, question: 3, text: 'better export options' },
+      { transcript: 1, question: 2, text: "Lost a session's work to a crash." },
+      { transcript: 1, question: 1, text: 'Inter-rater reliability out of the box.' },
+      { transcript: 2, question: 3, text: 'Docx export was the thing I asked for and it arrived.' },
+      { transcript: 2, question: 1, text: 'Switched from spreadsheets. Never going back.' },
+    ],
     sampleMemos: [
       {
         title: 'Score-by-theme matrix',

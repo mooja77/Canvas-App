@@ -38,6 +38,10 @@ export type AnalyticsEvent =
   | 'team_member_invited'
   | 'team_member_joined'
   | 'canvas_shared'
+  // Transcript import, the step the activation funnel loses people at. One
+  // event per attempt with format and outcome, so the next format gap shows
+  // up in analytics instead of in a bug hunt months later.
+  | 'transcript_import'
   // AI moments
   | 'ai_moment_triggered'
   | 'inline_ai_triggered'

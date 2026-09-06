@@ -183,7 +183,7 @@ export default function ChapterShell({
               to="/login?mode=register"
               onClick={() =>
                 trackEvent('cta_clicked', {
-                  cta_label: 'Try this in QualCanvas',
+                  cta_label: 'Start with a sample project',
                   location: 'methodology_chapter',
                   target_route: '/login?mode=register',
                   chapter: number,
@@ -198,10 +198,11 @@ export default function ChapterShell({
               "
               style={{ fontVariationSettings: "'wght' 540", letterSpacing: '-0.01em' }}
             >
-              Try this in QualCanvas <span className="text-ochre-500">→</span>
+              Start with a sample project <span className="text-ochre-500">→</span>
             </Link>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
-              Free tier. No credit card. Bring your own transcript.
+              Free tier. No credit card. Every new account opens on a small coded study, so you can try the method
+              before bringing transcripts of your own.
             </p>
           </div>
 

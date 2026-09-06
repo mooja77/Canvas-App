@@ -55,6 +55,8 @@ export interface CanvasTextCoding {
   startOffset: number;
   endOffset: number;
   codedText: string;
+  /** 'human' (default), 'ai' for accepted suggestions, 'sample' for template-seeded excerpts. */
+  source?: string;
   note?: string;
   annotation?: string | null;
   createdAt: string;

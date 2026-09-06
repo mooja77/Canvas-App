@@ -75,20 +75,24 @@ model User {
 }
 
 model CanvasTemplate {
-  id               String   @id @default(cuid())
-  name             String
-  description      String?
-  category         String   @default("methodology")
+  id                    String   @id @default(cuid())
+  name                  String
+  description           String?
+  category              String   @default("methodology")
   // 'interviews' | 'focus_groups' | 'field_notes' | 'open_ended_survey'
-  method           String?
-  sampleQuestions  String // JSON: [{text, color}]
-  sampleTranscript String
-  sampleMemos      String? // JSON: [{title, content}]
-  isPublic         Boolean  @default(true)
-  createdBy        String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  creator          User?    @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  method                String?
+  sampleQuestions       String // JSON: [{text, color}]
+  sampleTranscript      String
+  sampleMemos           String? // JSON: [{title, content}]
+  // JSON: [{title, content}] seeded after sampleTranscript so the starter canvas is a small study
+  additionalTranscripts String?
+  // JSON: [{transcript, question, text, note?}] coded excerpts seeded with source 'sample'
+  sampleCodings         String?
+  isPublic              Boolean  @default(true)
+  createdBy             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  creator               User?    @relation(fields: [createdBy], references: [id], onDelete: SetNull)
 
   @@unique([name, createdBy])
   @@index([isPublic, category])

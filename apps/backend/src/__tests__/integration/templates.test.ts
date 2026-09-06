@@ -25,6 +25,9 @@ const { mockPrisma, mockTrackJmsEvent } = vi.hoisted(() => {
     canvasMemo: {
       create: vi.fn(),
     },
+    canvasTextCoding: {
+      create: vi.fn(),
+    },
     $transaction: vi.fn(),
   };
   return { mockPrisma, mockTrackJmsEvent: vi.fn().mockResolvedValue(undefined) };
@@ -95,6 +98,13 @@ describe('Template + onboarding routes', () => {
     // the mock tx (which is the same object as prisma here).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockPrisma.$transaction.mockImplementation(async (cb: any) => cb(mockPrisma));
+    // The instantiate route reads the ids of the rows it creates so seeded
+    // codings can point at them.
+    let n = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockPrisma.canvasQuestion.create.mockImplementation(async ({ data }: any) => ({ id: `q${++n}`, ...data }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockPrisma.canvasTranscript.create.mockImplementation(async ({ data }: any) => ({ id: `t${++n}`, ...data }));
   });
 
   it('GET /canvas/templates returns public + user templates', async () => {
@@ -163,6 +173,59 @@ describe('Template + onboarding routes', () => {
         properties: expect.objectContaining({ canvas_id: newCanvasId, source: 'template', template_id: templateId }),
       }),
     );
+  });
+
+  it('POST /canvas/templates/:id/instantiate seeds a small coded study when the template carries one', async () => {
+    mockPrisma.canvasTemplate.findUnique.mockResolvedValue({
+      id: 'tmpl-study',
+      name: 'Thematic Analysis (Braun & Clarke)',
+      description: null,
+      category: 'methodology',
+      method: 'interviews',
+      sampleQuestions: JSON.stringify([
+        { text: 'Pain Point', color: '#EF4444' },
+        { text: 'Strategy', color: '#F59E0B' },
+      ]),
+      sampleTranscript: 'Interviewer: How was it?\n\nParticipant: Honestly, defeated. I took screenshots.',
+      sampleMemos: null,
+      additionalTranscripts: JSON.stringify([{ title: 'Interview 2', content: 'Participant: So we set up a rota.' }]),
+      sampleCodings: JSON.stringify([
+        { transcript: 0, question: 0, text: 'Honestly, defeated.' },
+        { transcript: 1, question: 1, text: 'So we set up a rota.' },
+        { transcript: 1, question: 1, text: 'not in the transcript' },
+        { transcript: 7, question: 0, text: 'Honestly' },
+      ]),
+      isPublic: true,
+      createdBy: null,
+    });
+    mockPrisma.codingCanvas.create.mockResolvedValue({ id: 'c-study', name: 'Thematic Analysis (Braun & Clarke)' });
+    mockPrisma.codingCanvas.count.mockResolvedValue(1);
+
+    const res = await request(app)
+      .post('/api/canvas/templates/tmpl-study/instantiate')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ includeSampleData: true });
+
+    expect(res.status).toBe(201);
+    // Both transcripts, marked as sample so caps and the checklist ignore them.
+    expect(mockPrisma.canvasTranscript.create).toHaveBeenCalledTimes(2);
+    for (const call of mockPrisma.canvasTranscript.create.mock.calls) {
+      expect(call[0].data.sourceType).toBe('sample');
+    }
+    expect(mockPrisma.canvasTranscript.create.mock.calls[1][0].data.title).toBe('Interview 2');
+    // Two codings anchored at the real offsets; the missing excerpt and the
+    // out-of-range transcript index are skipped, not mis-anchored.
+    expect(mockPrisma.canvasTextCoding.create).toHaveBeenCalledTimes(2);
+    const first = mockPrisma.canvasTextCoding.create.mock.calls[0][0].data;
+    expect(first).toMatchObject({ codedText: 'Honestly, defeated.', source: 'sample', questionId: 'q1' });
+    expect(first.startOffset).toBe('Interviewer: How was it?\n\nParticipant: '.length);
+    expect(first.endOffset).toBe(first.startOffset + 'Honestly, defeated.'.length);
+    const second = mockPrisma.canvasTextCoding.create.mock.calls[1][0].data;
+    expect(second).toMatchObject({
+      codedText: 'So we set up a rota.',
+      questionId: 'q2',
+      startOffset: 'Participant: '.length,
+    });
   });
 
   it('POST /canvas/templates/:id/instantiate skips sample transcript when includeSampleData=false', async () => {
