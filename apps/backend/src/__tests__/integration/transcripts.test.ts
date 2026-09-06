@@ -221,7 +221,7 @@ describe('Transcript integration tests', () => {
     // Sample transcripts seeded by a starter template are excluded from the
     // cap, so the count carries a NOT clause on sourceType.
     expect(mockPrisma.canvasTranscript.count).toHaveBeenCalledWith({
-      where: { canvasId, NOT: { sourceType: 'sample' } },
+      where: { canvasId, OR: [{ sourceType: null }, { sourceType: { not: 'sample' } }] },
     });
   });
 
