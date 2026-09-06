@@ -4,12 +4,28 @@
   <subtitle>What we've shipped. New entry per feature or every two weeks.</subtitle>
   <link href="https://qualcanvas.com/changelog/feed.xml" rel="self"/>
   <link href="https://qualcanvas.com/changelog"/>
-  <updated>2026-09-03T00:00:00Z</updated>
+  <updated>2026-09-06T00:00:00Z</updated>
   <id>https://qualcanvas.com/changelog/</id>
   <author>
     <name>QualCanvas</name>
   </author>
   <generator uri="https://qualcanvas.com">QualCanvas marketing pipeline</generator>
+
+  <entry>
+    <title>Second bug hunt: the demo is back, and every "Try free" button works</title>
+    <link href="https://qualcanvas.com/changelog"/>
+    <id>https://qualcanvas.com/changelog#2026-09-06-bug-hunt-2</id>
+    <updated>2026-09-06T00:00:00Z</updated>
+    <summary>The demo access code had expired in July and four old marketing pages sent sign-up clicks to a missing page; both fixed. Folder uploads are now all-or-nothing with a reason on failure. Rate limit applied on both API prefixes; dependency advisories resolved.</summary>
+  </entry>
+
+  <entry>
+    <title>Import transcripts from PDF</title>
+    <link href="https://qualcanvas.com/changelog"/>
+    <id>https://qualcanvas.com/changelog#2026-09-05-pdf-import</id>
+    <updated>2026-09-05T00:00:00Z</updated>
+    <summary>Drop a PDF on the upload dialog and its text layer is extracted for coding, speakers and quotes intact. Scans are refused with a note to run OCR first. Multi-file drops read each file independently.</summary>
+  </entry>
 
   <entry>
     <title>Reliability release: 43 verified defects fixed</title>

@@ -55,6 +55,7 @@
       <h2>Transcript import</h2>
       <ul class="features">
         <li><strong>Caption files (.vtt / .srt)</strong>The usual export from Zoom, Otter, Teams and YouTube. Cue numbers, timestamps and markup are stripped; <code>&lt;v Speaker&gt;</code> voice tags become "Speaker:" labels; repeated rolling-caption lines are collapsed.</li>
+        <li><strong>PDF</strong>Text is extracted from the PDF's text layer, one line per line on the page. A scanned or photographed PDF has no text layer and is refused with a note to run it through OCR first.</li>
         <li><strong>Word (.docx)</strong>Upload the file as-is. Text is extracted for coding; formatting, comments and tracked changes are not carried over.</li>
         <li><strong>Plain text (.txt)</strong>Anything your tool can export as text, including Descript and Rev transcript exports.</li>
         <li><strong>CSV</strong>One row per response — useful for survey open-ends and other short-answer data.</li>
@@ -78,7 +79,7 @@
       </ul>
       <p style="color:#6b7280; font-size:15px; margin:-8px 0 24px;">CSV export is on every plan including Free. Word, Excel, PNG, HTML, Markdown and QDPX are on the paid plans. There is no PDF export.</p>
 
-      <a href="/register" class="cta">Try free</a>
+      <a href="/login?mode=register" class="cta">Try free</a>
 
       <p class="footer-links">
         <a href="/">Home</a>

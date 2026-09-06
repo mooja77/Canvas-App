@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+// Imported statically: the first test to `await import()` this module paid the
+// whole module-graph cost inside its own 5 s budget and timed out on a loaded
+// machine (8.9 s measured at 100 % CPU) while passing in CI.
+import { canvasClient } from '../services/api';
 
 // ─── Helpers ───
 
@@ -110,8 +114,6 @@ describe('ErrorBoundary', () => {
 
 describe('API error handling', () => {
   it('API error 500: propagates server error', async () => {
-    const { canvasClient } = await import('../services/api');
-
     canvasClient.defaults.adapter = () =>
       Promise.reject({
         response: { status: 500, data: { message: 'Internal Server Error' } },
@@ -127,7 +129,6 @@ describe('API error handling', () => {
   });
 
   it('API error 403: fires plan-limit-exceeded event for upgrade prompt', async () => {
-    const { canvasClient } = await import('../services/api');
     const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
 
     canvasClient.defaults.adapter = () =>
@@ -155,8 +156,6 @@ describe('API error handling', () => {
   });
 
   it('API error 404: propagates not-found', async () => {
-    const { canvasClient } = await import('../services/api');
-
     canvasClient.defaults.adapter = () =>
       Promise.reject({
         response: { status: 404, data: { message: 'Canvas not found' } },
@@ -173,8 +172,6 @@ describe('API error handling', () => {
   });
 
   it('API timeout: propagates timeout error', async () => {
-    const { canvasClient } = await import('../services/api');
-
     canvasClient.defaults.adapter = () =>
       Promise.reject({
         code: 'ECONNABORTED',
@@ -193,8 +190,6 @@ describe('API error handling', () => {
   });
 
   it('network offline during save: error has no response object', async () => {
-    const { canvasClient } = await import('../services/api');
-
     canvasClient.defaults.adapter = () =>
       Promise.reject({
         message: 'Network Error',
@@ -222,8 +217,6 @@ describe('API error handling', () => {
       configurable: true,
     });
 
-    const { canvasClient } = await import('../services/api');
-
     canvasClient.defaults.adapter = () =>
       Promise.reject({
         response: { status: 401, data: { message: 'Token expired' } },
@@ -241,8 +234,6 @@ describe('API error handling', () => {
   });
 
   it('concurrent API failures: does not crash app (no cascading errors)', async () => {
-    const { canvasClient } = await import('../services/api');
-
     canvasClient.defaults.adapter = () =>
       Promise.reject({
         response: { status: 500, data: { message: 'Server Error' } },

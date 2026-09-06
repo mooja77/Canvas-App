@@ -29,6 +29,31 @@ interface ChangelogEntry {
 
 const ENTRIES: ChangelogEntry[] = [
   {
+    date: '2026-09-06',
+    title: 'Second bug hunt: the demo is back, and every "Try free" button works',
+    body: 'A production-first sweep three days after the last one. Live checks found two things a visitor could hit: the demo access code had quietly expired in July, and four old marketing pages sent every sign-up click to a page that does not exist. Both are fixed. The rest is housekeeping listed below.',
+    highlights: [
+      'The demo account signs in again',
+      'Sign-up links from the old feature and use-case pages now land on the sign-up form; those pages redirect to their maintained equivalents',
+      'Uploading a folder of interviews is now all-or-nothing: if one file would exceed your plan, nothing is half-imported and the message says why',
+      'The analysis-node rate limit applies on both API prefixes',
+      'Dependency advisories in the query-string and XML parsers resolved',
+    ],
+    author: 'The team',
+    readMin: 1,
+  },
+  {
+    date: '2026-09-05',
+    title: 'Import transcripts from PDF',
+    body: 'PDF is the format transcription services, ethics committees and supervisors hand people, and until now the only route in was copy and paste. Drop a PDF on the upload dialog and its text layer is extracted for coding, one line per line on the page, with speakers and quotation marks intact. The reader loads only when you open a PDF, so nothing changes for anyone else.',
+    highlights: [
+      'A scanned or photographed PDF has no text layer; the import refuses it and explains that it needs OCR first rather than creating an empty transcript',
+      'Dropping several files at once now reads each one independently: one bad file no longer rejects the whole batch',
+    ],
+    author: 'The team',
+    readMin: 1,
+  },
+  {
     date: '2026-09-03',
     title: 'Reliability release: 43 verified defects fixed',
     body: 'A full-app bug hunt run by execution, not inspection: every finding was reproduced with a failing test before it was fixed, and the tests now live in the suite. Most of the work is invisible when it works, which is the point. The notable behaviour changes are below.',

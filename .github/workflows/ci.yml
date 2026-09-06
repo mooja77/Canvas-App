@@ -3,6 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+    # A docs-only merge used to run the full suite and, via workflow_run, rebuild
+    # and redeploy the frontend: new bundle hashes, a "Reload" toast in every
+    # open session, old hashes purged, for a change that touched no code.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   pull_request:
     branches: [main]
 

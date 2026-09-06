@@ -235,7 +235,9 @@ const computeLimiter = rateLimit({
   message: { success: false, error: 'Too many computation requests, please try again later' },
   skip: () => isTestEnv,
 });
-app.use('/api/canvas/:id/computed/:nodeId/run', computeLimiter);
+// Both prefixes: v1Router is mounted under /api/v1 AND /api (index.ts, bottom),
+// so limiting only one path left the other uncapped for a scripted caller.
+app.use(['/api/canvas/:id/computed/:nodeId/run', '/api/v1/canvas/:id/computed/:nodeId/run'], computeLimiter);
 
 // ─── Health check ───
 app.get('/health', async (_req, res) => {

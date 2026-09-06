@@ -18,7 +18,7 @@ authRoutes.post('/auth', authLimiter, async (req, res, next) => {
     const hashedIp = sha256(rawIp);
 
     if (!dashboardCode || typeof dashboardCode !== 'string') {
-      return res.status(400).json({ success: false, error: 'Dashboard code is required' });
+      return res.status(400).json({ success: false, error: 'Access code is required' });
     }
 
     // Try SHA-256 hashed lookup
@@ -80,7 +80,7 @@ authRoutes.post('/auth', authLimiter, async (req, res, next) => {
         path: '/api/auth',
         meta: JSON.stringify({ reason: 'expired' }),
       });
-      return res.status(401).json({ success: false, error: 'Dashboard code has expired' });
+      return res.status(401).json({ success: false, error: 'Access code has expired' });
     }
 
     const jwt = signResearcherToken(access.id, access.role);
