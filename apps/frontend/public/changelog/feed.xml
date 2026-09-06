@@ -16,7 +16,7 @@
     <link href="https://qualcanvas.com/changelog"/>
     <id>https://qualcanvas.com/changelog#2026-09-06-bug-hunt-2</id>
     <updated>2026-09-06T00:00:00Z</updated>
-    <summary>The demo access code had expired in July and four old marketing pages sent sign-up clicks to a missing page; both fixed. Folder uploads are now all-or-nothing with a reason on failure. Rate limit applied on both API prefixes; dependency advisories resolved.</summary>
+    <summary>The demo access code had expired in July and four old marketing pages sent sign-up clicks to a missing page; both fixed. Folder uploads are now all-or-nothing with a reason on failure. Rate limit applied on both API prefixes; dependency advisories resolved. Excel workbooks (.xlsx) now import directly.</summary>
   </entry>
 
   <entry>

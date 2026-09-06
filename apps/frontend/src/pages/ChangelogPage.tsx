@@ -38,6 +38,7 @@ const ENTRIES: ChangelogEntry[] = [
       'Uploading a folder of interviews is now all-or-nothing: if one file would exceed your plan, nothing is half-imported and the message says why',
       'The analysis-node rate limit applies on both API prefixes',
       'Dependency advisories in the query-string and XML parsers resolved',
+      'Excel workbooks (.xlsx) import directly: the first sheet is read like a CSV, so survey exports with one response per row no longer need saving as CSV first',
     ],
     author: 'The team',
     readMin: 1,
