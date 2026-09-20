@@ -454,7 +454,9 @@ export const onboardingStatePatchSchema = z
     currentStep: z.number().int().min(0).max(50).optional(),
     dismissedTooltips: z.array(z.string().min(1).max(64)).max(100).optional(),
     checklistComplete: z.array(z.enum(ONBOARDING_CHECKLIST_TASK_IDS)).max(50).optional(),
-    completionMode: z.enum(['completed', 'skipped']).optional(),
+    completionMode: z.enum(['setup_finished', 'dismissed']).optional(),
+    flowDismissed: z.boolean().optional(),
+    checklistDismissed: z.boolean().optional(),
     startedAt: z.string().datetime({ offset: true }).optional(),
     completedAtClient: z.string().datetime({ offset: true }).optional(),
     templateChoice: z

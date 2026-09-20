@@ -33,6 +33,7 @@ import { checkCodeLimit, checkAutoCode, checkCaseAccess, checkIntercoderAccess }
 import { searchTranscripts } from '../utils/textAnalysis.js';
 import { buildSegmentCodeObservations, computeKrippendorffAlpha } from '../utils/intercoder.js';
 import { deleteCanvasNodeArtifacts } from '../utils/canvasNodeCleanup.js';
+import { ensureDurableFirstValue, recordFirstValue } from '../lib/firstValue.js';
 
 export const codingRoutes = Router();
 
@@ -387,17 +388,29 @@ codingRoutes.post(
         );
       }
 
-      const coding = await prisma.canvasTextCoding.create({
-        data: {
+      const coding = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const created = await tx.canvasTextCoding.create({
+          data: {
+            canvasId: req.params.id,
+            transcriptId,
+            questionId,
+            startOffset,
+            endOffset,
+            codedText,
+            note,
+            coderUserId,
+          },
+        });
+        await recordFirstValue(tx, {
+          userId: coderUserId,
           canvasId: req.params.id,
+          codingId: created.id,
           transcriptId,
-          questionId,
-          startOffset,
-          endOffset,
-          codedText,
-          note,
-          coderUserId,
-        },
+          transcriptSourceType: transcript.sourceType,
+          codingSource: created.source || 'human',
+          recordedAt: created.createdAt instanceof Date ? created.createdAt : new Date(),
+        });
+        return created;
       });
 
       const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
@@ -608,6 +621,7 @@ codingRoutes.post(
         where: { autoCodeKey: { in: codingsToCreate.map((c) => c.autoCodeKey) } },
         orderBy: { createdAt: 'asc' },
       });
+      if (insertResult.count > 0 && coderUserId) await ensureDurableFirstValue(coderUserId);
 
       const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
       logAudit({

@@ -305,13 +305,14 @@ app.get('/ready', async (_req, res) => {
   const lifecycleRequested =
     process.env.LIFECYCLE_EMAIL_SEND_ENABLED === 'true' || process.env.LIFECYCLE_EMAIL_AUTOMATION_ENABLED === 'true';
   if (lifecycleRequested) {
-    const exactScope = Boolean(process.env.LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST?.trim());
-    const broadScope = process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true';
     const providerReady = Boolean(process.env.RESEND_API_KEY || process.env.SMTP_HOST);
     const outcomesReady = !process.env.RESEND_API_KEY || Boolean(process.env.RESEND_WEBHOOK_SECRET);
-    checks.lifecycleEmail = exactScope && !broadScope && providerReady && outcomesReady ? 'ok' : 'error';
+    const from = process.env.SMTP_FROM || '';
+    const senderAddress = from.match(/<([^>]+)>/)?.[1] || from;
+    const senderReady = /@qualcanvas\.com$/i.test(senderAddress.trim());
+    checks.lifecycleEmail = providerReady && outcomesReady && senderReady ? 'ok' : 'error';
     if (checks.lifecycleEmail === 'error') {
-      details.lifecycleEmail = 'Lifecycle email release gates are incomplete or broad recipient scope is enabled';
+      details.lifecycleEmail = 'Lifecycle provider, sender identity, or signed outcome webhook is incomplete';
     }
   } else {
     checks.lifecycleEmail = 'skipped';

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import PageShell from '../components/marketing/PageShell';
 import { YouTubeVideoCard } from '../components/training/YouTubeVideoCard';
@@ -47,6 +47,16 @@ const audienceRoutes = [
 ] as const;
 
 export function TrainingPage() {
+  const [query, setQuery] = useState('');
+  const filteredVideos = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return trainingVideos;
+    return trainingVideos.filter((video) =>
+      [video.title, video.shortTitle, video.outcome, video.category].some((value) =>
+        value.toLowerCase().includes(needle),
+      ),
+    );
+  }, [query]);
   usePageMeta(
     'QualCanvas Training Centre — Short Qualitative Research Tutorials',
     'Learn QualCanvas with focused videos for first projects, transcripts, survey data, cases, analysis, repositories, collaboration, privacy, export and applied research.',
@@ -265,9 +275,28 @@ export function TrainingPage() {
           </a>
         </div>
 
+        <div className="mt-8 max-w-xl">
+          <label htmlFor="training-search" className="block text-sm font-semibold text-gray-900 dark:text-white">
+            Search videos and outcomes
+          </label>
+          <input
+            id="training-search"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Try: transcripts, QDPX, privacy, export…"
+            className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          />
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400" aria-live="polite">
+            {filteredVideos.length} {filteredVideos.length === 1 ? 'lesson' : 'lessons'} found. Every lesson has
+            captions and a written outcome; the user guide gives the full written steps.
+          </p>
+        </div>
+
         <div className="mt-12 space-y-16">
           {trainingCategories.map((category) => {
-            const videos = trainingVideos.filter((video) => video.category === category);
+            const videos = filteredVideos.filter((video) => video.category === category);
+            if (videos.length === 0) return null;
             return (
               <section key={category} aria-labelledby={`category-${category.toLowerCase().replace(/[^a-z]+/g, '-')}`}>
                 <h3
@@ -290,6 +319,71 @@ export function TrainingPage() {
               </section>
             );
           })}
+        </div>
+        {filteredVideos.length === 0 && (
+          <p className="mt-10 rounded-xl border border-gray-200 bg-gray-50 p-6 text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
+            No lesson matches that search. Try the{' '}
+            <Link to="/guide" className="font-semibold text-brand-700 underline dark:text-brand-300">
+              searchable user guide
+            </Link>{' '}
+            or ask the research desk below.
+          </p>
+        )}
+      </section>
+
+      <section
+        className="border-t border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950"
+        aria-labelledby="async-help-heading"
+      >
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          <h2 id="async-help-heading" className="text-3xl font-bold text-gray-950 dark:text-white">
+            Get tailored help without a meeting
+          </h2>
+          <p className="mt-4 max-w-3xl leading-7 text-gray-600 dark:text-gray-300">
+            Tell the research desk what you are moving from, your method and the outcome you need. We can reply
+            asynchronously with a safe import route and a suggested workspace shape.
+          </p>
+          <div className="mt-8 grid gap-5 md:grid-cols-3">
+            <article className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
+              <h3 className="font-semibold text-gray-950 dark:text-white">Move a project</h3>
+              <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                Use the authenticated in-app QDPX, CSV or transcript import. Email only file formats, field names and a
+                small synthetic example—never participant data, raw transcripts or identifiable research material.
+              </p>
+              <a
+                className="mt-4 inline-block text-sm font-semibold text-brand-700 underline dark:text-brand-300"
+                href="mailto:research@qualcanvas.com?subject=Async%20project%20transfer%20help"
+              >
+                Ask for a transfer plan
+              </a>
+            </article>
+            <article className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
+              <h3 className="font-semibold text-gray-950 dark:text-white">Shape the workflow</h3>
+              <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                Describe your method, team roles and deliverable. We will suggest a template, codebook and review path
+                in writing; a call is optional, not the default.
+              </p>
+              <a
+                className="mt-4 inline-block text-sm font-semibold text-brand-700 underline dark:text-brand-300"
+                href="mailto:research@qualcanvas.com?subject=Async%20workflow%20tailoring"
+              >
+                Ask for workflow tailoring
+              </a>
+            </article>
+            <article className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
+              <h3 className="font-semibold text-gray-950 dark:text-white">Request a feature</h3>
+              <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                Explain the research job, current workaround and expected outcome. Do not include confidential
+                participant or client information.
+              </p>
+              <a
+                className="mt-4 inline-block text-sm font-semibold text-brand-700 underline dark:text-brand-300"
+                href="mailto:research@qualcanvas.com?subject=QualCanvas%20feature%20request"
+              >
+                Send a feature request
+              </a>
+            </article>
+          </div>
         </div>
       </section>
 

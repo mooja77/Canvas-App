@@ -33,14 +33,16 @@ import {
 describe('lifecycle email reporting', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.RESEND_API_KEY = 'configured';
+    process.env.RESEND_WEBHOOK_SECRET = 'configured';
+    process.env.SMTP_FROM = 'QualCanvas <noreply@qualcanvas.com>';
   });
 
   afterEach(() => {
     delete process.env.LIFECYCLE_EMAIL_SEND_ENABLED;
-    delete process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS;
-    delete process.env.LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST;
     delete process.env.RESEND_API_KEY;
     delete process.env.RESEND_WEBHOOK_SECRET;
+    delete process.env.SMTP_FROM;
   });
 
   it('includes account and newsletter delivery totals', async () => {
@@ -64,18 +66,16 @@ describe('lifecycle email reporting', () => {
     });
   });
 
-  it('keeps all lifecycle delivery disabled unless both master and recipient scope gates pass', () => {
-    process.env.LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST = 'canary@example.com';
+  it('keeps lifecycle delivery disabled until the provider and master switch are ready', () => {
     expect(isLifecycleSendingEnabledFor('canary@example.com')).toBe(false);
 
     process.env.LIFECYCLE_EMAIL_SEND_ENABLED = 'true';
     expect(isLifecycleSendingEnabledFor('canary@example.com')).toBe(true);
-    expect(isLifecycleSendingEnabledFor('someone-else@example.com')).toBe(false);
+    expect(isLifecycleSendingEnabledFor('someone-else@example.com')).toBe(true);
   });
 
   it('records provider acceptance without calling it delivered', async () => {
     process.env.LIFECYCLE_EMAIL_SEND_ENABLED = 'true';
-    process.env.LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST = 'canary@example.com';
     const user = { id: 'u1', email: 'canary@example.com', name: 'Canary' };
     mockPrisma.user.findUnique.mockResolvedValue({ id: user.id, email: user.email, emailVerified: true });
     mockPrisma.emailPreference.findUnique.mockResolvedValue({
@@ -119,8 +119,7 @@ describe('lifecycle email reporting', () => {
 
   it('blocks a Resend release until signed provider outcomes are configured', () => {
     process.env.LIFECYCLE_EMAIL_SEND_ENABLED = 'true';
-    process.env.LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST = 'canary@example.com';
-    process.env.RESEND_API_KEY = 'configured';
+    delete process.env.RESEND_WEBHOOK_SECRET;
     expect(isLifecycleSendingEnabledFor('canary@example.com')).toBe(false);
 
     process.env.RESEND_WEBHOOK_SECRET = 'configured';

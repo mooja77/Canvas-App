@@ -318,15 +318,14 @@ describe('Template + onboarding routes', () => {
     });
   });
 
-  it('POST /user/onboarding/complete sets onboardingCompletedAt once', async () => {
+  it('POST /user/onboarding/complete only confirms durable first value', async () => {
     mockPrisma.user.findUnique
       .mockResolvedValueOnce({ ...mockUser })
-      .mockResolvedValueOnce({ ...mockUser, onboardingCompletedAt: null });
-    mockPrisma.user.update.mockResolvedValue({ ...mockUser, onboardingCompletedAt: new Date() });
+      .mockResolvedValueOnce({ ...mockUser, onboardingCompletedAt: null, firstValueAt: null });
 
     const res = await request(app).post('/api/user/onboarding/complete').set('Authorization', `Bearer ${jwt}`).send({});
 
-    expect(res.status).toBe(200);
-    expect(mockPrisma.user.update).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe(409);
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 });

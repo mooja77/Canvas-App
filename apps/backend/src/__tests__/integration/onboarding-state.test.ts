@@ -155,7 +155,9 @@ describe('PATCH /user/onboarding validation and merge (L4)', () => {
         startedAt: '2026-09-02T10:00:00.000Z',
         dismissedTooltips: ['quick-code', 'auto-arrange'],
         checklistComplete: ['first-transcript'],
-        completionMode: 'completed',
+        completionMode: 'setup_finished',
+        flowDismissed: false,
+        checklistDismissed: true,
         completedAtClient: '2026-09-02T10:05:00.000Z',
         templateChoice: { id: 'tmpl-interviews', name: 'Interview study' },
         personalization: { researchTopic: 'burnout', method: 'interviews', solo: true },
@@ -165,7 +167,8 @@ describe('PATCH /user/onboarding validation and merge (L4)', () => {
     expect(res.status).toBe(200);
     expect(storedState()).toMatchObject({
       currentStep: 2,
-      completionMode: 'completed',
+      completionMode: 'setup_finished',
+      checklistDismissed: true,
       checklistComplete: ['first-transcript'],
     });
   });

@@ -4,6 +4,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
 import { exportQdpx } from '../utils/qdpxExport.js';
 import { importQdpx } from '../utils/qdpxImport.js';
+import { ensureDurableFirstValue } from '../lib/firstValue.js';
 import { checkExportFormat } from '../middleware/planLimits.js';
 import { validateParams, canvasIdParam } from '../middleware/validation.js';
 import { isValidSignature } from '../utils/magicBytes.js';
@@ -122,6 +123,7 @@ qdpxRoutes.post(
       }
 
       const result = await importQdpx(req.params.id, req.file.buffer);
+      if (result.codings > 0 && userId) await ensureDurableFirstValue(userId);
 
       // Disclose what was dropped. An import that reports only what it created
       // reads as lossless, and the researcher finds out otherwise much later.

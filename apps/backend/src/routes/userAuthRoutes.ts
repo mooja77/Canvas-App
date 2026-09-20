@@ -402,9 +402,15 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
       });
     } else {
       if (!user.emailVerified) {
+        const preference = await prisma.emailPreference.findUnique({ where: { userId: user.id } });
         user = await prisma.user.update({
           where: { id: user.id },
-          data: { emailVerified: true, verificationTokenHash: null, verificationTokenExpiry: null },
+          data: {
+            emailVerified: true,
+            verificationTokenHash: null,
+            verificationTokenExpiry: null,
+            lifecycleCohortStartedAt: preference?.lifecycle ? new Date() : null,
+          },
         });
       }
       logAudit({
@@ -587,9 +593,15 @@ userAuthRoutes.post('/auth/verify-email', authLimiter, async (req, res, next) =>
       return res.status(400).json({ success: false, error: 'Invalid or expired verification token' });
     }
 
+    const preference = await prisma.emailPreference.findUnique({ where: { userId: user.id } });
     await prisma.user.update({
       where: { id: user.id },
-      data: { emailVerified: true, verificationTokenHash: null, verificationTokenExpiry: null },
+      data: {
+        emailVerified: true,
+        verificationTokenHash: null,
+        verificationTokenExpiry: null,
+        lifecycleCohortStartedAt: preference?.lifecycle ? new Date() : null,
+      },
     });
 
     // Optional lifecycle mail is sent only after address verification. It is

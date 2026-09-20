@@ -6,6 +6,7 @@ const { mockPrisma } = vi.hoisted(() => {
   const mockPrisma = {
     user: {
       findUnique: vi.fn(),
+      updateMany: vi.fn(),
     },
     dashboardAccess: {
       findUnique: vi.fn(),
@@ -31,6 +32,7 @@ const { mockPrisma } = vi.hoisted(() => {
       count: vi.fn(),
     },
     canvasTextCoding: {
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
       count: vi.fn(),
@@ -242,6 +244,7 @@ describe('AI features integration tests', () => {
     vi.clearAllMocks();
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
+    mockPrisma.canvasTextCoding.findFirst.mockResolvedValue(null);
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
     // Run interactive-transaction callbacks against the same mock client, and
     // support the array form, so handlers wrapping writes in $transaction work.

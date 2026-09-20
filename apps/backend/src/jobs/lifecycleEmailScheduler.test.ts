@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseRecipientAllowlist, selectTimedLifecycleEmail } from './lifecycleEmailScheduler.js';
+import { selectTimedLifecycleEmail } from './lifecycleEmailScheduler.js';
 
 const NOW = new Date('2026-08-11T12:00:00.000Z');
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -67,17 +67,5 @@ describe('selectTimedLifecycleEmail', () => {
         NOW,
       ),
     ).toBeNull();
-  });
-});
-
-describe('parseRecipientAllowlist', () => {
-  it('normalises, de-duplicates and drops blank recipient entries', () => {
-    expect(parseRecipientAllowlist(' Canary@Example.com,canary@example.com, , second@example.com ')).toEqual(
-      new Set(['canary@example.com', 'second@example.com']),
-    );
-  });
-
-  it('returns an empty set when no allowlist is configured', () => {
-    expect(parseRecipientAllowlist(undefined)).toEqual(new Set());
   });
 });

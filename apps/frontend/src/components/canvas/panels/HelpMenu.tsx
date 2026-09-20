@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useUIStore } from '../../../stores/uiStore';
+import { patchOnboardingState } from '../../onboarding/utils/onboardingState';
 
 // A small, ALWAYS-VISIBLE "Help" entry point in the status bar. The product
 // tour and keyboard shortcuts existed before this, but only inside the
@@ -10,6 +11,7 @@ export default function HelpMenu({ onShowShortcuts }: { onShowShortcuts: () => v
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const openFullProductTour = useUIStore((s) => s.openFullProductTour);
+  const resumeOnboardingChecklist = useUIStore((s) => s.resumeOnboardingChecklist);
 
   useEffect(() => {
     if (!open) return;
@@ -63,6 +65,17 @@ export default function HelpMenu({ onShowShortcuts }: { onShowShortcuts: () => v
           // none of it. Plain buttons in a container Tab correctly today.
           className="absolute bottom-full right-0 z-50 mb-1.5 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
         >
+          <button
+            className={item}
+            onClick={() => {
+              setOpen(false);
+              resumeOnboardingChecklist();
+              void patchOnboardingState({ flowDismissed: false, checklistDismissed: false });
+              window.dispatchEvent(new CustomEvent('qualcanvas:resume-onboarding'));
+            }}
+          >
+            Resume quick setup
+          </button>
           <button
             className={item}
             onClick={() => {

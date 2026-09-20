@@ -237,7 +237,7 @@ templateRoutes.get('/user/onboarding', async (req, res, next) => {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { onboardingState: true, onboardingCompletedAt: true },
+      select: { onboardingState: true, onboardingCompletedAt: true, firstValueAt: true, firstValueCanvasId: true },
     });
     if (!user) return next(new AppError('User not found', 404));
 
@@ -246,6 +246,8 @@ templateRoutes.get('/user/onboarding', async (req, res, next) => {
       data: {
         state: user.onboardingState ? safeJsonParse(user.onboardingState, {}) : {},
         completedAt: user.onboardingCompletedAt,
+        firstValueAt: user.firstValueAt,
+        firstValueCanvasId: user.firstValueCanvasId,
         legacy: false,
       },
     });
@@ -298,7 +300,8 @@ templateRoutes.patch('/user/onboarding', validate(onboardingPatchBodySchema), as
   }
 });
 
-// POST /user/onboarding/complete — mark the new-user flow complete. Idempotent.
+// POST /user/onboarding/complete — compatibility read. Setup screens are not
+// first value; only saving a genuine, non-sample coding sets completion.
 templateRoutes.post('/user/onboarding/complete', async (req, res, next) => {
   try {
     const userId = getAuthUserId(req);
@@ -306,20 +309,14 @@ templateRoutes.post('/user/onboarding/complete', async (req, res, next) => {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { onboardingCompletedAt: true },
+      select: { onboardingCompletedAt: true, firstValueAt: true },
     });
     if (!user) return next(new AppError('User not found', 404));
 
-    // Only set the timestamp once. Re-running the flow after completion
-    // (e.g. for QA) doesn't move the recorded first-completion time.
-    if (!user.onboardingCompletedAt) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { onboardingCompletedAt: new Date() },
-      });
+    if (!user.firstValueAt || !user.onboardingCompletedAt) {
+      return next(new AppError('First value is recorded after a genuine coding is saved', 409));
     }
-
-    res.json({ success: true });
+    res.json({ success: true, data: { completedAt: user.onboardingCompletedAt } });
   } catch (err) {
     next(err);
   }

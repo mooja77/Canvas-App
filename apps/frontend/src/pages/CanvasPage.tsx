@@ -48,6 +48,7 @@ export default function CanvasPage() {
   const [canvasesLoaded, setCanvasesLoaded] = useState(false);
   const [onboardingStateLoaded, setOnboardingStateLoaded] = useState(false);
   const [persistedOnboardingState, setPersistedOnboardingState] = useState<OnboardingState['state']>(null);
+  const [resumeOnboarding, setResumeOnboarding] = useState(false);
 
   const showVerificationBanner = authType === 'email' && !emailVerified && !bannerDismissed;
 
@@ -109,13 +110,14 @@ export default function CanvasPage() {
         const data = response.data.data;
         const state = data.state;
         hydrateOnboardingForAccount(userId, {
-          completed: Boolean(data.completedAt),
+          completed: Boolean(data.completedAt) || state?.flowDismissed === true,
           dismissedTooltips: Array.isArray(state?.dismissedTooltips)
             ? state.dismissedTooltips.filter((value): value is string => typeof value === 'string')
             : [],
           checklistComplete: Array.isArray(state?.checklistComplete)
             ? state.checklistComplete.filter((value): value is string => typeof value === 'string')
             : [],
+          checklistDismissed: state?.checklistDismissed === true,
         });
         setPersistedOnboardingState(state);
       })
@@ -131,6 +133,12 @@ export default function CanvasPage() {
       cancelled = true;
     };
   }, [authenticated, authType, hydrateOnboardingForAccount, onboardingV2Enabled, prepareOnboardingForAccount, userId]);
+
+  useEffect(() => {
+    const resume = () => setResumeOnboarding(true);
+    window.addEventListener('qualcanvas:resume-onboarding', resume);
+    return () => window.removeEventListener('qualcanvas:resume-onboarding', resume);
+  }, []);
 
   // Existing users do not need either first-run surface even if they predate
   // server onboarding timestamps. This is local presentation state only.
@@ -368,12 +376,15 @@ export default function CanvasPage() {
       )}
 
       {/* Account-hydrated onboarding v2 replaces the legacy wizard for email users. */}
-      {firstRunSurface === 'onboarding_v2' && (
+      {(firstRunSurface === 'onboarding_v2' || resumeOnboarding) && (
         <OnboardingFlow
           initialState={
             persistedOnboardingState as { currentStep?: number; personalization?: { method?: string } } | undefined
           }
-          onClose={completeOnboardingV2}
+          onClose={() => {
+            completeOnboardingV2();
+            setResumeOnboarding(false);
+          }}
         />
       )}
     </div>

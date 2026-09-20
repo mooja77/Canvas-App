@@ -9,18 +9,6 @@ import { logError } from '../lib/logger.js';
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 const AUTOMATION_ENABLED = process.env.LIFECYCLE_EMAIL_AUTOMATION_ENABLED === 'true';
-const ALLOW_ALL_RECIPIENTS = process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true';
-
-export function parseRecipientAllowlist(value: string | undefined): Set<string> {
-  return new Set(
-    (value || '')
-      .split(',')
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean),
-  );
-}
-
-const RECIPIENT_ALLOWLIST = parseRecipientAllowlist(process.env.LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST);
 
 let schedulerInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -30,6 +18,8 @@ type LifecycleUser = {
   name: string;
   plan: string;
   createdAt: Date;
+  lifecycleCohortStartedAt: Date | null;
+  firstValueAt: Date | null;
 };
 
 export type TimedLifecycleEmailType = 'onboarding_7d' | 'training_tip_3d' | 'inactivity_14d';
@@ -65,11 +55,11 @@ async function deliveredEventKeys(userId: string): Promise<Set<string>> {
 }
 
 async function hasFirstValue(userId: string): Promise<boolean> {
-  const canvas = await prisma.codingCanvas.findFirst({
-    where: { OR: [{ userId }, { dashboardAccess: { userId } }] },
-    select: { id: true },
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { firstValueAt: true },
   });
-  return !!canvas;
+  return Boolean(user?.firstValueAt);
 }
 
 async function lastUserActivity(userId: string): Promise<Date | null> {
@@ -139,29 +129,38 @@ export function selectTimedLifecycleEmail(
 
 export async function processLifecycleEmails(): Promise<void> {
   if (!AUTOMATION_ENABLED) return;
-  if (!ALLOW_ALL_RECIPIENTS && RECIPIENT_ALLOWLIST.size === 0) return;
 
   const candidates: LifecycleUser[] = await prisma.user.findMany({
     where: {
       emailVerified: true,
-      createdAt: { gte: daysAgo(90) },
-      ...(ALLOW_ALL_RECIPIENTS ? {} : { email: { in: Array.from(RECIPIENT_ALLOWLIST) } }),
+      lifecycleCohortStartedAt: { not: null, gte: daysAgo(90) },
+      firstValueAt: null,
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { lifecycleCohortStartedAt: 'desc' },
     take: LIFECYCLE_BATCH_LIMIT,
-    select: { id: true, email: true, name: true, plan: true, createdAt: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      plan: true,
+      createdAt: true,
+      lifecycleCohortStartedAt: true,
+      firstValueAt: true,
+    },
   });
 
   for (const user of candidates) {
     try {
       const now = new Date();
+      const cohortStartedAt = user.lifecycleCohortStartedAt;
+      if (!cohortStartedAt) continue;
       const delivered = await deliveredEventKeys(user.id);
-      const activated = await hasFirstValue(user.id);
-      const ageDays = (now.getTime() - user.createdAt.getTime()) / (24 * 60 * 60 * 1000);
+      const activated = Boolean(user.firstValueAt) || (await hasFirstValue(user.id));
+      const ageDays = (now.getTime() - cohortStartedAt.getTime()) / (24 * 60 * 60 * 1000);
       const lastActivity = ageDays >= 14 ? await lastUserActivity(user.id) : null;
       const due = selectTimedLifecycleEmail(
         {
-          createdAt: user.createdAt,
+          createdAt: cohortStartedAt,
           deliveredEventKeys: delivered,
           lastActivity,
           activated,
@@ -188,24 +187,15 @@ export function startLifecycleEmailScheduler(): void {
     return;
   }
 
-  if (!ALLOW_ALL_RECIPIENTS && RECIPIENT_ALLOWLIST.size === 0) {
+  if (!isLifecycleSendingEnabledFor()) {
     console.log(
-      '[LifecycleEmailScheduler] Automation blocked: set LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST for a canary or explicitly set LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS=true.',
+      '[LifecycleEmailScheduler] Automation blocked: provider, sender, outcome webhook, or send switch is not ready.',
     );
     return;
   }
 
-  const scopeProbe = ALLOW_ALL_RECIPIENTS ? 'probe@example.invalid' : Array.from(RECIPIENT_ALLOWLIST)[0];
-  if (!isLifecycleSendingEnabledFor(scopeProbe)) {
-    console.log('[LifecycleEmailScheduler] Automation blocked: LIFECYCLE_EMAIL_SEND_ENABLED must be explicitly true.');
-    return;
-  }
-
-  const recipientScope = ALLOW_ALL_RECIPIENTS
-    ? 'all eligible recipients'
-    : `${RECIPIENT_ALLOWLIST.size} allowlisted recipient(s)`;
   console.log(
-    `[LifecycleEmailScheduler] Started (checking every hour, batch ${LIFECYCLE_BATCH_LIMIT}, ${recipientScope})`,
+    `[LifecycleEmailScheduler] Started (checking every hour, batch ${LIFECYCLE_BATCH_LIMIT}, future cohorts only)`,
   );
   schedulerInterval = setInterval(() => {
     processLifecycleEmails().catch((err) => logError(err as Error, { action: 'lifecycleEmail.processAll' }));

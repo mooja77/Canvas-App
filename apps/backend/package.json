@@ -12,6 +12,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "eval:ai": "tsx src/eval/runAiEval.ts",
     "lifecycle:readiness": "tsx src/scripts/lifecycleEmailReadiness.ts",
+    "lifecycle:outreach": "tsx src/scripts/customerSuccessOutreach.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:backup": "bash scripts/backup.sh"

@@ -6,6 +6,7 @@ const { mockPrisma } = vi.hoisted(() => {
   const mockPrisma = {
     user: {
       findUnique: vi.fn(),
+      updateMany: vi.fn(),
       create: vi.fn(),
     },
     dashboardAccess: {
@@ -200,6 +201,7 @@ describe('Data integrity integration tests', () => {
     vi.resetAllMocks();
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
+    mockPrisma.user.updateMany.mockResolvedValue({ count: 1 });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockPrisma.$transaction.mockImplementation(async (operation: any) =>
       typeof operation === 'function' ? operation(mockPrisma) : Promise.all(operation),

@@ -50,6 +50,18 @@ model User {
   onboardingState       String?   @default("{}")
   onboardingCompletedAt DateTime?
 
+  // Durable first value is earned only when a researcher saves a coding on
+  // a non-sample transcript. The evidence stores identifiers and method only;
+  // it never copies research text into account or lifecycle records.
+  firstValueAt       DateTime?
+  firstValueCanvasId String?
+  firstValueEvidence String?
+
+  // Null for every account that predates the bounded lifecycle programme.
+  // Set when a new address is verified or a user newly opts into lifecycle
+  // mail, which prevents enabling automation from backfilling old accounts.
+  lifecycleCohortStartedAt DateTime?
+
   subscription         Subscription?
   codingCanvases       CodingCanvas[]
   dashboardAccess      DashboardAccess?
@@ -72,6 +84,8 @@ model User {
 
   @@index([email])
   @@index([stripeCustomerId])
+  @@index([firstValueAt])
+  @@index([lifecycleCohortStartedAt])
 }
 
 model CanvasTemplate {

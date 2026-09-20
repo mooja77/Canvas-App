@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
 import { sendEmailWithResult } from './email.js';
+import { INTERNAL_EMAILS } from '../utils/testAccounts.js';
 
 // New lifecycle automations are intentionally capped per run so a bad selector
 // cannot create a large accidental campaign.
@@ -79,31 +80,32 @@ function preferenceLink(): string {
   return appLink('/account');
 }
 
-function lifecycleRecipientAllowlist(): Set<string> {
-  return new Set(
-    (process.env.LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST || '')
-      .split(',')
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean),
-  );
+function senderIsConfigured(): boolean {
+  const from = process.env.SMTP_FROM || '';
+  const address = from.match(/<([^>]+)>/)?.[1] || from;
+  return /@qualcanvas\.com$/i.test(address.trim());
 }
 
-export function isLifecycleSendingEnabledFor(email: string): boolean {
+export function isLifecycleSendingEnabledFor(_email?: string): boolean {
   if (process.env.LIFECYCLE_EMAIL_SEND_ENABLED !== 'true') return false;
+  if (!senderIsConfigured()) return false;
+  if (!process.env.RESEND_API_KEY && !(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)) {
+    return false;
+  }
   // Resend is the preferred provider when configured. Do not release optional
   // email through it until signed delivery outcomes can be processed.
   if (process.env.RESEND_API_KEY && !process.env.RESEND_WEBHOOK_SECRET) return false;
-  if (process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true') return true;
-  return lifecycleRecipientAllowlist().has(email.trim().toLowerCase());
+  return true;
 }
 
 export function lifecycleReleaseGateError(): string | null {
   if (process.env.LIFECYCLE_EMAIL_SEND_ENABLED !== 'true') return 'Lifecycle email sending is disabled';
+  if (!senderIsConfigured()) return 'Lifecycle email sending requires a QualCanvas sender address';
+  if (!process.env.RESEND_API_KEY && !(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)) {
+    return 'Lifecycle email sending requires a configured provider';
+  }
   if (process.env.RESEND_API_KEY && !process.env.RESEND_WEBHOOK_SECRET) {
     return 'Lifecycle email sending requires RESEND_WEBHOOK_SECRET when Resend is configured';
-  }
-  if (process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS !== 'true' && lifecycleRecipientAllowlist().size === 0) {
-    return 'Lifecycle email sending requires an exact recipient allowlist';
   }
   return null;
 }
@@ -192,6 +194,16 @@ export async function updateEmailPreferences(
       unsubscribedAt: allEnabled ? null : new Date(),
     },
   });
+
+  // A newly opted-in address joins the bounded programme now. Existing
+  // accounts remain outside it until they make this explicit choice, so
+  // enabling automation can never create a historical backlog.
+  if (!pref.lifecycle && next.lifecycle) {
+    await prisma.user.updateMany({
+      where: { id: userId, lifecycleCohortStartedAt: null },
+      data: { lifecycleCohortStartedAt: new Date() },
+    });
+  }
 
   return {
     lifecycle: saved.lifecycle,
@@ -354,10 +366,54 @@ export function lifecycleTemplate(
   };
 }
 
+export type CustomerSuccessOutreachKind = 'existing' | 'former';
+
+/**
+ * The reviewed, exact templates used by the one-time 2026 onboarding rollout.
+ * They deliberately promise written help, not a meeting or a data-transfer
+ * attachment channel. Former-account credit remains conditional on an
+ * explicit acceptance followed by a verified paid return.
+ */
+export function customerSuccessOutreachTemplate(kind: CustomerSuccessOutreachKind, user: EmailUser) {
+  const name = escapeHtml(firstName(user.name));
+  if (kind === 'existing') {
+    return {
+      category: 'lifecycle' as EmailCategory,
+      eventKey: 'portfolio_onboarding_2026_09_21_existing',
+      subject: 'Help shaping your next QualCanvas project',
+      title: 'A practical route to your next saved research outcome',
+      preview: 'Written help with project transfer, setup and workflow tailoring.',
+      ctaLabel: 'Open the training centre',
+      ctaUrl: appLink('/training#async-help-heading'),
+      bodyHtml: `
+        <p style="margin:0 0 18px;">Hi ${name},</p>
+        <p style="margin:0 0 18px;">If a project is waiting, reply with the tool or format you are moving from, your research method and the outcome you need. We can suggest a QDPX, CSV or transcript import route and a sensible canvas structure in writing—no meeting required.</p>
+        <p style="margin:0 0 18px;">Please do not email participant data, raw transcripts or identifiable research material. Use QualCanvas's authenticated in-app import once the route is clear.</p>
+        <p style="margin:0;">You can also reply with a feature request: the research job, your current workaround and the result you want are enough.</p>`,
+    };
+  }
+
+  return {
+    category: 'productUpdates' as EmailCategory,
+    eventKey: 'portfolio_onboarding_2026_09_21_former',
+    subject: 'A simpler way back to QualCanvas',
+    title: 'Return with your workflow mapped first',
+    preview: 'Written migration help, with two free months only after acceptance and a verified paid return.',
+    ctaLabel: 'See the current training centre',
+    ctaUrl: appLink('/training'),
+    bodyHtml: `
+      <p style="margin:0 0 18px;">Hi ${name},</p>
+      <p style="margin:0 0 18px;">If you still have qualitative work to move, reply with the product or file format you use now, your method and the outcome you need. We will map a practical return path in writing; no meeting is required.</p>
+      <p style="margin:0 0 18px;">Please do not email participant data, raw transcripts or identifiable research material. Transfers should use QualCanvas's authenticated in-app QDPX, CSV or transcript import.</p>
+      <p style="margin:0;">If you reply to accept this offer and then return on a paid plan, we will verify the return before adding two free months. This email alone does not apply a credit.</p>`,
+  };
+}
+
 export async function sendLifecycleEmail(
   user: EmailUser,
   template: ReturnType<typeof lifecycleTemplate>,
   campaignId?: string,
+  options: { internalCanary?: boolean } = {},
 ): Promise<'accepted' | 'skipped' | 'failed'> {
   if (!emailPreference || !emailDelivery) {
     return 'skipped';
@@ -376,7 +432,9 @@ export async function sendLifecycleEmail(
   }
 
   const pref = await ensureEmailPreference(user.id);
-  if (pref.unsubscribedAt || pref.providerSuppressedAt || !pref[template.category]) {
+  const internalCanary =
+    options.internalCanary === true && INTERNAL_EMAILS.includes(currentUser.email.trim().toLowerCase());
+  if (pref.providerSuppressedAt || (!internalCanary && (pref.unsubscribedAt || !pref[template.category]))) {
     await createDeliveryIfMissing(
       user.id,
       template.eventKey,
@@ -644,9 +702,6 @@ export async function sendCampaign(
         unsubscribedAt: null,
         providerSuppressedAt: null,
         email: { notIn: [...userEmails] },
-        ...(process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true'
-          ? {}
-          : { email: { in: Array.from(lifecycleRecipientAllowlist()), notIn: [...userEmails] } }),
         deliveries: {
           none: {
             campaignId: campaign.id,
@@ -728,9 +783,6 @@ async function selectCampaignAudience(campaignId: string, audience: string, limi
   if (audience === 'newsletter') return [];
   const where: Record<string, unknown> = {
     emailVerified: true,
-    ...(process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true'
-      ? {}
-      : { email: { in: Array.from(lifecycleRecipientAllowlist()) } }),
     emailDeliveries: {
       none: {
         eventKey: `campaign_${campaignId}`,
@@ -773,9 +825,6 @@ async function countCampaignRemaining(campaignId: string, audience: string): Pro
   if (audience !== 'newsletter') {
     const where: Record<string, unknown> = {
       emailVerified: true,
-      ...(process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true'
-        ? {}
-        : { email: { in: Array.from(lifecycleRecipientAllowlist()) } }),
       emailDeliveries: {
         none: {
           eventKey: `campaign_${campaignId}`,
@@ -815,9 +864,6 @@ async function countCampaignRemaining(campaignId: string, audience: string): Pro
             unsubscribedAt: null,
             providerSuppressedAt: null,
             email: {
-              ...(process.env.LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS === 'true'
-                ? {}
-                : { in: Array.from(lifecycleRecipientAllowlist()) }),
               notIn: (await prisma.user.findMany({ select: { email: true } })).map((user) => user.email.toLowerCase()),
             },
             deliveries: {
