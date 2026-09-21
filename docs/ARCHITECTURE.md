@@ -909,7 +909,7 @@ npm run lint
 | `NODE_ENV`             | `production` / `development` / `test`                  | `development`      |
 | `PORT`                 | HTTP server port                                       | `3007`             |
 | `ALLOWED_ORIGINS`      | Comma-separated frontend URLs for CORS                 | All origins in dev |
-| `REGISTRATION_ENABLED` | Enable new user signups (`true`/`false`)               | `false`            |
+| `REGISTRATION_ENABLED` | **Dead.** Set in the hosting dashboard but not read by any code in `apps/backend/src` or `apps/frontend/src` (verified by repo-wide grep, 2026-09-21). Does not gate signups in either direction — `/api/auth/signup` accepts registrations unconditionally. No env var, feature flag, or admin toggle currently gates production signups. | `false` (has no effect) |
 | `APP_URL`              | Public app URL (email links, Stripe redirects)         | —                  |
 | `ENCRYPTION_KEY`       | 32-byte hex key for AES-256-GCM encryption of API keys | —                  |
 | `E2E_TEST`             | Enables E2E test mode (skips rate limits)              | —                  |

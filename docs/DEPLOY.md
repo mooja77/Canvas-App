@@ -51,7 +51,16 @@ Backend essentials:
 - `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV`;
 - `ALLOWED_ORIGINS`, `APP_URL`;
 - `ENCRYPTION_KEY` when user-managed AI keys are enabled;
-- `REGISTRATION_ENABLED=true` to accept production signups.
+- `REGISTRATION_ENABLED` — set in the hosting dashboard, but **dead**: no code
+  in `apps/backend/src` or `apps/frontend/src` reads this variable (verified
+  by repo-wide grep, 2026-09-21). It does not gate signups in either
+  direction. The real `/api/auth/signup` endpoint (`apps/backend/src/routes/userAuthRoutes.ts`)
+  accepts registrations unconditionally, with no env var, feature flag, or
+  admin toggle in front of it. There is currently **no working kill switch**
+  for production signups anywhere in the codebase. (The separate legacy
+  `/api/auth/register` endpoint in `authRoutes.ts` is hard-blocked whenever
+  `NODE_ENV === 'production'`, but that is an unconditional guard on a
+  different, non-production endpoint — not a signup on/off toggle.)
 
 Optional backend integrations:
 
