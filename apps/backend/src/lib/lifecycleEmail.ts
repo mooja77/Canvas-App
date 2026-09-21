@@ -462,6 +462,7 @@ export async function sendLifecycleEmail(
   });
   const oneClickUrl = unsubscribeLink(pref.unsubscribeToken);
   const result = await sendEmailWithResult(user.email, template.subject, html, {
+    footer: { kind: 'optional', campaign: template.eventKey },
     headers: {
       'List-Unsubscribe': `<${oneClickUrl}>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
@@ -736,6 +737,7 @@ export async function sendCampaign(
           )}" style="color:#155e75;">Unsubscribe</a>.`,
       });
       const resultFromProvider = await sendEmailWithResult(subscriber.email, campaign.subject, html, {
+        footer: { kind: 'optional', campaign: `newsletter-${campaign.id}` },
         headers: {
           'List-Unsubscribe': `<${DEFAULT_API_URL.replace(/\/$/, '')}/email/newsletter/unsubscribe/${encodeURIComponent(
             subscriber.unsubscribeToken,
