@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useCanvasStore } from '../../stores/canvasStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useMobile } from '../../hooks/useMobile';
+import { patchOnboardingState } from './utils/onboardingState';
 
 /**
  * Asana-style persistent checklist. Reads canvas content reactively so each
@@ -123,6 +124,7 @@ export default function OnboardingChecklist() {
           onClick={() => {
             dismissOnboardingChecklist();
             setDismissed(true);
+            void patchOnboardingState({ checklistDismissed: true });
           }}
           className="px-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           title="Dismiss checklist"

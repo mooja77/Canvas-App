@@ -5,7 +5,7 @@ import Screen1_Personalization from './Screen1_Personalization';
 import Screen2_TemplateGallery from './Screen2_TemplateGallery';
 import { templateApi, type CanvasTemplate } from '../../services/api';
 import { trackEvent } from '../../utils/analytics';
-import { markOnboardingComplete, patchOnboardingState } from './utils/onboardingState';
+import { patchOnboardingState } from './utils/onboardingState';
 import { useCanvasStore } from '../../stores/canvasStore';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -49,18 +49,16 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
   }, []);
 
   const finish = useCallback(
-    async (mode: 'completed' | 'skipped') => {
+    async (mode: 'setup_finished' | 'dismissed') => {
       const totalSeconds = Math.round((Date.now() - startedAtRef.current) / 1000);
       await patchOnboardingState({
         completionMode: mode,
+        flowDismissed: mode === 'dismissed',
         completedAtClient: new Date().toISOString(),
       });
-      if (mode === 'completed') {
+      if (mode === 'setup_finished') {
         trackEvent('onboarding_completed_seconds', { total_seconds: totalSeconds });
       }
-      // A deliberate skip is also a completed onboarding decision. Persist it
-      // so another browser does not force the flow back over the workspace.
-      await markOnboardingComplete();
       onClose();
     },
     [onClose],
@@ -68,7 +66,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
 
   const handleEscape = useCallback(() => {
     // Do not abandon a canvas while its creation request is in flight.
-    if (!busy) void finish('skipped');
+    if (!busy) void finish('dismissed');
   }, [busy, finish]);
   useEscapeToClose(handleEscape);
   useFocusTrap(dialogRef, true);
@@ -98,7 +96,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
           trackEvent('onboarding_step_completed', { step: 2, template: 'blank' });
           const blankCanvas = await createCanvas('Untitled research project');
           await openCanvas(blankCanvas.id);
-          await finish('completed');
+          await finish('setup_finished');
           toast.success('Blank canvas ready — add a transcript when you are ready.', { duration: 5000 });
           navigate(`/canvas/${blankCanvas.id}`);
           return;
@@ -118,7 +116,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
         // Mark completion now (the user can still fall out of the canvas
         // coachmarks, but the flow as a whole counts as completed once
         // they've made it onto a seeded canvas).
-        await finish('completed');
+        await finish('setup_finished');
         toast.success('Canvas ready — try highlighting any sentence to add a code.', { duration: 5000 });
         navigate(`/canvas/${newCanvas.id}`);
       } catch (err: unknown) {
@@ -158,12 +156,18 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
           ))}
         </div>
 
-        {step === 1 && <Screen1_Personalization onContinue={handlePersonalization} onSkip={() => finish('skipped')} />}
+        {step === 1 && (
+          <Screen1_Personalization onContinue={handlePersonalization} onSkip={() => finish('dismissed')} />
+        )}
         {step === 2 && (
           <Screen2_TemplateGallery
             preferredMethod={preferredMethod}
             onSelect={handleTemplatePick}
-            onSkip={() => finish('skipped')}
+            onSkip={() => finish('dismissed')}
+            onBack={() => {
+              void patchOnboardingState({ currentStep: 1 });
+              setStep(1);
+            }}
           />
         )}
       </div>

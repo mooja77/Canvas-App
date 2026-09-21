@@ -7,6 +7,7 @@ const { mockPrisma } = vi.hoisted(() => {
     user: {
       findUnique: vi.fn(),
       create: vi.fn(),
+      updateMany: vi.fn(),
     },
     dashboardAccess: {
       create: vi.fn(),
@@ -41,6 +42,7 @@ const { mockPrisma } = vi.hoisted(() => {
       count: vi.fn(),
     },
     canvasTextCoding: {
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
@@ -186,6 +188,8 @@ describe('Coding extended tests', () => {
     vi.clearAllMocks();
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
+    mockPrisma.user.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.canvasTextCoding.findFirst.mockResolvedValue(null);
     mockPrisma.canvasTextCoding.createMany.mockImplementation(async ({ data }: { data: unknown[] }) => ({
       count: data.length,
     }));
@@ -201,6 +205,7 @@ describe('Coding extended tests', () => {
   // ─── Coding creation edge cases ───
 
   it('POST /canvas/:id/codings allows overlapping codings on same text range', async () => {
+    runTransactionsInline();
     const transcriptId = 'tr-overlap';
     const questionId1 = 'q-overlap-1';
     const questionId2 = 'q-overlap-2';
@@ -234,6 +239,7 @@ describe('Coding extended tests', () => {
     expect(res1.status).toBe(201);
 
     // Second coding on overlapping range with different question
+    runTransactionsInline();
     mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: questionId2, canvasId });
     mockPrisma.canvasTextCoding.create.mockResolvedValue({
       id: 'coding-overlap-2',
@@ -294,6 +300,7 @@ describe('Coding extended tests', () => {
   });
 
   it('POST /canvas/:id/codings accepts optional note field', async () => {
+    runTransactionsInline();
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
     mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ id: 'tr-note', canvasId, content: 'hello world' });
     mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: 'q-note', canvasId });

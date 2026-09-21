@@ -7,6 +7,7 @@ const { mockPrisma } = vi.hoisted(() => {
     user: {
       findUnique: vi.fn(),
       create: vi.fn(),
+      updateMany: vi.fn(),
     },
     dashboardAccess: {
       create: vi.fn(),
@@ -43,6 +44,7 @@ const { mockPrisma } = vi.hoisted(() => {
       count: vi.fn(),
     },
     canvasTextCoding: {
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
@@ -61,7 +63,9 @@ const { mockPrisma } = vi.hoisted(() => {
     },
     canvasNodePosition: {
       upsert: vi.fn(),
+      deleteMany: vi.fn(),
     },
+    canvasRelation: { deleteMany: vi.fn() },
     canvasShare: { count: vi.fn() },
     canvasCase: { findMany: vi.fn() },
     canvasComputedNode: {
@@ -176,6 +180,12 @@ describe('Coding integration tests', () => {
     vi.clearAllMocks();
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
+    mockPrisma.user.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.canvasTextCoding.findFirst.mockResolvedValue(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockPrisma.$transaction.mockImplementation((arg: any) =>
+      typeof arg === 'function' ? arg(mockPrisma) : Promise.all(arg),
+    );
     mockPrisma.canvasTextCoding.createMany.mockImplementation(async ({ data }: { data: unknown[] }) => ({
       count: data.length,
     }));
@@ -280,6 +290,8 @@ describe('Coding integration tests', () => {
       startOffset: 0,
       endOffset: 15,
       codedText: 'patterns emerge',
+      source: 'human',
+      createdAt: new Date(),
     });
 
     const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
@@ -348,7 +360,12 @@ describe('Coding integration tests', () => {
 
   it('POST /canvas/:id/codings accepts a coding whose text matches exactly', async () => {
     transcriptWithText('transcript-c1');
-    mockPrisma.canvasTextCoding.create.mockResolvedValue({ id: 'coding-ok', canvasId });
+    mockPrisma.canvasTextCoding.create.mockResolvedValue({
+      id: 'coding-ok',
+      canvasId,
+      source: 'human',
+      createdAt: new Date(),
+    });
 
     const res = await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
       transcriptId: 'transcript-c1',
@@ -632,7 +649,12 @@ describe('Coding integration tests', () => {
       content: 'patterns emerge from the data',
     });
     mockPrisma.canvasQuestion.findUnique.mockResolvedValue({ id: questionId, canvasId });
-    mockPrisma.canvasTextCoding.create.mockResolvedValue({ id: 'coding-attr-1', canvasId });
+    mockPrisma.canvasTextCoding.create.mockResolvedValue({
+      id: 'coding-attr-1',
+      canvasId,
+      source: 'human',
+      createdAt: new Date(),
+    });
 
     await request(app).post(`/api/canvas/${canvasId}/codings`).set('Authorization', `Bearer ${jwt}`).send({
       transcriptId,

@@ -6,6 +6,7 @@ interface Props {
   preferredMethod: string;
   onSelect: (template: CanvasTemplate | null, includeSampleData: boolean) => void;
   onSkip: () => void;
+  onBack: () => void;
 }
 
 const BLANK_TEMPLATE: CanvasTemplate = {
@@ -20,7 +21,7 @@ const BLANK_TEMPLATE: CanvasTemplate = {
   isPublic: true,
 };
 
-export default function Screen2_TemplateGallery({ preferredMethod, onSelect, onSkip }: Props) {
+export default function Screen2_TemplateGallery({ preferredMethod, onSelect, onSkip, onBack }: Props) {
   const [templates, setTemplates] = useState<CanvasTemplate[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [includeSample, setIncludeSample] = useState(true);
@@ -138,16 +139,25 @@ export default function Screen2_TemplateGallery({ preferredMethod, onSelect, onS
       )}
 
       <div className="flex items-center justify-between mt-6">
-        <button
-          type="button"
-          onClick={() => {
-            trackEvent('onboarding_skipped', { at_step: 2 });
-            onSkip();
-          }}
-          className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-        >
-          Skip for now
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={onBack}
+            className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              trackEvent('onboarding_skipped', { at_step: 2 });
+              onSkip();
+            }}
+            className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            Skip for now
+          </button>
+        </div>
         <div className="text-xs text-gray-400">2 of 2</div>
       </div>
     </div>

@@ -10,7 +10,9 @@ export interface PersistedOnboardingState {
   dismissedTooltips?: string[];
   checklistComplete?: string[];
   startedAt?: string;
-  completionMode?: 'completed' | 'skipped';
+  completionMode?: 'setup_finished' | 'dismissed';
+  flowDismissed?: boolean;
+  checklistDismissed?: boolean;
   completedAtClient?: string;
   templateChoice?: { id: string; name: string } | null;
   personalization?: {
@@ -34,12 +36,4 @@ export async function patchOnboardingState(patch: PersistedOnboardingState): Pro
   await pending.catch(() => {
     // best-effort: onboarding still works without server sync
   });
-}
-
-export async function markOnboardingComplete(): Promise<void> {
-  try {
-    await onboardingApi.complete();
-  } catch {
-    // best-effort
-  }
 }

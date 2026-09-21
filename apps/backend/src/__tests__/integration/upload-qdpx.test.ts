@@ -7,6 +7,7 @@ const { mockPrisma } = vi.hoisted(() => {
   const mockPrisma = {
     user: {
       findUnique: vi.fn(),
+      updateMany: vi.fn(),
     },
     subscription: {
       findUnique: vi.fn(),
@@ -34,6 +35,7 @@ const { mockPrisma } = vi.hoisted(() => {
     },
     canvasTextCoding: {
       count: vi.fn().mockResolvedValue(1),
+      findFirst: vi.fn(),
     },
     aiUsage: {
       create: vi.fn(),

@@ -8,7 +8,6 @@ const mocks = vi.hoisted(() => ({
   openCanvas: vi.fn(),
   fetchCanvases: vi.fn(),
   onClose: vi.fn(),
-  markComplete: vi.fn(),
   patchState: vi.fn(),
   trackEvent: vi.fn(),
 }));
@@ -25,7 +24,6 @@ vi.mock('../../stores/canvasStore', () => ({
 vi.mock('../../utils/analytics', () => ({ trackEvent: mocks.trackEvent }));
 
 vi.mock('./utils/onboardingState', () => ({
-  markOnboardingComplete: mocks.markComplete,
   patchOnboardingState: mocks.patchState,
 }));
 
@@ -60,7 +58,6 @@ describe('OnboardingFlow', () => {
     vi.clearAllMocks();
     mocks.createCanvas.mockResolvedValue({ id: 'canvas-1' });
     mocks.openCanvas.mockResolvedValue(undefined);
-    mocks.markComplete.mockResolvedValue(undefined);
     mocks.patchState.mockResolvedValue(undefined);
   });
 
@@ -93,12 +90,14 @@ describe('OnboardingFlow', () => {
 
     await waitFor(() => expect(mocks.createCanvas).toHaveBeenCalledWith('Untitled research project'));
     expect(mocks.openCanvas).toHaveBeenCalledWith('canvas-1');
-    expect(mocks.markComplete).toHaveBeenCalledTimes(1);
+    expect(mocks.patchState).toHaveBeenCalledWith(
+      expect.objectContaining({ completionMode: 'setup_finished', flowDismissed: false }),
+    );
     expect(mocks.onClose).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/canvas/canvas-1'));
   });
 
-  it('persists an intentional skip as a completed onboarding decision', async () => {
+  it('persists an intentional skip as a resumable dismissal', async () => {
     render(
       <MemoryRouter>
         <OnboardingFlow onClose={mocks.onClose} />
@@ -107,9 +106,13 @@ describe('OnboardingFlow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip test onboarding' }));
 
-    await waitFor(() => expect(mocks.markComplete).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.onClose).toHaveBeenCalledTimes(1));
     expect(mocks.patchState).toHaveBeenCalledWith(
-      expect.objectContaining({ completionMode: 'skipped', completedAtClient: expect.any(String) }),
+      expect.objectContaining({
+        completionMode: 'dismissed',
+        flowDismissed: true,
+        completedAtClient: expect.any(String),
+      }),
     );
     expect(mocks.createCanvas).not.toHaveBeenCalled();
     expect(mocks.onClose).toHaveBeenCalledTimes(1);
@@ -124,9 +127,13 @@ describe('OnboardingFlow', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
 
-    await waitFor(() => expect(mocks.markComplete).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.onClose).toHaveBeenCalledTimes(1));
     expect(mocks.patchState).toHaveBeenCalledWith(
-      expect.objectContaining({ completionMode: 'skipped', completedAtClient: expect.any(String) }),
+      expect.objectContaining({
+        completionMode: 'dismissed',
+        flowDismissed: true,
+        completedAtClient: expect.any(String),
+      }),
     );
     expect(mocks.onClose).toHaveBeenCalledTimes(1);
   });

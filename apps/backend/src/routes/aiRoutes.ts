@@ -21,6 +21,7 @@ import { aiCacheGet, aiCacheSet, aiCacheKey } from '../utils/aiCache.js';
 import { findCoding } from '../utils/findCoding.js';
 import { computeAiAgreement } from '../eval/aiAgreement.js';
 import { sha256 } from '../utils/hashing.js';
+import { ensureDurableFirstValue } from '../lib/firstValue.js';
 
 export const aiRoutes = Router();
 
@@ -651,6 +652,7 @@ aiRoutes.put(
           });
           return tx.aiSuggestion.update({ where: { id: req.params.sid }, data: { status } });
         });
+        if (userId) await ensureDurableFirstValue(userId);
         return res.json({ success: true, data: accepted });
       }
 
@@ -677,12 +679,14 @@ aiRoutes.post(
       await getOwnedCanvas(req.params.id, dashboardAccessId, userId);
 
       const { suggestionIds, action } = req.body;
+      let acceptedCount = 0;
 
       if (action === 'accepted') {
         // Accept each suggestion — create codes and codings
         const suggestions = await prisma.aiSuggestion.findMany({
           where: { id: { in: suggestionIds }, canvasId: req.params.id, status: 'pending' },
         });
+        acceptedCount = suggestions.length;
 
         for (const suggestion of suggestions) {
           let questionId = suggestion.questionId;
@@ -725,6 +729,7 @@ aiRoutes.post(
         where: { id: { in: suggestionIds }, canvasId: req.params.id },
         data: { status: action },
       });
+      if (action === 'accepted' && acceptedCount > 0 && userId) await ensureDurableFirstValue(userId);
 
       res.json({ success: true, data: { updated: suggestionIds.length } });
     } catch (err) {

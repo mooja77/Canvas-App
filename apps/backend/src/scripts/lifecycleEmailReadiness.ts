@@ -8,60 +8,42 @@ function bool(name: string): boolean {
   return process.env[name] === 'true';
 }
 
-function allowlist(): string[] {
-  return [
-    ...new Set(
-      (process.env.LIFECYCLE_EMAIL_RECIPIENT_ALLOWLIST || '')
-        .split(',')
-        .map((value) => value.trim().toLowerCase())
-        .filter(Boolean),
-    ),
-  ];
-}
-
 function recipientRef(email: string): string {
   return crypto.createHash('sha256').update(email.trim().toLowerCase()).digest('hex').slice(0, 12);
 }
 
 async function main() {
   const now = new Date();
-  const exactRecipients = allowlist();
-  const broadScope = bool('LIFECYCLE_EMAIL_ALLOW_ALL_RECIPIENTS');
-  const scope = broadScope ? 'all_eligible' : exactRecipients.length > 0 ? 'exact_allowlist' : 'none';
-  const candidates =
-    scope === 'none'
-      ? []
-      : await prisma.user.findMany({
-          where: {
-            emailVerified: true,
-            createdAt: { gte: new Date(now.getTime() - 90 * DAY_MS) },
-            ...(broadScope ? {} : { email: { in: exactRecipients } }),
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 1000,
-          select: {
-            id: true,
-            email: true,
-            createdAt: true,
-            emailPreference: {
-              select: {
-                lifecycle: true,
-                trainingTips: true,
-                inactivityNudges: true,
-                unsubscribedAt: true,
-                providerSuppressedAt: true,
-              },
-            },
-          },
-        });
+  const candidates = await prisma.user.findMany({
+    where: {
+      emailVerified: true,
+      lifecycleCohortStartedAt: { not: null, gte: new Date(now.getTime() - 90 * DAY_MS) },
+      firstValueAt: null,
+    },
+    orderBy: { lifecycleCohortStartedAt: 'desc' },
+    take: 1000,
+    select: {
+      id: true,
+      email: true,
+      createdAt: true,
+      lifecycleCohortStartedAt: true,
+      firstValueAt: true,
+      emailPreference: {
+        select: {
+          lifecycle: true,
+          trainingTips: true,
+          inactivityNudges: true,
+          unsubscribedAt: true,
+          providerSuppressedAt: true,
+        },
+      },
+    },
+  });
 
   const due: Array<{ recipientRef: string; type: string }> = [];
   for (const user of candidates) {
-    const [canvas, lastActivity, deliveries] = await Promise.all([
-      prisma.codingCanvas.findFirst({
-        where: { OR: [{ userId: user.id }, { dashboardAccess: { userId: user.id } }] },
-        select: { id: true },
-      }),
+    if (!user.lifecycleCohortStartedAt) continue;
+    const [lastActivity, deliveries] = await Promise.all([
       prisma.auditLog.findFirst({
         where: { actorId: user.id },
         orderBy: { timestamp: 'desc' },
@@ -77,10 +59,10 @@ async function main() {
     ]);
     const type = selectTimedLifecycleEmail(
       {
-        createdAt: user.createdAt,
+        createdAt: user.lifecycleCohortStartedAt,
         deliveredEventKeys: new Set(deliveries.map((delivery) => delivery.eventKey)),
         lastActivity: lastActivity?.timestamp || null,
-        activated: Boolean(canvas),
+        activated: Boolean(user.firstValueAt),
       },
       now,
     );
@@ -106,6 +88,9 @@ async function main() {
   const automationEnabled = bool('LIFECYCLE_EMAIL_AUTOMATION_ENABLED');
   const provider = process.env.RESEND_API_KEY ? 'resend' : process.env.SMTP_HOST ? 'smtp' : 'none';
   const webhookReady = provider !== 'resend' || Boolean(process.env.RESEND_WEBHOOK_SECRET);
+  const from = process.env.SMTP_FROM || '';
+  const senderAddress = from.match(/<([^>]+)>/)?.[1] || from;
+  const senderReady = /@qualcanvas\.com$/i.test(senderAddress.trim());
 
   process.stdout.write(
     `${JSON.stringify(
@@ -115,15 +100,14 @@ async function main() {
         release: {
           sendEnabled,
           automationEnabled,
-          scope,
-          configuredRecipientCount: exactRecipients.length,
           provider,
           webhookReady,
-          releaseReady: sendEnabled && automationEnabled && scope !== 'none' && webhookReady,
+          senderReady,
+          releaseReady: sendEnabled && automationEnabled && provider !== 'none' && webhookReady && senderReady,
         },
         selector: {
-          candidatesWithinConfiguredScope: candidates.length,
-          dueWithinConfiguredScope: due.length,
+          futureCohortCandidates: candidates.length,
+          dueInFutureCohorts: due.length,
           due,
         },
         persistence: {

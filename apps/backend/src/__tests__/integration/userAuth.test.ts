@@ -720,7 +720,12 @@ describe('User auth integration tests', () => {
       expect(res.body.message).toMatch(/verified successfully/i);
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { emailVerified: true, verificationTokenHash: null, verificationTokenExpiry: null },
+        data: {
+          emailVerified: true,
+          verificationTokenHash: null,
+          verificationTokenExpiry: null,
+          lifecycleCohortStartedAt: null,
+        },
       });
     });
 

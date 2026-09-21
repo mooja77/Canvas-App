@@ -154,7 +154,7 @@ describe('uiStore', () => {
       useUIStore.getState().hydrateOnboardingForAccount('user-a', {
         completed: true,
         dismissedTooltips: ['quick-code'],
-        checklistComplete: ['dismissed'],
+        checklistDismissed: true,
       });
 
       const state = useUIStore.getState();

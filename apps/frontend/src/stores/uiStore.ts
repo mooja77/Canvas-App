@@ -92,9 +92,15 @@ interface UIState {
   prepareOnboardingForAccount: (userId: string) => void;
   hydrateOnboardingForAccount: (
     userId: string,
-    data: { completed: boolean; dismissedTooltips?: string[]; checklistComplete?: string[] },
+    data: {
+      completed: boolean;
+      dismissedTooltips?: string[];
+      checklistComplete?: string[];
+      checklistDismissed?: boolean;
+    },
   ) => void;
   dismissOnboardingChecklist: () => void;
+  resumeOnboardingChecklist: () => void;
   markChecklistItemComplete: (id: string) => void;
   dismissJitTooltip: (id: string) => void;
   openFullProductTour: () => void;
@@ -180,8 +186,7 @@ export const useUIStore = create<UIState>()(
             onboardingV2Complete: data.completed,
             // Dismissal writes are currently local-first. For the same account,
             // merge the server snapshot instead of erasing a newer local choice.
-            onboardingChecklistDismissed:
-              state.onboardingChecklistDismissed || (data.checklistComplete?.includes('dismissed') ?? false),
+            onboardingChecklistDismissed: state.onboardingChecklistDismissed || data.checklistDismissed === true,
             // Same local-first merge: keep this account's local ticks and add
             // whatever the server already recorded (including 'dismissed', so
             // a later patch doesn't drop it).
@@ -205,6 +210,7 @@ export const useUIStore = create<UIState>()(
           };
         }),
       dismissOnboardingChecklist: () => set({ onboardingChecklistDismissed: true }),
+      resumeOnboardingChecklist: () => set({ onboardingChecklistDismissed: false }),
       markChecklistItemComplete: (id) =>
         set((s) =>
           s.onboardingChecklistComplete.includes(id)

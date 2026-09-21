@@ -390,7 +390,7 @@ describe('onboardingPatchBodySchema (L4)', () => {
         startedAt: '2026-09-02T10:00:00.000Z',
         dismissedTooltips: ['tip-a', 'tip-b'],
         checklistComplete: ['first-transcript', 'export-csv', 'dismissed'],
-        completionMode: 'skipped',
+        completionMode: 'dismissed',
         completedAtClient: '2026-09-02T10:05:00+01:00',
         templateChoice: { id: 'tmpl-1', name: 'Interviews' },
         personalization: { researchTopic: 'burnout', method: 'interviews', solo: true },

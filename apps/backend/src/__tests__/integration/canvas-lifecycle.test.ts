@@ -7,6 +7,7 @@ const { mockPrisma } = vi.hoisted(() => {
     user: {
       findUnique: vi.fn(),
       create: vi.fn(),
+      updateMany: vi.fn(),
     },
     dashboardAccess: {
       create: vi.fn(),
@@ -160,6 +161,7 @@ describe('Canvas lifecycle integration tests', () => {
     app = createApp();
     // Default: auth middleware finds the user
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
+    mockPrisma.user.updateMany.mockResolvedValue({ count: 1 });
   });
 
   // ─── POST /canvas — create canvas ───
@@ -260,6 +262,7 @@ describe('Canvas lifecycle integration tests', () => {
 
   // ─── POST /canvas/:id/codings — create text coding ───
   it('POST /canvas/:id/codings creates a text coding', async () => {
+    mockPrisma.$transaction.mockImplementationOnce(async (fn: (tx: typeof mockPrisma) => unknown) => fn(mockPrisma));
     const codingId = 'coding-1';
     const transcriptId = 'transcript-1';
     const questionId = 'question-1';
