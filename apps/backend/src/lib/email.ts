@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { renderEmailWithJmsFooter, type EmailFooterOptions } from './emailFooter.js';
 
 const smtpHost = process.env.SMTP_HOST;
 const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 465;
@@ -21,6 +22,7 @@ export interface EmailSendOptions {
   headers?: Record<string, string>;
   tags?: Array<{ name: string; value: string }>;
   idempotencyKey?: string;
+  footer?: EmailFooterOptions;
 }
 
 function getTransporter() {
@@ -60,6 +62,7 @@ export async function sendEmailWithResult(
   html: string,
   options: EmailSendOptions = {},
 ): Promise<EmailSendResult> {
+  const rendered = renderEmailWithJmsFooter(html, options.footer);
   // Prefer Resend HTTP API (avoids SMTP port blocking on some hosts)
   if (isResendConfigured) {
     try {
@@ -74,7 +77,8 @@ export async function sendEmailWithResult(
           from: smtpFrom,
           to,
           subject,
-          html,
+          html: rendered.html,
+          text: rendered.text,
           headers: options.headers,
           tags: options.tags,
         }),
@@ -106,7 +110,14 @@ export async function sendEmailWithResult(
   }
 
   try {
-    const info = await transporter.sendMail({ from: smtpFrom, to, subject, html, headers: options.headers });
+    const info = await transporter.sendMail({
+      from: smtpFrom,
+      to,
+      subject,
+      html: rendered.html,
+      text: rendered.text,
+      headers: options.headers,
+    });
     return { accepted: true, provider: 'smtp', messageId: info.messageId };
   } catch (err) {
     console.error('[Email] SMTP failed:', err);
@@ -160,14 +171,6 @@ export async function sendVerificationEmail(to: string, verifyLink: string): Pro
               <hr style="border: none; border-top: 1px solid #e8e8ed; margin: 24px 0;" />
               <p style="margin: 0; color: #8e8ea0; font-size: 13px; line-height: 1.5;">
                 If you did not create an account, you can safely ignore this email.
-              </p>
-            </td>
-          </tr>
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #fafafc; padding: 24px 40px; text-align: center;">
-              <p style="margin: 0; color: #8e8ea0; font-size: 12px;">
-                &copy; ${new Date().getFullYear()} QualCanvas. All rights reserved.
               </p>
             </td>
           </tr>
@@ -230,14 +233,6 @@ export async function sendPasswordResetEmail(to: string, resetLink: string): Pro
               </p>
             </td>
           </tr>
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #fafafc; padding: 24px 40px; text-align: center;">
-              <p style="margin: 0; color: #8e8ea0; font-size: 12px;">
-                &copy; ${new Date().getFullYear()} QualCanvas. All rights reserved.
-              </p>
-            </td>
-          </tr>
         </table>
       </td>
     </tr>
@@ -294,14 +289,6 @@ export async function sendTeamInviteEmail(to: string, teamName: string, loginLin
               <hr style="border: none; border-top: 1px solid #e8e8ed; margin: 24px 0;" />
               <p style="margin: 0; color: #8e8ea0; font-size: 13px; line-height: 1.5;">
                 If you were not expecting this invitation, you can safely ignore this email.
-              </p>
-            </td>
-          </tr>
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #fafafc; padding: 24px 40px; text-align: center;">
-              <p style="margin: 0; color: #8e8ea0; font-size: 12px;">
-                &copy; ${new Date().getFullYear()} QualCanvas. All rights reserved.
               </p>
             </td>
           </tr>
