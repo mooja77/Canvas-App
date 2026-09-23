@@ -251,7 +251,31 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         const userId = session.metadata?.userId;
         const subscriptionId = session.subscription as string;
 
+        // This Stripe account is shared across JMS products, so every product's
+        // checkouts arrive here. Only act on a session whose metadata.userId is
+        // a QualCanvas user (and, when both are known, whose customer is that
+        // user's Stripe customer). Anything else is another product's event:
+        // acknowledge it with 200 and change nothing — a 5xx would make Stripe
+        // retry it for days and eventually disable this endpoint.
+        let owned = false;
         if (userId && subscriptionId) {
+          const owner = await prisma.user.findUnique({
+            where: { id: String(userId) },
+            select: { stripeCustomerId: true },
+          });
+          const customerMismatch =
+            !!owner?.stripeCustomerId &&
+            typeof session.customer === 'string' &&
+            session.customer !== owner.stripeCustomerId;
+          owned = !!owner && !customerMismatch;
+          if (!owned) {
+            console.info(
+              `[Stripe Webhook] Ignoring ${event.type} (${event.id}) — not a QualCanvas checkout (no matching user/customer)`,
+            );
+          }
+        }
+
+        if (owned) {
           const sub = await stripe.subscriptions.retrieve(subscriptionId, {
             expand: ['items.data.price.product'],
           });

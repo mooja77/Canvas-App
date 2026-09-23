@@ -141,6 +141,8 @@ describe('Stripe Billing – Extended Tests', () => {
     mockPrisma.webhookEvent.create.mockResolvedValue({});
     mockPrisma.subscription.findUnique.mockResolvedValue(null);
     mockStripe.subscriptions.list.mockResolvedValue({ data: [] });
+    // metadata.userId on checkout events resolves to a QualCanvas user (ownership check)
+    mockPrisma.user.findUnique.mockResolvedValue({ stripeCustomerId: null });
     // create-checkout now derives the plan from the price on Stripe (never the
     // client body). Default: resolve a tagged QualCanvas price whose plan is
     // inferred from the priceId these tests pass.

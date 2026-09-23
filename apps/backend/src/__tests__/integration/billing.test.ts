@@ -77,6 +77,137 @@ describe('Stripe Webhook Handler', () => {
     // By default, no duplicate events
     mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
     mockPrisma.webhookEvent.create.mockResolvedValue({});
+    // By default, metadata.userId resolves to a QualCanvas user (ownership check)
+    mockPrisma.user.findUnique.mockResolvedValue({ stripeCustomerId: null });
+  });
+
+  // ─── Shared Stripe account: other JMS products' events ───
+  describe('foreign events (shared Stripe account)', () => {
+    it('acknowledges another product checkout with 200 and changes nothing', async () => {
+      const event = {
+        id: 'evt_foreign_checkout',
+        type: 'checkout.session.completed',
+        data: {
+          object: {
+            customer: 'cus_other_app',
+            metadata: { plan: 'starter', userId: 'aa3db8e0-0000-4000-8000-000000000000' },
+            subscription: 'sub_other_app',
+          },
+        },
+      };
+      mockStripe.webhooks.constructEvent.mockReturnValue(event);
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ received: true });
+      expect(mockStripe.subscriptions.retrieve).not.toHaveBeenCalled();
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      expect(mockPrisma.subscription.upsert).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('ignores a checkout whose customer is not the QualCanvas user customer', async () => {
+      const event = {
+        id: 'evt_foreign_checkout_customer',
+        type: 'checkout.session.completed',
+        data: {
+          object: {
+            customer: 'cus_other_app',
+            metadata: { userId: 'user-1', plan: 'pro' },
+            subscription: 'sub_other_app',
+          },
+        },
+      };
+      mockStripe.webhooks.constructEvent.mockReturnValue(event);
+      mockPrisma.user.findUnique.mockResolvedValue({ stripeCustomerId: 'cus_qualcanvas_user1' });
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ received: true });
+      expect(mockStripe.subscriptions.retrieve).not.toHaveBeenCalled();
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('still processes an owned checkout whose customer matches', async () => {
+      const event = {
+        id: 'evt_owned_checkout_customer',
+        type: 'checkout.session.completed',
+        data: {
+          object: {
+            customer: 'cus_qualcanvas_user1',
+            metadata: { userId: 'user-1', plan: 'pro' },
+            subscription: 'sub_123',
+          },
+        },
+      };
+      mockStripe.webhooks.constructEvent.mockReturnValue(event);
+      mockPrisma.user.findUnique.mockResolvedValue({ stripeCustomerId: 'cus_qualcanvas_user1' });
+      mockStripe.subscriptions.retrieve.mockResolvedValue({
+        items: {
+          data: [
+            {
+              price: { id: 'price_pro_monthly', metadata: { app: 'qualcanvas', plan: 'pro' } },
+              current_period_start: 1700000000,
+              current_period_end: 1702592000,
+            },
+          ],
+        },
+      });
+      mockPrisma.$transaction.mockResolvedValue([{}, {}]);
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      expect(res.json).toHaveBeenCalledWith({ received: true });
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: { plan: 'pro' } });
+    });
+
+    it('acknowledges another product subscription update with 200 and changes nothing', async () => {
+      const event = {
+        id: 'evt_foreign_sub_update',
+        type: 'customer.subscription.updated',
+        data: {
+          object: {
+            id: 'sub_other_app',
+            status: 'active',
+            cancel_at_period_end: false,
+            items: { data: [{ price: { id: 'price_other_app' } }] },
+          },
+        },
+      };
+      mockStripe.webhooks.constructEvent.mockReturnValue(event);
+      mockPrisma.subscription.findUnique.mockResolvedValue(null);
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ received: true });
+      expect(mockPrisma.subscription.update).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('acknowledges an unhandled event type with 200', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue({
+        id: 'evt_unhandled',
+        type: 'checkout.session.expired',
+        data: { object: { metadata: { tenantId: '20e65ec2' } } },
+      });
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ received: true });
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
   });
 
   // ─── 1. checkout.session.completed ───
