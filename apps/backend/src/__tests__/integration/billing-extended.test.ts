@@ -575,6 +575,113 @@ describe('Stripe Billing – Extended Tests', () => {
     });
   });
 
+  // ─── Stripe API 2026-02-25.clover invoice shape ───
+  // invoice.subscription no longer exists; the id lives at
+  // invoice.parent.subscription_details.subscription (verified on live invoices).
+  describe('invoice events – 2026-02-25.clover shape (parent.subscription_details)', () => {
+    const cloverInvoice = (subId: unknown) => ({
+      object: 'invoice',
+      parent: {
+        type: 'subscription_details',
+        quote_details: null,
+        subscription_details: { metadata: {}, subscription: subId },
+      },
+    });
+
+    it('invoice.payment_succeeded refreshes the period when the sub id is only on parent', async () => {
+      const newPeriodStart = Math.floor(Date.now() / 1000);
+      const newPeriodEnd = newPeriodStart + 30 * 24 * 3600;
+      mockStripe.webhooks.constructEvent.mockReturnValue({
+        id: 'evt_clover_pay_ok',
+        type: 'invoice.payment_succeeded',
+        data: { object: cloverInvoice('sub_clover') },
+      });
+      mockPrisma.subscription.findUnique.mockResolvedValue({
+        id: 'sub-row',
+        userId: 'user-clover',
+        stripeSubscriptionId: 'sub_clover',
+      });
+      mockStripe.subscriptions.retrieve.mockResolvedValue({
+        id: 'sub_clover',
+        status: 'active',
+        items: { data: [{ current_period_start: newPeriodStart, current_period_end: newPeriodEnd }] },
+      });
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      expect(mockPrisma.subscription.findUnique).toHaveBeenCalledWith({
+        where: { stripeSubscriptionId: 'sub_clover' },
+      });
+      expect(mockPrisma.subscription.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { stripeSubscriptionId: 'sub_clover' },
+          data: expect.objectContaining({ status: 'active', currentPeriodEnd: new Date(newPeriodEnd * 1000) }),
+        }),
+      );
+    });
+
+    it('invoice.payment_failed marks past_due when the sub id is only on parent', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue({
+        id: 'evt_clover_pay_fail',
+        type: 'invoice.payment_failed',
+        data: { object: cloverInvoice('sub_clover_fail') },
+      });
+      mockPrisma.subscription.findUnique.mockResolvedValue({
+        id: 'sub-row-f',
+        userId: 'user-clover-f',
+        stripeSubscriptionId: 'sub_clover_fail',
+      });
+      mockPrisma.subscription.update.mockResolvedValue({});
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      expect(mockPrisma.subscription.update).toHaveBeenCalledWith({
+        where: { stripeSubscriptionId: 'sub_clover_fail' },
+        data: { status: 'past_due' },
+      });
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('accepts an expanded subscription object on parent', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue({
+        id: 'evt_clover_expanded',
+        type: 'invoice.payment_failed',
+        data: { object: cloverInvoice({ id: 'sub_expanded', object: 'subscription' }) },
+      });
+      mockPrisma.subscription.findUnique.mockResolvedValue({
+        id: 'sub-row-e',
+        userId: 'user-e',
+        stripeSubscriptionId: 'sub_expanded',
+      });
+      mockPrisma.subscription.update.mockResolvedValue({});
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      expect(mockPrisma.subscription.update).toHaveBeenCalledWith({
+        where: { stripeSubscriptionId: 'sub_expanded' },
+        data: { status: 'past_due' },
+      });
+    });
+
+    it('a one-off invoice with no subscription is acknowledged without DB writes', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue({
+        id: 'evt_clover_oneoff',
+        type: 'invoice.payment_succeeded',
+        data: { object: { object: 'invoice', parent: null } },
+      });
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      expect(mockPrisma.subscription.findUnique).not.toHaveBeenCalled();
+      expect(mockPrisma.subscription.update).not.toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalledWith(500);
+    });
+  });
+
   // ═══════════════════════════════════════════════════════════
   // Checkout Session & Portal – supertest route tests
   // ═══════════════════════════════════════════════════════════

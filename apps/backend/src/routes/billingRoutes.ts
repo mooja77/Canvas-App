@@ -217,6 +217,23 @@ const nowSecs = () => Math.floor(Date.now() / 1000);
 
 // POST /api/billing/webhook — Stripe webhook handler
 // This route needs raw body, registered separately in index.ts
+/**
+ * Subscription id for an invoice, across Stripe API versions.
+ * From 2025-03-31.basil onward (this account is on 2026-02-25.clover) the
+ * top-level `invoice.subscription` field is gone and the id lives at
+ * `invoice.parent.subscription_details.subscription`. Reading only the legacy
+ * field made every invoice.* handler a silent no-op. Accepts either a string
+ * id or an expanded subscription object; returns null for non-subscription
+ * (one-off) invoices.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function invoiceSubscriptionId(invoice: any): string | null {
+  const ref = invoice?.parent?.subscription_details?.subscription ?? invoice?.subscription ?? null;
+  if (!ref) return null;
+  if (typeof ref === 'string') return ref;
+  return typeof ref.id === 'string' ? ref.id : null;
+}
+
 export async function handleStripeWebhook(req: Request, res: Response) {
   const stripe = getStripe();
   const sig = req.headers['stripe-signature'] as string;
@@ -385,7 +402,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         // restore the paid tier (e.g. after recovering from a past_due dunning).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const invoice = event.data.object as any;
-        const subscriptionId = invoice.subscription as string;
+        const subscriptionId = invoiceSubscriptionId(invoice);
         if (subscriptionId) {
           const subRow = await prisma.subscription.findUnique({
             where: { stripeSubscriptionId: subscriptionId },
@@ -419,7 +436,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       case 'invoice.payment_failed': {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const invoice = event.data.object as any;
-        const subscriptionId = invoice.subscription as string;
+        const subscriptionId = invoiceSubscriptionId(invoice);
         if (subscriptionId) {
           const failedSub = await prisma.subscription.findUnique({
             where: { stripeSubscriptionId: subscriptionId },
