@@ -20,6 +20,7 @@ import { resolveFirstRunSurface } from '../components/onboarding/firstRunSurface
 import { SunIcon, MoonIcon, ArrowRightStartOnRectangleIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { trackEvent } from '../utils/analytics';
+import HdyhauPrompt from '../components/HdyhauPrompt';
 
 export default function CanvasPage() {
   const { authenticated, name, logout, authType, emailVerified, userId } = useAuthStore();
@@ -387,6 +388,9 @@ export default function CanvasPage() {
           }}
         />
       )}
+
+      {/* How did you hear about us: once per account, never over the setup flow. */}
+      {authType === 'email' && firstRunSurface === 'none' && !resumeOnboarding && <HdyhauPrompt />}
     </div>
   );
 }
