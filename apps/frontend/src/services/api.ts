@@ -448,6 +448,36 @@ export const canvasApi = {
   acceptTranscription: (canvasId: string, jobId: string, title?: string) =>
     canvasClient.post(`/canvas/${canvasId}/transcribe/${jobId}/accept`, { title }),
 
+  getTranscriptionAllowance: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}/transcribe/allowance`),
+
+  listTranscriptionJobs: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}/transcribe`),
+
+  uploadDocument: (canvasId: string, formData: FormData, onProgress?: (pct: number) => void) =>
+    canvasClient.post(`/canvas/${canvasId}/documents/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (e) => {
+        if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
+      },
+    }),
+
+  getDocumentFile: (canvasId: string, docId: string) =>
+    canvasClient.get(`/canvas/${canvasId}/documents/${docId}/file`, { responseType: 'blob' }),
+
+  updateRegionCoding: (
+    canvasId: string,
+    docId: string,
+    regionId: string,
+    data: {
+      questionId?: string;
+      pageNumber?: number;
+      x?: number;
+      y?: number;
+      width?: number;
+      height?: number;
+      note?: string | null;
+    },
+  ) => canvasClient.patch(`/canvas/${canvasId}/documents/${docId}/regions/${regionId}`, data),
+
   // ─── Intercoder Reliability ───
   // Multi-coder agreement (Krippendorff's α) over real coder attribution.
   computeMultiCoderAgreement: (canvasId: string, data: { transcriptId: string; userIds: string[] }) =>

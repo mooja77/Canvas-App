@@ -273,6 +273,7 @@ describe('Upload and QDPX integration tests', () => {
       id: fileUploadId,
       canvasId,
       storageKey: 'canvas/1/abc.mp3',
+      mimeType: 'audio/mpeg',
     });
     mockPrisma.transcriptionJob.create.mockResolvedValue({
       id: 'tjob-1',
@@ -281,14 +282,60 @@ describe('Upload and QDPX integration tests', () => {
       status: 'queued',
     });
 
+    const previousKey = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = 'sk-test-server-key';
+    try {
+      const res = await request(app)
+        .post(`/api/canvas/${canvasId}/transcribe`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ fileUploadId });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.jobId).toBe('tjob-1');
+    } finally {
+      if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = previousKey;
+    }
+  });
+
+  it('POST /canvas/:id/transcribe refuses before queueing when no OpenAI key exists anywhere', async () => {
+    const previousKey = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    mockPrisma.fileUpload.findFirst.mockResolvedValue({
+      id: 'file-2',
+      canvasId,
+      storageKey: 'canvas/1/abc.mp3',
+      mimeType: 'audio/mpeg',
+    });
+    mockPrisma.transcriptionJob.create.mockClear();
+    try {
+      const res = await request(app)
+        .post(`/api/canvas/${canvasId}/transcribe`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ fileUploadId: 'file-2' });
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('TRANSCRIPTION_KEY_REQUIRED');
+      expect(mockPrisma.transcriptionJob.create).not.toHaveBeenCalled();
+    } finally {
+      if (previousKey !== undefined) process.env.OPENAI_API_KEY = previousKey;
+    }
+  });
+
+  it('POST /canvas/:id/transcribe refuses a non-recording upload (a region-coding image)', async () => {
+    mockPrisma.fileUpload.findFirst.mockResolvedValue({
+      id: 'file-3',
+      canvasId,
+      storageKey: 'canvas/1/abc.png',
+      mimeType: 'image/png',
+    });
+    mockPrisma.transcriptionJob.create.mockClear();
     const res = await request(app)
       .post(`/api/canvas/${canvasId}/transcribe`)
       .set('Authorization', `Bearer ${jwt}`)
-      .send({ fileUploadId });
-
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.data.jobId).toBe('tjob-1');
+      .send({ fileUploadId: 'file-3' });
+    expect(res.status).toBe(400);
+    expect(mockPrisma.transcriptionJob.create).not.toHaveBeenCalled();
   });
 
   // ─── 6. POST /canvas/:id/transcribe rejects missing fileUploadId ───

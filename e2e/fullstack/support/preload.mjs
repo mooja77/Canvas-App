@@ -9,7 +9,9 @@
 //   api.resend.com            -> email outbox (NETGUARD_OUTBOX, JSON lines)
 //   admin.jmsdevlab.com       -> event-ingest outbox (same file)
 //   api.openai.com / api.anthropic.com / generativelanguage.googleapis.com
-//                             -> canned AI completion
+//                             -> canned AI completion (Whisper transcriptions
+//                                included; POST /whisper?fail=1 on the clock
+//                                port makes them fail)
 //
 // Stripe does not go through fetch: the backend's Stripe SDK is pointed at the
 // local Stripe stub (STRIPE_API_HOST/PORT/PROTOCOL, honoured only outside
@@ -64,6 +66,13 @@ net.Socket.prototype.connect = function guardedConnect(...args) {
   return originalConnect.apply(this, args);
 };
 
+// Whisper stub state, switched by tests through the control server below.
+const whisper = {
+  fail: false,
+  durationSec: 125,
+  text: 'Interviewer: How did the new rota change your week? Participant: Honestly it gave me my evenings back, but the handovers got rushed and we lost two experienced nurses.',
+};
+
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async function guardedFetch(input, init = {}) {
   const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
@@ -93,6 +102,36 @@ globalThis.fetch = async function guardedFetch(input, init = {}) {
   if (url.hostname === 'admin.jmsdevlab.com') {
     record({ kind: 'jms-event', body: parsed });
     return new Response('{"ok":true}', { status: 200, headers: { 'content-type': 'application/json' } });
+  }
+  if (url.hostname === 'api.openai.com' && url.pathname.endsWith('/audio/transcriptions')) {
+    // Whisper. Answer with a verbose_json transcription, or a 400 while the
+    // test has switched failure on through the control server (/whisper).
+    const hdrs = new Headers(
+      init.headers ?? (typeof Request !== 'undefined' && input instanceof Request ? input.headers : {}),
+    );
+    const auth = String(hdrs.get('authorization') ?? '');
+    record({ kind: 'ai', provider: 'openai', path: url.pathname, keyKind: auth.includes('sk-byo') ? 'byo' : 'server' });
+    if (whisper.fail) {
+      return new Response(
+        JSON.stringify({ error: { message: 'Audio file could not be decoded (stub)', type: 'invalid_request_error' } }),
+        { status: 400, headers: { 'content-type': 'application/json' } },
+      );
+    }
+    const words = whisper.text.split(/\s+/);
+    const half = Math.ceil(words.length / 2);
+    return new Response(
+      JSON.stringify({
+        task: 'transcribe',
+        language: 'english',
+        duration: whisper.durationSec,
+        text: whisper.text,
+        segments: [
+          { id: 0, start: 0, end: whisper.durationSec / 2, text: words.slice(0, half).join(' ') },
+          { id: 1, start: whisper.durationSec / 2, end: whisper.durationSec, text: words.slice(half).join(' ') },
+        ],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
   }
   if (url.hostname === 'api.openai.com') {
     record({ kind: 'ai', provider: 'openai', path: url.pathname });
@@ -187,6 +226,17 @@ const clockPort = Number(process.env.CLOCK_PORT ?? 0);
 if (clockPort && isMainThread) {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
+    if (url.pathname === '/whisper') {
+      if (req.method === 'POST') {
+        if (url.searchParams.has('fail')) whisper.fail = url.searchParams.get('fail') === '1';
+        if (url.searchParams.has('text')) whisper.text = url.searchParams.get('text') || whisper.text;
+        if (url.searchParams.has('durationSec'))
+          whisper.durationSec = Number(url.searchParams.get('durationSec')) || 60;
+      }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(whisper));
+      return;
+    }
     if (url.pathname !== '/clock') {
       res.writeHead(404).end();
       return;

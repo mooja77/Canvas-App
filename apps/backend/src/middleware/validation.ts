@@ -79,6 +79,19 @@ export const createRegionSchema = z.object({
   height: percent,
   note: z.string().max(5000).nullable().optional(),
 });
+// Edit a region: any subset of its fields. The x/width and y/height pairs are
+// checked against the page edge in the route, where the stored values are known.
+export const updateRegionSchema = z
+  .object({
+    questionId: z.string().min(1).max(100).optional(),
+    pageNumber: z.number().int().min(1).max(10_000).optional(),
+    x: percent.optional(),
+    y: percent.optional(),
+    width: percent.optional(),
+    height: percent.optional(),
+    note: z.string().max(5000).nullable().optional(),
+  })
+  .strict();
 export const canvasIdJobIdParams = z.object({ id: cuid, jobId: cuid });
 export const canvasArtifactParams = z.object({
   canvasId: cuid,

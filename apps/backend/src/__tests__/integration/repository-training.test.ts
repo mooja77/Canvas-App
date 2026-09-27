@@ -40,6 +40,7 @@ const { mockPrisma } = vi.hoisted(() => {
     trainingAttempt: {
       findMany: vi.fn(),
       create: vi.fn(),
+      groupBy: vi.fn(),
     },
     $transaction: vi.fn(),
     $disconnect: vi.fn(),
@@ -428,12 +429,21 @@ describe('Repository and Training integration tests', () => {
         _count: { attempts: 0 },
       },
     ]);
+    mockPrisma.trainingAttempt.findMany.mockResolvedValue([
+      { trainingDocumentId: 'tdoc-1', kappaScore: 0.4, passed: false },
+      { trainingDocumentId: 'tdoc-1', kappaScore: 0.8, passed: true },
+    ]);
+    mockPrisma.trainingAttempt.groupBy.mockResolvedValue([{ trainingDocumentId: 'tdoc-1', userId: 'u2' }]);
 
     const res = await request(app).get(`/api/canvas/${canvasId}/training`).set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data).toHaveLength(2);
+    // The requester's own progress: best kappa and passed across their attempts.
+    expect(res.body.data[0].myProgress).toEqual({ attempts: 2, bestKappa: 0.8, passed: true });
+    expect(res.body.data[1].myProgress).toEqual({ attempts: 0, bestKappa: null, passed: false });
+    expect(res.body.data[0].passedTraineeCount).toBe(1);
   });
 
   // ─── 14. POST /canvas/:id/training/:docId/attempt rejects non-array codings ───

@@ -9,7 +9,13 @@ import path from 'path';
 import { pipeline } from 'stream/promises';
 import { prisma } from '../lib/prisma.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
-import { checkFileUploadAccess, checkTranscriptionMinutes, resolveRequestPlan } from '../middleware/planLimits.js';
+import {
+  checkFileUploadAccess,
+  checkTranscriptLimit,
+  checkTranscriptionMinutes,
+  resolveRequestPlan,
+} from '../middleware/planLimits.js';
+import { transcriptionAllowanceFor } from '../utils/transcriptionAllowance.js';
 import { validateParams, canvasIdParam, canvasIdJobIdParams } from '../middleware/validation.js';
 import { storage } from '../lib/storage.js';
 import '../lib/storage-s3.js'; // register S3/R2 when configured
@@ -101,7 +107,7 @@ function validCanvasStorageKey(canvasId: string, key: string): boolean {
   return new RegExp(`^canvas/${escapedCanvasId}/[a-f0-9]{32}(?:\\.[a-z0-9]{1,10})?$`, 'i').test(key);
 }
 
-async function ensureStorageAvailable(req: Request, additionalBytes: number): Promise<void> {
+export async function ensureStorageAvailable(req: Request, additionalBytes: number): Promise<void> {
   const plan = await resolveRequestPlan(req);
   const maxBytes = getPlanLimits(plan).maxStorageMb * 1024 * 1024;
   const canvas = await prisma.codingCanvas.findUnique({
@@ -390,6 +396,72 @@ uploadRoutes.post(
   },
 );
 
+// ─── GET /canvas/:id/transcribe/allowance ───
+// What the transcription screen shows before an upload. Registered before
+// /transcribe/:jobId so "allowance" is never read as a job id.
+uploadRoutes.get(
+  '/canvas/:id/transcribe/allowance',
+  validateParams(canvasIdParam),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await getOwnedCanvas(req.params.id, getAuthId(req), getAuthUserId(req));
+      const plan = await resolveRequestPlan(req);
+      const allowance = await transcriptionAllowanceFor(req);
+      res.json({
+        success: true,
+        data: {
+          ...allowance,
+          fileUploadEnabled: getPlanLimits(plan).fileUploadEnabled,
+          maxUploadMb: MAX_UPLOAD_MB,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ─── GET /canvas/:id/transcribe ───
+// Recent transcription jobs on this canvas, newest first, so the screen can
+// resume a job after it was closed or the page reloaded.
+uploadRoutes.get('/canvas/:id/transcribe', validateParams(canvasIdParam), async (req, res, next) => {
+  try {
+    await getOwnedCanvas(req.params.id, getAuthId(req), getAuthUserId(req));
+    const jobs = await prisma.transcriptionJob.findMany({
+      where: { canvasId: req.params.id },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        status: true,
+        progress: true,
+        errorMessage: true,
+        language: true,
+        fileUploadId: true,
+        createdAt: true,
+        updatedAt: true,
+        fileUpload: { select: { originalName: true, sizeBytes: true } },
+      },
+    });
+    const accepted = await prisma.canvasTranscript.findMany({
+      where: { canvasId: req.params.id, sourceType: 'transcription', sourceId: { in: jobs.map((j) => j.id) } },
+      select: { id: true, sourceId: true },
+    });
+    const transcriptByJob = new Map(accepted.map((t) => [t.sourceId, t.id]));
+    res.json({
+      success: true,
+      data: jobs.map(({ fileUpload, ...job }) => ({
+        ...job,
+        fileName: fileUpload.originalName,
+        sizeBytes: fileUpload.sizeBytes,
+        transcriptId: transcriptByJob.get(job.id) ?? null,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── POST /canvas/:id/transcribe ───
 // Start transcription job
 uploadRoutes.post(
@@ -412,6 +484,24 @@ uploadRoutes.post(
       });
       if (!fileUpload) {
         return res.status(404).json({ success: false, error: 'File upload not found' });
+      }
+      // Only recordings can be transcribed. Region-coding documents (PDFs,
+      // images) are FileUploads on the same canvas, and would otherwise be
+      // sent to the speech API and billed as minutes.
+      if (!ALLOWED_MEDIA_TYPES.has(fileUpload.mimeType)) {
+        return res.status(400).json({ success: false, error: 'Only audio or video recordings can be transcribed' });
+      }
+
+      // Fail before queueing when nobody can pay for the speech API: no server
+      // key and no key of the user's own. The job used to be created and then
+      // fail in the worker, leaving a dead "failed" row behind.
+      if (!process.env.OPENAI_API_KEY && !(await resolveUserOpenAiKey(userId ?? undefined))) {
+        return res.status(409).json({
+          success: false,
+          error:
+            'Transcription needs an OpenAI API key. Add your own OpenAI key in AI settings (you pay OpenAI directly, about $0.006 a minute) and try again.',
+          code: 'TRANSCRIPTION_KEY_REQUIRED',
+        });
       }
 
       const existingJob = await prisma.transcriptionJob.findFirst({
@@ -509,6 +599,9 @@ uploadRoutes.get(
 uploadRoutes.post(
   '/canvas/:id/transcribe/:jobId/accept',
   validateParams(canvasIdJobIdParams),
+  // Accepting creates a transcript, so it obeys the same per-canvas cap as
+  // adding one by hand (it used to create it unconditionally).
+  checkTranscriptLimit(),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dashboardAccessId = getAuthId(req);
@@ -541,6 +634,20 @@ uploadRoutes.post(
         typeof requestedTitle === 'string' && requestedTitle.trim()
           ? requestedTitle.trim()
           : job.fileUpload.originalName.replace(/\.[^.]+$/, '').slice(0, 200);
+
+      const maxWords = getPlanLimits(await resolveRequestPlan(req)).maxWordsPerTranscript;
+      const words = job.resultText.trim().split(/\s+/).filter(Boolean).length;
+      if (maxWords !== Infinity && words > maxWords) {
+        return res.status(403).json({
+          success: false,
+          error: `This transcription has ${words.toLocaleString()} words; your plan allows ${maxWords.toLocaleString()} words per transcript. Split the recording and transcribe it in parts.`,
+          code: 'PLAN_LIMIT_EXCEEDED',
+          limit: 'maxWordsPerTranscript',
+          current: words,
+          max: maxWords,
+          upgrade: false,
+        });
+      }
 
       const transcript = await prisma.canvasTranscript.create({
         data: {
