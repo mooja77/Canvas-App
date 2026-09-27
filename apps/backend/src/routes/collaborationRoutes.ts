@@ -56,10 +56,18 @@ collaborationRoutes.post('/canvas/:id/collaborators', validateParams(canvasIdPar
     if (!targetUser) {
       throw new AppError('User not found', 404);
     }
-
     // Cannot add yourself
     if (userId && targetUserId === userId) {
       throw new AppError('Cannot add yourself as a collaborator', 400);
+    }
+    // Anyone can sign up with any address, so an unverified account proves
+    // nothing about who is behind it. Granting it a canvas would hand the
+    // research to whoever registered the colleague's email first.
+    if (!targetUser.emailVerified) {
+      throw new AppError(
+        'That colleague has not verified their email address yet. Ask them to click the link in their QualCanvas verification email, then invite them again.',
+        409,
+      );
     }
 
     // Plan limit — only for a NEW seat.

@@ -46,9 +46,12 @@ test.describe('Browser journey', () => {
     await page.goto('/pricing');
     const body = page.locator('body');
     // Annual is the default view.
-    await expect(body).toContainText('$4per month, billed annually ($48/yr)');
-    await expect(body).toContainText('$12per month, billed annually ($144/yr)');
-    await expect(body).toContainText('$32per seat / month, billed annually ($384/yr)');
+    await expect(body).toContainText('$4per month, billed annually ($48/yr, save 20%)');
+    await expect(body).toContainText('$12per month, billed annually ($144/yr, save 20%)');
+    // Team saves 17.9% (rounded 18%), so the page must not claim a flat 20%.
+    await expect(body).toContainText('$32per seat / month, billed annually ($384/yr, save 18%)');
+    await expect(body).toContainText('Save up to 20%');
+    await expect(body).not.toContainText(/transcription/i);
     await page.getByRole('button', { name: /^Monthly$/ }).click();
     await expect(body).toContainText('$15');
     await expect(body).toContainText('$39');

@@ -49,6 +49,7 @@ const owner = {
   name: 'Owner',
   role: 'researcher',
   plan: 'pro',
+  emailVerified: true,
   sessionsInvalidAt: null,
   trialEndsAt: null,
   dashboardAccess: { id: 'da-owner' },
@@ -59,6 +60,7 @@ const target = {
   name: 'Target',
   role: 'researcher',
   plan: 'pro',
+  emailVerified: true,
   sessionsInvalidAt: null,
   trialEndsAt: null,
   dashboardAccess: { id: 'da-target' },
@@ -151,6 +153,25 @@ describe('POST /canvas/:id/collaborators', () => {
         expect.objectContaining({ create: expect.objectContaining({ role }), update: { role } }),
       );
     }
+  });
+
+  // Anyone can register any address. Resolving an invite to an UNVERIFIED
+  // account handed the canvas to whoever registered the colleague's email first.
+  it('regression: refuses to grant a canvas to an account whose email is not verified', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockPrisma.user.findUnique.mockImplementation(async (args: any) => {
+      const found =
+        (args?.where?.id && allUsers.find((u) => u.id === args.where.id)) ||
+        (args?.where?.email && allUsers.find((u) => u.email === args.where.email));
+      if (!found) return null;
+      return found.id === target.id ? { ...found, emailVerified: false } : { ...found };
+    });
+    for (const body of [{ email: target.email }, { userId: target.id }]) {
+      const res = await invite({ ...body, role: 'editor' });
+      expect(res.status).toBe(409);
+      expect(res.body.error).toMatch(/not verified/i);
+    }
+    expect(mockPrisma.canvasCollaborator.upsert).not.toHaveBeenCalled();
   });
 
   it('still defaults an omitted role to editor (documented API default)', async () => {

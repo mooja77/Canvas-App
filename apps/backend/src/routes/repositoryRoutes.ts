@@ -6,8 +6,14 @@ import { validateParams, repoIdParam, repoIdInsightIdParams } from '../middlewar
 
 export const repositoryRoutes = Router();
 
-// All repository routes require repository access
-repositoryRoutes.use('/repositories', checkRepositoryAccess());
+// Creating or changing repository data needs a plan with the Research
+// Repository. Reading it does not: pricing promises that a downgrade preserves
+// your data, and a repository you can no longer open is not preserved.
+const gateRepositoryWrites = checkRepositoryAccess();
+repositoryRoutes.use('/repositories', (req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD') return next();
+  return gateRepositoryWrites(req, res, next);
+});
 
 // GET /api/repositories — List user's repositories
 repositoryRoutes.get('/repositories', async (req, res, next) => {

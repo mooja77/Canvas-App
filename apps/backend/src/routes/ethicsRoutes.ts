@@ -25,7 +25,12 @@ export const ethicsRoutes = Router();
 // ─── Ethics Settings ───
 
 // GET /api/canvas/:canvasId/ethics - Get ethics settings
-ethicsRoutes.get('/canvas/:canvasId/ethics', checkEthicsAccess(), async (req, res, next) => {
+//
+// Reads are NOT plan-gated. Pricing promises that a downgrade preserves your
+// data, and consent records are exactly what a researcher has to be able to
+// produce for an ethics board later. checkEthicsAccess() gates only the routes
+// that create or change ethics data.
+ethicsRoutes.get('/canvas/:canvasId/ethics', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     const canvas = await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
@@ -153,8 +158,9 @@ ethicsRoutes.post(
   },
 );
 
-// GET /api/canvas/:canvasId/consent - List consent records
-ethicsRoutes.get('/canvas/:canvasId/consent', checkEthicsAccess(), async (req, res, next) => {
+// GET /api/canvas/:canvasId/consent - List consent records (readable on every
+// plan, see GET /ethics above)
+ethicsRoutes.get('/canvas/:canvasId/consent', async (req, res, next) => {
   try {
     const dashboardAccessId = getAuthId(req);
     await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));

@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from './errorHandler.js';
 import { sha256, verifyAccessCode } from '../utils/hashing.js';
-import { verifyToken, isUserPayload, isLegacyPayload } from '../utils/jwt.js';
+import { verifyToken, isUserPayload, isLegacyPayload, tokenIssuedAtMs } from '../utils/jwt.js';
 
 export async function auth(req: Request, res: Response, next: NextFunction) {
   // Auth sources, in priority order:
@@ -34,8 +34,8 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
         // Session invalidation: if the user rotated credentials after this
         // JWT was issued, reject the token so stolen/shared tokens can't
         // outlive a password reset or email change.
-        if (user.sessionsInvalidAt && jwtPayload.iat) {
-          const jwtIssuedMs = jwtPayload.iat * 1000;
+        const jwtIssuedMs = tokenIssuedAtMs(jwtPayload);
+        if (user.sessionsInvalidAt && jwtIssuedMs !== null) {
           if (jwtIssuedMs < user.sessionsInvalidAt.getTime()) {
             return next(new AppError('Session has been invalidated. Please log in again.', 401));
           }
@@ -79,6 +79,21 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
         // (up to JWT_EXPIRY). Mirrors the raw-access-code fallback below.
         if (new Date() > access.expiresAt) {
           return next(new AppError('Access code has expired', 401));
+        }
+        // An access code linked to an email account is a session on that
+        // account, so the account's credential rotations (password reset or
+        // change, email change, a Google claim of an unverified address) must
+        // end it too. Without this, a code-holder who linked someone else's
+        // address kept a working session after the real owner took it over.
+        const legacyIssuedMs = tokenIssuedAtMs(jwtPayload);
+        if (access.userId && legacyIssuedMs !== null) {
+          const owner = await prisma.user.findUnique({
+            where: { id: access.userId },
+            select: { sessionsInvalidAt: true },
+          });
+          if (owner?.sessionsInvalidAt && legacyIssuedMs < owner.sessionsInvalidAt.getTime()) {
+            return next(new AppError('Session has been invalidated. Please log in again.', 401));
+          }
         }
         req.dashboardAccessId = access.id;
         req.dashboardAccess = access;

@@ -831,7 +831,7 @@ export default function AccountPage() {
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
               {aiHostedAvailable
                 ? 'Hosted AI is available for this account. Adding your own provider key is optional and gives you direct control of provider billing and limits.'
-                : 'Connect your own AI provider key to use AI-powered features like coding suggestions, research assistant, and transcription.'}{' '}
+                : 'Connect your own AI provider key to use AI-powered features like coding suggestions and the research assistant.'}{' '}
               Your key is encrypted and never shared.
             </p>
 
@@ -853,7 +853,7 @@ export default function AccountPage() {
                   }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                 >
-                  <option value="openai">OpenAI (GPT-4o, Whisper transcription)</option>
+                  <option value="openai">OpenAI (GPT-4o)</option>
                   <option value="anthropic">Anthropic (Claude)</option>
                   <option value="google">Google (Gemini)</option>
                 </select>
@@ -934,11 +934,10 @@ export default function AccountPage() {
               <div className="rounded-lg bg-gray-50 dark:bg-gray-700/50 px-3 py-2">
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">
                   {aiProvider === 'openai' &&
-                    'OpenAI supports all AI features: coding suggestions, chat, summaries, embeddings, and audio transcription.'}
+                    'OpenAI supports all AI features: coding suggestions, chat, summaries, and embeddings.'}
                   {aiProvider === 'anthropic' &&
-                    'Anthropic supports coding suggestions, chat, and summaries. Transcription and embeddings (RAG indexing) require an OpenAI key.'}
-                  {aiProvider === 'google' &&
-                    'Google supports coding suggestions, chat, summaries, and embeddings. Transcription requires an OpenAI key.'}
+                    'Anthropic supports coding suggestions, chat, and summaries. Embeddings (RAG indexing) require an OpenAI key.'}
+                  {aiProvider === 'google' && 'Google supports coding suggestions, chat, summaries, and embeddings.'}
                 </p>
               </div>
 

@@ -39,6 +39,10 @@ const backendEnv: Record<string, string> = {
   NETGUARD_OUTBOX: STACK.outbox,
   CLOCK_PORT: String(STACK.clockPort),
   DEMO_ACCESS_CODE: STACK.demoCode,
+  // Google sign-in: the preload answers the certs request with this key.
+  GOOGLE_CLIENT_ID: STACK.googleClientId,
+  QC_FS_GOOGLE_KID: STACK.googleKeyId,
+  QC_FS_GOOGLE_PUBLIC_PEM: STACK.googlePublicPem,
 };
 
 export default defineConfig({

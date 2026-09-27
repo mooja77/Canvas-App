@@ -45,7 +45,6 @@ export default function PlanWelcome({ onClose }: { onClose: () => void }) {
           'All 13 analysis tools - Sentiment, Clustering, Co-occurrence',
           'AI-powered code suggestions and auto-coding',
           'Ethics & compliance panel, cases, and the research repository',
-          '5 hours of audio transcription a month',
         ],
         cta: { label: 'Configure AI', href: '/account#ai' },
       };

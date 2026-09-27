@@ -477,16 +477,38 @@ describe('Ethics extended integration tests', () => {
     expect(res.body.data.entries[0].action).toBe('consent.create');
   });
 
-  // ─── 14. Ethics panel requires Pro plan ───
-  it('GET /canvas/:canvasId/ethics returns 403 for Free plan users', async () => {
+  // ─── 14. Ethics data stays READABLE on Free (estate D3); changing it needs a paid plan ───
+  // Pricing promises a downgrade preserves your data; consent records are what
+  // a researcher must be able to show an ethics board later.
+  it('GET /canvas/:canvasId/ethics and /consent stay readable for Free plan users', async () => {
+    ethicsAccessBlocked = true;
+    mockPrisma.consentRecord.findMany.mockResolvedValue([{ id: 'consent-1', participantId: 'P1' }]);
+
+    const ethics = await request(app).get(`/api/canvas/${canvasId}/ethics`).set('Authorization', `Bearer ${jwt}`);
+    expect(ethics.status).toBe(200);
+    expect(ethics.body.data.consentRecords).toHaveLength(1);
+
+    const consent = await request(app).get(`/api/canvas/${canvasId}/consent`).set('Authorization', `Bearer ${jwt}`);
+    expect(consent.status).toBe(200);
+    expect(consent.body.data).toHaveLength(1);
+  });
+
+  it('creating or changing ethics data returns 403 for Free plan users', async () => {
     ethicsAccessBlocked = true;
 
-    const res = await request(app).get(`/api/canvas/${canvasId}/ethics`).set('Authorization', `Bearer ${jwt}`);
+    const put = await request(app)
+      .put(`/api/canvas/${canvasId}/ethics`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ ethicsApprovalId: 'IRB-1' });
+    expect(put.status).toBe(403);
+    expect(put.body.code).toBe('PLAN_LIMIT_EXCEEDED');
+    expect(put.body.upgrade).toBe(true);
 
-    expect(res.status).toBe(403);
-    expect(res.body.success).toBe(false);
-    expect(res.body.code).toBe('PLAN_LIMIT_EXCEEDED');
-    expect(res.body.upgrade).toBe(true);
+    const post = await request(app)
+      .post(`/api/canvas/${canvasId}/consent`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ participantId: 'P9' });
+    expect(post.status).toBe(403);
   });
 
   // ─── 15. PUT /canvas/:canvasId/ethics — non-owner returns 403 ───

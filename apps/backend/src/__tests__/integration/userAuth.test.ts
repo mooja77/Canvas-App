@@ -553,9 +553,24 @@ describe('User auth integration tests', () => {
       expect(mockPrisma.user.update).not.toHaveBeenCalled();
     });
 
-    it('records an audit entry when a login downgrades the plan', async () => {
+    it('keeps the paid plan at sign-in while the subscription is past_due (card being retried)', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser, plan: 'pro' });
       mockPrisma.subscription.findUnique.mockResolvedValue({ status: 'past_due' });
+      (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+      const res = await request(app).post('/api/auth/email-login').send({
+        email: 'test@example.com',
+        password: 'password123',
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.user.plan).toBe('pro');
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('records an audit entry when a login downgrades the plan', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser, plan: 'pro' });
+      mockPrisma.subscription.findUnique.mockResolvedValue({ status: 'unpaid' });
       mockPrisma.user.update.mockResolvedValue({});
       (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
 
@@ -797,6 +812,90 @@ describe('User auth integration tests', () => {
       expect(res.body.data.jwt).toBeUndefined();
       expect(res.headers['set-cookie']?.[0]).toContain('jwt=');
       expect(res.body.data.user.email).toBe('google@example.com');
+    });
+
+    // Account pre-claim (estate H1/D5). Someone registers the victim's address
+    // with a password and never verifies it; the victim later uses Google. The
+    // old code only flipped emailVerified, so the registrant's password, cookie
+    // session and access code all kept working on the victim's account.
+    it('regression: Google sign-in on an UNVERIFIED password account revokes every credential the registrant holds', async () => {
+      mockVerifyIdToken.mockResolvedValue({
+        getPayload: () => ({ email: 'victim@example.com', name: 'Victim', sub: 'g-victim', email_verified: true }),
+      });
+      const preClaimed = {
+        id: 'user-pre',
+        email: 'victim@example.com',
+        name: 'Attacker chose this',
+        role: 'researcher',
+        plan: 'free',
+        legacyPricing: false,
+        emailVerified: false,
+        passwordHash: '$2a$12$attackerspassword',
+      };
+      mockPrisma.user.findUnique.mockResolvedValue(preClaimed);
+      mockPrisma.subscription.findUnique.mockResolvedValue(null);
+      const tx = {
+        user: { update: vi.fn().mockResolvedValue({ ...preClaimed, emailVerified: true, passwordHash: '' }) },
+        dashboardAccess: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+        canvasCollaborator: { deleteMany: vi.fn().mockResolvedValue({ count: 2 }) },
+        canvasShare: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
+        teamMember: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        userAiConfig: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockPrisma.$transaction.mockImplementation(async (fn: any) => fn(tx));
+
+      const before = Date.now();
+      const res = await request(app).post('/api/auth/google').send({ credential: 'valid-google-id-token' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.accountSecured).toBe(true);
+      const data = tx.user.update.mock.calls[0][0].data;
+      expect(data.emailVerified).toBe(true);
+      expect(data.passwordHash).toBe('');
+      expect(data.resetTokenHash).toBeNull();
+      expect(data.verificationTokenHash).toBeNull();
+      // Every JWT issued before the claim is dead; the one issued with this
+      // response is not (it carries a later millisecond issue time).
+      expect(data.sessionsInvalidAt).toBeInstanceOf(Date);
+      expect(data.sessionsInvalidAt.getTime()).toBeGreaterThanOrEqual(before);
+      const cookie = String(res.headers['set-cookie']?.[0] ?? '');
+      const token = cookie.match(/jwt=([^;]+)/)?.[1] ?? '';
+      const issued = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).iatMs;
+      expect(issued).toBeGreaterThanOrEqual(data.sessionsInvalidAt.getTime());
+      // The access code is a second credential: rotated to a fresh, unknown value.
+      expect(tx.dashboardAccess.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-pre' },
+        data: { accessCode: 'sha256hash', accessCodeHash: '$2a$12$hashedpassword' },
+      });
+      expect(tx.canvasCollaborator.deleteMany).toHaveBeenCalled();
+      expect(tx.canvasShare.deleteMany).toHaveBeenCalled();
+      expect(tx.userAiConfig.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user-pre' } });
+      expect(logAudit).toHaveBeenCalledWith(expect.objectContaining({ action: 'auth.unverified_account_claimed' }));
+    });
+
+    it('a VERIFIED account signing in with Google keeps its password and sessions', async () => {
+      mockVerifyIdToken.mockResolvedValue({
+        getPayload: () => ({ email: 'owner@example.com', name: 'Owner', sub: 'g-owner', email_verified: true }),
+      });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-v',
+        email: 'owner@example.com',
+        name: 'Owner',
+        role: 'researcher',
+        plan: 'free',
+        legacyPricing: false,
+        emailVerified: true,
+        passwordHash: '$2a$12$ownerspassword',
+      });
+      mockPrisma.subscription.findUnique.mockResolvedValue(null);
+
+      const res = await request(app).post('/api/auth/google').send({ credential: 'valid-google-id-token' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.accountSecured).toBeUndefined();
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
     });
 
     it('rejects invalid Google credential', async () => {

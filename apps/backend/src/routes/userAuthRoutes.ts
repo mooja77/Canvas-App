@@ -17,6 +17,9 @@ import { sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
 import { isLifecycleSendingEnabledFor, lifecycleTemplate, sendLifecycleEmail } from '../lib/lifecycleEmail.js';
 import { logError } from '../lib/logger.js';
 import { deleteStoredUploads } from '../utils/fileCleanup.js';
+import { claimUnverifiedAccount } from '../lib/accountClaim.js';
+import { syncTeamSeatQuantity } from '../utils/teamBilling.js';
+import { ENTITLED_SUBSCRIPTION_STATUSES } from '../lib/subscriptionStatus.js';
 import { z } from 'zod';
 
 const BCRYPT_ROUNDS = 12;
@@ -71,7 +74,8 @@ async function mintAccessCodeCredential(): Promise<{ sha256Index: string; bcrypt
 // Decide the plan to hold a user on at sign-in.
 //
 // Downgrade only on POSITIVE evidence that a subscription has lapsed — a
-// Subscription row that exists and is not active/trialing. The previous rule
+// Subscription row that exists and is not entitled (lib/subscriptionStatus.ts:
+// active, trialing, or past_due while Stripe retries the card). The previous rule
 // ("no active subscription => free") also downgraded accounts that have NO
 // Subscription row at all, which is every plan granted out of band: comped
 // accounts, institutional licences, anything set by hand. Those were silently
@@ -85,7 +89,7 @@ function planAfterSubscriptionCheck(
   subscription: { status: string } | null,
 ): string {
   if (user.legacyPricing) return user.plan;
-  const lapsed = subscription !== null && !['active', 'trialing'].includes(subscription.status);
+  const lapsed = subscription !== null && !ENTITLED_SUBSCRIPTION_STATUSES.has(subscription.status);
   return lapsed ? 'free' : user.plan;
 }
 
@@ -353,6 +357,7 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
     const hashedIp = sha256(rawIp);
 
     let user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    let accountSecured = false;
 
     if (!user) {
       // Hashed before the transaction opens for the same reason as /auth/signup.
@@ -402,15 +407,28 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
       });
     } else {
       if (!user.emailVerified) {
+        // Google has just proven this person owns the address; whoever set the
+        // password never did. Keep the research, revoke every credential and
+        // grant the unproven party could still use. See lib/accountClaim.ts.
         const preference = await prisma.emailPreference.findUnique({ where: { userId: user.id } });
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            emailVerified: true,
-            verificationTokenHash: null,
-            verificationTokenExpiry: null,
-            lifecycleCohortStartedAt: preference?.lifecycle ? new Date() : null,
-          },
+        const freshAccessCode = await mintAccessCodeCredential();
+        const claim = await claimUnverifiedAccount(user, freshAccessCode, preference?.lifecycle ? new Date() : null);
+        user = claim.user;
+        accountSecured = true;
+        if (claim.result.teamMembersRevoked > 0) {
+          void syncTeamSeatQuantity(user.id).catch((error) =>
+            logError(error as Error, { action: 'accountClaim.syncTeamSeats', userId: user!.id }),
+          );
+        }
+        logAudit({
+          action: 'auth.unverified_account_claimed',
+          resource: 'user',
+          actorType: 'user',
+          actorId: user.id,
+          ip: hashedIp,
+          method: 'POST',
+          path: '/api/auth/google',
+          meta: JSON.stringify({ provider: 'google', ...claim.result }),
         });
       }
       logAudit({
@@ -446,6 +464,7 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
           plan: currentPlan,
           emailVerified: user.emailVerified,
         },
+        ...(accountSecured ? { accountSecured: true } : {}),
       },
     });
   } catch (err) {

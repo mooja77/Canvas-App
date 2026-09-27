@@ -225,7 +225,7 @@ describe('Team extended integration tests', () => {
 
   // ─── 6. POST /teams/:id/members rejects duplicate invite ───
   it('POST /api/teams/:id/members rejects already-member invite', async () => {
-    const targetUser = { id: 'user-dup', email: 'dup@example.com', name: 'Dup User' };
+    const targetUser = { id: 'user-dup', email: 'dup@example.com', name: 'Dup User', emailVerified: true };
 
     mockPrisma.team.findUnique.mockResolvedValue({
       id: teamId,

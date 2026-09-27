@@ -115,6 +115,15 @@ export default function LoginPage() {
         });
         trackEvent('login', { method: 'google', app_name: 'QualCanvas' });
         toast.success(`Welcome, ${user.name}!`);
+        if (res.data.data.accountSecured) {
+          // The address had an unverified password account. Google proved who
+          // owns it, so the server signed out every other session and removed
+          // that password. Say so, or a returning user thinks it broke.
+          toast(
+            'Your email is now verified with Google. For your security we signed out other sessions and removed the old password. Use "Forgot password" to set a new one.',
+            { duration: 10000 },
+          );
+        }
         navigate('/canvas');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {

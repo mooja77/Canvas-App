@@ -416,7 +416,7 @@ const SECTIONS: GuideSection[] = [
             'Open Tools > Ethics from the toolbar.',
             'Record consent for each participant with status tracking.',
             'Set data retention dates and anonymization policies.',
-            'Anonymize transcripts with automatic name/location replacement.',
+            'Anonymize transcripts by entering each name or place and its replacement (whole-word find and replace).',
             'View the full audit trail of all actions on your canvas.',
           ]}
         />
@@ -577,7 +577,7 @@ const SECTIONS: GuideSection[] = [
           </li>
           <li>
             <strong>Student ($5/mo):</strong> Verified academic email. 5 canvases, all 13 analysis tools, auto-code,
-            ethics + cases, ~5 hrs transcription.
+            ethics + cases.
           </li>
           <li>
             <strong>Pro ($15/mo):</strong> Unlimited canvases, transcripts and codes, all 13 analysis tools, AI

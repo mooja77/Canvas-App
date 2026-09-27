@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { isAcademicEmail } from '@qualcanvas/shared';
+import {
+  isAcademicEmail,
+  PUBLISHED_PRICES_USD,
+  annualPricePerMonth,
+  annualSavingPercent,
+  annualSavingUsd,
+  maxAnnualSavingPercent,
+} from '@qualcanvas/shared';
 import { billingApi } from '../services/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 import PageShell from '../components/marketing/PageShell';
@@ -209,7 +216,11 @@ export default function PricingPage() {
               }`}
             >
               Annual
-              <span className="ml-1.5 text-xs text-ochre-700 dark:text-ochre-400 font-semibold">Save 20%</span>
+              {/* Derived from PUBLISHED_PRICES_USD: Team saves 18%, not 20%, so a flat
+                  "Save 20%" was false for Team. */}
+              <span className="ml-1.5 text-xs text-ochre-700 dark:text-ochre-400 font-semibold">
+                Save up to {maxAnnualSavingPercent()}%
+              </span>
             </button>
           </div>
         </div>
@@ -239,16 +250,14 @@ export default function PricingPage() {
 
           <TierCardV2
             name="Student"
-            price={period === 'annual' ? '$4' : '$5'}
-            pricePeriod={period === 'annual' ? 'per month, billed annually ($48/yr)' : '$5 / month'}
+            price={`$${period === 'annual' ? annualPricePerMonth('student') : PUBLISHED_PRICES_USD.student.monthly}`}
+            pricePeriod={
+              period === 'annual'
+                ? `per month, billed annually ($${PUBLISHED_PRICES_USD.student.annual}/yr, save ${annualSavingPercent('student')}%)`
+                : `$${PUBLISHED_PRICES_USD.student.monthly} / month`
+            }
             audience="Verified academic email — for students"
-            features={[
-              '5 canvases',
-              'AI auto-code',
-              'All 13 analysis tools',
-              'Ethics + cases',
-              '~5 hrs transcription / mo',
-            ]}
+            features={['5 canvases', 'AI auto-code', 'All 13 analysis tools', 'Ethics + cases']}
             isCurrent={plan === 'student'}
             footnote="Requires a verified academic email."
             cta={
@@ -268,8 +277,12 @@ export default function PricingPage() {
 
           <TierCardV2
             name="Pro"
-            price={period === 'annual' ? '$12' : '$15'}
-            pricePeriod={period === 'annual' ? 'per month, billed annually ($144/yr)' : '$15 / month'}
+            price={`$${period === 'annual' ? annualPricePerMonth('pro') : PUBLISHED_PRICES_USD.pro.monthly}`}
+            pricePeriod={
+              period === 'annual'
+                ? `per month, billed annually ($${PUBLISHED_PRICES_USD.pro.annual}/yr, save ${annualSavingPercent('pro')}%)`
+                : `$${PUBLISHED_PRICES_USD.pro.monthly} / month`
+            }
             audience="For working researchers"
             features={[
               'Unlimited canvases',
@@ -304,8 +317,12 @@ export default function PricingPage() {
 
           <TierCardV2
             name="Team"
-            price={period === 'annual' ? '$32' : '$39'}
-            pricePeriod={period === 'annual' ? 'per seat / month, billed annually ($384/yr)' : '$39 / seat / month'}
+            price={`$${period === 'annual' ? annualPricePerMonth('team') : PUBLISHED_PRICES_USD.team.monthly}`}
+            pricePeriod={
+              period === 'annual'
+                ? `per seat / month, billed annually ($${PUBLISHED_PRICES_USD.team.annual}/yr, save ${annualSavingPercent('team')}%)`
+                : `$${PUBLISHED_PRICES_USD.team.monthly} / seat / month`
+            }
             audience="For research groups"
             features={[
               'Everything in Pro',
@@ -440,7 +457,7 @@ export default function PricingPage() {
               ],
             },
             {
-              heading: 'Transcription + AI',
+              heading: 'AI',
               rows: [
                 // Not "Unlimited": every paid tier shares the same 1,000/day
                 // fair-use ceiling (AI_REQUESTS_PER_DAY_FAIR_USE in
@@ -451,7 +468,8 @@ export default function PricingPage() {
                   feature: 'AI text analysis',
                   values: ['—', '1,000/day fair use', '1,000/day fair use', '1,000/day fair use', 'Custom'],
                 },
-                { feature: 'Audio transcription / mo', values: ['—', '~5 hrs', '~10 hrs', '~50 hrs pooled', 'Custom'] },
+                // No "Audio transcription" row: there is no screen to upload or
+                // transcribe audio today, so it is not advertised (estate D4).
                 { feature: 'Bring your own AI key', values: ['—', '✓', '✓', '✓', '✓'] },
               ],
             },
@@ -507,7 +525,8 @@ export default function PricingPage() {
         </div>
         {period === 'annual' && (
           <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-3 font-medium">
-            Save $36/year on Pro · $84/seat/year on Team with annual billing.
+            Save ${annualSavingUsd('pro')}/year on Pro · ${annualSavingUsd('team')}/seat/year on Team with annual
+            billing.
           </p>
         )}
       </div>

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { isAcademicEmail } from '@qualcanvas/shared';
 import { prisma } from '../lib/prisma.js';
+import { ENTITLED_SUBSCRIPTION_STATUSES } from '../lib/subscriptionStatus.js';
 import { getStripe } from '../lib/stripe.js';
 import { auth } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -215,17 +216,11 @@ billingRoutes.get('/billing/subscription', auth, async (req: Request, res: Respo
 
 const nowSecs = () => Math.floor(Date.now() / 1000);
 
-/**
- * Subscription statuses that keep the paid tier. Sign-in and GET /auth/me
- * (planAfterSubscriptionCheck in userAuthRoutes.ts) apply the same rule, and the
- * three must agree or the plan flips depending on which path ran last.
- *
- * Open question (docs/qa/ESTATE-FINDINGS-2026-09-26.md, D1): whether past_due
- * should keep the tier while Stripe retries the card. invoice.payment_failed
- * already leaves the plan alone; widening this set also needs the sign-in rule
- * changed, which lives in a file owned by another branch today.
- */
-export const ENTITLED_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing']);
+// Statuses that keep the paid tier (past_due included while Stripe retries the
+// card). Defined once in lib/subscriptionStatus.ts so the webhook,
+// reconciliation, sign-in and /auth/me cannot disagree; re-exported here for
+// existing importers.
+export { ENTITLED_SUBSCRIPTION_STATUSES };
 
 // POST /api/billing/webhook — Stripe webhook handler
 // This route needs raw body, registered separately in index.ts
@@ -448,7 +443,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
                   currentPeriodEnd: new Date(item.current_period_end * 1000),
                 },
               });
-              if (['active', 'trialing'].includes(sub.status)) {
+              if (ENTITLED_SUBSCRIPTION_STATUSES.has(sub.status)) {
                 const plan = await deriveQualcanvasPlan(stripe, item.price);
                 if (plan) {
                   await prisma.user.update({ where: { id: subRow.userId }, data: { plan } });

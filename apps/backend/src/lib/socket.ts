@@ -1,6 +1,6 @@
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
-import { verifyToken, isUserPayload } from '../utils/jwt.js';
+import { verifyToken, isUserPayload, tokenIssuedAtMs } from '../utils/jwt.js';
 import { join, leave, leaveAll, getPresence, updateCursor } from './presence.js';
 import { prisma } from './prisma.js';
 import { corsOrigin } from '../utils/origins.js';
@@ -105,8 +105,8 @@ export function initSocketServer(httpServer: HttpServer): Server {
     // Mirror HTTP auth middleware: reject tokens older than the user's last
     // credential rotation so a stolen JWT can't keep the websocket open after
     // a password reset / email change.
-    if (user.sessionsInvalidAt && payload.iat) {
-      const jwtIssuedMs = payload.iat * 1000;
+    const jwtIssuedMs = tokenIssuedAtMs(payload);
+    if (user.sessionsInvalidAt && jwtIssuedMs !== null) {
       if (jwtIssuedMs < user.sessionsInvalidAt.getTime()) {
         return next(new Error('Session invalidated'));
       }
