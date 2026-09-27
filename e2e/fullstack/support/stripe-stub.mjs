@@ -18,8 +18,12 @@
 //   - proration = unit price x quantity x (period_end - proration_date) / period,
 //     as a credit line for the old quantity and a debit line for the new one,
 //     at the subscription's discounted price;
-//   - always_invoice invoices the net proration now and charges the card;
+//   - always_invoice invoices the proration now together with any pending
+//     items (e.g. an earlier credit), applies the customer's credit balance,
+//     and charges the card for what is left; a negative total becomes credit;
 //   - create_prorations leaves the lines pending for the next invoice;
+//   - a renewal (period change through the control API) consumes pending items
+//     and the credit balance (simplification: the renewal invoice absorbs them).
 //   - payment_behavior=pending_if_incomplete + a declined card leaves the
 //     quantity unchanged and returns a pending_update.
 // A customer's card can be made to decline through /__control/customers/:id.
@@ -98,7 +102,7 @@ export function createStripeStub({ port = 0 } = {}) {
     ];
   }
 
-  function recordInvoice(s, lines, status) {
+  function recordInvoice(s, lines, status, amountDue) {
     const total = lines.reduce((t, l) => t + l.amount, 0);
     const inv = {
       id: id('in'),
@@ -106,7 +110,7 @@ export function createStripeStub({ port = 0 } = {}) {
       customer: s.customer,
       subscription: s.id,
       lines: { object: 'list', data: lines },
-      amount_due: Math.max(0, total),
+      amount_due: amountDue ?? Math.max(0, total),
       total,
       status,
       created: nowSecs(),
@@ -178,8 +182,13 @@ export function createStripeStub({ port = 0 } = {}) {
     const s = subscriptions.get(subId);
     if (!s) return null;
     Object.assign(s, patch);
-    // A renewal starts a new period: pending proration items are invoiced then.
-    if (patch.current_period_start !== undefined) s.pendingItems = [];
+    // A renewal starts a new period: pending proration items and the credit
+    // balance are consumed by the renewal invoice.
+    if (patch.current_period_start !== undefined) {
+      s.pendingItems = [];
+      const c = customers.get(s.customer);
+      if (c) c.balance = 0;
+    }
     return subObject(s);
   }
 
@@ -190,10 +199,18 @@ export function createStripeStub({ port = 0 } = {}) {
     const lines = prorationLines(s, oldQ, newQ, prorationDate);
     const behavior = form.proration_behavior ?? 'create_prorations';
     if (behavior === 'always_invoice') {
-      const net = lines.reduce((t, l) => t + l.amount, 0);
-      const declined = net > 0 && customers.get(s.customer)?.card === 'declined';
-      const inv = recordInvoice(s, lines, declined ? 'open' : 'paid');
+      const cust = customers.get(s.customer);
+      const all = [...s.pendingItems, ...lines];
+      const total = all.reduce((t, l) => t + l.amount, 0);
+      const withBalance = total + (cust?.balance ?? 0);
+      const due = Math.max(0, withBalance);
+      const declined = due > 0 && cust?.card === 'declined';
+      const inv = recordInvoice(s, all, declined ? 'open' : 'paid', due);
       s.latest_invoice = inv.id;
+      if (!declined) {
+        s.pendingItems = [];
+        if (cust) cust.balance = Math.min(0, withBalance);
+      }
       if (declined && form.payment_behavior === 'pending_if_incomplete') {
         s.pending_update = {
           expires_at: nowSecs() + 23 * 3600,
@@ -281,7 +298,7 @@ export function createStripeStub({ port = 0 } = {}) {
         return pr ? send(res, 200, pr.product) : notFound(res, 'product');
       }
       if (p === '/v1/customers' && req.method === 'POST') {
-        const c = { id: id('cus'), object: 'customer', email: form.email, name: form.name, card: 'ok' };
+        const c = { id: id('cus'), object: 'customer', email: form.email, name: form.name, card: 'ok', balance: 0 };
         customers.set(c.id, c);
         return send(res, 200, c);
       }
@@ -343,14 +360,19 @@ export function createStripeStub({ port = 0 } = {}) {
         const newQ = Number(form['subscription_details[items][0][quantity]'] ?? s.quantity);
         const prorationDate = Number(form['subscription_details[proration_date]'] ?? nowSecs());
         const prorations = newQ === s.quantity ? [] : prorationLines(s, s.quantity, newQ, prorationDate);
-        const next = itemLine(s, unitAmount(s) * newQ, newQ, false, `${newQ} x seat`);
-        const data = [...s.pendingItems, ...prorations, next];
+        const immediate = form['subscription_details[proration_behavior]'] === 'always_invoice';
+        // always_invoice previews the invoice created right now; otherwise the
+        // next scheduled invoice (pending items + the next period).
+        const next = immediate ? [] : [itemLine(s, unitAmount(s) * newQ, newQ, false, `${newQ} x seat`)];
+        const data = [...s.pendingItems, ...prorations, ...next];
         const total = data.reduce((t, l) => t + l.amount, 0);
+        const balance = customers.get(s.customer)?.balance ?? 0;
         return send(res, 200, {
           object: 'invoice',
           currency: 'usd',
           lines: { object: 'list', data },
-          amount_due: Math.max(0, total),
+          amount_due: Math.max(0, total + balance),
+          starting_balance: balance,
           total,
           subscription_details: { proration_date: prorationDate },
         });

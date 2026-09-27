@@ -257,9 +257,13 @@ export interface SeatPreview {
   /** List price of one seat per interval, in the smallest currency unit. */
   unitAmount: number | null;
   interval: string | null;
-  /** Prorated amount charged immediately for the rest of this billing period (after discounts). */
+  /**
+   * What the card is charged now: Stripe's own preview of the immediate
+   * (always_invoice) invoice — the prorated seats, net of any unused-time
+   * credits already waiting and of the customer's credit balance.
+   */
   dueNow: number;
-  /** Recurring amount of the next renewal at the new quantity (after discounts). */
+  /** List price x new quantity per interval (before any discount). */
   nextRenewal: number;
   hasDiscount: boolean;
   prorationDate: number;
@@ -281,19 +285,6 @@ async function seatItem(stripe: Stripe, stripeSubscriptionId: string, stripePric
   return { live, item };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isProrationLine(line: any): boolean {
-  return Boolean(line?.proration ?? line?.parent?.subscription_item_details?.proration);
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function netAmount(line: any): number {
-  const discounts = Array.isArray(line?.discount_amounts)
-    ? line.discount_amounts.reduce((s: number, d: { amount?: number }) => s + (d.amount ?? 0), 0)
-    : 0;
-  return (line?.amount ?? 0) - discounts;
-}
-
 export async function previewSeatChange(
   ownerId: string,
   newQuantity: number,
@@ -302,20 +293,21 @@ export async function previewSeatChange(
   const sub = await billedSubscription(ownerId);
   const stripe = getStripe();
   const { live, item } = await seatItem(stripe, sub.stripeSubscriptionId, sub.stripePriceId);
+  // Preview exactly the invoice setSeatQuantity will create: always_invoice
+  // bills the proration now and sweeps up pending items (e.g. the credit from
+  // a coder removed earlier this period), and amount_due applies the
+  // customer's credit balance. That is the real charge, so quote it.
   const preview = await stripe.invoices.createPreview({
     customer: typeof live.customer === 'string' ? live.customer : live.customer.id,
     subscription: live.id,
     subscription_details: {
       items: [{ id: item.id, quantity: newQuantity }],
       proration_date: prorationDate,
+      proration_behavior: 'always_invoice',
     },
   });
-  const lines = preview.lines?.data ?? [];
-  const dueNow = Math.max(
-    0,
-    lines.filter(isProrationLine).reduce((s, l) => s + netAmount(l), 0),
-  );
-  const nextRenewal = lines.filter((l) => !isProrationLine(l)).reduce((s, l) => s + netAmount(l), 0);
+  const dueNow = Math.max(0, preview.amount_due ?? 0);
+  const nextRenewal = (item.price.unit_amount ?? 0) * newQuantity;
   return {
     currentQuantity: item.quantity ?? 1,
     newQuantity,
@@ -431,6 +423,14 @@ export async function ensureSeatFor(
   }
   const needed = status.seatsUsed + 1;
   if (needed <= (status.seatsPurchased ?? 1)) return { charged: false, quantity: status.seatsPurchased };
+  if (status.subscriptionStatus === 'past_due') {
+    // Don't quote a charge the card on file just failed to pay.
+    throw new AppError(
+      'Your last payment failed, so seats cannot be added yet. Update your card under Account → Manage billing first.',
+      402,
+      { code: 'PAYMENT_PAST_DUE' },
+    );
+  }
   if (!opts.confirm) {
     throw new SeatRequiredError(await previewSeatChange(ownerId, needed));
   }

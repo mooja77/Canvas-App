@@ -80,12 +80,13 @@ export default function SeatChargeDialog({ preview, reason, confirmLabel, busy, 
               <dt>{renewalDate ? `From ${renewalDate}` : 'Each renewal'}</dt>
               <dd className="font-medium text-gray-900 dark:text-white" data-testid="seat-next-renewal">
                 {formatMoney(preview.nextRenewal, preview.currency)} / {per}
+                {preview.hasDiscount ? ' before your discount' : ''}
               </dd>
             </div>
           </dl>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Today&apos;s charge covers only the rest of this billing period. If you later remove a coder or make them a
-            viewer, the unused time is credited to your next bill.
+            Today&apos;s charge covers only the rest of this billing period, less any credit you already have. If you
+            later remove a coder or make them a viewer, the unused time is credited to your next bill.
           </p>
         </div>
         <div className="mt-5 flex gap-3">

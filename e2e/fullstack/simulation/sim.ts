@@ -568,6 +568,23 @@ async function anonymise(a: Actor, cv: LCanvas) {
   }
 }
 
+/** GET /canvas/:id with every detail page merged (the API pages at 500 rows). */
+async function fullCanvas(a: Actor, id: string): Promise<{ status: number; data: any }> {
+  const first = await a.c.req('GET', `canvas/${id}?detailPageSize=1000`);
+  const data = first.body?.data;
+  if (!data) return { status: first.status, data: null };
+  let page = 0;
+  let more = first.body?.detailPagination?.hasMore ?? {};
+  while (Object.values(more).some(Boolean)) {
+    page++;
+    const next = await a.c.req('GET', `canvas/${id}?detailPageSize=1000&detailPage=${page}`);
+    for (const k of Object.keys(more))
+      if (more[k] && Array.isArray(next.body?.data?.[k])) data[k].push(...next.body.data[k]);
+    more = next.body?.detailPagination?.hasMore ?? {};
+  }
+  return { status: first.status, data };
+}
+
 // ─── verification sweeps ─────────────────────────────────────────────────────
 async function verifyActorState(a: Actor, label: string) {
   await ensureSession(a);
@@ -609,8 +626,8 @@ async function verifyActorState(a: Actor, label: string) {
   );
 
   for (const cv of liveCanvases(a)) {
-    const r = await a.c.req('GET', `canvas/${cv.id}`);
-    const d = r.body?.data;
+    const r = await fullCanvas(a, cv.id);
+    const d = r.data;
     if (!d) {
       check(
         'INV-CANVAS-READ',
@@ -742,7 +759,7 @@ async function qdpxRoundTrip(a: Actor) {
   const fd = new FormData();
   fd.append('file', new Blob([buf], { type: 'application/zip' }), 'p.qdpx');
   const imp = await authedFetch(a, BASE + `canvas/${target.body.data.id}/import/qdpx`, { method: 'POST', body: fd });
-  const copy = (await a.c.req('GET', `canvas/${target.body.data.id}`)).body?.data;
+  const copy = (await fullCanvas(a, target.body.data.id)).data;
   check(
     'INV-QDPX-ROUNDTRIP',
     'QDPX export → import preserves every coding and its text',
@@ -845,6 +862,12 @@ async function renewIfDue(a: Actor, day: number) {
   const interval = PRICE_PLAN[a.sub.price] && a.sub.price.endsWith('_y') ? 365 : 30;
   const start = Math.floor(a.sub.periodEnd / 1000);
   a.sub.periodStart = start * 1000;
+  // The renewal invoice absorbs waiting credits and the credit balance.
+  const sb = seatLedger.get(a.userId);
+  if (sb) {
+    sb.pendingCredit = 0;
+    sb.balance = 0;
+  }
   a.sub.periodEnd = (start + interval * 86400) * 1000;
   const obj = stubSub(a, {
     status: 'active',
@@ -940,12 +963,16 @@ interface SeatBook {
   /** Coders holding (or needing) a seat, oldest first. */
   holders: string[];
   graceEnd: number | null;
+  /** Unused-time credits from released seats, waiting for the next invoice. */
+  pendingCredit: number;
+  /** Customer credit balance (<= 0) left when an invoice's credits exceeded its charges. */
+  balance: number;
 }
 const seatLedger = new Map<string, SeatBook>();
 function seatBook(owner: Actor): SeatBook {
   let b = seatLedger.get(owner.userId);
   if (!b) {
-    b = { holders: [], graceEnd: null };
+    b = { holders: [], graceEnd: null, pendingCredit: 0, balance: 0 };
     seatLedger.set(owner.userId, b);
   }
   return b;
@@ -959,6 +986,17 @@ function ledgerProration(a: Actor, oldQ: number, newQ: number, atSecs: number): 
   const period = (a.sub!.periodEnd - a.sub!.periodStart) / 1000;
   const frac = Math.min(1, Math.max(0, (a.sub!.periodEnd / 1000 - atSecs) / period));
   return Math.round(-unit * oldQ * frac) + Math.round(unit * newQ * frac);
+}
+/** What an immediate (always_invoice) seat invoice charges: proration + waiting credits + balance. */
+function ledgerDueNow(a: Actor, oldQ: number, newQ: number, atSecs: number): { due: number; net: number } {
+  const b = seatBook(a);
+  const net = ledgerProration(a, oldQ, newQ, atSecs) + b.pendingCredit + b.balance;
+  return { due: Math.max(0, net), net };
+}
+function settleImmediateInvoice(a: Actor, net: number) {
+  const b = seatBook(a);
+  b.pendingCredit = 0;
+  b.balance = Math.min(0, net);
 }
 function seatedCoder(owner: Actor, coderId: string): boolean {
   if (!billedPerSeat(owner)) return true;
@@ -991,7 +1029,8 @@ async function inviteCoder(owner: Actor, cv: LCanvas, coder: Actor, day: number)
     vol.seatQuotes++;
     const p = r1.body?.preview;
     const nowSecs = Math.floor(Date.now() / 1000);
-    const expected = p ? ledgerProration(owner, owner.sub!.seats, newQ, p.prorationDate) : NaN;
+    const ledgerNow = p ? ledgerDueNow(owner, owner.sub!.seats, newQ, p.prorationDate) : { due: NaN, net: NaN };
+    const expected = ledgerNow.due;
     check(
       'INV-SEAT-QUOTE',
       'a coder needing a seat is quoted (402) the Stripe proration for the rest of the period',
@@ -1026,6 +1065,7 @@ async function inviteCoder(owner: Actor, cv: LCanvas, coder: Actor, day: number)
         `${owner.key} +${coder.key} → ${r2.status} inv=${inv?.status}/${inv?.amount_due} quote=${p.dueNow} q=${stubQuantity(owner)}`,
     );
     if (r2.status !== 201) return false;
+    settleImmediateInvoice(owner, ledgerNow.net);
     vol.seatsAdded += newQ - owner.sub!.seats;
     owner.sub!.seats = newQ;
     await emit(day, 'customer.subscription.updated', stub.getSubscription(owner.sub!.id), { allowDelay: true });
@@ -1083,6 +1123,7 @@ async function removeCoder(owner: Actor, cv: LCanvas, coder: Actor, day: number)
     () =>
       `${owner.key} -${coder.key} → ${r.status} q=${stubQuantity(owner)}/${newQ} credit=${credit} ledger=${expected}`,
   );
+  seatBook(owner).pendingCredit += expected;
   vol.seatsReleased += oldQ - newQ;
   owner.sub!.seats = newQ;
   await emit(day, 'customer.subscription.updated', stub.getSubscription(owner.sub!.id));
@@ -1132,7 +1173,7 @@ async function addMissingSeats(owner: Actor, day: number) {
     'a coder needing a seat is quoted (402) the Stripe proration for the rest of the period',
     r1.status === 402 &&
       p?.newQuantity === newQ &&
-      Math.abs(p.dueNow - ledgerProration(owner, owner.sub!.seats, newQ, p.prorationDate)) <= 1,
+      Math.abs(p.dueNow - ledgerDueNow(owner, owner.sub!.seats, newQ, p.prorationDate).due) <= 1,
     () => `${owner.key} seats→${newQ}: ${r1.status} ${JSON.stringify(p)}`,
   );
   if (r1.status !== 402) return;
@@ -1150,6 +1191,7 @@ async function addMissingSeats(owner: Actor, day: number) {
     () => `${owner.key} → ${r2.status} q=${stubQuantity(owner)}`,
   );
   if (r2.status === 200) {
+    settleImmediateInvoice(owner, ledgerDueNow(owner, owner.sub!.seats, newQ, p.prorationDate).net);
     vol.seatsAdded += newQ - owner.sub!.seats;
     owner.sub!.seats = newQ;
     await emit(day, 'customer.subscription.updated', stub.getSubscription(owner.sub!.id), { allowDelay: true });

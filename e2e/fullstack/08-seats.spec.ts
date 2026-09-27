@@ -323,7 +323,8 @@ test.describe('Seats: existing coders get a grace period, never a lock-out', () 
     const blocked = await codeOnce(c1, canvasId, t, q);
     expect(blocked.status()).toBe(403);
     expect((await json(blocked)).code).toBe('SEAT_REQUIRED_FOR_EDITING');
-    expect((await c1.ctx.get(`canvas/${canvasId}`)).status()).toBe(200);
+    const readOnly = await ok(await c1.ctx.get(`canvas/${canvasId}`));
+    expect(readOnly.data.myRole).toBe('viewer'); // the workspace opens read-only
     expect((await codeOnce(owner, canvasId, t, q)).status()).toBe(201);
     expect((await seats(owner)).enforcing).toBe(true);
 
@@ -341,6 +342,7 @@ test.describe('Seats: existing coders get a grace period, never a lock-out', () 
     expect(done.data).toMatchObject({ quantity: 3, unseatedCount: 0, enforcing: false });
     expect((await codeOnce(c1, canvasId, t, q)).status()).toBe(201);
     expect((await codeOnce(c2, canvasId, t, q)).status()).toBe(201);
+    expect((await ok(await c1.ctx.get(`canvas/${canvasId}`))).data.myRole).toBe('editor');
   });
 });
 
