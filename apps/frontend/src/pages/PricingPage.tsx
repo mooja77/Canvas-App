@@ -40,11 +40,6 @@ const PRICE_IDS = {
   },
 };
 
-/** "~10 hrs" from the minutes the server meters (shared/types/plans.ts). */
-function transcriptionHours(minutes: number): string {
-  return minutes > 0 ? `~${Math.round(minutes / 60)} hrs` : '—';
-}
-
 /** Collaborators per canvas, from the cap the server enforces. */
 function collaboratorCap(max: number): string {
   if (max === 0) return '—';
@@ -504,18 +499,20 @@ export default function PricingPage() {
                   feature: 'AI text analysis',
                   values: ['—', '1,000/day fair use', '1,000/day fair use', '1,000/day fair use', 'Custom'],
                 },
-                // The upload + transcription screen shipped (PR #211), so the row
-                // is back — derived from transcriptionMinutesPerMonth, the number
-                // the server meters. On Pro and Team it is per paid seat and
-                // pooled on the canvas owner (utils/transcriptionMetering.ts).
+                // The upload + transcription screen shipped (#211), but production
+                // has no platform OpenAI key yet, so the plans' included minutes
+                // (transcriptionMinutesPerMonth, pooled per seat on Pro/Team)
+                // cannot be used: only a researcher's own OpenAI key transcribes.
+                // Advertise exactly that. When the server key is switched on,
+                // add the included hours back, derived from PLAN_LIMITS.
                 {
-                  feature: 'Audio transcription / mo',
+                  feature: 'Audio transcription (with your own OpenAI key)',
                   values: [
-                    transcriptionHours(PLAN_LIMITS.free.transcriptionMinutesPerMonth),
-                    transcriptionHours(PLAN_LIMITS.student.transcriptionMinutesPerMonth),
-                    `${transcriptionHours(PLAN_LIMITS.pro.transcriptionMinutesPerMonth)} per seat, pooled`,
-                    `${transcriptionHours(PLAN_LIMITS.team.transcriptionMinutesPerMonth)} per seat, pooled`,
-                    'Custom',
+                    PLAN_LIMITS.free.fileUploadEnabled ? '✓' : '—',
+                    PLAN_LIMITS.student.fileUploadEnabled ? '✓' : '—',
+                    PLAN_LIMITS.pro.fileUploadEnabled ? '✓' : '—',
+                    PLAN_LIMITS.team.fileUploadEnabled ? '✓' : '—',
+                    '✓',
                   ],
                 },
                 { feature: 'Bring your own AI key', values: ['—', '✓', '✓', '✓', '✓'] },

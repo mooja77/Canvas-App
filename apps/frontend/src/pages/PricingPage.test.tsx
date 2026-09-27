@@ -323,12 +323,10 @@ describe('PricingPage comparison table vs the enforced plan limits', () => {
     expect(coders[3]).toBe('$32/seat/mo');
   });
 
-  it('states transcription hours from the metered minutes, pooled per seat on Pro and Team', () => {
-    const row = cells('Audio transcription / mo');
-    TIERS.forEach((tier, i) => {
-      const min = PLAN_LIMITS[tier].transcriptionMinutesPerMonth;
-      const hrs = min > 0 ? `~${Math.round(min / 60)} hrs` : '—';
-      expect(row[i]).toBe(tier === 'pro' || tier === 'team' ? `${hrs} per seat, pooled` : hrs);
-    });
+  it('offers own-key transcription on exactly the tiers that can upload audio, and no included hours yet', () => {
+    const row = cells('Audio transcription (with your own OpenAI key)');
+    TIERS.forEach((tier, i) => expect(row[i]).toBe(tick(PLAN_LIMITS[tier].fileUploadEnabled)));
+    // No server OpenAI key in production yet: included minutes are not sold.
+    expect(document.body.textContent ?? '').not.toMatch(/hrs/);
   });
 });

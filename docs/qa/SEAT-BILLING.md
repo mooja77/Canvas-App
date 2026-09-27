@@ -74,7 +74,8 @@ What happens:
 - Usage is recorded with `AiUsage.poolOwnerId`, so deleting a canvas doesn't give minutes back.
 - Before this change the meter was per requester, so each collaborator brought a fresh allowance.
 - Bringing your own OpenAI key bypasses the pool, as before.
-- The pricing page renders these numbers from `shared/types/plans.ts`, the table the server enforces.
+- `GET /canvas/:id/transcribe/allowance` (the transcription screen's meter) reports this same pool and how many seats share it.
+- **Production today:** the API has no platform `OPENAI_API_KEY` (variable names checked, 27 Sep), so the included minutes cannot be used. Only a researcher's own OpenAI key transcribes, and the screen says so. `/pricing` therefore advertises "Audio transcription (with your own OpenAI key)" on the tiers that can upload, and no included hours. If John enables a server key (a paid OpenAI key), add the hours row back, derived from `PLAN_LIMITS.transcriptionMinutesPerMonth`: ~5 h Student, ~10 h / ~50 h per seat, pooled, on Pro / Team.
 
 ## API
 
