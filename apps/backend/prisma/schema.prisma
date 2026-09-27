@@ -29,6 +29,10 @@ model User {
   // Set on password reset, password change, and email change so stolen or
   // shared tokens don't outlive the credential change.
   sessionsInvalidAt       DateTime?
+  // Coarse browser + OS of the sign-up request ("Chrome on Windows"), shown on
+  // the email-confirmation page so the address owner can tell whether they
+  // created the account. Never the raw user-agent string. Null before 2026-09-27.
+  signupDevice            String?
 
   // Free-tier signups get a 14-day Pro trial. Auth middleware treats this
   // user as 'pro' until trialEndsAt elapses, then they revert to free

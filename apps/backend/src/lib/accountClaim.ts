@@ -1,5 +1,8 @@
 import type { Prisma } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+import { nanoid } from 'nanoid';
 import { prisma } from './prisma.js';
+import { sha256 } from '../utils/hashing.js';
 
 /**
  * Hand an account whose email address was never verified to the person who has
@@ -46,14 +49,32 @@ export interface AccountClaimResult {
 }
 
 /**
+ * Thrown (and the whole claim rolled back) when `consumeVerificationTokenHash`
+ * was given and that token is no longer on the account: it was already used,
+ * replaced by a newer link, or the address was verified in the meantime.
+ */
+export class VerificationTokenAlreadyUsedError extends Error {
+  constructor() {
+    super('Verification token already used');
+    this.name = 'VerificationTokenAlreadyUsedError';
+  }
+}
+
+/**
  * Run inside the caller's decision point, before the new session is signed.
  * `freshAccessCode` is minted by the caller (bcrypt runs outside the
  * transaction; see mintAccessCodeCredential in userAuthRoutes.ts).
+ *
+ * `opts.consumeVerificationTokenHash`: the email-confirmation page claims the
+ * account on the strength of a verification link. The link must be single-use,
+ * so the claim first consumes exactly that token (compare-and-set inside the
+ * same transaction). Two concurrent submissions of one link cannot both act.
  */
 export async function claimUnverifiedAccount(
   user: { id: string; passwordHash: string },
   freshAccessCode: { sha256Index: string; bcryptHash: string },
   lifecycleCohortStartedAt: Date | null,
+  opts: { consumeVerificationTokenHash?: string } = {},
 ): Promise<{ user: Awaited<ReturnType<typeof prisma.user.update>>; result: AccountClaimResult }> {
   // Every token issued before this instant is rejected (tokens carry a
   // millisecond issue time, utils/jwt.ts tokenIssuedAtMs); the session the
@@ -64,6 +85,13 @@ export async function claimUnverifiedAccount(
   };
 
   const out = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    if (opts.consumeVerificationTokenHash !== undefined) {
+      const consumed = await tx.user.updateMany({
+        where: { id: user.id, emailVerified: false, verificationTokenHash: opts.consumeVerificationTokenHash },
+        data: { verificationTokenHash: null, verificationTokenExpiry: null },
+      });
+      if (consumed.count !== 1) throw new VerificationTokenAlreadyUsedError();
+    }
     const updated = await tx.user.update({
       where: { id: user.id },
       data: {
@@ -104,4 +132,14 @@ export async function claimUnverifiedAccount(
   });
 
   return { user: out.updated, result: out.result };
+}
+
+/**
+ * A replacement access code for claimUnverifiedAccount, in the same format as
+ * the one minted at sign-up (userAuthRoutes.ts mintAccessCodeCredential). Call
+ * it BEFORE the claim: bcrypt must not run inside the transaction.
+ */
+export async function mintReplacementAccessCode(): Promise<{ sha256Index: string; bcryptHash: string }> {
+  const accessCode = `USR-${nanoid(12)}`;
+  return { sha256Index: sha256(accessCode), bcryptHash: await bcrypt.hash(accessCode, 12) };
 }

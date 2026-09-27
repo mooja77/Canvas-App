@@ -155,12 +155,12 @@ export async function sendVerificationEmail(to: string, verifyLink: string): Pro
             <td style="padding: 40px;">
               <h2 style="margin: 0 0 16px; color: #1a1a2e; font-size: 20px; font-weight: 600;">Verify Your Email</h2>
               <p style="margin: 0 0 16px; color: #4a4a68; font-size: 15px; line-height: 1.6;">
-                Thanks for signing up! Please verify your email address by clicking the button below. This link will expire in <strong>24 hours</strong>.
+                Someone created a QualCanvas account with this email address. The button below opens a page that shows when the account was created and asks whether it was you. Nothing changes until you answer. This link expires in <strong>24 hours</strong>.
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 28px 0;">
                 <tr>
                   <td style="border-radius: 6px; background-color: #4f46e5;">
-                    <a href="${verifyLink}" target="_blank" style="display: inline-block; padding: 14px 32px; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600;">Verify Email</a>
+                    <a href="${verifyLink}" target="_blank" style="display: inline-block; padding: 14px 32px; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600;">Review and verify</a>
                   </td>
                 </tr>
               </table>
@@ -170,7 +170,7 @@ export async function sendVerificationEmail(to: string, verifyLink: string): Pro
               <p style="margin: 0 0 24px; word-break: break-all; color: #4f46e5; font-size: 13px;">${verifyLink}</p>
               <hr style="border: none; border-top: 1px solid #e8e8ed; margin: 24px 0;" />
               <p style="margin: 0; color: #8e8ea0; font-size: 13px; line-height: 1.5;">
-                If you did not create a QualCanvas account, do not click the button. Someone else may have signed up with your address; ignore this email and the account stays unverified. If you later sign in with Google using this address, any account someone else set up with it is secured for you.
+                If you did not create a QualCanvas account, you can open the page and choose &ldquo;No, this wasn&rsquo;t me&rdquo;: we will lock that account and remove whoever set it up. You can also simply ignore this email and the account stays unverified.
               </p>
             </td>
           </tr>

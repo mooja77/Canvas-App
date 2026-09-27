@@ -82,6 +82,7 @@ import { requestId } from './middleware/requestId.js';
 import { canvasRoutes, canvasPublicRoutes } from './routes/canvasRoutes.js';
 import { authRoutes } from './routes/authRoutes.js';
 import { userAuthRoutes } from './routes/userAuthRoutes.js';
+import { emailVerificationRoutes } from './routes/emailVerificationRoutes.js';
 import { ethicsRoutes } from './routes/ethicsRoutes.js';
 import { billingRoutes, handleStripeWebhook } from './routes/billingRoutes.js';
 import { aiRoutes } from './routes/aiRoutes.js';
@@ -368,6 +369,7 @@ const v1Router = Router();
 // Auth routes (no auth middleware needed for login/signup)
 v1Router.use(authRoutes);
 v1Router.use(userAuthRoutes);
+v1Router.use(emailVerificationRoutes);
 
 // Public canvas routes (shared canvas viewing)
 v1Router.use(canvasPublicRoutes);

@@ -45,7 +45,9 @@ test.describe('Auth: sign-up, verification, login, reset, sessions', () => {
 
   test('edge: verification with a wrong token is rejected and does not verify', async () => {
     const s = await signup('badverify');
-    const res = await s.ctx.post('auth/verify-email', { data: { email: s.email, token: 'a'.repeat(64) } });
+    const res = await s.ctx.post('auth/verify-email', {
+      data: { email: s.email, token: 'a'.repeat(64), decision: 'yes' },
+    });
     expect(res.status()).toBe(400);
     expect((await me(s)).user.emailVerified).toBe(false);
   });
