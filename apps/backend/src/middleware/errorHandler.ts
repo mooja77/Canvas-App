@@ -3,9 +3,15 @@ import { logError, fieldsFromReq } from '../lib/logger.js';
 
 export class AppError extends Error {
   statusCode: number;
-  constructor(message: string, statusCode: number) {
+  /**
+   * Extra machine-readable fields merged into the JSON error body, e.g.
+   * `{ code: 'SEAT_REQUIRED', preview }`. Never put secrets here.
+   */
+  extra?: Record<string, unknown>;
+  constructor(message: string, statusCode: number, extra?: Record<string, unknown>) {
     super(message);
     this.statusCode = statusCode;
+    this.extra = extra;
   }
 }
 
@@ -100,6 +106,7 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
       logError(err, { ...fields, statusCode: err.statusCode });
     }
     return res.status(err.statusCode).json({
+      ...(err.extra ?? {}),
       success: false,
       error: err.message,
       ...(requestId ? { requestId } : {}),

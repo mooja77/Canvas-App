@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from './errorHandler.js';
+import { editorHasSeat } from '../utils/seats.js';
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -57,6 +58,19 @@ export async function viewerWriteGuard(req: Request, _res: Response, next: NextF
     });
     if (collaborator?.role === 'viewer') {
       return next(new AppError('You have view-only access to this canvas. Ask the owner for coder access.', 403));
+    }
+    // A coder on a plan billed per seat needs a paid seat once the owner's
+    // grace period is over (utils/seats.ts). Until then — and for every
+    // unbilled owner — coders write as before. Access is never removed:
+    // an unseated coder keeps read access.
+    if (collaborator?.role === 'editor' && !(await editorHasSeat(canvasId, userId))) {
+      return next(
+        new AppError(
+          'You have view-only access for now: the owner of this canvas needs to add a paid seat for you before you can edit again.',
+          403,
+          { code: 'SEAT_REQUIRED_FOR_EDITING' },
+        ),
+      );
     }
     return next();
   } catch (err) {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import {
   isAcademicEmail,
+  PLAN_LIMITS,
   PUBLISHED_PRICES_USD,
   annualPricePerMonth,
   annualSavingPercent,
@@ -39,6 +40,12 @@ const PRICE_IDS = {
   },
 };
 
+/** Collaborators per canvas, from the cap the server enforces. */
+function collaboratorCap(max: number): string {
+  if (max === 0) return '—';
+  return Number.isFinite(max) ? String(max) : 'Unlimited';
+}
+
 const RESEARCH_DESK_CALENDLY = 'mailto:research@qualcanvas.com?subject=Institution%20plan%20inquiry';
 
 /**
@@ -70,7 +77,7 @@ export default function PricingPage() {
   const { authenticated, plan, authType, email } = useAuthStore();
   usePageMeta(
     'Pricing — QualCanvas',
-    'Free, Student ($5/mo with a verified academic email), Pro ($15/mo), Team ($39/seat/mo), and Institutions plans. 40% academic discount on Pro/Team. Compare against NVivo, ATLAS.ti, Dedoose.',
+    'Free, Student ($5/mo with a verified academic email), Pro ($15/seat/mo), Team ($39/seat/mo), and Institutions plans. Viewers are free. 40% academic discount on Pro/Team. Compare against NVivo, ATLAS.ti, Dedoose.',
   );
 
   useEffect(() => {
@@ -426,6 +433,30 @@ export default function PricingPage() {
               heading: 'Collaboration',
               rows: [
                 { feature: 'Share codes', values: ['—', '2', '5', 'Unlimited', 'Unlimited'] },
+                // Seats: every coder (editing collaborator or team member) is a
+                // paid seat on the owner's plan; viewers are free. Caps come from
+                // PLAN_LIMITS.maxCollaborators, the number the server enforces.
+                {
+                  feature: 'Collaborators per canvas',
+                  values: [
+                    collaboratorCap(PLAN_LIMITS.free.maxCollaborators),
+                    collaboratorCap(PLAN_LIMITS.student.maxCollaborators),
+                    collaboratorCap(PLAN_LIMITS.pro.maxCollaborators),
+                    collaboratorCap(PLAN_LIMITS.team.maxCollaborators),
+                    'Unlimited',
+                  ],
+                },
+                {
+                  feature: 'Coders (one paid seat each)',
+                  values: [
+                    '—',
+                    '—',
+                    period === 'annual' ? '$12/seat/mo' : '$15/seat/mo',
+                    period === 'annual' ? '$32/seat/mo' : '$39/seat/mo',
+                    'Custom',
+                  ],
+                },
+                { feature: 'Read-only viewers', values: ['—', '—', 'Free', 'Free', 'Free'] },
                 { feature: 'Team management', values: ['—', '—', '—', '✓', '✓'] },
                 { feature: 'SSO + SCIM', values: ['—', '—', '—', '—', 'Not available'] },
               ],
@@ -558,6 +589,11 @@ export default function PricingPage() {
               question: 'How does the academic discount work?',
               answer:
                 'Students get the dedicated Student plan at $5/mo with a verified institution email. Faculty and staff on Pro or Team get 40% off automatically at checkout with a recognised academic email. Eligibility is based on the verified institution address; contact support if your institution uses an unrecognised domain.',
+            },
+            {
+              question: 'How do seats work?',
+              answer:
+                'Pro and Team are priced per seat. You hold one seat, and each person who codes with you — on your canvases or in your teams — holds one more; a person counts once. Read-only viewers are free. When you invite a coder you see the prorated charge for the rest of the billing period and confirm it first. Removing a coder, or making them a viewer, frees the seat straight away and credits the unused time to your next bill.',
             },
             {
               question: 'What happens to my data if I downgrade?',

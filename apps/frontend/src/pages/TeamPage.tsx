@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { teamApi } from '../services/api';
+import { useSeatCharge } from '../hooks/useSeatCharge';
 import toast from 'react-hot-toast';
 import { usePageMeta } from '../hooks/usePageMeta';
 
@@ -37,6 +38,7 @@ export default function TeamPage() {
   const [teamName, setTeamName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviting, setInviting] = useState(false);
+  const { withSeat, seatDialog } = useSeatCharge();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const { plan } = useAuthStore();
@@ -85,7 +87,16 @@ export default function TeamPage() {
     if (!activeTeam || !inviteEmail.trim()) return;
     setInviting(true);
     try {
-      await teamApi.invite(activeTeam.id, inviteEmail.trim());
+      // Team is billed per seat: a new member may need a confirmed seat charge.
+      const email = inviteEmail.trim();
+      const added = await withSeat(
+        (c) => (c ? teamApi.invite(activeTeam.id, email, c) : teamApi.invite(activeTeam.id, email)),
+        {
+          reason: `Adding ${email} to the team`,
+          confirmLabel: 'Add seat and member',
+        },
+      );
+      if (added === null) return;
       toast.success(`Invitation sent to ${inviteEmail.trim()}`);
       setInviteEmail('');
       // Reload team details
@@ -394,6 +405,7 @@ export default function TeamPage() {
           </>
         )}
       </div>
+      {seatDialog}
     </main>
   );
 }

@@ -212,11 +212,21 @@ export async function sendWebhook(
  * Buy a plan the way a customer does: create-checkout → (Stripe) subscription
  * created for that customer → signed checkout.session.completed webhook.
  */
-export async function subscribe(s: Session, priceId: string): Promise<{ subscriptionId: string; customer: string }> {
+export async function subscribe(
+  s: Session,
+  priceId: string,
+  opts: { quantity?: number } = {},
+): Promise<{ subscriptionId: string; customer: string; checkoutQuantity: number }> {
   const checkout = await ok(await s.ctx.post('billing/create-checkout', { data: { priceId } }));
   const sessionId = String(checkout.data.url).split('/').pop()!;
   const session = await stripeControl(`sessions/${sessionId}`);
-  const sub = await stripeControl('subscriptions', { customer: session.customer, price: priceId });
+  // Stripe Checkout lets the buyer change an adjustable quantity; opts.quantity
+  // plays that part. By default they accept what the app proposed.
+  const sub = await stripeControl('subscriptions', {
+    customer: session.customer,
+    price: priceId,
+    quantity: opts.quantity ?? session.quantity ?? 1,
+  });
   const res = await sendWebhook(
     stripeEvent('checkout.session.completed', {
       id: session.id,
@@ -227,7 +237,7 @@ export async function subscribe(s: Session, priceId: string): Promise<{ subscrip
     }),
   );
   expect(res.status()).toBe(200);
-  return { subscriptionId: sub.id, customer: session.customer };
+  return { subscriptionId: sub.id, customer: session.customer, checkoutQuantity: session.quantity ?? 1 };
 }
 
 export async function me(s: Session): Promise<any> {

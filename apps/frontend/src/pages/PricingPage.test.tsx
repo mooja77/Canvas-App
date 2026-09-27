@@ -306,4 +306,34 @@ describe('PricingPage comparison table vs the enforced plan limits', () => {
       if (PLAN_LIMITS[tier].aiEnabled) expect(PLAN_LIMITS[tier].aiRequestsPerDay).toBe(AI_REQUESTS_PER_DAY_FAIR_USE);
     });
   });
+
+  it('states the collaborator cap each tier is actually gated on', () => {
+    const row = cells('Collaborators per canvas');
+    TIERS.forEach((tier, i) => {
+      const max = PLAN_LIMITS[tier].maxCollaborators;
+      expect(row[i]).toBe(max === Infinity ? 'Unlimited' : max === 0 ? '—' : String(max));
+    });
+  });
+
+  it('prices coders per seat on exactly the tiers that allow collaborators, and viewers free', () => {
+    const coders = cells('Coders (one paid seat each)');
+    const viewers = cells('Read-only viewers');
+    TIERS.forEach((tier, i) => {
+      const allowed = PLAN_LIMITS[tier].maxCollaborators > 0;
+      expect(coders[i]).toMatch(allowed ? /\/seat\/mo$/ : /^—$/);
+      expect(viewers[i]).toBe(allowed ? 'Free' : '—');
+    });
+    // Annual is the default view: the per-seat prices are the annual ones.
+    expect(coders[2]).toBe('$12/seat/mo');
+    expect(coders[3]).toBe('$32/seat/mo');
+  });
+
+  it('states transcription hours from the metered minutes, pooled per seat on Pro and Team', () => {
+    const row = cells('Audio transcription / mo');
+    TIERS.forEach((tier, i) => {
+      const min = PLAN_LIMITS[tier].transcriptionMinutesPerMonth;
+      const hrs = min > 0 ? `~${Math.round(min / 60)} hrs` : '—';
+      expect(row[i]).toBe(tier === 'pro' || tier === 'team' ? `${hrs} per seat, pooled` : hrs);
+    });
+  });
 });

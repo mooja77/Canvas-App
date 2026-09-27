@@ -24,7 +24,11 @@ import { createJob } from '../lib/jobs.js';
 import { registerJobHandler } from '../lib/jobs.js';
 import { transcribeAudio } from '../utils/transcription.js';
 import { isValidSignature } from '../utils/magicBytes.js';
-import { resolveUserOpenAiKey, TRANSCRIPTION_CENTS_PER_MINUTE } from '../utils/transcriptionMetering.js';
+import {
+  resolveUserOpenAiKey,
+  TRANSCRIPTION_CENTS_PER_MINUTE,
+  transcriptionPoolOwner,
+} from '../utils/transcriptionMetering.js';
 import { getPlanLimits } from '../config/plans.js';
 import { AppError } from '../middleware/errorHandler.js';
 
@@ -750,6 +754,8 @@ registerJobHandler('transcribe', async (job, updateProgress) => {
       data: {
         userId,
         canvasId,
+        // Minutes draw on the canvas owner's pool, shared across their seats.
+        poolOwnerId: userId ? await transcriptionPoolOwner(canvasId, userId) : null,
         feature: 'transcribe',
         provider: 'openai',
         model: 'whisper-1',

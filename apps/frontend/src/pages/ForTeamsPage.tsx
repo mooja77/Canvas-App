@@ -109,8 +109,9 @@ export default function ForTeamsPage() {
       {/* Factual capability note — no representative or placeholder endorsement. */}
       <section className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
         <div className="rounded-2xl border border-ochre-200 bg-ochre-50/50 p-7 text-sm leading-relaxed text-gray-700 dark:border-ochre-900 dark:bg-ochre-900/10 dark:text-gray-300">
-          Team membership and canvas access are managed separately. Add people to your team for seat management, then
-          invite the researchers who need access from each canvas&apos;s Share panel.
+          Team membership and canvas access are managed separately. Add people to your team, and invite the researchers
+          who need access from each canvas&apos;s Share panel. Each person who codes with you uses one paid seat;
+          viewers are free.
         </div>
       </section>
 
@@ -131,7 +132,7 @@ export default function ForTeamsPage() {
             },
             {
               title: 'Per-seat billing',
-              body: 'The subscription quantity follows the number of active team members. Removing a member reduces the seat count.',
+              body: 'One seat for you and one for each person who codes on your canvases or belongs to your teams — a person counts once. Viewers are free. You see the prorated charge and confirm it before a seat is added.',
             },
             {
               title: 'κ + α calculator',
@@ -172,7 +173,7 @@ export default function ForTeamsPage() {
             {
               question: 'How does per-seat billing work?',
               answer:
-                'The Team subscription quantity follows active team membership. Adding or removing a registered member updates the seat quantity with Stripe proration.',
+                'You hold one seat, and every coder on your canvases or member of your teams holds one more — a person who is both counts once. Read-only viewers are free. Adding a coder shows the prorated charge for the rest of the billing period and asks you to confirm it; if the card is declined, nobody is added and nothing is charged. Removing a coder, or making them a viewer, frees the seat at once and credits the unused time to your next bill.',
             },
             {
               question: 'Can students on a methods course use Team?',

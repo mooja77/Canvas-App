@@ -6,6 +6,7 @@ import { authApi, billingApi, aiSettingsApi, reportApi, emailApi, type EmailPref
 import { getFrontendPlanLimits } from '../config/planLimits';
 import { usePageMeta } from '../hooks/usePageMeta';
 import IntegrationSettingsPanel from '../components/canvas/panels/IntegrationSettingsPanel';
+import SeatsPanel from '../components/billing/SeatsPanel';
 import toast from 'react-hot-toast';
 
 interface UserProfile {
@@ -707,6 +708,9 @@ export default function AccountPage() {
             </div>
           )}
         </div>
+
+        {/* Seats (Pro/Team are billed per coder; viewers are free) */}
+        {isEmailAuth && <SeatsPanel />}
 
         {/* Usage */}
         {profile.usage && (

@@ -73,6 +73,12 @@ model User {
   // mail, which prevents enabling automation from backfilling old accounts.
   lifecycleCohortStartedAt DateTime?
 
+  // Seat billing (docs/qa/SEAT-BILLING.md). Set the first time this owner has
+  // more editing collaborators than paid seats; unseated coders keep editing
+  // until then and become read-only after it. Granted once per owner, never
+  // cleared, so reducing seats in the portal cannot restart the grace period.
+  seatGraceEndsAt DateTime?
+
   subscription         Subscription?
   codingCanvases       CodingCanvas[]
   dashboardAccess      DashboardAccess?
@@ -147,6 +153,9 @@ model Subscription {
   currentPeriodStart   DateTime
   currentPeriodEnd     DateTime
   cancelAtPeriodEnd    Boolean  @default(false)
+  // Seats on the subscription item, mirrored from Stripe (never set locally
+  // ahead of Stripe). Pro and Team are billed per editing seat.
+  quantity             Int      @default(1)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -703,10 +712,15 @@ model AiUsage {
   inputTokens  Int      @default(0)
   outputTokens Int      @default(0)
   costCents    Float    @default(0)
+  // Transcription only: the account whose monthly pool this usage draws on
+  // (the canvas owner). Survives canvas deletion so deleting a canvas cannot
+  // hand minutes back.
+  poolOwnerId  String?
   createdAt    DateTime @default(now())
 
   @@index([userId])
   @@index([createdAt])
+  @@index([poolOwnerId, feature, createdAt])
 }
 
 // ─── Research Repository ───

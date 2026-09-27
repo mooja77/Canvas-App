@@ -85,8 +85,15 @@ vi.mock('../../lib/email.js', () => ({
   sendTeamInviteEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../../utils/teamBilling.js', () => ({
-  syncTeamSeatQuantity: vi.fn().mockResolvedValue(2),
+vi.mock('../../utils/seats.js', () => ({
+  // Seat billing is covered by e2e/fullstack (real Postgres + Stripe double);
+  // here the owner is not billed per seat, so no charge is ever needed.
+  ensureSeatFor: vi.fn().mockResolvedValue({ charged: false, quantity: null }),
+  withSeatLock: vi.fn((_ownerId: string, fn: () => Promise<unknown>) => fn()),
+  releaseUnusedSeats: vi.fn().mockResolvedValue(null),
+  canvasOwnerUserId: vi.fn().mockResolvedValue('owner-user'),
+  seatConfirmation: vi.fn().mockReturnValue({ confirm: false }),
+  editorHasSeat: vi.fn().mockResolvedValue(true),
 }));
 
 import request from 'supertest';
@@ -236,7 +243,8 @@ describe('Team extended integration tests', () => {
 
     mockPrisma.user.findUnique
       .mockResolvedValueOnce({ ...mockUser }) // auth middleware
-      .mockResolvedValueOnce(targetUser); // find target user
+      .mockResolvedValueOnce(targetUser) // find target user
+      .mockResolvedValueOnce({ plan: 'team' }); // team owner's plan
 
     // Simulate the unique-violation Prisma throws when the team+user pair
     // already exists. The route catches P2002 and maps it to 409. This is

@@ -8,6 +8,8 @@ const { mockPrisma } = vi.hoisted(() => {
     dashboardAccess: { findUnique: vi.fn(), findFirst: vi.fn() },
     userAiConfig: { findUnique: vi.fn() },
     aiUsage: { aggregate: vi.fn() },
+    subscription: { findUnique: vi.fn().mockResolvedValue(null) },
+    codingCanvas: { findUnique: vi.fn() },
   };
   return { mockPrisma };
 });
@@ -38,6 +40,9 @@ function createApp() {
   const app = express();
   app.use(express.json());
   app.post('/api/transcribe', auth, checkTranscriptionMinutes(), (_req: Request, res: Response) => {
+    res.status(201).json({ success: true });
+  });
+  app.post('/api/canvas/:id/transcribe', auth, checkTranscriptionMinutes(), (_req: Request, res: Response) => {
     res.status(201).json({ success: true });
   });
   app.use(errorHandler);
@@ -155,5 +160,59 @@ describe('Transcription minute metering — checkTranscriptionMinutes', () => {
     expect(next).not.toHaveBeenCalled();
     expect(mockPrisma.userAiConfig.findUnique).not.toHaveBeenCalled();
     expect(mockPrisma.aiUsage.aggregate).not.toHaveBeenCalled();
+  });
+});
+
+describe("Transcription pool — shared across the canvas owner's seats", () => {
+  // A coder (u-coder, Free on their own account) transcribing into a Team
+  // owner's canvas. The Team subscription has 3 seats, so the pool is
+  // 3 × 3,000 = 9,000 minutes, and it is metered on the OWNER.
+  const teamCanvas = {
+    userId: 'u-owner',
+    dashboardAccessId: null,
+    deletedAt: null,
+    user: { plan: 'team', emailVerified: true, trialEndsAt: null },
+    dashboardAccess: null,
+    collaborators: [{ id: 'collab-1' }],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma.userAiConfig.findUnique.mockResolvedValue(null);
+    mockPrisma.user.findUnique.mockResolvedValue(mockUser('u-coder', 'free'));
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue(teamCanvas);
+    mockPrisma.subscription.findUnique.mockResolvedValue({ status: 'active', quantity: 3 });
+  });
+
+  const post = () =>
+    request(createApp())
+      .post('/api/canvas/canvas-1/transcribe')
+      .set('Authorization', `Bearer ${signUserToken('u-coder', 'researcher', 'free')}`)
+      .send({});
+
+  it("meters the owner's pool, not the person transcribing", async () => {
+    mockPrisma.aiUsage.aggregate.mockResolvedValue(usageOf(8000));
+    const res = await post();
+    expect(res.status).toBe(201);
+    const where = mockPrisma.aiUsage.aggregate.mock.calls[0][0].where;
+    expect(where.OR).toEqual([{ poolOwnerId: 'u-owner' }, { poolOwnerId: null, userId: 'u-owner' }]);
+    expect(where.feature).toBe('transcribe');
+  });
+
+  it('refuses once the pool (per-seat minutes × seats) is used up, and says it is shared', async () => {
+    mockPrisma.aiUsage.aggregate.mockResolvedValue(usageOf(9000));
+    const res = await post();
+    expect(res.status).toBe(403);
+    expect(res.body.max).toBe(9000);
+    expect(res.body.current).toBe(9000);
+    expect(res.body.error).toContain('shared by 3 seats');
+  });
+
+  it('a lapsed subscription does not multiply the pool', async () => {
+    mockPrisma.subscription.findUnique.mockResolvedValue({ status: 'canceled', quantity: 3 });
+    mockPrisma.aiUsage.aggregate.mockResolvedValue(usageOf(3000));
+    const res = await post();
+    expect(res.status).toBe(403);
+    expect(res.body.max).toBe(3000);
   });
 });

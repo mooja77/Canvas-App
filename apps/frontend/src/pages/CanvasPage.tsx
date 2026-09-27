@@ -10,6 +10,7 @@ import SetupWizard from '../components/SetupWizard';
 import PlanWelcome from '../components/PlanWelcome';
 import AiSetupBanner from '../components/AiSetupBanner';
 import TrialBanner from '../components/TrialBanner';
+import SeatShortfallBanner from '../components/billing/SeatShortfallBanner';
 import OnboardingFlow from '../components/onboarding/OnboardingFlow';
 import OnboardingChecklist from '../components/onboarding/OnboardingChecklist';
 import StatusBar from '../components/canvas/StatusBar';
@@ -343,6 +344,7 @@ export default function CanvasPage() {
       )}
 
       <TrialBanner />
+      <SeatShortfallBanner />
       <AiSetupBanner />
 
       {showPlanWelcome && <PlanWelcome onClose={() => setShowPlanWelcome(false)} />}

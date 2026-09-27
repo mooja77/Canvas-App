@@ -6,6 +6,8 @@ import ConfirmDialog from '../ConfirmDialog';
 import type { CanvasShare } from '@qualcanvas/shared';
 import toast from 'react-hot-toast';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
+import { useSeatCharge } from '../../../hooks/useSeatCharge';
+import { formatMoney, seatsApi, type SeatStatus } from '../../../services/seatsApi';
 
 interface Props {
   onClose: () => void;
@@ -33,6 +35,8 @@ export default function ShareCanvasModal({ onClose }: Props) {
   const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('editor');
   const [inviting, setInviting] = useState(false);
   const [confirmRemoveUserId, setConfirmRemoveUserId] = useState<string | null>(null);
+  const [seatStatus, setSeatStatus] = useState<SeatStatus | null>(null);
+  const { withSeat, seatDialog } = useSeatCharge();
 
   useEscapeToClose(onClose);
 
@@ -60,6 +64,15 @@ export default function ShareCanvasModal({ onClose }: Props) {
   };
 
   useEffect(() => {
+    // Only owners billed per seat get the seat note; anyone else (a
+    // collaborator, a legacy access code) just gets no note.
+    Promise.resolve()
+      .then(() => seatsApi.get())
+      .then((res) => setSeatStatus(res.data.data))
+      .catch(() => setSeatStatus(null));
+  }, []);
+
+  useEffect(() => {
     loadShares();
     loadCollaborators();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loaders are not memoized, activeCanvasId is the true trigger
@@ -70,7 +83,14 @@ export default function ShareCanvasModal({ onClose }: Props) {
     if (!activeCanvasId || !email) return;
     setInviting(true);
     try {
-      await canvasApi.addCollaborator(activeCanvasId, { email, role: inviteRole });
+      // A coder may need a paid seat: the server answers 402 with a quote, the
+      // owner confirms it in SeatChargeDialog, and only then is anyone charged.
+      const data = { email, role: inviteRole };
+      const added = await withSeat((c) => canvasApi.addCollaborator(activeCanvasId, c ? { ...data, ...c } : data), {
+        reason: `Inviting ${email} as a coder`,
+        confirmLabel: 'Add seat and invite',
+      });
+      if (added === null) return; // owner cancelled the charge
       setInviteEmail('');
       toast.success(
         inviteRole === 'viewer'
@@ -191,6 +211,15 @@ export default function ShareCanvasModal({ onClose }: Props) {
             <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
               Coders can code alongside you. Viewers can look but not change anything.
             </p>
+            {seatStatus?.mode === 'billed' && (
+              <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400" data-testid="share-seat-note">
+                Each coder uses a paid seat
+                {seatStatus.price?.unitAmount != null
+                  ? ` (${formatMoney(seatStatus.price.unitAmount, seatStatus.price.currency)} / ${seatStatus.price.interval === 'year' ? 'year' : 'month'})`
+                  : ''}
+                ; you confirm the charge before it happens. Viewers are free.
+              </p>
+            )}
             {collaborators.length > 0 && (
               <div className="mt-2 space-y-1.5">
                 {collaborators.map((c) => (
@@ -332,6 +361,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
             onCancel={() => setConfirmRemoveUserId(null)}
           />
         )}
+        {seatDialog}
       </div>
     </div>
   );
