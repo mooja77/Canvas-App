@@ -962,7 +962,10 @@ const SEAT_PRICE: Record<string, number> = {
 interface SeatBook {
   /** Coders holding (or needing) a seat, oldest first. */
   holders: string[];
+  /** Grace end if the app stamped it when the request arrived... */
   graceEnd: number | null;
+  /** ...or when it returned: writes in between may go either way. */
+  graceEndLatest: number | null;
   /** Unused-time credits from released seats, waiting for the next invoice. */
   pendingCredit: number;
   /** Customer credit balance (<= 0) left when an invoice's credits exceeded its charges. */
@@ -972,7 +975,7 @@ const seatLedger = new Map<string, SeatBook>();
 function seatBook(owner: Actor): SeatBook {
   let b = seatLedger.get(owner.userId);
   if (!b) {
-    b = { holders: [], graceEnd: null, pendingCredit: 0, balance: 0 };
+    b = { holders: [], graceEnd: null, graceEndLatest: null, pendingCredit: 0, balance: 0 };
     seatLedger.set(owner.userId, b);
   }
   return b;
@@ -1203,7 +1206,12 @@ async function addMissingSeats(owner: Actor, day: number) {
 async function coderWrite(owner: Actor, cv: LCanvas, coder: Actor) {
   if (cv.transcripts.size === 0 || cv.codes.size === 0) return;
   const unseated = !seatedCoder(owner, coder.userId);
-  const graceOver = seatBook(owner).graceEnd !== null && Date.now() >= seatBook(owner).graceEnd!;
+  const book = seatBook(owner);
+  const nowMs = Date.now();
+  const graceOver = book.graceEndLatest !== null && nowMs >= book.graceEndLatest;
+  // Within the few ms between request and response of the call that started
+  // grace, the app's exact instant is unknowable to an independent ledger.
+  const ambiguous = unseated && book.graceEnd !== null && nowMs >= book.graceEnd && !graceOver;
   const allowed = !(unseated && graceOver);
   const [t, content] = pick([...cv.transcripts.entries()]);
   const q = pick([...cv.codes]);
@@ -1219,7 +1227,11 @@ async function coderWrite(owner: Actor, cv: LCanvas, coder: Actor) {
   check(
     'INV-SEAT-GRACE',
     'an unseated coder can edit during the 30-day grace and not after it; a seated coder always can',
-    allowed ? r.status === 201 : r.status === 403 && r.body?.code === 'SEAT_REQUIRED_FOR_EDITING',
+    ambiguous
+      ? r.status === 201 || (r.status === 403 && r.body?.code === 'SEAT_REQUIRED_FOR_EDITING')
+      : allowed
+        ? r.status === 201
+        : r.status === 403 && r.body?.code === 'SEAT_REQUIRED_FOR_EDITING',
     () => `${coder.key} unseated=${unseated} graceOver=${graceOver} → ${r.status} ${r.body?.code ?? ''}`,
   );
   if (r.status === 201) {
@@ -1240,6 +1252,7 @@ async function coderWrite(owner: Actor, cv: LCanvas, coder: Actor) {
 async function seatStatusCheck(a: Actor, label: string) {
   if (!a.sub) return;
   await ensureSession(a);
+  const sentAt = Date.now();
   const r = await a.c.req('GET', 'billing/seats');
   const d = r.body?.data;
   if (a.sub.status === 'past_due') return; // plan during dunning is decision D1; not asserted here
@@ -1257,7 +1270,10 @@ async function seatStatusCheck(a: Actor, label: string) {
   // Seats nobody holds are credited back when the owner looks (never here, in this cast).
   if (a.sub.seats > used) a.sub.seats = used;
   const unseated = Math.max(0, used - a.sub.seats);
-  if (unseated > 0 && b.graceEnd === null) b.graceEnd = Date.now() + 30 * DAY;
+  if (unseated > 0 && b.graceEnd === null) {
+    b.graceEnd = sentAt + 30 * DAY;
+    b.graceEndLatest = Date.now() + 30 * DAY;
+  }
   const graceOk =
     unseated === 0 ? d?.graceEndsAt === null : Math.abs(Date.parse(d?.graceEndsAt) - (b.graceEnd ?? 0)) <= 60_000;
   check(
