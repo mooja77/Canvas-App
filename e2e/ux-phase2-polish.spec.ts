@@ -19,8 +19,13 @@ async function apiHeaders(page: Page) {
 async function deleteCanvasViaApi(page: Page, canvasId: string) {
   const jwt = await getJwt(page);
   const h = { Authorization: `Bearer ${jwt}` };
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}`, { headers: h });
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}/permanent`, { headers: h });
+  await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}`, {
+    headers: h,
+  });
+  await page.request.delete(
+    `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/permanent`,
+    { headers: h },
+  );
 }
 
 async function openCanvasById(page: Page, canvasId: string) {
@@ -75,7 +80,7 @@ test.describe('UX Phase 2 — Polish & Dark Mode', () => {
     const page = await browser.newPage({ storageState: 'e2e/.auth/user.json' });
 
     // Navigate first so localStorage is available
-    await page.goto('http://localhost:5174/canvas');
+    await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await page.waitForLoadState('domcontentloaded');
     const jwt = await getJwt(page);
     expect(jwt, 'JWT must exist').toBeTruthy();
@@ -83,40 +88,52 @@ test.describe('UX Phase 2 — Polish & Dark Mode', () => {
     const headers = { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
 
     // Create canvas
-    const cRes = await page.request.post('http://localhost:3007/api/canvas', { headers, data: { name: canvasName } });
+    const cRes = await page.request.post(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas`, {
+      headers,
+      data: { name: canvasName },
+    });
     expect(cRes.ok()).toBeTruthy();
     canvasId = (await cRes.json()).data.id;
 
     // Seed transcript
-    const tRes = await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers,
-      data: {
-        title: 'Phase2 Interview',
-        content:
-          'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted approximately sixty minutes and covered themes of professional development and organizational culture.',
+    const tRes = await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/transcripts`,
+      {
+        headers,
+        data: {
+          title: 'Phase2 Interview',
+          content:
+            'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted approximately sixty minutes and covered themes of professional development and organizational culture.',
+        },
       },
-    });
+    );
     const tId = (await tRes.json()).data?.id;
 
     // Seed code
-    const qRes = await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers,
-      data: { text: 'Methodology', color: '#4F46E5' },
-    });
+    const qRes = await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/questions`,
+      {
+        headers,
+        data: { text: 'Methodology', color: '#4F46E5' },
+      },
+    );
     const qId = (await qRes.json()).data?.id;
 
     // Seed coding (link transcript to code)
     if (tId && qId) {
-      await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/codings`, {
-        headers,
-        data: {
-          transcriptId: tId,
-          questionId: qId,
-          startOffset: 0,
-          endOffset: 30,
-          codedText: 'The research methodology invol',
+      await page.request.post(
+        `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/codings`,
+        {
+          headers,
+          data: {
+            transcriptId: tId,
+            questionId: qId,
+            startOffset: 0,
+            endOffset: 30,
+            codedText: 'The research methodology invol',
+          },
         },
-      });
+      );
     }
 
     await page.close();
@@ -124,7 +141,7 @@ test.describe('UX Phase 2 — Polish & Dark Mode', () => {
 
   test.afterAll(async ({ browser }) => {
     const page = await browser.newPage({ storageState: 'e2e/.auth/user.json' });
-    await page.goto('http://localhost:5174/canvas');
+    await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await page.waitForLoadState('domcontentloaded');
     if (canvasId) await deleteCanvasViaApi(page, canvasId);
     // Ensure light mode is restored

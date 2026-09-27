@@ -7,6 +7,14 @@ const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 // Path segments after /canvas/ that are NOT canvas ids (public/clone flows).
 const NON_ID_SEGMENTS = new Set(['clone', 'shared', 'trash']);
 
+function decodeSegment(segment: string): string | null {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Enforce read-only access for collaborators invited with role 'viewer'.
  *
@@ -27,16 +35,24 @@ export async function viewerWriteGuard(req: Request, _res: Response, next: NextF
     const userId = req.userId;
     if (!userId) return next(); // legacy access-code users can't be collaborators
 
-    const match = req.path.match(/^\/canvas\/([A-Za-z0-9-]+)(\/|$)/);
-    if (!match || NON_ID_SEGMENTS.has(match[1])) return next();
+    // Match the path the way Express routes it: case-insensitively, with the
+    // id percent-decoded as Express decodes req.params. Matching the raw path
+    // exactly let a viewer write through `/CANVAS/<id>/...` or
+    // `/canvas/%63<rest-of-id>/...`, which the guard skipped but the canvas
+    // routers still served.
+    const match = req.path.match(/^\/canvas\/([^/]+)(\/|$)/i);
+    if (!match) return next();
+    const canvasId = decodeSegment(match[1]);
+    if (canvasId === null) return next(new AppError('Malformed request path', 400));
+    if (NON_ID_SEGMENTS.has(canvasId.toLowerCase())) return next();
     // A training attempt writes only the current user's answer record; it
     // does not mutate the shared canvas. Viewers are valid trainees.
-    if (/^\/canvas\/[A-Za-z0-9-]+\/training\/[A-Za-z0-9-]+\/attempt$/.test(req.path)) {
+    if (/^\/canvas\/[^/]+\/training\/[^/]+\/attempt\/?$/i.test(req.path)) {
       return next();
     }
 
     const collaborator = await prisma.canvasCollaborator.findUnique({
-      where: { canvasId_userId: { canvasId: match[1], userId } },
+      where: { canvasId_userId: { canvasId, userId } },
       select: { role: true },
     });
     if (collaborator?.role === 'viewer') {

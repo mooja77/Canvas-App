@@ -31,19 +31,31 @@ async function cleanupE2ECanvases(page: Page) {
   const jwt = await getJwt(page);
   if (!jwt) return;
   const headers = { Authorization: `Bearer ${jwt}` };
-  const res = await page.request.get('http://localhost:3007/api/canvas', { headers });
+  const res = await page.request.get(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas`, {
+    headers,
+  });
   if (!res.ok()) return;
   for (const c of (await res.json())?.data || []) {
     if (c.name?.startsWith('E2E ')) {
-      await page.request.delete(`http://localhost:3007/api/canvas/${c.id}`, { headers });
-      await page.request.delete(`http://localhost:3007/api/canvas/${c.id}/permanent`, { headers });
+      await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${c.id}`, {
+        headers,
+      });
+      await page.request.delete(
+        `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${c.id}/permanent`,
+        { headers },
+      );
     }
   }
-  const trashRes = await page.request.get('http://localhost:3007/api/canvas/trash', { headers });
+  const trashRes = await page.request.get(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/trash`, {
+    headers,
+  });
   if (trashRes.ok()) {
     for (const c of (await trashRes.json())?.data || []) {
       if (c.name?.startsWith('E2E ')) {
-        await page.request.delete(`http://localhost:3007/api/canvas/${c.id}/permanent`, { headers });
+        await page.request.delete(
+          `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${c.id}/permanent`,
+          { headers },
+        );
       }
     }
   }
@@ -51,7 +63,10 @@ async function cleanupE2ECanvases(page: Page) {
 
 async function createCanvasViaApi(page: Page, name: string): Promise<string> {
   const headers = await apiHeaders(page);
-  const res = await page.request.post('http://localhost:3007/api/canvas', { headers, data: { name } });
+  const res = await page.request.post(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas`, {
+    headers,
+    data: { name },
+  });
   expect(res.ok(), `Canvas create failed: ${res.status()}`).toBeTruthy();
   return (await res.json()).data.id;
 }
@@ -59,8 +74,13 @@ async function createCanvasViaApi(page: Page, name: string): Promise<string> {
 async function deleteCanvasViaApi(page: Page, canvasId: string) {
   const jwt = await getJwt(page);
   const h = { Authorization: `Bearer ${jwt}` };
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}`, { headers: h });
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}/permanent`, { headers: h });
+  await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}`, {
+    headers: h,
+  });
+  await page.request.delete(
+    `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/permanent`,
+    { headers: h },
+  );
 }
 
 async function scrollNodeIntoView(page: Page, loc: ReturnType<Page['locator']>) {
@@ -157,7 +177,7 @@ test.describe('Canvas CRUD', () => {
     await dialog.getByRole('button', { name: 'Delete' }).click();
     await expect(page.getByText('Canvas moved to trash')).toBeVisible({ timeout: 5000 });
     const jwt = await getJwt(page);
-    await page.request.delete(`http://localhost:3007/api/canvas/${id}/permanent`, {
+    await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${id}/permanent`, {
       headers: { Authorization: `Bearer ${jwt}` },
     });
   });
@@ -168,7 +188,7 @@ test.describe('Canvas CRUD', () => {
     const name = `E2E TrashShow ${Date.now()}`;
     const id = await createCanvasViaApi(page, name);
     const jwt = await getJwt(page);
-    await page.request.delete(`http://localhost:3007/api/canvas/${id}`, {
+    await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${id}`, {
       headers: { Authorization: `Bearer ${jwt}` },
     });
     await page.reload();
@@ -177,7 +197,7 @@ test.describe('Canvas CRUD', () => {
     await trashBtn.waitFor({ state: 'visible', timeout: 5000 });
     await trashBtn.click();
     await expect(page.getByText(name)).toBeVisible({ timeout: 5000 });
-    await page.request.delete(`http://localhost:3007/api/canvas/${id}/permanent`, {
+    await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${id}/permanent`, {
       headers: { Authorization: `Bearer ${jwt}` },
     });
   });
@@ -188,7 +208,7 @@ test.describe('Canvas CRUD', () => {
     const name = `E2E Restore ${Date.now()}`;
     const id = await createCanvasViaApi(page, name);
     const jwt = await getJwt(page);
-    await page.request.delete(`http://localhost:3007/api/canvas/${id}`, {
+    await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${id}`, {
       headers: { Authorization: `Bearer ${jwt}` },
     });
     await page.reload();
@@ -209,7 +229,7 @@ test.describe('Canvas CRUD', () => {
     const name = `E2E PermDel ${Date.now()}`;
     const id = await createCanvasViaApi(page, name);
     const jwt = await getJwt(page);
-    await page.request.delete(`http://localhost:3007/api/canvas/${id}`, {
+    await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${id}`, {
       headers: { Authorization: `Bearer ${jwt}` },
     });
     await page.reload();
@@ -240,19 +260,25 @@ test.describe('Workspace Tests', () => {
     canvasId = await createCanvasViaApi(page, `E2E Workspace ${Date.now()}`);
     const headers = await apiHeaders(page);
     // Seed transcript
-    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers,
-      data: {
-        title: 'Main Interview',
-        content:
-          'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted approximately sixty minutes and covered themes of professional development and organizational culture.',
+    await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/transcripts`,
+      {
+        headers,
+        data: {
+          title: 'Main Interview',
+          content:
+            'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted approximately sixty minutes and covered themes of professional development and organizational culture.',
+        },
       },
-    });
+    );
     // Seed code
-    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers,
-      data: { text: 'Methodology', color: '#4F46E5' },
-    });
+    await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/questions`,
+      {
+        headers,
+        data: { text: 'Methodology', color: '#4F46E5' },
+      },
+    );
     await page.close();
   });
 
@@ -296,10 +322,13 @@ test.describe('Workspace Tests', () => {
     await page.goto(`/canvas/${canvasId}`);
     await page.waitForLoadState('networkidle');
     const headers = await apiHeaders(page);
-    const createRes = await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers,
-      data: { title: 'DeleteMe', content: 'Will be deleted.' },
-    });
+    const createRes = await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/transcripts`,
+      {
+        headers,
+        data: { title: 'DeleteMe', content: 'Will be deleted.' },
+      },
+    );
     const transcriptId = (await createRes.json()).data.id;
     await openCanvasById(page, canvasId);
 
@@ -316,9 +345,12 @@ test.describe('Workspace Tests', () => {
         await dlg.getByRole('button', { name: /Delete|Confirm/i }).click({ force: true });
       }
     } else {
-      await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}/transcripts/${transcriptId}`, {
-        headers,
-      });
+      await page.request.delete(
+        `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/transcripts/${transcriptId}`,
+        {
+          headers,
+        },
+      );
       await page.reload();
       await page.waitForLoadState('networkidle');
     }
@@ -402,10 +434,13 @@ test.describe('Workspace Tests', () => {
     await page.goto(`/canvas/${canvasId}`);
     await page.waitForLoadState('networkidle');
     const headers = await apiHeaders(page);
-    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers,
-      data: { text: 'Delete Me', color: '#DC2626' },
-    });
+    await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/questions`,
+      {
+        headers,
+        data: { text: 'Delete Me', color: '#DC2626' },
+      },
+    );
     await openCanvasById(page, canvasId);
 
     const before = await page.locator('.react-flow__node[data-id^="question-"]').count();
@@ -461,19 +496,25 @@ test.describe('Workspace Tests', () => {
     const headers = await apiHeaders(page);
 
     // Ensure we have a transcript and code to link
-    const tRes = await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers,
-      data: { title: 'Edge Test Interview', content: 'Content for edge test coding.' },
-    });
+    const tRes = await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/transcripts`,
+      {
+        headers,
+        data: { title: 'Edge Test Interview', content: 'Content for edge test coding.' },
+      },
+    );
     const tId = (await tRes.json()).data?.id;
 
-    const canvasRes = await page.request.get(`http://localhost:3007/api/canvas/${canvasId}`, { headers });
+    const canvasRes = await page.request.get(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}`,
+      { headers },
+    );
     const data = await canvasRes.json();
     const qId = data.data.questions[0]?.id;
     expect(tId).toBeTruthy();
     expect(qId).toBeTruthy();
 
-    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/codings`, {
+    await page.request.post(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/codings`, {
       headers,
       data: { transcriptId: tId, questionId: qId, startOffset: 0, endOffset: 19, codedText: 'Content for edge te' },
     });

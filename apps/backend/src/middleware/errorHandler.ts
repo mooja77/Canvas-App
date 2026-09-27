@@ -142,6 +142,20 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
     // Other Prisma codes are genuinely unexpected — fall through to log + 500.
   }
 
+  // Prisma rejected the SHAPE of a query argument (an Invalid Date from
+  // `?from=garbage`, a repeated query parameter arriving as an array, a string
+  // where a number belongs). That is bad client input on a route without a
+  // full schema, not an outage: answer 400. Still logged, because a route that
+  // reaches here is missing validation.
+  if (err.name === 'PrismaClientValidationError') {
+    logError(err, { ...fields, statusCode: 400 });
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid request parameters',
+      ...(requestId ? { requestId } : {}),
+    });
+  }
+
   // Unexpected errors — always log, always capture, never leak stack to client.
   logError(err, fields);
 

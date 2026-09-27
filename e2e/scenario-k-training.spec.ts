@@ -7,7 +7,7 @@ import { test, expect, type Page } from '@playwright/test';
  * and QDPX export/import roundtrip validation.
  */
 
-const BASE = 'http://localhost:3007/api';
+const BASE = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 
 const TRANSCRIPT_CONTENT =
   'The patient reported significant improvement in mobility after the rehabilitation program. ' +
@@ -42,7 +42,7 @@ test.describe.serial('Scenario K: Training Center & QDPX', () => {
     test.setTimeout(120_000);
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const page = await ctx.newPage();
-    await page.goto('http://localhost:5174/canvas');
+    await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await page.waitForLoadState('domcontentloaded');
     jwt = await page.evaluate(() => {
       const raw = localStorage.getItem('qualcanvas-auth');

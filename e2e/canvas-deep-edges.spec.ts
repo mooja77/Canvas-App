@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 
-const API = 'http://localhost:3007/api/v1';
+const API = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/v1`;
 
 // Seeded codings derive their text from this content and clamp their
 // offsets to it. The server verifies content.slice(start, end) === codedText,
@@ -36,7 +36,7 @@ test.describe('Deep Canvas: Edge Behavior', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas');
+    await p.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await p.waitForLoadState('domcontentloaded');
     jwt = await p.evaluate(() => {
       const r = localStorage.getItem('qualcanvas-auth');
@@ -81,7 +81,7 @@ test.describe('Deep Canvas: Edge Behavior', () => {
     if (!canvasId) return;
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas');
+    await p.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await p.waitForLoadState('domcontentloaded');
     jwt = await p.evaluate(() => {
       const r = localStorage.getItem('qualcanvas-auth');

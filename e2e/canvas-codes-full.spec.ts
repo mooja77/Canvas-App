@@ -77,9 +77,12 @@ async function questionCountViaApi(page: import('@playwright/test').Page, canvas
     const raw = localStorage.getItem('qualcanvas-auth');
     return raw ? JSON.parse(raw)?.state?.jwt || '' : '';
   });
-  const res = await page.request.get(`http://localhost:3007/api/canvas/${canvasId}`, {
-    headers: { Authorization: `Bearer ${jwt}` },
-  });
+  const res = await page.request.get(
+    `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}`,
+    {
+      headers: { Authorization: `Bearer ${jwt}` },
+    },
+  );
   const detail = await res.json();
   return ((detail?.data?.questions as unknown[] | undefined)?.length as number | undefined) ?? 0;
 }
@@ -109,7 +112,7 @@ test.describe('Code Management', () => {
     });
 
     if (jwt) {
-      const baseUrl = 'http://localhost:3007/api';
+      const baseUrl = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
       const headers = { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
 
       // Create canvas
@@ -334,7 +337,7 @@ test.describe('Code Management', () => {
       });
 
       if (canvasId) {
-        const baseUrl = 'http://localhost:3007/api';
+        const baseUrl = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
         const headers = { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
 
         await page.request.delete(`${baseUrl}/canvas/${canvasId}/questions/${questionId}`, { headers });

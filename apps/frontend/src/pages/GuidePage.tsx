@@ -270,8 +270,8 @@ const SECTIONS: GuideSection[] = [
     content: (
       <>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          QualCanvas includes 12 analysis tools organized into three categories. Click the "Analyze" button in the
-          toolbar to add analysis nodes to your canvas.
+          QualCanvas includes 13 analysis tools organized into three categories; the most used are described below.
+          Click the "Analyze" button in the toolbar to add analysis nodes to your canvas.
         </p>
         <Screenshot
           src="/guide/15-analyze-menu.png"
@@ -580,8 +580,8 @@ const SECTIONS: GuideSection[] = [
             ethics + cases, ~5 hrs transcription.
           </li>
           <li>
-            <strong>Pro ($15/mo):</strong> Unlimited everything, all 13 analysis tools, AI features, ethics panel, 5
-            share codes.
+            <strong>Pro ($15/mo):</strong> Unlimited canvases, transcripts and codes, all 13 analysis tools, AI
+            features, ethics panel, 5 share codes.
           </li>
           <li>
             <strong>Team ($39/mo per seat):</strong> Everything Pro + unlimited shares, intercoder reliability, team

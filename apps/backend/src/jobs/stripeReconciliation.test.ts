@@ -4,11 +4,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // QualCanvas, …). The reconcile job lists ALL subscriptions in the account, so
 // it must only treat a sub as QualCanvas drift when one of OUR Users owns that
 // Stripe customer — otherwise it false-flags other products' subs.
-const { listMock, subFindUnique, subUpdate, userFindUnique, logErrorMock } = vi.hoisted(() => ({
+const { listMock, subFindUnique, subUpdate, userFindUnique, userUpdate, logErrorMock } = vi.hoisted(() => ({
   listMock: vi.fn(),
   subFindUnique: vi.fn(),
   subUpdate: vi.fn(),
   userFindUnique: vi.fn(),
+  userUpdate: vi.fn(),
   logErrorMock: vi.fn(),
 }));
 
@@ -16,7 +17,7 @@ vi.mock('../lib/stripe.js', () => ({ stripe: { subscriptions: { list: listMock }
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
     subscription: { findUnique: subFindUnique, update: subUpdate },
-    user: { findUnique: userFindUnique },
+    user: { findUnique: userFindUnique, update: userUpdate },
   },
 }));
 vi.mock('../lib/logger.js', () => ({ logError: logErrorMock }));
@@ -54,5 +55,57 @@ describe('reconcileStripeSubscriptions — shared-account scoping', () => {
     expect(result.orphanedInStripe).toBe(1);
     expect(logErrorMock).toHaveBeenCalledTimes(1);
     expect(logErrorMock.mock.calls[0][1]).toMatchObject({ stripeSubId: 'sub_qc', customer: 'cus_qc' });
+  });
+});
+
+describe('reconcileStripeSubscriptions — entitlement matches the webhook', () => {
+  const proItem = {
+    price: { id: 'price_pro', metadata: { app: 'qualcanvas', plan: 'pro' }, product: 'prod_pro' },
+    current_period_start: 1_700_000_000,
+    current_period_end: 1_702_592_000,
+  };
+  function dbSub(status: string) {
+    return {
+      id: 'row-1',
+      userId: 'user-1',
+      stripeSubscriptionId: 'sub_1',
+      status,
+      currentPeriodEnd: new Date(1_702_592_000 * 1000),
+    };
+  }
+
+  beforeEach(() => {
+    listMock.mockReset();
+    subFindUnique.mockReset();
+    subUpdate.mockReset().mockResolvedValue({});
+    userFindUnique.mockReset();
+    userUpdate.mockReset().mockResolvedValue({});
+    logErrorMock.mockReset();
+  });
+
+  it('returns a grandfathered legacy user to Pro, not Free, when their subscription ended', async () => {
+    listMock.mockResolvedValue({
+      data: [{ id: 'sub_1', customer: 'cus_1', status: 'canceled', items: { data: [proItem] } }],
+      has_more: false,
+    });
+    subFindUnique.mockResolvedValue(dbSub('canceled'));
+    userFindUnique.mockResolvedValue({ legacyPricing: true });
+
+    await reconcileStripeSubscriptions();
+
+    expect(userUpdate).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: { plan: 'pro' } });
+  });
+
+  it('drops an ordinary user to Free when their subscription ended', async () => {
+    listMock.mockResolvedValue({
+      data: [{ id: 'sub_1', customer: 'cus_1', status: 'canceled', items: { data: [proItem] } }],
+      has_more: false,
+    });
+    subFindUnique.mockResolvedValue(dbSub('canceled'));
+    userFindUnique.mockResolvedValue({ legacyPricing: false });
+
+    await reconcileStripeSubscriptions();
+
+    expect(userUpdate).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: { plan: 'free' } });
   });
 });

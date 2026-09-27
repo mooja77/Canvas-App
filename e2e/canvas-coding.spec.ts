@@ -107,7 +107,7 @@ test.describe('Canvas Coding Workflow', () => {
       return raw ? JSON.parse(raw)?.state?.jwt || '' : '';
     });
     if (jwt) {
-      const API = 'http://localhost:3007/api/v1';
+      const API = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/v1`;
       const headers = { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
       const cRes = await page.request.post(`${API}/canvas`, {
         headers,

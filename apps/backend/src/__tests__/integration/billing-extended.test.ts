@@ -168,6 +168,7 @@ describe('Stripe Billing – Extended Tests', () => {
 
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
+        status: 'active',
         items: {
           data: [
             {
@@ -346,7 +347,7 @@ describe('Stripe Billing – Extended Tests', () => {
       });
     });
 
-    it('downgrades user to free when status=past_due', async () => {
+    it('downgrades user to free when status=past_due (same rule as sign-in; see findings D1)', async () => {
       const event = {
         id: 'evt_sub_pastdue',
         type: 'customer.subscription.updated',
@@ -379,6 +380,76 @@ describe('Stripe Billing – Extended Tests', () => {
         where: { id: 'user-pd-1' },
         data: { plan: 'free' },
       });
+    });
+
+    it('drops to the fallback plan when status=unpaid (retries exhausted)', async () => {
+      const event = {
+        id: 'evt_sub_unpaid',
+        type: 'customer.subscription.updated',
+        data: {
+          object: {
+            id: 'sub_pastdue',
+            status: 'unpaid',
+            current_period_start: 1700000000,
+            current_period_end: 1702592000,
+            cancel_at_period_end: false,
+            items: { data: [{ price: { id: 'price_pro_monthly' } }] },
+          },
+        },
+      };
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(event);
+      mockPrisma.subscription.findUnique.mockResolvedValue({
+        id: 'sub-record-pd',
+        userId: 'user-pd-1',
+        stripeSubscriptionId: 'sub_pastdue',
+        stripePriceId: 'price_pro_monthly',
+      });
+      mockPrisma.subscription.update.mockResolvedValue({});
+      mockPrisma.user.update.mockResolvedValue({});
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-pd-1' },
+        data: { plan: 'free' },
+      });
+    });
+
+    it('ignores a stale active update that arrives after the subscription was cancelled', async () => {
+      const event = {
+        id: 'evt_sub_stale',
+        type: 'customer.subscription.updated',
+        data: {
+          object: {
+            id: 'sub_pastdue',
+            status: 'active',
+            current_period_start: 1700000000,
+            current_period_end: 1702592000,
+            cancel_at_period_end: false,
+            items: { data: [{ price: { id: 'price_pro_monthly' } }] },
+          },
+        },
+      };
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(event);
+      mockPrisma.subscription.findUnique.mockResolvedValue({
+        id: 'sub-record-pd',
+        userId: 'user-pd-1',
+        stripeSubscriptionId: 'sub_pastdue',
+        stripePriceId: 'price_pro_monthly',
+        status: 'canceled',
+      });
+      mockPrisma.subscription.update.mockResolvedValue({});
+      mockPrisma.user.update.mockResolvedValue({});
+
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+
+      expect(mockPrisma.subscription.update).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ received: true });
     });
 
     it('keeps user active when status=trialing', async () => {
@@ -1059,6 +1130,7 @@ describe('Stripe Billing – Extended Tests', () => {
 
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
+        status: 'active',
         items: {
           data: [
             {
@@ -1101,6 +1173,7 @@ describe('Stripe Billing – Extended Tests', () => {
 
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
+        status: 'active',
         items: {
           data: [
             {
@@ -1226,6 +1299,7 @@ describe('Stripe Billing – Extended Tests', () => {
 
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
+        status: 'active',
         items: {
           data: [
             {
@@ -1301,6 +1375,7 @@ describe('Stripe Billing – Extended Tests', () => {
 
       mockStripe.webhooks.constructEvent.mockReturnValue(event1);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
+        status: 'active',
         items: {
           data: [
             {
@@ -1632,6 +1707,7 @@ describe('Stripe Billing – Extended Tests', () => {
 
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
+        status: 'active',
         items: {
           data: [{ price: null, current_period_start: 1700000000, current_period_end: 1702592000 }],
         },

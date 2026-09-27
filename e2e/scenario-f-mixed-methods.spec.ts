@@ -7,7 +7,7 @@ import { test, expect, type Page } from '@playwright/test';
  * to study student wellbeing. Analysis compares across both data types.
  */
 
-const API = 'http://localhost:3007/api';
+const API = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 
 // ─── Survey responses (~150 words each, structured Q&A) ───
 
@@ -92,7 +92,7 @@ test.describe('Scenario F: Mixed Methods — Survey + Interview', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const page = await ctx.newPage();
-    await page.goto('http://localhost:5174/canvas');
+    await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await page.waitForLoadState('domcontentloaded');
     jwt = await page.evaluate(() => {
       const raw = localStorage.getItem('qualcanvas-auth');
@@ -110,7 +110,9 @@ test.describe('Scenario F: Mixed Methods — Survey + Interview', () => {
     try {
       await page.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
       await page.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
     await page.close();
     await ctx.close();
   });
@@ -181,23 +183,73 @@ test.describe('Scenario F: Mixed Methods — Survey + Interview', () => {
       // Survey 1
       { ti: 0, qKey: 'academicStress', text: 'Academic workload is my biggest stress', source: SURVEY_1.content },
       { ti: 0, qKey: 'socialSupport', text: 'My roommate is great and we study together', source: SURVEY_1.content },
-      { ti: 0, qKey: 'copingMechanisms', text: 'I go to the gym three times a week and that helps a lot with stress', source: SURVEY_1.content },
-      { ti: 0, qKey: 'mentalHealth', text: 'surprisingly helpful for processing my thoughts', source: SURVEY_1.content },
+      {
+        ti: 0,
+        qKey: 'copingMechanisms',
+        text: 'I go to the gym three times a week and that helps a lot with stress',
+        source: SURVEY_1.content,
+      },
+      {
+        ti: 0,
+        qKey: 'mentalHealth',
+        text: 'surprisingly helpful for processing my thoughts',
+        source: SURVEY_1.content,
+      },
       // Survey 2
       { ti: 1, qKey: 'mentalHealth', text: 'My mental health has definitely suffered', source: SURVEY_2.content },
-      { ti: 1, qKey: 'socialSupport', text: 'My friends have mostly stopped inviting me to things', source: SURVEY_2.content },
+      {
+        ti: 1,
+        qKey: 'socialSupport',
+        text: 'My friends have mostly stopped inviting me to things',
+        source: SURVEY_2.content,
+      },
       { ti: 1, qKey: 'copingMechanisms', text: 'I do not have great coping strategies', source: SURVEY_2.content },
       { ti: 1, qKey: 'academicStress', text: 'Financial pressure is overwhelming', source: SURVEY_2.content },
       // Interview 1
       { ti: 2, qKey: 'academicStress', text: 'the academic stress is intense', source: INTERVIEW_1.content },
-      { ti: 2, qKey: 'socialSupport', text: 'That loss of social connection has affected my mental health', source: INTERVIEW_1.content },
-      { ti: 2, qKey: 'physicalHealth', text: 'I stopped going to the gym because I felt guilty about taking time away from studying', source: INTERVIEW_1.content },
-      { ti: 2, qKey: 'copingMechanisms', text: 'time blocking and setting boundaries with professors', source: INTERVIEW_1.content },
+      {
+        ti: 2,
+        qKey: 'socialSupport',
+        text: 'That loss of social connection has affected my mental health',
+        source: INTERVIEW_1.content,
+      },
+      {
+        ti: 2,
+        qKey: 'physicalHealth',
+        text: 'I stopped going to the gym because I felt guilty about taking time away from studying',
+        source: INTERVIEW_1.content,
+      },
+      {
+        ti: 2,
+        qKey: 'copingMechanisms',
+        text: 'time blocking and setting boundaries with professors',
+        source: INTERVIEW_1.content,
+      },
       // Interview 2
-      { ti: 3, qKey: 'mentalHealth', text: 'I had a panic attack during a presentation and had to leave the room', source: INTERVIEW_2.content },
-      { ti: 3, qKey: 'socialSupport', text: 'My study group in engineering is more than just academic support', source: INTERVIEW_2.content },
-      { ti: 3, qKey: 'physicalHealth', text: 'I have not exercised regularly since sophomore year', source: INTERVIEW_2.content },
-      { ti: 3, qKey: 'copingMechanisms', text: 'strict scheduling, meditation before bed, and saying no to social events', source: INTERVIEW_2.content },
+      {
+        ti: 3,
+        qKey: 'mentalHealth',
+        text: 'I had a panic attack during a presentation and had to leave the room',
+        source: INTERVIEW_2.content,
+      },
+      {
+        ti: 3,
+        qKey: 'socialSupport',
+        text: 'My study group in engineering is more than just academic support',
+        source: INTERVIEW_2.content,
+      },
+      {
+        ti: 3,
+        qKey: 'physicalHealth',
+        text: 'I have not exercised regularly since sophomore year',
+        source: INTERVIEW_2.content,
+      },
+      {
+        ti: 3,
+        qKey: 'copingMechanisms',
+        text: 'strict scheduling, meditation before bed, and saying no to social events',
+        source: INTERVIEW_2.content,
+      },
     ];
 
     for (const c of codingSpecs) {

@@ -93,3 +93,7 @@ apps/backend/uploads/
 /pro-*.yml
 /team-*.yml
 /recordings/
+
+# Estate full-stack suite / simulation scratch output
+e2e/fullstack/**/.out/
+e2e/fullstack/.out/

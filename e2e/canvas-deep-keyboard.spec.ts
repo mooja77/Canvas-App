@@ -1,11 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
 
-const API = 'http://localhost:3007/api/v1';
+const API = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/v1`;
 let jwt = '';
 let canvasId = '';
 const PREFIX = `E2E-DK ${Date.now()}`;
 
-function headers() { return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }; }
+function headers() {
+  return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
+}
 
 async function openCanvas(page: Page) {
   await page.addInitScript(() => {
@@ -24,26 +26,39 @@ test.describe('Deep Canvas: Keyboard Workflow', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas'); await p.waitForLoadState('domcontentloaded');
-    jwt = await p.evaluate(() => { const r = localStorage.getItem('qualcanvas-auth'); return r ? JSON.parse(r)?.state?.jwt || '' : ''; });
+    await p.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const r = localStorage.getItem('qualcanvas-auth');
+      return r ? JSON.parse(r)?.state?.jwt || '' : '';
+    });
     const res = await p.request.post(`${API}/canvas`, { headers: headers(), data: { name: PREFIX } });
     canvasId = (await res.json()).data.id;
-    await p.request.post(`${API}/canvas/${canvasId}/transcripts`, { headers: headers(), data: { title: 'KB Test', content: 'Keyboard workflow testing transcript content.' } });
+    await p.request.post(`${API}/canvas/${canvasId}/transcripts`, {
+      headers: headers(),
+      data: { title: 'KB Test', content: 'Keyboard workflow testing transcript content.' },
+    });
     for (const name of ['KB Code 1', 'KB Code 2', 'KB Code 3']) {
       await p.request.post(`${API}/canvas/${canvasId}/questions`, { headers: headers(), data: { text: name } });
     }
-    await p.close(); await ctx.close();
+    await p.close();
+    await ctx.close();
   });
 
   test.afterAll(async ({ browser }) => {
     if (!canvasId) return;
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas'); await p.waitForLoadState('domcontentloaded');
-    jwt = await p.evaluate(() => { const r = localStorage.getItem('qualcanvas-auth'); return r ? JSON.parse(r)?.state?.jwt || '' : ''; });
+    await p.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const r = localStorage.getItem('qualcanvas-auth');
+      return r ? JSON.parse(r)?.state?.jwt || '' : '';
+    });
     await p.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
     await p.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
-    await p.close(); await ctx.close();
+    await p.close();
+    await ctx.close();
   });
 
   test('1 - F key triggers Fit View', async ({ page }) => {
@@ -163,11 +178,13 @@ test.describe('Deep Canvas: Keyboard Workflow', () => {
 
   test('15 - Console zero errors', async ({ page }) => {
     const errors: string[] = [];
-    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') errors.push(msg.text());
+    });
     await openCanvas(page);
     await page.keyboard.press('f');
     await page.keyboard.press('Control+k');
     await page.keyboard.press('Escape');
-    expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
+    expect(errors.filter((e) => !e.includes('favicon'))).toHaveLength(0);
   });
 });

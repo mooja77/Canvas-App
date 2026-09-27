@@ -40,6 +40,7 @@ const { mockPrisma } = vi.hoisted(() => {
       count: vi.fn(),
     },
     canvasTextCoding: {
+      findMany: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
       delete: vi.fn(),
@@ -51,6 +52,7 @@ const { mockPrisma } = vi.hoisted(() => {
     canvasShare: { count: vi.fn() },
     canvasMemo: { count: vi.fn() },
     canvasCase: { findFirst: vi.fn() },
+    textEmbedding: { deleteMany: vi.fn() },
     $transaction: vi.fn(),
     $queryRawUnsafe: vi.fn(),
     $disconnect: vi.fn(),
@@ -165,6 +167,8 @@ describe('Transcript integration tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([]);
+    mockPrisma.textEmbedding.deleteMany.mockResolvedValue({ count: 0 });
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
     mockPrisma.canvasCase.findFirst.mockResolvedValue({ id: 'case-1' });
@@ -195,13 +199,9 @@ describe('Transcript integration tests', () => {
   });
 
   // ─── 2. POST /canvas/:id/transcripts — enforces transcript limit (free: 2) ───
-  it('POST /canvas/:id/transcripts enforces transcript limit for free plan', async () => {
-    // Use real planLimits by restoring mock for this test
-    // Since planLimits is mocked as pass-through, we test the route's own count logic
-    // The route calls checkTranscriptLimit middleware (mocked pass-through) and then creates
-    // The real enforcement is in the middleware, tested in planLimits.test.ts
-    // Here we verify the route correctly passes count to the middleware by checking
-    // that count is called
+  it('POST /canvas/:id/transcripts orders the new transcript after existing ones', async () => {
+    // The plan cap itself is enforced by checkTranscriptLimit (planLimits.test.ts);
+    // the route only needs the total to place the new row last.
     mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
     mockPrisma.canvasTranscript.count.mockResolvedValue(1);
     mockPrisma.canvasTranscript.create.mockResolvedValue({
@@ -218,11 +218,23 @@ describe('Transcript integration tests', () => {
       .send({ title: 'Interview Beta', content: 'Content of beta.' });
 
     expect(res.status).toBe(201);
-    // Sample transcripts seeded by a starter template are excluded from the
-    // cap, so the count carries a NOT clause on sourceType.
-    expect(mockPrisma.canvasTranscript.count).toHaveBeenCalledWith({
-      where: { canvasId, OR: [{ sourceType: null }, { sourceType: { not: 'sample' } }] },
+    expect(mockPrisma.canvasTranscript.count).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.canvasTranscript.count).toHaveBeenCalledWith({ where: { canvasId } });
+    expect(mockPrisma.canvasTranscript.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ canvasId, sortOrder: 1 }),
     });
+  });
+
+  it('POST /canvas/:id/transcripts rejects a client-supplied sourceType "sample" (cap bypass)', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    for (const sourceType of ['sample', 'Sample', ' sample ']) {
+      const res = await request(app)
+        .post(`/api/canvas/${canvasId}/transcripts`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ title: 'Sneaky', content: 'Some content.', sourceType });
+      expect(res.status).toBe(400);
+    }
+    expect(mockPrisma.canvasTranscript.create).not.toHaveBeenCalled();
   });
 
   // ─── 3. PUT /canvas/:id/transcripts/:tid — updates title/content ───

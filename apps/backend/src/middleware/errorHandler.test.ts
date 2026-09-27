@@ -175,6 +175,17 @@ describe('errorHandler — Prisma errors', () => {
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Internal server error' }));
   });
+
+  it('maps a PrismaClientValidationError (bad query argument shape) to 400 without leaking it', () => {
+    const res = mockRes();
+    const err = new Error('Invalid value for argument `gte`: Provided Date object is invalid.');
+    err.name = 'PrismaClientValidationError';
+    errorHandler(err, req, res, next);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, error: 'Invalid request parameters' }),
+    );
+  });
 });
 
 // body-parser rejects malformed / oversized bodies with an http-errors object.

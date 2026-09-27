@@ -74,6 +74,7 @@ const { mockPrisma } = vi.hoisted(() => {
       update: vi.fn(),
       delete: vi.fn(),
     },
+    textEmbedding: { deleteMany: vi.fn() },
     $transaction: vi.fn(),
     $queryRawUnsafe: vi.fn(),
     $disconnect: vi.fn(),
@@ -178,6 +179,8 @@ describe('Coding integration tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([]);
+    mockPrisma.textEmbedding.deleteMany.mockResolvedValue({ count: 0 });
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
     mockPrisma.user.updateMany.mockResolvedValue({ count: 1 });

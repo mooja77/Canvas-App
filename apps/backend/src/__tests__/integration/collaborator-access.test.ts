@@ -372,4 +372,31 @@ describe('viewerWriteGuard', () => {
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe('clone');
   });
+
+  // Express routes case-insensitively and percent-decodes params, so the guard
+  // must see the same canvas id the route handler will. These paths reached
+  // the write handler before the fix.
+  it.each([
+    ['upper-case prefix', () => `/api/CANVAS/${canvasId}/things`],
+    ['mixed-case prefix', () => `/api/Canvas/${canvasId}/things`],
+    ['percent-encoded id', () => `/api/canvas/%${canvasId.charCodeAt(0).toString(16)}${canvasId.slice(1)}/things`],
+    [
+      'fully encoded id',
+      () => `/api/canvas/${[...canvasId].map((c) => '%' + c.charCodeAt(0).toString(16)).join('')}/things`,
+    ],
+  ])('blocks a viewer write through a %s path', async (_label, path) => {
+    const res = await request(app).post(path()).set('Authorization', `Bearer ${viewerJwt}`).send({});
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/view-only/i);
+  });
+
+  it('rejects a malformed percent-encoding instead of skipping the check', async () => {
+    const res = await request(app)
+      .post('/api/canvas/%E0%A4%A/things')
+      .set('Authorization', `Bearer ${viewerJwt}`)
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
 });

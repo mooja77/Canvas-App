@@ -30,7 +30,10 @@ async function apiHeaders(page: Page) {
 
 async function createCanvasViaApi(page: Page, name: string): Promise<string> {
   const headers = await apiHeaders(page);
-  const res = await page.request.post('http://localhost:3007/api/canvas', { headers, data: { name } });
+  const res = await page.request.post(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas`, {
+    headers,
+    data: { name },
+  });
   expect(res.ok(), `Canvas create failed: ${res.status()}`).toBeTruthy();
   return (await res.json()).data.id;
 }
@@ -38,8 +41,13 @@ async function createCanvasViaApi(page: Page, name: string): Promise<string> {
 async function deleteCanvasViaApi(page: Page, canvasId: string) {
   const jwt = await getJwt(page);
   const h = { Authorization: `Bearer ${jwt}` };
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}`, { headers: h });
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}/permanent`, { headers: h });
+  await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}`, {
+    headers: h,
+  });
+  await page.request.delete(
+    `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/permanent`,
+    { headers: h },
+  );
 }
 
 async function openCanvasById(page: Page, canvasId: string) {
@@ -76,10 +84,13 @@ test.describe('Canvas Sharing', () => {
     await goToCanvasList(page);
     canvasId = await createCanvasViaApi(page, `E2E Share ${Date.now()}`);
     const headers = await apiHeaders(page);
-    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers,
-      data: { title: 'Share Test Transcript', content: 'Content for sharing test.' },
-    });
+    await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/transcripts`,
+      {
+        headers,
+        data: { title: 'Share Test Transcript', content: 'Content for sharing test.' },
+      },
+    );
     await page.close();
   });
 

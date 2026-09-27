@@ -257,6 +257,36 @@ describe('Template + onboarding routes', () => {
     expect(mockPrisma.canvasMemo.create).not.toHaveBeenCalled();
   });
 
+  it('POST /canvas/templates/:id/instantiate keeps the canvas for a Free user whose other slot is in the trash', async () => {
+    // 1 live canvas + 1 trashed + the new one. Only live canvases hold a plan
+    // slot, so the post-create recount must not see 3 and delete the new canvas.
+    mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser, plan: 'free', trialEndsAt: null });
+    const freeJwt = signUserToken(userId, 'researcher', 'free');
+    mockPrisma.canvasTemplate.findUnique.mockResolvedValue({
+      id: 'tmpl-free',
+      name: 'UXR Pain-Points',
+      description: 'UXR',
+      category: 'ux',
+      method: 'interviews',
+      sampleQuestions: JSON.stringify([{ text: 'Pain', color: '#EF4444' }]),
+      sampleTranscript: null,
+      sampleMemos: null,
+      isPublic: true,
+      createdBy: null,
+    });
+    mockPrisma.codingCanvas.create.mockResolvedValue({ id: 'canvas-free-new', name: 'UXR Pain-Points' });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockPrisma.codingCanvas.count.mockImplementation(async ({ where }: any) => (where?.deletedAt === null ? 2 : 3));
+
+    const res = await request(app)
+      .post('/api/canvas/templates/tmpl-free/instantiate')
+      .set('Authorization', `Bearer ${freeJwt}`)
+      .send({ includeSampleData: false });
+
+    expect(res.status).toBe(201);
+    expect(mockPrisma.codingCanvas.delete).not.toHaveBeenCalled();
+  });
+
   it('POST /canvas/templates/:id/instantiate 404s for unknown template', async () => {
     mockPrisma.canvasTemplate.findUnique.mockResolvedValue(null);
     const res = await request(app)

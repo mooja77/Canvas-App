@@ -7,7 +7,7 @@ import { test, expect, type Page } from '@playwright/test';
  * boundary conditions, and error handling.
  */
 
-const BASE = 'http://localhost:3007/api';
+const BASE = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 
 // Generate a large transcript (~5000+ words by repeating paragraphs)
 function generateLargeTranscript(): string {
@@ -52,7 +52,12 @@ async function openCanvasById(page: Page, id: string) {
   await page.waitForSelector('.react-flow__pane', { timeout: 20000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
 }
@@ -63,7 +68,7 @@ test.describe.serial('Scenario J: Stress & Edge Cases', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const page = await ctx.newPage();
-    await page.goto('http://localhost:5174/canvas');
+    await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await page.waitForLoadState('domcontentloaded');
     jwt = await page.evaluate(() => {
       const raw = localStorage.getItem('qualcanvas-auth');
@@ -83,7 +88,9 @@ test.describe.serial('Scenario J: Stress & Edge Cases', () => {
         await page.request.delete(`${BASE}/canvas/${id}`, { headers: headers() });
         await page.request.delete(`${BASE}/canvas/${id}/permanent`, { headers: headers() });
       }
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
     await page.close();
     await ctx.close();
   });
@@ -110,9 +117,23 @@ test.describe.serial('Scenario J: Stress & Edge Cases', () => {
   });
 
   test('J.2 Create 15 codes rapidly', async ({ page }) => {
-    const colors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6',
-      '#EC4899', '#F97316', '#6366F1', '#14B8A6', '#A855F7',
-      '#DC2626', '#059669', '#0891B2', '#7C3AED', '#CA8A04'];
+    const colors = [
+      '#EF4444',
+      '#F59E0B',
+      '#10B981',
+      '#3B82F6',
+      '#8B5CF6',
+      '#EC4899',
+      '#F97316',
+      '#6366F1',
+      '#14B8A6',
+      '#A855F7',
+      '#DC2626',
+      '#059669',
+      '#0891B2',
+      '#7C3AED',
+      '#CA8A04',
+    ];
 
     for (let i = 0; i < 15; i++) {
       const res = await page.request.post(`${BASE}/canvas/${canvasId}/questions`, {
@@ -320,7 +341,13 @@ test.describe.serial('Scenario J: Stress & Edge Cases', () => {
   test('J.15 Coding with invalid transcriptId returns error', async ({ page }) => {
     const res = await page.request.post(`${BASE}/canvas/${canvasId}/codings`, {
       headers: headers(),
-      data: { transcriptId: 'nonexistent-id', questionId: codeIds[0], startOffset: 0, endOffset: 10, codedText: 'test' },
+      data: {
+        transcriptId: 'nonexistent-id',
+        questionId: codeIds[0],
+        startOffset: 0,
+        endOffset: 10,
+        codedText: 'test',
+      },
     });
     expect(res.ok()).toBe(false);
     expect(res.status()).toBeGreaterThanOrEqual(400);
@@ -383,7 +410,9 @@ test.describe.serial('Scenario J: Stress & Edge Cases', () => {
     }
 
     // Delete the code
-    const delRes = await page.request.delete(`${BASE}/canvas/${canvasId}/questions/${tempCodeId}`, { headers: headers() });
+    const delRes = await page.request.delete(`${BASE}/canvas/${canvasId}/questions/${tempCodeId}`, {
+      headers: headers(),
+    });
     expect(delRes.ok()).toBeTruthy();
 
     // Verify codings for that code are gone

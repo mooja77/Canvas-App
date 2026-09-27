@@ -29,7 +29,10 @@ async function goToCanvasList(page: Page) {
 
 async function createCanvasViaApi(page: Page, name: string): Promise<string> {
   const headers = await apiHeaders(page);
-  const res = await page.request.post('http://localhost:3007/api/canvas', { headers, data: { name } });
+  const res = await page.request.post(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas`, {
+    headers,
+    data: { name },
+  });
   expect(res.ok(), `Canvas create failed: ${res.status()}`).toBeTruthy();
   return (await res.json()).data.id;
 }
@@ -37,8 +40,13 @@ async function createCanvasViaApi(page: Page, name: string): Promise<string> {
 async function deleteCanvasViaApi(page: Page, canvasId: string) {
   const jwt = await getJwt(page);
   const h = { Authorization: `Bearer ${jwt}` };
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}`, { headers: h });
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}/permanent`, { headers: h });
+  await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}`, {
+    headers: h,
+  });
+  await page.request.delete(
+    `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/permanent`,
+    { headers: h },
+  );
 }
 
 async function openCanvasById(page: Page, canvasId: string) {
@@ -115,14 +123,23 @@ test.describe('Canvas Export & Tools', () => {
     await goToCanvasList(page);
     canvasId = await createCanvasViaApi(page, `E2E Export ${Date.now()}`);
     const headers = await apiHeaders(page);
-    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers,
-      data: { title: 'Export Test Transcript', content: 'Content for export testing with enough words to be useful.' },
-    });
-    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers,
-      data: { text: 'Test Code', color: '#059669' },
-    });
+    await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/transcripts`,
+      {
+        headers,
+        data: {
+          title: 'Export Test Transcript',
+          content: 'Content for export testing with enough words to be useful.',
+        },
+      },
+    );
+    await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/questions`,
+      {
+        headers,
+        data: { text: 'Test Code', color: '#059669' },
+      },
+    );
     await page.close();
   });
 
@@ -263,13 +280,16 @@ test.describe('Word export', () => {
     await goToCanvasList(page);
     canvasId = await createCanvasViaApi(page, `E2E Word ${Date.now()}`);
     const headers = await apiHeaders(page);
-    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers,
-      data: {
-        title: 'Word Export Transcript',
-        content: 'Participants described the bus service as unreliable and expensive.',
+    await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/transcripts`,
+      {
+        headers,
+        data: {
+          title: 'Word Export Transcript',
+          content: 'Participants described the bus service as unreliable and expensive.',
+        },
       },
-    });
+    );
     await openCanvasById(page, canvasId);
   });
 

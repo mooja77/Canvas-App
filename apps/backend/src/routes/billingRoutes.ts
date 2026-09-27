@@ -60,7 +60,7 @@ export async function deriveQualcanvasPlan(stripe: ReturnType<typeof getStripe>,
  *
  * No schema change is needed - legacyPricing already records who they are.
  */
-async function planAfterSubscriptionEnds(userId: string): Promise<string> {
+export async function planAfterSubscriptionEnds(userId: string): Promise<string> {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { legacyPricing: true } });
   return user?.legacyPricing ? 'pro' : 'free';
 }
@@ -215,6 +215,18 @@ billingRoutes.get('/billing/subscription', auth, async (req: Request, res: Respo
 
 const nowSecs = () => Math.floor(Date.now() / 1000);
 
+/**
+ * Subscription statuses that keep the paid tier. Sign-in and GET /auth/me
+ * (planAfterSubscriptionCheck in userAuthRoutes.ts) apply the same rule, and the
+ * three must agree or the plan flips depending on which path ran last.
+ *
+ * Open question (docs/qa/ESTATE-FINDINGS-2026-09-26.md, D1): whether past_due
+ * should keep the tier while Stripe retries the card. invoice.payment_failed
+ * already leaves the plan alone; widening this set also needs the sign-in rule
+ * changed, which lives in a file owned by another branch today.
+ */
+export const ENTITLED_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing']);
+
 // POST /api/billing/webhook — Stripe webhook handler
 // This route needs raw body, registered separately in index.ts
 /**
@@ -304,6 +316,11 @@ export async function handleStripeWebhook(req: Request, res: Response) {
           }
           const periodStart = item?.current_period_start ?? nowSecs();
           const periodEnd = item?.current_period_end ?? nowSecs() + 30 * 24 * 3600;
+          // Record the status Stripe reports NOW, not a hard-coded 'active': a
+          // delayed or retried delivery of this event after the subscription
+          // was cancelled used to re-activate it and re-grant the paid plan.
+          const status = sub.status;
+          const entitled = ENTITLED_SUBSCRIPTION_STATUSES.has(status);
           await prisma.$transaction([
             prisma.subscription.upsert({
               where: { userId },
@@ -311,21 +328,23 @@ export async function handleStripeWebhook(req: Request, res: Response) {
                 userId,
                 stripeSubscriptionId: subscriptionId,
                 stripePriceId: item?.price?.id || '',
-                status: 'active',
+                status,
+                cancelAtPeriodEnd: sub.cancel_at_period_end || false,
                 currentPeriodStart: new Date(periodStart * 1000),
                 currentPeriodEnd: new Date(periodEnd * 1000),
               },
               update: {
                 stripeSubscriptionId: subscriptionId,
                 stripePriceId: item?.price?.id || '',
-                status: 'active',
+                status,
+                cancelAtPeriodEnd: sub.cancel_at_period_end || false,
                 currentPeriodStart: new Date(periodStart * 1000),
                 currentPeriodEnd: new Date(periodEnd * 1000),
               },
             }),
             prisma.user.update({
               where: { id: userId },
-              data: { plan },
+              data: { plan: entitled ? plan : await planAfterSubscriptionEnds(userId) },
             }),
           ]);
         }
@@ -338,7 +357,15 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         const existingSub = await prisma.subscription.findUnique({
           where: { stripeSubscriptionId: sub.id },
         });
-        if (existingSub) {
+        // Stripe does not guarantee delivery order. A cancelled subscription can
+        // never become active again, so an 'active'/'past_due' update arriving
+        // after .deleted is stale: applying it re-granted the paid plan and
+        // blocked the user from re-subscribing (create-checkout 409s on it).
+        const staleAfterCancel = existingSub?.status === 'canceled' && sub.status !== 'canceled';
+        if (staleAfterCancel) {
+          console.info(`[Stripe Webhook] Ignoring stale ${event.type} (${event.id}) for cancelled ${sub.id}`);
+        }
+        if (existingSub && !staleAfterCancel) {
           const item = sub.items.data[0];
           // Period fields live on the subscription ITEM in this API version;
           // reading sub.current_period_* yields undefined → Invalid Date.
@@ -354,7 +381,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
               stripePriceId: item?.price?.id || existingSub.stripePriceId,
             },
           });
-          if (['active', 'trialing'].includes(sub.status)) {
+          if (ENTITLED_SUBSCRIPTION_STATUSES.has(sub.status)) {
             // Re-derive the tier from the (possibly changed) price so a plan
             // switch in the Customer Portal actually updates entitlements.
             const plan = await deriveQualcanvasPlan(stripe, item?.price);

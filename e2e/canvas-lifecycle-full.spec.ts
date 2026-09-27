@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 
 // ─── Helpers ───
 
-const BASE_API = 'http://localhost:3007/api';
+const BASE_API = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 
 async function dismissOnboarding(page: Page) {
   await page.addInitScript(() => {

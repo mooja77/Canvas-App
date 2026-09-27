@@ -60,6 +60,25 @@ export const shareCodeParam = z.object({ code: z.string().min(1).max(64) });
 export const canvasIdUserIdParams = z.object({ id: cuid, userId: cuid });
 export const canvasIdDocIdParams = z.object({ id: cuid, docId: cuid });
 export const canvasIdDocIdRegionIdParams = z.object({ id: cuid, docId: cuid, regionId: cuid });
+// Documents / region coding. Without body schemas a string coordinate or page
+// count reached Prisma and surfaced as a 500.
+export const createDocumentSchema = z.object({
+  fileUploadId: z.string().min(1).max(100),
+  title: z.string().trim().min(1).max(200),
+  docType: z.enum(['image', 'pdf']),
+  pageCount: z.number().int().min(1).max(10_000).optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+const percent = z.number().finite().min(0).max(100);
+export const createRegionSchema = z.object({
+  questionId: z.string().min(1).max(100),
+  pageNumber: z.number().int().min(1).max(10_000).optional(),
+  x: percent,
+  y: percent,
+  width: percent,
+  height: percent,
+  note: z.string().max(5000).nullable().optional(),
+});
 export const canvasIdJobIdParams = z.object({ id: cuid, jobId: cuid });
 export const canvasArtifactParams = z.object({
   canvasId: cuid,
@@ -99,6 +118,15 @@ export const updateCanvasSchema = z.object({
   researchParadigm: z.string().max(64).nullable().optional(),
 });
 
+// 'sample' marks transcripts seeded by starter templates; the plan caps skip
+// them. Only the server may set it - accepting it from a client let a Free
+// user add unlimited transcripts by labelling each one a sample.
+const clientSourceType = z
+  .string()
+  .max(50)
+  .refine((v) => v.trim().toLowerCase() !== 'sample', 'sourceType "sample" is reserved')
+  .optional();
+
 export const createTranscriptSchema = z.object({
   title: z.string().trim().min(1, 'Transcript title is required').max(200),
   // 2 million chars ≈ 400K words. Caps the resource-exhaustion vector that
@@ -110,7 +138,7 @@ export const createTranscriptSchema = z.object({
     .min(1, 'Transcript content is required')
     .max(2_000_000)
     .refine((v) => v.trim().length > 0, 'Transcript content is required'),
-  sourceType: z.string().max(50).optional(),
+  sourceType: clientSourceType,
   sourceId: z.string().max(200).optional(),
 });
 
@@ -120,7 +148,7 @@ export const importNarrativesSchema = z.object({
       z.object({
         title: z.string().min(1).max(200),
         content: z.string().min(1),
-        sourceType: z.string().max(50).optional(),
+        sourceType: clientSourceType,
         sourceId: z.string().max(200).optional(),
       }),
     )

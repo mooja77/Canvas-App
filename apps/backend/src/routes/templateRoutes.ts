@@ -172,7 +172,13 @@ templateRoutes.post('/canvas/templates/:templateId/instantiate', checkCanvasLimi
     const limits = getPlanLimits(plan);
     if (limits.maxCanvases !== Infinity) {
       const finalCount = await prisma.codingCanvas.count({
-        where: userId ? { OR: [{ userId }, { dashboardAccessId }] } : { dashboardAccessId },
+        // Only live canvases hold a plan slot - the same filter checkCanvasLimit
+        // uses. Counting the trash here deleted the canvas just created for a
+        // user who had passed that check.
+        where: {
+          ...(userId ? { OR: [{ userId }, { dashboardAccessId }] } : { dashboardAccessId }),
+          deletedAt: null,
+        },
       });
       if (finalCount > limits.maxCanvases) {
         await prisma.codingCanvas.delete({ where: { id: canvas.id } }).catch(() => {});

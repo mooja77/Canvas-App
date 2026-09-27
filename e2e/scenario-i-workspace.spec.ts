@@ -7,7 +7,7 @@ import { test, expect, type Page } from '@playwright/test';
  * command palette, layout management, undo/redo, multiple canvases, deep linking.
  */
 
-const BASE = 'http://localhost:3007/api';
+const BASE = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 
 // ─── Shared state ───
 
@@ -32,7 +32,12 @@ async function openCanvasById(page: Page, id: string) {
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
 }
@@ -40,11 +45,10 @@ async function openCanvasById(page: Page, id: string) {
 // ─── Tests ───
 
 test.describe.serial('Scenario I: Workspace Mastery', () => {
-
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const page = await ctx.newPage();
-    await page.goto('http://localhost:5174/canvas');
+    await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await page.waitForLoadState('domcontentloaded');
     jwt = await page.evaluate(() => {
       const raw = localStorage.getItem('qualcanvas-auth');
@@ -65,7 +69,11 @@ test.describe.serial('Scenario I: Workspace Mastery', () => {
     // Add a transcript
     const tRes = await page.request.post(`${BASE}/canvas/${primaryCanvasId}/transcripts`, {
       headers: headers(),
-      data: { title: 'Workspace Test Transcript', content: 'This is a test transcript for workspace mastery testing. It contains enough content to be meaningful for canvas operations.' },
+      data: {
+        title: 'Workspace Test Transcript',
+        content:
+          'This is a test transcript for workspace mastery testing. It contains enough content to be meaningful for canvas operations.',
+      },
     });
     expect(tRes.status()).toBe(201);
     transcriptId = (await tRes.json()).data.id;
@@ -90,7 +98,9 @@ test.describe.serial('Scenario I: Workspace Mastery', () => {
         await page.request.delete(`${BASE}/canvas/${id}`, { headers: headers() });
         await page.request.delete(`${BASE}/canvas/${id}/permanent`, { headers: headers() });
       }
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
     await page.close();
     await ctx.close();
   });
@@ -100,24 +110,38 @@ test.describe.serial('Scenario I: Workspace Mastery', () => {
   test('I.1 Toggle dark mode on', async ({ page }) => {
     await openCanvasById(page, primaryCanvasId);
     const darkBtn = page.locator('button[title="Switch to dark mode"], button[aria-label="Switch to dark mode"]');
-    if (await darkBtn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (
+      await darkBtn
+        .first()
+        .isVisible({ timeout: 3000 })
+        .catch(() => false)
+    ) {
       await darkBtn.first().click();
       await expect(page.locator('html')).toHaveClass(/dark/, { timeout: 3000 });
     } else {
       // Already in dark mode or button uses different label
       const lightBtn = page.locator('button[title="Switch to light mode"], button[aria-label="Switch to light mode"]');
-      expect(await lightBtn.first().isVisible({ timeout: 2000 }).catch(() => false) ||
-             await page.locator('html').evaluate(el => el.classList.contains('dark'))).toBeTruthy();
+      expect(
+        (await lightBtn
+          .first()
+          .isVisible({ timeout: 2000 })
+          .catch(() => false)) || (await page.locator('html').evaluate((el) => el.classList.contains('dark'))),
+      ).toBeTruthy();
     }
   });
 
   test('I.2 Dark mode persists after reload', async ({ page }) => {
     await openCanvasById(page, primaryCanvasId);
     // Check if dark mode is active or toggle it on first
-    const isDark = await page.locator('html').evaluate(el => el.classList.contains('dark'));
+    const isDark = await page.locator('html').evaluate((el) => el.classList.contains('dark'));
     if (!isDark) {
       const darkBtn = page.locator('button[title="Switch to dark mode"], button[aria-label="Switch to dark mode"]');
-      if (await darkBtn.first().isVisible({ timeout: 2000 }).catch(() => false)) {
+      if (
+        await darkBtn
+          .first()
+          .isVisible({ timeout: 2000 })
+          .catch(() => false)
+      ) {
         await darkBtn.first().click();
       }
     }
@@ -125,26 +149,36 @@ test.describe.serial('Scenario I: Workspace Mastery', () => {
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
     // Dark mode state should persist via Zustand persist
-    const stillDark = await page.locator('html').evaluate(el => el.classList.contains('dark'));
+    const stillDark = await page.locator('html').evaluate((el) => el.classList.contains('dark'));
     // Accept either state — the important thing is no crash on reload
     expect(typeof stillDark).toBe('boolean');
   });
 
   test('I.3 Toggle back to light mode', async ({ page }) => {
     await openCanvasById(page, primaryCanvasId);
-    const isDark = await page.locator('html').evaluate(el => el.classList.contains('dark'));
+    const isDark = await page.locator('html').evaluate((el) => el.classList.contains('dark'));
     if (isDark) {
       const lightBtn = page.locator('button[title="Switch to light mode"], button[aria-label="Switch to light mode"]');
-      if (await lightBtn.first().isVisible({ timeout: 2000 }).catch(() => false)) {
+      if (
+        await lightBtn
+          .first()
+          .isVisible({ timeout: 2000 })
+          .catch(() => false)
+      ) {
         await lightBtn.first().click();
         await expect(page.locator('html')).not.toHaveClass(/dark/, { timeout: 3000 });
       }
     }
     // Ensure we're in light mode for remaining tests
-    const finalDark = await page.locator('html').evaluate(el => el.classList.contains('dark'));
+    const finalDark = await page.locator('html').evaluate((el) => el.classList.contains('dark'));
     if (finalDark) {
       const btn = page.locator('button[title="Switch to light mode"], button[aria-label="Switch to light mode"]');
-      if (await btn.first().isVisible({ timeout: 2000 }).catch(() => false)) {
+      if (
+        await btn
+          .first()
+          .isVisible({ timeout: 2000 })
+          .catch(() => false)
+      ) {
         await btn.first().click();
       }
     }
@@ -157,7 +191,10 @@ test.describe.serial('Scenario I: Workspace Mastery', () => {
     // Press Shift+/ which produces "?"
     await page.keyboard.press('Shift+Slash');
     const modal = page.getByText(/Keyboard Shortcuts/i);
-    const visible = await modal.first().isVisible({ timeout: 3000 }).catch(() => false);
+    const visible = await modal
+      .first()
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
     if (visible) {
       await expect(modal.first()).toBeVisible();
       await page.keyboard.press('Escape');
@@ -171,7 +208,10 @@ test.describe.serial('Scenario I: Workspace Mastery', () => {
     await page.keyboard.press('Control+k');
     // Look for command palette search input
     const searchInput = page.locator('input[placeholder*="Search"], input[type="search"], [role="combobox"]');
-    const visible = await searchInput.first().isVisible({ timeout: 3000 }).catch(() => false);
+    const visible = await searchInput
+      .first()
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
     if (visible) {
       await expect(searchInput.first()).toBeVisible();
       await searchInput.first().fill('transcript');
@@ -194,7 +234,10 @@ test.describe.serial('Scenario I: Workspace Mastery', () => {
     const count = await modals.count();
     // All modals should be closed or hidden
     for (let i = 0; i < count; i++) {
-      const isVis = await modals.nth(i).isVisible().catch(() => false);
+      const isVis = await modals
+        .nth(i)
+        .isVisible()
+        .catch(() => false);
       if (isVis) {
         // Some persistent panels may be visible — that's OK
       }
@@ -214,7 +257,12 @@ test.describe.serial('Scenario I: Workspace Mastery', () => {
   test('I.8 Fit View button works', async ({ page }) => {
     await openCanvasById(page, primaryCanvasId);
     const fitBtn = page.locator('button[title="Fit View"], button[aria-label="Fit View"]');
-    if (await fitBtn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (
+      await fitBtn
+        .first()
+        .isVisible({ timeout: 3000 })
+        .catch(() => false)
+    ) {
       await fitBtn.first().click();
       await page.waitForTimeout(500);
     }
@@ -225,7 +273,12 @@ test.describe.serial('Scenario I: Workspace Mastery', () => {
   test('I.9 Auto-arrange button works', async ({ page }) => {
     await openCanvasById(page, primaryCanvasId);
     const layoutBtn = page.locator('button[title*="Auto-arrange"], button[title*="auto-arrange"]');
-    if (await layoutBtn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (
+      await layoutBtn
+        .first()
+        .isVisible({ timeout: 3000 })
+        .catch(() => false)
+    ) {
       await layoutBtn.first().click();
       await page.waitForTimeout(1000);
     }
@@ -328,9 +381,7 @@ test.describe.serial('Scenario I: Workspace Mastery', () => {
     const res = await page.request.put(`${BASE}/canvas/${primaryCanvasId}/layout`, {
       headers: headers(),
       data: {
-        positions: [
-          { nodeId: `transcript-${transcriptId}`, nodeType: 'transcript', x: 100, y: 200 },
-        ],
+        positions: [{ nodeId: `transcript-${transcriptId}`, nodeType: 'transcript', x: 100, y: 200 }],
       },
     });
     expect(res.ok()).toBeTruthy();
@@ -350,9 +401,7 @@ test.describe.serial('Scenario I: Workspace Mastery', () => {
     const res = await page.request.put(`${BASE}/canvas/${primaryCanvasId}/layout`, {
       headers: headers(),
       data: {
-        positions: [
-          { nodeId: `transcript-${transcriptId}`, nodeType: 'transcript', x: 100, y: 200, collapsed: true },
-        ],
+        positions: [{ nodeId: `transcript-${transcriptId}`, nodeType: 'transcript', x: 100, y: 200, collapsed: true }],
       },
     });
     expect(res.ok()).toBeTruthy();
