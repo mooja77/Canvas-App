@@ -3,7 +3,7 @@ import { getViewportTransform } from './helpers';
 
 // ─── Constants ───
 
-const BASE = 'http://localhost:3007/api';
+const BASE = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 const CANVAS_NAME = `E2E Scenario L ${Date.now()}`;
 const TRANSCRIPTS = [
   {

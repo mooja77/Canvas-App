@@ -239,7 +239,7 @@ test.describe('Canvas Full Workflow', () => {
     await page.waitForLoadState('networkidle');
 
     const canvasName = `Workflow Delete ${Date.now()}`;
-    await page.request.post('http://localhost:3007/api/canvas', {
+    await page.request.post(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas`, {
       headers: {
         Authorization: `Bearer ${await page.evaluate(() => JSON.parse(localStorage.getItem('qualcanvas-auth') || '{}')?.state?.jwt || '')}`,
       },
@@ -297,14 +297,14 @@ test.describe('Canvas Full Workflow', () => {
       const jwt = await page.evaluate(
         () => JSON.parse(localStorage.getItem('qualcanvas-auth') || '{}')?.state?.jwt || '',
       );
-      const canvases = await page.request.get('http://localhost:3007/api/canvas', {
+      const canvases = await page.request.get(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas`, {
         headers: { Authorization: `Bearer ${jwt}` },
       });
       const match = ((await canvases.json()).data || []).find(
         (canvas: { name?: string }) => canvas.name === canvasName,
       );
       if (match?.id) {
-        await page.request.delete(`http://localhost:3007/api/canvas/${match.id}`, {
+        await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${match.id}`, {
           headers: { Authorization: `Bearer ${jwt}` },
         });
         await page.reload();

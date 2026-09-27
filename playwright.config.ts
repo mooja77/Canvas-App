@@ -15,6 +15,9 @@ const e2eFrontendProbeUrl = `http://127.0.0.1:${e2eFrontendPort}`;
 
 export default defineConfig({
   testDir: './e2e',
+  // The hermetic full-stack estate suite has its own stack and config
+  // (playwright.fullstack.config.ts); it must not run against this one.
+  testIgnore: ['**/fullstack/**'],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   // CI browsers occasionally encounter a one-off scheduling/network race.

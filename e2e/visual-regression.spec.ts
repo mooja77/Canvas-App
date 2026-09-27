@@ -24,7 +24,7 @@ const CANVAS_LIST_SCREENSHOT_OPTS = { ...SCREENSHOT_OPTS, maxDiffPixels: 500 };
 const CANVAS_WORKSPACE_SCREENSHOT_OPTS = { ...SCREENSHOT_OPTS, maxDiffPixels: 12000 };
 const STANDARD_VIEWPORT = { width: 1280, height: 720 };
 const MOBILE_VIEWPORT = { width: 375, height: 812 };
-const BASE = 'http://localhost:3007/api';
+const BASE = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 const AUTH_FILE = 'e2e/.auth/user.json';
 const VISUAL_CANVAS_NAME = 'Visual Regression Fixture';
 

@@ -1,11 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
 
-const API = 'http://localhost:3007/api/v1';
+const API = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/v1`;
 let jwt = '';
 let canvasId = '';
 const PREFIX = `E2E-DU ${Date.now()}`;
 
-function headers() { return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }; }
+function headers() {
+  return { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
+}
 
 async function openCanvas(page: Page) {
   await page.addInitScript(() => {
@@ -13,7 +15,8 @@ async function openCanvas(page: Page) {
     s.state = { ...s.state, onboardingComplete: true, setupWizardComplete: true };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(s));
   });
-  await page.goto('/canvas'); await page.waitForLoadState('networkidle');
+  await page.goto('/canvas');
+  await page.waitForLoadState('networkidle');
   const card = page.getByText(PREFIX).first();
   if (await card.isVisible({ timeout: 3000 }).catch(() => false)) await card.click();
   await page.waitForSelector('.react-flow__pane', { timeout: 10000 });
@@ -23,25 +26,38 @@ test.describe('Deep Canvas: Undo/Redo Chain', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas'); await p.waitForLoadState('domcontentloaded');
-    jwt = await p.evaluate(() => { const r = localStorage.getItem('qualcanvas-auth'); return r ? JSON.parse(r)?.state?.jwt || '' : ''; });
+    await p.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const r = localStorage.getItem('qualcanvas-auth');
+      return r ? JSON.parse(r)?.state?.jwt || '' : '';
+    });
     const res = await p.request.post(`${API}/canvas`, { headers: headers(), data: { name: PREFIX } });
     canvasId = (await res.json()).data.id;
-    await p.request.post(`${API}/canvas/${canvasId}/transcripts`, { headers: headers(), data: { title: 'Undo Test', content: 'Testing undo redo chain.' } });
+    await p.request.post(`${API}/canvas/${canvasId}/transcripts`, {
+      headers: headers(),
+      data: { title: 'Undo Test', content: 'Testing undo redo chain.' },
+    });
     await p.request.post(`${API}/canvas/${canvasId}/questions`, { headers: headers(), data: { text: 'Undo Code 1' } });
     await p.request.post(`${API}/canvas/${canvasId}/questions`, { headers: headers(), data: { text: 'Undo Code 2' } });
-    await p.close(); await ctx.close();
+    await p.close();
+    await ctx.close();
   });
 
   test.afterAll(async ({ browser }) => {
     if (!canvasId) return;
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas'); await p.waitForLoadState('domcontentloaded');
-    jwt = await p.evaluate(() => { const r = localStorage.getItem('qualcanvas-auth'); return r ? JSON.parse(r)?.state?.jwt || '' : ''; });
+    await p.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
+    await p.waitForLoadState('domcontentloaded');
+    jwt = await p.evaluate(() => {
+      const r = localStorage.getItem('qualcanvas-auth');
+      return r ? JSON.parse(r)?.state?.jwt || '' : '';
+    });
     await p.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
     await p.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
-    await p.close(); await ctx.close();
+    await p.close();
+    await ctx.close();
   });
 
   test('1 - Auto-arrange then undo', async ({ page }) => {
@@ -103,10 +119,12 @@ test.describe('Deep Canvas: Undo/Redo Chain', () => {
 
   test('8 - Console zero errors', async ({ page }) => {
     const errors: string[] = [];
-    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') errors.push(msg.text());
+    });
     await openCanvas(page);
     await page.keyboard.press('Control+z');
     await page.keyboard.press('Control+Shift+z');
-    expect(errors.filter(e => !e.includes('favicon'))).toHaveLength(0);
+    expect(errors.filter((e) => !e.includes('favicon'))).toHaveLength(0);
   });
 });

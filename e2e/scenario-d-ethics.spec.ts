@@ -8,7 +8,7 @@ import { test, expect, type Page } from '@playwright/test';
  * anonymization, and audit trail.
  */
 
-const API = 'http://localhost:3007/api';
+const API = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 
 // Transcript containing identifiable names and locations
 const SENSITIVE_TRANSCRIPT = {
@@ -54,7 +54,12 @@ async function openCanvasById(page: Page, id: string) {
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
 }
@@ -65,7 +70,7 @@ test.describe('Scenario D: Ethics-First — Sensitive Interview Data', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const page = await ctx.newPage();
-    await page.goto('http://localhost:5174/canvas');
+    await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await page.waitForLoadState('domcontentloaded');
     jwt = await page.evaluate(() => {
       const raw = localStorage.getItem('qualcanvas-auth');
@@ -83,7 +88,9 @@ test.describe('Scenario D: Ethics-First — Sensitive Interview Data', () => {
     try {
       await page.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
       await page.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
     await page.close();
     await ctx.close();
   });
@@ -204,7 +211,13 @@ test.describe('Scenario D: Ethics-First — Sensitive Interview Data', () => {
     const offset1 = SENSITIVE_TRANSCRIPT.content.indexOf(text1);
     const res1 = await page.request.post(`${API}/canvas/${canvasId}/codings`, {
       headers: headers(),
-      data: { transcriptId, questionId: codeId1, startOffset: offset1, endOffset: offset1 + text1.length, codedText: text1 },
+      data: {
+        transcriptId,
+        questionId: codeId1,
+        startOffset: offset1,
+        endOffset: offset1 + text1.length,
+        codedText: text1,
+      },
     });
     expect(res1.status()).toBe(201);
     codingIds.push((await res1.json()).data.id);
@@ -214,7 +227,13 @@ test.describe('Scenario D: Ethics-First — Sensitive Interview Data', () => {
     const offset2 = SENSITIVE_TRANSCRIPT.content.indexOf(text2);
     const res2 = await page.request.post(`${API}/canvas/${canvasId}/codings`, {
       headers: headers(),
-      data: { transcriptId, questionId: codeId2, startOffset: offset2, endOffset: offset2 + text2.length, codedText: text2 },
+      data: {
+        transcriptId,
+        questionId: codeId2,
+        startOffset: offset2,
+        endOffset: offset2 + text2.length,
+        codedText: text2,
+      },
     });
     expect(res2.status()).toBe(201);
     codingIds.push((await res2.json()).data.id);
@@ -224,7 +243,13 @@ test.describe('Scenario D: Ethics-First — Sensitive Interview Data', () => {
     const offset3 = SENSITIVE_TRANSCRIPT.content.indexOf(text3);
     const res3 = await page.request.post(`${API}/canvas/${canvasId}/codings`, {
       headers: headers(),
-      data: { transcriptId, questionId: codeId3, startOffset: offset3, endOffset: offset3 + text3.length, codedText: text3 },
+      data: {
+        transcriptId,
+        questionId: codeId3,
+        startOffset: offset3,
+        endOffset: offset3 + text3.length,
+        codedText: text3,
+      },
     });
     expect(res3.status()).toBe(201);
     codingIds.push((await res3.json()).data.id);
@@ -283,13 +308,10 @@ test.describe('Scenario D: Ethics-First — Sensitive Interview Data', () => {
   });
 
   test('D.12 Withdraw consent for P002', async ({ page }) => {
-    const res = await page.request.put(
-      `${API}/canvas/${canvasId}/consent/${consentIds['P002']}/withdraw`,
-      {
-        headers: headers(),
-        data: { notes: 'Participant requested withdrawal via email on 2026-03-15' },
-      }
-    );
+    const res = await page.request.put(`${API}/canvas/${canvasId}/consent/${consentIds['P002']}/withdraw`, {
+      headers: headers(),
+      data: { notes: 'Participant requested withdrawal via email on 2026-03-15' },
+    });
     expect(res.ok()).toBe(true);
     const body = await res.json();
     expect(body.data.consentStatus).toBe('withdrawn');
@@ -298,13 +320,10 @@ test.describe('Scenario D: Ethics-First — Sensitive Interview Data', () => {
   });
 
   test('D.13 Verify withdrawn consent cannot be withdrawn again', async ({ page }) => {
-    const res = await page.request.put(
-      `${API}/canvas/${canvasId}/consent/${consentIds['P002']}/withdraw`,
-      {
-        headers: headers(),
-        data: { notes: 'Attempting second withdrawal' },
-      }
-    );
+    const res = await page.request.put(`${API}/canvas/${canvasId}/consent/${consentIds['P002']}/withdraw`, {
+      headers: headers(),
+      data: { notes: 'Attempting second withdrawal' },
+    });
     expect(res.status()).toBe(400);
   });
 

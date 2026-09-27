@@ -30,7 +30,10 @@ async function goToCanvasList(page: Page) {
 
 async function createCanvasViaApi(page: Page, name: string): Promise<string> {
   const headers = await apiHeaders(page);
-  const res = await page.request.post('http://localhost:3007/api/canvas', { headers, data: { name } });
+  const res = await page.request.post(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas`, {
+    headers,
+    data: { name },
+  });
   expect(res.ok(), `Canvas create failed: ${res.status()}`).toBeTruthy();
   return (await res.json()).data.id;
 }
@@ -38,8 +41,13 @@ async function createCanvasViaApi(page: Page, name: string): Promise<string> {
 async function deleteCanvasViaApi(page: Page, canvasId: string) {
   const jwt = await getJwt(page);
   const h = { Authorization: `Bearer ${jwt}` };
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}`, { headers: h });
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}/permanent`, { headers: h });
+  await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}`, {
+    headers: h,
+  });
+  await page.request.delete(
+    `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/permanent`,
+    { headers: h },
+  );
 }
 
 async function openCanvasById(page: Page, canvasId: string) {
@@ -84,34 +92,46 @@ test.describe('Canvas Workspace Full', () => {
       'sixty minutes and was recorded with the consent of the participant. The interviews explored themes',
       'of professional development, workplace culture, and personal motivation.',
     ].join(' ');
-    const tRes = await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers,
-      data: { title: 'Workspace Test Interview', content: sampleText },
-    });
+    const tRes = await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/transcripts`,
+      {
+        headers,
+        data: { title: 'Workspace Test Interview', content: sampleText },
+      },
+    );
     const transcriptId = (await tRes.json()).data.id;
 
-    const cRes = await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers,
-      data: { text: 'Professional Development', color: '#4F46E5' },
-    });
+    const cRes = await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/questions`,
+      {
+        headers,
+        data: { text: 'Professional Development', color: '#4F46E5' },
+      },
+    );
     const codeId = (await cRes.json()).data.id;
 
-    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers,
-      data: { text: 'Workplace Culture', color: '#059669' },
-    });
+    await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/questions`,
+      {
+        headers,
+        data: { text: 'Workplace Culture', color: '#059669' },
+      },
+    );
 
     if (transcriptId && codeId) {
-      await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/codings`, {
-        headers,
-        data: {
-          transcriptId,
-          questionId: codeId,
-          startOffset: 0,
-          endOffset: 91,
-          codedText: sampleText.slice(0, 91),
+      await page.request.post(
+        `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/codings`,
+        {
+          headers,
+          data: {
+            transcriptId,
+            questionId: codeId,
+            startOffset: 0,
+            endOffset: 91,
+            codedText: sampleText.slice(0, 91),
+          },
         },
-      });
+      );
     }
     await page.close();
   });

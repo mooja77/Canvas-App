@@ -36,7 +36,10 @@ async function goToCanvasList(page: Page) {
 
 async function createCanvasViaApi(page: Page, name: string): Promise<string> {
   const headers = await apiHeaders(page);
-  const res = await page.request.post('http://localhost:3007/api/canvas', { headers, data: { name } });
+  const res = await page.request.post(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas`, {
+    headers,
+    data: { name },
+  });
   expect(res.ok(), `Canvas create failed: ${res.status()}`).toBeTruthy();
   return (await res.json()).data.id;
 }
@@ -44,8 +47,13 @@ async function createCanvasViaApi(page: Page, name: string): Promise<string> {
 async function deleteCanvasViaApi(page: Page, canvasId: string) {
   const jwt = await getJwt(page);
   const h = { Authorization: `Bearer ${jwt}` };
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}`, { headers: h });
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}/permanent`, { headers: h });
+  await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}`, {
+    headers: h,
+  });
+  await page.request.delete(
+    `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/permanent`,
+    { headers: h },
+  );
 }
 
 async function openCanvasById(page: Page, canvasId: string) {
@@ -144,7 +152,7 @@ test.describe('UX Phase 3 — Power User Features', () => {
     const page = await browser.newPage({ storageState: 'e2e/.auth/user.json' });
 
     // Navigate to the app BEFORE reading localStorage
-    await page.goto('http://localhost:5174/canvas');
+    await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await page.waitForLoadState('domcontentloaded');
 
     jwt = await page.evaluate(() => {
@@ -158,7 +166,7 @@ test.describe('UX Phase 3 — Power User Features', () => {
     canvasId = await createCanvasViaApi(page, `E2E Phase3 ${ts}`);
     canvasId2 = await createCanvasViaApi(page, `E2E Phase3 Alt ${ts}`);
     const headers = await apiHeaders(page);
-    const baseUrl = 'http://localhost:3007/api';
+    const baseUrl = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 
     // Create 2 transcripts
     const t1Res = await page.request.post(`${baseUrl}/canvas/${canvasId}/transcripts`, {

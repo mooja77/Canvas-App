@@ -17,7 +17,7 @@ import { getViewportTransform } from './helpers';
  * ordering which other tests mutate.
  */
 
-const API = 'http://localhost:3007/api/v1';
+const API = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/v1`;
 const PREFIX = `E2E-RV ${Date.now()}`;
 let jwt = '';
 let canvasId = '';
@@ -51,7 +51,7 @@ test.describe('Canvas responsive visual fit', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas');
+    await p.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await p.waitForLoadState('domcontentloaded');
     jwt = await p.evaluate(() => {
       const raw = localStorage.getItem('qualcanvas-auth');
@@ -118,7 +118,7 @@ test.describe('Canvas responsive visual fit', () => {
     if (!canvasId) return;
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas');
+    await p.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await p.waitForLoadState('domcontentloaded');
     jwt = await p.evaluate(() => {
       const raw = localStorage.getItem('qualcanvas-auth');

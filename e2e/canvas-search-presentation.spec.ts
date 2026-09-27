@@ -9,7 +9,7 @@ import { test, expect, type Page } from '@playwright/test';
  * realistically break (shortcut unbound, overlay not mounting, no exit).
  */
 
-const API = 'http://localhost:3007/api/v1';
+const API = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/v1`;
 const PREFIX = `E2E-SP ${Date.now()}`;
 let jwt = '';
 let canvasId = '';
@@ -34,7 +34,7 @@ test.describe('Canvas search + presentation mode', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas');
+    await p.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await p.waitForLoadState('domcontentloaded');
     jwt = await p.evaluate(() => {
       const raw = localStorage.getItem('qualcanvas-auth');
@@ -64,7 +64,7 @@ test.describe('Canvas search + presentation mode', () => {
     if (!canvasId) return;
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto('http://localhost:5174/canvas');
+    await p.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await p.waitForLoadState('domcontentloaded');
     jwt = await p.evaluate(() => {
       const raw = localStorage.getItem('qualcanvas-auth');

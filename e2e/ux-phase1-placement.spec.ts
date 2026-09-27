@@ -18,7 +18,10 @@ async function apiHeaders(page: Page) {
 
 async function createCanvasViaApi(page: Page, name: string): Promise<string> {
   const headers = await apiHeaders(page);
-  const res = await page.request.post('http://localhost:3007/api/canvas', { headers, data: { name } });
+  const res = await page.request.post(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas`, {
+    headers,
+    data: { name },
+  });
   expect(res.ok(), `Canvas create failed: ${res.status()}`).toBeTruthy();
   return (await res.json()).data.id;
 }
@@ -26,8 +29,13 @@ async function createCanvasViaApi(page: Page, name: string): Promise<string> {
 async function deleteCanvasViaApi(page: Page, canvasId: string) {
   const jwt = await getJwt(page);
   const h = { Authorization: `Bearer ${jwt}` };
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}`, { headers: h });
-  await page.request.delete(`http://localhost:3007/api/canvas/${canvasId}/permanent`, { headers: h });
+  await page.request.delete(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}`, {
+    headers: h,
+  });
+  await page.request.delete(
+    `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/permanent`,
+    { headers: h },
+  );
 }
 
 async function openCanvasById(page: Page, canvasId: string) {
@@ -74,7 +82,7 @@ test.describe('UX Phase 1 — Placement & Navigation', () => {
     const page = await browser.newPage({ storageState: 'e2e/.auth/user.json' });
 
     // Navigate first so localStorage is available
-    await page.goto('http://localhost:5174/canvas');
+    await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await page.waitForLoadState('domcontentloaded');
     const jwt = await getJwt(page);
     expect(jwt, 'JWT must exist').toBeTruthy();
@@ -82,36 +90,48 @@ test.describe('UX Phase 1 — Placement & Navigation', () => {
     const headers = { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
 
     // Create canvas
-    const cRes = await page.request.post('http://localhost:3007/api/canvas', { headers, data: { name: canvasName } });
+    const cRes = await page.request.post(`http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas`, {
+      headers,
+      data: { name: canvasName },
+    });
     expect(cRes.ok()).toBeTruthy();
     canvasId = (await cRes.json()).data.id;
 
     // Seed transcript
-    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/transcripts`, {
-      headers,
-      data: {
-        title: 'Phase1 Interview',
-        content:
-          'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted approximately sixty minutes and covered themes of professional development, organizational culture, and leadership practices.',
+    await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/transcripts`,
+      {
+        headers,
+        data: {
+          title: 'Phase1 Interview',
+          content:
+            'The research methodology involved conducting semi-structured interviews with fifteen participants from diverse backgrounds. Each interview lasted approximately sixty minutes and covered themes of professional development, organizational culture, and leadership practices.',
+        },
       },
-    });
+    );
 
     // Seed 2 codes
-    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers,
-      data: { text: 'Methodology', color: '#4F46E5' },
-    });
-    await page.request.post(`http://localhost:3007/api/canvas/${canvasId}/questions`, {
-      headers,
-      data: { text: 'Leadership', color: '#DC2626' },
-    });
+    await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/questions`,
+      {
+        headers,
+        data: { text: 'Methodology', color: '#4F46E5' },
+      },
+    );
+    await page.request.post(
+      `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/canvas/${canvasId}/questions`,
+      {
+        headers,
+        data: { text: 'Leadership', color: '#DC2626' },
+      },
+    );
 
     await page.close();
   });
 
   test.afterAll(async ({ browser }) => {
     const page = await browser.newPage({ storageState: 'e2e/.auth/user.json' });
-    await page.goto('http://localhost:5174/canvas');
+    await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await page.waitForLoadState('domcontentloaded');
     if (canvasId) await deleteCanvasViaApi(page, canvasId);
     await page.close();

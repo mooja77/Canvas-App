@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 
 // ─── Constants ───
 
-const BASE = 'http://localhost:3007/api';
+const BASE = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 const CANVAS_NAME = `ScenarioA-Telehealth-${Date.now()}`;
 
 // ─── Transcript Data ───

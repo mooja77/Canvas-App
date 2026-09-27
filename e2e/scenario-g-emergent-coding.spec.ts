@@ -8,7 +8,7 @@ import { test, expect, type Page } from '@playwright/test';
  * renaming, hierarchy creation, and iterative analysis.
  */
 
-const API = 'http://localhost:3007/api';
+const API = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 
 // ─── Community Health Worker interview transcripts ───
 
@@ -71,7 +71,7 @@ test.describe('Scenario G: Emergent Coding — Discovery Approach', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const page = await ctx.newPage();
-    await page.goto('http://localhost:5174/canvas');
+    await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await page.waitForLoadState('domcontentloaded');
     jwt = await page.evaluate(() => {
       const raw = localStorage.getItem('qualcanvas-auth');
@@ -89,7 +89,9 @@ test.describe('Scenario G: Emergent Coding — Discovery Approach', () => {
     try {
       await page.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
       await page.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
     await page.close();
     await ctx.close();
   });
@@ -192,28 +194,36 @@ test.describe('Scenario G: Emergent Coding — Discovery Approach', () => {
   test('G.8 Create 4 more codes with codings each', async ({ page }) => {
     const moreSpecs = [
       {
-        key: 'homeVisits', text: 'Home Visits', color: '#F59E0B',
+        key: 'homeVisits',
+        text: 'Home Visits',
+        color: '#F59E0B',
         codings: [
           { ti: 0, text: 'Home visits are the core of my practice' },
           { ti: 1, text: 'Home visits in rural areas mean hours of driving' },
         ],
       },
       {
-        key: 'languageBarriers', text: 'Language Barriers', color: '#EF4444',
+        key: 'languageBarriers',
+        text: 'Language Barriers',
+        color: '#EF4444',
         codings: [
           { ti: 0, text: 'Language barriers are a constant challenge' },
           { ti: 1, text: 'Transportation barriers are as significant as language barriers' },
         ],
       },
       {
-        key: 'healthLiteracy', text: 'Health Literacy', color: '#8B5CF6',
+        key: 'healthLiteracy',
+        text: 'Health Literacy',
+        color: '#8B5CF6',
         codings: [
           { ti: 0, text: 'Health literacy is another major barrier' },
           { ti: 1, text: 'Health literacy in rural communities has its own patterns' },
         ],
       },
       {
-        key: 'systemNavigation', text: 'System Navigation', color: '#EC4899',
+        key: 'systemNavigation',
+        text: 'System Navigation',
+        color: '#EC4899',
         codings: [
           { ti: 0, text: 'System navigation is perhaps my most important role' },
           { ti: 1, text: 'System navigation for rural clients often means navigating systems that are far away' },
@@ -378,7 +388,7 @@ test.describe('Scenario G: Emergent Coding — Discovery Approach', () => {
     // Check that health-related words appear
     const wordTexts = result.words.map((w: { text: string }) => w.text.toLowerCase());
     const hasRelevantWord = wordTexts.some((w: string) =>
-      ['community', 'health', 'trust', 'clients', 'rural', 'barriers'].includes(w)
+      ['community', 'health', 'trust', 'clients', 'rural', 'barriers'].includes(w),
     );
     expect(hasRelevantWord).toBe(true);
   });

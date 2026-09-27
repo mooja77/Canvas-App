@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const API = 'http://localhost:3007/api/v1';
+const API = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api/v1`;
 let jwt = '';
 
 function headers() {
@@ -8,7 +8,7 @@ function headers() {
 }
 
 async function getJwt(page: any) {
-  await page.goto('http://localhost:5174/canvas');
+  await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
   await page.waitForLoadState('domcontentloaded');
   return await page.evaluate(() => {
     const r = localStorage.getItem('qualcanvas-auth');

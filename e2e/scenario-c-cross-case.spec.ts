@@ -7,7 +7,7 @@ import { test, expect, type Page } from '@playwright/test';
  * (farmer, scientist, politician) discuss climate change adaptation.
  */
 
-const API = 'http://localhost:3007/api';
+const API = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 
 // ─── Transcript content (~400 words each) ───
 
@@ -92,7 +92,12 @@ async function openCanvasById(page: Page, id: string) {
   await page.waitForSelector('.react-flow__pane', { timeout: 15000 });
   await page.waitForLoadState('networkidle');
   const skipBtn = page.getByRole('button', { name: /skip tour/i });
-  if (await skipBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
+  if (
+    await skipBtn
+      .first()
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
     await skipBtn.first().click();
   }
 }
@@ -103,7 +108,7 @@ test.describe('Scenario C: Cross-Case — Climate Change Attitudes', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const page = await ctx.newPage();
-    await page.goto('http://localhost:5174/canvas');
+    await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await page.waitForLoadState('domcontentloaded');
     jwt = await page.evaluate(() => {
       const raw = localStorage.getItem('qualcanvas-auth');
@@ -121,7 +126,9 @@ test.describe('Scenario C: Cross-Case — Climate Change Attitudes', () => {
     try {
       await page.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
       await page.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
     await page.close();
     await ctx.close();
   });
@@ -141,8 +148,16 @@ test.describe('Scenario C: Cross-Case — Climate Change Attitudes', () => {
   test('C.2 Create 3 cases with attributes', async ({ page }) => {
     const caseDefs = [
       { key: 'farmers', name: 'Farmers', attributes: { role: 'agricultural', location: 'rural', age_range: '40-65' } },
-      { key: 'officials', name: 'Government Officials', attributes: { role: 'administrative', location: 'urban', age_range: '35-55' } },
-      { key: 'teachers', name: 'Scientists', attributes: { role: 'scientific', location: 'university', age_range: '30-60' } },
+      {
+        key: 'officials',
+        name: 'Government Officials',
+        attributes: { role: 'administrative', location: 'urban', age_range: '35-55' },
+      },
+      {
+        key: 'teachers',
+        name: 'Scientists',
+        attributes: { role: 'scientific', location: 'university', age_range: '30-60' },
+      },
     ];
     for (const c of caseDefs) {
       const res = await page.request.post(`${API}/canvas/${canvasId}/cases`, {
@@ -216,7 +231,13 @@ test.describe('Scenario C: Cross-Case — Climate Change Attitudes', () => {
       expect(offset).toBeGreaterThanOrEqual(0);
       const res = await page.request.post(`${API}/canvas/${canvasId}/codings`, {
         headers: headers(),
-        data: { transcriptId: transcriptIds[0], questionId: codeIds[c.qKey], startOffset: offset, endOffset: offset + c.text.length, codedText: c.text },
+        data: {
+          transcriptId: transcriptIds[0],
+          questionId: codeIds[c.qKey],
+          startOffset: offset,
+          endOffset: offset + c.text.length,
+          codedText: c.text,
+        },
       });
       expect(res.status()).toBe(201);
     }
@@ -235,7 +256,13 @@ test.describe('Scenario C: Cross-Case — Climate Change Attitudes', () => {
       expect(offset).toBeGreaterThanOrEqual(0);
       const res = await page.request.post(`${API}/canvas/${canvasId}/codings`, {
         headers: headers(),
-        data: { transcriptId: transcriptIds[1], questionId: codeIds[c.qKey], startOffset: offset, endOffset: offset + c.text.length, codedText: c.text },
+        data: {
+          transcriptId: transcriptIds[1],
+          questionId: codeIds[c.qKey],
+          startOffset: offset,
+          endOffset: offset + c.text.length,
+          codedText: c.text,
+        },
       });
       expect(res.status()).toBe(201);
     }
@@ -254,7 +281,13 @@ test.describe('Scenario C: Cross-Case — Climate Change Attitudes', () => {
       expect(offset).toBeGreaterThanOrEqual(0);
       const res = await page.request.post(`${API}/canvas/${canvasId}/codings`, {
         headers: headers(),
-        data: { transcriptId: transcriptIds[2], questionId: codeIds[c.qKey], startOffset: offset, endOffset: offset + c.text.length, codedText: c.text },
+        data: {
+          transcriptId: transcriptIds[2],
+          questionId: codeIds[c.qKey],
+          startOffset: offset,
+          endOffset: offset + c.text.length,
+          codedText: c.text,
+        },
       });
       expect(res.status()).toBe(201);
     }

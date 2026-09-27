@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 
-const BASE = 'http://localhost:3007/api';
+const BASE = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 const AUTH_FILE = 'e2e/.auth/user.json';
 
 async function getJwt(page: Page): Promise<string> {

@@ -77,7 +77,7 @@ test.describe('Coding Workflow', () => {
     });
 
     if (jwt) {
-      const baseUrl = 'http://localhost:3007/api';
+      const baseUrl = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
       const headers = { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' };
 
       const canvasRes = await page.request.post(`${baseUrl}/canvas`, {

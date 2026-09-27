@@ -8,7 +8,7 @@ import { test, expect, type Page } from '@playwright/test';
  * intercoder reliability features.
  */
 
-const API = 'http://localhost:3007/api';
+const API = `http://localhost:${process.env.E2E_BACKEND_PORT ?? 3007}/api`;
 
 // ─── Transcript content ───
 
@@ -89,7 +89,7 @@ test.describe('Scenario E: Intercoder Reliability & Sharing', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const page = await ctx.newPage();
-    await page.goto('http://localhost:5174/canvas');
+    await page.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
     await page.waitForLoadState('domcontentloaded');
     jwt = await page.evaluate(() => {
       const raw = localStorage.getItem('qualcanvas-auth');
