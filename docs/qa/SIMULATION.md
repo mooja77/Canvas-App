@@ -231,7 +231,8 @@ The Stripe double implements the matching Stripe behaviour: `always_invoice`, `c
 
   The rest are knock-on effects on content counts, plus one QDPX/stats mismatch from a coding-create 500 under load. That old-code run predates two harness fixes: paging canvases over 500 codings, and modelling waiting credits.
 
-- **New code** (this branch on `main` 01500a3): **2 of 45 failing.** All seat invariants pass: 421 grace checks, 315 status checks, 5 quotes, 5 charges, 1 decline, 1 release. HTTP 22268, 5xx 0.
-  - The 2 failures are one `INV-PLAN`/`INV-SUB-STATUS` miss on day 76 for `card-dies`: `/auth/me` returned no user. It is not seat-related, and its cause is not established. The invariant now records the HTTP status, so the next run shows it.
+- **New code** (this branch, before its final rebase onto the screens PR):
+  - **Final run: 0 of 45 failing**, 232,741 checks, HTTP 21,870, 5xx 0, runtime 2,207 s. All seat invariants pass.
+  - An earlier run on the same code had 2 of 45 failing. Both were one miss on day 76 for `card-dies`: `/auth/me` returned no user. It is not seat-related and did not recur. Its cause was **not established**; the invariant now records the HTTP status if it happens again.
 
 **Not covered.** Pooled transcription minutes over time: there is no upload screen in this branch, and it would need the Whisper stub. It is unit-tested in `__tests__/security/transcriptionMetering.test.ts`.
