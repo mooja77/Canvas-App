@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { decryptApiKey } from './encryption.js';
+import { ENTITLED_SUBSCRIPTION_STATUSES } from '../lib/subscriptionStatus.js';
 
 // Whisper costs ~$0.006/min on the platform OpenAI key. Transcription AiUsage
 // rows store this as `costCents = ceil(minutes) * TRANSCRIPTION_CENTS_PER_MINUTE`,
@@ -104,8 +105,7 @@ export async function transcriptionPool(
     where: { userId: poolOwnerId },
     select: { status: true, quantity: true },
   });
-  const billedPerSeat =
-    (plan === 'pro' || plan === 'team') && !!sub && ['active', 'trialing', 'past_due'].includes(sub.status);
+  const billedPerSeat = (plan === 'pro' || plan === 'team') && !!sub && ENTITLED_SUBSCRIPTION_STATUSES.has(sub.status);
   const seats = billedPerSeat ? Math.max(1, sub!.quantity) : 1;
   return {
     poolOwnerId,

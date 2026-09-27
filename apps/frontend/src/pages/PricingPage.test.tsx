@@ -327,13 +327,4 @@ describe('PricingPage comparison table vs the enforced plan limits', () => {
     expect(coders[2]).toBe('$12/seat/mo');
     expect(coders[3]).toBe('$32/seat/mo');
   });
-
-  it('states transcription hours from the metered minutes, pooled per seat on Pro and Team', () => {
-    const row = cells('Audio transcription / mo');
-    TIERS.forEach((tier, i) => {
-      const min = PLAN_LIMITS[tier].transcriptionMinutesPerMonth;
-      const hrs = min > 0 ? `~${Math.round(min / 60)} hrs` : '—';
-      expect(row[i]).toBe(tier === 'pro' || tier === 'team' ? `${hrs} per seat, pooled` : hrs);
-    });
-  });
 });

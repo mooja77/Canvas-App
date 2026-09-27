@@ -18,7 +18,7 @@ import { logError } from '../lib/logger.js';
 import { deleteStoredUploads } from '../utils/fileCleanup.js';
 import { claimUnverifiedAccount } from '../lib/accountClaim.js';
 import { deviceSummary } from '../utils/deviceSummary.js';
-import { syncTeamSeatQuantity } from '../utils/teamBilling.js';
+import { releaseUnusedSeats } from '../utils/seats.js';
 import { ENTITLED_SUBSCRIPTION_STATUSES } from '../lib/subscriptionStatus.js';
 import { z } from 'zod';
 
@@ -416,11 +416,9 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
         const claim = await claimUnverifiedAccount(user, freshAccessCode, preference?.lifecycle ? new Date() : null);
         user = claim.user;
         accountSecured = true;
-        if (claim.result.teamMembersRevoked > 0) {
-          void syncTeamSeatQuantity(user.id).catch((error) =>
-            logError(error as Error, { action: 'accountClaim.syncTeamSeats', userId: user!.id }),
-          );
-        }
+        // Revoked team members and coder grants free paid seats: credit them
+        // back (best effort; never throws, reconciliation retries).
+        void releaseUnusedSeats(user.id);
         logAudit({
           action: 'auth.unverified_account_claimed',
           resource: 'user',

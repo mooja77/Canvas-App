@@ -155,10 +155,27 @@ test.describe('Seats: a coder needs a paid seat, a viewer does not', () => {
     expect((await stripeSub(subscriptionId)).items.data[0].quantity).toBe(2);
   });
 
+  test('error: while the last payment is failing, no seat is quoted or added', async () => {
+    const owner = await signup('seat-pastdue');
+    const { subscriptionId } = await subscribe(owner, 'price_qc_team_m');
+    const coder = await signup('seat-pastdue-coder', { verify: true });
+    const canvasId = await createCanvas(owner, 'Past due');
+    await stripeControl(`subscriptions/${subscriptionId}`, { status: 'past_due' });
+    await sendWebhook(stripeEvent('customer.subscription.updated', await stripeSub(subscriptionId)));
+    expect((await me(owner)).user.plan).toBe('team'); // dunning keeps the plan (D1)
+    const res = await invite(owner, canvasId, coder.email, 'editor', { confirmSeatCharge: true });
+    expect(res.status()).toBe(402);
+    expect((await json(res)).code).toBe('PAYMENT_PAST_DUE');
+    expect((await stripeSub(subscriptionId)).items.data[0].quantity).toBe(1);
+    expect(await invoicesFor(subscriptionId)).toHaveLength(0);
+    // A viewer is still free.
+    await ok(await invite(owner, canvasId, coder.email, 'viewer'), 201);
+  });
+
   test('removing a coder, or making them a viewer, credits the seat back at once', async () => {
     const owner = await signup('seat-release');
     const { subscriptionId } = await subscribe(owner, 'price_qc_team_m');
-    const [c1, c2] = [await signup('seat-rel-1'), await signup('seat-rel-2')];
+    const [c1, c2] = [await signup('seat-rel-1', { verify: true }), await signup('seat-rel-2', { verify: true })];
     const canvasId = await createCanvas(owner, 'Release study');
     await inviteCoderConfirmed(owner, canvasId, c1.email);
     await inviteCoderConfirmed(owner, canvasId, c2.email);
@@ -183,7 +200,7 @@ test.describe('Seats: a coder needs a paid seat, a viewer does not', () => {
   test('Team members take a seat too; a person holds at most one seat', async () => {
     const owner = await signup('seat-team');
     const { subscriptionId } = await subscribe(owner, 'price_qc_team_m');
-    const member = await signup('seat-team-member');
+    const member = await signup('seat-team-member', { verify: true });
     const team = (await ok(await owner.ctx.post('teams', { data: { name: 'Lab' } }), 201)).data;
 
     const refused = await owner.ctx.post(`teams/${team.id}/members`, { data: { email: member.email } });
@@ -213,7 +230,7 @@ test.describe('Seats: webhooks keep the quantity true to Stripe', () => {
   test('quantity mirrors Stripe; stale, duplicate and foreign events do not regress it', async () => {
     const owner = await signup('seat-hooks');
     const { subscriptionId, customer } = await subscribe(owner, 'price_qc_team_m');
-    const coder = await signup('seat-hooks-coder');
+    const coder = await signup('seat-hooks-coder', { verify: true });
     const canvasId = await createCanvas(owner, 'Hooks');
     await inviteCoderConfirmed(owner, canvasId, coder.email);
     const live = await stripeSub(subscriptionId);
@@ -262,7 +279,7 @@ test.describe('Seats: webhooks keep the quantity true to Stripe', () => {
   test('downgrading Team → Pro keeps the seats and the coders', async () => {
     const owner = await signup('seat-down');
     const { subscriptionId } = await subscribe(owner, 'price_qc_team_m');
-    const coder = await signup('seat-down-coder');
+    const coder = await signup('seat-down-coder', { verify: true });
     const canvasId = await createCanvas(owner, 'Downgrade');
     const t = await addTranscript(owner, canvasId, 'Nights', TEXT);
     const q = await addCode(owner, canvasId, 'Staffing');
@@ -378,7 +395,7 @@ test.describe('Seats in the browser', () => {
   }) => {
     const owner = await signup('ui-seat-owner');
     const { subscriptionId } = await subscribe(owner, 'price_qc_team_m');
-    const coder = await signup('ui-seat-coder');
+    const coder = await signup('ui-seat-coder', { verify: true });
     const canvasId = await createCanvas(owner, 'UI seats study');
 
     await signIn(page, owner);
@@ -415,7 +432,7 @@ test.describe('Seats in the browser', () => {
 
   test('an owner with a coder beyond their seats gets the reminder banner with the grace date', async ({ page }) => {
     const owner = await signup('ui-grace-owner', { verify: true });
-    const coder = await signup('ui-grace-coder');
+    const coder = await signup('ui-grace-coder', { verify: true });
     const canvasId = await createCanvas(owner, 'UI grace');
     await ok(await invite(owner, canvasId, coder.email, 'editor'), 201); // trial: free
     await subscribe(owner, 'price_qc_pro_m', { quantity: 1 });

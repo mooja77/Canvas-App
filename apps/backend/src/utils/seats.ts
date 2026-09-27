@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { getStripe } from '../lib/stripe.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { effectivePlanOf } from './ownerPlan.js';
+import { ENTITLED_SUBSCRIPTION_STATUSES } from '../lib/subscriptionStatus.js';
 
 /**
  * Seat billing — see docs/qa/SEAT-BILLING.md for the full design.
@@ -24,7 +25,9 @@ import { effectivePlanOf } from './ownerPlan.js';
  */
 
 export const SEAT_PLANS = new Set(['pro', 'team']);
-export const BILLABLE_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing', 'past_due']);
+// Same set that keeps the paid plan (lib/subscriptionStatus.ts): while the
+// plan is kept, so are the seats.
+export const BILLABLE_SUBSCRIPTION_STATUSES = ENTITLED_SUBSCRIPTION_STATUSES;
 export const SEAT_GRACE_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
