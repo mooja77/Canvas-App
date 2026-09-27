@@ -4,6 +4,7 @@ import { timingSafeEqual } from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { buildActivationFunnel } from '../lib/activationFunnel.js';
 import { prisma } from '../lib/prisma.js';
+import { monthlyRecurringRevenue } from '../lib/revenue.js';
 import { createEmailCampaign, getEmailStats, listEmailCampaigns, sendCampaign } from '../lib/lifecycleEmail.js';
 import { getRealUserIds, isTestAccountEmail } from '../utils/testAccounts.js';
 
@@ -221,14 +222,9 @@ adminRoutes.get('/dashboard', async (_req: Request, res: Response) => {
     const activeUsers = activeUserEmails.filter((u: { email: string }) => !isTestEmail(u.email)).length;
     const testUsers = totalAllUsers - totalUsers;
 
-    // Calculate MRR: Pro=$12, Team=$29 — only real subscriptions
-    const PLAN_PRICES: Record<string, number> = { pro: 12, team: 29 };
-    let mrr = 0;
-    for (const sub of subscriptions) {
-      if (!isTestEmail(sub.user.email)) {
-        mrr += PLAN_PRICES[sub.user.plan] || 0;
-      }
-    }
+    // MRR from each real subscription's Stripe price and seats (lib/revenue.ts),
+    // not a hard-coded table: {pro: 12, team: 29} was below the published prices.
+    const { mrr } = await monthlyRecurringRevenue(subscriptions.filter((sub) => !isTestEmail(sub.user.email)));
 
     const planDistribution: Record<string, number> = {};
     for (const g of planGroups) {
@@ -505,7 +501,6 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
   try {
     const realUsersWhere = await realUserFilter();
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const PLAN_PRICES: Record<string, number> = { pro: 12, team: 29 };
 
     const [allSubs, canceledRecent, totalFree, recentTransactions] = await Promise.all([
       prisma.subscription.findMany({
@@ -527,18 +522,10 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
 
     // Filter to real (non-test) active subscriptions only
     const realActiveSubs = allSubs.filter((s) => s.status === 'active' && !isTestEmail(s.user.email));
-    let mrr = 0;
-    const planCounts: Record<string, { count: number; revenue: number }> = {};
-
-    for (const sub of realActiveSubs) {
-      const price = PLAN_PRICES[sub.user.plan] || 0;
-      mrr += price;
-      if (!planCounts[sub.user.plan]) {
-        planCounts[sub.user.plan] = { count: 0, revenue: 0 };
-      }
-      planCounts[sub.user.plan].count++;
-      planCounts[sub.user.plan].revenue += price;
-    }
+    // Priced from Stripe (the source billing charges), seats included.
+    const revenue = await monthlyRecurringRevenue(realActiveSubs);
+    const mrr = revenue.mrr;
+    const planCounts = revenue.byPlan;
 
     const totalPaying = realActiveSubs.length;
     const realSubs = allSubs.filter((s) => !isTestEmail(s.user.email));
@@ -555,7 +542,9 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
       success: true,
       data: {
         mrr,
-        arr: mrr * 12,
+        arr: Math.round(mrr * 12 * 100) / 100,
+        mrrSource: revenue.source,
+        mrrBasis: revenue.basis,
         totalPaying,
         totalFree,
         churnRate30d,

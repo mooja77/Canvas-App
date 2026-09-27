@@ -152,6 +152,7 @@ describe('Sharing extended integration tests', () => {
     role: 'researcher',
     plan: 'pro',
     passwordHash: '$2a$12$hashedpassword',
+    emailVerified: true,
     dashboardAccess: { id: dashboardAccessId },
   };
 
@@ -401,6 +402,7 @@ describe('Sharing extended integration tests', () => {
         id: targetUserId,
         name: 'Editor User',
         email: 'editor@example.com',
+        emailVerified: true,
         plan: 'pro',
         role: 'researcher',
         dashboardAccess: null,
@@ -431,6 +433,7 @@ describe('Sharing extended integration tests', () => {
       id: targetUserId,
       name: 'Viewer User',
       email: 'viewer@example.com',
+      emailVerified: true,
       plan: 'pro',
       role: 'researcher',
       dashboardAccess: null,

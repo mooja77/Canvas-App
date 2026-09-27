@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { randomBytes } from 'node:crypto';
+import { createSign, randomBytes } from 'node:crypto';
 import { expect, request as pwRequest, type APIRequestContext, type APIResponse } from '@playwright/test';
 import Stripe from 'stripe';
 import { STACK } from './env';
@@ -61,6 +61,41 @@ export async function signup(
   const session: Session = { ctx, email, password, userId: body.data.user.id };
   if (opts.verify) await verifyEmail(session);
   return session;
+}
+
+// ─── Google sign-in (ID tokens signed with the harness key; see env.ts) ──────
+
+/** An RS256 Google ID token for `email`, verifiable by the backend's real checks. */
+export function googleIdToken(
+  email: string,
+  opts: { emailVerified?: boolean; sub?: string; name?: string; aud?: string } = {},
+): string {
+  const now = Math.floor(Date.now() / 1000);
+  const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  const header = b64({ alg: 'RS256', typ: 'JWT', kid: STACK.googleKeyId });
+  const payload = b64({
+    iss: 'https://accounts.google.com',
+    aud: opts.aud ?? STACK.googleClientId,
+    sub: opts.sub ?? `g-${randomBytes(6).toString('hex')}`,
+    email,
+    email_verified: opts.emailVerified ?? true,
+    name: opts.name ?? 'Google User',
+    iat: now - 5,
+    exp: now + 3600,
+  });
+  const signer = createSign('RSA-SHA256');
+  signer.update(`${header}.${payload}`);
+  return `${header}.${payload}.${signer.sign(STACK.googlePrivatePem).toString('base64url')}`;
+}
+
+/** "Sign in with Google" from a fresh browser: returns that browser's client + the response body. */
+export async function googleSignIn(
+  email: string,
+  opts: Parameters<typeof googleIdToken>[1] = {},
+): Promise<{ ctx: APIRequestContext; status: number; body: any }> {
+  const ctx = await newClient();
+  const res = await ctx.post('auth/google', { data: { credential: googleIdToken(email, opts) } });
+  return { ctx, status: res.status(), body: await json(res) };
 }
 
 // ─── Outbox (emails and egress captured by the backend preload) ───────────────

@@ -153,13 +153,22 @@ teamRoutes.post(
       }
 
       // Find user by email
-      const targetUser = await prisma.user.findUnique({ where: { email } });
+      const targetUser = await prisma.user.findUnique({
+        where: { email: String(email).trim().toLowerCase() },
+      });
       if (!targetUser) {
         throw new AppError('No user found with that email address', 404);
       }
-
       if (targetUser.id === userId) {
         throw new AppError('Cannot invite yourself', 400);
+      }
+      // Same rule as canvas invites: an unverified account proves nothing about
+      // who registered it, so it cannot be given access to the team's work.
+      if (!targetUser.emailVerified) {
+        throw new AppError(
+          'That person has not verified their email address yet. Ask them to click the link in their QualCanvas verification email, then invite them again.',
+          409,
+        );
       }
 
       const validRoles = ['admin', 'member'];

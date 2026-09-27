@@ -3,6 +3,7 @@ import { useActiveCanvas } from '../../../stores/canvasStore';
 import type { CanvasQuestion, CanvasTextCoding } from '@qualcanvas/shared';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
+import { kappaReportCsv, downloadCsv } from './intercoderExport';
 
 interface IntercoderReliabilityModalProps {
   onClose: () => void;
@@ -158,36 +159,30 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
 
   const handleExport = () => {
     if (!result) return;
-    const lines = [
-      'Intercoder Reliability Report',
-      `Code A: ${codeAName}`,
-      `Code B: ${codeBName}`,
-      `Unit: ${unitSize}`,
-      '',
-      `Cohen's Kappa: ${result.kappa.toFixed(3)} (${result.interpretation.label})`,
-      `Observed Agreement: ${(result.po * 100).toFixed(1)}%`,
-      `Expected Agreement: ${(result.pe * 100).toFixed(1)}%`,
-      `Total Units: ${result.n}`,
-      '',
-      'Contingency Table:',
-      `  Both coded: ${result.both}`,
-      `  Only ${codeAName}: ${result.onlyA}`,
-      `  Only ${codeBName}: ${result.onlyB}`,
-      `  Neither: ${result.neither}`,
-      '',
-      'Per-Transcript Breakdown:',
-      ...result.perTranscript.map((pt) => {
-        const ptK = computeKappa(pt.both, pt.onlyA, pt.onlyB, pt.neither);
-        return `  ${pt.title}: κ=${ptK.kappa.toFixed(3)}, ${pt.segments} units, agree=${pt.both + pt.neither}/${pt.segments}`;
-      }),
-    ];
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `intercoder-reliability-${Date.now()}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const csv = kappaReportCsv({
+      codeA: codeAName,
+      codeB: codeBName,
+      unit: unitSize,
+      kappa: result.kappa,
+      interpretation: result.interpretation.label,
+      observedAgreement: result.po,
+      expectedAgreement: result.pe,
+      totalUnits: result.n,
+      both: result.both,
+      onlyA: result.onlyA,
+      onlyB: result.onlyB,
+      neither: result.neither,
+      perTranscript: result.perTranscript.map((pt) => ({
+        title: pt.title,
+        segments: pt.segments,
+        both: pt.both,
+        onlyA: pt.onlyA,
+        onlyB: pt.onlyB,
+        neither: pt.neither,
+        kappa: computeKappa(pt.both, pt.onlyA, pt.onlyB, pt.neither).kappa,
+      })),
+    });
+    downloadCsv(csv, `intercoder-reliability-${Date.now()}.csv`);
   };
 
   return (
@@ -477,7 +472,7 @@ export default function IntercoderReliabilityModal({ onClose }: IntercoderReliab
               onClick={handleExport}
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
             >
-              Export Report
+              Export CSV
             </button>
           </div>
         )}

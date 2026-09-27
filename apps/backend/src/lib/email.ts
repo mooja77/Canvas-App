@@ -170,7 +170,7 @@ export async function sendVerificationEmail(to: string, verifyLink: string): Pro
               <p style="margin: 0 0 24px; word-break: break-all; color: #4f46e5; font-size: 13px;">${verifyLink}</p>
               <hr style="border: none; border-top: 1px solid #e8e8ed; margin: 24px 0;" />
               <p style="margin: 0; color: #8e8ea0; font-size: 13px; line-height: 1.5;">
-                If you did not create an account, you can safely ignore this email.
+                If you did not create a QualCanvas account, do not click the button. Someone else may have signed up with your address; ignore this email and the account stays unverified. If you later sign in with Google using this address, any account someone else set up with it is secured for you.
               </p>
             </td>
           </tr>

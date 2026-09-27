@@ -75,7 +75,7 @@ Each account is driven over HTTP exactly as the web app does it: cookie session,
 The ledger does not import any app code. Its rules come from the published pricing page and the documented billing rules:
 
 - **Stored plan:**
-  - If the subscription is `active` or `trialing`, the plan comes from the price.
+  - If the subscription is `active`, `trialing` or `past_due` (Stripe is still retrying the card; decision D1, 27 Sep 2026), the plan comes from the price.
   - If it is anything else, the plan is Pro for grandfathered legacy users and Free for everyone else.
 - **Effective plan:** Pro while a verified Free user's 14-day trial runs; otherwise the stored plan.
 - **Caps** (from the pricing page):

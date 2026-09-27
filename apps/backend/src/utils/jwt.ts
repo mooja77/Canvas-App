@@ -12,6 +12,7 @@ interface LegacyJwtPayload {
   accountId: string;
   role: string;
   iat?: number; // issued-at (seconds since epoch); added by jsonwebtoken
+  iatMs?: number; // issued-at in milliseconds; see tokenIssuedAtMs
   exp?: number;
 }
 
@@ -21,16 +22,30 @@ interface UserJwtPayload {
   role: string;
   plan: string;
   iat?: number;
+  iatMs?: number;
   exp?: number;
 }
 
 export type JwtPayload = LegacyJwtPayload | UserJwtPayload;
 
 /**
+ * When a token was issued, in milliseconds, for comparison with
+ * User.sessionsInvalidAt. `iat` alone has one-second resolution, so a session
+ * revoked and a new one issued in the same second (a Google sign-in that claims
+ * an unverified account does exactly that) could not be told apart: either the
+ * new session died or an old one issued in that second survived. Tokens carry
+ * `iatMs` from now on; older tokens fall back to `iat`.
+ */
+export function tokenIssuedAtMs(payload: { iat?: number; iatMs?: number }): number | null {
+  if (typeof payload.iatMs === 'number' && Number.isFinite(payload.iatMs)) return payload.iatMs;
+  return typeof payload.iat === 'number' ? payload.iat * 1000 : null;
+}
+
+/**
  * Sign a JWT for a legacy access-code user.
  */
 export function signResearcherToken(accountId: string, role: string): string {
-  return jwt.sign({ accountId, role } satisfies LegacyJwtPayload, JWT_SECRET, {
+  return jwt.sign({ accountId, role, iatMs: Date.now() } satisfies LegacyJwtPayload, JWT_SECRET, {
     expiresIn: JWT_EXPIRY,
   });
 }
@@ -39,7 +54,7 @@ export function signResearcherToken(accountId: string, role: string): string {
  * Sign a JWT for an email-authenticated user.
  */
 export function signUserToken(userId: string, role: string, plan: string): string {
-  return jwt.sign({ userId, role, plan } satisfies UserJwtPayload, JWT_SECRET, {
+  return jwt.sign({ userId, role, plan, iatMs: Date.now() } satisfies UserJwtPayload, JWT_SECRET, {
     expiresIn: JWT_EXPIRY,
   });
 }

@@ -110,15 +110,33 @@ test.describe('Billing: checkout, webhooks, plan changes', () => {
       object: 'invoice',
       parent: { subscription_details: { subscription: subscriptionId } },
     });
-    await stripeControl(`subscriptions/${subscriptionId}`, { status: 'past_due' });
+    const pastDue = await stripeControl(`subscriptions/${subscriptionId}`, { status: 'past_due' });
     expect((await sendWebhook(stripeEvent('invoice.payment_failed', invoice('failed')))).status()).toBe(200);
     expect((await plan(s)).status).toBe('past_due');
+    // D1: paid access continues while Stripe retries the card, on EVERY path —
+    // the subscription.updated webhook, /auth/me and a fresh sign-in. The old
+    // code demoted on the webhook and on sign-in but not on payment_failed.
+    expect((await sendWebhook(subUpdated(pastDue))).status()).toBe(200);
+    expect((await plan(s)).plan).toBe('pro');
+    const relogin = await ok(await s.ctx.post('auth/email-login', { data: { email: s.email, password: s.password } }));
+    expect(relogin.data.user.plan).toBe('pro');
+    expect((await plan(s)).plan).toBe('pro');
 
     await stripeControl(`subscriptions/${subscriptionId}`, { status: 'active' });
     expect((await sendWebhook(stripeEvent('invoice.payment_succeeded', invoice('paid')))).status()).toBe(200);
     const p = await plan(s);
     expect(p.status).toBe('active');
     expect(p.plan).toBe('pro');
+  });
+
+  test('retries exhausted (unpaid) drops to Free on the webhook and at sign-in', async () => {
+    const s = await signup('unpaid');
+    const { subscriptionId } = await subscribe(s, 'price_qc_pro_m');
+    const unpaid = await stripeControl(`subscriptions/${subscriptionId}`, { status: 'unpaid' });
+    expect((await sendWebhook(subUpdated(unpaid))).status()).toBe(200);
+    expect((await plan(s)).plan).toBe('free');
+    const relogin = await ok(await s.ctx.post('auth/email-login', { data: { email: s.email, password: s.password } }));
+    expect(relogin.data.user.plan).toBe('free');
   });
 
   test('cancellation drops to Free and keeps the data readable', async () => {

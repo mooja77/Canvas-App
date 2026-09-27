@@ -4,7 +4,14 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 // The pricing table is a public claim about what each tier gets. Pin it to the
 // module that actually enforces those claims, so a tier change cannot leave the
 // page selling something the server refuses (or hiding something it allows).
-import { PLAN_LIMITS, AI_REQUESTS_PER_DAY_FAIR_USE, type PlanTier } from '@qualcanvas/shared';
+import {
+  PLAN_LIMITS,
+  AI_REQUESTS_PER_DAY_FAIR_USE,
+  PUBLISHED_PRICES_USD,
+  annualSavingPercent,
+  maxAnnualSavingPercent,
+  type PlanTier,
+} from '@qualcanvas/shared';
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();
@@ -120,11 +127,31 @@ describe('PricingPage (refresh)', () => {
     expect(screen.getByText('$39')).toBeInTheDocument();
   });
 
-  it('shows the "Save 20%" annual savings affordance', () => {
+  // "Save 20%" was false for Team ($32 x 12 = $384 vs $39 x 12 = $468 is 17.9%).
+  // Every saving shown is now derived from PUBLISHED_PRICES_USD.
+  it('annual savings are derived from the prices: "up to 20%", and Team shows its real 18%', () => {
     render(<PricingPage />);
-    // The annual toggle button has "Save 20%" inline
     const annualButton = screen.getByRole('button', { name: /Annual/ });
-    expect(within(annualButton).getByText(/Save 20%/)).toBeInTheDocument();
+    expect(within(annualButton).getByText('Save up to 20%')).toBeInTheDocument();
+    expect(screen.queryByText(/^Save 20%$/)).not.toBeInTheDocument();
+    expect(screen.getByText('per seat / month, billed annually ($384/yr, save 18%)')).toBeInTheDocument();
+    expect(screen.getByText('per month, billed annually ($144/yr, save 20%)')).toBeInTheDocument();
+    expect(screen.getByText(/Save \$36\/year on Pro · \$84\/seat\/year on Team/)).toBeInTheDocument();
+  });
+
+  it('savings math matches the published prices for every tier', () => {
+    for (const tier of ['student', 'pro', 'team'] as const) {
+      const p = PUBLISHED_PRICES_USD[tier];
+      const exact = (1 - p.annual / (p.monthly * 12)) * 100;
+      expect(Math.abs(annualSavingPercent(tier) - exact)).toBeLessThanOrEqual(0.5);
+    }
+    expect(annualSavingPercent('team')).toBe(18);
+    expect(maxAnnualSavingPercent()).toBe(20);
+  });
+
+  it('does not advertise audio transcription (there is no screen to use it)', () => {
+    const { container } = render(<PricingPage />);
+    expect(container.textContent ?? '').not.toMatch(/transcription/i);
   });
 
   it('renders a Student tier with an .edu-gated CTA', () => {

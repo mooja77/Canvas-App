@@ -347,7 +347,10 @@ describe('Stripe Billing – Extended Tests', () => {
       });
     });
 
-    it('downgrades user to free when status=past_due (same rule as sign-in; see findings D1)', async () => {
+    // D1 (John, 27 Sep): keep paid access while Stripe retries the card. The
+    // old code demoted here on the first decline, while invoice.payment_failed
+    // kept the plan, so the result depended on which event arrived last.
+    it('keeps the paid plan while status=past_due (Stripe is still retrying the card)', async () => {
       const event = {
         id: 'evt_sub_pastdue',
         type: 'customer.subscription.updated',
@@ -378,7 +381,7 @@ describe('Stripe Billing – Extended Tests', () => {
 
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-pd-1' },
-        data: { plan: 'free' },
+        data: { plan: 'pro' },
       });
     });
 

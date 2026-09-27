@@ -203,6 +203,7 @@ describe('Team routes integration tests', () => {
       id: 'user-invited-1',
       email: 'invited@example.com',
       name: 'Invited User',
+      emailVerified: true,
     };
 
     mockPrisma.team.findUnique.mockResolvedValue({

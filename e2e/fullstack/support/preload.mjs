@@ -131,6 +131,21 @@ globalThis.fetch = async function guardedFetch(input, init = {}) {
   throw new TypeError(`[network-guard] fetch to ${url.hostname} blocked`);
 };
 
+// ─── Google ID-token certificates ────────────────────────────────────────────
+// google-auth-library fetches Google's signing certs with node-fetch (a raw
+// https socket, refused above). Serve the harness key instead, at the one
+// method that fetches them, so verifyIdToken still checks the RS256 signature,
+// audience, issuer and expiry for real. Never active in production.
+if (process.env.QC_FS_GOOGLE_PUBLIC_PEM && process.env.NODE_ENV !== 'production') {
+  const { OAuth2Client } = await import('google-auth-library');
+  const kid = process.env.QC_FS_GOOGLE_KID || 'estate-google-key-1';
+  const pem = process.env.QC_FS_GOOGLE_PUBLIC_PEM;
+  OAuth2Client.prototype.getFederatedSignonCertsAsync = async function stubbedGoogleCerts() {
+    record({ kind: 'google-certs' });
+    return { certs: { [kid]: pem }, format: 'PEM' };
+  };
+}
+
 globalThis.__networkGuard = { blocked: () => blockedCount };
 record({ kind: 'guard-installed', pid: process.pid });
 
@@ -183,7 +198,9 @@ if (clockPort && isMainThread) {
       else if (off != null) offsetMs = Number(off) || 0;
     }
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ now: new RealDate(RealDate.now() + offsetMs).toISOString(), offsetMs, blocked: blockedCount }));
+    res.end(
+      JSON.stringify({ now: new RealDate(RealDate.now() + offsetMs).toISOString(), offsetMs, blocked: blockedCount }),
+    );
   });
   server.on('error', (err) => console.error('[preload] clock control server failed', err));
   server.listen(clockPort, '127.0.0.1');

@@ -227,7 +227,9 @@ const CAPS: Record<Plan, { canvases: number; transcripts: number; codes: number;
   pro: { canvases: Infinity, transcripts: Infinity, codes: Infinity, words: 50_000 },
   team: { canvases: Infinity, transcripts: Infinity, codes: Infinity, words: 50_000 },
 };
-const PAID_STATUSES = new Set(['active', 'trialing']);
+// Published billing rule (D1, 27 Sep 2026): paid access continues while Stripe
+// retries a failed card (past_due); it ends at canceled/unpaid.
+const PAID_STATUSES = new Set(['active', 'trialing', 'past_due']);
 
 interface LCoding {
   id: string;

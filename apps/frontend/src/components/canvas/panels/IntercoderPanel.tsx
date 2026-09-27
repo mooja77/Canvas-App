@@ -7,6 +7,7 @@ import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import { getParadigm, getIcrStance } from '../../../data/methodologyParadigms';
 import { chooseAgreementMethod } from './agreementMethod';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
+import { agreementReportCsv, downloadCsv } from './intercoderExport';
 
 interface IntercoderPanelProps {
   onClose: () => void;
@@ -176,36 +177,20 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
 
   const handleExport = () => {
     if (!result) return;
-    const names = selectedCoderIds.map((id) => coders.find((c) => c.id === id)?.name ?? id).join(', ');
     const transcriptTitle = transcripts.find((t) => t.id === selectedTranscriptId)?.title ?? selectedTranscriptId;
-    const lines = [
-      'Intercoder Agreement Report',
-      `Method: ${result.method}`,
-      `Coders (${result.nCoders}): ${names}`,
-      `Transcript: ${transcriptTitle}`,
-      '',
-      `Score: ${result.alpha.toFixed(3)} (${interpretScore(result.alpha).label})`,
-      `Coding units: ${result.nUnits}`,
-      `Observations: ${result.nObservations}`,
-      `Segments: ${result.nSegments}`,
-    ];
-    // The caveat has to travel with the report, not just sit in the panel -
-    // this file is what ends up attached to a methods section.
-    if (result.unattributedCodings) {
-      lines.push(
-        '',
-        `Coverage caveat: ${result.unattributedCodings} coding(s) on this transcript carry no`,
-        'coder attribution (bulk auto-code, imports, or legacy access-code sessions) and are',
-        'excluded from the calculation. This score describes only the attributed coding.',
-      );
-    }
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `intercoder-agreement-${Date.now()}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const csv = agreementReportCsv({
+      method: result.method,
+      alpha: result.alpha,
+      interpretation: interpretScore(result.alpha).label,
+      nCoders: result.nCoders,
+      coderNames: selectedCoderIds.map((id) => coders.find((c) => c.id === id)?.name ?? id),
+      transcriptTitle,
+      nUnits: result.nUnits,
+      nObservations: result.nObservations,
+      nSegments: result.nSegments,
+      unattributedCodings: result.unattributedCodings,
+    });
+    downloadCsv(csv, `intercoder-agreement-${Date.now()}.csv`);
   };
 
   return (
@@ -441,7 +426,7 @@ export default function IntercoderPanel({ onClose }: IntercoderPanelProps) {
               onClick={handleExport}
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
             >
-              Export Report
+              Export CSV
             </button>
           </div>
         )}
