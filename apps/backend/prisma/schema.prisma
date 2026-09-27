@@ -44,6 +44,13 @@ model User {
   // middleware to gate Researcher Pro upsell visibility.
   legacyPricing Boolean @default(false)
 
+  // How did you hear about us (HDYHAU). Asked once after signup; the answer or
+  // the skip sets acquisitionRespondedAt so the question never reappears.
+  // acquisitionChannel holds one canonical key (routes/acquisitionRoutes.ts).
+  acquisitionChannel     String?
+  acquisitionOtherText   String?
+  acquisitionRespondedAt DateTime?
+
   // Sprint F onboarding-v2 state. JSON: { currentStep, dismissedTooltips: [],
   // checklistComplete: [], startedAt }. Persisted server-side so the user
   // sees a coherent flow across devices. Null until first onboarding event.

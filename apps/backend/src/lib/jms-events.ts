@@ -23,6 +23,7 @@ export async function trackJmsEvent(event: JmsEvent): Promise<void> {
         'content-type': 'application/json',
         'x-admin-key': adminKey,
       },
+      signal: AbortSignal.timeout(4000),
       body: JSON.stringify({
         app_id: APP_ID,
         events: [

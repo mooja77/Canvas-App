@@ -104,6 +104,7 @@ import { notificationRoutes } from './routes/notificationRoutes.js';
 import { reportRoutes } from './routes/reportRoutes.js';
 import { adminRoutes } from './routes/adminRoutes.js';
 import { lifecycleEmailRoutes, publicLifecycleEmailRoutes } from './routes/lifecycleEmailRoutes.js';
+import { acquisitionRoutes } from './routes/acquisitionRoutes.js';
 import { handleResendWebhook } from './lib/resendWebhook.js';
 import { eventsRoutes } from './routes/eventsRoutes.js';
 import { publicPilotRoutes } from './routes/pilotRoutes.js';
@@ -456,6 +457,9 @@ app.use('/api/pilot', publicPilotRoutes);
 
 // Protected lifecycle email preferences
 v1Router.use(auth, auditLog, lifecycleEmailRoutes);
+
+// Protected how-did-you-hear-about-us answer (asked once after signup)
+v1Router.use(auth, auditLog, acquisitionRoutes);
 
 // Mount under /api/v1 (versioned) and /api (backwards compat)
 app.use('/api/v1', v1Router);
