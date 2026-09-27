@@ -341,7 +341,8 @@ async function verifyActor(a: Actor) {
     .filter((e) => e.kind === 'email' && e.to === a.email && /Verify/.test(e.subject))
     .pop();
   const token = String(mail?.html ?? '').match(/verify-email#token=([a-f0-9]+)/)?.[1];
-  const r = await a.c.req('POST', 'auth/verify-email', { email: a.email, token });
+  // "Yes, I created it" from the signed-up session (see routes/emailVerificationRoutes.ts).
+  const r = await a.c.req('POST', 'auth/verify-email', { email: a.email, token, decision: 'yes' });
   check(
     'INV-VERIFY',
     'verification link from the email verifies the account',

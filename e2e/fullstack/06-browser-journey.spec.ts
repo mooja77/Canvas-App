@@ -24,7 +24,12 @@ test.describe('Browser journey', () => {
     const mail = await waitForEmail(email, /Verify your QualCanvas email/);
     const token = tokenFromLink(mail.html ?? '', '/verify-email');
     await page.goto(`/verify-email#token=${token}&email=${encodeURIComponent(email)}`);
-    await expect(page.getByText(/verified/i).first()).toBeVisible({ timeout: 15_000 });
+    // Signed in here as this account: one "Yes" verifies, no password step.
+    await expect(page.getByRole('heading', { name: 'Did you create this QualCanvas account?' })).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.getByRole('button', { name: 'Yes, I created it' }).click();
+    await expect(page.getByRole('heading', { name: 'Email verified' })).toBeVisible({ timeout: 15_000 });
   });
 
   test('sign in with a wrong password shows an error and stays on /login', async ({ page }) => {

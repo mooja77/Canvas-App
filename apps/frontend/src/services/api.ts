@@ -606,7 +606,14 @@ export const authApi = {
   resetPassword: (email: string, token: string, newPassword: string) =>
     canvasClient.post('/auth/reset-password', { email, token, newPassword }),
 
-  verifyEmail: (email: string, token: string) => canvasClient.post('/auth/verify-email', { email, token }),
+  // Read-only: what the confirmation page shows. Never changes the account.
+  verifyEmailDetails: (email: string, token: string) =>
+    canvasClient.post('/auth/verify-email/details', { email, token }),
+
+  // The only call that acts on a verification link; sent from the
+  // confirmation page after the person answers "Did you create this account?".
+  confirmEmailVerification: (email: string, token: string, decision: 'yes' | 'no' | 'reset', password?: string) =>
+    canvasClient.post('/auth/verify-email', { email, token, decision, ...(password ? { password } : {}) }),
 
   resendVerification: () => canvasClient.post('/auth/resend-verification'),
 

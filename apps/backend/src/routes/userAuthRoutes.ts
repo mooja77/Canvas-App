@@ -14,10 +14,10 @@ import { sha256 } from '../utils/hashing.js';
 import { nanoid } from 'nanoid';
 import { AppError } from '../middleware/errorHandler.js';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
-import { isLifecycleSendingEnabledFor, lifecycleTemplate, sendLifecycleEmail } from '../lib/lifecycleEmail.js';
 import { logError } from '../lib/logger.js';
 import { deleteStoredUploads } from '../utils/fileCleanup.js';
 import { claimUnverifiedAccount } from '../lib/accountClaim.js';
+import { deviceSummary } from '../utils/deviceSummary.js';
 import { syncTeamSeatQuantity } from '../utils/teamBilling.js';
 import { ENTITLED_SUBSCRIPTION_STATUSES } from '../lib/subscriptionStatus.js';
 import { z } from 'zod';
@@ -169,6 +169,7 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
           trialEndsAt: trialEndDate(),
           verificationTokenHash: sha256(verifyToken),
           verificationTokenExpiry: verifyExpiry,
+          signupDevice: deviceSummary(req.headers['user-agent']),
           emailPreference: {
             create: {
               unsubscribeToken: crypto.randomBytes(24).toString('hex'),
@@ -577,74 +578,8 @@ userAuthRoutes.post('/auth/reset-password', authLimiter, async (req, res, next) 
   }
 });
 
-// POST /api/auth/verify-email — verify email address
-userAuthRoutes.post('/auth/verify-email', authLimiter, async (req, res, next) => {
-  try {
-    const { email, token } = req.body;
-
-    if (!email || typeof email !== 'string') {
-      return res.status(400).json({ success: false, error: 'Email is required' });
-    }
-    if (!token || typeof token !== 'string') {
-      return res.status(400).json({ success: false, error: 'Token is required' });
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-    if (!user) {
-      return res.status(400).json({ success: false, error: 'Invalid verification request' });
-    }
-
-    if (user.emailVerified) {
-      return res.json({ success: true, message: 'Email is already verified' });
-    }
-
-    const tokenHash = sha256(token);
-    let tokenValid = false;
-    try {
-      if (user.verificationTokenHash) {
-        tokenValid = crypto.timingSafeEqual(Buffer.from(user.verificationTokenHash), Buffer.from(tokenHash));
-      }
-    } catch {
-      tokenValid = false;
-    }
-    if (!tokenValid || !user.verificationTokenExpiry || user.verificationTokenExpiry < new Date()) {
-      return res.status(400).json({ success: false, error: 'Invalid or expired verification token' });
-    }
-
-    const preference = await prisma.emailPreference.findUnique({ where: { userId: user.id } });
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        emailVerified: true,
-        verificationTokenHash: null,
-        verificationTokenExpiry: null,
-        lifecycleCohortStartedAt: preference?.lifecycle ? new Date() : null,
-      },
-    });
-
-    // Optional lifecycle mail is sent only after address verification. It is
-    // fail-soft so provider or ledger failure cannot invalidate verification.
-    if (isLifecycleSendingEnabledFor(user.email)) {
-      void sendLifecycleEmail(user, lifecycleTemplate('welcome', user)).catch((error) =>
-        logError(error as Error, { action: 'lifecycleEmail.welcome', userId: user.id }),
-      );
-    }
-
-    logAudit({
-      action: 'auth.email_verified',
-      resource: 'user',
-      actorType: 'user',
-      actorId: user.id,
-      method: 'POST',
-      path: '/api/auth/verify-email',
-    });
-
-    res.json({ success: true, message: 'Email verified successfully' });
-  } catch (err) {
-    next(err);
-  }
-});
+// POST /api/auth/verify-email (+ /details) live in emailVerificationRoutes.ts:
+// a verification link asks "did you create this account?" before it acts.
 
 // POST /api/auth/resend-verification — resend verification email
 userAuthRoutes.post('/auth/resend-verification', auth, async (req, res, next) => {
@@ -842,6 +777,7 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
           legacyPricing: true,
           verificationTokenHash: sha256(verifyToken),
           verificationTokenExpiry: verifyExpiry,
+          signupDevice: deviceSummary(req.headers['user-agent']),
           emailPreference: {
             create: {
               unsubscribeToken: crypto.randomBytes(24).toString('hex'),

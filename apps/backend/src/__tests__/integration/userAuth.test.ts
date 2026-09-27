@@ -711,75 +711,7 @@ describe('User auth integration tests', () => {
     });
   });
 
-  // ─── POST /auth/verify-email ────────────────────────────────────────
-  describe('POST /api/auth/verify-email', () => {
-    it('verifies email with valid token', async () => {
-      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      mockPrisma.user.findUnique.mockResolvedValue({
-        id: 'user-1',
-        email: 'test@example.com',
-        emailVerified: false,
-        verificationTokenHash: 'sha256hash',
-        verificationTokenExpiry: futureDate,
-      });
-      mockPrisma.user.update.mockResolvedValue({});
-      (sha256 as ReturnType<typeof vi.fn>).mockReturnValue('sha256hash');
-
-      const res = await request(app).post('/api/auth/verify-email').send({
-        email: 'test@example.com',
-        token: 'valid-verify-token',
-      });
-
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.message).toMatch(/verified successfully/i);
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'user-1' },
-        data: {
-          emailVerified: true,
-          verificationTokenHash: null,
-          verificationTokenExpiry: null,
-          lifecycleCohortStartedAt: null,
-        },
-      });
-    });
-
-    it('rejects expired or invalid verification token', async () => {
-      const pastDate = new Date(Date.now() - 60 * 60 * 1000);
-      mockPrisma.user.findUnique.mockResolvedValue({
-        id: 'user-1',
-        email: 'test@example.com',
-        emailVerified: false,
-        verificationTokenHash: 'sha256hash',
-        verificationTokenExpiry: pastDate,
-      });
-      (sha256 as ReturnType<typeof vi.fn>).mockReturnValue('sha256hash');
-
-      const res = await request(app).post('/api/auth/verify-email').send({
-        email: 'test@example.com',
-        token: 'expired-token',
-      });
-
-      expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/invalid or expired/i);
-    });
-
-    it('returns success for already verified email', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({
-        id: 'user-1',
-        email: 'test@example.com',
-        emailVerified: true,
-      });
-
-      const res = await request(app).post('/api/auth/verify-email').send({
-        email: 'test@example.com',
-        token: 'any-token',
-      });
-
-      expect(res.status).toBe(200);
-      expect(res.body.message).toMatch(/already verified/i);
-    });
-  });
+  // POST /auth/verify-email: see emailVerification.test.ts.
 
   // ─── POST /auth/google ──────────────────────────────────────────────
   describe('POST /api/auth/google', () => {

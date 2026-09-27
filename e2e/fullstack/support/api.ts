@@ -152,7 +152,8 @@ export function tokenFromLink(html: string, path: string): string {
 export async function verifyEmail(s: Session): Promise<void> {
   const mail = await waitForEmail(s.email, /verify|confirm/i);
   const token = tokenFromLink(mail.html ?? '', '/verify-email');
-  await ok(await s.ctx.post('auth/verify-email', { data: { email: s.email, token } }));
+  // "Yes, I created it" from the browser that signed up (it holds the session).
+  await ok(await s.ctx.post('auth/verify-email', { data: { email: s.email, token, decision: 'yes' } }));
 }
 
 // ─── Clock (backend process time; see preload.mjs) ───────────────────────────
