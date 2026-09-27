@@ -596,7 +596,7 @@ async function verifyActorState(a: Actor, label: string) {
     'effective plan (/auth/me) == ledger (subscription + legacy + trial rules)',
     u?.effectivePlan === exp.effective,
     () =>
-      `${label} ${a.key} app=${u?.plan}/${u?.effectivePlan} ledger=${exp.stored}/${exp.effective} sub=${a.sub?.status}`,
+      `${label} ${a.key} app=${u?.plan}/${u?.effectivePlan} ledger=${exp.stored}/${exp.effective} sub=${a.sub?.status} http=${meR.status} ${u ? '' : JSON.stringify(meR.body).slice(0, 160)}`,
   );
   if (a.sub) {
     const st = meR.body?.data?.subscription?.status;

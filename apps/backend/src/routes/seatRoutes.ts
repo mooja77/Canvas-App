@@ -72,7 +72,27 @@ function serialize(status: SeatStatus) {
 
 seatRoutes.get('/billing/seats', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const ownerId = requireEmailUser(req);
+    // A legacy access-code session has no seats to manage. Answer "not billed
+    // per seat" rather than 403: the canvas page asks on every load, and an
+    // error status there is a console error for every legacy researcher.
+    if (!req.userId) {
+      return res.json({
+        success: true,
+        data: {
+          mode: 'none',
+          plan: req.userPlan ?? 'free',
+          subscriptionStatus: null,
+          seatsPurchased: null,
+          seatsUsed: 1,
+          unseatedCount: 0,
+          graceEndsAt: null,
+          enforcing: false,
+          holders: [],
+          price: null,
+        },
+      });
+    }
+    const ownerId = req.userId;
     // Credit back seats nobody holds any more (e.g. a coder's canvas was
     // purged from the trash). Decrease-only, customer-favourable, best effort.
     await releaseUnusedSeats(ownerId);
