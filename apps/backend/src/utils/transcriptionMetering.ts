@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { decryptApiKey } from './encryption.js';
+import { ENTITLED_SUBSCRIPTION_STATUSES } from '../lib/subscriptionStatus.js';
 
 // Whisper costs ~$0.006/min on the platform OpenAI key. Transcription AiUsage
 // rows store this as `costCents = ceil(minutes) * TRANSCRIPTION_CENTS_PER_MINUTE`,
@@ -46,4 +47,71 @@ export async function transcriptionMinutesUsedThisMonth(userId: string): Promise
 
   const cents = agg._sum.costCents ?? 0;
   return Math.round(cents / TRANSCRIPTION_CENTS_PER_MINUTE);
+}
+
+/**
+ * Transcription pool (docs/qa/SEAT-BILLING.md). The allowance belongs to the
+ * account that owns the canvas — the one paying — and is shared by everyone
+ * who transcribes into that owner's canvases:
+ *
+ *   pool minutes = plan.transcriptionMinutesPerMonth × paid seats
+ *
+ * (seats = the Stripe quantity for a subscription billed per seat, else 1).
+ * Usage is recorded with `poolOwnerId`, so deleting a canvas does not give
+ * minutes back. Rows written before pooling have no poolOwnerId and still
+ * count against the person who ran them.
+ */
+export interface TranscriptionPool {
+  poolOwnerId: string;
+  plan: string;
+  seats: number;
+  minutesPerMonth: number;
+  minutesUsed: number;
+}
+
+export async function transcriptionPoolMinutesUsedThisMonth(poolOwnerId: string): Promise<number> {
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const agg = await prisma.aiUsage.aggregate({
+    _sum: { costCents: true },
+    where: {
+      feature: 'transcribe',
+      createdAt: { gte: monthStart },
+      OR: [{ poolOwnerId }, { poolOwnerId: null, userId: poolOwnerId }],
+    },
+  });
+  return Math.round((agg._sum.costCents ?? 0) / TRANSCRIPTION_CENTS_PER_MINUTE);
+}
+
+/** The pool owner for a canvas: its owner, or the requester for an unlinked legacy canvas. */
+export async function transcriptionPoolOwner(canvasId: string | undefined, requesterId: string): Promise<string> {
+  if (!canvasId) return requesterId;
+  const canvas = await prisma.codingCanvas.findUnique({
+    where: { id: canvasId },
+    select: { userId: true, dashboardAccess: { select: { userId: true } } },
+  });
+  return canvas?.userId ?? canvas?.dashboardAccess?.userId ?? requesterId;
+}
+
+export async function transcriptionPool(
+  canvasId: string | undefined,
+  requesterId: string,
+  plan: string,
+  perSeatMinutes: number,
+): Promise<TranscriptionPool> {
+  const poolOwnerId = await transcriptionPoolOwner(canvasId, requesterId);
+  const sub = await prisma.subscription.findUnique({
+    where: { userId: poolOwnerId },
+    select: { status: true, quantity: true },
+  });
+  const billedPerSeat = (plan === 'pro' || plan === 'team') && !!sub && ENTITLED_SUBSCRIPTION_STATUSES.has(sub.status);
+  const seats = billedPerSeat ? Math.max(1, sub!.quantity) : 1;
+  return {
+    poolOwnerId,
+    plan,
+    seats,
+    minutesPerMonth: perSeatMinutes === Infinity ? Infinity : perSeatMinutes * seats,
+    minutesUsed: await transcriptionPoolMinutesUsedThisMonth(poolOwnerId),
+  };
 }

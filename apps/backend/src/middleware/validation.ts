@@ -112,6 +112,9 @@ export const createTeamSchema = z.object({
 export const inviteMemberSchema = z.object({
   email: z.string().email('Valid email is required'),
   role: z.enum(['admin', 'member']).optional().default('member'),
+  // Seat billing: the owner confirms a quoted charge (utils/seats.ts).
+  confirmSeatCharge: z.boolean().optional(),
+  prorationDate: z.number().int().optional(),
 });
 
 // ─── Coding Canvas Schemas ───

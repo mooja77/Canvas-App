@@ -87,6 +87,13 @@ const vol: Record<string, number> = {
   exports: 0,
   qdpxRoundTrips: 0,
   collaboratorsAdded: 0,
+  seatQuotes: 0,
+  seatsAdded: 0,
+  seatsReleased: 0,
+  seatDeclines: 0,
+  viewersAdded: 0,
+  graceWritesAllowed: 0,
+  graceWritesRefused: 0,
   webhooks: 0,
   webhookReplays: 0,
   webhooksDelayed: 0,
@@ -258,7 +265,17 @@ interface Actor {
   legacy: boolean;
   consent: boolean;
   trialEndsAt: number | null;
-  sub: { id: string; price: string; status: string; periodEnd: number; cancelAtPeriodEnd: boolean } | null;
+  sub: {
+    id: string;
+    price: string;
+    status: string;
+    periodStart: number;
+    periodEnd: number;
+    cancelAtPeriodEnd: boolean;
+    customer: string;
+    /** Seats the ledger expects Stripe to be billing (per-seat plans). */
+    seats: number;
+  } | null;
   canvases: Map<string, LCanvas>;
   script: (day: number) => Promise<void>;
 }
@@ -551,6 +568,23 @@ async function anonymise(a: Actor, cv: LCanvas) {
   }
 }
 
+/** GET /canvas/:id with every detail page merged (the API pages at 500 rows). */
+async function fullCanvas(a: Actor, id: string): Promise<{ status: number; data: any }> {
+  const first = await a.c.req('GET', `canvas/${id}?detailPageSize=1000`);
+  const data = first.body?.data;
+  if (!data) return { status: first.status, data: null };
+  let page = 0;
+  let more = first.body?.detailPagination?.hasMore ?? {};
+  while (Object.values(more).some(Boolean)) {
+    page++;
+    const next = await a.c.req('GET', `canvas/${id}?detailPageSize=1000&detailPage=${page}`);
+    for (const k of Object.keys(more))
+      if (more[k] && Array.isArray(next.body?.data?.[k])) data[k].push(...next.body.data[k]);
+    more = next.body?.detailPagination?.hasMore ?? {};
+  }
+  return { status: first.status, data };
+}
+
 // ─── verification sweeps ─────────────────────────────────────────────────────
 async function verifyActorState(a: Actor, label: string) {
   await ensureSession(a);
@@ -562,7 +596,7 @@ async function verifyActorState(a: Actor, label: string) {
     'effective plan (/auth/me) == ledger (subscription + legacy + trial rules)',
     u?.effectivePlan === exp.effective,
     () =>
-      `${label} ${a.key} app=${u?.plan}/${u?.effectivePlan} ledger=${exp.stored}/${exp.effective} sub=${a.sub?.status}`,
+      `${label} ${a.key} app=${u?.plan}/${u?.effectivePlan} ledger=${exp.stored}/${exp.effective} sub=${a.sub?.status} http=${meR.status} ${u ? '' : JSON.stringify(meR.body).slice(0, 160)}`,
   );
   if (a.sub) {
     const st = meR.body?.data?.subscription?.status;
@@ -592,8 +626,8 @@ async function verifyActorState(a: Actor, label: string) {
   );
 
   for (const cv of liveCanvases(a)) {
-    const r = await a.c.req('GET', `canvas/${cv.id}`);
-    const d = r.body?.data;
+    const r = await fullCanvas(a, cv.id);
+    const d = r.data;
     if (!d) {
       check(
         'INV-CANVAS-READ',
@@ -725,7 +759,7 @@ async function qdpxRoundTrip(a: Actor) {
   const fd = new FormData();
   fd.append('file', new Blob([buf], { type: 'application/zip' }), 'p.qdpx');
   const imp = await authedFetch(a, BASE + `canvas/${target.body.data.id}/import/qdpx`, { method: 'POST', body: fd });
-  const copy = (await a.c.req('GET', `canvas/${target.body.data.id}`)).body?.data;
+  const copy = (await fullCanvas(a, target.body.data.id)).data;
   check(
     'INV-QDPX-ROUNDTRIP',
     'QDPX export → import preserves every coding and its text',
@@ -763,7 +797,7 @@ async function isolationCheck() {
 const collaborators = new Map<string, Set<string>>();
 
 // ─── billing operations ──────────────────────────────────────────────────────
-async function subscribe(a: Actor, day: number, price: string) {
+async function subscribe(a: Actor, day: number, price: string, opts: { quantity?: number } = {}) {
   await ensureSession(a);
   const r = await a.c.req('POST', 'billing/create-checkout', { priceId: price });
   check(
@@ -774,13 +808,32 @@ async function subscribe(a: Actor, day: number, price: string) {
   );
   if (r.status !== 200) return;
   const session = stub.getSession(String(r.body.data.url).split('/').pop()!);
-  const sub = stub.createSubscription({ customer: session.customer, price, now: Math.floor(Date.now() / 1000) });
+  // Ledger: Pro/Team checkout proposes one seat per person already coding with
+  // this owner (adjustable); Student is always one.
+  const perSeat = PRICE_PLAN[price] === 'pro' || PRICE_PLAN[price] === 'team';
+  const expectedSeats = perSeat ? 1 + (seatLedger.get(a.userId)?.holders.length ?? 0) : 1;
+  check(
+    'INV-CHECKOUT-SEATS',
+    'checkout proposes one seat per person (owner + coders) on Pro/Team, adjustable',
+    session.quantity === expectedSeats && session.adjustable_quantity === perSeat,
+    () => `${a.key} ${price} app=${session.quantity}/${session.adjustable_quantity} ledger=${expectedSeats}/${perSeat}`,
+  );
+  const quantity = opts.quantity ?? session.quantity ?? 1;
+  const sub = stub.createSubscription({
+    customer: session.customer,
+    price,
+    now: Math.floor(Date.now() / 1000),
+    quantity,
+  });
   a.sub = {
     id: sub.id,
     price,
     status: 'active',
+    periodStart: sub.items.data[0].current_period_start * 1000,
     periodEnd: sub.items.data[0].current_period_end * 1000,
     cancelAtPeriodEnd: false,
+    customer: session.customer,
+    seats: quantity,
   };
   await emit(day, 'checkout.session.completed', {
     id: session.id,
@@ -808,6 +861,13 @@ async function renewIfDue(a: Actor, day: number) {
   }
   const interval = PRICE_PLAN[a.sub.price] && a.sub.price.endsWith('_y') ? 365 : 30;
   const start = Math.floor(a.sub.periodEnd / 1000);
+  a.sub.periodStart = start * 1000;
+  // The renewal invoice absorbs waiting credits and the credit balance.
+  const sb = seatLedger.get(a.userId);
+  if (sb) {
+    sb.pendingCredit = 0;
+    sb.balance = 0;
+  }
   a.sub.periodEnd = (start + interval * 86400) * 1000;
   const obj = stubSub(a, {
     status: 'active',
@@ -883,6 +943,352 @@ async function cancelAtPeriodEnd(a: Actor, day: number) {
   const obj = stubSub(a, { cancel_at_period_end: true });
   await emit(day, 'customer.subscription.updated', obj);
   note(`${a.key} set cancel at period end`);
+}
+
+// ─── seats (independent model of the published seat rules) ───────────────────
+// From /pricing and docs/qa/SEAT-BILLING.md, not from app code: Pro and Team
+// are billed per seat (owner + each distinct coder; viewers free); adding a
+// seat is invoiced now at Stripe's documented proration (unit x quantity x
+// time left / period, credit for the old quantity, debit for the new one);
+// removing one credits the unused time to the next invoice; an owner with
+// more coders than seats gets 30 days' grace, after which unseated coders
+// can read but not write.
+const SEAT_PRICE: Record<string, number> = {
+  price_qc_pro_m: 1500,
+  price_qc_pro_y: 14400,
+  price_qc_team_m: 3900,
+  price_qc_team_y: 38400,
+};
+interface SeatBook {
+  /** Coders holding (or needing) a seat, oldest first. */
+  holders: string[];
+  /** Grace end if the app stamped it when the request arrived... */
+  graceEnd: number | null;
+  /** ...or when it returned: writes in between may go either way. */
+  graceEndLatest: number | null;
+  /** Unused-time credits from released seats, waiting for the next invoice. */
+  pendingCredit: number;
+  /** Customer credit balance (<= 0) left when an invoice's credits exceeded its charges. */
+  balance: number;
+}
+const seatLedger = new Map<string, SeatBook>();
+function seatBook(owner: Actor): SeatBook {
+  let b = seatLedger.get(owner.userId);
+  if (!b) {
+    b = { holders: [], graceEnd: null, graceEndLatest: null, pendingCredit: 0, balance: 0 };
+    seatLedger.set(owner.userId, b);
+  }
+  return b;
+}
+/** Billed per seat right now (past_due is excluded: see D1 in the findings). */
+function billedPerSeat(a: Actor): boolean {
+  return !!a.sub && PAID_STATUSES.has(a.sub.status) && SEAT_PRICE[a.sub.price] !== undefined;
+}
+function ledgerProration(a: Actor, oldQ: number, newQ: number, atSecs: number): number {
+  const unit = SEAT_PRICE[a.sub!.price];
+  const period = (a.sub!.periodEnd - a.sub!.periodStart) / 1000;
+  const frac = Math.min(1, Math.max(0, (a.sub!.periodEnd / 1000 - atSecs) / period));
+  return Math.round(-unit * oldQ * frac) + Math.round(unit * newQ * frac);
+}
+/** What an immediate (always_invoice) seat invoice charges: proration + waiting credits + balance. */
+function ledgerDueNow(a: Actor, oldQ: number, newQ: number, atSecs: number): { due: number; net: number } {
+  const b = seatBook(a);
+  const net = ledgerProration(a, oldQ, newQ, atSecs) + b.pendingCredit + b.balance;
+  return { due: Math.max(0, net), net };
+}
+function settleImmediateInvoice(a: Actor, net: number) {
+  const b = seatBook(a);
+  b.pendingCredit = 0;
+  b.balance = Math.min(0, net);
+}
+function seatedCoder(owner: Actor, coderId: string): boolean {
+  if (!billedPerSeat(owner)) return true;
+  const idx = seatBook(owner).holders.indexOf(coderId);
+  return idx < 0 || idx < owner.sub!.seats - 1;
+}
+const stubQuantity = (a: Actor) => stub.getSubscription(a.sub!.id)?.items.data[0].quantity;
+function addCollabLedger(cv: LCanvas, userId: string) {
+  if (!collaborators.has(cv.id)) collaborators.set(cv.id, new Set());
+  collaborators.get(cv.id)!.add(userId);
+}
+
+/** Invite a coder the way the UI does: ask; if quoted, check the quote, confirm. */
+async function inviteCoder(owner: Actor, cv: LCanvas, coder: Actor, day: number): Promise<boolean> {
+  await ensureSession(owner);
+  const b = seatBook(owner);
+  const already = b.holders.includes(coder.userId);
+  const newQ = 1 + b.holders.length + 1;
+  const needQuote = billedPerSeat(owner) && !already && newQ > owner.sub!.seats;
+  const r1 = await owner.c.req('POST', `canvas/${cv.id}/collaborators`, { email: coder.email, role: 'editor' });
+  if (!needQuote) {
+    check(
+      'INV-COLLAB-ADD',
+      'a coder who needs no new paid seat is added at once, without a charge',
+      r1.status === 201,
+      () => `${owner.key} +${coder.key} → ${r1.status} ${JSON.stringify(r1.body).slice(0, 160)}`,
+    );
+    if (r1.status !== 201) return false;
+  } else {
+    vol.seatQuotes++;
+    const p = r1.body?.preview;
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const ledgerNow = p ? ledgerDueNow(owner, owner.sub!.seats, newQ, p.prorationDate) : { due: NaN, net: NaN };
+    const expected = ledgerNow.due;
+    check(
+      'INV-SEAT-QUOTE',
+      'a coder needing a seat is quoted (402) the Stripe proration for the rest of the period',
+      r1.status === 402 &&
+        r1.body?.code === 'SEAT_REQUIRED' &&
+        p?.newQuantity === newQ &&
+        p?.currentQuantity === owner.sub!.seats &&
+        Math.abs(p.prorationDate - nowSecs) <= 5 &&
+        Math.abs(p.dueNow - expected) <= 1 &&
+        p.nextRenewal === SEAT_PRICE[owner.sub!.price] * newQ,
+      () => `${owner.key} +${coder.key} → ${r1.status} app=${JSON.stringify(p)} ledger due=${expected} q=${newQ}`,
+    );
+    if (r1.status !== 402 || !p) return false;
+    const before = stub.invoices(owner.sub!.id).length;
+    const r2 = await owner.c.req('POST', `canvas/${cv.id}/collaborators`, {
+      email: coder.email,
+      role: 'editor',
+      confirmSeatCharge: true,
+      prorationDate: p.prorationDate,
+    });
+    const invs = stub.invoices(owner.sub!.id);
+    const inv = invs[invs.length - 1];
+    check(
+      'INV-SEAT-CHARGE',
+      'a confirmed seat is charged exactly the quote, now, and Stripe then bills the new quantity',
+      r2.status === 201 &&
+        invs.length === before + 1 &&
+        inv?.status === 'paid' &&
+        inv.amount_due === p.dueNow &&
+        stubQuantity(owner) === newQ,
+      () =>
+        `${owner.key} +${coder.key} → ${r2.status} inv=${inv?.status}/${inv?.amount_due} quote=${p.dueNow} q=${stubQuantity(owner)}`,
+    );
+    if (r2.status !== 201) return false;
+    settleImmediateInvoice(owner, ledgerNow.net);
+    vol.seatsAdded += newQ - owner.sub!.seats;
+    owner.sub!.seats = newQ;
+    await emit(day, 'customer.subscription.updated', stub.getSubscription(owner.sub!.id), { allowDelay: true });
+  }
+  if (!already) b.holders.push(coder.userId);
+  addCollabLedger(cv, coder.userId);
+  vol.collaboratorsAdded++;
+  return true;
+}
+
+async function inviteViewer(owner: Actor, cv: LCanvas, viewer: Actor) {
+  await ensureSession(owner);
+  const before = owner.sub ? stub.invoices(owner.sub.id).length : 0;
+  const q = owner.sub ? stubQuantity(owner) : null;
+  const r = await owner.c.req('POST', `canvas/${cv.id}/collaborators`, { email: viewer.email, role: 'viewer' });
+  check(
+    'INV-VIEWER-FREE',
+    'a read-only viewer is added without a quote, a charge or a seat',
+    r.status === 201 && (!owner.sub || (stub.invoices(owner.sub.id).length === before && stubQuantity(owner) === q)),
+    () => `${owner.key} viewer → ${r.status}`,
+  );
+  if (r.status === 201) {
+    addCollabLedger(cv, viewer.userId);
+    vol.viewersAdded++;
+    const w = await viewer.c.req('POST', `canvas/${cv.id}/questions`, { text: 'viewer tries to write' });
+    check('INV-VIEWER-READONLY', 'a viewer cannot write', w.status === 403, () => `${viewer.key} → ${w.status}`);
+  }
+}
+
+async function removeCoder(owner: Actor, cv: LCanvas, coder: Actor, day: number) {
+  await ensureSession(owner);
+  const b = seatBook(owner);
+  const oldQ = owner.sub!.seats;
+  const staleSnapshot = stub.getSubscription(owner.sub!.id);
+  const pendingBefore = stub.pendingItems(owner.sub!.id).length;
+  const invBefore = stub.invoices(owner.sub!.id).length;
+  const at = Math.floor(Date.now() / 1000);
+  const r = await owner.c.req('DELETE', `canvas/${cv.id}/collaborators/${coder.userId}`);
+  b.holders = b.holders.filter((id) => id !== coder.userId);
+  collaborators.get(cv.id)?.delete(coder.userId);
+  const newQ = Math.max(1, 1 + b.holders.length);
+  const credit = stub
+    .pendingItems(owner.sub!.id)
+    .slice(pendingBefore)
+    .reduce((t: number, l: any) => t + l.amount, 0);
+  const expected = ledgerProration(owner, oldQ, newQ, at);
+  check(
+    'INV-SEAT-RELEASE',
+    'removing a coder frees the seat at once: quantity drops, unused time is credited, no card charge',
+    r.status === 200 &&
+      stubQuantity(owner) === newQ &&
+      credit < 0 &&
+      Math.abs(credit - expected) <= 2 &&
+      stub.invoices(owner.sub!.id).length === invBefore,
+    () =>
+      `${owner.key} -${coder.key} → ${r.status} q=${stubQuantity(owner)}/${newQ} credit=${credit} ledger=${expected}`,
+  );
+  seatBook(owner).pendingCredit += expected;
+  vol.seatsReleased += oldQ - newQ;
+  owner.sub!.seats = newQ;
+  await emit(day, 'customer.subscription.updated', stub.getSubscription(owner.sub!.id));
+  // Stripe's earlier snapshot (the old, higher quantity) arrives a day late.
+  delayed.push({ deliverOn: day + 1, event: mkEvent('customer.subscription.updated', staleSnapshot) });
+  vol.webhooksDelayed++;
+  note(`${owner.key} removed coder ${coder.key} (stale quantity ${oldQ} snapshot queued)`);
+}
+
+async function declinedCoderInvite(owner: Actor, cv: LCanvas, coder: Actor) {
+  await ensureSession(owner);
+  stub.setCard(owner.sub!.customer, 'declined');
+  const q = stubQuantity(owner);
+  const r = await owner.c.req('POST', `canvas/${cv.id}/collaborators`, {
+    email: coder.email,
+    role: 'editor',
+    confirmSeatCharge: true,
+  });
+  const invs = stub.invoices(owner.sub!.id);
+  const list = await owner.c.req('GET', `canvas/${cv.id}/collaborators`);
+  const peek = await coder.c.req('GET', `canvas/${cv.id}`);
+  check(
+    'INV-SEAT-DECLINE',
+    'a declined card adds no seat and no coder, and leaves no open invoice',
+    r.status === 402 &&
+      r.body?.code === 'SEAT_PAYMENT_FAILED' &&
+      stubQuantity(owner) === q &&
+      invs[invs.length - 1]?.status === 'void' &&
+      !(list.body?.data ?? []).some((c: any) => c.userId === coder.userId) &&
+      peek.status === 403,
+    () =>
+      `${owner.key} +${coder.key} → ${r.status} ${r.body?.code} q=${stubQuantity(owner)} inv=${invs[invs.length - 1]?.status} peek=${peek.status}`,
+  );
+  vol.seatDeclines++;
+  stub.setCard(owner.sub!.customer, 'ok');
+  note(`${owner.key} card declined while adding ${coder.key}: nothing added`);
+}
+
+/** Owner adds the seats their unseated coders need (Account → Seats). */
+async function addMissingSeats(owner: Actor, day: number) {
+  await ensureSession(owner);
+  const newQ = 1 + seatBook(owner).holders.length;
+  const r1 = await owner.c.req('POST', 'billing/seats', { quantity: newQ });
+  const p = r1.body?.preview;
+  check(
+    'INV-SEAT-QUOTE',
+    'a coder needing a seat is quoted (402) the Stripe proration for the rest of the period',
+    r1.status === 402 &&
+      p?.newQuantity === newQ &&
+      Math.abs(p.dueNow - ledgerDueNow(owner, owner.sub!.seats, newQ, p.prorationDate).due) <= 1,
+    () => `${owner.key} seats→${newQ}: ${r1.status} ${JSON.stringify(p)}`,
+  );
+  if (r1.status !== 402) return;
+  vol.seatQuotes++;
+  const r2 = await owner.c.req('POST', 'billing/seats', {
+    quantity: newQ,
+    confirmSeatCharge: true,
+    prorationDate: p.prorationDate,
+  });
+  const invs = stub.invoices(owner.sub!.id);
+  check(
+    'INV-SEAT-CHARGE',
+    'a confirmed seat is charged exactly the quote, now, and Stripe then bills the new quantity',
+    r2.status === 200 && invs[invs.length - 1]?.amount_due === p.dueNow && stubQuantity(owner) === newQ,
+    () => `${owner.key} → ${r2.status} q=${stubQuantity(owner)}`,
+  );
+  if (r2.status === 200) {
+    settleImmediateInvoice(owner, ledgerDueNow(owner, owner.sub!.seats, newQ, p.prorationDate).net);
+    vol.seatsAdded += newQ - owner.sub!.seats;
+    owner.sub!.seats = newQ;
+    await emit(day, 'customer.subscription.updated', stub.getSubscription(owner.sub!.id), { allowDelay: true });
+    note(`${owner.key} added seats → ${newQ}`);
+  }
+}
+
+/** A coder on an owner's canvas writes; the ledger says whether a seat/grace allows it. */
+async function coderWrite(owner: Actor, cv: LCanvas, coder: Actor) {
+  if (cv.transcripts.size === 0 || cv.codes.size === 0) return;
+  const unseated = !seatedCoder(owner, coder.userId);
+  const book = seatBook(owner);
+  const nowMs = Date.now();
+  const graceOver = book.graceEndLatest !== null && nowMs >= book.graceEndLatest;
+  // Within the few ms between request and response of the call that started
+  // grace, the app's exact instant is unknowable to an independent ledger.
+  const ambiguous = unseated && book.graceEnd !== null && nowMs >= book.graceEnd && !graceOver;
+  const allowed = !(unseated && graceOver);
+  const [t, content] = pick([...cv.transcripts.entries()]);
+  const q = pick([...cv.codes]);
+  const start = Math.floor(rand() * Math.max(1, content.length - 40));
+  const end = Math.min(content.length, start + 10 + Math.floor(rand() * 60));
+  const r = await coder.c.req('POST', `canvas/${cv.id}/codings`, {
+    transcriptId: t,
+    questionId: q,
+    startOffset: start,
+    endOffset: end,
+    codedText: content.slice(start, end),
+  });
+  check(
+    'INV-SEAT-GRACE',
+    'an unseated coder can edit during the 30-day grace and not after it; a seated coder always can',
+    ambiguous
+      ? r.status === 201 || (r.status === 403 && r.body?.code === 'SEAT_REQUIRED_FOR_EDITING')
+      : allowed
+        ? r.status === 201
+        : r.status === 403 && r.body?.code === 'SEAT_REQUIRED_FOR_EDITING',
+    () => `${coder.key} unseated=${unseated} graceOver=${graceOver} → ${r.status} ${r.body?.code ?? ''}`,
+  );
+  if (r.status === 201) {
+    cv.codings.set(r.body.data.id, { id: r.body.data.id, t, q, start, end });
+    vol.codings++;
+    if (unseated) vol.graceWritesAllowed++;
+  } else vol.graceWritesRefused++;
+  const read = await coder.c.req('GET', `canvas/${cv.id}`);
+  check(
+    'INV-SEAT-READ',
+    'a coder never loses read access over seats',
+    read.status === 200,
+    () => `${coder.key} → ${read.status}`,
+  );
+}
+
+/** Account → Seats against the ledger. */
+async function seatStatusCheck(a: Actor, label: string) {
+  if (!a.sub) return;
+  await ensureSession(a);
+  const sentAt = Date.now();
+  const r = await a.c.req('GET', 'billing/seats');
+  const d = r.body?.data;
+  if (a.sub.status === 'past_due') return; // plan during dunning is decision D1; not asserted here
+  if (!billedPerSeat(a)) {
+    check(
+      'INV-SEAT-MODE',
+      'only live Pro/Team subscriptions are billed per seat',
+      d?.mode !== 'billed',
+      () => `${label} ${a.key} mode=${d?.mode}`,
+    );
+    return;
+  }
+  const b = seatBook(a);
+  const used = 1 + b.holders.length;
+  // Seats nobody holds are credited back when the owner looks (never here, in this cast).
+  if (a.sub.seats > used) a.sub.seats = used;
+  const unseated = Math.max(0, used - a.sub.seats);
+  if (unseated > 0 && b.graceEnd === null) {
+    b.graceEnd = sentAt + 30 * DAY;
+    b.graceEndLatest = Date.now() + 30 * DAY;
+  }
+  const graceOk =
+    unseated === 0 ? d?.graceEndsAt === null : Math.abs(Date.parse(d?.graceEndsAt) - (b.graceEnd ?? 0)) <= 60_000;
+  check(
+    'INV-SEAT-STATUS',
+    'seats paid (app) == Stripe quantity == ledger; seats in use, unseated coders and grace date == ledger',
+    r.status === 200 &&
+      d.mode === 'billed' &&
+      d.seatsPurchased === a.sub.seats &&
+      stubQuantity(a) === a.sub.seats &&
+      d.seatsUsed === used &&
+      d.unseatedCount === unseated &&
+      graceOk,
+    () =>
+      `${label} ${a.key} app=${d?.seatsPurchased}/${d?.seatsUsed}/${d?.unseatedCount}/${d?.graceEndsAt} stripe=${stubQuantity(a)} ledger=${a.sub?.seats}/${used}/${unseated}/${b.graceEnd && new Date(b.graceEnd).toISOString()}`,
+  );
 }
 
 // ─── jobs ────────────────────────────────────────────────────────────────────
@@ -964,34 +1370,77 @@ async function buildCast() {
     await work(proY, 0.7);
   };
 
+  // Team, billed per seat. Day 2: two coders (each quoted, confirmed and
+  // charged) and a free viewer. Day 45: a coder is removed (credit) and the
+  // stale higher-quantity snapshot arrives late. Day 60: re-invited. Day 90:
+  // the card is declined while adding a third coder (nothing added), then it
+  // succeeds. Day 180: Team → Pro, seats and coders kept.
   const team = await signupActor('team-owner', { verify: true });
   const coders = [
     await signupActor('team-coder-1', { verify: true }),
     await signupActor('team-coder-2', { verify: true }),
   ];
+  const coder3 = await signupActor('team-coder-3', { verify: true });
+  const teamViewer = await signupActor('team-viewer', { verify: true });
+  const onShared = new Set<Actor>();
+  const sharedCanvas = () => [...collaborators.keys()].map((id) => team.canvases.get(id)).find((c) => c?.live);
   team.script = async (d) => {
     if (d === 1) await subscribe(team, d, 'price_qc_team_m');
     if (d === 2) {
       const cv = liveCanvases(team)[0] ?? (await createCanvas(team, d), liveCanvases(team)[0]);
-      for (const c of coders) {
-        const r = await team.c.req('POST', `canvas/${cv.id}/collaborators`, { email: c.email, role: 'editor' });
-        check('INV-COLLAB-ADD', 'Team owner can add collaborators', r.status === 201, () => `${c.key} → ${r.status}`);
-        if (r.status === 201) {
-          vol.collaboratorsAdded++;
-          if (!collaborators.has(cv.id)) collaborators.set(cv.id, new Set());
-          collaborators.get(cv.id)!.add(c.userId);
-        }
-      }
+      for (const c of coders) if (await inviteCoder(team, cv, c, d)) onShared.add(c);
+      await inviteViewer(team, cv, teamViewer);
+    }
+    const shared = sharedCanvas();
+    if (d === 45 && shared) {
+      await removeCoder(team, shared, coders[1], d);
+      onShared.delete(coders[1]);
+    }
+    if (d === 60 && shared && (await inviteCoder(team, shared, coders[1], d))) onShared.add(coders[1]);
+    if (d === 90 && shared) {
+      await declinedCoderInvite(team, shared, coder3);
+      if (await inviteCoder(team, shared, coder3, d)) onShared.add(coder3);
     }
     if (d === 180) await switchPlan(team, d, 'price_qc_pro_m');
+    if (d === 181) await seatStatusCheck(team, 'after Team→Pro');
     await work(team, 0.9);
-    const shared = [...collaborators.keys()].map((id) => team.canvases.get(id)).find((c) => c?.live);
-    if (shared && d > 2) for (const c of coders) if (chance(0.5)) await codePassage(team, shared, c);
+    if (shared && d > 2) for (const c of onShared) if (chance(0.5)) await codePassage(team, shared, c);
   };
-  for (const c of coders)
+  for (const c of [...coders, coder3, teamViewer])
     c.script = async (d) => {
       if (d % 7 === 0) await work(c, 0.3);
     };
+
+  // Coders added during a free trial; the owner then buys Pro but lowers the
+  // seats to 1 at checkout. Both coders are unseated: they keep editing for
+  // 30 days, are read-only after that, and edit again once the owner adds
+  // the 2 seats on day 60.
+  const graceOwner = await signupActor('grace-owner', { verify: true });
+  const graceCoders = [
+    await signupActor('grace-coder-1', { verify: true }),
+    await signupActor('grace-coder-2', { verify: true }),
+  ];
+  let graceCanvas: LCanvas | undefined;
+  graceOwner.script = async (d) => {
+    if (d === 1) {
+      await createCanvas(graceOwner, d);
+      graceCanvas = liveCanvases(graceOwner)[0];
+      if (graceCanvas) {
+        await addTranscript(graceOwner, graceCanvas);
+        await addCode(graceOwner, graceCanvas);
+        for (const c of graceCoders) await inviteCoder(graceOwner, graceCanvas, c, d);
+      }
+    }
+    if (d === 8) {
+      await subscribe(graceOwner, d, 'price_qc_pro_m', { quantity: 1 });
+      await seatStatusCheck(graceOwner, 'after checkout with fewer seats');
+    }
+    if (d === 60) await addMissingSeats(graceOwner, d);
+    await work(graceOwner, 0.5);
+    if (graceCanvas?.live && d > 1)
+      for (const c of graceCoders) if (chance(0.6)) await coderWrite(graceOwner, graceCanvas, c);
+  };
+  for (const c of graceCoders) c.script = async () => {};
 
   const student = await signupActor('student', { verify: true, academic: true });
   student.script = async (d) => {
@@ -1094,7 +1543,9 @@ async function work(a: Actor, intensity: number) {
   for (let i = 0; i < 1 + Math.floor(rand() * 3); i++) await codePassage(a, cv);
   if (chance(0.05)) await deleteCoding(a, cv);
   if (paid && chance(0.03)) await anonymise(a, cv);
-  if (chance(0.02) && live.length > 1) await trashCanvas(a, pick(live));
+  // Canvases shared with coders stay put, so seat counts stay deterministic.
+  const trashable = live.filter((c) => !collaborators.has(c.id));
+  if (chance(0.02) && live.length > 1 && trashable.length) await trashCanvas(a, pick(trashable));
   const trashed = [...a.canvases.values()].filter(
     (c) => !c.live && !c.purged && Date.now() - (c.trashedAt ?? 0) < 25 * DAY,
   );
@@ -1155,7 +1606,11 @@ async function main() {
     await restamp(realFrom);
     if (downtime.has(day)) vol.downtimeDaysSkipped++;
     else await runJobs(day, { reconcile: day % 7 === 0 || day === 75 });
-    if (day % 7 === 6 || day === days - 1) for (const a of actors) await verifyActorState(a, `day${day}`);
+    if (day % 7 === 6 || day === days - 1)
+      for (const a of actors) {
+        await verifyActorState(a, `day${day}`);
+        await seatStatusCheck(a, `day${day}`);
+      }
   }
 
   // Lifecycle email: at most one of each message per person, only to people who asked.

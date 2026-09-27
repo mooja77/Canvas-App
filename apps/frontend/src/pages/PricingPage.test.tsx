@@ -149,11 +149,6 @@ describe('PricingPage (refresh)', () => {
     expect(maxAnnualSavingPercent()).toBe(20);
   });
 
-  it('does not advertise audio transcription (there is no screen to use it)', () => {
-    const { container } = render(<PricingPage />);
-    expect(container.textContent ?? '').not.toMatch(/transcription/i);
-  });
-
   it('renders a Student tier with an .edu-gated CTA', () => {
     render(<PricingPage />);
     expect(screen.getByRole('heading', { name: 'Student', level: 3 })).toBeInTheDocument();
@@ -305,5 +300,33 @@ describe('PricingPage comparison table vs the enforced plan limits', () => {
       // upgrade can lift it and why the row must not read "Unlimited".
       if (PLAN_LIMITS[tier].aiEnabled) expect(PLAN_LIMITS[tier].aiRequestsPerDay).toBe(AI_REQUESTS_PER_DAY_FAIR_USE);
     });
+  });
+
+  it('states the collaborator cap each tier is actually gated on', () => {
+    const row = cells('Collaborators per canvas');
+    TIERS.forEach((tier, i) => {
+      const max = PLAN_LIMITS[tier].maxCollaborators;
+      expect(row[i]).toBe(max === Infinity ? 'Unlimited' : max === 0 ? '—' : String(max));
+    });
+  });
+
+  it('prices coders per seat on exactly the tiers that allow collaborators, and viewers free', () => {
+    const coders = cells('Coders (one paid seat each)');
+    const viewers = cells('Read-only viewers');
+    TIERS.forEach((tier, i) => {
+      const allowed = PLAN_LIMITS[tier].maxCollaborators > 0;
+      expect(coders[i]).toMatch(allowed ? /\/seat\/mo$/ : /^—$/);
+      expect(viewers[i]).toBe(allowed ? 'Free' : '—');
+    });
+    // Annual is the default view: the per-seat prices are the annual ones.
+    expect(coders[2]).toBe('$12/seat/mo');
+    expect(coders[3]).toBe('$32/seat/mo');
+  });
+
+  it('offers own-key transcription on exactly the tiers that can upload audio, and no included hours yet', () => {
+    const row = cells('Audio transcription (with your own OpenAI key)');
+    TIERS.forEach((tier, i) => expect(row[i]).toBe(tick(PLAN_LIMITS[tier].fileUploadEnabled)));
+    // No server OpenAI key in production yet: included minutes are not sold.
+    expect(document.body.textContent ?? '').not.toMatch(/hrs/);
   });
 });

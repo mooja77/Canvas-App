@@ -191,7 +191,13 @@ test.describe('Analysis nodes', () => {
     const id = await createCanvas(owner);
     const t = await addTranscript(owner, id, 'Clinic', TEXT);
     const q = await addCode(owner, id, 'Staffing');
-    await ok(await owner.ctx.post(`canvas/${id}/collaborators`, { data: { email: coder.email, role: 'editor' } }), 201);
+    // A second coder is a second Team seat: confirm the charge (07-seats covers the flow).
+    await ok(
+      await owner.ctx.post(`canvas/${id}/collaborators`, {
+        data: { email: coder.email, role: 'editor', confirmSeatCharge: true },
+      }),
+      201,
+    );
     await codeText(owner, id, t, q, TEXT, 'staffing was the main problem');
     await codeText(coder, id, t, q, TEXT, 'staffing was the main problem');
     const res = (

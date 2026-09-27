@@ -99,6 +99,7 @@ import { repositoryRoutes } from './routes/repositoryRoutes.js';
 import { integrationRoutes } from './routes/integrationRoutes.js';
 import { aiSettingsRoutes } from './routes/aiSettingsRoutes.js';
 import { teamRoutes } from './routes/teamRoutes.js';
+import { seatRoutes } from './routes/seatRoutes.js';
 import { calendarRoutes } from './routes/calendarRoutes.js';
 import { exportRoutes } from './routes/exportRoutes.js';
 import { notificationRoutes } from './routes/notificationRoutes.js';
@@ -433,6 +434,9 @@ v1Router.use(auth, auditLog, aiSettingsRoutes);
 
 // Protected team routes
 v1Router.use(auth, auditLog, teamRoutes);
+
+// Protected seat management (per-seat billing on Pro/Team)
+v1Router.use(auth, auditLog, seatRoutes);
 
 // Protected calendar routes
 v1Router.use(auth, auditLog, calendarRoutes);

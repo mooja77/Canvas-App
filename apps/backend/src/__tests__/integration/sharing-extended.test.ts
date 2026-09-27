@@ -120,6 +120,17 @@ vi.mock('bcryptjs', () => ({
   },
 }));
 
+vi.mock('../../utils/seats.js', () => ({
+  // Seat billing is covered by e2e/fullstack (real Postgres + Stripe double);
+  // here the owner is not billed per seat, so no charge is ever needed.
+  ensureSeatFor: vi.fn().mockResolvedValue({ charged: false, quantity: null }),
+  withSeatLock: vi.fn((_ownerId: string, fn: () => Promise<unknown>) => fn()),
+  releaseUnusedSeats: vi.fn().mockResolvedValue(null),
+  canvasOwnerUserId: vi.fn().mockResolvedValue('owner-user'),
+  seatConfirmation: vi.fn().mockReturnValue({ confirm: false }),
+  editorHasSeat: vi.fn().mockResolvedValue(true),
+}));
+
 import request from 'supertest';
 import express from 'express';
 import { auth } from '../../middleware/auth.js';

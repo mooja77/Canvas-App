@@ -24,6 +24,7 @@ import {
   ENTITLED_SUBSCRIPTION_STATUSES,
   planAfterSubscriptionEnds,
 } from '../routes/billingRoutes.js';
+import { getSeatStatus, releaseUnusedSeats } from '../utils/seats.js';
 
 const RECONCILE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // weekly
 const STARTUP_DELAY_MS = 5 * 60 * 1000; // 5 min after boot so cold-start isn't slow
@@ -34,6 +35,7 @@ let reconcileInterval: ReturnType<typeof setInterval> | null = null;
 export interface ReconciliationResult {
   examined: number;
   statusFixed: number;
+  quantityFixed: number;
   periodFixed: number;
   orphanedInStripe: number;
   errors: number;
@@ -43,6 +45,7 @@ export async function reconcileStripeSubscriptions(): Promise<ReconciliationResu
   const result: ReconciliationResult = {
     examined: 0,
     statusFixed: 0,
+    quantityFixed: 0,
     periodFixed: 0,
     orphanedInStripe: 0,
     errors: 0,
@@ -100,6 +103,7 @@ export async function reconcileStripeSubscriptions(): Promise<ReconciliationResu
                         currentPeriodStart: new Date(item.current_period_start * 1000),
                         currentPeriodEnd: new Date(item.current_period_end * 1000),
                         cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
+                        quantity: item.quantity ?? 1,
                       },
                     }),
                     prisma.user.update({ where: { id: qualcanvasUser.id }, data: { plan } }),
@@ -126,6 +130,12 @@ export async function reconcileStripeSubscriptions(): Promise<ReconciliationResu
           const item = stripeSub.items.data[0];
           if (item) {
             updates.stripePriceId = item.price.id;
+            // Seats: Stripe is the source of truth for the quantity (e.g. a
+            // missed webhook after a portal change).
+            if (typeof item.quantity === 'number' && item.quantity !== dbSub.quantity) {
+              updates.quantity = item.quantity;
+              result.quantityFixed++;
+            }
             const stripeEnd = new Date(item.current_period_end * 1000);
             const driftMs = Math.abs(stripeEnd.getTime() - dbSub.currentPeriodEnd.getTime());
             if (driftMs > PERIOD_DRIFT_THRESHOLD_MS) {
@@ -156,6 +166,10 @@ export async function reconcileStripeSubscriptions(): Promise<ReconciliationResu
           if (expectedPlan) {
             await prisma.user.update({ where: { id: dbSub.userId }, data: { plan: expectedPlan } });
           }
+          // Credit back seats nobody holds any more, and start the one-off
+          // grace period for owners with more coders than seats. Never adds seats.
+          await releaseUnusedSeats(dbSub.userId);
+          await getSeatStatus(dbSub.userId).catch(() => undefined);
         } catch (err) {
           result.errors++;
           logError(err as Error, {

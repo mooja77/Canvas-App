@@ -5,6 +5,13 @@ import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.
 import { getPlanLimits, allowanceMessage } from '../config/plans.js';
 import { validateParams, canvasIdParam, canvasIdUserIdParams } from '../middleware/validation.js';
 import { revokeCanvasAccess } from '../lib/socket.js';
+import {
+  canvasOwnerUserId,
+  ensureSeatFor,
+  releaseUnusedSeats,
+  seatConfirmation,
+  withSeatLock,
+} from '../utils/seats.js';
 
 export const collaborationRoutes = Router();
 
@@ -80,7 +87,7 @@ collaborationRoutes.post('/canvas/:id/collaborators', validateParams(canvasIdPar
     // no seat at all, describing a limit they were not exceeding.
     const existing = await prisma.canvasCollaborator.findUnique({
       where: { canvasId_userId: { canvasId: canvas.id, userId: targetUserId } },
-      select: { id: true },
+      select: { id: true, role: true },
     });
     if (!existing) {
       const plan = req.userPlan || 'free';
@@ -103,19 +110,38 @@ collaborationRoutes.post('/canvas/:id/collaborators', validateParams(canvasIdPar
       }
     }
 
-    // Upsert collaborator (update role if already exists)
-    const collaborator = await prisma.canvasCollaborator.upsert({
-      where: {
-        canvasId_userId: { canvasId: canvas.id, userId: targetUserId },
-      },
-      update: { role: assignedRole },
-      create: {
-        canvasId: canvas.id,
-        userId: targetUserId,
-        role: assignedRole,
-        invitedBy: userId || dashboardAccessId,
-      },
-    });
+    const upsert = () =>
+      prisma.canvasCollaborator.upsert({
+        where: {
+          canvasId_userId: { canvasId: canvas.id, userId: targetUserId },
+        },
+        update: { role: assignedRole },
+        create: {
+          canvasId: canvas.id,
+          userId: targetUserId,
+          role: assignedRole,
+          invitedBy: userId || dashboardAccessId,
+        },
+      });
+
+    // Seats (utils/seats.ts): a coder works with the owner's paid features, so
+    // on a plan billed per seat a NEW coder needs a paid seat. Viewers are
+    // free. Without `confirmSeatCharge` this answers 402 SEAT_REQUIRED with a
+    // price preview; the Stripe quantity changes only after the owner confirms
+    // and the prorated charge succeeds, and only then is the coder added.
+    const ownerUserId = await canvasOwnerUserId(canvas.id);
+    const becomesEditor = assignedRole === 'editor' && existing?.role !== 'editor';
+    const collaborator =
+      becomesEditor && ownerUserId
+        ? await withSeatLock(ownerUserId, async () => {
+            await ensureSeatFor(ownerUserId, targetUserId!, seatConfirmation(req.body));
+            return upsert();
+          })
+        : await upsert();
+    // Demoting a coder to viewer can free a paid seat: credit it back now.
+    if (ownerUserId && existing?.role === 'editor' && assignedRole === 'viewer') {
+      await releaseUnusedSeats(ownerUserId);
+    }
     // If this was a role change, force any existing socket to rejoin with the
     // new authorization state before it can publish another mutation.
     await revokeCanvasAccess(canvas.id, targetUserId);
@@ -184,6 +210,12 @@ collaborationRoutes.delete(
         where: { id: existing.id },
       });
       await revokeCanvasAccess(canvas.id, targetUserId);
+      // Removing access always succeeds; any seat it frees is credited back
+      // (best effort — reconciliation retries if Stripe is unreachable).
+      if (existing.role === 'editor') {
+        const ownerUserId = await canvasOwnerUserId(canvas.id);
+        if (ownerUserId) await releaseUnusedSeats(ownerUserId);
+      }
 
       res.json({ success: true, message: 'Collaborator removed' });
     } catch (err) {

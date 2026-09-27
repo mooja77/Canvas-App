@@ -587,8 +587,9 @@ const SECTIONS: GuideSection[] = [
     content: (
       <>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          QualCanvas offers four plans: Free, Student ($5/mo), Pro ($15/mo), and Team ($39/mo per seat). Upgrade anytime
-          from the Pricing page or Account settings.
+          QualCanvas offers four plans: Free, Student ($5/mo), Pro ($15/mo per seat), and Team ($39/mo per seat). A seat
+          is you or anyone who codes with you; viewers are free. Upgrade anytime from the Pricing page or Account
+          settings, and manage seats under Account → Seats.
         </p>
         <Screenshot
           src="/guide/20-pricing.png"
@@ -605,8 +606,8 @@ const SECTIONS: GuideSection[] = [
             ethics + cases.
           </li>
           <li>
-            <strong>Pro ($15/mo):</strong> Unlimited canvases, transcripts and codes, all 13 analysis tools, AI
-            features, ethics panel, 5 share codes.
+            <strong>Pro ($15/mo per seat):</strong> Unlimited canvases, transcripts and codes, all 13 analysis tools, AI
+            features, ethics panel, 5 share codes, up to 3 collaborators per canvas.
           </li>
           <li>
             <strong>Team ($39/mo per seat):</strong> Everything Pro + unlimited shares, intercoder reliability, team

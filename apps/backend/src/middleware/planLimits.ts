@@ -9,7 +9,7 @@ import {
   higherAllowancePhrase,
   planLabel,
 } from '../config/plans.js';
-import { resolveUserOpenAiKey, transcriptionMinutesUsedThisMonth } from '../utils/transcriptionMetering.js';
+import { resolveUserOpenAiKey, transcriptionPool } from '../utils/transcriptionMetering.js';
 import { OWNER_PLAN_INCLUDE, resolveCanvasOwnerPlan } from '../utils/ownerPlan.js';
 
 // Transcripts seeded by a starter template. They never count against a plan's
@@ -471,11 +471,17 @@ export function checkTranscriptionMinutes() {
     const ownKey = await resolveUserOpenAiKey(userId);
     if (ownKey) return next();
 
-    const limits = getPlanLimits(await resolveRequestPlan(req));
-    const cap = limits.transcriptionMinutesPerMonth;
-    if (cap === Infinity) return next();
+    const plan = await resolveRequestPlan(req);
+    const limits = getPlanLimits(plan);
+    if (limits.transcriptionMinutesPerMonth === Infinity) return next();
 
-    const used = await transcriptionMinutesUsedThisMonth(userId);
+    // The allowance is the canvas OWNER's pool, shared across their paid
+    // seats (utils/transcriptionMetering.ts#transcriptionPool). Metering the
+    // requester instead let every collaborator bring a fresh allowance.
+    const canvasId = req.params.id || req.params.canvasId;
+    const pool = await transcriptionPool(canvasId, userId, plan, limits.transcriptionMinutesPerMonth);
+    const cap = pool.minutesPerMonth;
+    const used = pool.minutesUsed;
     if (used >= cap) {
       // Was the one gate that already named Student. It is derived now too, so
       // it stays true if transcription ever moves between tiers.
@@ -483,7 +489,7 @@ export function checkTranscriptionMinutes() {
       const message =
         cap === 0
           ? `${featureAvailabilityMessage('Audio transcription', (l) => l.transcriptionMinutesPerMonth > 0)} Or add your own OpenAI key in AI settings.`
-          : `Monthly transcription limit reached (${cap} min). Add your own OpenAI key for unlimited transcription${
+          : `Monthly transcription limit reached (${cap} min${pool.seats > 1 ? `, shared by ${pool.seats} seats` : ''}). Add your own OpenAI key for unlimited transcription${
               moreMinutes ? `, or upgrade — ${moreMinutes} minutes per month` : ''
             }.`;
       return limitResponse(res, message, 'transcriptionMinutesPerMonth', used, cap, {

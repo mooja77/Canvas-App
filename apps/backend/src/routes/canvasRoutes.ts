@@ -25,6 +25,7 @@ import { deleteStoredUploads } from '../utils/fileCleanup.js';
 import { transcriptRoutes } from './transcriptRoutes.js';
 import { codingRoutes } from './codingRoutes.js';
 import { computedRoutes } from './computedRoutes.js';
+import { editorHasSeat } from '../utils/seats.js';
 import { shareRoutes } from './shareRoutes.js';
 
 export const canvasRoutes = Router();
@@ -248,6 +249,9 @@ canvasRoutes.get('/canvas/:canvasId', validateParams(canvasCanvasIdParam), async
         select: { role: true },
       });
       myRole = collab?.role || 'viewer';
+      // An unseated coder past the owner's grace period writes nothing (the
+      // write guard refuses), so give them the read-only workspace too.
+      if (myRole === 'editor' && !(await editorHasSeat(canvas.id, userId))) myRole = 'viewer';
     }
 
     const page = <T>(rows: T[]): T[] => rows.slice(0, detailPageSize);

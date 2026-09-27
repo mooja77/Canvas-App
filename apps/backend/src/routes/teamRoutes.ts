@@ -7,7 +7,7 @@ import { validate, validateParams } from '../middleware/validation.js';
 import { teamIdParam, createTeamSchema, inviteMemberSchema, teamIdUserIdParams } from '../middleware/validation.js';
 import { sendTeamInviteEmail } from '../lib/email.js';
 import { notifyTeamInvite } from '../utils/notifications.js';
-import { syncTeamSeatQuantity } from '../utils/teamBilling.js';
+import { ensureSeatFor, releaseUnusedSeats, seatConfirmation, withSeatLock } from '../utils/seats.js';
 
 export const teamRoutes = Router();
 
@@ -133,8 +133,8 @@ teamRoutes.post(
   async (req, res, next) => {
     try {
       // Admins use the owner's Team entitlement; they do not need a second
-      // independent Team subscription. Seat synchronization below validates
-      // the owner's active subscription before membership is confirmed.
+      // independent Team subscription. The seat check below charges the
+      // OWNER's subscription (after confirmation) before membership exists.
       const userId = requireEmailUser(req);
       const { teamId } = req.params;
       const { email, role } = req.body;
@@ -174,38 +174,42 @@ teamRoutes.post(
       const validRoles = ['admin', 'member'];
       const assignedRole = validRoles.includes(role) ? role : 'member';
 
-      // Atomic create — let the unique(teamId, userId) index reject duplicates
-      // instead of the non-atomic findUnique + create dance, which can race
-      // under concurrent invite-by-email requests and surface as a 500 on the
-      // second one. Prisma P2002 is the unique-violation error.
-      let member;
-      try {
-        member = await prismaTeamMember.create({
-          data: {
-            teamId,
-            userId: targetUser.id,
-            role: assignedRole,
-          },
-          include: {
-            user: { select: { id: true, name: true, email: true } },
-          },
-        });
-      } catch (err: unknown) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if ((err as any)?.code === 'P2002') {
-          throw new AppError('User is already a member of this team', 409);
-        }
-        throw err;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (team.members.some((m: any) => m.userId === targetUser.id)) {
+        throw new AppError('User is already a member of this team', 409);
+      }
+      const owner = await prisma.user.findUnique({ where: { id: team.ownerId }, select: { plan: true } });
+      if (owner?.plan !== 'team') {
+        throw new AppError('The team owner does not have a Team plan', 403);
       }
 
-      // Stripe Team pricing is per seat. Do not confirm membership unless the
-      // owner's subscription quantity was updated successfully.
-      try {
-        await syncTeamSeatQuantity(team.ownerId);
-      } catch (err) {
-        await prismaTeamMember.deleteMany({ where: { teamId, userId: targetUser.id } });
-        throw err;
-      }
+      // Team pricing is per seat (utils/seats.ts). A new member needs a paid
+      // seat unless they already hold one of this owner's seats; the owner
+      // confirms the charge (402 SEAT_REQUIRED → confirmSeatCharge) and the
+      // row is only written after Stripe has taken the payment.
+      // Atomic create — the unique(teamId, userId) index rejects a concurrent
+      // duplicate (Prisma P2002).
+      const member = await withSeatLock(team.ownerId, async () => {
+        await ensureSeatFor(team.ownerId, targetUser.id, seatConfirmation(req.body));
+        try {
+          return await prismaTeamMember.create({
+            data: {
+              teamId,
+              userId: targetUser.id,
+              role: assignedRole,
+            },
+            include: {
+              user: { select: { id: true, name: true, email: true } },
+            },
+          });
+        } catch (err: unknown) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if ((err as any)?.code === 'P2002') {
+            throw new AppError('User is already a member of this team', 409);
+          }
+          throw err;
+        }
+      });
 
       // Send membership email (best effort)
       const appUrl = process.env.APP_URL || 'http://localhost:5174';
@@ -252,9 +256,6 @@ teamRoutes.delete('/teams/:teamId/members/:userId', validateParams(teamIdUserIdP
       throw new AppError('Cannot remove the team owner', 400);
     }
 
-    // Preserve the role so a failed Stripe seat update can restore the member.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const existingMember = team.members.find((member: any) => member.userId === targetUserId);
     const deleted = await prismaTeamMember.deleteMany({
       where: { teamId, userId: targetUserId },
     });
@@ -263,16 +264,10 @@ teamRoutes.delete('/teams/:teamId/members/:userId', validateParams(teamIdUserIdP
       throw new AppError('Member not found in this team', 404);
     }
 
-    try {
-      await syncTeamSeatQuantity(team.ownerId);
-    } catch (err) {
-      if (existingMember) {
-        await prismaTeamMember.create({
-          data: { teamId, userId: targetUserId, role: existingMember.role },
-        });
-      }
-      throw err;
-    }
+    // Removal always succeeds; a freed seat is credited back (best effort,
+    // reconciliation retries). It used to be undone when Stripe failed, which
+    // kept someone in a team the owner had just removed them from.
+    await releaseUnusedSeats(team.ownerId);
 
     res.json({ success: true, message: 'Member removed' });
   } catch (err) {
@@ -293,16 +288,9 @@ teamRoutes.delete('/teams/:teamId', validateParams(teamIdParam), async (req, res
       throw new AppError('Only the team owner can delete the team', 403);
     }
 
-    // Reduce billing first using the membership set that will remain. If the
-    // billing update fails, preserve the team instead of claiming deletion
-    // while continuing to charge its seats.
-    await syncTeamSeatQuantity(userId, { excludeTeamId: team.id });
-    try {
-      await prismaTeam.delete({ where: { id: team.id } });
-    } catch (err) {
-      await syncTeamSeatQuantity(userId).catch(() => {});
-      throw err;
-    }
+    await prismaTeam.delete({ where: { id: team.id } });
+    // Credit back seats that only this team's members held.
+    await releaseUnusedSeats(userId);
 
     res.json({ success: true, message: 'Team deleted' });
   } catch (err) {

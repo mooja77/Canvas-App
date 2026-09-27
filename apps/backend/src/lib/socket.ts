@@ -4,6 +4,7 @@ import { verifyToken, isUserPayload, tokenIssuedAtMs } from '../utils/jwt.js';
 import { join, leave, leaveAll, getPresence, updateCursor } from './presence.js';
 import { prisma } from './prisma.js';
 import { corsOrigin } from '../utils/origins.js';
+import { editorHasSeat } from '../utils/seats.js';
 
 type CanvasSocketRole = 'owner' | 'editor' | 'viewer';
 
@@ -35,7 +36,13 @@ async function getCanvasAccess(canvasId: string, userId: string): Promise<Canvas
     where: { canvasId_userId: { canvasId, userId } },
     select: { role: true },
   });
-  return collab?.role === 'editor' || collab?.role === 'viewer' ? collab.role : null;
+  if (collab?.role === 'viewer') return 'viewer';
+  if (collab?.role === 'editor') {
+    // Same rule as the REST write guard: an unseated coder past the owner's
+    // grace period observes but does not publish.
+    return (await editorHasSeat(canvasId, userId)) ? 'editor' : 'viewer';
+  }
+  return null;
 }
 
 let io: Server | null = null;

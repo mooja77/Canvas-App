@@ -4,6 +4,8 @@ import type { Request, Response, NextFunction } from 'express';
 // ─── Mock Prisma before any imports that use it ───
 const { mockPrisma } = vi.hoisted(() => {
   const mockPrisma = {
+    canvasCollaborator: { findMany: vi.fn().mockResolvedValue([]) },
+    teamMember: { findMany: vi.fn().mockResolvedValue([]) },
     user: {
       findUnique: vi.fn(),
       update: vi.fn(),
@@ -136,6 +138,13 @@ function createApp() {
 describe('Stripe Billing – Extended Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The subscription.updated handler reads Stripe's live state; by default
+    // the "live" subscription is the one in the delivered event.
+    mockStripe.subscriptions.retrieve.mockImplementation(
+      async () => mockStripe.webhooks.constructEvent.mock.results.at(-1)?.value?.data?.object,
+    );
+    mockPrisma.canvasCollaborator.findMany.mockResolvedValue([]);
+    mockPrisma.teamMember.findMany.mockResolvedValue([]);
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_secret';
     mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
     mockPrisma.webhookEvent.create.mockResolvedValue({});
@@ -1545,7 +1554,15 @@ describe('Stripe Billing – Extended Tests', () => {
       expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
         expect.objectContaining({
           mode: 'subscription',
-          line_items: [{ price: 'price_pro_monthly', quantity: 1 }],
+          // Pro is billed per seat: one seat for a researcher with no coders,
+          // adjustable on the Stripe Checkout page.
+          line_items: [
+            {
+              price: 'price_pro_monthly',
+              quantity: 1,
+              adjustable_quantity: { enabled: true, minimum: 1, maximum: 1000 },
+            },
+          ],
         }),
       );
     });

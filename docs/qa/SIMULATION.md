@@ -184,3 +184,55 @@ Both runs use seed 42, 12 months (365 days), with the same cast and scripts. The
 - AI features beyond the stubbed provider responses.
 - Google sign-in.
 - Real Stripe behaviour. The double mimics documented Stripe objects, but prices, coupon IDs and the portal configuration in the live account were not read.
+
+## Seat billing (27 Sep 2026, branch `feat/team-seats-20260927`)
+
+The ledger now also models the published seat rules (docs/qa/SEAT-BILLING.md), independently of app code:
+
+- **Seat count.** Owner + distinct coders; viewers are free.
+- **Charges.** Adding a seat is invoiced now at Stripe's documented proration. That is unit × quantity × time left ÷ period, as a credit line for the old quantity and a debit line for the new one. The same invoice also sweeps credits already waiting and the credit balance.
+- **Removals.** Removing a seat credits the unused time to the next invoice.
+- **Grace.** An owner with more coders than seats gets 30 days' grace once. After that, unseated coders can read but not write.
+
+The Stripe double implements the matching Stripe behaviour: `always_invoice`, `create_prorations`, `pending_if_incomplete` with a declining card, `invoices/create_preview` and void.
+
+**New cast.**
+
+| Account                            | Seat life over the year                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `team-owner` + 3 coders + a viewer | **Day 2:** two coders, each quoted, confirmed and charged; a free viewer. **Day 45:** a coder is removed (credit), and Stripe's stale higher-quantity snapshot arrives a day late. **Day 60:** re-invited; the quote nets the waiting credit. **Day 90:** the card is declined while adding a third coder (nothing added); then it succeeds. **Day 180:** Team → Pro, seats and coders kept. |
+| `grace-owner` + 2 coders           | Coders added free during the trial. On day 8 the owner buys Pro but lowers checkout to 1 seat. The coders keep editing for 30 days, are read-only from day 38, and edit again after the owner adds 2 seats on day 60.                                                                                                                                                                        |
+
+**New invariants.**
+
+| Invariant           | What it checks                                                                                      |
+| ------------------- | --------------------------------------------------------------------------------------------------- |
+| INV-CHECKOUT-SEATS  | Pro/Team checkout proposes one seat per person, adjustable                                          |
+| INV-SEAT-QUOTE      | a coder needing a seat gets a 402 quote equal to the ledger's immediate charge                      |
+| INV-SEAT-CHARGE     | a confirmed seat is charged exactly the quote, and Stripe then bills the new quantity               |
+| INV-SEAT-DECLINE    | a declined card adds no seat and no coder, and leaves no open invoice                               |
+| INV-SEAT-RELEASE    | removing a coder drops the quantity at once and credits the unused time, with no card charge        |
+| INV-SEAT-STATUS     | seats paid (app) == Stripe quantity == ledger; seats used, unseated coders and grace date == ledger |
+| INV-SEAT-GRACE      | an unseated coder can edit during the 30-day grace and not after it; a seated coder always can      |
+| INV-SEAT-READ       | a coder never loses read access over seats                                                          |
+| INV-SEAT-MODE       | only live Pro/Team subscriptions are billed per seat                                                |
+| INV-VIEWER-FREE     | a viewer is added with no quote, no charge and no seat                                              |
+| INV-VIEWER-READONLY | a viewer cannot write                                                                               |
+
+**Results** (seed 42, 12 months).
+
+- **Old code** (`origin/main` 17073c3 with the new harness): **13 of 44 invariants failing.** The seat ones:
+  - INV-SEAT-QUOTE 0/5: coders were added free, with no quote.
+  - INV-SEAT-STATUS 0/315: there is no seats API.
+  - INV-CHECKOUT-SEATS 1/8: checkout is always quantity 1, not adjustable.
+  - INV-SEAT-DECLINE 0/1: the coder was added with no charge.
+  - INV-SEAT-RELEASE 0/1.
+  - INV-SEAT-GRACE 38/396: unseated coders were never restricted.
+
+  The rest are knock-on effects on content counts, plus one QDPX/stats mismatch from a coding-create 500 under load. That old-code run predates two harness fixes: paging canvases over 500 codings, and modelling waiting credits.
+
+- **New code** (this branch, before its final rebase onto the screens PR):
+  - **Final run: 0 of 45 failing**, 232,741 checks, HTTP 21,870, 5xx 0, runtime 2,207 s. All seat invariants pass.
+  - An earlier run on the same code had 2 of 45 failing. Both were one miss on day 76 for `card-dies`: `/auth/me` returned no user. It is not seat-related and did not recur. Its cause was **not established**; the invariant now records the HTTP status if it happens again.
+
+**Not covered.** Pooled transcription minutes over time: there is no upload screen in this branch, and it would need the Whisper stub. It is unit-tested in `__tests__/security/transcriptionMetering.test.ts`.

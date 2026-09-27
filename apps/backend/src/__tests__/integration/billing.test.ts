@@ -4,6 +4,8 @@ import type { Request, Response } from 'express';
 // ─── Mock Prisma before any imports that use it ───
 const { mockPrisma } = vi.hoisted(() => {
   const mockPrisma = {
+    canvasCollaborator: { findMany: vi.fn().mockResolvedValue([]) },
+    teamMember: { findMany: vi.fn().mockResolvedValue([]) },
     user: {
       findUnique: vi.fn(),
       update: vi.fn(),
@@ -73,6 +75,13 @@ function createMockReqRes(body: Buffer | string, sig = 'valid-signature') {
 describe('Stripe Webhook Handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The subscription.updated handler reads Stripe's live state; by default
+    // the "live" subscription is the one in the delivered event.
+    mockStripe.subscriptions.retrieve.mockImplementation(
+      async () => mockStripe.webhooks.constructEvent.mock.results.at(-1)?.value?.data?.object,
+    );
+    mockPrisma.canvasCollaborator.findMany.mockResolvedValue([]);
+    mockPrisma.teamMember.findMany.mockResolvedValue([]);
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_secret';
     // By default, no duplicate events
     mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);

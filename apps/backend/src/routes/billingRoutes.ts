@@ -6,6 +6,25 @@ import { ENTITLED_SUBSCRIPTION_STATUSES } from '../lib/subscriptionStatus.js';
 import { getStripe } from '../lib/stripe.js';
 import { auth } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { SEAT_PLANS } from '../utils/seats.js';
+
+/** Owner + distinct coders/team members already working with this account. */
+async function seatsNeededAtCheckout(userId: string): Promise<number> {
+  const owned = { OR: [{ userId }, { dashboardAccess: { userId } }] };
+  const [editors, members] = await Promise.all([
+    prisma.canvasCollaborator.findMany({
+      where: { role: 'editor', userId: { not: userId }, canvas: owned },
+      select: { userId: true },
+      distinct: ['userId'],
+    }),
+    prisma.teamMember.findMany({
+      where: { userId: { not: userId }, team: { ownerId: userId } },
+      select: { userId: true },
+      distinct: ['userId'],
+    }),
+  ]);
+  return 1 + new Set([...editors, ...members].map((r) => r.userId)).size;
+}
 
 export const billingRoutes = Router();
 
@@ -151,11 +170,20 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
       discounts.push({ coupon: process.env.STRIPE_ACADEMIC_COUPON_ID });
     }
 
+    // Pro and Team are billed per editing seat. Someone who already works with
+    // coders (for example during their trial) starts with a seat for each of
+    // them; Stripe Checkout shows the quantity and lets them lower it. Coders
+    // left without a seat get the one-off grace period (utils/seats.ts).
+    const seats = SEAT_PLANS.has(plan) ? await seatsNeededAtCheckout(userId) : 1;
     const appUrl = process.env.APP_URL || 'http://localhost:5174';
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [
+        SEAT_PLANS.has(plan)
+          ? { price: priceId, quantity: seats, adjustable_quantity: { enabled: true, minimum: 1, maximum: 1000 } }
+          : { price: priceId, quantity: 1 },
+      ],
       ...(discounts.length > 0 ? { discounts } : {}),
       success_url: `${appUrl}/account?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/pricing`,
@@ -327,6 +355,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
                 cancelAtPeriodEnd: sub.cancel_at_period_end || false,
                 currentPeriodStart: new Date(periodStart * 1000),
                 currentPeriodEnd: new Date(periodEnd * 1000),
+                quantity: item?.quantity ?? 1,
               },
               update: {
                 stripeSubscriptionId: subscriptionId,
@@ -335,6 +364,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
                 cancelAtPeriodEnd: sub.cancel_at_period_end || false,
                 currentPeriodStart: new Date(periodStart * 1000),
                 currentPeriodEnd: new Date(periodEnd * 1000),
+                quantity: item?.quantity ?? 1,
               },
             }),
             prisma.user.update({
@@ -346,12 +376,21 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         break;
       }
 
-      case 'customer.subscription.updated': {
+      case 'customer.subscription.updated':
+      case 'customer.subscription.pending_update_applied': {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sub = event.data.object as any;
+        const payload = event.data.object as any;
         const existingSub = await prisma.subscription.findUnique({
-          where: { stripeSubscriptionId: sub.id },
+          where: { stripeSubscriptionId: payload.id },
         });
+        // Apply Stripe's CURRENT state, not the event snapshot. Stripe does not
+        // order deliveries, so an older snapshot (e.g. quantity 2 after a later
+        // change to 3, or 'active' after cancellation) must never win. Only our
+        // own subscriptions are fetched; other products' events stay a no-op.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sub: any = existingSub
+          ? await stripe.subscriptions.retrieve(payload.id, { expand: ['items.data.price.product'] })
+          : payload;
         // Stripe does not guarantee delivery order. A cancelled subscription can
         // never become active again, so an 'active'/'past_due' update arriving
         // after .deleted is stale: applying it re-granted the paid plan and
@@ -374,6 +413,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
               currentPeriodEnd: new Date(periodEnd * 1000),
               cancelAtPeriodEnd: sub.cancel_at_period_end || false,
               stripePriceId: item?.price?.id || existingSub.stripePriceId,
+              quantity: item?.quantity ?? existingSub.quantity,
             },
           });
           if (ENTITLED_SUBSCRIPTION_STATUSES.has(sub.status)) {
@@ -441,6 +481,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
                   status: sub.status,
                   currentPeriodStart: new Date(item.current_period_start * 1000),
                   currentPeriodEnd: new Date(item.current_period_end * 1000),
+                  quantity: item.quantity ?? subRow.quantity,
                 },
               });
               if (ENTITLED_SUBSCRIPTION_STATUSES.has(sub.status)) {

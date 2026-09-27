@@ -185,6 +185,74 @@ describe('ShareCanvasModal', () => {
     expect(mockCanvasApi.getCollaborators).toHaveBeenCalledTimes(2);
   });
 
+  it('a coder that needs a paid seat is only invited after the owner confirms the quoted charge', async () => {
+    const quote = {
+      currentQuantity: 1,
+      newQuantity: 2,
+      currency: 'usd',
+      unitAmount: 3900,
+      interval: 'month',
+      dueNow: 1950,
+      nextRenewal: 7800,
+      hasDiscount: false,
+      prorationDate: 1790000000,
+      currentPeriodEnd: '2026-11-01T00:00:00.000Z',
+    };
+    mockCanvasApi.addCollaborator
+      .mockRejectedValueOnce({ response: { status: 402, data: { code: 'SEAT_REQUIRED', preview: quote } } })
+      .mockResolvedValueOnce({ data: { data: { userId: 'u2' } } });
+
+    render(<ShareCanvasModal onClose={onClose} />);
+    fireEvent.change(screen.getByLabelText("Coder's email address"), { target: { value: 'colleague@uni.edu' } });
+    fireEvent.click(screen.getByText('Invite'));
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog).toHaveTextContent('Inviting colleague@uni.edu as a coder adds a seat');
+    expect(screen.getByTestId('seat-due-now')).toHaveTextContent('$19.50');
+    expect(mockToast.success).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Add seat and invite' }));
+    await waitFor(() =>
+      expect(mockCanvasApi.addCollaborator).toHaveBeenLastCalledWith('canvas-1', {
+        email: 'colleague@uni.edu',
+        role: 'editor',
+        confirmSeatCharge: true,
+        prorationDate: 1790000000,
+      }),
+    );
+    await waitFor(() => expect(mockToast.success).toHaveBeenCalled());
+  });
+
+  it('cancelling the seat quote invites nobody', async () => {
+    mockCanvasApi.addCollaborator.mockRejectedValueOnce({
+      response: {
+        status: 402,
+        data: {
+          code: 'SEAT_REQUIRED',
+          preview: {
+            currentQuantity: 1,
+            newQuantity: 2,
+            currency: 'usd',
+            unitAmount: 3900,
+            interval: 'month',
+            dueNow: 100,
+            nextRenewal: 7800,
+            hasDiscount: false,
+            prorationDate: 1,
+            currentPeriodEnd: null,
+          },
+        },
+      },
+    });
+    render(<ShareCanvasModal onClose={onClose} />);
+    fireEvent.change(screen.getByLabelText("Coder's email address"), { target: { value: 'c@uni.edu' } });
+    fireEvent.click(screen.getByText('Invite'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(mockCanvasApi.addCollaborator).toHaveBeenCalledTimes(1);
+    expect(mockToast.success).not.toHaveBeenCalled();
+    expect(mockToast.error).not.toHaveBeenCalled();
+  });
+
   it('invites a viewer when the Viewer access level is selected', async () => {
     mockCanvasApi.addCollaborator.mockResolvedValue({ data: { data: { userId: 'u3' } } });
 
