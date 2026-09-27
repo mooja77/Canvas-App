@@ -52,6 +52,7 @@ vi.mock('../../utils/hashing.js', () => ({
 vi.mock('../../middleware/planLimits.js', () => ({
   checkFileUploadAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkTranscriptionMinutes: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  checkTranscriptLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   resolveRequestPlan: vi.fn().mockResolvedValue('pro'),
 }));
 

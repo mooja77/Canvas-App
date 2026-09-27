@@ -503,6 +503,31 @@ const SECTIONS: GuideSection[] = [
         <ProTip>
           Run intercoder reliability (Kappa) after independent coding sessions to measure agreement between researchers.
         </ProTip>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-2">
+          Documents, Audio and Coder Training
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+          All three open from the canvas <strong>Tools</strong> menu, under <em>Sources &amp; training</em>.
+        </p>
+        <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
+          <li>
+            <strong>Documents &amp; images:</strong> upload a PDF or a PNG, JPEG, GIF or WebP image (up to 20 MB), draw
+            a rectangle over part of a page, and apply a code from your codebook. Regions can be re-coded, annotated,
+            resized or deleted, and can also be placed by typing their position. Uploading needs a Student, Pro or Team
+            plan.
+          </li>
+          <li>
+            <strong>Transcribe audio:</strong> upload an MP3, WAV, M4A, MP4, OGG, WEBM or FLAC recording (up to 25 MB)
+            and add the timestamped result to the canvas as a transcript. Transcription uses OpenAI Whisper: add your
+            own OpenAI key under Account → AI settings and OpenAI bills you directly (about $0.006 a minute). Uploading
+            needs a Student, Pro or Team plan.
+          </li>
+          <li>
+            <strong>Coder training:</strong> the canvas owner writes an exercise by coding a transcript as an answer
+            key. Collaborators code the same transcript and are scored with Cohen's Kappa; the answer key is shown only
+            once they reach the pass mark.
+          </li>
+        </ul>
       </>
     ),
   },

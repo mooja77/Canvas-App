@@ -35,6 +35,9 @@ const QdpxImportModal = lazy(() => import('./QdpxImportModal'));
 const CalendarPanel = lazy(() => import('./CalendarPanel'));
 const MethodsStatementModal = lazy(() => import('./MethodsStatementModal'));
 const MethodologyWizard = lazy(() => import('./MethodologyWizard'));
+const AudioTranscriptionModal = lazy(() => import('./AudioTranscriptionModal'));
+const DocumentCodingModal = lazy(() => import('./DocumentCodingModal'));
+const CoderTrainingModal = lazy(() => import('./CoderTrainingModal'));
 
 /* ── Dropdown helpers ─────────────────────────────────────────────── */
 
@@ -265,6 +268,9 @@ export default function CanvasToolbar({
   const [showCalendar, setShowCalendar] = useState(false);
   const [showMethodsStatement, setShowMethodsStatement] = useState(false);
   const [showMethodologyWizard, setShowMethodologyWizard] = useState(false);
+  const [showAudio, setShowAudio] = useState(false);
+  const [showDocuments, setShowDocuments] = useState(false);
+  const [showTraining, setShowTraining] = useState(false);
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [addingMemo, setAddingMemo] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -325,6 +331,15 @@ export default function CanvasToolbar({
         case 'methodology-guide':
           // Guidance only — no AI key required.
           setShowMethodologyWizard(true);
+          break;
+        case 'audio-transcription':
+          setShowAudio(true);
+          break;
+        case 'documents':
+          setShowDocuments(true);
+          break;
+        case 'training':
+          setShowTraining(true);
           break;
         default:
           // Unknown modal — silently ignore so the palette can ship new
@@ -846,6 +861,69 @@ export default function CanvasToolbar({
                 }
                 label="Weights"
                 onClick={() => setShowWeighting(true)}
+              />
+              <DropdownLabel>Sources &amp; training</DropdownLabel>
+              {!isViewer && (
+                <DropdownItem
+                  icon={
+                    <svg
+                      className="h-4 w-4 text-gray-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      aria-hidden
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"
+                      />
+                    </svg>
+                  }
+                  label="Transcribe audio"
+                  onClick={() => setShowAudio(true)}
+                />
+              )}
+              <DropdownItem
+                icon={
+                  <svg
+                    className="h-4 w-4 text-gray-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+                    />
+                  </svg>
+                }
+                label="Documents & images"
+                onClick={() => setShowDocuments(true)}
+              />
+              <DropdownItem
+                icon={
+                  <svg
+                    className="h-4 w-4 text-gray-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342"
+                    />
+                  </svg>
+                }
+                label="Coder training"
+                onClick={() => setShowTraining(true)}
               />
               <DropdownLabel>Workspace</DropdownLabel>
               <DropdownItem
@@ -1434,6 +1512,9 @@ export default function CanvasToolbar({
         {showCalendar && <CalendarPanel onClose={() => setShowCalendar(false)} />}
         {showMethodsStatement && <MethodsStatementModal onClose={() => setShowMethodsStatement(false)} />}
         {showMethodologyWizard && <MethodologyWizard onClose={() => setShowMethodologyWizard(false)} />}
+        {showAudio && <AudioTranscriptionModal onClose={() => setShowAudio(false)} />}
+        {showDocuments && <DocumentCodingModal onClose={() => setShowDocuments(false)} />}
+        {showTraining && <CoderTrainingModal onClose={() => setShowTraining(false)} />}
       </Suspense>
     </>
   );

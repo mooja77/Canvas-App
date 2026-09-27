@@ -121,14 +121,49 @@ trainingRoutes.get('/canvas/:id/training', validateParams(canvasIdParam), async 
       orderBy: { createdAt: 'asc' },
     });
 
+    // The requester's own progress per exercise (attempts, best κ, passed), for
+    // the training screen's progress column. Only their own rows are read.
+    const mine = userId
+      ? await prisma.trainingAttempt.findMany({
+          where: { userId, trainingDocumentId: { in: docs.map((d) => d.id) } },
+          select: { trainingDocumentId: true, kappaScore: true, passed: true },
+        })
+      : [];
+    const progress = new Map<string, { attempts: number; bestKappa: number | null; passed: boolean }>();
+    for (const a of mine) {
+      const p = progress.get(a.trainingDocumentId) ?? { attempts: 0, bestKappa: null, passed: false };
+      p.attempts += 1;
+      if (a.kappaScore !== null && (p.bestKappa === null || a.kappaScore > p.bestKappa)) p.bestKappa = a.kappaScore;
+      p.passed = p.passed || a.passed;
+      progress.set(a.trainingDocumentId, p);
+    }
+    // Owners also see how many distinct trainees have passed each exercise.
+    const passers = owner
+      ? await prisma.trainingAttempt.groupBy({
+          by: ['trainingDocumentId', 'userId'],
+          where: { passed: true, trainingDocumentId: { in: docs.map((d) => d.id) } },
+        })
+      : [];
+
     res.json({
       success: true,
       // Strip the raw column: spreading `d` handed trainees the gold standard
       // as a JSON string even though the parsed copy was owner-only.
-      data: docs.map(({ goldCodings, ...d }) => ({
-        ...d,
-        ...(owner ? { goldCodings: safeJsonParse(goldCodings, []) } : {}),
-      })),
+      data: docs.map(({ goldCodings, _count, ...d }) => {
+        const gold = safeJsonParse(goldCodings, []) as unknown[];
+        return {
+          ...d,
+          attemptCount: owner ? _count.attempts : (progress.get(d.id)?.attempts ?? 0),
+          goldCodingCount: gold.length,
+          myProgress: progress.get(d.id) ?? { attempts: 0, bestKappa: null, passed: false },
+          ...(owner
+            ? {
+                goldCodings: gold,
+                passedTraineeCount: passers.filter((p) => p.trainingDocumentId === d.id && p.userId).length,
+              }
+            : {}),
+        };
+      }),
     });
   } catch (err) {
     next(err);
@@ -157,11 +192,14 @@ trainingRoutes.get('/canvas/:id/training/:docId', validateParams(canvasIdDocIdPa
     }
 
     const { goldCodings, ...docFields } = doc;
+    // A trainee sees the answer key only once they have passed, the same rule
+    // the attempt response applies; before that it never leaves the server.
+    const traineePassed = !owner && doc.attempts.some((a) => a.passed);
     res.json({
       success: true,
       data: {
         ...docFields,
-        ...(owner ? { goldCodings: safeJsonParse(goldCodings, []) } : {}),
+        ...(owner || traineePassed ? { goldCodings: safeJsonParse(goldCodings, []) } : {}),
         attempts: doc.attempts.map((a) => ({
           ...a,
           codings: safeJsonParse(a.codings, []),
@@ -281,11 +319,24 @@ trainingRoutes.get(
         orderBy: { createdAt: 'desc' },
       });
 
+      // Owners review everyone's attempts, so name the trainee.
+      const names = owner
+        ? new Map(
+            (
+              await prisma.user.findMany({
+                where: { id: { in: [...new Set(attempts.map((a) => a.userId).filter((u): u is string => !!u))] } },
+                select: { id: true, name: true },
+              })
+            ).map((u) => [u.id, u.name]),
+          )
+        : null;
+
       res.json({
         success: true,
         data: attempts.map((a) => ({
           ...a,
           codings: safeJsonParse(a.codings, []),
+          ...(names ? { userName: (a.userId && names.get(a.userId)) || 'Owner (access code)' } : {}),
         })),
       });
     } catch (err) {

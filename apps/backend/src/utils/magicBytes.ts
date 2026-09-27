@@ -1,7 +1,7 @@
 // Magic-byte sniffing for uploads. Extension/MIME alone are attacker-controlled
 // so we verify content signatures on the buffer before trusting the file.
 
-export type UploadKind = 'zip' | 'audio' | 'video';
+export type UploadKind = 'zip' | 'audio' | 'video' | 'image' | 'pdf';
 
 const ZIP_SIGNATURES: readonly Uint8Array[] = [
   new Uint8Array([0x50, 0x4b, 0x03, 0x04]), // standard local file header
@@ -66,6 +66,43 @@ function isWebm(buf: Buffer): boolean {
   return isMatch(buf, new Uint8Array([0x1a, 0x45, 0xdf, 0xa3]));
 }
 
+function isPng(buf: Buffer): boolean {
+  return isMatch(buf, new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+}
+
+function isJpeg(buf: Buffer): boolean {
+  return isMatch(buf, new Uint8Array([0xff, 0xd8, 0xff]));
+}
+
+function isGif(buf: Buffer): boolean {
+  return isMatch(buf, new Uint8Array([0x47, 0x49, 0x46, 0x38])); // GIF8
+}
+
+function isWebp(buf: Buffer): boolean {
+  // RIFF....WEBP
+  return (
+    isMatch(buf, new Uint8Array([0x52, 0x49, 0x46, 0x46])) && isMatch(buf, new Uint8Array([0x57, 0x45, 0x42, 0x50]), 8)
+  );
+}
+
+function isPdf(buf: Buffer): boolean {
+  return isMatch(buf, new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])); // %PDF-
+}
+
+/**
+ * Raster image signatures accepted for region coding. SVG is deliberately NOT
+ * an image here: it is a script-capable document, and serving it back from the
+ * API origin would be a stored-XSS vector.
+ */
+export function imageSignatureType(buf: Buffer): 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp' | null {
+  if (!buf) return null;
+  if (isPng(buf)) return 'image/png';
+  if (isJpeg(buf)) return 'image/jpeg';
+  if (isGif(buf)) return 'image/gif';
+  if (isWebp(buf)) return 'image/webp';
+  return null;
+}
+
 export function isValidSignature(buf: Buffer, kind: UploadKind): boolean {
   if (!buf || buf.length < 4) return false;
   switch (kind) {
@@ -75,6 +112,10 @@ export function isValidSignature(buf: Buffer, kind: UploadKind): boolean {
       return isMp3(buf) || isMp4(buf) || isWav(buf) || isOgg(buf) || isFlac(buf) || isWebm(buf);
     case 'video':
       return isMp4(buf) || isWebm(buf);
+    case 'image':
+      return imageSignatureType(buf) !== null;
+    case 'pdf':
+      return isPdf(buf);
     default:
       return false;
   }
