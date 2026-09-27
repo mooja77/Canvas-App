@@ -149,11 +149,6 @@ describe('PricingPage (refresh)', () => {
     expect(maxAnnualSavingPercent()).toBe(20);
   });
 
-  it('does not advertise audio transcription (there is no screen to use it)', () => {
-    const { container } = render(<PricingPage />);
-    expect(container.textContent ?? '').not.toMatch(/transcription/i);
-  });
-
   it('renders a Student tier with an .edu-gated CTA', () => {
     render(<PricingPage />);
     expect(screen.getByRole('heading', { name: 'Student', level: 3 })).toBeInTheDocument();
@@ -326,5 +321,14 @@ describe('PricingPage comparison table vs the enforced plan limits', () => {
     // Annual is the default view: the per-seat prices are the annual ones.
     expect(coders[2]).toBe('$12/seat/mo');
     expect(coders[3]).toBe('$32/seat/mo');
+  });
+
+  it('states transcription hours from the metered minutes, pooled per seat on Pro and Team', () => {
+    const row = cells('Audio transcription / mo');
+    TIERS.forEach((tier, i) => {
+      const min = PLAN_LIMITS[tier].transcriptionMinutesPerMonth;
+      const hrs = min > 0 ? `~${Math.round(min / 60)} hrs` : '—';
+      expect(row[i]).toBe(tier === 'pro' || tier === 'team' ? `${hrs} per seat, pooled` : hrs);
+    });
   });
 });

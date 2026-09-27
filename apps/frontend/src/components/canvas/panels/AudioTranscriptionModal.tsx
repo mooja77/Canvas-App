@@ -21,6 +21,8 @@ interface Allowance {
   minutesPerMonth: number | null;
   minutesUsed: number;
   minutesRemaining: number | null;
+  /** Paid seats sharing the owner's pool (1 when not billed per seat). */
+  seats?: number;
   usesOwnKey: boolean;
   serverTranscriptionConfigured: boolean;
   fileUploadEnabled: boolean;
@@ -609,7 +611,8 @@ function AllowancePanel({ allowance }: { allowance: Allowance }) {
     >
       <div className="flex items-center justify-between">
         <span>
-          {formatMinutes(allowance.minutesRemaining ?? 0)} of {formatMinutes(cap)} left this month ({planName})
+          {formatMinutes(allowance.minutesRemaining ?? 0)} of {formatMinutes(cap)} left this month ({planName}
+          {allowance.seats && allowance.seats > 1 ? `, shared by ${allowance.seats} seats` : ''})
         </span>
       </div>
       <div
