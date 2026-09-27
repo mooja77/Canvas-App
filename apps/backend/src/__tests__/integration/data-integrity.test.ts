@@ -91,6 +91,7 @@ const { mockPrisma } = vi.hoisted(() => {
     auditLog: {
       create: vi.fn(),
     },
+    textEmbedding: { deleteMany: vi.fn() },
     $transaction: vi.fn(),
     $queryRawUnsafe: vi.fn(),
     $disconnect: vi.fn(),
@@ -199,6 +200,8 @@ describe('Data integrity integration tests', () => {
 
   beforeEach(async () => {
     vi.resetAllMocks();
+    mockPrisma.canvasTextCoding.findMany.mockResolvedValue([]);
+    mockPrisma.textEmbedding.deleteMany.mockResolvedValue({ count: 0 });
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });
     mockPrisma.user.updateMany.mockResolvedValue({ count: 1 });

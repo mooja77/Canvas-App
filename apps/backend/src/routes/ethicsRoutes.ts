@@ -17,12 +17,10 @@ import { sha256 } from '../utils/hashing.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
 import { checkEthicsAccess } from '../middleware/planLimits.js';
 import { mutationLimiter } from '../middleware/rateLimiters.js';
+import { anonymizeText } from '../utils/anonymize.js';
+import { deleteStaleEmbeddings } from '../utils/canvasNodeCleanup.js';
 
 export const ethicsRoutes = Router();
-
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 // ─── Ethics Settings ───
 
@@ -235,18 +233,39 @@ ethicsRoutes.get('/audit-log', mutationLimiter, async (req, res, next) => {
 
     const { from, to, action, resource, limit, offset } = req.query;
 
+    // The request-logging middleware records email users under their userId
+    // and legacy access-code users under their dashboardAccessId. Filtering on
+    // dashboardAccessId alone left almost every entry out of an email user's
+    // own export.
+    const userId = getAuthUserId(req);
     const where: Record<string, unknown> = {
-      actorId: dashboardAccessId,
+      actorId: userId ? { in: [userId, dashboardAccessId] } : dashboardAccessId,
     };
 
-    if (from || to) {
+    const single = (value: unknown, name: string): string | undefined => {
+      if (value === undefined) return undefined;
+      if (typeof value !== 'string') throw new AppError(`${name} must be a single value`, 400);
+      return value;
+    };
+    const toDate = (value: unknown, name: string): Date | undefined => {
+      const raw = single(value, name);
+      if (raw === undefined || raw === '') return undefined;
+      const date = new Date(raw);
+      if (Number.isNaN(date.getTime())) throw new AppError(`${name} must be a valid date`, 400);
+      return date;
+    };
+    const fromDate = toDate(from, 'from');
+    const toDateValue = toDate(to, 'to');
+    if (fromDate || toDateValue) {
       const timestamp: Record<string, Date> = {};
-      if (from) timestamp.gte = new Date(from as string);
-      if (to) timestamp.lte = new Date(to as string);
+      if (fromDate) timestamp.gte = fromDate;
+      if (toDateValue) timestamp.lte = toDateValue;
       where.timestamp = timestamp;
     }
-    if (action) where.action = action as string;
-    if (resource) where.resource = resource as string;
+    const actionValue = single(action, 'action');
+    const resourceValue = single(resource, 'resource');
+    if (actionValue) where.action = actionValue;
+    if (resourceValue) where.resource = resourceValue;
 
     // Cap page size at 200 (was 1000 — excessive for a UI export flow) and
     // clamp offset to a sane maximum so a scraper can't trigger deep-paging.
@@ -300,46 +319,43 @@ ethicsRoutes.post(
         throw new AppError('Transcript not found in this canvas', 404);
       }
 
-      // Apply replacements to transcript content
-      let newContent = transcript.content;
-      for (const { find, replace } of replacements) {
-        const findRegex = new RegExp('\\b' + escapeRegex(find) + '\\b', 'gi');
-        newContent = newContent.replace(findRegex, replace);
-      }
+      const result = anonymizeText(transcript.content, replacements);
+      const newContent = result.content;
 
-      // Apply replacements to all coded segments referencing this transcript
+      // Move every coding with the text so it keeps covering the same words,
+      // and re-derive its codedText from the anonymised content.
       const codings = await prisma.canvasTextCoding.findMany({
         where: { transcriptId: transcript.id },
       });
 
       const codingUpdates = codings
         .map((coding) => {
-          let newCodedText = coding.codedText;
-          for (const { find, replace } of replacements) {
-            const findRegex = new RegExp('\\b' + escapeRegex(find) + '\\b', 'gi');
-            newCodedText = newCodedText.replace(findRegex, replace);
-          }
-          if (newCodedText !== coding.codedText) {
-            return prisma.canvasTextCoding.update({
-              where: { id: coding.id },
-              data: { codedText: newCodedText },
-            });
+          const startOffset = result.mapStart(coding.startOffset);
+          const endOffset = Math.max(startOffset, result.mapEnd(coding.endOffset));
+          const codedText = newContent.slice(startOffset, endOffset);
+          if (startOffset !== coding.startOffset || endOffset !== coding.endOffset || codedText !== coding.codedText) {
+            return { id: coding.id, startOffset, endOffset, codedText };
           }
           return null;
         })
         .filter((update): update is NonNullable<typeof update> => update !== null);
 
-      // Execute all updates in a transaction
-      await prisma.$transaction([
-        prisma.canvasTranscript.update({
+      // Execute all updates in a transaction. The research assistant's index
+      // still holds the pre-anonymisation text, so drop it for this transcript
+      // and its codings (it is rebuilt on the next re-index).
+      await prisma.$transaction(async (tx) => {
+        await tx.canvasTranscript.update({
           where: { id: transcript.id },
           data: {
             content: newContent,
             isAnonymized: true,
           },
-        }),
-        ...codingUpdates,
-      ]);
+        });
+        for (const { id, ...data } of codingUpdates) {
+          await tx.canvasTextCoding.update({ where: { id }, data });
+        }
+        await deleteStaleEmbeddings(tx, transcript.canvasId, 'transcript', transcript.id);
+      });
 
       const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
       logAudit({

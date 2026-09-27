@@ -7,6 +7,9 @@ import {
   canvasIdParam,
   canvasIdDocIdParams,
   canvasIdDocIdRegionIdParams,
+  validate,
+  createDocumentSchema,
+  createRegionSchema,
 } from '../middleware/validation.js';
 
 export const documentRoutes = Router();
@@ -14,47 +17,52 @@ export const documentRoutes = Router();
 // ─── Documents ───
 
 // POST /canvas/:id/documents — create document (link to existing FileUpload)
-documentRoutes.post('/canvas/:id/documents', validateParams(canvasIdParam), async (req, res, next) => {
-  try {
-    const dashboardAccessId = getAuthId(req);
-    await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+documentRoutes.post(
+  '/canvas/:id/documents',
+  validateParams(canvasIdParam),
+  validate(createDocumentSchema),
+  async (req, res, next) => {
+    try {
+      const dashboardAccessId = getAuthId(req);
+      await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
 
-    const { fileUploadId, title, docType, pageCount, metadata } = req.body;
+      const { fileUploadId, title, docType, pageCount, metadata } = req.body;
 
-    if (!fileUploadId || !title || !docType) {
-      return next(new AppError('fileUploadId, title, and docType are required', 400));
+      if (!fileUploadId || !title || !docType) {
+        return next(new AppError('fileUploadId, title, and docType are required', 400));
+      }
+      if (!['image', 'pdf'].includes(docType)) {
+        return next(new AppError('docType must be "image" or "pdf"', 400));
+      }
+
+      // Verify the file upload exists AND belongs to this canvas (which the caller
+      // owns, checked above) — otherwise a caller could link another tenant's
+      // fileUploadId into their own canvas. Mirrors the transcribe route's scoping.
+      const fileUpload = await prisma.fileUpload.findUnique({ where: { id: fileUploadId } });
+      if (!fileUpload || fileUpload.canvasId !== req.params.id) {
+        return next(new AppError('FileUpload not found', 404));
+      }
+
+      const document = await prisma.canvasDocument.create({
+        data: {
+          canvasId: req.params.id,
+          fileUploadId,
+          title,
+          docType,
+          pageCount: pageCount || 1,
+          metadata: metadata ? JSON.stringify(metadata) : '{}',
+        },
+      });
+
+      res.status(201).json({
+        success: true,
+        data: { ...document, metadata: safeJsonParse(document.metadata) },
+      });
+    } catch (err) {
+      next(err);
     }
-    if (!['image', 'pdf'].includes(docType)) {
-      return next(new AppError('docType must be "image" or "pdf"', 400));
-    }
-
-    // Verify the file upload exists AND belongs to this canvas (which the caller
-    // owns, checked above) — otherwise a caller could link another tenant's
-    // fileUploadId into their own canvas. Mirrors the transcribe route's scoping.
-    const fileUpload = await prisma.fileUpload.findUnique({ where: { id: fileUploadId } });
-    if (!fileUpload || fileUpload.canvasId !== req.params.id) {
-      return next(new AppError('FileUpload not found', 404));
-    }
-
-    const document = await prisma.canvasDocument.create({
-      data: {
-        canvasId: req.params.id,
-        fileUploadId,
-        title,
-        docType,
-        pageCount: pageCount || 1,
-        metadata: metadata ? JSON.stringify(metadata) : '{}',
-      },
-    });
-
-    res.status(201).json({
-      success: true,
-      data: { ...document, metadata: safeJsonParse(document.metadata) },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
+  },
+);
 
 // GET /canvas/:id/documents — list documents
 documentRoutes.get('/canvas/:id/documents', validateParams(canvasIdParam), async (req, res, next) => {
@@ -100,6 +108,7 @@ documentRoutes.delete('/canvas/:id/documents/:docId', validateParams(canvasIdDoc
 documentRoutes.post(
   '/canvas/:id/documents/:docId/regions',
   validateParams(canvasIdDocIdParams),
+  validate(createRegionSchema),
   async (req, res, next) => {
     try {
       const dashboardAccessId = getAuthId(req);
@@ -176,6 +185,18 @@ documentRoutes.delete(
     try {
       const dashboardAccessId = getAuthId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+
+      // The region model has no canvasId, so the document must be proven to
+      // belong to the canvas checked above; otherwise any canvas owner could
+      // delete another tenant's region by pairing their own canvas id with
+      // the victim's docId/regionId.
+      const doc = await prisma.canvasDocument.findUnique({
+        where: { id: req.params.docId },
+        select: { canvasId: true },
+      });
+      if (!doc || doc.canvasId !== req.params.id) {
+        return next(new AppError('Region coding not found', 404));
+      }
 
       const region = await prisma.documentRegionCoding.findUnique({ where: { id: req.params.regionId } });
       if (!region || region.documentId !== req.params.docId) {

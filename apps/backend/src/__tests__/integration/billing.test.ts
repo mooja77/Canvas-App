@@ -149,6 +149,7 @@ describe('Stripe Webhook Handler', () => {
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockPrisma.user.findUnique.mockResolvedValue({ stripeCustomerId: 'cus_qualcanvas_user1' });
       mockStripe.subscriptions.retrieve.mockResolvedValue({
+        status: 'active',
         items: {
           data: [
             {
@@ -226,6 +227,7 @@ describe('Stripe Webhook Handler', () => {
 
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
+        status: 'active',
         items: {
           data: [
             {
@@ -279,6 +281,7 @@ describe('Stripe Webhook Handler', () => {
 
       mockStripe.webhooks.constructEvent.mockReturnValue(event);
       mockStripe.subscriptions.retrieve.mockResolvedValue({
+        status: 'active',
         items: {
           data: [
             {

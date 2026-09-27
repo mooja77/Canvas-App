@@ -123,9 +123,11 @@ trainingRoutes.get('/canvas/:id/training', validateParams(canvasIdParam), async 
 
     res.json({
       success: true,
-      data: docs.map((d) => ({
+      // Strip the raw column: spreading `d` handed trainees the gold standard
+      // as a JSON string even though the parsed copy was owner-only.
+      data: docs.map(({ goldCodings, ...d }) => ({
         ...d,
-        ...(owner ? { goldCodings: safeJsonParse(d.goldCodings, []) } : {}),
+        ...(owner ? { goldCodings: safeJsonParse(goldCodings, []) } : {}),
       })),
     });
   } catch (err) {
@@ -154,11 +156,12 @@ trainingRoutes.get('/canvas/:id/training/:docId', validateParams(canvasIdDocIdPa
       return next(new AppError('Training document not found', 404));
     }
 
+    const { goldCodings, ...docFields } = doc;
     res.json({
       success: true,
       data: {
-        ...doc,
-        ...(owner ? { goldCodings: safeJsonParse(doc.goldCodings, []) } : {}),
+        ...docFields,
+        ...(owner ? { goldCodings: safeJsonParse(goldCodings, []) } : {}),
         attempts: doc.attempts.map((a) => ({
           ...a,
           codings: safeJsonParse(a.codings, []),
@@ -197,7 +200,8 @@ trainingRoutes.post(
   async (req, res, next) => {
     try {
       const dashboardAccessId = getAuthId(req);
-      await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+      const canvas = await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
+      const owner = isCanvasOwner(canvas, dashboardAccessId, getAuthUserId(req));
       // Legacy access-code sessions have no User row, so leave userId null
       // (FK requires a real User.id after migration 0019). The attempt still
       // belongs to the canvas via trainingDocumentId.
@@ -241,7 +245,10 @@ trainingRoutes.post(
         data: {
           ...attempt,
           codings: safeJsonParse(attempt.codings, []),
-          goldCodings,
+          // The GET routes hide the gold standard from trainees; returning it
+          // on every attempt handed them the answer key after an empty
+          // submission. Trainees see it once they have passed.
+          ...(owner || passed ? { goldCodings } : {}),
         },
       });
     } catch (err) {

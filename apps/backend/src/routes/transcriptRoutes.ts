@@ -40,11 +40,9 @@ transcriptRoutes.post(
     try {
       const dashboardAccessId = getAuthId(req);
       await getOwnedCanvas(req.params.id, dashboardAccessId, getAuthUserId(req));
-      // `total` orders the new rows after everything already there, samples
-      // included; `count` is the researcher's own transcripts, what the cap is
-      // about.
+      // `total` orders the new row after everything already there, samples
+      // included. (The cap itself is enforced by checkTranscriptLimit.)
       const total = await prisma.canvasTranscript.count({ where: { canvasId: req.params.id } });
-      const count = await prisma.canvasTranscript.count({ where: { canvasId: req.params.id, ...OWN_TRANSCRIPTS } });
       const transcript = await prisma.canvasTranscript.create({
         data: { canvasId: req.params.id, ...req.body, sortOrder: total },
       });

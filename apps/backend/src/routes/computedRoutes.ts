@@ -27,6 +27,7 @@ import {
   computeDocumentPortrait,
 } from '../utils/textAnalysis.js';
 import { deleteCanvasNodeArtifacts } from '../utils/canvasNodeCleanup.js';
+import { sanitizeComputedConfig } from '../utils/computedConfig.js';
 
 export const computedRoutes = Router();
 
@@ -126,7 +127,7 @@ computedRoutes.post(
         return next(new AppError('Computed node not found', 404));
       }
 
-      const config = safeJsonParse(node.config);
+      const config = sanitizeComputedConfig(safeJsonParse(node.config));
 
       // Cap the size of the dataset fed into the in-memory analysis functions
       // so a runaway canvas can't OOM the backend. Pure text-analysis node

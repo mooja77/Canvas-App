@@ -19,7 +19,11 @@
 import { prisma } from '../lib/prisma.js';
 import { stripe } from '../lib/stripe.js';
 import { logError } from '../lib/logger.js';
-import { deriveQualcanvasPlan } from '../routes/billingRoutes.js';
+import {
+  deriveQualcanvasPlan,
+  ENTITLED_SUBSCRIPTION_STATUSES,
+  planAfterSubscriptionEnds,
+} from '../routes/billingRoutes.js';
 
 const RECONCILE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // weekly
 const STARTUP_DELAY_MS = 5 * 60 * 1000; // 5 min after boot so cold-start isn't slow
@@ -138,8 +142,17 @@ export async function reconcileStripeSubscriptions(): Promise<ReconciliationResu
             });
           }
 
-          const active = stripeSub.status === 'active' || stripeSub.status === 'trialing';
-          const expectedPlan = active && item ? await deriveQualcanvasPlan(stripe, item.price) : 'free';
+          // Same entitlement rule as the webhook. A subscription that no longer
+          // entitles falls back through planAfterSubscriptionEnds, so
+          // grandfathered legacy users return to Pro. Writing 'free' here undid
+          // the webhook's legacy fix weekly and after every deploy.
+          const entitled = ENTITLED_SUBSCRIPTION_STATUSES.has(stripeSub.status);
+          const expectedPlan =
+            entitled && item
+              ? await deriveQualcanvasPlan(stripe, item.price)
+              : entitled
+                ? null
+                : await planAfterSubscriptionEnds(dbSub.userId);
           if (expectedPlan) {
             await prisma.user.update({ where: { id: dbSub.userId }, data: { plan: expectedPlan } });
           }
