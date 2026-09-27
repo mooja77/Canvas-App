@@ -16,7 +16,7 @@ import {
   mintReplacementAccessCode,
   VerificationTokenAlreadyUsedError,
 } from '../lib/accountClaim.js';
-import { syncTeamSeatQuantity } from '../utils/teamBilling.js';
+import { releaseUnusedSeats } from '../utils/seats.js';
 
 /**
  * Email verification that asks before it acts.
@@ -263,11 +263,9 @@ emailVerificationRoutes.post('/auth/verify-email', authLimiter, async (req, res,
       }
       throw error;
     }
-    if (claim.result.teamMembersRevoked > 0) {
-      void syncTeamSeatQuantity(user.id).catch((error) =>
-        logError(error as Error, { action: 'accountClaim.syncTeamSeats', userId: user.id }),
-      );
-    }
+    // Revoked team members and coder grants free paid seats: credit them
+    // back (best effort; never throws, reconciliation retries).
+    void releaseUnusedSeats(user.id);
 
     if (decision === 'no') {
       // Consent to optional email was given by whoever signed up, who has just

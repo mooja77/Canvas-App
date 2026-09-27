@@ -37,7 +37,7 @@ vi.mock('../../lib/lifecycleEmail.js', () => ({
   lifecycleTemplate: vi.fn(),
   sendLifecycleEmail: vi.fn(),
 }));
-vi.mock('../../utils/teamBilling.js', () => ({ syncTeamSeatQuantity: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('../../utils/seats.js', () => ({ releaseUnusedSeats: vi.fn().mockResolvedValue(null) }));
 
 import bcrypt from 'bcryptjs';
 import request from 'supertest';

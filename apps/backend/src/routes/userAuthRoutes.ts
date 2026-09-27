@@ -14,7 +14,6 @@ import { sha256 } from '../utils/hashing.js';
 import { nanoid } from 'nanoid';
 import { AppError } from '../middleware/errorHandler.js';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
-import { logError } from '../lib/logger.js';
 import { deleteStoredUploads } from '../utils/fileCleanup.js';
 import { claimUnverifiedAccount } from '../lib/accountClaim.js';
 import { deviceSummary } from '../utils/deviceSummary.js';
