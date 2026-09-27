@@ -168,7 +168,11 @@ test.describe('Invites by email only reach proven addresses', () => {
     const res = await owner.ctx.post(`teams/${team.id}/members`, { data: { email: squatter.email } });
     expect(res.status()).toBe(409);
     const verified = await signup('teammate', { verify: true });
-    await ok(await owner.ctx.post(`teams/${team.id}/members`, { data: { email: verified.email } }), 201);
+    // A new member is a new Team seat: the owner confirms the quoted charge (08-seats).
+    await ok(
+      await owner.ctx.post(`teams/${team.id}/members`, { data: { email: verified.email, confirmSeatCharge: true } }),
+      201,
+    );
   });
 });
 
