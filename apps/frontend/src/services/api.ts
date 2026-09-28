@@ -493,8 +493,16 @@ export const canvasApi = {
 
   addCollaborator: (
     canvasId: string,
-    // confirmSeatCharge/prorationDate: the owner accepted a seat quote (services/seatsApi.ts).
-    data: { email?: string; userId?: string; role?: string; confirmSeatCharge?: true; prorationDate?: number },
+    // confirmSeatCharge / confirmTeamUpgrade + prorationDate: the owner accepted
+    // a seat or Pro -> Team quote (services/seatsApi.ts).
+    data: {
+      email?: string;
+      userId?: string;
+      role?: string;
+      confirmSeatCharge?: true;
+      confirmTeamUpgrade?: true;
+      prorationDate?: number;
+    },
   ) => canvasClient.post(`/canvas/${canvasId}/collaborators`, data),
 
   removeCollaborator: (canvasId: string, userId: string) =>
@@ -680,8 +688,11 @@ export const teamApi = {
 
   get: (teamId: string) => canvasClient.get(`/teams/${teamId}`),
 
-  invite: (teamId: string, email: string, seat?: { confirmSeatCharge: true; prorationDate: number }) =>
-    canvasClient.post(`/teams/${teamId}/members`, { email, ...(seat ?? {}) }),
+  invite: (
+    teamId: string,
+    email: string,
+    seat?: { confirmSeatCharge: true; prorationDate: number } | { confirmTeamUpgrade: true; prorationDate: number },
+  ) => canvasClient.post(`/teams/${teamId}/members`, { email, ...(seat ?? {}) }),
 
   removeMember: (teamId: string, userId: string) => canvasClient.delete(`/teams/${teamId}/members/${userId}`),
 

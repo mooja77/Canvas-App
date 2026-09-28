@@ -83,17 +83,26 @@ export default function ShareCanvasModal({ onClose }: Props) {
     if (!activeCanvasId || !email) return;
     setInviting(true);
     try {
-      // A coder may need a paid seat: the server answers 402 with a quote, the
-      // owner confirms it in SeatChargeDialog, and only then is anyone charged.
+      // A coder may need a paid seat (Team) or, on Pro, the Team plan: the
+      // server answers 402 with a quote, the owner confirms it (or chooses to
+      // add a viewer instead), and only then is anyone charged.
       const data = { email, role: inviteRole };
-      const added = await withSeat((c) => canvasApi.addCollaborator(activeCanvasId, c ? { ...data, ...c } : data), {
-        reason: `Inviting ${email} as a coder`,
-        confirmLabel: 'Add seat and invite',
-      });
+      let sentRole: 'editor' | 'viewer' = inviteRole;
+      const added = await withSeat(
+        (c) => {
+          if (c && 'role' in c) sentRole = c.role;
+          return canvasApi.addCollaborator(activeCanvasId, c ? { ...data, ...c } : data);
+        },
+        {
+          reason: `Inviting ${email} as a coder`,
+          confirmLabel: 'Add seat and invite',
+          viewerFallback: true,
+        },
+      );
       if (added === null) return; // owner cancelled the charge
       setInviteEmail('');
       toast.success(
-        inviteRole === 'viewer'
+        sentRole === 'viewer'
           ? 'Viewer invited — they can open this canvas but not change it'
           : 'Coder invited — this canvas now appears in their canvas list',
       );
@@ -211,6 +220,12 @@ export default function ShareCanvasModal({ onClose }: Props) {
             <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
               Coders can code alongside you. Viewers can look but not change anything.
             </p>
+            {(seatStatus?.mode === 'solo' || seatStatus?.mode === 'trial') && (
+              <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400" data-testid="share-seat-note">
+                Pro is a one-person plan: viewers are free and unlimited. To add coders, upgrade to Team; you see the
+                price and confirm it first.
+              </p>
+            )}
             {seatStatus?.mode === 'billed' && (
               <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400" data-testid="share-seat-note">
                 Each coder uses a paid seat

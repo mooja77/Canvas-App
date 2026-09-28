@@ -46,6 +46,17 @@ function collaboratorCap(max: number): string {
   return Number.isFinite(max) ? String(max) : 'Unlimited';
 }
 
+/**
+ * Who can code, from PLAN_LIMITS.maxCoders (the cap the server enforces) and
+ * whether the tier allows sharing at all. Pro is a one-person plan.
+ */
+function coderCap(tier: 'free' | 'student' | 'pro' | 'team'): string {
+  const l = PLAN_LIMITS[tier];
+  if (l.maxCollaborators === 0) return '—';
+  if (l.maxCoders === 0) return 'Just you';
+  return Number.isFinite(l.maxCoders) ? `You + ${l.maxCoders}` : 'Unlimited';
+}
+
 const RESEARCH_DESK_CALENDLY = 'mailto:research@qualcanvas.com?subject=Institution%20plan%20inquiry';
 
 /**
@@ -77,7 +88,7 @@ export default function PricingPage() {
   const { authenticated, plan, authType, email } = useAuthStore();
   usePageMeta(
     'Pricing — QualCanvas',
-    'Free, Student ($5/mo with a verified academic email), Pro ($15/seat/mo), Team ($39/seat/mo), and Institutions plans. Viewers are free. 40% academic discount on Pro/Team. Compare against NVivo, ATLAS.ti, Dedoose.',
+    `Free, Student ($${PUBLISHED_PRICES_USD.student.monthly}/mo with a verified academic email), Pro ($${PUBLISHED_PRICES_USD.pro.monthly}/mo, one person), Team ($${PUBLISHED_PRICES_USD.team.monthly}/seat/mo), and Institutions plans. Viewers are free. 40% academic discount on Pro/Team. Compare against NVivo, ATLAS.ti, Dedoose.`,
   );
 
   useEffect(() => {
@@ -290,8 +301,10 @@ export default function PricingPage() {
                 ? `per month, billed annually ($${PUBLISHED_PRICES_USD.pro.annual}/yr, save ${annualSavingPercent('pro')}%)`
                 : `$${PUBLISHED_PRICES_USD.pro.monthly} / month`
             }
-            audience="For working researchers"
+            audience="For one researcher"
             features={[
+              'One coder: you',
+              'Unlimited free viewers',
               'Unlimited canvases',
               '50,000 words / transcript',
               'All 13 analysis tools',
@@ -333,6 +346,7 @@ export default function PricingPage() {
             audience="For research groups"
             features={[
               'Everything in Pro',
+              'A seat for you and each coder',
               'Intercoder κ + α (on demand)',
               'Unlimited share codes',
               'Team admin',
@@ -433,11 +447,13 @@ export default function PricingPage() {
               heading: 'Collaboration',
               rows: [
                 { feature: 'Share codes', values: ['—', '2', '5', 'Unlimited', 'Unlimited'] },
-                // Seats: every coder (editing collaborator or team member) is a
-                // paid seat on the owner's plan; viewers are free. Caps come from
-                // PLAN_LIMITS.maxCollaborators, the number the server enforces.
+                // Pro is one person: the owner is its only coder. On Team every
+                // coder (editing collaborator or team member) is a paid seat.
+                // Viewers are free on both. Caps come from PLAN_LIMITS
+                // (maxCollaborators, maxCoders), the numbers the server enforces;
+                // prices from PUBLISHED_PRICES_USD.
                 {
-                  feature: 'Collaborators per canvas',
+                  feature: 'People per canvas (coders + viewers)',
                   values: [
                     collaboratorCap(PLAN_LIMITS.free.maxCollaborators),
                     collaboratorCap(PLAN_LIMITS.student.maxCollaborators),
@@ -447,12 +463,16 @@ export default function PricingPage() {
                   ],
                 },
                 {
-                  feature: 'Coders (one paid seat each)',
+                  feature: 'Coders',
+                  values: [coderCap('free'), coderCap('student'), coderCap('pro'), coderCap('team'), 'Unlimited'],
+                },
+                {
+                  feature: 'Price per coder',
                   values: [
                     '—',
                     '—',
-                    period === 'annual' ? '$12/seat/mo' : '$15/seat/mo',
-                    period === 'annual' ? '$32/seat/mo' : '$39/seat/mo',
+                    'One person',
+                    `$${period === 'annual' ? annualPricePerMonth('team') : PUBLISHED_PRICES_USD.team.monthly}/seat/mo`,
                     'Custom',
                   ],
                 },
@@ -607,8 +627,7 @@ export default function PricingPage() {
             },
             {
               question: 'How do seats work?',
-              answer:
-                'Pro and Team are priced per seat. You hold one seat, and each person who codes with you — on your canvases or in your teams — holds one more; a person counts once. Read-only viewers are free. When you invite a coder you see the prorated charge for the rest of the billing period and confirm it first. Removing a coder, or making them a viewer, frees the seat straight away and credits the unused time to your next bill.',
+              answer: `Pro is for one person: you code, and you can invite as many read-only viewers as you like for free. Team is priced per seat ($${PUBLISHED_PRICES_USD.team.monthly}/seat/mo, or $${annualPricePerMonth('team')} billed annually): you hold one seat, and each person who codes with you — on your canvases or in your teams — holds one more; a person counts once. Viewers are free on Team too. If you are on Pro and invite a coder, QualCanvas offers the upgrade to Team and shows what it costs today and at renewal; nothing is charged until you confirm, or you can add them as a viewer instead. On Team, inviting a coder shows the prorated charge for the rest of the billing period and asks you to confirm it first. Removing a coder, or making them a viewer, frees the seat straight away and credits the unused time to your next bill.`,
             },
             {
               question: 'What happens to my data if I downgrade?',

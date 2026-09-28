@@ -90,7 +90,8 @@ export default function TeamPage() {
       // Team is billed per seat: a new member may need a confirmed seat charge.
       const email = inviteEmail.trim();
       const added = await withSeat(
-        (c) => (c ? teamApi.invite(activeTeam.id, email, c) : teamApi.invite(activeTeam.id, email)),
+        // Team members always code, so there is no "add as viewer" choice here.
+        (c) => (c && !('role' in c) ? teamApi.invite(activeTeam.id, email, c) : teamApi.invite(activeTeam.id, email)),
         {
           reason: `Adding ${email} to the team`,
           confirmLabel: 'Add seat and member',

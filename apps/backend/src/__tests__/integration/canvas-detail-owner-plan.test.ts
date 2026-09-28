@@ -15,7 +15,9 @@ const { mockPrisma } = vi.hoisted(() => {
   const mockPrisma = {
     user: { findUnique: vi.fn() },
     codingCanvas: { findUnique: vi.fn() },
-    canvasCollaborator: { findUnique: vi.fn() },
+    canvasCollaborator: { findUnique: vi.fn(), findMany: vi.fn(async () => []) },
+    // Seat lookups (utils/seats.ts): the owner has no other coders.
+    teamMember: { findMany: vi.fn(async () => []) },
   };
   return { mockPrisma };
 });

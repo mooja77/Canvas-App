@@ -9,6 +9,9 @@ const DISMISS_KEY = 'qc-seat-banner-dismissed';
  * (e.g. they bought fewer seats than people at checkout, or reduced seats in
  * the billing portal). Coders keep editing through the grace period; the
  * banner says until when, and links to Account → Seats.
+ *
+ * On Pro (a one-person plan) any coder is over the limit: the banner says
+ * coders need Team, with the same grace period and the same link.
  */
 export default function SeatShortfallBanner() {
   const [status, setStatus] = useState<SeatStatus | null>(null);
@@ -36,7 +39,7 @@ export default function SeatShortfallBanner() {
     };
   }, []);
 
-  if (!status || status.mode !== 'billed' || status.unseatedCount === 0) return null;
+  if (!status || (status.mode !== 'billed' && status.mode !== 'solo') || status.unseatedCount === 0) return null;
   if (dismissed && !status.enforcing) return null;
   const n = status.unseatedCount;
   const graceDate = status.graceEndsAt ? new Date(status.graceEndsAt).toLocaleDateString() : null;
@@ -51,13 +54,17 @@ export default function SeatShortfallBanner() {
       }`}
     >
       <p>
-        {status.enforcing
-          ? `${n} coder${n === 1 ? ' is' : 's are'} view-only because they have no paid seat.`
-          : `${n} coder${n === 1 ? " doesn't" : "s don't"} have a paid seat. They can keep editing until ${graceDate}, then they'll be view-only.`}
+        {status.mode === 'solo'
+          ? status.enforcing
+            ? `Pro is a one-person plan, so ${n} coder${n === 1 ? ' is' : 's are'} view-only. Upgrade to Team to let them edit again.`
+            : `Pro is a one-person plan: ${n} coder${n === 1 ? ' needs' : 's need'} Team. They can keep editing until ${graceDate}, then they'll be view-only. Nothing they coded is lost.`
+          : status.enforcing
+            ? `${n} coder${n === 1 ? ' is' : 's are'} view-only because they have no paid seat.`
+            : `${n} coder${n === 1 ? " doesn't" : "s don't"} have a paid seat. They can keep editing until ${graceDate}, then they'll be view-only.`}
       </p>
       <div className="flex items-center gap-3">
         <Link to="/account#seats" className="font-semibold underline underline-offset-2">
-          Review seats
+          {status.mode === 'solo' ? 'See options' : 'Review seats'}
         </Link>
         {!status.enforcing && (
           <button

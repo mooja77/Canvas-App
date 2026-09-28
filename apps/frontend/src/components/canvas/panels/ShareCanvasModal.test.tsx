@@ -222,6 +222,90 @@ describe('ShareCanvasModal', () => {
     await waitFor(() => expect(mockToast.success).toHaveBeenCalled());
   });
 
+  // ─── Pro is a one-person plan: a second coder needs Team ───
+  const teamRequired = (preview: Record<string, unknown> | null) => ({
+    response: {
+      status: 402,
+      data: {
+        code: 'TEAM_REQUIRED',
+        upgrade: preview ? 'in_place' : 'checkout',
+        seatsNeeded: 2,
+        preview,
+        error: 'Pro is a one-person plan.',
+      },
+    },
+  });
+  const proToTeam = {
+    currentQuantity: 1,
+    newQuantity: 2,
+    currency: 'usd',
+    unitAmount: 3900,
+    interval: 'month',
+    dueNow: 5340,
+    nextRenewal: 7800,
+    hasDiscount: false,
+    prorationDate: 1790000000,
+    currentPeriodEnd: '2026-11-01T00:00:00.000Z',
+    fromPlan: 'pro',
+    toPlan: 'team',
+    currentUnitAmount: 1500,
+  };
+
+  it('Pro owner adding a coder sees the Team upgrade with today’s and the renewal cost, and nothing is sent until they confirm', async () => {
+    mockCanvasApi.addCollaborator
+      .mockRejectedValueOnce(teamRequired(proToTeam))
+      .mockResolvedValueOnce({ data: { data: { userId: 'u2', role: 'editor' } } });
+    render(<ShareCanvasModal onClose={onClose} />);
+    fireEvent.change(screen.getByLabelText("Coder's email address"), { target: { value: 'colleague@uni.edu' } });
+    fireEvent.click(screen.getByText('Invite'));
+
+    const dialog = await screen.findByTestId('team-upgrade-dialog');
+    expect(dialog).toHaveTextContent('Pro is a one-person plan');
+    expect(screen.getByTestId('team-upgrade-due-now')).toHaveTextContent('$53.40');
+    expect(screen.getByTestId('team-upgrade-renewal')).toHaveTextContent('$78.00 / month');
+    expect(mockCanvasApi.addCollaborator).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Upgrade to Team' }));
+    await waitFor(() =>
+      expect(mockCanvasApi.addCollaborator).toHaveBeenLastCalledWith('canvas-1', {
+        email: 'colleague@uni.edu',
+        role: 'editor',
+        confirmTeamUpgrade: true,
+        prorationDate: 1790000000,
+      }),
+    );
+    await waitFor(() => expect(mockToast.success).toHaveBeenCalledWith(expect.stringMatching(/^Coder invited/)));
+  });
+
+  it('Pro owner can add the person as a free viewer instead, with no charge', async () => {
+    mockCanvasApi.addCollaborator
+      .mockRejectedValueOnce(teamRequired(proToTeam))
+      .mockResolvedValueOnce({ data: { data: { userId: 'u2', role: 'viewer' } } });
+    render(<ShareCanvasModal onClose={onClose} />);
+    fireEvent.change(screen.getByLabelText("Coder's email address"), { target: { value: 'colleague@uni.edu' } });
+    fireEvent.click(screen.getByText('Invite'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add as viewer (free)' }));
+    await waitFor(() =>
+      expect(mockCanvasApi.addCollaborator).toHaveBeenLastCalledWith('canvas-1', {
+        email: 'colleague@uni.edu',
+        role: 'viewer',
+      }),
+    );
+    await waitFor(() => expect(mockToast.success).toHaveBeenCalledWith(expect.stringMatching(/^Viewer invited/)));
+  });
+
+  it('a Pro owner without a Stripe subscription is pointed at Team checkout', async () => {
+    mockCanvasApi.addCollaborator.mockRejectedValueOnce(teamRequired(null));
+    render(<ShareCanvasModal onClose={onClose} />);
+    fireEvent.change(screen.getByLabelText("Coder's email address"), { target: { value: 'colleague@uni.edu' } });
+    fireEvent.click(screen.getByText('Invite'));
+    expect(await screen.findByTestId('team-upgrade-checkout')).toHaveTextContent('Team is $39 per seat a month');
+    expect(screen.getByRole('link', { name: 'See the Team plan' })).toHaveAttribute('href', '/pricing');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByTestId('team-upgrade-dialog')).not.toBeInTheDocument());
+    expect(mockCanvasApi.addCollaborator).toHaveBeenCalledTimes(1);
+    expect(mockToast.success).not.toHaveBeenCalled();
+  });
+
   it('cancelling the seat quote invites nobody', async () => {
     mockCanvasApi.addCollaborator.mockRejectedValueOnce({
       response: {

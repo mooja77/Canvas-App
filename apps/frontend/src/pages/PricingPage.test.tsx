@@ -8,6 +8,7 @@ import {
   PLAN_LIMITS,
   AI_REQUESTS_PER_DAY_FAIR_USE,
   PUBLISHED_PRICES_USD,
+  annualPricePerMonth,
   annualSavingPercent,
   maxAnnualSavingPercent,
   type PlanTier,
@@ -303,24 +304,33 @@ describe('PricingPage comparison table vs the enforced plan limits', () => {
   });
 
   it('states the collaborator cap each tier is actually gated on', () => {
-    const row = cells('Collaborators per canvas');
+    const row = cells('People per canvas (coders + viewers)');
     TIERS.forEach((tier, i) => {
       const max = PLAN_LIMITS[tier].maxCollaborators;
       expect(row[i]).toBe(max === Infinity ? 'Unlimited' : max === 0 ? '—' : String(max));
     });
   });
 
-  it('prices coders per seat on exactly the tiers that allow collaborators, and viewers free', () => {
-    const coders = cells('Coders (one paid seat each)');
+  it('Pro is one person, Team is per seat, and viewers are free wherever sharing is allowed', () => {
+    const coders = cells('Coders');
+    const price = cells('Price per coder');
     const viewers = cells('Read-only viewers');
     TIERS.forEach((tier, i) => {
-      const allowed = PLAN_LIMITS[tier].maxCollaborators > 0;
-      expect(coders[i]).toMatch(allowed ? /\/seat\/mo$/ : /^—$/);
+      const l = PLAN_LIMITS[tier];
+      const allowed = l.maxCollaborators > 0;
+      // Derived from the caps the server enforces (maxCoders).
+      expect(coders[i]).toBe(!allowed ? '—' : l.maxCoders === 0 ? 'Just you' : 'Unlimited');
       expect(viewers[i]).toBe(allowed ? 'Free' : '—');
     });
-    // Annual is the default view: the per-seat prices are the annual ones.
-    expect(coders[2]).toBe('$12/seat/mo');
-    expect(coders[3]).toBe('$32/seat/mo');
+    expect(PLAN_LIMITS.pro.maxCoders).toBe(0);
+    expect(price[2]).toBe('One person');
+    // Annual is the default view: the per-seat price is the annual one, from
+    // the same table the Stripe prices were created with.
+    expect(price[3]).toBe(`$${annualPricePerMonth('team')}/seat/mo`);
+    expect(price[3]).toBe('$32/seat/mo');
+    // Nothing on the page may still sell Pro per seat.
+    expect(document.body.textContent ?? '').not.toMatch(/\$1[25]\/seat/);
+    expect(document.body.textContent ?? '').not.toMatch(/Pro and Team are priced per seat/);
   });
 
   it('offers own-key transcription on exactly the tiers that can upload audio, and no included hours yet', () => {

@@ -16,7 +16,14 @@ export interface PlanLimits {
   aiRequestsPerDay: number;
   fileUploadEnabled: boolean;
   maxStorageMb: number;
+  /** People (coders and viewers) the owner may share one canvas with. */
   maxCollaborators: number;
+  /**
+   * Coders who may edit alongside the owner; the owner is not counted.
+   * Pro is a one-person plan, so it is 0 there and a second coder needs Team.
+   * Viewers never count. See docs/qa/SEAT-BILLING.md.
+   */
+  maxCoders: number;
   repositoryEnabled: boolean;
   integrationsEnabled: boolean;
 }
@@ -55,6 +62,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     fileUploadEnabled: false,
     maxStorageMb: 0,
     maxCollaborators: 0,
+    maxCoders: 0,
     repositoryEnabled: false,
     integrationsEnabled: false,
   },
@@ -93,6 +101,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     fileUploadEnabled: true,
     maxStorageMb: 500,
     maxCollaborators: 0,
+    maxCoders: 0,
     repositoryEnabled: true,
     integrationsEnabled: false,
   },
@@ -126,7 +135,10 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
     fileUploadEnabled: true,
     maxStorageMb: 500,
-    maxCollaborators: 3,
+    // A one-person plan (John, 28 Sep 2026): unlimited free viewers, no extra
+    // coders. Adding a coder offers the upgrade to Team (utils/seats.ts).
+    maxCollaborators: Infinity,
+    maxCoders: 0,
     repositoryEnabled: true,
     integrationsEnabled: false,
   },
@@ -161,6 +173,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     fileUploadEnabled: true,
     maxStorageMb: 5000,
     maxCollaborators: Infinity,
+    maxCoders: Infinity,
     repositoryEnabled: true,
     // No provider integration exists. There was never an OAuth flow — the old
     // /integrations/connect route just stored a token the caller pasted in, and

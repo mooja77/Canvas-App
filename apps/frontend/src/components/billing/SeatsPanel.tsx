@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { PUBLISHED_PRICES_USD, annualPricePerMonth } from '@qualcanvas/shared';
 import { formatMoney, seatsApi, type SeatHolder, type SeatStatus } from '../../services/seatsApi';
 import { useSeatCharge } from '../../hooks/useSeatCharge';
 import ConfirmDialog from '../canvas/ConfirmDialog';
@@ -14,8 +15,9 @@ function where(h: SeatHolder): string {
 
 /**
  * Account → Seats. Who holds a paid seat on this account, what it costs, and
- * the one-off grace period for coders who don't have a seat yet. Renders
- * nothing for plans that are not billed per seat and have no coders.
+ * the one-off grace period for coders who don't have a seat yet. On Pro (a
+ * one-person plan) it explains that coders need Team and offers the upgrade.
+ * Renders nothing for plans without seats and with no coders.
  */
 export default function SeatsPanel() {
   const [status, setStatus] = useState<SeatStatus | null>(null);
@@ -74,7 +76,9 @@ export default function SeatsPanel() {
       </div>
     );
   }
-  if (!status || (status.mode !== 'billed' && status.mode !== 'trial' && status.holders.length === 0)) return null;
+  if (!status) return null;
+  const hasSeatStory = status.mode === 'billed' || status.mode === 'solo' || status.mode === 'trial';
+  if (!hasSeatStory && status.holders.length === 0) return null;
 
   const per = status.price?.interval === 'year' ? 'year' : 'month';
   const priceText =
@@ -97,6 +101,25 @@ export default function SeatsPanel() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Could not add seats. Nothing was charged.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const upgradeToTeam = async () => {
+    setBusy(true);
+    try {
+      const res = await withSeat((c) => seatsApi.upgradeToTeam(c), {
+        reason: `Keeping ${status.unseatedCount} coder${status.unseatedCount === 1 ? '' : 's'} editing`,
+        confirmLabel: 'Upgrade to Team',
+      });
+      if (res) {
+        toast.success('You are on Team now. Everyone can edit.');
+        await load();
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Could not upgrade. Nothing was charged.');
     } finally {
       setBusy(false);
     }
@@ -133,14 +156,70 @@ export default function SeatsPanel() {
 
       {status.mode === 'trial' && (
         <p className="text-sm text-gray-600 dark:text-gray-300">
-          During your trial, coders you invite are free. When you subscribe to Pro or Team, each coder needs a paid
-          seat; checkout suggests one seat per person and you can change it there. Viewers are always free.
+          Your trial has Pro features, and Pro is a one-person plan: you can invite viewers for free. To code with
+          colleagues, choose Team (${PUBLISHED_PRICES_USD.team.monthly} per seat a month) when you subscribe; checkout
+          suggests one seat for you and one per coder.
         </p>
       )}
       {status.mode === 'grandfathered' && (
         <p className="text-sm text-gray-600 dark:text-gray-300">
           Your account keeps its original access, so coders on your canvases are not billed per seat.
         </p>
+      )}
+      {status.mode === 'comp' && (
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          Your Team plan is complimentary, so coders on your canvases are not billed per seat.
+        </p>
+      )}
+
+      {status.mode === 'solo' && (
+        <>
+          <p className="text-sm text-gray-700 dark:text-gray-200" data-testid="seats-summary">
+            Pro is a one-person plan: you are its only coder. Viewers are free and unlimited.
+          </p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            To code with colleagues, upgrade to Team: ${PUBLISHED_PRICES_USD.team.monthly} per seat a month, or $
+            {annualPricePerMonth('team')} billed annually, with one seat for you and one for each coder. You see the
+            exact charge and confirm it first.
+          </p>
+          {status.unseatedCount > 0 && (
+            <div
+              role="status"
+              className={`mt-4 rounded-lg p-3 text-sm ${
+                status.enforcing
+                  ? 'bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300'
+                  : 'bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-200'
+              }`}
+            >
+              <p>
+                {status.unseatedCount} coder{status.unseatedCount === 1 ? ' is' : 's are'} coding on your Pro canvases,
+                and coders need Team.{' '}
+                {status.enforcing
+                  ? 'They can still open your canvases and keep their coding, but cannot edit until you upgrade.'
+                  : `They can keep editing until ${graceDate}; after that they can view but not edit, and nothing they coded is lost.`}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {status.teamUpgrade === 'in_place' ? (
+                  <button
+                    onClick={upgradeToTeam}
+                    disabled={busy}
+                    className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                  >
+                    Upgrade to Team
+                  </button>
+                ) : (
+                  <a
+                    href="/pricing"
+                    className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
+                  >
+                    See the Team plan
+                  </a>
+                )}
+                <span className="self-center text-xs">or make them viewers below.</span>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {status.mode === 'billed' && (
@@ -189,10 +268,17 @@ export default function SeatsPanel() {
       {status.holders.length === 0 ? (
         <div className="mt-4 rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-600 dark:border-gray-600 dark:text-gray-300">
           <p className="font-medium text-gray-800 dark:text-gray-100">No coders yet</p>
-          <p className="mt-1">
-            Coding with colleagues lets you compare coders with Intercoder Agreement. Open a canvas, choose{' '}
-            <span className="font-medium">Share</span>, and invite a coder by email — or invite a viewer for free.
-          </p>
+          {status.mode === 'solo' || status.mode === 'trial' ? (
+            <p className="mt-1">
+              Open a canvas, choose <span className="font-medium">Share</span>, and invite viewers by email for free.
+              Inviting a coder offers the upgrade to Team first.
+            </p>
+          ) : (
+            <p className="mt-1">
+              Coding with colleagues lets you compare coders with Intercoder Agreement. Open a canvas, choose{' '}
+              <span className="font-medium">Share</span>, and invite a coder by email — or invite a viewer for free.
+            </p>
+          )}
         </div>
       ) : (
         <ul className="mt-4 divide-y divide-gray-100 dark:divide-gray-700" aria-label="People holding a seat">
@@ -201,7 +287,7 @@ export default function SeatsPanel() {
               <div className="min-w-0">
                 <p className="truncate text-sm text-gray-900 dark:text-white">
                   {h.name}{' '}
-                  {status.mode === 'billed' && (
+                  {(status.mode === 'billed' || (status.mode === 'solo' && status.unseatedCount > 0)) && (
                     <span
                       className={`ml-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium align-middle ${
                         h.seated
@@ -209,7 +295,15 @@ export default function SeatsPanel() {
                           : 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
                       }`}
                     >
-                      {h.seated ? 'Seat' : status.enforcing ? 'No seat · view only' : 'No seat'}
+                      {h.seated
+                        ? 'Seat'
+                        : status.mode === 'solo'
+                          ? status.enforcing
+                            ? 'Needs Team · view only'
+                            : 'Needs Team'
+                          : status.enforcing
+                            ? 'No seat · view only'
+                            : 'No seat'}
                     </span>
                   )}
                 </p>
