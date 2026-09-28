@@ -13,9 +13,10 @@ import type {
 } from './llm.js';
 import { registerProviderFactory } from './llm.js';
 import { withLlmRetry } from './llm-retry.js';
+import { DEFAULT_CHAT_MODELS, DEFAULT_EMBEDDING_MODELS } from './aiModels.js';
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
-const DEFAULT_EMBEDDING_MODEL = 'text-embedding-004';
+const DEFAULT_MODEL = DEFAULT_CHAT_MODELS.google;
+const DEFAULT_EMBEDDING_MODEL = DEFAULT_EMBEDDING_MODELS.google;
 
 function createGoogleProvider(genAI: GoogleGenerativeAI, defaultModel: string): LlmProvider {
   return {

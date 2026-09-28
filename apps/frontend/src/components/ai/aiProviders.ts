@@ -29,6 +29,10 @@ export interface ProviderGuide {
   pricingUrl: string;
   limitsUrl: string;
   steps: ProviderStep[];
+  /**
+   * Must match DEFAULT_CHAT_MODELS in apps/backend/src/lib/aiModels.ts (a
+   * backend test checks this). Never a retired or dated-and-deprecated id.
+   */
   defaultModel: string;
 }
 
@@ -75,7 +79,7 @@ export const PROVIDERS: ProviderGuide[] = [
     keyPrefix: 'sk-ant-',
     pricingUrl: 'https://claude.com/pricing#api',
     limitsUrl: 'https://platform.claude.com/settings/limits',
-    defaultModel: 'claude-sonnet-4-20250514',
+    defaultModel: 'claude-sonnet-5',
     steps: [
       {
         text: 'Create a Claude Console (Anthropic) account, or log in.',
@@ -105,7 +109,7 @@ export const PROVIDERS: ProviderGuide[] = [
     keyPrefix: 'AI',
     pricingUrl: 'https://ai.google.dev/gemini-api/docs/pricing',
     limitsUrl: 'https://console.cloud.google.com/billing',
-    defaultModel: 'gemini-2.0-flash',
+    defaultModel: 'gemini-3.5-flash',
     steps: [
       {
         text: 'Sign in to Google AI Studio with a Google account.',

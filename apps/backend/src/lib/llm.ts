@@ -5,6 +5,11 @@
  * Providers are always created per request from the customer's own key.
  */
 
+import { resolveModel, DEFAULT_CHAT_MODELS, type AiModelProvider } from './aiModels.js';
+import { aiCallError, type AiProviderId } from './aiKeyCheck.js';
+import { AppError } from '../middleware/errorHandler.js';
+import { logWarn } from './logger.js';
+
 export interface LlmMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -75,6 +80,67 @@ export function registerProviderFactory(name: string, factory: LlmProviderFactor
   factories.set(name, factory);
 }
 
+const warnModel = (msg: string) => logWarn(msg);
+
+/**
+ * Re-throw a provider SDK failure as an AppError the researcher can act on
+ * ("this model is no longer offered, clear the Model box") instead of a bare
+ * 400 or "Internal server error". Anything that is not a provider response
+ * (a network fault, our own bug) is re-thrown unchanged.
+ */
+function rethrowFriendly(providerName: string, model: string | undefined, err: unknown): never {
+  const friendly = aiCallError(providerName as AiProviderId, model, err);
+  if (!friendly) throw err;
+  if (friendly.code === 'AI_MODEL_UNAVAILABLE') {
+    logWarn(`[ai] ${providerName} refused model "${model ?? '(default)'}": ${(err as Error)?.message ?? String(err)}`);
+  }
+  throw new AppError(friendly.message, friendly.statusCode, { code: friendly.code });
+}
+
+/**
+ * Wrap a provider so every call (a) maps a retired model id to its
+ * replacement and (b) turns provider refusals into clear AppErrors.
+ */
+export function withModelSafety(providerName: string, inner: LlmProvider, configuredModel?: string): LlmProvider {
+  const modelFor = (m?: string) =>
+    resolveModel(providerName, m, warnModel) ?? configuredModel ?? DEFAULT_CHAT_MODELS[providerName as AiModelProvider];
+  return {
+    name: inner.name,
+    async complete(options) {
+      const model = modelFor(options.model);
+      try {
+        return await inner.complete({ ...options, model });
+      } catch (err) {
+        rethrowFriendly(providerName, model, err);
+      }
+    },
+    async completeStreaming(options, onChunk) {
+      const model = modelFor(options.model);
+      try {
+        return await inner.completeStreaming({ ...options, model }, onChunk);
+      } catch (err) {
+        rethrowFriendly(providerName, model, err);
+      }
+    },
+    async embedText(text, model) {
+      const m = resolveModel(providerName, model, warnModel);
+      try {
+        return await inner.embedText(text, m);
+      } catch (err) {
+        rethrowFriendly(providerName, m, err);
+      }
+    },
+    async embedBatch(texts, model) {
+      const m = resolveModel(providerName, model, warnModel);
+      try {
+        return await inner.embedBatch(texts, m);
+      } catch (err) {
+        rethrowFriendly(providerName, m, err);
+      }
+    },
+  };
+}
+
 /** Create a provider instance with a specific API key (BYOK) */
 export function createProvider(providerName: string, apiKey: string, model?: string): LlmProvider {
   if (!apiKey) throw new Error("An API key of the customer's own is required");
@@ -84,7 +150,10 @@ export function createProvider(providerName: string, apiKey: string, model?: str
       `LLM provider factory "${providerName}" not registered. Available: ${[...factories.keys()].join(', ')}`,
     );
   }
-  return factory.create(apiKey, model);
+  // A saved setting naming a retired model (e.g. the Sonnet 4 snapshot Anthropic
+  // retired on 15 Jun 2026) is mapped to its replacement for this call only.
+  const resolved = resolveModel(providerName, model, warnModel);
+  return withModelSafety(providerName, factory.create(apiKey, resolved), resolved);
 }
 
 /** Env names that used to switch on platform-paid AI. All are ignored now. */
