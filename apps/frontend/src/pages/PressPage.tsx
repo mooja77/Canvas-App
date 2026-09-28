@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { PUBLISHED_PRICES_USD } from '@qualcanvas/shared';
 import { trackEvent } from '../utils/analytics';
 import PageShell from '../components/marketing/PageShell';
 import Eyebrow from '../components/marketing/Eyebrow';
@@ -83,7 +84,7 @@ export default function PressPage() {
             <FactRow term="Free tier" value="Yes (2 canvases, 10 codes)" />
             <FactRow
               term="Paid tiers"
-              value="Student $5/mo · Pro $15/seat/mo · Team $39/seat/mo · Institutions custom"
+              value={`Student $${PUBLISHED_PRICES_USD.student.monthly}/mo · Pro $${PUBLISHED_PRICES_USD.pro.monthly}/mo (one person) · Team $${PUBLISHED_PRICES_USD.team.monthly}/seat/mo · Institutions custom`}
             />
             <FactRow term="Academic discount" value="40% off Pro and Team with a verified academic email" />
             <FactRow term="Integrations" value="QDPX import/export (NVivo, ATLAS.ti); CSV; PNG; HTML; Markdown" />

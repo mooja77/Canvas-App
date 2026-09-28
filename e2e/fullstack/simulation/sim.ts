@@ -91,6 +91,8 @@ const vol: Record<string, number> = {
   seatsAdded: 0,
   seatsReleased: 0,
   seatDeclines: 0,
+  teamQuotes: 0,
+  teamUpgrades: 0,
   viewersAdded: 0,
   graceWritesAllowed: 0,
   graceWritesRefused: 0,
@@ -811,13 +813,13 @@ async function subscribe(a: Actor, day: number, price: string, opts: { quantity?
   );
   if (r.status !== 200) return;
   const session = stub.getSession(String(r.body.data.url).split('/').pop()!);
-  // Ledger: Pro/Team checkout proposes one seat per person already coding with
-  // this owner (adjustable); Student is always one.
-  const perSeat = PRICE_PLAN[price] === 'pro' || PRICE_PLAN[price] === 'team';
+  // Ledger: Team checkout proposes one seat per person already coding with
+  // this owner (adjustable); Pro (one person) and Student are always one.
+  const perSeat = SEAT_PRICES.has(price);
   const expectedSeats = perSeat ? 1 + (seatLedger.get(a.userId)?.holders.length ?? 0) : 1;
   check(
     'INV-CHECKOUT-SEATS',
-    'checkout proposes one seat per person (owner + coders) on Pro/Team, adjustable',
+    'checkout proposes one seat per person (owner + coders) on Team, adjustable; exactly one on Pro and Student',
     session.quantity === expectedSeats && session.adjustable_quantity === perSeat,
     () => `${a.key} ${price} app=${session.quantity}/${session.adjustable_quantity} ledger=${expectedSeats}/${perSeat}`,
   );
@@ -949,19 +951,25 @@ async function cancelAtPeriodEnd(a: Actor, day: number) {
 }
 
 // ─── seats (independent model of the published seat rules) ───────────────────
-// From /pricing and docs/qa/SEAT-BILLING.md, not from app code: Pro and Team
-// are billed per seat (owner + each distinct coder; viewers free); adding a
-// seat is invoiced now at Stripe's documented proration (unit x quantity x
-// time left / period, credit for the old quantity, debit for the new one);
-// removing one credits the unused time to the next invoice; an owner with
-// more coders than seats gets 30 days' grace, after which unseated coders
-// can read but not write.
-const SEAT_PRICE: Record<string, number> = {
+// From /pricing and docs/qa/SEAT-BILLING.md, not from app code: Team is billed
+// per seat (owner + each distinct coder; viewers free); Pro is a one-person
+// plan (John, 28 Sep 2026): its only coder is the owner, and a second coder
+// needs Team. Adding a seat, or switching Pro -> Team, is invoiced now at
+// Stripe's documented proration (unit x quantity x time left / period, a
+// credit at the old price and quantity, a debit at the new ones); removing
+// one credits the unused time to the next invoice; an owner with more coders
+// than seats gets 30 days' grace once, after which unseated coders can read
+// but not write.
+const UNIT_PRICE: Record<string, number> = {
   price_qc_pro_m: 1500,
   price_qc_pro_y: 14400,
   price_qc_team_m: 3900,
   price_qc_team_y: 38400,
 };
+/** The only prices billed per seat. */
+const SEAT_PRICES = new Set(['price_qc_team_m', 'price_qc_team_y']);
+/** Pro -> Team keeps the billing interval. */
+const TEAM_FOR: Record<string, string> = { price_qc_pro_m: 'price_qc_team_m', price_qc_pro_y: 'price_qc_team_y' };
 interface SeatBook {
   /** Coders holding (or needing) a seat, oldest first. */
   holders: string[];
@@ -985,18 +993,27 @@ function seatBook(owner: Actor): SeatBook {
 }
 /** Billed per seat right now (past_due is excluded: see D1 in the findings). */
 function billedPerSeat(a: Actor): boolean {
-  return !!a.sub && PAID_STATUSES.has(a.sub.status) && SEAT_PRICE[a.sub.price] !== undefined;
+  return !!a.sub && PAID_STATUSES.has(a.sub.status) && SEAT_PRICES.has(a.sub.price);
 }
-function ledgerProration(a: Actor, oldQ: number, newQ: number, atSecs: number): number {
-  const unit = SEAT_PRICE[a.sub!.price];
+/** On Pro (paid or grandfathered): the owner is the only coder. */
+function soloPro(a: Actor): boolean {
+  return expectedPlan(a).stored === 'pro';
+}
+function ledgerProration(a: Actor, oldQ: number, newQ: number, atSecs: number, newPrice = a.sub!.price): number {
   const period = (a.sub!.periodEnd - a.sub!.periodStart) / 1000;
   const frac = Math.min(1, Math.max(0, (a.sub!.periodEnd / 1000 - atSecs) / period));
-  return Math.round(-unit * oldQ * frac) + Math.round(unit * newQ * frac);
+  return Math.round(-UNIT_PRICE[a.sub!.price] * oldQ * frac) + Math.round(UNIT_PRICE[newPrice] * newQ * frac);
 }
-/** What an immediate (always_invoice) seat invoice charges: proration + waiting credits + balance. */
-function ledgerDueNow(a: Actor, oldQ: number, newQ: number, atSecs: number): { due: number; net: number } {
+/** What an immediate (always_invoice) invoice charges: proration + waiting credits + balance. */
+function ledgerDueNow(
+  a: Actor,
+  oldQ: number,
+  newQ: number,
+  atSecs: number,
+  newPrice = a.sub!.price,
+): { due: number; net: number } {
   const b = seatBook(a);
-  const net = ledgerProration(a, oldQ, newQ, atSecs) + b.pendingCredit + b.balance;
+  const net = ledgerProration(a, oldQ, newQ, atSecs, newPrice) + b.pendingCredit + b.balance;
   return { due: Math.max(0, net), net };
 }
 function settleImmediateInvoice(a: Actor, net: number) {
@@ -1005,9 +1022,13 @@ function settleImmediateInvoice(a: Actor, net: number) {
   b.balance = Math.min(0, net);
 }
 function seatedCoder(owner: Actor, coderId: string): boolean {
-  if (!billedPerSeat(owner)) return true;
-  const idx = seatBook(owner).holders.indexOf(coderId);
-  return idx < 0 || idx < owner.sub!.seats - 1;
+  if (billedPerSeat(owner)) {
+    const idx = seatBook(owner).holders.indexOf(coderId);
+    return idx < 0 || idx < owner.sub!.seats - 1;
+  }
+  // Pro holds one seat, the owner's: every coder on a Pro owner's canvases is unseated.
+  if (soloPro(owner)) return !seatBook(owner).holders.includes(coderId);
+  return true;
 }
 const stubQuantity = (a: Actor) => stub.getSubscription(a.sub!.id)?.items.data[0].quantity;
 function addCollabLedger(cv: LCanvas, userId: string) {
@@ -1046,7 +1067,7 @@ async function inviteCoder(owner: Actor, cv: LCanvas, coder: Actor, day: number)
         p?.currentQuantity === owner.sub!.seats &&
         Math.abs(p.prorationDate - nowSecs) <= 5 &&
         Math.abs(p.dueNow - expected) <= 1 &&
-        p.nextRenewal === SEAT_PRICE[owner.sub!.price] * newQ,
+        p.nextRenewal === UNIT_PRICE[owner.sub!.price] * newQ,
       () => `${owner.key} +${coder.key} → ${r1.status} app=${JSON.stringify(p)} ledger due=${expected} q=${newQ}`,
     );
     if (r1.status !== 402 || !p) return false;
@@ -1251,18 +1272,233 @@ async function coderWrite(owner: Actor, cv: LCanvas, coder: Actor) {
   );
 }
 
+/** Pro owner adds a coder: offered Team (quoted), then either a free viewer or the confirmed upgrade. */
+async function proInviteCoder(
+  owner: Actor,
+  cv: LCanvas,
+  coder: Actor,
+  day: number,
+  choice: 'viewer' | 'upgrade',
+): Promise<boolean> {
+  await ensureSession(owner);
+  const b = seatBook(owner);
+  const newQ = 1 + b.holders.length + 1;
+  const teamPrice = TEAM_FOR[owner.sub!.price];
+  const invBefore = stub.invoices(owner.sub!.id).length;
+  const r1 = await owner.c.req('POST', `canvas/${cv.id}/collaborators`, { email: coder.email, role: 'editor' });
+  const p = r1.body?.preview;
+  const nowSecs = Math.floor(Date.now() / 1000);
+  const ledgerNow = p
+    ? ledgerDueNow(owner, owner.sub!.seats, newQ, p.prorationDate, teamPrice)
+    : { due: NaN, net: NaN };
+  const live = stub.getSubscription(owner.sub!.id)?.items.data[0];
+  const peek = await coder.c.req('GET', `canvas/${cv.id}`);
+  check(
+    'INV-PRO-SOLO-QUOTE',
+    'a Pro owner adding a coder is offered Team (402) at Stripe proration, and nothing changes until they confirm',
+    r1.status === 402 &&
+      r1.body?.code === 'TEAM_REQUIRED' &&
+      r1.body?.upgrade === 'in_place' &&
+      p?.fromPlan === 'pro' &&
+      p?.toPlan === 'team' &&
+      p?.currentQuantity === owner.sub!.seats &&
+      p?.newQuantity === newQ &&
+      Math.abs(p.prorationDate - nowSecs) <= 5 &&
+      Math.abs(p.dueNow - ledgerNow.due) <= 1 &&
+      p.nextRenewal === UNIT_PRICE[teamPrice] * newQ &&
+      live?.price.id === owner.sub!.price &&
+      live?.quantity === owner.sub!.seats &&
+      stub.invoices(owner.sub!.id).length === invBefore &&
+      peek.status !== 200,
+    () =>
+      `${owner.key} +${coder.key} → ${r1.status} ${r1.body?.code} app=${JSON.stringify(p)} ledger due=${ledgerNow.due} q=${newQ} peek=${peek.status}`,
+  );
+  if (r1.status !== 402 || !p) return false;
+  vol.teamQuotes++;
+  if (choice === 'viewer') {
+    await inviteViewer(owner, cv, coder);
+    note(`${owner.key} added ${coder.key} as a viewer instead of upgrading`);
+    return true;
+  }
+  const r2 = await owner.c.req('POST', `canvas/${cv.id}/collaborators`, {
+    email: coder.email,
+    role: 'editor',
+    confirmTeamUpgrade: true,
+    prorationDate: p.prorationDate,
+  });
+  const invs = stub.invoices(owner.sub!.id);
+  const inv = invs[invs.length - 1];
+  const after = stub.getSubscription(owner.sub!.id)?.items.data[0];
+  const meR = await owner.c.req('GET', 'auth/me');
+  check(
+    'INV-PRO-UPGRADE-CHARGE',
+    'a confirmed Pro -> Team switch is charged exactly the quote, now, and Stripe then bills Team x seats',
+    r2.status === 201 &&
+      invs.length === invBefore + 1 &&
+      inv?.status === 'paid' &&
+      inv.amount_due === p.dueNow &&
+      after?.price.id === teamPrice &&
+      after?.quantity === newQ &&
+      meR.body?.data?.user?.plan === 'team',
+    () =>
+      `${owner.key} +${coder.key} → ${r2.status} inv=${inv?.status}/${inv?.amount_due} quote=${p.dueNow} sub=${after?.price.id}x${after?.quantity} plan=${meR.body?.data?.user?.plan}`,
+  );
+  if (r2.status !== 201) return false;
+  settleImmediateInvoice(owner, ledgerNow.net);
+  owner.sub!.price = teamPrice;
+  vol.seatsAdded += newQ - owner.sub!.seats;
+  owner.sub!.seats = newQ;
+  vol.teamUpgrades++;
+  b.holders.push(coder.userId);
+  addCollabLedger(cv, coder.userId);
+  vol.collaboratorsAdded++;
+  await emit(day, 'customer.subscription.updated', stub.getSubscription(owner.sub!.id), { allowDelay: true });
+  note(`${owner.key} upgraded Pro → Team to add ${coder.key}`);
+  return true;
+}
+
+/** Pro owner whose coders are in (or past) grace upgrades from Account → Seats. */
+async function upgradeFromSeats(owner: Actor, day: number) {
+  await ensureSession(owner);
+  const newQ = 1 + seatBook(owner).holders.length;
+  const teamPrice = TEAM_FOR[owner.sub!.price];
+  const invBefore = stub.invoices(owner.sub!.id).length;
+  const r1 = await owner.c.req('POST', 'billing/seats/upgrade-to-team', {});
+  const p = r1.body?.preview;
+  const ledgerNow = p
+    ? ledgerDueNow(owner, owner.sub!.seats, newQ, p.prorationDate, teamPrice)
+    : { due: NaN, net: NaN };
+  check(
+    'INV-PRO-SOLO-QUOTE',
+    'a Pro owner adding a coder is offered Team (402) at Stripe proration, and nothing changes until they confirm',
+    r1.status === 402 &&
+      r1.body?.code === 'TEAM_REQUIRED' &&
+      p?.newQuantity === newQ &&
+      Math.abs(p.dueNow - ledgerNow.due) <= 1 &&
+      stub.getSubscription(owner.sub!.id)?.items.data[0].price.id === owner.sub!.price &&
+      stub.invoices(owner.sub!.id).length === invBefore,
+    () => `${owner.key} upgrade quote → ${r1.status} app=${JSON.stringify(p)} ledger due=${ledgerNow.due} q=${newQ}`,
+  );
+  if (r1.status !== 402 || !p) return;
+  vol.teamQuotes++;
+  const r2 = await owner.c.req('POST', 'billing/seats/upgrade-to-team', {
+    confirmTeamUpgrade: true,
+    prorationDate: p.prorationDate,
+  });
+  const invs = stub.invoices(owner.sub!.id);
+  const after = stub.getSubscription(owner.sub!.id)?.items.data[0];
+  check(
+    'INV-PRO-UPGRADE-CHARGE',
+    'a confirmed Pro -> Team switch is charged exactly the quote, now, and Stripe then bills Team x seats',
+    r2.status === 200 &&
+      invs.length === invBefore + 1 &&
+      invs[invs.length - 1]?.amount_due === p.dueNow &&
+      after?.price.id === teamPrice &&
+      after?.quantity === newQ &&
+      r2.body?.data?.mode === 'billed' &&
+      r2.body?.data?.unseatedCount === 0,
+    () =>
+      `${owner.key} upgrade → ${r2.status} sub=${after?.price.id}x${after?.quantity} ${JSON.stringify(r2.body?.data)}`,
+  );
+  if (r2.status !== 200) return;
+  settleImmediateInvoice(owner, ledgerNow.net);
+  owner.sub!.price = teamPrice;
+  vol.seatsAdded += newQ - owner.sub!.seats;
+  owner.sub!.seats = newQ;
+  vol.teamUpgrades++;
+  await emit(day, 'customer.subscription.updated', stub.getSubscription(owner.sub!.id), { allowDelay: true });
+  note(`${owner.key} upgraded Pro → Team from Account → Seats (${newQ} seats)`);
+}
+
+/** A Free user in their Pro trial has no subscription to switch: pointed at Team checkout, nobody added. */
+async function trialInviteCoder(owner: Actor, cv: LCanvas, coder: Actor) {
+  await ensureSession(owner);
+  const r = await owner.c.req('POST', `canvas/${cv.id}/collaborators`, { email: coder.email, role: 'editor' });
+  const peek = await coder.c.req('GET', `canvas/${cv.id}`);
+  check(
+    'INV-TRIAL-NO-CODER',
+    'a trial owner cannot add a coder: 402 TEAM_REQUIRED pointing at Team checkout, nobody added',
+    r.status === 402 &&
+      r.body?.code === 'TEAM_REQUIRED' &&
+      r.body?.upgrade === 'checkout' &&
+      r.body?.preview === null &&
+      peek.status !== 200,
+    () => `${owner.key} +${coder.key} → ${r.status} ${JSON.stringify(r.body).slice(0, 160)} peek=${peek.status}`,
+  );
+}
+
+/**
+ * Coders already on a Pro owner's canvas from before the Pro-solo change
+ * (written straight to the database, as that data exists in production terms).
+ */
+async function seedLegacyCoder(owner: Actor, cv: LCanvas, coder: Actor) {
+  await jobs.prisma.canvasCollaborator.create({
+    data: { canvasId: cv.id, userId: coder.userId, role: 'editor', invitedBy: owner.userId },
+  });
+  seatBook(owner).holders.push(coder.userId);
+  addCollabLedger(cv, coder.userId);
+  note(`${owner.key}: ${coder.key} was already coding on ${cv.id} (pre-change data)`);
+}
+
 /** Account → Seats against the ledger. */
 async function seatStatusCheck(a: Actor, label: string) {
   if (!a.sub) return;
   await ensureSession(a);
+  const subLive = PAID_STATUSES.has(a.sub.status);
+  const qBefore = subLive ? stubQuantity(a) : null;
+  const pendingBefore = stub.pendingItems(a.sub.id).length;
+  const invBefore = stub.invoices(a.sub.id).length;
   const sentAt = Date.now();
   const r = await a.c.req('GET', 'billing/seats');
   const d = r.body?.data;
   if (a.sub.status === 'past_due') return; // plan during dunning is decision D1; not asserted here
+  if (soloPro(a)) {
+    const b = seatBook(a);
+    const unseated = b.holders.length;
+    if (unseated > 0 && b.graceEnd === null) {
+      b.graceEnd = sentAt + 30 * DAY;
+      b.graceEndLatest = Date.now() + 30 * DAY;
+    }
+    // A Pro subscription left with more than one seat (Team -> Pro in the
+    // portal, or Pro bought per seat before this change) is dropped to one
+    // when the owner looks, and the unused time credited: never a charge.
+    if (subLive && typeof qBefore === 'number' && qBefore > 1) {
+      const expected = ledgerProration(a, qBefore, 1, Math.floor(sentAt / 1000));
+      const credit = stub
+        .pendingItems(a.sub.id)
+        .slice(pendingBefore)
+        .reduce((t: number, l: any) => t + l.amount, 0);
+      check(
+        'INV-PRO-ONE-SEAT',
+        'a Pro subscription holds one seat: extra quantity is dropped and its unused time credited, never charged',
+        stubQuantity(a) === 1 && Math.abs(credit - expected) <= 2 && stub.invoices(a.sub.id).length === invBefore,
+        () => `${label} ${a.key} q=${qBefore}→${stubQuantity(a)} credit=${credit} ledger=${expected}`,
+      );
+      b.pendingCredit += expected;
+      vol.seatsReleased += qBefore - 1;
+    }
+    if (subLive) a.sub.seats = 1;
+    const graceOk =
+      unseated === 0 ? d?.graceEndsAt === null : Math.abs(Date.parse(d?.graceEndsAt) - (b.graceEnd ?? 0)) <= 60_000;
+    check(
+      'INV-SEAT-STATUS',
+      'seats (app) == Stripe quantity == ledger; seats in use, unseated coders and grace date == ledger',
+      r.status === 200 &&
+        d.mode === 'solo' &&
+        d.seatsPurchased === 1 &&
+        (!subLive || stubQuantity(a) === 1) &&
+        d.seatsUsed === 1 + b.holders.length &&
+        d.unseatedCount === unseated &&
+        graceOk,
+      () =>
+        `${label} ${a.key} app=${d?.mode}/${d?.seatsPurchased}/${d?.seatsUsed}/${d?.unseatedCount}/${d?.graceEndsAt} stripe=${subLive ? stubQuantity(a) : '-'} ledger=solo/1/${1 + b.holders.length}/${unseated}/${b.graceEnd && new Date(b.graceEnd).toISOString()}`,
+    );
+    return;
+  }
   if (!billedPerSeat(a)) {
     check(
       'INV-SEAT-MODE',
-      'only live Pro/Team subscriptions are billed per seat',
+      'only live Team subscriptions are billed per seat (Pro is one person)',
       d?.mode !== 'billed',
       () => `${label} ${a.key} mode=${d?.mode}`,
     );
@@ -1367,17 +1603,33 @@ async function buildCast() {
     await work(proM, 0.9);
   };
 
+  // Pro annual, a one-person plan. Day 30: adding a coder offers Team with a
+  // quote; the owner adds them as a free viewer instead. Day 100: another
+  // coder, and this time the owner confirms the switch to Team (annual).
   const proY = await signupActor('pro-annual', { verify: true });
+  const proViewerInstead = await signupActor('pro-coder-viewer', { verify: true });
+  const proCoder = await signupActor('pro-coder', { verify: true });
+  let proCanvas: LCanvas | undefined;
   proY.script = async (d) => {
     if (d === 10) await subscribe(proY, d, 'price_qc_pro_y');
+    if (d === 30) {
+      proCanvas = liveCanvases(proY)[0] ?? (await createCanvas(proY, d), liveCanvases(proY)[0]);
+      if (proCanvas) await proInviteCoder(proY, proCanvas, proViewerInstead, d, 'viewer');
+    }
+    if (d === 100 && proCanvas?.live) await proInviteCoder(proY, proCanvas, proCoder, d, 'upgrade');
     await work(proY, 0.7);
+    if (d > 100 && proCanvas?.live && chance(0.5)) await coderWrite(proY, proCanvas, proCoder);
   };
+  for (const c of [proViewerInstead, proCoder]) c.script = async () => {};
 
   // Team, billed per seat. Day 2: two coders (each quoted, confirmed and
   // charged) and a free viewer. Day 45: a coder is removed (credit) and the
   // stale higher-quantity snapshot arrives late. Day 60: re-invited. Day 90:
   // the card is declined while adding a third coder (nothing added), then it
-  // succeeds. Day 180: Team → Pro, seats and coders kept.
+  // succeeds. Day 180: Team → Pro in the billing portal. Pro is one person:
+  // the 4-seat quantity drops to 1 (credited) and the three coders get the
+  // 30-day grace, then read-only. Day 225: the owner upgrades back to Team
+  // from Account → Seats and everyone edits again.
   const team = await signupActor('team-owner', { verify: true });
   const coders = [
     await signupActor('team-coder-1', { verify: true }),
@@ -1404,20 +1656,24 @@ async function buildCast() {
       await declinedCoderInvite(team, shared, coder3);
       if (await inviteCoder(team, shared, coder3, d)) onShared.add(coder3);
     }
-    if (d === 180) await switchPlan(team, d, 'price_qc_pro_m');
-    if (d === 181) await seatStatusCheck(team, 'after Team→Pro');
+    if (d === 180) {
+      await switchPlan(team, d, 'price_qc_pro_m');
+      await seatStatusCheck(team, 'after Team→Pro');
+    }
+    if (d === 225) await upgradeFromSeats(team, d);
     await work(team, 0.9);
-    if (shared && d > 2) for (const c of onShared) if (chance(0.5)) await codePassage(team, shared, c);
+    if (shared && d > 2) for (const c of onShared) if (chance(0.5)) await coderWrite(team, shared, c);
   };
   for (const c of [...coders, coder3, teamViewer])
     c.script = async (d) => {
       if (d % 7 === 0) await work(c, 0.3);
     };
 
-  // Coders added during a free trial; the owner then buys Pro but lowers the
-  // seats to 1 at checkout. Both coders are unseated: they keep editing for
-  // 30 days, are read-only after that, and edit again once the owner adds
-  // the 2 seats on day 60.
+  // Pro is one person. In her trial the owner tries to add a coder and is
+  // pointed at Team checkout. Two coders were already on her canvas from
+  // before the change. On day 8 she buys Pro (one seat): the coders keep
+  // editing for 30 days, are read-only after that with nothing lost, and edit
+  // again once she upgrades to Team from Account → Seats on day 60.
   const graceOwner = await signupActor('grace-owner', { verify: true });
   const graceCoders = [
     await signupActor('grace-coder-1', { verify: true }),
@@ -1431,14 +1687,15 @@ async function buildCast() {
       if (graceCanvas) {
         await addTranscript(graceOwner, graceCanvas);
         await addCode(graceOwner, graceCanvas);
-        for (const c of graceCoders) await inviteCoder(graceOwner, graceCanvas, c, d);
+        await trialInviteCoder(graceOwner, graceCanvas, graceCoders[0]);
+        for (const c of graceCoders) await seedLegacyCoder(graceOwner, graceCanvas, c);
       }
     }
     if (d === 8) {
-      await subscribe(graceOwner, d, 'price_qc_pro_m', { quantity: 1 });
-      await seatStatusCheck(graceOwner, 'after checkout with fewer seats');
+      await subscribe(graceOwner, d, 'price_qc_pro_m');
+      await seatStatusCheck(graceOwner, 'after buying Pro with coders on the canvas');
     }
-    if (d === 60) await addMissingSeats(graceOwner, d);
+    if (d === 60) await upgradeFromSeats(graceOwner, d);
     await work(graceOwner, 0.5);
     if (graceCanvas?.live && d > 1)
       for (const c of graceCoders) if (chance(0.6)) await coderWrite(graceOwner, graceCanvas, c);

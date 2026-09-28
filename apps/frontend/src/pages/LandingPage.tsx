@@ -300,7 +300,7 @@ export default function LandingPage() {
           {[
             { name: 'Free', price: '$0', bullet: '2 canvases · 10 codes · CSV export' },
             { name: 'Student', price: '$5', bullet: 'Verified academic email · All 13 tools · Auto-code' },
-            { name: 'Pro', price: '$15', bullet: 'Unlimited · All 13 tools · Auto-code · Ethics' },
+            { name: 'Pro', price: '$15', bullet: 'One researcher · Free viewers · All 13 tools · Auto-code' },
             { name: 'Team', price: '$39', bullet: 'Everything in Pro · Intercoder κ · Per-seat' },
           ].map((tier) => (
             <div

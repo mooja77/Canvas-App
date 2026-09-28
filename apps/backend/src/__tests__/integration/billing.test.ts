@@ -389,6 +389,97 @@ describe('Stripe Webhook Handler', () => {
     });
   });
 
+  // ─── Seat quantity: Pro is one person, Team per seat (SEAT-BILLING.md) ───
+  describe('seat quantity', () => {
+    const tagged = (plan: string, id = `price_${plan}`) => ({ id, metadata: { app: 'qualcanvas', plan } });
+    const subEvent = (id: string, item: Record<string, unknown>, status = 'active') => ({
+      id,
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_seat',
+          status,
+          cancel_at_period_end: false,
+          items: { data: [{ current_period_start: 1700000000, current_period_end: 1702592000, ...item }] },
+        },
+      },
+    });
+    beforeEach(() => {
+      mockPrisma.subscription.findUnique.mockResolvedValue({
+        id: 'row',
+        userId: 'owner-1',
+        stripeSubscriptionId: 'sub_seat',
+        stripePriceId: 'price_pro',
+        status: 'active',
+        quantity: 1,
+      });
+      mockPrisma.subscription.update.mockResolvedValue({});
+      mockPrisma.user.update.mockResolvedValue({});
+    });
+
+    it('a Pro subscription at quantity 3 is mirrored as 3 and stays Pro (extra Pro seats grant nobody an edit)', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue(subEvent('evt_pro_q3', { price: tagged('pro'), quantity: 3 }));
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+      expect(res.json).toHaveBeenCalledWith({ received: true });
+      expect(mockPrisma.subscription.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ quantity: 3, stripePriceId: 'price_pro' }) }),
+      );
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({ where: { id: 'owner-1' }, data: { plan: 'pro' } });
+    });
+
+    it('a Pro -> Team switch made in QualCanvas (or the portal) lands as Team with its seat count', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue(
+        subEvent('evt_pro_to_team', { price: tagged('team'), quantity: 3 }),
+      );
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+      expect(mockPrisma.subscription.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ quantity: 3, stripePriceId: 'price_team' }) }),
+      );
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({ where: { id: 'owner-1' }, data: { plan: 'team' } });
+    });
+
+    it('out of order: an older snapshot (Pro, quantity 1) arriving after the Team switch does not undo it', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue(
+        subEvent('evt_stale_pro', { price: tagged('pro'), quantity: 1 }),
+      );
+      // Stripe's current state, which the handler re-reads, is Team x 3.
+      mockStripe.subscriptions.retrieve.mockResolvedValue(
+        subEvent('live', { price: tagged('team'), quantity: 3 }).data.object,
+      );
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+      expect(mockPrisma.subscription.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ quantity: 3, stripePriceId: 'price_team' }) }),
+      );
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({ where: { id: 'owner-1' }, data: { plan: 'team' } });
+    });
+
+    it('a duplicate delivery of a quantity change is not applied twice', async () => {
+      mockStripe.webhooks.constructEvent.mockReturnValue(subEvent('evt_dup_q', { price: tagged('team'), quantity: 4 }));
+      mockPrisma.webhookEvent.findUnique.mockResolvedValue({ id: 'evt_dup_q' });
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+      expect(res.json).toHaveBeenCalledWith({ received: true });
+      expect(mockPrisma.subscription.update).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it("another product's quantity change on the shared account is acknowledged with 200 and ignored", async () => {
+      mockPrisma.subscription.findUnique.mockResolvedValue(null);
+      mockStripe.webhooks.constructEvent.mockReturnValue(
+        subEvent('evt_other_app_q', { price: { id: 'price_staffhub', metadata: {} }, quantity: 7 }),
+      );
+      const { req, res } = createMockReqRes(Buffer.from('{}'));
+      await handleStripeWebhook(req, res);
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ received: true });
+      expect(mockStripe.subscriptions.retrieve).not.toHaveBeenCalled();
+      expect(mockPrisma.subscription.update).not.toHaveBeenCalled();
+    });
+  });
+
   // ─── 3. customer.subscription.deleted ───
   describe('customer.subscription.deleted', () => {
     it('downgrades user to free plan', async () => {

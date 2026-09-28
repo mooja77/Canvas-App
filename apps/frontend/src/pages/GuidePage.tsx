@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { PUBLISHED_PRICES_USD } from '@qualcanvas/shared';
 
 interface GuideSection {
   id: string;
@@ -591,9 +592,11 @@ const SECTIONS: GuideSection[] = [
     content: (
       <>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          QualCanvas offers four plans: Free, Student ($5/mo), Pro ($15/mo per seat), and Team ($39/mo per seat). A seat
-          is you or anyone who codes with you; viewers are free. Upgrade anytime from the Pricing page or Account
-          settings, and manage seats under Account → Seats.
+          QualCanvas offers four plans: Free, Student (${PUBLISHED_PRICES_USD.student.monthly}/mo), Pro ($
+          {PUBLISHED_PRICES_USD.pro.monthly}/mo, one person), and Team (${PUBLISHED_PRICES_USD.team.monthly}/mo per
+          seat). Pro is for one researcher: you code, and viewers are free. Team has a seat for you and one for each
+          coder; viewers are free there too. Upgrade anytime from the Pricing page or Account settings, and manage seats
+          under Account → Seats.
         </p>
         <Screenshot
           src="/guide/20-pricing.png"
@@ -606,16 +609,17 @@ const SECTIONS: GuideSection[] = [
             <strong>Free:</strong> 2 canvases, 5 transcripts, 10 codes, and 4 analysis tools.
           </li>
           <li>
-            <strong>Student ($5/mo):</strong> Verified academic email. 5 canvases, all 13 analysis tools, auto-code,
-            ethics + cases.
+            <strong>Student (${PUBLISHED_PRICES_USD.student.monthly}/mo):</strong> Verified academic email. 5 canvases,
+            all 13 analysis tools, auto-code, ethics + cases.
           </li>
           <li>
-            <strong>Pro ($15/mo per seat):</strong> Unlimited canvases, transcripts and codes, all 13 analysis tools, AI
-            features, ethics panel, 5 share codes, up to 3 collaborators per canvas.
+            <strong>Pro (${PUBLISHED_PRICES_USD.pro.monthly}/mo):</strong> One coder (you) and unlimited free viewers.
+            Unlimited canvases, transcripts and codes, all 13 analysis tools, AI features, ethics panel, 5 share codes.
+            Inviting a coder offers the upgrade to Team, with the cost shown before anything is charged.
           </li>
           <li>
-            <strong>Team ($39/mo per seat):</strong> Everything Pro + unlimited shares, intercoder reliability, team
-            management.
+            <strong>Team (${PUBLISHED_PRICES_USD.team.monthly}/mo per seat):</strong> Everything in Pro, plus a paid
+            seat for each coder, unlimited shares, intercoder reliability and team management.
           </li>
         </ul>
         <ProTip>

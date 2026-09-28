@@ -207,16 +207,25 @@ describe('POST /canvas/:id/collaborators', () => {
     expect(mockPrisma.canvasCollaborator.count).not.toHaveBeenCalled();
   });
 
-  it('still refuses a genuinely NEW collaborator at the cap, with a remedy', async () => {
+  it('still refuses a genuinely NEW collaborator on a plan without collaborators, naming the plans that have them', async () => {
     targetIsNotYetACollaborator();
-    mockPrisma.canvasCollaborator.count.mockResolvedValue(3);
+    owner.plan = 'student';
+    try {
+      const res = await invite({ email: target.email, role: 'viewer' });
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('PLAN_LIMIT_EXCEEDED');
+      expect(res.body.error).toMatch(/Pro and Team allow unlimited/);
+      expect(mockPrisma.canvasCollaborator.upsert).not.toHaveBeenCalled();
+    } finally {
+      owner.plan = 'pro';
+    }
+  });
 
-    const res = await invite({ email: target.email, role: 'editor' });
-
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe('PLAN_LIMIT_EXCEEDED');
-    expect(res.body.error).toMatch(/remove a collaborator/i);
-    expect(res.body.error).toMatch(/Team allow(s)? unlimited/);
-    expect(mockPrisma.canvasCollaborator.upsert).not.toHaveBeenCalled();
+  it('Pro has no cap on viewers: a new viewer is added however many people the canvas is shared with', async () => {
+    targetIsNotYetACollaborator();
+    mockPrisma.canvasCollaborator.count.mockResolvedValue(25);
+    const res = await invite({ email: target.email, role: 'viewer' });
+    expect(res.status).toBe(201);
+    expect(res.body.data.role).toBe('viewer');
   });
 });

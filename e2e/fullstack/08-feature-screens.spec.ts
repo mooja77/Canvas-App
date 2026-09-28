@@ -1,6 +1,17 @@
 import { test, expect, type Page, type Browser } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { signup, ok, json, createCanvas, addTranscript, addCode, getCanvas, outbox, type Session } from './support/api';
+import {
+  signup,
+  ok,
+  json,
+  createCanvas,
+  addTranscript,
+  addCode,
+  getCanvas,
+  outbox,
+  subscribe,
+  type Session,
+} from './support/api';
 import { STACK } from './support/env';
 
 // The three screens that used to be backend-only: audio transcription, PDF /
@@ -543,12 +554,15 @@ test.describe('Coder training screen', () => {
 
   test('exercises are owner-authored: collaborators cannot create or delete them', async () => {
     const owner = await signup('trainown2', { verify: true });
+    await subscribe(owner, 'price_qc_team_m'); // a coder needs Team (Pro is one person)
     const editor = await signup('traineditor', { verify: true });
     const id = await createCanvas(owner);
     const t = await addTranscript(owner, id, 'T', TRAINING_TEXT);
     const q = await addCode(owner, id, 'Fatigue');
     await ok(
-      await owner.ctx.post(`canvas/${id}/collaborators`, { data: { email: editor.email, role: 'editor' } }),
+      await owner.ctx.post(`canvas/${id}/collaborators`, {
+        data: { email: editor.email, role: 'editor', confirmSeatCharge: true },
+      }),
       201,
     );
     const gold = [{ questionId: q, startOffset: 0, endOffset: 10 }];

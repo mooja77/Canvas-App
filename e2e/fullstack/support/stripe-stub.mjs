@@ -4,11 +4,12 @@
 //
 // Implements only what QualCanvas calls:
 //   GET  /v1/prices/:id           GET /v1/products/:id
+//   GET  /v1/prices/search        (metadata['plan'] / metadata['app'] only)
 //   POST /v1/customers            POST /v1/checkout/sessions
 //   POST /v1/billing_portal/sessions
 //   GET  /v1/subscriptions        GET /v1/subscriptions/:id
 //   DELETE /v1/subscriptions/:id  POST /v1/subscription_items/:id
-//   POST /v1/subscriptions/:id    (seat quantity changes, with prorations)
+//   POST /v1/subscriptions/:id    (seat quantity and price changes, with prorations)
 //   POST /v1/invoices/create_preview   POST /v1/invoices/:id/void
 // plus a /__control API the tests use to drive subscription state and read
 // back what the backend asked for.
@@ -73,8 +74,8 @@ export function createStripeStub({ port = 0 } = {}) {
     };
   }
 
-  function unitAmount(s) {
-    const base = PRICES[s.price]?.amount ?? 0;
+  function unitAmount(s, price = s.price) {
+    const base = PRICES[price]?.amount ?? 0;
     return base * (1 - (Number(s.discount_percent) || 0) / 100);
   }
 
@@ -92,13 +93,15 @@ export function createStripeStub({ port = 0 } = {}) {
     };
   }
 
-  function prorationLines(s, oldQ, newQ, prorationDate) {
+  // A price change (e.g. Pro -> Team) prorates the same way: credit the
+  // unused time at the old price and quantity, charge the rest of the period
+  // at the new price and quantity.
+  function prorationLines(s, oldQ, newQ, prorationDate, newPrice = s.price) {
     const period = s.current_period_end - s.current_period_start;
     const frac = Math.min(1, Math.max(0, (s.current_period_end - prorationDate) / period));
-    const unit = unitAmount(s);
     return [
-      itemLine(s, -unit * oldQ * frac, oldQ, true, `Unused time on ${oldQ} seat(s)`),
-      itemLine(s, unit * newQ * frac, newQ, true, `Remaining time on ${newQ} seat(s)`),
+      itemLine(s, -unitAmount(s) * oldQ * frac, oldQ, true, `Unused time on ${oldQ} x ${s.price}`),
+      itemLine(s, unitAmount(s, newPrice) * newQ * frac, newQ, true, `Remaining time on ${newQ} x ${newPrice}`),
     ];
   }
 
@@ -195,8 +198,9 @@ export function createStripeStub({ port = 0 } = {}) {
   function changeQuantity(s, form) {
     const oldQ = s.quantity;
     const newQ = Number(form['items[0][quantity]']);
+    const newPrice = form['items[0][price]'] ?? s.price;
     const prorationDate = Number(form.proration_date ?? nowSecs());
-    const lines = prorationLines(s, oldQ, newQ, prorationDate);
+    const lines = prorationLines(s, oldQ, newQ, prorationDate, newPrice);
     const behavior = form.proration_behavior ?? 'create_prorations';
     if (behavior === 'always_invoice') {
       const cust = customers.get(s.customer);
@@ -214,7 +218,7 @@ export function createStripeStub({ port = 0 } = {}) {
       if (declined && form.payment_behavior === 'pending_if_incomplete') {
         s.pending_update = {
           expires_at: nowSecs() + 23 * 3600,
-          subscription_items: [{ id: s.itemId, quantity: newQ }],
+          subscription_items: [{ id: s.itemId, quantity: newQ, price: newPrice }],
         };
         return;
       }
@@ -223,6 +227,7 @@ export function createStripeStub({ port = 0 } = {}) {
       s.pendingItems.push(...lines);
     }
     s.quantity = newQ;
+    s.price = newPrice;
     s.pending_update = null;
   }
 
@@ -288,6 +293,18 @@ export function createStripeStub({ port = 0 } = {}) {
 
       // ---- Stripe API ----
       let m;
+      if (p === '/v1/prices/search') {
+        // Only the metadata['app'] / metadata['plan'] terms QualCanvas uses.
+        const query = url.searchParams.get('query') ?? '';
+        const want = (key) => query.match(new RegExp(`metadata\\['${key}'\\]:'([^']+)'`))?.[1];
+        const data = Object.keys(PRICES)
+          .map(priceObject)
+          .filter(
+            (pr) =>
+              (!want('app') || pr.metadata.app === want('app')) && (!want('plan') || pr.metadata.plan === want('plan')),
+          );
+        return send(res, 200, { object: 'search_result', data, has_more: false, url: '/v1/prices/search' });
+      }
       if ((m = p.match(/^\/v1\/prices\/([^/]+)$/))) {
         const pr = priceObject(decodeURIComponent(m[1]));
         return pr ? send(res, 200, pr) : notFound(res, 'price');
@@ -358,12 +375,16 @@ export function createStripeStub({ port = 0 } = {}) {
         const s = subscriptions.get(form.subscription);
         if (!s) return notFound(res, 'subscription');
         const newQ = Number(form['subscription_details[items][0][quantity]'] ?? s.quantity);
+        const newPrice = form['subscription_details[items][0][price]'] ?? s.price;
         const prorationDate = Number(form['subscription_details[proration_date]'] ?? nowSecs());
-        const prorations = newQ === s.quantity ? [] : prorationLines(s, s.quantity, newQ, prorationDate);
+        const prorations =
+          newQ === s.quantity && newPrice === s.price
+            ? []
+            : prorationLines(s, s.quantity, newQ, prorationDate, newPrice);
         const immediate = form['subscription_details[proration_behavior]'] === 'always_invoice';
         // always_invoice previews the invoice created right now; otherwise the
         // next scheduled invoice (pending items + the next period).
-        const next = immediate ? [] : [itemLine(s, unitAmount(s) * newQ, newQ, false, `${newQ} x seat`)];
+        const next = immediate ? [] : [itemLine(s, unitAmount(s, newPrice) * newQ, newQ, false, `${newQ} x seat`)];
         const data = [...s.pendingItems, ...prorations, ...next];
         const total = data.reduce((t, l) => t + l.amount, 0);
         const balance = customers.get(s.customer)?.balance ?? 0;

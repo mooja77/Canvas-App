@@ -4,6 +4,7 @@ import { getStripe } from '../lib/stripe.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { effectivePlanOf } from './ownerPlan.js';
 import { ENTITLED_SUBSCRIPTION_STATUSES } from '../lib/subscriptionStatus.js';
+import { PUBLISHED_PRICES_USD } from '@qualcanvas/shared';
 
 /**
  * Seat billing — see docs/qa/SEAT-BILLING.md for the full design.
@@ -15,23 +16,53 @@ import { ENTITLED_SUBSCRIPTION_STATUSES } from '../lib/subscriptionStatus.js';
  *   - every non-owner member of a team the owner owns.
  * Read-only viewers never take a seat.
  *
- * Pro and Team are billed per seat through the Stripe subscription item
- * quantity. Student is single-seat (no collaborators). Trials and the closed
- * grandfathered legacy cohort have no subscription to bill, so seats are not
- * enforced for them (the plan's collaborator cap still is).
+ * Team is billed per seat through the Stripe subscription item quantity.
+ * Pro is a ONE-PERSON plan (John, 28 Sep 2026): the owner is its only coder,
+ * viewers are free, and a second coder needs Team. Adding one answers
+ * 402 TEAM_REQUIRED with the upgrade quote (Pro -> Team, one seat for the
+ * owner and one per coder); nothing changes until the owner confirms.
+ * Student is single-seat (no collaborators). Trials, the closed grandfathered
+ * cohort and complimentary (non-Stripe) subscriptions have nothing to bill,
+ * so Team seats are not enforced for them.
  *
  * The quantity column in our DB is a MIRROR of Stripe: it is only written
  * after Stripe has accepted a change, or from a webhook / reconciliation.
  */
 
-export const SEAT_PLANS = new Set(['pro', 'team']);
+/** Plans billed per seat. */
+export const SEAT_PLANS = new Set(['team']);
+/** One-person plans: the owner is the only coder (PLAN_LIMITS.maxCoders === 0, viewers allowed). */
+export const SOLO_PLANS = new Set(['pro']);
 // Same set that keeps the paid plan (lib/subscriptionStatus.ts): while the
 // plan is kept, so are the seats.
 export const BILLABLE_SUBSCRIPTION_STATUSES = ENTITLED_SUBSCRIPTION_STATUSES;
 export const SEAT_GRACE_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export type SeatMode = 'billed' | 'trial' | 'grandfathered' | 'none';
+/**
+ * billed        Team on a Stripe subscription: seats = the Stripe quantity.
+ * solo          Pro: one seat, the owner's. Existing coders get the grace period.
+ * trial         Free-plan trial (Pro features): nothing billed, no new coders.
+ * grandfathered Team without a subscription (closed legacy cohort).
+ * comp          Team on a complimentary subscription row that has no Stripe
+ *               subscription behind it (written by hand, id not "sub_...").
+ * none          Free, Student.
+ */
+export type SeatMode = 'billed' | 'solo' | 'trial' | 'grandfathered' | 'comp' | 'none';
+
+/** Modes in which coders beyond the seats become read-only once grace ends. */
+const ENFORCED_MODES = new Set<SeatMode>(['billed', 'solo']);
+
+/**
+ * Real Stripe subscription ids start with "sub_". Production also holds
+ * complimentary rows written by hand ("comp_...", read-only check 28 Sep 2026)
+ * that Stripe has never seen. Treating those as billed would start a grace
+ * period and then lock a comped team's coders out, and every seat change
+ * would fail against Stripe.
+ */
+export function isStripeSubscriptionId(id: string | null | undefined): boolean {
+  return typeof id === 'string' && id.startsWith('sub_');
+}
 
 export interface SeatHolder {
   userId: string;
@@ -48,9 +79,21 @@ export interface SeatStatus {
   ownerId: string;
   mode: SeatMode;
   plan: string;
+  /** Plan in force, trial overlay included (a Free user in their trial is 'pro'). */
+  effectivePlan: string;
   subscriptionStatus: string | null;
-  /** Seats paid for on Stripe (billed mode only). */
+  /**
+   * Seats that let someone edit: the Stripe quantity on Team, always 1 on Pro
+   * (the owner's). Null when seats are not limited.
+   */
   seatsPurchased: number | null;
+  /** The quantity on the subscription row (a mirror of Stripe), if any. */
+  subscriptionQuantity: number | null;
+  /**
+   * Pro or trial only: how the owner gets to Team. 'in_place' swaps a real
+   * Stripe Pro subscription to Team; 'checkout' means Team checkout.
+   */
+  teamUpgrade: 'in_place' | 'checkout' | null;
   /** Owner + holders. */
   seatsUsed: number;
   holders: SeatHolder[];
@@ -66,17 +109,23 @@ export function seatModeFor(input: {
   plan: string;
   effectivePlan: string;
   subscriptionStatus: string | null | undefined;
+  stripeSubscriptionId?: string | null;
 }): SeatMode {
-  if (
-    SEAT_PLANS.has(input.plan) &&
-    input.subscriptionStatus &&
-    BILLABLE_SUBSCRIPTION_STATUSES.has(input.subscriptionStatus)
-  ) {
-    return 'billed';
+  if (SOLO_PLANS.has(input.plan)) return 'solo';
+  const entitled = !!input.subscriptionStatus && BILLABLE_SUBSCRIPTION_STATUSES.has(input.subscriptionStatus);
+  if (SEAT_PLANS.has(input.plan) && entitled) {
+    return isStripeSubscriptionId(input.stripeSubscriptionId) ? 'billed' : 'comp';
   }
-  if (input.plan === 'free' && SEAT_PLANS.has(input.effectivePlan)) return 'trial';
+  if (input.plan === 'free' && input.effectivePlan !== 'free') return 'trial';
   if (SEAT_PLANS.has(input.plan)) return 'grandfathered';
   return 'none';
+}
+
+/** Seats that let someone edit, or null when seats are not limited. */
+export function seatCapacity(mode: SeatMode, subscriptionQuantity: number | null | undefined): number | null {
+  if (mode === 'billed') return Math.max(1, subscriptionQuantity ?? 1);
+  if (mode === 'solo') return 1;
+  return null;
 }
 
 /** Oldest holders get the paid seats; the rest are unseated. The owner always holds seat 1. */
@@ -164,17 +213,25 @@ export async function getSeatStatus(ownerId: string, opts: { persistGrace?: bool
       emailVerified: true,
       trialEndsAt: true,
       seatGraceEndsAt: true,
-      subscription: { select: { status: true, quantity: true } },
+      subscription: { select: { status: true, quantity: true, stripeSubscriptionId: true } },
     },
   });
   if (!owner) throw new AppError('Account not found', 404);
+  const effectivePlan = effectivePlanOf(owner);
   const mode = seatModeFor({
     plan: owner.plan,
-    effectivePlan: effectivePlanOf(owner),
+    effectivePlan,
     subscriptionStatus: owner.subscription?.status,
+    stripeSubscriptionId: owner.subscription?.stripeSubscriptionId,
   });
   const raw = await loadHolders(ownerId);
-  const seatsPurchased = mode === 'billed' ? Math.max(1, owner.subscription?.quantity ?? 1) : null;
+  const seatsPurchased = seatCapacity(mode, owner.subscription?.quantity);
+  const enforced = ENFORCED_MODES.has(mode);
+  const stripeBilledPro =
+    mode === 'solo' &&
+    !!owner.subscription &&
+    BILLABLE_SUBSCRIPTION_STATUSES.has(owner.subscription.status) &&
+    isStripeSubscriptionId(owner.subscription.stripeSubscriptionId);
   const { unseated } = assignSeats(raw, seatsPurchased ?? Number.MAX_SAFE_INTEGER);
   const unseatedIds = new Set(unseated.map((h) => h.userId));
   const holders = [...raw]
@@ -182,7 +239,7 @@ export async function getSeatStatus(ownerId: string, opts: { persistGrace?: bool
     .map((h) => ({ ...h, seated: !unseatedIds.has(h.userId) }));
 
   let graceEndsAt = owner.seatGraceEndsAt;
-  if (mode === 'billed' && unseated.length > 0 && !graceEndsAt && opts.persistGrace !== false) {
+  if (enforced && unseated.length > 0 && !graceEndsAt && opts.persistGrace !== false) {
     const candidate = new Date(Date.now() + SEAT_GRACE_DAYS * DAY_MS);
     // Conditional write: two concurrent first observations must not push the
     // date out twice.
@@ -194,17 +251,20 @@ export async function getSeatStatus(ownerId: string, opts: { persistGrace?: bool
       (await prisma.user.findUnique({ where: { id: ownerId }, select: { seatGraceEndsAt: true } }))?.seatGraceEndsAt ??
       candidate;
   }
-  const enforcing = mode === 'billed' && unseated.length > 0 && (!graceEndsAt || graceEndsAt.getTime() <= Date.now());
+  const enforcing = enforced && unseated.length > 0 && (!graceEndsAt || graceEndsAt.getTime() <= Date.now());
   return {
     ownerId,
     mode,
     plan: owner.plan,
+    effectivePlan,
     subscriptionStatus: owner.subscription?.status ?? null,
     seatsPurchased,
+    subscriptionQuantity: owner.subscription?.quantity ?? null,
+    teamUpgrade: mode === 'solo' || mode === 'trial' ? (stripeBilledPro ? 'in_place' : 'checkout') : null,
     seatsUsed: 1 + raw.length,
     holders,
-    unseatedCount: mode === 'billed' ? unseated.length : 0,
-    graceEndsAt: mode === 'billed' && unseated.length > 0 ? graceEndsAt : null,
+    unseatedCount: enforced ? unseated.length : 0,
+    graceEndsAt: enforced && unseated.length > 0 ? graceEndsAt : null,
     enforcing,
   };
 }
@@ -219,17 +279,18 @@ export async function editorHasSeat(canvasId: string, userId: string): Promise<b
   if (!ownerId || ownerId === userId) return true;
   const quick = await prisma.user.findUnique({
     where: { id: ownerId },
-    select: { plan: true, subscription: { select: { status: true } } },
+    select: { plan: true, subscription: { select: { status: true, stripeSubscriptionId: true } } },
   });
-  // Fast path: only billed owners can have unseated coders.
-  if (
-    !quick ||
-    !SEAT_PLANS.has(quick.plan) ||
-    !quick.subscription ||
-    !BILLABLE_SUBSCRIPTION_STATUSES.has(quick.subscription.status)
-  ) {
-    return true;
-  }
+  // Fast path: only Pro owners, and Team owners billed on Stripe, can have
+  // unseated coders.
+  const couldBeUnseated =
+    !!quick &&
+    (SOLO_PLANS.has(quick.plan) ||
+      (SEAT_PLANS.has(quick.plan) &&
+        !!quick.subscription &&
+        BILLABLE_SUBSCRIPTION_STATUSES.has(quick.subscription.status) &&
+        isStripeSubscriptionId(quick.subscription.stripeSubscriptionId)));
+  if (!couldBeUnseated) return true;
   const status = await getSeatStatus(ownerId);
   if (!status.enforcing) return true;
   return status.holders.find((h) => h.userId === userId)?.seated ?? true;
@@ -271,6 +332,11 @@ export interface SeatPreview {
   hasDiscount: boolean;
   prorationDate: number;
   currentPeriodEnd: string | null;
+  /** Set on a plan change quote (Pro -> Team): the plans before and after. */
+  fromPlan?: string;
+  toPlan?: string;
+  /** Pro -> Team: the Pro price being replaced, per interval, for the dialog. */
+  currentUnitAmount?: number | null;
 }
 
 async function billedSubscription(ownerId: string) {
@@ -396,6 +462,146 @@ export async function setSeatQuantity(
   return applied;
 }
 
+// ─── Pro -> Team ─────────────────────────────────────────────────────────────
+
+/**
+ * The live Team price for this interval and currency. QualCanvas prices are
+ * tagged metadata.app='qualcanvas' + metadata.plan (the same tags checkout
+ * trusts, see deriveQualcanvasPlan). If more than one matches, the one at the
+ * published list price wins, so the quote and /pricing agree.
+ */
+export async function findTeamPrice(stripe: Stripe, interval: string, currency: string): Promise<Stripe.Price> {
+  const found = await stripe.prices.search({
+    query: "metadata['app']:'qualcanvas' AND metadata['plan']:'team' AND active:'true'",
+    limit: 100,
+  });
+  const candidates = found.data.filter(
+    (p) => p.recurring?.interval === interval && p.currency === currency && p.recurring?.usage_type !== 'metered',
+  );
+  const listed =
+    currency === 'usd'
+      ? (interval === 'year' ? PUBLISHED_PRICES_USD.team.annual : PUBLISHED_PRICES_USD.team.monthly) * 100
+      : null;
+  const price = candidates.find((p) => p.unit_amount === listed) ?? candidates[0];
+  if (!price) {
+    throw new AppError('The Team plan is not available for your billing interval. Contact support to upgrade.', 409, {
+      code: 'TEAM_PRICE_UNAVAILABLE',
+    });
+  }
+  return price;
+}
+
+/**
+ * Stripe's own quote for moving a Pro subscription to Team with `quantity`
+ * seats right now: the unused Pro time is credited and the Team seats for
+ * the rest of the period are charged, on one invoice (`always_invoice`).
+ */
+export async function previewTeamUpgrade(
+  ownerId: string,
+  quantity: number,
+  prorationDate = Math.floor(Date.now() / 1000),
+): Promise<SeatPreview> {
+  const sub = await billedSubscription(ownerId);
+  if (!isStripeSubscriptionId(sub.stripeSubscriptionId)) {
+    throw new AppError('This subscription is not billed through Stripe. Contact support to upgrade.', 409);
+  }
+  const stripe = getStripe();
+  const { live, item } = await seatItem(stripe, sub.stripeSubscriptionId, sub.stripePriceId);
+  const teamPrice = await findTeamPrice(stripe, item.price.recurring?.interval ?? 'month', item.price.currency);
+  const preview = await stripe.invoices.createPreview({
+    customer: typeof live.customer === 'string' ? live.customer : live.customer.id,
+    subscription: live.id,
+    subscription_details: {
+      items: [{ id: item.id, price: teamPrice.id, quantity }],
+      proration_date: prorationDate,
+      proration_behavior: 'always_invoice',
+    },
+  });
+  return {
+    currentQuantity: item.quantity ?? 1,
+    newQuantity: quantity,
+    currency: teamPrice.currency,
+    unitAmount: teamPrice.unit_amount ?? null,
+    interval: teamPrice.recurring?.interval ?? null,
+    dueNow: Math.max(0, preview.amount_due ?? 0),
+    nextRenewal: (teamPrice.unit_amount ?? 0) * quantity,
+    hasDiscount: Array.isArray(live.discounts) && live.discounts.length > 0,
+    prorationDate,
+    currentPeriodEnd: item.current_period_end ? new Date(item.current_period_end * 1000).toISOString() : null,
+    fromPlan: 'pro',
+    toPlan: 'team',
+    currentUnitAmount: item.price.unit_amount ?? null,
+  };
+}
+
+/**
+ * Move a Pro subscription to Team with `quantity` seats. Same payment rules
+ * as a seat increase: the prorated difference is invoiced and paid now, and
+ * `pending_if_incomplete` means Stripe switches the plan ONLY if that payment
+ * succeeds. On a decline the invoice is voided and nothing changes.
+ */
+export async function upgradeToTeam(
+  ownerId: string,
+  quantity: number,
+  opts: { prorationDate?: number } = {},
+): Promise<number> {
+  if (!Number.isInteger(quantity) || quantity < 1) throw new AppError('Seat quantity must be at least 1', 400);
+  const sub = await billedSubscription(ownerId);
+  if (!isStripeSubscriptionId(sub.stripeSubscriptionId)) {
+    throw new AppError('This subscription is not billed through Stripe. Contact support to upgrade.', 409);
+  }
+  const stripe = getStripe();
+  const { live, item } = await seatItem(stripe, sub.stripeSubscriptionId, sub.stripePriceId);
+  if (sub.status === 'past_due' || live.status === 'past_due') {
+    throw new AppError(
+      'Your last payment failed, so the plan cannot change yet. Update your card under Account → Manage billing first.',
+      402,
+      { code: 'PAYMENT_PAST_DUE' },
+    );
+  }
+  const teamPrice = await findTeamPrice(stripe, item.price.recurring?.interval ?? 'month', item.price.currency);
+  const updated = await stripe.subscriptions.update(live.id, {
+    items: [{ id: item.id, price: teamPrice.id, quantity }],
+    proration_behavior: 'always_invoice',
+    payment_behavior: 'pending_if_incomplete',
+    proration_date: opts.prorationDate ?? Math.floor(Date.now() / 1000),
+    expand: ['latest_invoice'],
+  });
+  if (updated.pending_update) {
+    const invoice =
+      updated.latest_invoice && typeof updated.latest_invoice === 'object' ? updated.latest_invoice : null;
+    if (invoice?.id) await stripe.invoices.voidInvoice(invoice.id).catch(() => undefined);
+    throw new SeatPaymentError(invoice?.hosted_invoice_url ?? null);
+  }
+  const newItem = updated.items.data.find((i) => i.id === item.id) ?? updated.items.data[0];
+  const applied = newItem?.quantity ?? quantity;
+  // Mirror what Stripe applied. The customer.subscription.updated webhook
+  // re-derives the plan from the price too; both land on 'team'.
+  await prisma.$transaction([
+    prisma.subscription.update({
+      where: { id: sub.id },
+      data: { quantity: applied, stripePriceId: newItem?.price?.id ?? teamPrice.id },
+    }),
+    prisma.user.update({ where: { id: ownerId }, data: { plan: 'team' } }),
+  ]);
+  return applied;
+}
+
+/**
+ * 402 TEAM_REQUIRED: a Pro owner (or a Free user in their Pro trial) tried to
+ * add a second coder. `preview` is Stripe's quote for switching to Team in
+ * place; it is null when the owner has no Stripe subscription to switch and
+ * must go through Team checkout instead. Viewers stay free either way.
+ */
+export class TeamRequiredError extends AppError {
+  constructor(details: { upgrade: 'in_place' | 'checkout'; preview: SeatPreview | null; seatsNeeded: number }) {
+    super('Pro is a one-person plan. To add another coder, upgrade to Team, or add them as a viewer for free.', 402, {
+      code: 'TEAM_REQUIRED',
+      ...details,
+    });
+  }
+}
+
 export class SeatRequiredError extends AppError {
   constructor(public preview: SeatPreview) {
     super('This adds a paid seat to your plan. Confirm the charge to continue.', 402, {
@@ -417,13 +623,37 @@ export class SeatRequiredError extends AppError {
 export async function ensureSeatFor(
   ownerId: string,
   userId: string,
-  opts: { confirm?: boolean; prorationDate?: number } = {},
+  opts: { confirm?: boolean; prorationDate?: number; confirmTeamUpgrade?: boolean } = {},
 ): Promise<{ charged: boolean; quantity: number | null }> {
   const status = await getSeatStatus(ownerId, { persistGrace: false });
-  if (status.mode !== 'billed') return { charged: false, quantity: null };
   if (userId === ownerId || status.holders.some((h) => h.userId === userId)) {
     return { charged: false, quantity: status.seatsPurchased };
   }
+  // Pro (and the Pro-level trial) is one person. A second coder means Team:
+  // quote the switch, and make it only once the owner has confirmed it.
+  if (status.teamUpgrade) {
+    const seatsNeeded = status.seatsUsed + 1;
+    if (status.teamUpgrade === 'checkout') {
+      throw new TeamRequiredError({ upgrade: 'checkout', preview: null, seatsNeeded });
+    }
+    if (status.subscriptionStatus === 'past_due') {
+      throw new AppError(
+        'Your last payment failed, so the plan cannot change yet. Update your card under Account → Manage billing first.',
+        402,
+        { code: 'PAYMENT_PAST_DUE' },
+      );
+    }
+    if (!opts.confirmTeamUpgrade) {
+      throw new TeamRequiredError({
+        upgrade: 'in_place',
+        preview: await previewTeamUpgrade(ownerId, seatsNeeded),
+        seatsNeeded,
+      });
+    }
+    const quantity = await upgradeToTeam(ownerId, seatsNeeded, { prorationDate: opts.prorationDate });
+    return { charged: true, quantity };
+  }
+  if (status.mode !== 'billed') return { charged: false, quantity: null };
   const needed = status.seatsUsed + 1;
   if (needed <= (status.seatsPurchased ?? 1)) return { charged: false, quantity: status.seatsPurchased };
   if (status.subscriptionStatus === 'past_due') {
@@ -449,6 +679,15 @@ export async function ensureSeatFor(
 export async function releaseUnusedSeats(ownerId: string): Promise<number | null> {
   try {
     const status = await getSeatStatus(ownerId, { persistGrace: false });
+    // Pro holds one seat whatever the quantity. A Pro subscription left with
+    // quantity > 1 by the per-seat Pro of #213 is paying for seats that no
+    // longer let anyone edit: drop it to 1 and credit the unused time.
+    if (status.mode === 'solo') {
+      if (status.teamUpgrade === 'in_place' && (status.subscriptionQuantity ?? 1) > 1) {
+        return await setSeatQuantity(ownerId, 1);
+      }
+      return status.subscriptionQuantity;
+    }
     if (status.mode !== 'billed' || status.seatsPurchased === null) return null;
     const target = Math.max(1, status.seatsUsed);
     if (target >= status.seatsPurchased) return status.seatsPurchased;
@@ -463,11 +702,21 @@ export async function releaseUnusedSeats(ownerId: string): Promise<number | null
 }
 
 /** Body fields a client sends to confirm a seat charge it was shown. */
-export function seatConfirmation(body: unknown): { confirm: boolean; prorationDate?: number } {
+export function seatConfirmation(body: unknown): {
+  confirm: boolean;
+  confirmTeamUpgrade: boolean;
+  prorationDate?: number;
+} {
   const b = (body ?? {}) as Record<string, unknown>;
   const prorationDate =
     typeof b.prorationDate === 'number' && Number.isInteger(b.prorationDate) ? b.prorationDate : undefined;
   // A preview is only honoured for 10 minutes; after that the client must re-confirm.
   const fresh = prorationDate === undefined || Math.abs(Date.now() / 1000 - prorationDate) <= 600;
-  return { confirm: b.confirmSeatCharge === true && fresh, prorationDate: fresh ? prorationDate : undefined };
+  return {
+    confirm: b.confirmSeatCharge === true && fresh,
+    // The Team switch changes the plan and the price, so it has its own
+    // explicit flag: a seat confirmation never upgrades anyone by accident.
+    confirmTeamUpgrade: b.confirmTeamUpgrade === true && fresh,
+    prorationDate: fresh ? prorationDate : undefined,
+  };
 }

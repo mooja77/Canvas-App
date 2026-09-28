@@ -176,6 +176,11 @@ export default function ForTeamsPage() {
                 'You hold one seat, and every coder on your canvases or member of your teams holds one more — a person who is both counts once. Read-only viewers are free. Adding a coder shows the prorated charge for the rest of the billing period and asks you to confirm it; if the card is declined, nobody is added and nothing is charged. Removing a coder, or making them a viewer, frees the seat at once and credits the unused time to your next bill.',
             },
             {
+              question: 'I am on Pro. What happens when I invite a coder?',
+              answer:
+                'Pro is a one-person plan: you code, and viewers are free. When you invite a coder, QualCanvas offers the upgrade to Team, with one seat for you and one for each coder, and shows what it costs today and at renewal. Nothing is charged until you confirm. You can add the person as a free viewer instead.',
+            },
+            {
               question: 'Can students on a methods course use Team?',
               answer:
                 'Yes. The verified-academic-email discount applies to eligible Team subscriptions. The per-seat structure supports methods courses, but instructors should confirm their participant count and data-governance requirements before purchase.',

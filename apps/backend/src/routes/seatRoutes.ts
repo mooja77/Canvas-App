@@ -7,6 +7,9 @@ import { revokeCanvasAccess } from '../lib/socket.js';
 import {
   getSeatStatus,
   previewSeatChange,
+  previewTeamUpgrade,
+  TeamRequiredError,
+  upgradeToTeam,
   releaseUnusedSeats,
   seatConfirmation,
   setSeatQuantity,
@@ -22,6 +25,8 @@ import {
  *   POST /billing/seats/preview {quantity}   price preview (no change)
  *   POST /billing/seats {quantity, confirmSeatCharge, prorationDate}
  *        add seats for coders who don't have one, or drop unheld seats
+ *   POST /billing/seats/upgrade-to-team {confirmTeamUpgrade, prorationDate}
+ *        Pro -> Team with a seat for the owner and each coder (402 quote first)
  *   POST /billing/seats/holders/:userId/release
  *        make that person a viewer on all your canvases and remove them from
  *        your teams, then credit back the freed seat
@@ -52,8 +57,11 @@ function serialize(status: SeatStatus) {
   return {
     mode: status.mode,
     plan: status.plan,
+    effectivePlan: status.effectivePlan,
     subscriptionStatus: status.subscriptionStatus,
     seatsPurchased: status.seatsPurchased,
+    subscriptionQuantity: status.subscriptionQuantity,
+    teamUpgrade: status.teamUpgrade,
     seatsUsed: status.seatsUsed,
     unseatedCount: status.unseatedCount,
     graceEndsAt: status.graceEndsAt ? status.graceEndsAt.toISOString() : null,
@@ -81,8 +89,11 @@ seatRoutes.get('/billing/seats', async (req: Request, res: Response, next: NextF
         data: {
           mode: 'none',
           plan: req.userPlan ?? 'free',
+          effectivePlan: req.userPlan ?? 'free',
           subscriptionStatus: null,
           seatsPurchased: null,
+          subscriptionQuantity: null,
+          teamUpgrade: null,
           seatsUsed: 1,
           unseatedCount: 0,
           graceEndsAt: null,
@@ -119,6 +130,9 @@ seatRoutes.post('/billing/seats/preview', async (req: Request, res: Response, ne
     const ownerId = requireEmailUser(req);
     const quantity = parseQuantity(req.body);
     const status = await getSeatStatus(ownerId, { persistGrace: false });
+    if (status.mode === 'solo') {
+      throw new AppError('Pro includes one seat, yours. To add coders, upgrade to Team.', 409, { code: 'PRO_IS_SOLO' });
+    }
     if (status.mode !== 'billed') throw new AppError('Your plan is not billed per seat.', 409);
     res.json({ success: true, data: await previewSeatChange(ownerId, quantity) });
   } catch (err) {
@@ -132,6 +146,11 @@ seatRoutes.post('/billing/seats', async (req: Request, res: Response, next: Next
     const quantity = parseQuantity(req.body);
     const result = await withSeatLock(ownerId, async () => {
       const status = await getSeatStatus(ownerId, { persistGrace: false });
+      if (status.mode === 'solo') {
+        throw new AppError('Pro includes one seat, yours. To add coders, upgrade to Team.', 409, {
+          code: 'PRO_IS_SOLO',
+        });
+      }
       if (status.mode !== 'billed') throw new AppError('Your plan is not billed per seat.', 409);
       if (quantity < status.seatsUsed) {
         throw new AppError(
@@ -161,6 +180,39 @@ seatRoutes.post('/billing/seats', async (req: Request, res: Response, next: Next
     });
     const status = await getSeatStatus(ownerId);
     res.json({ success: true, data: { quantity: result, ...serialize(status) } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Pro -> Team for an owner whose coders need seats (the grace banner's
+ * "Upgrade to Team"). Seats = the owner + every current coder. Without
+ * confirmTeamUpgrade this only quotes (402 TEAM_REQUIRED); owners without a
+ * Stripe subscription (trial, legacy) get upgrade:'checkout' instead.
+ */
+seatRoutes.post('/billing/seats/upgrade-to-team', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const ownerId = requireEmailUser(req);
+    await withSeatLock(ownerId, async () => {
+      const status = await getSeatStatus(ownerId, { persistGrace: false });
+      if (!status.teamUpgrade) throw new AppError('Only a Pro plan can be upgraded to Team here.', 409);
+      const seatsNeeded = Math.max(1, status.seatsUsed);
+      if (status.teamUpgrade === 'checkout') {
+        throw new TeamRequiredError({ upgrade: 'checkout', preview: null, seatsNeeded });
+      }
+      const confirmation = seatConfirmation(req.body);
+      if (!confirmation.confirmTeamUpgrade) {
+        throw new TeamRequiredError({
+          upgrade: 'in_place',
+          preview: await previewTeamUpgrade(ownerId, seatsNeeded),
+          seatsNeeded,
+        });
+      }
+      return upgradeToTeam(ownerId, seatsNeeded, { prorationDate: confirmation.prorationDate });
+    });
+    const status = await getSeatStatus(ownerId);
+    res.json({ success: true, data: { ...serialize(status), price: await seatPrice(ownerId) } });
   } catch (err) {
     next(err);
   }

@@ -1,5 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { signup, ok, createCanvas, addTranscript, addCode, codeText, getCanvas, type Session } from './support/api';
+import {
+  signup,
+  ok,
+  createCanvas,
+  addTranscript,
+  addCode,
+  codeText,
+  getCanvas,
+  subscribe,
+  type Session,
+} from './support/api';
 
 const TEXT = 'Participant: I felt the team pulled together when the deadline moved. Morale was high.';
 
@@ -113,14 +123,18 @@ test.describe('Tenancy isolation', () => {
 
 test.describe('Collaboration roles', () => {
   async function setup() {
-    const owner = await signup('collabowner', { verify: true }); // trial = Pro: 3 collaborators
+    // Coders need Team (Pro is a one-person plan); the seat is confirmed below.
+    const owner = await signup('collabowner', { verify: true });
+    await subscribe(owner, 'price_qc_team_m');
     const editor = await signup('editor', { verify: true });
     const viewer = await signup('viewer', { verify: true });
     const id = await createCanvas(owner, 'Team study');
     const t = await addTranscript(owner, id, 'Interview', TEXT);
     const q = await addCode(owner, id, 'Teamwork');
     await ok(
-      await owner.ctx.post(`canvas/${id}/collaborators`, { data: { email: editor.email, role: 'editor' } }),
+      await owner.ctx.post(`canvas/${id}/collaborators`, {
+        data: { email: editor.email, role: 'editor', confirmSeatCharge: true },
+      }),
       201,
     );
     await ok(

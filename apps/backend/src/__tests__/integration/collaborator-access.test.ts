@@ -22,9 +22,11 @@ const { mockPrisma } = vi.hoisted(() => {
       delete: vi.fn(),
       count: vi.fn(),
     },
+    // Seat lookups (utils/seats.ts) for an editor on a Pro-owned canvas.
+    teamMember: { findMany: vi.fn(async () => []) },
     canvasCollaborator: {
       findUnique: vi.fn(),
-      findMany: vi.fn(),
+      findMany: vi.fn(async (): Promise<unknown[]> => []),
       create: vi.fn(),
       upsert: vi.fn(),
       delete: vi.fn(),
@@ -324,6 +326,9 @@ describe('viewerWriteGuard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     app = createGuardedApp();
+    // The canvas owner is on Pro: seat lookups see no other coders, so the
+    // editor is not an unseated coder past grace (utils/seats.ts).
+    mockPrisma.canvasCollaborator.findMany.mockResolvedValue([]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockPrisma.user.findUnique.mockImplementation(async (args: any) => {
       const pool = [...allUsers, viewer];

@@ -170,10 +170,11 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
       discounts.push({ coupon: process.env.STRIPE_ACADEMIC_COUPON_ID });
     }
 
-    // Pro and Team are billed per editing seat. Someone who already works with
-    // coders (for example during their trial) starts with a seat for each of
-    // them; Stripe Checkout shows the quantity and lets them lower it. Coders
-    // left without a seat get the one-off grace period (utils/seats.ts).
+    // Team is billed per editing seat. Someone who already works with coders
+    // (for example during their trial) starts with a seat for each of them;
+    // Stripe Checkout shows the quantity and lets them lower it. Pro is a
+    // one-person plan and is always bought as one seat. Coders left without a
+    // seat either way get the one-off grace period (utils/seats.ts).
     const seats = SEAT_PLANS.has(plan) ? await seatsNeededAtCheckout(userId) : 1;
     const appUrl = process.env.APP_URL || 'http://localhost:5174';
     const session = await stripe.checkout.sessions.create({

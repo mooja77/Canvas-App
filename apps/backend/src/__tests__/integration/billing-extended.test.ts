@@ -1554,15 +1554,9 @@ describe('Stripe Billing – Extended Tests', () => {
       expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
         expect.objectContaining({
           mode: 'subscription',
-          // Pro is billed per seat: one seat for a researcher with no coders,
-          // adjustable on the Stripe Checkout page.
-          line_items: [
-            {
-              price: 'price_pro_monthly',
-              quantity: 1,
-              adjustable_quantity: { enabled: true, minimum: 1, maximum: 1000 },
-            },
-          ],
+          // Pro is a one-person plan: always exactly one seat, not adjustable
+          // (Team is the per-seat plan).
+          line_items: [{ price: 'price_pro_monthly', quantity: 1 }],
         }),
       );
     });

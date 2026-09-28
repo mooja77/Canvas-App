@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { signup, ok, json, createCanvas, outbox, type Session } from './support/api';
+import { signup, ok, json, createCanvas, outbox, subscribe, type Session } from './support/api';
 
 // QualCanvas holds no paid AI key (decision 28 Sep 2026). Every AI call runs
 // on a customer's own key. The backend in this suite is started WITH a decoy
@@ -225,10 +225,17 @@ test.describe('Connect your AI account', () => {
 
 test.describe('Collaborator key rule', () => {
   async function setup() {
-    const owner = await signup('keyowner', { verify: true }); // trial = Pro: coders allowed, not billed
+    // Coders need Team (Pro is a one-person plan); the seat is confirmed here.
+    const owner = await signup('keyowner', { verify: true });
+    await subscribe(owner, 'price_qc_team_m');
     const coder = await signup('keycoder', { verify: true });
     const id = await createCanvas(owner, 'Shared study');
-    await ok(await owner.ctx.post(`canvas/${id}/collaborators`, { data: { email: coder.email, role: 'editor' } }), 201);
+    await ok(
+      await owner.ctx.post(`canvas/${id}/collaborators`, {
+        data: { email: coder.email, role: 'editor', confirmSeatCharge: true },
+      }),
+      201,
+    );
     await ok(await owner.ctx.put('ai-settings', { data: { provider: 'openai', apiKey: ownKey('owner') } }));
     return { owner, coder, id };
   }
