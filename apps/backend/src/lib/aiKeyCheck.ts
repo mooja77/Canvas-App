@@ -25,7 +25,7 @@ const PROVIDER_NAMES: Record<AiProviderId, string> = { openai: 'OpenAI', anthrop
 
 const BILLING_PAGES: Record<AiProviderId, string> = {
   openai: 'https://platform.openai.com/settings/organization/billing/overview',
-  anthropic: 'https://console.anthropic.com/settings/billing',
+  anthropic: 'https://platform.claude.com/settings/billing',
   google: 'https://aistudio.google.com/',
 };
 

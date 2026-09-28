@@ -73,25 +73,25 @@ export const PROVIDERS: ProviderGuide[] = [
     features: ['Code suggestions', 'Auto-code', 'Summaries'],
     transcription: false,
     keyPrefix: 'sk-ant-',
-    pricingUrl: 'https://www.anthropic.com/pricing#api',
-    limitsUrl: 'https://console.anthropic.com/settings/limits',
+    pricingUrl: 'https://claude.com/pricing#api',
+    limitsUrl: 'https://platform.claude.com/settings/limits',
     defaultModel: 'claude-sonnet-4-20250514',
     steps: [
       {
-        text: 'Create an Anthropic Console account, or log in.',
-        link: { href: 'https://console.anthropic.com/', label: 'Open the Anthropic Console' },
+        text: 'Create a Claude Console (Anthropic) account, or log in.',
+        link: { href: 'https://platform.claude.com/', label: 'Open the Claude Console' },
       },
       {
         text: 'Add a payment method and buy some credit.',
-        link: { href: 'https://console.anthropic.com/settings/billing', label: 'Open Anthropic billing' },
+        link: { href: 'https://platform.claude.com/settings/billing', label: 'Open Anthropic billing' },
       },
       {
         text: 'Set a monthly spend limit.',
-        link: { href: 'https://console.anthropic.com/settings/limits', label: 'Open Anthropic limits' },
+        link: { href: 'https://platform.claude.com/settings/limits', label: 'Open Anthropic limits' },
       },
       {
         text: 'Go to API keys, press "Create Key" and name it "QualCanvas".',
-        link: { href: 'https://console.anthropic.com/settings/keys', label: 'Open Anthropic API keys' },
+        link: { href: 'https://platform.claude.com/settings/keys', label: 'Open Anthropic API keys' },
       },
       { text: 'Copy the key. It starts with "sk-ant-" and is shown only once.' },
     ],
