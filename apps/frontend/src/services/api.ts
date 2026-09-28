@@ -51,6 +51,11 @@ canvasClient.interceptors.response.use(
       const detail = error.response.data;
       window.dispatchEvent(new CustomEvent('plan-limit-exceeded', { detail }));
     }
+    // An AI feature was used without the researcher's own AI key: open the
+    // "Connect your AI account" wizard (components/ai/ConnectAiWizard.tsx).
+    if (error.response?.data?.code === 'AI_KEY_REQUIRED') {
+      window.dispatchEvent(new CustomEvent('ai-key-required', { detail: error.response.data }));
+    }
     return Promise.reject(error);
   },
 );
@@ -660,6 +665,10 @@ export const aiSettingsApi = {
     canvasClient.put('/ai-settings', data),
 
   deleteSettings: () => canvasClient.delete('/ai-settings'),
+
+  /** Owner setting: let collaborators transcribe into your canvases on your key. */
+  updateSharing: (shareWithCollaborators: boolean) =>
+    canvasClient.put('/ai-settings/sharing', { shareWithCollaborators }),
 };
 
 // ─── Team API ───

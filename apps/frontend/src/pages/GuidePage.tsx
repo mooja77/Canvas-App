@@ -338,8 +338,9 @@ const SECTIONS: GuideSection[] = [
     content: (
       <>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          QualCanvas integrates with OpenAI, Anthropic, and Google AI to supercharge your analysis. Bring your own API
-          key — you pay your AI provider directly.
+          QualCanvas integrates with OpenAI, Anthropic, and Google AI to supercharge your analysis. AI runs on your own
+          account with the provider — you pay them directly, and QualCanvas never charges for AI. Account → AI has a
+          step-by-step guide to creating and connecting a key.
         </p>
         <Screenshot
           src="/guide/13-ai-dropdown.png"
@@ -518,9 +519,12 @@ const SECTIONS: GuideSection[] = [
           </li>
           <li>
             <strong>Transcribe audio:</strong> upload an MP3, WAV, M4A, MP4, OGG, WEBM or FLAC recording (up to 25 MB)
-            and add the timestamped result to the canvas as a transcript. Transcription uses OpenAI Whisper: add your
-            own OpenAI key under Account → AI settings and OpenAI bills you directly (about $0.006 a minute). Uploading
-            needs a Student, Pro or Team plan.
+            and add the timestamped result to the canvas as a transcript. Transcription uses OpenAI Whisper on your own
+            OpenAI account, and OpenAI bills you directly ($0.006 a minute on OpenAI&apos;s published price). No plan
+            includes transcription minutes. The first time you try, a short guide walks you through creating and
+            connecting your key. Uploading needs a Student, Pro or Team plan. On a shared canvas, collaborators use
+            their own key, or the owner&apos;s if the owner has switched on &ldquo;Let collaborators transcribe with my
+            key&rdquo; under Account → AI.
           </li>
           <li>
             <strong>Coder training:</strong> the canvas owner writes an exercise by coding a transcript as an answer

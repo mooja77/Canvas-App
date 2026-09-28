@@ -6,7 +6,7 @@ import { checkAiAccess } from '../middleware/planLimits.js';
 import { validate, chatQuerySchema } from '../middleware/validation.js';
 import { chunkText } from '../utils/embeddings.js';
 import { ragQuery } from '../utils/rag.js';
-import { resolveAiConfig } from '../middleware/aiConfig.js';
+import { AI_KEY_REQUIRED_MESSAGE, resolveAiConfig } from '../middleware/aiConfig.js';
 import { calculateCostCents } from '../utils/aiCost.js';
 
 export const chatRoutes = Router();
@@ -19,9 +19,7 @@ chatRoutes.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.llmProvider) {
-        return res
-          .status(400)
-          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+        return res.status(400).json({ success: false, error: AI_KEY_REQUIRED_MESSAGE, code: 'AI_KEY_REQUIRED' });
       }
 
       const dashboardAccessId = getAuthId(req);
@@ -151,9 +149,7 @@ chatRoutes.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.llmProvider) {
-        return res
-          .status(400)
-          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+        return res.status(400).json({ success: false, error: AI_KEY_REQUIRED_MESSAGE, code: 'AI_KEY_REQUIRED' });
       }
 
       const dashboardAccessId = getAuthId(req);

@@ -139,6 +139,9 @@ model UserAiConfig {
   apiKeyTag       String
   model           String?
   embeddingModel  String?
+  // Canvas owners only: let coders on this account's canvases transcribe on
+  // this key when they have no key of their own. Off until the owner opts in.
+  shareWithCollaborators Boolean @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -595,6 +598,9 @@ model TranscriptionJob {
   errorMessage      String?
   language          String?
   requestedByUserId String?
+  // Whose own OpenAI key pays for this job (the requester, or the canvas
+  // owner when they share their key with collaborators). Never a server key.
+  keyOwnerUserId    String?
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   fileUpload        FileUpload @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
@@ -712,15 +718,19 @@ model AiUsage {
   inputTokens  Int      @default(0)
   outputTokens Int      @default(0)
   costCents    Float    @default(0)
-  // Transcription only: the account whose monthly pool this usage draws on
-  // (the canvas owner). Survives canvas deletion so deleting a canvas cannot
-  // hand minutes back.
+  // Retired 28 Sep 2026: the included-minutes pool no longer exists (all AI
+  // runs on the customer's own key). Kept so old rows stay readable.
   poolOwnerId  String?
+  // The account whose own provider key paid for this call.
+  keyOwnerId   String?
+  // Transcription only: length of the recording, for usage reporting.
+  durationSeconds Int?
   createdAt    DateTime @default(now())
 
   @@index([userId])
   @@index([createdAt])
   @@index([poolOwnerId, feature, createdAt])
+  @@index([keyOwnerId, feature, createdAt])
 }
 
 // ─── Research Repository ───

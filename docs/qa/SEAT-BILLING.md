@@ -1,6 +1,6 @@
-# Seat billing and pooled transcription
+# Seat billing
 
-Decided by John on 27 Sep 2026 ("pay for seat, get screens"): people who work with an owner's paid features pay for a seat. This page is the design. The code is `apps/backend/src/utils/seats.ts`, `routes/seatRoutes.ts` and `utils/transcriptionMetering.ts`.
+Decided by John on 27 Sep 2026 ("pay for seat, get screens"): people who work with an owner's paid features pay for a seat. This page is the design. The code is `apps/backend/src/utils/seats.ts`, `routes/seatRoutes.ts`.
 
 ## What a seat is
 
@@ -67,15 +67,9 @@ What happens:
 - **Duplicates.** Processed event ids are recorded (existing behaviour).
 - **Other products on the shared account.** The signature is verified first. An event for a subscription or customer that isn't QualCanvas's is acknowledged with 200 and changes nothing.
 
-## Transcription pool
+## Transcription (no pool since 28 Sep 2026)
 
-- The allowance belongs to the **canvas owner**: plan minutes × paid seats, shared by everyone who transcribes into that owner's canvases.
-- Team: ~50 h per seat. Pro: ~10 h per seat. Student: ~5 h. Free: none.
-- Usage is recorded with `AiUsage.poolOwnerId`, so deleting a canvas doesn't give minutes back.
-- Before this change the meter was per requester, so each collaborator brought a fresh allowance.
-- Bringing your own OpenAI key bypasses the pool, as before.
-- `GET /canvas/:id/transcribe/allowance` (the transcription screen's meter) reports this same pool and how many seats share it.
-- **Production today:** the API has no platform `OPENAI_API_KEY` (variable names checked, 27 Sep), so the included minutes cannot be used. Only a researcher's own OpenAI key transcribes, and the screen says so. `/pricing` therefore advertises "Audio transcription (with your own OpenAI key)" on the tiers that can upload, and no included hours. If John enables a server key (a paid OpenAI key), add the hours row back, derived from `PLAN_LIMITS.transcriptionMinutesPerMonth`: ~5 h Student, ~10 h / ~50 h per seat, pooled, on Pro / Team.
+The pooled allowance (plan minutes × paid seats) was removed on 28 Sep 2026. John decided JMS Dev Lab will never hold a paid AI key for QualCanvas, so no plan includes transcription minutes. Every recording is transcribed on a customer's own OpenAI key; seats are billed exactly as above and have nothing to do with AI usage. Whose key pays, including the collaborator rule, is documented at the top of `apps/backend/src/utils/aiKeys.ts`.
 
 ## API
 
@@ -89,6 +83,6 @@ What happens:
 
 ## Proof and limits
 
-- **Tests.** `e2e/fullstack/10-seats.spec.ts` (API and browser, including axe), `apps/backend/src/utils/seats.test.ts`, `__tests__/security/transcriptionMetering.test.ts`, and `SeatsPanel.test.tsx` / `ShareCanvasModal.test.tsx`. The 12-month simulation seat scenarios are in `SIMULATION.md`.
+- **Tests.** `e2e/fullstack/10-seats.spec.ts` (API and browser, including axe), `apps/backend/src/utils/seats.test.ts`, and `SeatsPanel.test.tsx` / `ShareCanvasModal.test.tsx`. The 12-month simulation seat scenarios are in `SIMULATION.md`.
 - **UNPROVEN against real Stripe.** Everything above ran against the local Stripe double, which follows Stripe's documented proration and pending-update rules. It was not run against Stripe test mode: the machine's Stripe CLI has no test-mode key. The exact `createPreview` line shape in the account's API version (`2026-02-25.clover`) is handled for both the old `line.proration` and the new `parent.subscription_item_details.proration` fields, but only the double's shape has been exercised.
 - **Stripe portal.** The live default portal configuration (read-only check, 27 Sep 2026) allows `price` updates only, not `quantity`, so customers cannot change seats there; seats change only through QualCanvas. If quantity updates are ever enabled in the portal, a reduction creates a shortfall and the grace rules above apply (covered by `10-seats` "quantity mirrors Stripe").

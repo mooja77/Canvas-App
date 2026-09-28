@@ -459,7 +459,7 @@ export const updateSummarySchema = z.object({ summaryText: z.string().min(1).max
 
 export const updateAiSettingsSchema = z.object({
   provider: z.enum(['openai', 'anthropic', 'google']),
-  apiKey: z.string().min(1),
+  apiKey: z.string().trim().min(1).max(500),
   model: z.string().max(100).optional(),
   embeddingModel: z.string().max(100).optional(),
 });

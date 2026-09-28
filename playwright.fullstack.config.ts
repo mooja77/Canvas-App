@@ -37,6 +37,11 @@ const backendEnv: Record<string, string> = {
   SMTP_FROM: 'QualCanvas <noreply@example.com>',
   ADMIN_API_KEY: STACK.adminKey,
   NETGUARD_OUTBOX: STACK.outbox,
+  // Decoy platform AI key, generated per run. QualCanvas must never use a
+  // server key for customer work; the preload tags any call carrying it as
+  // keyKind "server" and 11-own-ai-key.spec.ts asserts there are none.
+  OPENAI_API_KEY: `sk-server-${randomBytes(12).toString('hex')}`,
+  HOSTED_AI_ENABLED: 'true',
   CLOCK_PORT: String(STACK.clockPort),
   DEMO_ACCESS_CODE: STACK.demoCode,
   // Google sign-in: the preload answers the certs request with this key.

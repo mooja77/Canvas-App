@@ -16,7 +16,6 @@ export interface PlanLimits {
   aiRequestsPerDay: number;
   fileUploadEnabled: boolean;
   maxStorageMb: number;
-  transcriptionMinutesPerMonth: number;
   maxCollaborators: number;
   repositoryEnabled: boolean;
   integrationsEnabled: boolean;
@@ -55,15 +54,14 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: 0,
     fileUploadEnabled: false,
     maxStorageMb: 0,
-    transcriptionMinutesPerMonth: 0,
     maxCollaborators: 0,
     repositoryEnabled: false,
     integrationsEnabled: false,
   },
   // Verified-student tier ($5/mo). Near-Pro power for the academic land-grab —
   // the segment AI-native competitors (Dovetail/Marvin/CoLoop) don't serve.
-  // Capped canvases + no collaborators keep it individual; AI is full (text-AI
-  // costs pennies) with a modest transcription allowance + BYO-key for more.
+  // Capped canvases + no collaborators keep it individual; AI features run on
+  // the student's own provider key (no included AI or transcription usage).
   student: {
     maxCanvases: 5,
     maxTranscriptsPerCanvas: Infinity,
@@ -94,7 +92,6 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
     fileUploadEnabled: true,
     maxStorageMb: 500,
-    transcriptionMinutesPerMonth: 300, // 5 hrs; BYO-key for more
     maxCollaborators: 0,
     repositoryEnabled: true,
     integrationsEnabled: false,
@@ -129,7 +126,6 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
     fileUploadEnabled: true,
     maxStorageMb: 500,
-    transcriptionMinutesPerMonth: 600, // 10 hrs; BYO-key for unlimited
     maxCollaborators: 3,
     repositoryEnabled: true,
     integrationsEnabled: false,
@@ -164,7 +160,6 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
     fileUploadEnabled: true,
     maxStorageMb: 5000,
-    transcriptionMinutesPerMonth: 3000, // ~50 hrs, matching the /pricing table (was 300 — below Pro); BYO-key for unlimited
     maxCollaborators: Infinity,
     repositoryEnabled: true,
     // No provider integration exists. There was never an OAuth flow — the old

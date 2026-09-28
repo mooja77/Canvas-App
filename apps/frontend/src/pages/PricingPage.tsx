@@ -499,12 +499,10 @@ export default function PricingPage() {
                   feature: 'AI text analysis',
                   values: ['—', '1,000/day fair use', '1,000/day fair use', '1,000/day fair use', 'Custom'],
                 },
-                // The upload + transcription screen shipped (#211), but production
-                // has no platform OpenAI key yet, so the plans' included minutes
-                // (transcriptionMinutesPerMonth, pooled per seat on Pro/Team)
-                // cannot be used: only a researcher's own OpenAI key transcribes.
-                // Advertise exactly that. When the server key is switched on,
-                // add the included hours back, derived from PLAN_LIMITS.
+                // No plan includes transcription minutes or hours, and none ever
+                // will: JMS Dev Lab holds no paid AI key (decision 28 Sep 2026).
+                // Every recording is transcribed on the researcher's own OpenAI
+                // key and OpenAI bills them directly. Do not add an hours row.
                 {
                   feature: 'Audio transcription (with your own OpenAI key)',
                   values: [
@@ -515,7 +513,10 @@ export default function PricingPage() {
                     '✓',
                   ],
                 },
-                { feature: 'Bring your own AI key', values: ['—', '✓', '✓', '✓', '✓'] },
+                {
+                  feature: 'AI runs on your own OpenAI, Anthropic or Google account (the provider bills you)',
+                  values: ['—', '✓', '✓', '✓', '✓'],
+                },
               ],
             },
             {

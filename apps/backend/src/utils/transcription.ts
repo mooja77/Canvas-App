@@ -22,35 +22,30 @@ export interface TranscriptionResult {
   language?: string;
 }
 
-let client: OpenAI | null = null;
-
-function getClient(apiKey?: string): OpenAI {
-  if (apiKey) {
-    // Per-request client with user's own key
-    return new OpenAI({ apiKey });
-  }
-  if (!client) {
-    const key = process.env.OPENAI_API_KEY;
-    if (!key) throw new Error('OPENAI_API_KEY is required for transcription');
-    client = new OpenAI({ apiKey: key });
-  }
-  return client;
+/**
+ * Always a per-request client on a customer's own key. There is no server key
+ * fallback: an empty key is refused before any network call.
+ */
+function clientFor(apiKey: string): OpenAI {
+  if (!apiKey) throw new Error("Transcription needs the customer's own OpenAI key");
+  return new OpenAI({ apiKey });
 }
 
 /**
  * Transcribe an audio file using Whisper API.
  * @param filePath Absolute path to the audio file on disk
  * @param language Optional BCP-47 language code (e.g. 'en')
- * @param apiKey Optional user-provided OpenAI API key (BYOK)
+ * @param apiKey The customer's own OpenAI API key (required; see utils/aiKeys.ts)
  */
 export async function transcribeAudio(
   filePath: string,
-  language?: string,
-  apiKey?: string,
+  language: string | undefined,
+  apiKey: string,
 ): Promise<TranscriptionResult> {
+  const client = clientFor(apiKey);
   const file = fs.createReadStream(filePath);
 
-  const response = await getClient(apiKey).audio.transcriptions.create({
+  const response = await client.audio.transcriptions.create({
     model: 'whisper-1',
     file,
     response_format: 'verbose_json',

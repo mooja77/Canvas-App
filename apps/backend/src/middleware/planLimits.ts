@@ -9,7 +9,6 @@ import {
   higherAllowancePhrase,
   planLabel,
 } from '../config/plans.js';
-import { resolveUserOpenAiKey, transcriptionPool } from '../utils/transcriptionMetering.js';
 import { OWNER_PLAN_INCLUDE, resolveCanvasOwnerPlan } from '../utils/ownerPlan.js';
 
 // Transcripts seeded by a starter template. They never count against a plan's
@@ -20,13 +19,6 @@ const SAMPLE_SOURCE = 'sample';
 // which is NULL, i.e. false, for the ordinary rows whose sourceType is null. Spell
 // out the null case so a researcher's own transcripts keep counting.
 const OWN_TRANSCRIPTS = { OR: [{ sourceType: null }, { sourceType: { not: SAMPLE_SOURCE } }] };
-import {
-  isHostedAiEnabled,
-  hostedDailyCeilingCents,
-  hostedUserMonthlyCapCents,
-  globalSpendTodayCents,
-  userSpendThisMonthCents,
-} from '../utils/hostedAiBudget.js';
 
 interface PlanLimitError {
   success: false;
@@ -444,108 +436,34 @@ export function checkAiAccess() {
 }
 
 /**
- * Check the monthly audio-transcription allowance.
+ * Gate audio transcription by plan only.
  *
- * Transcription is the one genuinely metered cost in the pricing model (Whisper
- * ~$0.006/min). The allowance is per calendar month and per plan
- * (`transcriptionMinutesPerMonth`). Three carve-outs, in order:
- *   1. Legacy access-code users (no req.userId) can't be metered per-user via
- *      AiUsage — skip, like checkAiAccess (closed grandfathered cohort).
- *   2. Users with a working BYO OpenAI key pay OpenAI directly, so they bypass
- *      the platform's metered pool entirely.
- *   3. An Infinity cap (defensive; no current plan uses it) skips the check.
- * Otherwise the user is blocked once this month's server-key minutes reach the
- * cap. Free's cap is 0, so Free has no platform transcription unless they BYO.
+ * There are no included transcription minutes: every recording is sent to
+ * OpenAI on a customer's own key (utils/aiKeys.ts#resolveTranscriptionKey), so
+ * nothing here meters or caps usage. The plan decides whether transcription is
+ * part of the product (it rides on file upload); the route then refuses with
+ * TRANSCRIPTION_KEY_REQUIRED when no customer key can pay.
+ *
+ * Legacy access-code users (no req.userId) cannot store a key, so they are
+ * asked to link an email account first.
  */
-export function checkTranscriptionMinutes() {
+export function checkTranscriptionAccess() {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const userId = req.userId;
-    if (!userId) {
+    if (!req.userId) {
       return res.status(403).json({
         success: false,
         error: 'Link an email account before using audio transcription.',
         code: 'EMAIL_ACCOUNT_REQUIRED',
       });
     }
-
-    const ownKey = await resolveUserOpenAiKey(userId);
-    if (ownKey) return next();
-
     const plan = await resolveRequestPlan(req);
-    const limits = getPlanLimits(plan);
-    if (limits.transcriptionMinutesPerMonth === Infinity) return next();
-
-    // The allowance is the canvas OWNER's pool, shared across their paid
-    // seats (utils/transcriptionMetering.ts#transcriptionPool). Metering the
-    // requester instead let every collaborator bring a fresh allowance.
-    const canvasId = req.params.id || req.params.canvasId;
-    const pool = await transcriptionPool(canvasId, userId, plan, limits.transcriptionMinutesPerMonth);
-    const cap = pool.minutesPerMonth;
-    const used = pool.minutesUsed;
-    if (used >= cap) {
-      // Was the one gate that already named Student. It is derived now too, so
-      // it stays true if transcription ever moves between tiers.
-      const moreMinutes = higherAllowancePhrase(cap, (l) => l.transcriptionMinutesPerMonth);
-      const message =
-        cap === 0
-          ? `${featureAvailabilityMessage('Audio transcription', (l) => l.transcriptionMinutesPerMonth > 0)} Or add your own OpenAI key in AI settings.`
-          : `Monthly transcription limit reached (${cap} min${pool.seats > 1 ? `, shared by ${pool.seats} seats` : ''}). Add your own OpenAI key for unlimited transcription${
-              moreMinutes ? `, or upgrade — ${moreMinutes} minutes per month` : ''
-            }.`;
-      return limitResponse(res, message, 'transcriptionMinutesPerMonth', used, cap, {
-        upgrade: cap === 0 || Boolean(moreMinutes),
-      });
-    }
-    next();
-  };
-}
-
-/**
- * Hosted-AI guardrails (see utils/hostedAiBudget.ts). A NO-OP unless hosted AI
- * is enabled (server key present + HOSTED_AI_ENABLED=true) — so by default this
- * changes nothing. When on, it bounds the platform's OpenAI spend before a
- * hosted text-AI call runs:
- *   - legacy users (no req.userId) skip (can't meter per-user);
- *   - users on their own OpenAI key bypass (their cost, not ours);
- *   - if the global daily ceiling is hit -> 503 "hosted AI paused" (retryable);
- *   - if the user's monthly hosted spend hits the cap -> 403 with an upgrade /
- *     bring-your-own-key hint.
- */
-export function checkHostedAiBudget() {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    if (!isHostedAiEnabled()) return next();
-
-    const userId = req.userId;
-    if (!userId) {
-      return res.status(403).json({
-        success: false,
-        error: 'Link an email account before using hosted AI.',
-        code: 'EMAIL_ACCOUNT_REQUIRED',
-      });
-    }
-
-    const ownKey = await resolveUserOpenAiKey(userId);
-    if (ownKey) return next();
-
-    if ((await globalSpendTodayCents()) >= hostedDailyCeilingCents()) {
-      return res.status(503).json({
-        success: false,
-        error:
-          'Hosted AI is paused for today (daily budget reached). Add your own OpenAI key in AI settings to keep going.',
-        code: 'HOSTED_AI_PAUSED',
-        retryable: true,
-      });
-    }
-
-    const userMonth = await userSpendThisMonthCents(userId);
-    const cap = hostedUserMonthlyCapCents();
-    if (userMonth >= cap) {
+    if (!getPlanLimits(plan).fileUploadEnabled) {
       return limitResponse(
         res,
-        'Monthly hosted-AI limit reached. Add your own OpenAI key for unlimited AI, or upgrade your plan.',
-        'hostedAiMonthlyCents',
-        userMonth,
-        cap,
+        featureAvailabilityMessage('Audio transcription', (l) => l.fileUploadEnabled),
+        'fileUploadEnabled',
+        0,
+        0,
       );
     }
     next();

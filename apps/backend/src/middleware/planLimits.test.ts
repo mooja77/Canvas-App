@@ -21,17 +21,6 @@ const { mockPrisma } = vi.hoisted(() => ({
 }));
 
 vi.mock('../lib/prisma.js', () => ({ prisma: mockPrisma }));
-vi.mock('../utils/transcriptionMetering.js', () => ({
-  resolveUserOpenAiKey: vi.fn(),
-  transcriptionMinutesUsedThisMonth: vi.fn(),
-}));
-vi.mock('../utils/hostedAiBudget.js', () => ({
-  isHostedAiEnabled: vi.fn(() => false),
-  hostedDailyCeilingCents: vi.fn(() => 0),
-  hostedUserMonthlyCapCents: vi.fn(() => 0),
-  globalSpendTodayCents: vi.fn(() => 0),
-  userSpendThisMonthCents: vi.fn(() => 0),
-}));
 
 const {
   checkCanvasLimit,

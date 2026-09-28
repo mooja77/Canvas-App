@@ -759,6 +759,8 @@ async function qdpxRoundTrip(a: Actor) {
   const fd = new FormData();
   fd.append('file', new Blob([buf], { type: 'application/zip' }), 'p.qdpx');
   const imp = await authedFetch(a, BASE + `canvas/${target.body.data.id}/import/qdpx`, { method: 'POST', body: fd });
+  // The import's own account of what it skipped or merged, so a failure says why.
+  const impBody = (await imp.json().catch(() => null)) as { message?: string } | null;
   const copy = (await fullCanvas(a, target.body.data.id)).data;
   check(
     'INV-QDPX-ROUNDTRIP',
@@ -772,7 +774,8 @@ async function qdpxRoundTrip(a: Actor) {
             c.endOffset,
           ) === c.codedText,
       ),
-    () => `${a.key} import=${imp.status} app=${copy?.codings?.length} ledger=${cv.codings.size}`,
+    () =>
+      `${a.key} import=${imp.status} app=${copy?.codings?.length} ledger=${cv.codings.size} (${impBody?.message ?? 'no import message'})`,
   );
   vol.qdpxRoundTrips++;
   await a.c.req('DELETE', `canvas/${target.body.data.id}`);

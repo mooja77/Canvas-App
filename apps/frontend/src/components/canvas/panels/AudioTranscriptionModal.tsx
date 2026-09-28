@@ -5,28 +5,32 @@ import { canvasApi } from '../../../services/api';
 import { useCanvasStore, useActiveCanvasId, useIsViewer } from '../../../stores/canvasStore';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
-import { apiErrorCode, apiErrorMessage, formatBytes, formatMinutes } from './featureScreenUtils';
+import { useAiConfigStore } from '../../../stores/aiConfigStore';
+import { apiErrorCode, apiErrorMessage, formatBytes } from './featureScreenUtils';
 
 /**
  * Audio upload + transcription screen.
  *
  * Upload a recording, start a transcription job, watch it, and add the result
- * to the canvas as a transcript. The allowance panel shows the same numbers the
- * server gate (`checkTranscriptionMinutes`) decides with, and says plainly when
- * transcription needs the researcher's own OpenAI key.
+ * to the canvas as a transcript. There are no included minutes: every recording
+ * is transcribed on a customer's own OpenAI key (backend utils/aiKeys.ts). The
+ * panel at the top says whose key will pay, and when there is none it says
+ * "Connect your AI account to transcribe" with a button that opens the wizard.
  */
 
 interface Allowance {
   plan: string;
-  minutesPerMonth: number | null;
-  minutesUsed: number;
-  minutesRemaining: number | null;
-  /** Paid seats sharing the owner's pool (1 when not billed per seat). */
-  seats?: number;
-  usesOwnKey: boolean;
-  serverTranscriptionConfigured: boolean;
   fileUploadEnabled: boolean;
   maxUploadMb: number;
+  emailAccount: boolean;
+  /** Whose own OpenAI key pays: the researcher's, the canvas owner's (shared), or none. */
+  keySource: 'own' | 'canvas-owner' | null;
+  isCanvasOwner: boolean;
+  canvasOwnerName: string | null;
+  ownerHasOpenAiKey: boolean;
+  ownerSharesKey: boolean;
+  usageThisMonth: { minutes: number; estimatedCostUsd: number } | null;
+  pricePerMinuteUsd: number;
 }
 
 interface JobRow {
@@ -69,8 +73,12 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
   const refreshCanvas = useCanvasStore((s) => s.refreshCanvas);
   const dialogRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  useFocusTrap(dialogRef);
-  useEscapeToClose(onClose);
+  // Inactive while the wizard is on top, so the wizard owns focus and Esc.
+  const wizardOpen = useAiConfigStore((s) => s.wizard.open);
+  const openWizard = useAiConfigStore((s) => s.openWizard);
+  const connectAi = useCallback(() => openWizard('Audio transcription', 'openai'), [openWizard]);
+  useFocusTrap(dialogRef, !wizardOpen);
+  useEscapeToClose(wizardOpen ? () => undefined : onClose);
 
   const [allowance, setAllowance] = useState<Allowance | null>(null);
   const [allowanceError, setAllowanceError] = useState<string | null>(null);
@@ -123,6 +131,15 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
     loadAllowance();
     loadJobs();
   }, [loadAllowance, loadJobs]);
+  // The wizard opens on top of this screen; re-check the key when it closes.
+  const wizardWasOpen = useRef(false);
+  useEffect(() => {
+    if (wizardWasOpen.current && !wizardOpen) {
+      setUploadError(null);
+      loadAllowance();
+    }
+    wizardWasOpen.current = wizardOpen;
+  }, [wizardOpen, loadAllowance]);
 
   // Poll while anything is still running.
   const active = (jobs ?? []).some((j) => j.status === 'queued' || j.status === 'processing');
@@ -133,7 +150,7 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
     }, 2000);
     return () => clearInterval(t);
   }, [active, loadJobs]);
-  // Refresh the allowance once a job finishes (minutes are recorded then).
+  // Refresh usage once a job finishes (minutes are recorded then).
   const wasActive = useRef(false);
   useEffect(() => {
     if (wasActive.current && !active) loadAllowance();
@@ -230,14 +247,8 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
 
   const busy = phase.kind !== 'idle';
   const blockedByPlan = allowance !== null && !allowance.fileUploadEnabled;
-  const needsOwnKey = allowance !== null && !allowance.usesOwnKey && !allowance.serverTranscriptionConfigured;
-  const outOfMinutes =
-    allowance !== null &&
-    !allowance.usesOwnKey &&
-    allowance.serverTranscriptionConfigured &&
-    allowance.minutesRemaining !== null &&
-    allowance.minutesRemaining <= 0;
-  const canUpload = !isViewer && allowance !== null && !blockedByPlan && !needsOwnKey && !outOfMinutes && !busy;
+  const needsKey = allowance !== null && allowance.keySource === null;
+  const canUpload = !isViewer && allowance !== null && !blockedByPlan && !needsKey && !busy;
 
   return createPortal(
     <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -299,7 +310,7 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
                 aria-label="Loading your allowance"
               />
             ) : (
-              <AllowancePanel allowance={allowance} />
+              <AllowancePanel allowance={allowance} onConnect={connectAi} />
             )}
           </section>
 
@@ -404,9 +415,9 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
                   {uploadError.needsKey && (
                     <>
                       {' '}
-                      <a href="/account#ai" className="font-medium underline">
-                        Add your OpenAI key
-                      </a>
+                      <button type="button" onClick={connectAi} className="font-medium underline">
+                        Connect your AI account
+                      </button>
                     </>
                   )}
                 </div>
@@ -548,7 +559,7 @@ function StatusBadge({ status, added }: { status: JobRow['status']; added: boole
   return <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
 }
 
-function AllowancePanel({ allowance }: { allowance: Allowance }) {
+function AllowancePanel({ allowance, onConnect }: { allowance: Allowance; onConnect: () => void }) {
   const planName = PLAN_NAMES[allowance.plan] ?? allowance.plan;
   const box = 'rounded-lg p-3 text-sm';
   if (!allowance.fileUploadEnabled) {
@@ -559,7 +570,7 @@ function AllowancePanel({ allowance }: { allowance: Allowance }) {
       >
         <p className="font-medium">Audio transcription isn't included in the {planName} plan.</p>
         <p className="mt-1">
-          Student, Pro and Team can upload recordings and transcribe them.{' '}
+          Student, Pro and Team can upload recordings and transcribe them on their own OpenAI account.{' '}
           <a href="/pricing" className="font-medium underline">
             Compare plans
           </a>
@@ -567,74 +578,77 @@ function AllowancePanel({ allowance }: { allowance: Allowance }) {
       </div>
     );
   }
-  if (allowance.usesOwnKey) {
+  const price = `$${allowance.pricePerMinuteUsd} a minute`;
+  const usage = allowance.usageThisMonth;
+  if (allowance.keySource === 'own') {
     return (
       <div
         className={`${box} bg-emerald-50 text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-200`}
         data-testid="transcription-own-key"
       >
-        Using your own OpenAI key. OpenAI bills you directly (about $0.006 a minute), so these transcriptions don't use
-        your plan's minutes.
+        Transcribing on your own OpenAI account. OpenAI bills you directly ({price}).
+        {usage && usage.minutes > 0 && (
+          <>
+            {' '}
+            This month: {usage.minutes} min, about ${usage.estimatedCostUsd.toFixed(2)}.
+          </>
+        )}
       </div>
     );
   }
-  if (!allowance.serverTranscriptionConfigured) {
+  if (allowance.keySource === 'canvas-owner') {
+    const owner = allowance.canvasOwnerName || 'the canvas owner';
+    return (
+      <div
+        className={`${box} bg-sky-50 text-sky-900 dark:bg-sky-900/20 dark:text-sky-200`}
+        data-testid="transcription-owner-key"
+      >
+        <p>
+          Transcriptions here use <strong>{owner}&apos;s</strong> OpenAI key, which they share with collaborators.
+          OpenAI bills {owner} ({price}), and they can see the minutes you use.
+        </p>
+        <p className="mt-1">
+          Prefer to pay yourself?{' '}
+          <button type="button" onClick={onConnect} className="font-medium underline">
+            Connect your own AI account
+          </button>
+        </p>
+      </div>
+    );
+  }
+  if (!allowance.emailAccount) {
     return (
       <div
         className={`${box} bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-200`}
         data-testid="transcription-needs-key"
       >
-        <p className="font-medium">Transcription needs your own OpenAI key for now.</p>
+        <p className="font-medium">Connect your AI account to transcribe</p>
         <p className="mt-1">
-          Add an OpenAI key in your account's AI settings and transcribe as much as you like — OpenAI bills you
-          directly, about $0.006 a minute.{' '}
-          <a href="/account#ai" className="font-medium underline">
-            Add your OpenAI key
+          First link an email address to this access-code account in{' '}
+          <a href="/account" className="font-medium underline">
+            Account
           </a>
+          , then connect your OpenAI key.
         </p>
       </div>
     );
   }
-  const cap = allowance.minutesPerMonth;
-  if (cap === null) {
-    return (
-      <div className={`${box} bg-gray-50 dark:bg-gray-900/40`}>
-        Your {planName} plan has no monthly transcription cap.
-      </div>
-    );
-  }
-  const used = Math.min(allowance.minutesUsed, cap);
   return (
     <div
-      className={`${box} bg-gray-50 text-gray-800 dark:bg-gray-900/40 dark:text-gray-200`}
-      data-testid="transcription-meter"
+      className={`${box} bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-200`}
+      data-testid="transcription-needs-key"
     >
-      <div className="flex items-center justify-between">
-        <span>
-          {formatMinutes(allowance.minutesRemaining ?? 0)} of {formatMinutes(cap)} left this month ({planName}
-          {allowance.seats && allowance.seats > 1 ? `, shared by ${allowance.seats} seats` : ''})
-        </span>
-      </div>
-      <div
-        role="meter"
-        aria-label="Transcription minutes used this month"
-        aria-valuemin={0}
-        aria-valuemax={cap}
-        aria-valuenow={used}
-        aria-valuetext={`${used} of ${cap} minutes used`}
-        className="mt-2 h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700"
-      >
-        <div className="h-2 rounded-full bg-indigo-500" style={{ width: `${cap ? (used / cap) * 100 : 100}%` }} />
-      </div>
-      {allowance.minutesRemaining === 0 && (
-        <p className="mt-2">
-          You've used this month's minutes. They reset on the 1st, or add your own OpenAI key in{' '}
-          <a href="/account#ai" className="font-medium underline">
-            AI settings
-          </a>{' '}
-          to keep going.
-        </p>
-      )}
+      <p className="font-medium">Connect your AI account to transcribe</p>
+      <p className="mt-1">
+        Transcription runs on your own OpenAI account, and OpenAI bills you directly ({price}, about $
+        {(allowance.pricePerMinuteUsd * 60).toFixed(2)} for an hour of audio).
+        {!allowance.isCanvasOwner &&
+          allowance.ownerHasOpenAiKey &&
+          ' The canvas owner has an OpenAI key but has not shared it with collaborators. Ask them to, or connect your own.'}
+      </p>
+      <button type="button" onClick={onConnect} className="btn-primary mt-2 px-3 py-1.5 text-sm">
+        Connect your AI account
+      </button>
     </div>
   );
 }

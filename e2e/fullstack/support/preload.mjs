@@ -11,7 +11,10 @@
 //   api.openai.com / api.anthropic.com / generativelanguage.googleapis.com
 //                             -> canned AI completion (Whisper transcriptions
 //                                included; POST /whisper?fail=1 on the clock
-//                                port makes them fail)
+//                                port makes them fail). Key checks (GET
+//                                /v1/models) answer 401 for a key containing
+//                                "sk-bad" and 429 insufficient_quota for
+//                                "sk-nocredit", like the real providers.
 //
 // Stripe does not go through fetch: the backend's Stripe SDK is pointed at the
 // local Stripe stub (STRIPE_API_HOST/PORT/PROTOCOL, honoured only outside
@@ -103,14 +106,50 @@ globalThis.fetch = async function guardedFetch(input, init = {}) {
     record({ kind: 'jms-event', body: parsed });
     return new Response('{"ok":true}', { status: 200, headers: { 'content-type': 'application/json' } });
   }
+  // Which key a call carried: a customer's own test key ("sk-byo…"/"sk-own…"),
+  // the harness's decoy server key ("sk-server…", which must never be used),
+  // or something else. Recorded, never the key itself.
+  const reqHeaders = new Headers(
+    init.headers ?? (typeof Request !== 'undefined' && input instanceof Request ? input.headers : {}),
+  );
+  const presented = String(
+    reqHeaders.get('authorization') ?? reqHeaders.get('x-api-key') ?? reqHeaders.get('x-goog-api-key') ?? '',
+  );
+  const keyKind = /sk-server/.test(presented)
+    ? 'server'
+    : /sk-(byo|own)/.test(presented)
+      ? 'byo'
+      : presented
+        ? 'other'
+        : 'none';
+  const keyTag = (presented.match(/sk-(?:byo|own)-([a-z0-9]+)-/) || [])[1] || null;
+  const AI_HOSTS = new Set(['api.openai.com', 'api.anthropic.com', 'generativelanguage.googleapis.com']);
+  if (AI_HOSTS.has(url.hostname) && /\/models$/.test(url.pathname) && (init.method ?? 'GET') === 'GET') {
+    record({ kind: 'ai-key-check', host: url.hostname, keyKind, keyTag });
+    if (/sk-bad/.test(presented)) {
+      return new Response(
+        JSON.stringify({ error: { message: 'Incorrect API key provided', code: 'invalid_api_key' } }),
+        {
+          status: 401,
+          headers: { 'content-type': 'application/json' },
+        },
+      );
+    }
+    if (/sk-nocredit/.test(presented)) {
+      return new Response(JSON.stringify({ error: { message: 'quota', code: 'insufficient_quota' } }), {
+        status: 429,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify({ object: 'list', data: [{ id: 'whisper-1', object: 'model' }] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
   if (url.hostname === 'api.openai.com' && url.pathname.endsWith('/audio/transcriptions')) {
     // Whisper. Answer with a verbose_json transcription, or a 400 while the
     // test has switched failure on through the control server (/whisper).
-    const hdrs = new Headers(
-      init.headers ?? (typeof Request !== 'undefined' && input instanceof Request ? input.headers : {}),
-    );
-    const auth = String(hdrs.get('authorization') ?? '');
-    record({ kind: 'ai', provider: 'openai', path: url.pathname, keyKind: auth.includes('sk-byo') ? 'byo' : 'server' });
+    record({ kind: 'ai', provider: 'openai', path: url.pathname, keyKind, keyTag });
     if (whisper.fail) {
       return new Response(
         JSON.stringify({ error: { message: 'Audio file could not be decoded (stub)', type: 'invalid_request_error' } }),
@@ -134,7 +173,7 @@ globalThis.fetch = async function guardedFetch(input, init = {}) {
     );
   }
   if (url.hostname === 'api.openai.com') {
-    record({ kind: 'ai', provider: 'openai', path: url.pathname });
+    record({ kind: 'ai', provider: 'openai', path: url.pathname, keyKind, keyTag });
     const content = process.env.NETGUARD_AI_REPLY || '{"suggestions":[]}';
     return new Response(
       JSON.stringify({
@@ -150,7 +189,7 @@ globalThis.fetch = async function guardedFetch(input, init = {}) {
     );
   }
   if (url.hostname === 'api.anthropic.com') {
-    record({ kind: 'ai', provider: 'anthropic', path: url.pathname });
+    record({ kind: 'ai', provider: 'anthropic', path: url.pathname, keyKind, keyTag });
     const text = process.env.NETGUARD_AI_REPLY || '{"suggestions":[]}';
     return new Response(
       JSON.stringify({

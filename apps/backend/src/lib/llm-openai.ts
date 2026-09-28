@@ -13,7 +13,7 @@ import type {
   LlmStreamChunk,
   LlmEmbeddingResult,
 } from './llm.js';
-import { registerProvider, registerProviderFactory } from './llm.js';
+import { registerProviderFactory } from './llm.js';
 import { withLlmRetry } from './llm-retry.js';
 
 // Default model when the caller doesn't specify one. AI is a paid-tier-only
@@ -116,11 +116,5 @@ const openaiFactory: LlmProviderFactory = {
 };
 
 registerProviderFactory('openai', openaiFactory);
-
-// Singleton for server-side fallback (if OPENAI_API_KEY is set)
-if (process.env.OPENAI_API_KEY) {
-  const serverClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  registerProvider('openai', createOpenAIProvider(serverClient, DEFAULT_MODEL));
-}
 
 export default openaiFactory;

@@ -67,7 +67,8 @@ Optional backend integrations:
 - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
   `STRIPE_ACADEMIC_COUPON_ID`;
 - email: `RESEND_API_KEY`/`RESEND_WEBHOOK_SECRET` or `SMTP_*`;
-- hosted AI: `OPENAI_API_KEY` plus the documented budget limits;
+- AI: none. All AI runs on each customer's own key; do not set `OPENAI_API_KEY`
+  (it is ignored and logged as a warning at start-up);
 - storage: `S3_BUCKET`, `S3_REGION`, credentials and optional endpoint;
 - operations: `ADMIN_API_KEY`, `METRICS_TOKEN`, `SENTRY_DSN`.
 

@@ -57,6 +57,10 @@ const { mockPrisma } = vi.hoisted(() => {
     userAiConfig: {
       findUnique: vi.fn(),
     },
+    aiUsage: {
+      aggregate: vi.fn().mockResolvedValue({ _sum: { durationSeconds: 0 } }),
+      groupBy: vi.fn().mockResolvedValue([]),
+    },
     $transaction: vi.fn(),
     $queryRawUnsafe: vi.fn(),
     $disconnect: vi.fn(),

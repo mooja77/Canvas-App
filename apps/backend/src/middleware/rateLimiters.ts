@@ -33,7 +33,7 @@ export const mutationLimiter = build(60, 5 * 60 * 1000, 'Too many requests — s
 // Sensitive validation endpoints that make external calls (AI provider test).
 // Tight limit to block brute-force of LLM keys via the validation endpoint.
 export const sensitiveValidationLimiter = build(
-  5,
+  10,
   15 * 60 * 1000,
   'Too many validation attempts. Try again in 15 minutes.',
 );

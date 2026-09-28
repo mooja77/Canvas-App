@@ -326,7 +326,7 @@ const TOUR_STEPS: TourStep[] = [
       'The AI menu gives you four powerful tools: Auto-Code to apply codes by pattern, AI Code for intelligent suggestions, AI Chat to ask questions about your data, and Summarize for concise overviews.',
     position: 'bottom',
     icon: 'ai',
-    tip: 'Bring your own API key (OpenAI, Anthropic, or Google) to enable AI features.',
+    tip: 'AI runs on your own OpenAI, Anthropic or Google account (you pay the provider directly). Connect it in Account → AI.',
     duration: 6000,
   },
 
