@@ -97,6 +97,7 @@ chatRoutes.post(
       const batchSize = 100;
       let totalEmbedded = 0;
       let totalInputTokens = 0;
+      let embeddingModel = 'text-embedding-3-small';
 
       for (let i = 0; i < allChunks.length; i += batchSize) {
         const batch = allChunks.slice(i, i + batchSize);
@@ -117,6 +118,7 @@ chatRoutes.post(
 
         totalEmbedded += batch.length;
         totalInputTokens += embedResults.reduce((sum, e) => sum + e.inputTokens, 0);
+        if (embedResults[0]?.model) embeddingModel = embedResults[0].model;
       }
 
       // Track usage
@@ -126,10 +128,10 @@ chatRoutes.post(
           canvasId: canvas.id,
           feature: 'chat',
           provider: req.llmProvider.name,
-          model: 'text-embedding-3-small',
+          model: embeddingModel,
           inputTokens: totalInputTokens,
           outputTokens: 0,
-          costCents: calculateCostCents('text-embedding-3-small', totalInputTokens, 0),
+          costCents: calculateCostCents(embeddingModel, totalInputTokens, 0),
         },
       });
 

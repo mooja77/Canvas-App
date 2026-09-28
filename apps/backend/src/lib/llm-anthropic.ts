@@ -16,8 +16,14 @@ import type {
 } from './llm.js';
 import { registerProviderFactory } from './llm.js';
 import { withLlmRetry } from './llm-retry.js';
+import { DEFAULT_CHAT_MODELS } from './aiModels.js';
 
-const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
+const DEFAULT_MODEL = DEFAULT_CHAT_MODELS.anthropic;
+
+// No `temperature` is sent. Anthropic answers 400 when temperature, top_p or
+// top_k is set to a non-default value on Claude Opus 4.7 and later models
+// (model-deprecations page, "API parameter deprecations"), and our default,
+// claude-sonnet-5, is one of them. Omitting it is valid on every model.
 
 // Build the Anthropic SDK's `system` parameter from our prompt builders.
 // If the prompt-author asked for ephemeral caching (the `cache_control` hint
@@ -59,7 +65,6 @@ function createAnthropicProvider(client: Anthropic, defaultModel: string): LlmPr
         client.messages.create({
           model,
           max_tokens: options.maxTokens ?? 2048,
-          temperature: options.temperature ?? 0.3,
           ...(systemParam ? { system: systemParam } : {}),
           messages: userMessages,
         }),
@@ -98,7 +103,6 @@ function createAnthropicProvider(client: Anthropic, defaultModel: string): LlmPr
       const stream = client.messages.stream({
         model,
         max_tokens: options.maxTokens ?? 2048,
-        temperature: options.temperature ?? 0.3,
         ...(systemParam ? { system: systemParam } : {}),
         messages: userMessages,
       });

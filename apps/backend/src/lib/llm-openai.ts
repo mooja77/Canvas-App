@@ -15,13 +15,13 @@ import type {
 } from './llm.js';
 import { registerProviderFactory } from './llm.js';
 import { withLlmRetry } from './llm-retry.js';
+import { DEFAULT_CHAT_MODELS, DEFAULT_EMBEDDING_MODELS, resolveModel } from './aiModels.js';
 
-// Default model when the caller doesn't specify one. AI is a paid-tier-only
-// feature (Free has aiEnabled: false), so this default only ever serves paying
-// users — use a capable model, not the cheapest. Set AI_MODEL to point at the
-// newest/best model as they ship (no code change). gpt-4o is the floor.
-const DEFAULT_MODEL = process.env.AI_MODEL || 'gpt-4o';
-const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small';
+// Default model when the customer's settings name none. AI_MODEL can override
+// it; a retired id there is mapped to its replacement (lib/aiModels.ts), so a
+// stale env var cannot break every OpenAI call.
+const DEFAULT_MODEL = resolveModel('openai', process.env.AI_MODEL) || DEFAULT_CHAT_MODELS.openai;
+const DEFAULT_EMBEDDING_MODEL = DEFAULT_EMBEDDING_MODELS.openai;
 
 /** Create an OpenAI LlmProvider with a specific client and default model */
 function createOpenAIProvider(client: OpenAI, defaultModel: string): LlmProvider {
