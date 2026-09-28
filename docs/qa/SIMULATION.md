@@ -236,3 +236,13 @@ The Stripe double implements the matching Stripe behaviour: `always_invoice`, `c
   - An earlier run on the same code had 2 of 45 failing. Both were one miss on day 76 for `card-dies`: `/auth/me` returned no user. It is not seat-related and did not recur. Its cause was **not established**; the invariant now records the HTTP status if it happens again.
 
 **Not covered.** Transcription over time. Pooled minutes were removed on 28 Sep 2026 (all AI runs on the customer's own key); the key rules are tested in `utils/aiKeys.test.ts` and `e2e/fullstack/11-own-ai-key.spec.ts`.
+
+## Own AI key (28 Sep 2026, branch `feat/own-ai-key-wizard`)
+
+The simulation makes no AI calls, so this branch only had to leave it green. Seed 42, 12 months:
+
+- `origin/main` (75e3f72): **0 of 45 failing**, 221,591 checks, 5xx 0.
+- This branch, first run: **1 of 45 failing**. `INV-QDPX-ROUNDTRIP` for `grace-owner` 5 times: the imported copy had one coding fewer than the ledger (for example app=318, ledger=319). 5xx 0.
+- This branch, second run (same code, plus the diagnostic below): **0 of 45 failing**, 211,708 checks, 5xx 0.
+
+The cause of the first-run miss was **not established**. The two runs of the same code differ in request count (21,927 vs 21,875), so runs are not fully deterministic. A candidate that is **unproven**: the app lets a coder save the same code on the same span twice, and the QDPX import drops the second copy as a duplicate (`utils/qdpxImport.ts`, `codingKeys`). The random `coderWrite` spans on the one-transcript grace canvas could collide. `INV-QDPX-ROUNDTRIP` now prints the import's own summary (skipped / "already on this canvas" codings), so the next miss will show whether that is the cause.
