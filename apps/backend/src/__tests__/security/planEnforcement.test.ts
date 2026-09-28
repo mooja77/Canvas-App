@@ -332,9 +332,8 @@ describe('Plan enforcement — comprehensive limits', () => {
     expect(student.maxCanvases).toBe(5);
     expect(student.maxCollaborators).toBe(0);
     expect(student.intercoderEnabled).toBe(false);
-    // Modest metered transcription (BYO-key for more); strictly less than Pro
-    expect(student.transcriptionMinutesPerMonth).toBe(300);
-    expect(student.transcriptionMinutesPerMonth).toBeLessThan(getPlanLimits('pro').transcriptionMinutesPerMonth);
+    // No included transcription minutes on any plan: it runs on the customer's own key.
+    expect('transcriptionMinutesPerMonth' in student).toBe(false);
 
     // Must NOT collapse to the free fallback
     expect(student).not.toEqual(getPlanLimits('free'));

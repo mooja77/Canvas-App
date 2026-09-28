@@ -197,8 +197,8 @@ describe('AccountPage', () => {
       expect(screen.getByText('AI Settings')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Provider')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save AI Settings' })).toBeInTheDocument();
+    // No key yet: one button opens the "Connect your AI account" wizard.
+    expect(await screen.findByRole('button', { name: 'Connect your AI account' })).toBeInTheDocument();
   });
 
   it('shows Manage subscription link for paid users', async () => {

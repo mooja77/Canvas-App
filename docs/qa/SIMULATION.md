@@ -180,7 +180,7 @@ Both runs use seed 42, 12 months (365 days), with the same cast and scripts. The
 
 - Team seat quantity sync to Stripe (unit-tested only).
 - Scheduled reports.
-- Transcription minutes: there is no reachable UI, and it would need the Whisper stub.
+- Transcription on customers' own keys over time (covered by `e2e/fullstack/11-own-ai-key.spec.ts`, not simulated). There are no included minutes to meter since 28 Sep 2026.
 - AI features beyond the stubbed provider responses.
 - Google sign-in.
 - Real Stripe behaviour. The double mimics documented Stripe objects, but prices, coupon IDs and the portal configuration in the live account were not read.
@@ -235,4 +235,4 @@ The Stripe double implements the matching Stripe behaviour: `always_invoice`, `c
   - **Final run: 0 of 45 failing**, 232,741 checks, HTTP 21,870, 5xx 0, runtime 2,207 s. All seat invariants pass.
   - An earlier run on the same code had 2 of 45 failing. Both were one miss on day 76 for `card-dies`: `/auth/me` returned no user. It is not seat-related and did not recur. Its cause was **not established**; the invariant now records the HTTP status if it happens again.
 
-**Not covered.** Pooled transcription minutes over time: there is no upload screen in this branch, and it would need the Whisper stub. It is unit-tested in `__tests__/security/transcriptionMetering.test.ts`.
+**Not covered.** Transcription over time. Pooled minutes were removed on 28 Sep 2026 (all AI runs on the customer's own key); the key rules are tested in `utils/aiKeys.test.ts` and `e2e/fullstack/11-own-ai-key.spec.ts`.

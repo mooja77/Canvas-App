@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
-import { checkAiAccess, checkHostedAiBudget } from '../middleware/planLimits.js';
+import { checkAiAccess } from '../middleware/planLimits.js';
 import { validate } from '../middleware/validation.js';
 import {
   suggestCodesSchema,
@@ -15,7 +15,7 @@ import {
   buildAutoCodeTranscriptPrompt,
   buildMethodsStatementPrompt,
 } from '../utils/aiPrompts.js';
-import { resolveAiConfig } from '../middleware/aiConfig.js';
+import { AI_KEY_REQUIRED_MESSAGE, resolveAiConfig } from '../middleware/aiConfig.js';
 import { calculateCostCents } from '../utils/aiCost.js';
 import { aiCacheGet, aiCacheSet, aiCacheKey } from '../utils/aiCache.js';
 import { findCoding } from '../utils/findCoding.js';
@@ -56,7 +56,6 @@ interface InlineSuggestion {
 aiRoutes.post(
   '/canvas/:id/ai/suggest-codes',
   checkAiAccess(),
-  checkHostedAiBudget(),
   resolveAiConfig(),
   validate(suggestCodesSchema),
   async (req: Request, res: Response, next: NextFunction) => {
@@ -95,9 +94,7 @@ aiRoutes.post(
       });
 
       if (!req.llmProvider) {
-        return res
-          .status(400)
-          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+        return res.status(400).json({ success: false, error: AI_KEY_REQUIRED_MESSAGE, code: 'AI_KEY_REQUIRED' });
       }
 
       const result = await req.llmProvider.complete({
@@ -165,7 +162,6 @@ aiRoutes.post(
 aiRoutes.post(
   '/canvas/:id/ai/auto-code-transcript',
   checkAiAccess(),
-  checkHostedAiBudget(),
   resolveAiConfig(),
   validate(autoCodeTranscriptSchema),
   async (req: Request, res: Response, next: NextFunction) => {
@@ -269,9 +265,7 @@ aiRoutes.post(
       });
 
       if (!req.llmProvider) {
-        return res
-          .status(400)
-          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+        return res.status(400).json({ success: false, error: AI_KEY_REQUIRED_MESSAGE, code: 'AI_KEY_REQUIRED' });
       }
 
       const result = await req.llmProvider.complete({
@@ -748,7 +742,6 @@ aiRoutes.post(
 aiRoutes.post(
   '/canvas/:id/ai/suggest-codes-inline',
   checkAiAccess(),
-  checkHostedAiBudget(),
   resolveAiConfig(),
   validate(suggestCodesSchema),
   async (req: Request, res: Response, next: NextFunction) => {
@@ -790,9 +783,7 @@ aiRoutes.post(
       });
 
       if (!req.llmProvider) {
-        return res
-          .status(400)
-          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+        return res.status(400).json({ success: false, error: AI_KEY_REQUIRED_MESSAGE, code: 'AI_KEY_REQUIRED' });
       }
 
       const result = await req.llmProvider.complete({
@@ -858,7 +849,6 @@ aiRoutes.post(
 aiRoutes.post(
   '/canvas/:id/ai/methods-statement',
   checkAiAccess(),
-  checkHostedAiBudget(),
   resolveAiConfig(),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -917,9 +907,7 @@ aiRoutes.post(
       });
 
       if (!req.llmProvider) {
-        return res
-          .status(400)
-          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+        return res.status(400).json({ success: false, error: AI_KEY_REQUIRED_MESSAGE, code: 'AI_KEY_REQUIRED' });
       }
 
       const result = await req.llmProvider.complete({

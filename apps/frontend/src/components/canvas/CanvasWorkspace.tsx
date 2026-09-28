@@ -35,7 +35,6 @@ import SelectionToolbar from './panels/SelectionToolbar';
 import QuickAddMenu from './panels/QuickAddMenu';
 import CanvasTabBar from './panels/CanvasTabBar';
 import AiSuggestPanel from './panels/AiSuggestPanel';
-import AiSetupGuide from './panels/AiSetupGuide';
 import {
   getCodingIdsFromEdgeData,
   isDenseEdgeGraph,
@@ -222,7 +221,6 @@ export default function CanvasWorkspace() {
 
   // Alignment guides (snap lines)
   const { guideLines, onNodeDrag: alignmentOnNodeDrag, onNodeDragStop: alignmentOnNodeDragStop } = useAlignmentGuides();
-  const [showAiSetupGuide, setShowAiSetupGuide] = useState<string | null>(null);
 
   // Fetch AI config on mount
   useEffect(() => {
@@ -256,7 +254,8 @@ export default function CanvasWorkspace() {
     if (useAiConfigStore.getState().configured) {
       callback();
     } else {
-      setShowAiSetupGuide(featureName);
+      // The app-wide "Connect your AI account" wizard (components/ai).
+      useAiConfigStore.getState().openWizard(featureName);
     }
   }, []);
 
@@ -3366,7 +3365,6 @@ export default function CanvasWorkspace() {
       )}
 
       {/* AI Setup Guide */}
-      {showAiSetupGuide && <AiSetupGuide trigger={showAiSetupGuide} onClose={() => setShowAiSetupGuide(null)} />}
 
       {/* Full product tour — opens on demand from Help menu only (Sprint F) */}
       <FullProductTour />

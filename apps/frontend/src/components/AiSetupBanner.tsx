@@ -11,7 +11,7 @@ export default function AiSetupBanner() {
   const authType = useAuthStore((s) => s.authType);
   const seen = useUIStore((s) => s.featureDiscovery.aiPromptSeen);
   const markSeen = useUIStore((s) => s.markFeatureSeen);
-  const { configured, hostedAiAvailable, loaded, fetchConfig } = useAiConfigStore();
+  const { configured, loaded, fetchConfig, openWizard } = useAiConfigStore();
   const [dismissed, setDismissed] = useState(false);
 
   // Derived from the plan limits rather than a hand-listed set of tier names —
@@ -37,8 +37,7 @@ export default function AiSetupBanner() {
   // until they link an email — the Account page's AI Settings section is
   // email-auth only. Showing them the "add a key" CTA would dead-end on /account,
   // so gate the banner on email auth.
-  const eligible =
-    authType === 'email' && aiEntitled && loaded && !configured && !hostedAiAvailable && !seen && !dismissed;
+  const eligible = authType === 'email' && aiEntitled && loaded && !configured && !seen && !dismissed;
   if (!eligible) return null;
 
   const handleDismiss = () => {
@@ -66,10 +65,10 @@ export default function AiSetupBanner() {
             />
           </svg>
           <span className="truncate">
-            <a href="/account#ai" className="font-medium underline hover:no-underline">
-              Add an OpenAI or Anthropic key
-            </a>{' '}
-            to enable AI code suggestions, auto-coding &amp; summaries.
+            <button type="button" onClick={() => openWizard()} className="font-medium underline hover:no-underline">
+              Connect your AI account
+            </button>{' '}
+            to use transcription, AI code suggestions, auto-coding &amp; summaries (you pay your provider directly).
           </span>
         </div>
         <button

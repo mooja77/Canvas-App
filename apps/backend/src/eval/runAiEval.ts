@@ -10,7 +10,7 @@
  * Usage:
  *   npm run eval:ai                 # dry-run all fixtures (no API key, no cost)
  *   npm run eval:ai -- --fixture sample-emotions
- *   npm run eval:ai -- --live       # live LLM (needs OPENAI_API_KEY); not a CI gate
+ *   npm run eval:ai -- --live       # live LLM (needs EVAL_OPENAI_API_KEY, the developer's own key); not a CI gate
  *
  * The runner is dev/research tooling — never a CI gate (cost + secrets). Only
  * the dry-run pipeline + the pure evaluateFixture() are unit-tested.
@@ -119,12 +119,11 @@ async function getPredicted(fixture: Fixture, live: boolean): Promise<RawModelOu
   // module before resolving one.
   const { buildAutoCodeTranscriptPrompt } = await import('../utils/aiPrompts.js');
   await import('../lib/llm-openai.js');
-  const { createProvider, getDefaultProvider } = await import('../lib/llm.js');
-  const apiKey = process.env.OPENAI_API_KEY;
-  const provider = apiKey
-    ? createProvider('openai', apiKey, process.env.EVAL_MODEL || undefined)
-    : getDefaultProvider();
-  if (!provider) throw new Error('Live eval requires OPENAI_API_KEY (or a configured default provider).');
+  const { createProvider } = await import('../lib/llm.js');
+  // A developer's own key for an offline eval run; never read by the server.
+  const apiKey = process.env.EVAL_OPENAI_API_KEY;
+  if (!apiKey) throw new Error('Live eval requires EVAL_OPENAI_API_KEY (your own OpenAI key).');
+  const provider = createProvider('openai', apiKey, process.env.EVAL_MODEL || undefined);
   const messages = buildAutoCodeTranscriptPrompt({
     transcriptTitle: fixture.transcriptTitle,
     transcriptContent: fixture.transcriptContent,

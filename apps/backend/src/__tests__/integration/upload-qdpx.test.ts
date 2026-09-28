@@ -78,7 +78,7 @@ vi.mock('../../middleware/planLimits.js', () => ({
   checkRepositoryAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkIntegrationsAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkFileUploadAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
-  checkTranscriptionMinutes: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  checkTranscriptionAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkExportFormat: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   resolveRequestPlan: vi.fn().mockResolvedValue('pro'),
 }));
@@ -126,10 +126,13 @@ vi.mock('../../utils/transcription.js', () => ({
   getLocalUploadPath: vi.fn(),
 }));
 
-vi.mock('../../utils/transcriptionMetering.js', () => ({
-  resolveUserOpenAiKey: vi.fn().mockResolvedValue(null),
-  TRANSCRIPTION_CENTS_PER_MINUTE: 0.6,
+const { mockResolveTranscriptionKey } = vi.hoisted(() => ({ mockResolveTranscriptionKey: vi.fn() }));
+vi.mock('../../utils/aiKeys.js', () => ({
+  resolveTranscriptionKey: mockResolveTranscriptionKey,
+  transcriptionUsageOnKey: vi.fn().mockResolvedValue(null),
+  WHISPER_USD_PER_MINUTE: 0.006,
 }));
+const NO_KEY = { apiKey: null, keyOwnerId: null, source: null, isCanvasOwner: true, ownerHasOpenAiKey: false };
 
 // Mock QDPX export/import — hoisted so they can be referenced in vi.mock
 const { mockExportQdpx, mockImportQdpx } = vi.hoisted(() => ({
@@ -282,26 +285,29 @@ describe('Upload and QDPX integration tests', () => {
       status: 'queued',
     });
 
-    const previousKey = process.env.OPENAI_API_KEY;
-    process.env.OPENAI_API_KEY = 'sk-test-server-key';
-    try {
-      const res = await request(app)
-        .post(`/api/canvas/${canvasId}/transcribe`)
-        .set('Authorization', `Bearer ${jwt}`)
-        .send({ fileUploadId });
+    // The researcher's own key pays (never a server key).
+    mockResolveTranscriptionKey.mockResolvedValueOnce({
+      ...NO_KEY,
+      apiKey: 'user-own-key',
+      keyOwnerId: 'user-1',
+      source: 'own',
+    });
+    const res = await request(app)
+      .post(`/api/canvas/${canvasId}/transcribe`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ fileUploadId });
 
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.jobId).toBe('tjob-1');
-    } finally {
-      if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
-      else process.env.OPENAI_API_KEY = previousKey;
-    }
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.jobId).toBe('tjob-1');
+    expect(mockPrisma.transcriptionJob.create.mock.calls.at(-1)?.[0]?.data?.keyOwnerUserId).toBe('user-1');
   });
 
-  it('POST /canvas/:id/transcribe refuses before queueing when no OpenAI key exists anywhere', async () => {
+  it('POST /canvas/:id/transcribe refuses before queueing when the customer has no key, even if a server key is set', async () => {
     const previousKey = process.env.OPENAI_API_KEY;
-    delete process.env.OPENAI_API_KEY;
+    // A server key set by mistake must never be used for customer work.
+    process.env.OPENAI_API_KEY = `sk-server-${Math.random().toString(36).slice(2)}`;
+    mockResolveTranscriptionKey.mockResolvedValueOnce(NO_KEY);
     mockPrisma.fileUpload.findFirst.mockResolvedValue({
       id: 'file-2',
       canvasId,
@@ -316,9 +322,11 @@ describe('Upload and QDPX integration tests', () => {
         .send({ fileUploadId: 'file-2' });
       expect(res.status).toBe(409);
       expect(res.body.code).toBe('TRANSCRIPTION_KEY_REQUIRED');
+      expect(res.body.error).toMatch(/Connect your AI account/);
       expect(mockPrisma.transcriptionJob.create).not.toHaveBeenCalled();
     } finally {
-      if (previousKey !== undefined) process.env.OPENAI_API_KEY = previousKey;
+      if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = previousKey;
     }
   });
 

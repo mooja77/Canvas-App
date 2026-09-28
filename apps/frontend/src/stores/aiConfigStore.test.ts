@@ -14,9 +14,9 @@ const mockGetSettings = vi.mocked(aiSettingsApi.getSettings);
 function resetStore() {
   useAiConfigStore.setState({
     configured: false,
-    hostedAiAvailable: false,
     provider: null,
     loaded: false,
+    wizard: { open: false, reason: null, provider: null },
   });
 }
 
@@ -30,7 +30,6 @@ describe('aiConfigStore', () => {
     it('is not configured and not loaded', () => {
       const state = useAiConfigStore.getState();
       expect(state.configured).toBe(false);
-      expect(state.hostedAiAvailable).toBe(false);
       expect(state.provider).toBeNull();
       expect(state.loaded).toBe(false);
     });
@@ -61,14 +60,12 @@ describe('aiConfigStore', () => {
       expect(state.loaded).toBe(true);
     });
 
-    it('records when hosted AI is available without exposing a server key', async () => {
-      mockGetSettings.mockResolvedValue({
-        data: { data: { hasApiKey: false, hostedAiAvailable: true, provider: null } },
-      } as never);
-
+    it('re-fetches when forced (after connecting or removing a key)', async () => {
+      mockGetSettings.mockResolvedValue({ data: { data: { hasApiKey: false } } } as never);
       await useAiConfigStore.getState().fetchConfig();
-
-      expect(useAiConfigStore.getState().hostedAiAvailable).toBe(true);
+      mockGetSettings.mockResolvedValue({ data: { data: { hasApiKey: true, provider: 'openai' } } } as never);
+      await useAiConfigStore.getState().fetchConfig({ force: true });
+      expect(useAiConfigStore.getState().configured).toBe(true);
     });
 
     it('sets provider name from API response', async () => {
@@ -101,6 +98,19 @@ describe('aiConfigStore', () => {
       await useAiConfigStore.getState().fetchConfig();
 
       expect(mockGetSettings).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('wizard', () => {
+    it('opens with a reason and provider, and closes', () => {
+      useAiConfigStore.getState().openWizard('Audio transcription', 'openai');
+      expect(useAiConfigStore.getState().wizard).toEqual({
+        open: true,
+        reason: 'Audio transcription',
+        provider: 'openai',
+      });
+      useAiConfigStore.getState().closeWizard();
+      expect(useAiConfigStore.getState().wizard.open).toBe(false);
     });
   });
 

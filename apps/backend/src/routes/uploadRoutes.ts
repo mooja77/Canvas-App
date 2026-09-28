@@ -12,10 +12,9 @@ import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.
 import {
   checkFileUploadAccess,
   checkTranscriptLimit,
-  checkTranscriptionMinutes,
+  checkTranscriptionAccess,
   resolveRequestPlan,
 } from '../middleware/planLimits.js';
-import { transcriptionAllowanceFor } from '../utils/transcriptionAllowance.js';
 import { validateParams, canvasIdParam, canvasIdJobIdParams } from '../middleware/validation.js';
 import { storage } from '../lib/storage.js';
 import '../lib/storage-s3.js'; // register S3/R2 when configured
@@ -24,11 +23,8 @@ import { createJob } from '../lib/jobs.js';
 import { registerJobHandler } from '../lib/jobs.js';
 import { transcribeAudio } from '../utils/transcription.js';
 import { isValidSignature } from '../utils/magicBytes.js';
-import {
-  resolveUserOpenAiKey,
-  TRANSCRIPTION_CENTS_PER_MINUTE,
-  transcriptionPoolOwner,
-} from '../utils/transcriptionMetering.js';
+import { resolveTranscriptionKey, transcriptionUsageOnKey, WHISPER_USD_PER_MINUTE } from '../utils/aiKeys.js';
+import { friendlyProviderError } from '../lib/aiKeyCheck.js';
 import { getPlanLimits } from '../config/plans.js';
 import { AppError } from '../middleware/errorHandler.js';
 
@@ -410,13 +406,30 @@ uploadRoutes.get(
     try {
       await getOwnedCanvas(req.params.id, getAuthId(req), getAuthUserId(req));
       const plan = await resolveRequestPlan(req);
-      const allowance = await transcriptionAllowanceFor(req);
+      const userId = req.userId;
+      // No included minutes: the screen shows whose own OpenAI key would pay
+      // (utils/aiKeys.ts) and, for that key, plain usage this month.
+      const key = userId ? await resolveTranscriptionKey(req.params.id, userId) : null;
+      const [owner, usage] = await Promise.all([
+        key && !key.isCanvasOwner
+          ? prisma.user.findUnique({ where: { id: key.canvasOwnerId }, select: { name: true } })
+          : Promise.resolve(null),
+        key?.keyOwnerId ? transcriptionUsageOnKey(key.keyOwnerId) : Promise.resolve(null),
+      ]);
       res.json({
         success: true,
         data: {
-          ...allowance,
+          plan,
           fileUploadEnabled: getPlanLimits(plan).fileUploadEnabled,
           maxUploadMb: MAX_UPLOAD_MB,
+          emailAccount: Boolean(userId),
+          keySource: key?.source ?? null,
+          isCanvasOwner: key?.isCanvasOwner ?? true,
+          canvasOwnerName: owner?.name ?? null,
+          ownerHasOpenAiKey: key?.ownerHasOpenAiKey ?? false,
+          ownerSharesKey: key?.ownerSharesKey ?? false,
+          usageThisMonth: usage,
+          pricePerMinuteUsd: WHISPER_USD_PER_MINUTE,
         },
       });
     } catch (err) {
@@ -471,7 +484,7 @@ uploadRoutes.get('/canvas/:id/transcribe', validateParams(canvasIdParam), async 
 uploadRoutes.post(
   '/canvas/:id/transcribe',
   validateParams(canvasIdParam),
-  checkTranscriptionMinutes(),
+  checkTranscriptionAccess(),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dashboardAccessId = getAuthId(req);
@@ -496,14 +509,17 @@ uploadRoutes.post(
         return res.status(400).json({ success: false, error: 'Only audio or video recordings can be transcribed' });
       }
 
-      // Fail before queueing when nobody can pay for the speech API: no server
-      // key and no key of the user's own. The job used to be created and then
-      // fail in the worker, leaving a dead "failed" row behind.
-      if (!process.env.OPENAI_API_KEY && !(await resolveUserOpenAiKey(userId ?? undefined))) {
+      // Fail before queueing when no customer key can pay. There is no server
+      // key: see utils/aiKeys.ts for the collaborator rule.
+      const key = await resolveTranscriptionKey(req.params.id, userId as string);
+      if (!key.apiKey) {
         return res.status(409).json({
           success: false,
-          error:
-            'Transcription needs an OpenAI API key. Add your own OpenAI key in AI settings (you pay OpenAI directly, about $0.006 a minute) and try again.',
+          error: key.isCanvasOwner
+            ? 'Connect your AI account to transcribe. Transcription runs on your own OpenAI key and OpenAI bills you directly (about $0.006 a minute).'
+            : key.ownerHasOpenAiKey
+              ? "Connect your AI account to transcribe. The canvas owner hasn't let collaborators use their OpenAI key, so connect your own or ask them to allow it."
+              : 'Connect your AI account to transcribe. Transcription runs on your own OpenAI key and OpenAI bills you directly (about $0.006 a minute).',
           code: 'TRANSCRIPTION_KEY_REQUIRED',
         });
       }
@@ -520,24 +536,6 @@ uploadRoutes.post(
         return res.json({ success: true, data: { jobId: existingJob.id }, cached: true });
       }
 
-      // Platform-key jobs are serialized per user. This prevents several
-      // simultaneous requests from all passing the same monthly usage check
-      // before any of them records its minutes.
-      if (userId && !(await resolveUserOpenAiKey(userId))) {
-        const activeJob = await prisma.transcriptionJob.findFirst({
-          where: { requestedByUserId: userId, status: { in: ['queued', 'processing'] } },
-          select: { id: true },
-        });
-        if (activeJob) {
-          return res.status(409).json({
-            success: false,
-            error: 'Another transcription is already in progress. Wait for it to finish before starting the next.',
-            code: 'TRANSCRIPTION_IN_PROGRESS',
-            jobId: activeJob.id,
-          });
-        }
-      }
-
       // Create transcription job record
       const transcriptionJob = await prisma.transcriptionJob.create({
         data: {
@@ -546,6 +544,7 @@ uploadRoutes.post(
           status: 'queued',
           language: typeof language === 'string' ? language : null,
           requestedByUserId: userId || null,
+          keyOwnerUserId: key.keyOwnerId,
         },
       });
 
@@ -559,9 +558,8 @@ uploadRoutes.post(
           storageKey: fileUpload.storageKey,
           canvasId: req.params.id,
           language,
-          // Carry the enqueuing user so the worker can transcribe on their own
-          // OpenAI key (correct billing/quota) instead of silently using the
-          // server key. Undefined for legacy access-code users (no UserAiConfig).
+          // The worker re-resolves whose own key pays from this user and the
+          // canvas (utils/aiKeys.ts), so a revoked share stops the job.
           userId,
         },
       } as Partial<import('../lib/jobs.js').Job>);
@@ -718,20 +716,24 @@ registerJobHandler('transcribe', async (job, updateProgress) => {
     await pipeline(await storage.openReadStream(storageKey), fs.createWriteStream(filePath));
     updateProgress(20);
 
-    // Whisper transcription is OpenAI-only. If the enqueuing user configured
-    // an OpenAI key, transcribe on their key/quota; if they configured a
-    // different provider (Anthropic/Google) or no key, fall back to the server
-    // key. resolveUserOpenAiKey is the same resolution the metering middleware
-    // uses, so "BYO bypasses the cap" and "BYO is billed to the user" stay in
-    // lockstep.
-    const openaiKey = await resolveUserOpenAiKey(userId);
-    if (!openaiKey && !process.env.OPENAI_API_KEY) {
+    // Whisper is OpenAI-only and always runs on a customer's own key: the
+    // requester's, or the canvas owner's if they share it (utils/aiKeys.ts).
+    // Resolved now, not at enqueue, so removing or unsharing a key stops it.
+    const key = userId ? await resolveTranscriptionKey(canvasId, userId) : null;
+    if (!key?.apiKey || !key.keyOwnerId) {
       throw new Error(
-        'Transcription requires an OpenAI API key. Add one under your provider (OpenAI) in AI settings, or ask an admin to configure a server key.',
+        'Connect your AI account to transcribe: add your own OpenAI key in Account → AI, then press Try again.',
       );
     }
+    const openaiKey = key.apiKey;
+    await prisma.transcriptionJob.update({ where: { id: jobDbId }, data: { keyOwnerUserId: key.keyOwnerId } });
 
-    const result = await transcribeAudio(filePath, language, openaiKey);
+    let result;
+    try {
+      result = await transcribeAudio(filePath, language, openaiKey);
+    } catch (err) {
+      throw new Error(friendlyProviderError('openai', err));
+    }
     updateProgress(90);
 
     // Save result to DB
@@ -745,23 +747,21 @@ registerJobHandler('transcribe', async (job, updateProgress) => {
       },
     });
 
-    // Track AI usage. userId is recorded so the monthly transcription meter can
-    // attribute minutes per user. BYO-key transcriptions cost us nothing (the
-    // user is billed by OpenAI) and must not consume the metered pool, so they
-    // are recorded at cost 0; server-key minutes are billed at ~$0.006/min.
-    const usedOwnKey = Boolean(openaiKey);
+    // Usage reporting only: nothing is metered or capped. The customer's own
+    // key paid, so costCents is 0 (it is not our cost); keyOwnerId and the
+    // recording length let each key owner see their own usage.
     await prisma.aiUsage.create({
       data: {
         userId,
         canvasId,
-        // Minutes draw on the canvas owner's pool, shared across their seats.
-        poolOwnerId: userId ? await transcriptionPoolOwner(canvasId, userId) : null,
+        keyOwnerId: key.keyOwnerId,
+        durationSeconds: Math.round(result.duration),
         feature: 'transcribe',
         provider: 'openai',
         model: 'whisper-1',
         inputTokens: 0,
         outputTokens: 0,
-        costCents: usedOwnKey ? 0 : Math.ceil(result.duration / 60) * TRANSCRIPTION_CENTS_PER_MINUTE,
+        costCents: 0,
       },
     });
 

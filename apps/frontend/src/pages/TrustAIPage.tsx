@@ -103,10 +103,11 @@ export default function TrustAIPage() {
               </li>
             </ul>
             <p className="text-sm bg-ochre-50/40 dark:bg-ochre-900/10 border-l-2 border-ochre-500 pl-4 py-3 text-gray-700 dark:text-gray-300">
-              <strong className="font-semibold text-gray-900 dark:text-white">Bring your own key.</strong> If you'd
-              rather inference be billed and observed by your own provider account, you can configure a personal API key
-              in Account Settings. With BYOK, QualCanvas uses your key when forwarding requests; the provider
-              relationship is between you and them, and your IRB can audit the provider directly.
+              <strong className="font-semibold text-gray-900 dark:text-white">Your own provider account.</strong> All
+              AI, including transcription, runs on an API key from your own OpenAI, Anthropic or Google account, which
+              you connect in Account Settings. QualCanvas holds no AI key of its own. Your key is stored encrypted and
+              used only when forwarding your requests; the provider relationship and billing are between you and them,
+              and your IRB can audit the provider directly.
             </p>
           </div>
         </section>
@@ -188,8 +189,8 @@ export default function TrustAIPage() {
    ↓
 Browser sends the prompt + spans to QualCanvas backend (encrypted in transit)
    ↓
-Backend reads the user's stored API key. If hosted AI is enabled for the
-account and BYOK is not configured, it uses the budget-limited QualCanvas key
+Backend decrypts the user's own stored API key. There is no QualCanvas
+key: with no key connected, the call stops and the setup guide opens
    ↓
 Provider returns suggestions
    ↓

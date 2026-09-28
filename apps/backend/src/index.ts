@@ -123,6 +123,7 @@ import {
   stopPilotFeedbackRetentionScheduler,
 } from './jobs/pilotFeedbackRetention.js';
 import { corsOrigin } from './utils/origins.js';
+import { warnIfServerAiKeyPresent } from './lib/llm.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -488,6 +489,7 @@ initSocketServer(httpServer);
 
 const server = httpServer.listen(PORT, () => {
   console.log(`QualCanvas backend running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  warnIfServerAiKeyPresent();
   // Start report scheduler in non-test environments
   if (process.env.NODE_ENV !== 'test') {
     recoverTranscriptionJobs().catch((err) => console.error('[TranscriptionRecovery] Failed:', err));

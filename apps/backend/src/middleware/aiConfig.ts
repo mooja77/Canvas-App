@@ -1,50 +1,40 @@
 /**
- * Middleware to resolve the authenticated user's AI config and create
- * a per-request LLM provider from their stored (encrypted) API key.
+ * Resolve the authenticated user's own AI provider for this request.
  *
- * Falls back to server-side OPENAI_API_KEY for legacy users or when
- * no user config is found.
+ * QualCanvas never runs customer AI on a key JMS Dev Lab pays for: there is
+ * no server-side fallback. If the user has not connected their own key (or it
+ * can no longer be decrypted), req.llmProvider stays undefined and the route
+ * answers 400 AI_KEY_REQUIRED, which opens the "Connect your AI account"
+ * wizard in the app.
  */
 
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { decryptApiKey } from '../utils/encryption.js';
-import { createProvider, getDefaultProvider } from '../lib/llm.js';
+import { createProvider } from '../lib/llm.js';
 // Ensure all provider factories are registered
 import '../lib/llm-openai.js';
 import '../lib/llm-anthropic.js';
 import '../lib/llm-google.js';
 
+export const AI_KEY_REQUIRED_MESSAGE =
+  'Connect your AI account to use this. AI features run on your own OpenAI, Anthropic or Google key, and your provider bills you directly.';
+
 export function resolveAiConfig() {
   return async (req: Request, _res: Response, next: NextFunction) => {
     try {
       const userId = req.userId;
-
-      // If user has a stored AI config, use it
       if (userId) {
-        const config = await prisma.userAiConfig.findUnique({
-          where: { userId },
-        });
-
+        const config = await prisma.userAiConfig.findUnique({ where: { userId } });
         if (config) {
           try {
             const apiKey = decryptApiKey(config.apiKeyEncrypted, config.apiKeyIv, config.apiKeyTag);
             req.llmProvider = createProvider(config.provider, apiKey, config.model || undefined);
-            return next();
           } catch {
-            // Decryption failed — fall through to server fallback
+            // Undecryptable key: treat as not connected. Never fall back to a server key.
           }
         }
       }
-
-      // Fallback: use server-side default provider (if configured)
-      try {
-        req.llmProvider = getDefaultProvider();
-      } catch {
-        // No server-side key and no user config — llmProvider stays undefined
-        // Individual routes will check for this and return appropriate errors
-      }
-
       next();
     } catch (err) {
       next(err);

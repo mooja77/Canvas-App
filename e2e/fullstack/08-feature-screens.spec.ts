@@ -123,14 +123,15 @@ test.describe('Audio transcription screen', () => {
     const s = await signup('audiofree'); // unverified = Free, no trial
     const id = await createCanvas(s);
     const allowance = (await ok(await s.ctx.get(`canvas/${id}/transcribe/allowance`))).data;
-    expect(allowance).toMatchObject({ plan: 'free', minutesPerMonth: 0, fileUploadEnabled: false, usesOwnKey: false });
+    expect(allowance).toMatchObject({ plan: 'free', fileUploadEnabled: false, keySource: null });
+    expect(allowance).not.toHaveProperty('minutesPerMonth');
     const up = await s.ctx.post(`canvas/${id}/upload/direct`, {
       multipart: { file: { name: 'a.wav', mimeType: 'audio/wav', buffer: wavBytes() } },
     });
     expect(up.status()).toBe(403);
   });
 
-  test('no server key and no own key: the screen says a key is needed and the API refuses before queueing', async ({
+  test('no own key (a decoy server key is set): the screen says connect your AI account and the API refuses before queueing', async ({
     page,
   }) => {
     const s = await signup('audionokey', { verify: true }); // 14-day trial = Pro
@@ -138,12 +139,15 @@ test.describe('Audio transcription screen', () => {
     const allowance = (await ok(await s.ctx.get(`canvas/${id}/transcribe/allowance`))).data;
     expect(allowance).toMatchObject({
       plan: 'pro',
-      minutesPerMonth: 600,
-      minutesUsed: 0,
-      minutesRemaining: 600,
-      serverTranscriptionConfigured: false,
-      usesOwnKey: false,
+      fileUploadEnabled: true,
+      keySource: null,
+      isCanvasOwner: true,
+      usageThisMonth: null,
+      pricePerMinuteUsd: 0.006,
     });
+    for (const gone of ['minutesPerMonth', 'minutesRemaining', 'serverTranscriptionConfigured']) {
+      expect(allowance).not.toHaveProperty(gone);
+    }
     const upload = (
       await ok(
         await s.ctx.post(`canvas/${id}/upload/direct`, {
@@ -159,7 +163,7 @@ test.describe('Audio transcription screen', () => {
     await openCanvasAs(page, s, id);
     await openTool(page, 'Transcribe audio');
     const dialog = page.getByRole('dialog', { name: 'Transcribe audio' });
-    await expect(dialog.getByTestId('transcription-needs-key')).toContainText('needs your own OpenAI key');
+    await expect(dialog.getByTestId('transcription-needs-key')).toContainText('Connect your AI account to transcribe');
     await expect(dialog.getByRole('button', { name: 'Choose a recording' })).toBeDisabled();
     await expect(dialog.getByText('No recordings transcribed on this canvas yet.')).toBeVisible();
     await expectNoSeriousAxeViolations(page, '[role="dialog"]');

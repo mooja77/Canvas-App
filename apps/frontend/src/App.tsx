@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import ConnectAiWizardHost from './components/ai/ConnectAiWizardHost';
 import UpgradePrompt from './components/UpgradePrompt';
 import OfflineBanner from './components/OfflineBanner';
 import { PageSkeleton } from './components/LoadingSkeleton';
@@ -56,6 +57,7 @@ export default function App() {
       <BrowserRouter>
         <OfflineBanner />
         <UpgradePrompt />
+        <ConnectAiWizardHost />
         {/* Route failures are caught here rather than by the outer boundary so
             the app chrome survives them. The outer one replaced the whole tree
             - including OfflineBanner - which meant a chunk that failed while

@@ -82,7 +82,6 @@ vi.mock('../../middleware/planLimits.js', () => ({
   checkAnalysisType: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAnalysisTypeOnRun: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkAiAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
-  checkHostedAiBudget: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkEthicsAccess: () => (_req: Request, res: Response, next: NextFunction) => {
     if (ethicsAccessBlocked) {
       return res.status(403).json({

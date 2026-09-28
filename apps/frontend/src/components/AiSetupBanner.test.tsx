@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { PLAN_LIMITS, serializePlanLimits, type CanvasOwnerPlan, type PlanTier } from '@qualcanvas/shared';
 
 // The banner reads from three Zustand stores via selectors. Back each with a
@@ -11,7 +11,7 @@ const { authState, uiState, aiState, canvasState } = vi.hoisted(() => ({
     authType: 'email' as 'email' | 'legacy' | null,
   },
   uiState: { featureDiscovery: { aiPromptSeen: false }, markFeatureSeen: vi.fn() },
-  aiState: { configured: false, hostedAiAvailable: false, loaded: true, fetchConfig: vi.fn() },
+  aiState: { configured: false, loaded: true, fetchConfig: vi.fn(), openWizard: vi.fn() },
   canvasState: { activeCanvas: null as { ownerPlan?: CanvasOwnerPlan } | null },
 }));
 
@@ -30,7 +30,7 @@ vi.mock('../stores/aiConfigStore', () => ({
 
 import AiSetupBanner from './AiSetupBanner';
 
-const CTA = 'Add an OpenAI or Anthropic key';
+const CTA = 'Connect your AI account';
 
 describe('AiSetupBanner', () => {
   beforeEach(() => {
@@ -40,16 +40,14 @@ describe('AiSetupBanner', () => {
     canvasState.activeCanvas = null;
     uiState.featureDiscovery.aiPromptSeen = false;
     aiState.configured = false;
-    aiState.hostedAiAvailable = false;
     aiState.loaded = true;
     aiState.fetchConfig.mockClear();
   });
 
-  it('shows the add-a-key CTA for Pro email users without a key', () => {
+  it('shows the connect CTA for Pro email users without a key, and it opens the wizard', () => {
     render(<AiSetupBanner />);
-    const link = screen.getByText(CTA);
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', '/account#ai');
+    fireEvent.click(screen.getByRole('button', { name: CTA }));
+    expect(aiState.openWizard).toHaveBeenCalled();
   });
 
   it('does not render for legacy (access-code) users — AI keys need an email account', () => {
@@ -68,12 +66,6 @@ describe('AiSetupBanner', () => {
 
   it('does not render once a key is already configured', () => {
     aiState.configured = true;
-    render(<AiSetupBanner />);
-    expect(screen.queryByText(CTA)).not.toBeInTheDocument();
-  });
-
-  it('does not ask for a key when the account can use hosted AI', () => {
-    aiState.hostedAiAvailable = true;
     render(<AiSetupBanner />);
     expect(screen.queryByText(CTA)).not.toBeInTheDocument();
   });

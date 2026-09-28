@@ -904,15 +904,15 @@ npm run lint
 
 ### Optional — Backend
 
-| Variable               | Description                                            | Default            |
-| ---------------------- | ------------------------------------------------------ | ------------------ |
-| `NODE_ENV`             | `production` / `development` / `test`                  | `development`      |
-| `PORT`                 | HTTP server port                                       | `3007`             |
-| `ALLOWED_ORIGINS`      | Comma-separated frontend URLs for CORS                 | All origins in dev |
+| Variable               | Description                                                                                                                                                                                                                                                                                                                                | Default                 |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| `NODE_ENV`             | `production` / `development` / `test`                                                                                                                                                                                                                                                                                                      | `development`           |
+| `PORT`                 | HTTP server port                                                                                                                                                                                                                                                                                                                           | `3007`                  |
+| `ALLOWED_ORIGINS`      | Comma-separated frontend URLs for CORS                                                                                                                                                                                                                                                                                                     | All origins in dev      |
 | `REGISTRATION_ENABLED` | **Dead.** Set in the hosting dashboard but not read by any code in `apps/backend/src` or `apps/frontend/src` (verified by repo-wide grep, 2026-09-21). Does not gate signups in either direction — `/api/auth/signup` accepts registrations unconditionally. No env var, feature flag, or admin toggle currently gates production signups. | `false` (has no effect) |
-| `APP_URL`              | Public app URL (email links, Stripe redirects)         | —                  |
-| `ENCRYPTION_KEY`       | 32-byte hex key for AES-256-GCM encryption of API keys | —                  |
-| `E2E_TEST`             | Enables E2E test mode (skips rate limits)              | —                  |
+| `APP_URL`              | Public app URL (email links, Stripe redirects)                                                                                                                                                                                                                                                                                             | —                       |
+| `ENCRYPTION_KEY`       | 32-byte hex key for AES-256-GCM encryption of API keys                                                                                                                                                                                                                                                                                     | —                       |
+| `E2E_TEST`             | Enables E2E test mode (skips rate limits)                                                                                                                                                                                                                                                                                                  | —                       |
 
 ### Optional — Stripe
 
@@ -942,7 +942,7 @@ npm run lint
 
 | Variable           | Description                                               |
 | ------------------ | --------------------------------------------------------- |
-| `OPENAI_API_KEY`   | Default OpenAI API key (users can also provide their own) |
+| `OPENAI_API_KEY`   | Retired, ignored. AI runs only on each customer's own key |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID for sign-in                        |
 
 ### Optional — Frontend (VITE\_ prefix)

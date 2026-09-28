@@ -51,7 +51,7 @@ vi.mock('../../utils/hashing.js', () => ({
 
 vi.mock('../../middleware/planLimits.js', () => ({
   checkFileUploadAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
-  checkTranscriptionMinutes: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+  checkTranscriptionAccess: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   checkTranscriptLimit: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   resolveRequestPlan: vi.fn().mockResolvedValue('pro'),
 }));
@@ -80,9 +80,12 @@ vi.mock('../../utils/transcription.js', () => ({
   getLocalUploadPath: vi.fn(),
 }));
 
-vi.mock('../../utils/transcriptionMetering.js', () => ({
-  resolveUserOpenAiKey: vi.fn().mockResolvedValue(null),
-  TRANSCRIPTION_CENTS_PER_MINUTE: 0.6,
+vi.mock('../../utils/aiKeys.js', () => ({
+  resolveTranscriptionKey: vi
+    .fn()
+    .mockResolvedValue({ apiKey: null, keyOwnerId: null, source: null, isCanvasOwner: true }),
+  transcriptionUsageOnKey: vi.fn().mockResolvedValue(null),
+  WHISPER_USD_PER_MINUTE: 0.006,
 }));
 
 import request from 'supertest';

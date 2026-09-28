@@ -56,10 +56,11 @@ test.describe('Browser journey', () => {
     // Team saves 17.9% (rounded 18%), so the page must not claim a flat 20%.
     await expect(body).toContainText('$32per seat / month, billed annually ($384/yr, save 18%)');
     await expect(body).toContainText('Save up to 20%');
-    // The transcription screen shipped, but production has no server OpenAI key:
-    // own-key transcription is offered, included hours are not (SEAT-BILLING.md).
+    // Transcription runs only on the researcher's own OpenAI key: no plan
+    // includes minutes or hours (decision 28 Sep 2026).
     await expect(body).toContainText('Audio transcription (with your own OpenAI key)');
-    await expect(body).not.toContainText(/d+ hrs/);
+    await expect(body).not.toContainText(/\d+\s*(hrs|hours)/i);
+    await expect(body).not.toContainText(/pooled/i);
     await page.getByRole('button', { name: /^Monthly$/ }).click();
     await expect(body).toContainText('$15');
     await expect(body).toContainText('$39');

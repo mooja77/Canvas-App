@@ -2,7 +2,7 @@
  * LLM Provider Abstraction Layer
  *
  * Pluggable interface for LLM providers (OpenAI, Anthropic, etc.)
- * Default provider is determined by AI_PROVIDER env var.
+ * Providers are always created per request from the customer's own key.
  */
 
 export interface LlmMessage {
@@ -63,12 +63,10 @@ export interface LlmProviderFactory {
   create(apiKey: string, defaultModel?: string): LlmProvider;
 }
 
-// Provider registry (singletons — server-side fallback)
-const providers = new Map<string, LlmProvider>();
-
-export function registerProvider(name: string, provider: LlmProvider): void {
-  providers.set(name, provider);
-}
+// There is deliberately NO server-side/default provider. JMS Dev Lab never
+// holds a paid AI key for QualCanvas: every AI call runs on the customer's own
+// key, created per request from their encrypted UserAiConfig (BYOK). A server
+// OPENAI_API_KEY in the environment is ignored (see warnIfServerAiKeyPresent).
 
 // Factory registry (per-request — user BYOK)
 const factories = new Map<string, LlmProviderFactory>();
@@ -79,6 +77,7 @@ export function registerProviderFactory(name: string, factory: LlmProviderFactor
 
 /** Create a provider instance with a specific API key (BYOK) */
 export function createProvider(providerName: string, apiKey: string, model?: string): LlmProvider {
+  if (!apiKey) throw new Error("An API key of the customer's own is required");
   const factory = factories.get(providerName);
   if (!factory) {
     throw new Error(
@@ -88,39 +87,18 @@ export function createProvider(providerName: string, apiKey: string, model?: str
   return factory.create(apiKey, model);
 }
 
-let defaultProvider: LlmProvider | null = null;
+/** Env names that used to switch on platform-paid AI. All are ignored now. */
+export const RETIRED_SERVER_AI_ENV = ['OPENAI_API_KEY', 'HOSTED_AI_ENABLED', 'AI_PROVIDER'] as const;
 
-export function getDefaultProvider(): LlmProvider {
-  if (defaultProvider) return defaultProvider;
-
-  const providerName = process.env.AI_PROVIDER || 'openai';
-  const provider = providers.get(providerName);
-  if (!provider) {
-    throw new Error(`LLM provider "${providerName}" not registered. Available: ${[...providers.keys()].join(', ')}`);
-  }
-  defaultProvider = provider;
-  return provider;
-}
-
-/** Convenience: call complete() on the default provider */
-export async function complete(options: LlmCompletionOptions): Promise<LlmCompletionResult> {
-  return getDefaultProvider().complete(options);
-}
-
-/** Convenience: call completeStreaming() on the default provider */
-export async function completeStreaming(
-  options: LlmCompletionOptions,
-  onChunk: (chunk: LlmStreamChunk) => void,
-): Promise<LlmCompletionResult> {
-  return getDefaultProvider().completeStreaming(options, onChunk);
-}
-
-/** Convenience: call embedText() on the default provider */
-export async function embedText(text: string, model?: string): Promise<LlmEmbeddingResult> {
-  return getDefaultProvider().embedText(text, model);
-}
-
-/** Convenience: call embedBatch() on the default provider */
-export async function embedBatch(texts: string[], model?: string): Promise<LlmEmbeddingResult[]> {
-  return getDefaultProvider().embedBatch(texts, model);
+/**
+ * Log once at start-up if a retired server AI key is set, so a mistaken
+ * Railway variable is noticed. Nothing reads it, so it can never be billed.
+ */
+export function warnIfServerAiKeyPresent(log: (msg: string) => void = console.warn): boolean {
+  const present = RETIRED_SERVER_AI_ENV.filter((name) => Boolean(process.env[name]));
+  if (present.length === 0) return false;
+  log(
+    `[ai] ${present.join(', ')} ${present.length > 1 ? 'are' : 'is'} set but ignored: QualCanvas only uses each customer's own AI key. Remove the variable.`,
+  );
+  return true;
 }

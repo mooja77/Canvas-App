@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
 import { checkAiAccess } from '../middleware/planLimits.js';
 import { validate, generateSummarySchema, updateSummarySchema } from '../middleware/validation.js';
-import { resolveAiConfig } from '../middleware/aiConfig.js';
+import { AI_KEY_REQUIRED_MESSAGE, resolveAiConfig } from '../middleware/aiConfig.js';
 import { calculateCostCents } from '../utils/aiCost.js';
 
 export const summaryRoutes = Router();
@@ -27,9 +27,7 @@ summaryRoutes.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.llmProvider) {
-        return res
-          .status(400)
-          .json({ success: false, error: 'AI not configured. Please add your API key in Account Settings.' });
+        return res.status(400).json({ success: false, error: AI_KEY_REQUIRED_MESSAGE, code: 'AI_KEY_REQUIRED' });
       }
 
       const dashboardAccessId = getAuthId(req);
