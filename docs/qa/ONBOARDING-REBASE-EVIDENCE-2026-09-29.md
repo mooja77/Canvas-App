@@ -1,6 +1,45 @@
 # QualCanvas onboarding — 29 September 2026
 
-Status: **local, not released**. Owned branch `onboarding/sota-qualcanvas`,
+## Incremental release live — 1 October 2026
+
+PR #217 merged as `acd29d1f636922209c35cf8c70a6ee4a583ce9da` after every
+exact `e4c6b815` check passed (CI `36852768903` and GitGuardian). Backend
+unit tests reported **1,361 passed / 19 skipped**, frontend **968 passed**,
+Chromium **727 passed / 9 skipped**, and cross-browser **245 passed**.
+Normal main CI `36855445686` also passed, with the same browser totals.
+Railway `eb9d14bd-40cb-4a2c-be40-2af312158eb9` is SUCCESS at the exact merge;
+Pages workflow `36858023473` published deployment `3f4b6119`.
+
+At `2026-10-01T11:58:33Z`, a read-only public check found the exact merge SHA
+in `index-CWGiRpsK.js`, health/readiness HTTP 200, protected admin funnel 403
+and unauthenticated CSV 401 (their respective source contracts). Desktop
+1280px, phone 390px and tablet 768px signup each showed three typed fields;
+the four public screenshots were visually inspected. The lesson contains a
+video and caption track. Published captions (2,110 bytes) and video (2,475,112
+bytes) match committed bytes. The initial raw HTML equality check failed:
+Cloudflare obfuscates the support email, and the Windows checkout uses CRLF.
+The corrected check compares canonical git bytes and reverses only the
+observed Cloudflare email-protection transform; the remaining HTML matches.
+This is not a tolerance or an application change.
+
+The browser blocked every non-GET request and third-party host; six mutating
+requests were blocked. No production account was created or customer,
+setting, secret or provider send changed. Google scripts were deliberately
+blocked, so this is **not Google-provider sign-in proof**. Lesson assets and
+player elements were verified, not human listening or complete playback.
+The machine/full-transcription and nine-frame review below remains its
+review method. The release remains **14 → 21/28 incremental**, not final
+24/28/all-MUST certification. Earlier failed CI/local runs remain failures.
+
+A post-deploy read-only runtime check confirmed existing lifecycle automation
+and sending remain **ON**, while the new independent setup sequence remains
+**OFF**. This supersedes historical blanket-OFF wording below. The new lane's
+guard preserves baseline automation; no environment value was changed.
+
+Final-standard work continues from this clean merged source on
+`onboarding/qualcanvas-final-20261001`, in the same owned worktree.
+
+Historical 29 September status: **local, not released**. Owned branch `onboarding/sota-qualcanvas`,
 rebased onto `origin/main` `10c89a6`; pre-verification tip `95838c9`.
 The production checkout was not changed. No push, PR, merge, deployment,
 customer contact, production database write or production setting change is

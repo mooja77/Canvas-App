@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();
@@ -68,6 +68,44 @@ describe('LoginPage', () => {
     mockSearchParams.delete('mode');
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+    delete window.google;
+    document
+      .querySelectorAll('script[src="https://accounts.google.com/gsi/client"]')
+      .forEach((script) => script.remove());
+  });
+
+  it('explains a failed Google script without disabling email entry', () => {
+    vi.stubEnv('VITE_GOOGLE_CLIENT_ID', 'public-test-client');
+    render(<LoginPage />);
+    fireEvent.error(document.querySelector('script[src="https://accounts.google.com/gsi/client"]')!);
+    expect(screen.getByRole('status')).toHaveTextContent('Use email below, or reload this page to try Google again');
+    expect(screen.getByRole('button', { name: 'Sign In' })).toBeEnabled();
+    expect(authApi.googleLogin).not.toHaveBeenCalled();
+  });
+
+  it('gives an email fallback when the Google script never finishes loading', () => {
+    vi.useFakeTimers();
+    vi.stubEnv('VITE_GOOGLE_CLIENT_ID', 'public-test-client');
+    render(<LoginPage />);
+    expect(screen.getByRole('status')).toHaveTextContent('Loading Google sign-in');
+    act(() => vi.advanceTimersByTime(8000));
+    expect(screen.getByRole('status')).toHaveTextContent('Use email below');
+  });
+
+  it('removes the loading explanation when an already-loaded Google SDK renders', () => {
+    vi.stubEnv('VITE_GOOGLE_CLIENT_ID', 'public-test-client');
+    const initialize = vi.fn();
+    const renderButton = vi.fn();
+    window.google = { accounts: { id: { initialize, renderButton } } };
+    render(<LoginPage />);
+    expect(initialize).toHaveBeenCalledWith(expect.objectContaining({ client_id: 'public-test-client' }));
+    expect(renderButton).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/Loading Google sign-in/)).not.toBeInTheDocument();
+  });
+
   it('renders email and password fields marked as required', () => {
     render(<LoginPage />);
     // Labels include a visible "*" marker for sighted users; match by prefix.
@@ -103,6 +141,14 @@ describe('LoginPage', () => {
     render(<LoginPage />);
     const signUpTab = screen.getByRole('tab', { name: 'Sign Up' });
     expect(signUpTab).toBeInTheDocument();
+  });
+
+  it('names signup correctly in the document title and follows the chosen tab', () => {
+    mockSearchParams.set('mode', 'register');
+    render(<LoginPage />);
+    expect(document.title).toBe('Create an account — QualCanvas');
+    fireEvent.click(screen.getByRole('tab', { name: 'Sign In' }));
+    expect(document.title).toBe('Sign In — QualCanvas');
   });
 
   it('supports the standard arrow, Home, and End keys across authentication tabs', () => {

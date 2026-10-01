@@ -315,8 +315,7 @@ export default function CanvasToolbar({
           else setShowResearchAssistant(true);
           break;
         case 'summary':
-          if (requireAiConfig) requireAiConfig('AI Summarization', () => setShowSummary(true));
-          else setShowSummary(true);
+          setShowSummary(true);
           break;
         case 'survey-import':
           setShowSurveyImport(true);
@@ -693,11 +692,7 @@ export default function CanvasToolbar({
                   </svg>
                 }
                 label="Summarize"
-                onClick={() =>
-                  requireAiConfig
-                    ? requireAiConfig('AI Summarization', () => setShowSummary(true))
-                    : setShowSummary(true)
-                }
+                onClick={() => setShowSummary(true)}
               />
             </ToolbarDropdown>
           )}
@@ -1493,7 +1488,7 @@ export default function CanvasToolbar({
         {showWeighting && <CodeWeightingPanel onClose={() => setShowWeighting(false)} />}
         {showCrossCase && <CrossCaseAnalysisModal onClose={() => setShowCrossCase(false)} />}
         {showResearchAssistant && <ResearchAssistantPanel onClose={() => setShowResearchAssistant(false)} />}
-        {showSummary && <SummaryPanel onClose={() => setShowSummary(false)} />}
+        {showSummary && <SummaryPanel onClose={() => setShowSummary(false)} requireAiConfig={requireAiConfig} />}
         {showSurveyImport && (
           <SurveyImportModal
             isOpen={showSurveyImport}

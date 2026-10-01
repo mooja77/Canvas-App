@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
 import { canvasApi } from '../../../services/api';
 import type { Summary } from '@qualcanvas/shared';
@@ -6,18 +6,22 @@ import toast from 'react-hot-toast';
 
 interface SummaryPanelProps {
   onClose: () => void;
+  requireAiConfig?: (feature: string, callback: () => void) => void;
 }
 
-export default function SummaryPanel({ onClose }: SummaryPanelProps) {
+export default function SummaryPanel({ onClose, requireAiConfig }: SummaryPanelProps) {
   const activeCanvas = useActiveCanvas();
   const [summaries, setSummaries] = useState<Summary[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [sourceType, setSourceType] = useState<'transcript' | 'question' | 'canvas'>('transcript');
   const [sourceId, setSourceId] = useState<string>('');
   const [summaryType, setSummaryType] = useState<'paraphrase' | 'abstract' | 'thematic'>('paraphrase');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  const sourceRef = useRef<HTMLSelectElement>(null);
+  const sourceTypeRef = useRef<HTMLSelectElement>(null);
 
   const canvasId = activeCanvas?.id;
   const transcripts = activeCanvas?.transcripts || [];
@@ -31,36 +35,43 @@ export default function SummaryPanel({ onClose }: SummaryPanelProps) {
   const loadSummaries = async () => {
     if (!canvasId) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await canvasApi.getSummaries(canvasId);
       setSummaries(res.data.data);
     } catch {
-      toast.error('Failed to load summaries');
+      setLoadError("We couldn't load your summaries. Try again, or close and reopen this panel.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!canvasId || generating) return;
     if (sourceType !== 'canvas' && !sourceId) {
-      toast.error('Please select a source');
+      toast.error('Choose a transcript or code above, or import one first.');
       return;
     }
-    setGenerating(true);
-    try {
-      const res = await canvasApi.generateSummary(canvasId, {
-        sourceType,
-        sourceId: sourceType === 'canvas' ? undefined : sourceId,
-        summaryType,
-      });
-      setSummaries((prev) => [res.data.data, ...prev]);
-      toast.success('Summary generated');
-    } catch {
-      toast.error('Failed to generate summary');
-    } finally {
-      setGenerating(false);
-    }
+    const generate = async () => {
+      setGenerating(true);
+      try {
+        const res = await canvasApi.generateSummary(canvasId, {
+          sourceType,
+          sourceId: sourceType === 'canvas' ? undefined : sourceId,
+          summaryType,
+        });
+        setSummaries((prev) => [res.data.data, ...prev]);
+        toast.success('Summary generated');
+      } catch {
+        toast.error('Could not generate a summary. Check your AI connection, then try again.');
+      } finally {
+        setGenerating(false);
+      }
+    };
+    // Reading saved summaries never needs an AI key. Actual generation keeps
+    // the existing wizard guard and the server's plan/auth/provider checks.
+    if (requireAiConfig) requireAiConfig('AI Summarization', () => void generate());
+    else void generate();
   };
 
   const handleSaveEdit = async (sid: string) => {
@@ -71,7 +82,7 @@ export default function SummaryPanel({ onClose }: SummaryPanelProps) {
       setEditingId(null);
       toast.success('Summary updated');
     } catch {
-      toast.error('Failed to update summary');
+      toast.error('Could not save this summary. Keep your text here and try Save again.');
     }
   };
 
@@ -80,7 +91,11 @@ export default function SummaryPanel({ onClose }: SummaryPanelProps) {
   ) as Array<{ id: string; title?: string; text?: string }>;
 
   return (
-    <div className="fixed right-0 top-0 z-40 flex h-full w-full sm:w-[420px] flex-col border-l border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800 animate-slide-in-right">
+    <div
+      role="complementary"
+      aria-labelledby="summary-panel-title"
+      className="fixed right-0 top-0 z-40 flex h-full w-full sm:w-[420px] flex-col border-l border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800 animate-slide-in-right"
+    >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
         <div className="flex items-center gap-2">
@@ -99,11 +114,14 @@ export default function SummaryPanel({ onClose }: SummaryPanelProps) {
               />
             </svg>
           </div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Summarize & Paraphrase</h3>
+          <h3 id="summary-panel-title" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Summarize & Paraphrase
+          </h3>
         </div>
         <button
           onClick={onClose}
-          className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
+          aria-label="Close summaries"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 transition-colors"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -115,8 +133,15 @@ export default function SummaryPanel({ onClose }: SummaryPanelProps) {
       <div className="border-b border-gray-100 px-4 py-3 space-y-2.5 dark:border-gray-700/50">
         <div className="flex gap-2">
           <div className="flex-1">
-            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">Source</label>
+            <label
+              htmlFor="summary-source-type"
+              className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1"
+            >
+              Source type
+            </label>
             <select
+              id="summary-source-type"
+              ref={sourceTypeRef}
               value={sourceType}
               onChange={(e) => {
                 setSourceType(e.target.value as 'transcript' | 'question' | 'canvas');
@@ -130,8 +155,14 @@ export default function SummaryPanel({ onClose }: SummaryPanelProps) {
             </select>
           </div>
           <div className="flex-1">
-            <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">Type</label>
+            <label
+              htmlFor="summary-type"
+              className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1"
+            >
+              Summary type
+            </label>
             <select
+              id="summary-type"
               value={summaryType}
               onChange={(e) => setSummaryType(e.target.value as 'paraphrase' | 'abstract' | 'thematic')}
               className="input h-8 w-full text-xs"
@@ -144,7 +175,14 @@ export default function SummaryPanel({ onClose }: SummaryPanelProps) {
         </div>
 
         {sourceType !== 'canvas' && (
-          <select value={sourceId} onChange={(e) => setSourceId(e.target.value)} className="input h-8 w-full text-xs">
+          <select
+            id="summary-source-id"
+            ref={sourceRef}
+            aria-label="Transcript or code"
+            value={sourceId}
+            onChange={(e) => setSourceId(e.target.value)}
+            className="input h-8 w-full text-xs"
+          >
             <option value="">Select {sourceType}...</option>
             {sourceItems.map((item) => (
               <option key={item.id} value={item.id}>
@@ -176,7 +214,11 @@ export default function SummaryPanel({ onClose }: SummaryPanelProps) {
       {/* Summaries list */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {loading && (
-          <div className="flex justify-center py-8">
+          <div
+            role="status"
+            className="flex items-center justify-center gap-2 py-8 text-xs text-gray-600 dark:text-gray-300"
+          >
+            <span>Loading summaries...</span>
             <svg className="h-5 w-5 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -184,10 +226,50 @@ export default function SummaryPanel({ onClose }: SummaryPanelProps) {
           </div>
         )}
 
-        {!loading && summaries.length === 0 && (
-          <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-8">
-            No summaries yet. Generate one above.
-          </p>
+        {!loading && loadError && (
+          <div role="alert" className="rounded-lg border border-amber-300 p-3 text-xs text-gray-800 dark:text-gray-100">
+            <p>{loadError}</p>
+            <button
+              type="button"
+              onClick={loadSummaries}
+              className="mt-2 min-h-8 font-medium text-brand-700 underline dark:text-brand-300"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+        {!loading && !loadError && summaries.length === 0 && (
+          <div className="py-5 text-xs text-gray-700 dark:text-gray-200">
+            <p className="font-medium">No summaries yet</p>
+            <p className="mt-2">
+              A short summary helps you compare a source's main ideas without replacing the original. Review any AI
+              draft against your source.
+            </p>
+            {transcripts.length === 0 && questions.length === 0 ? (
+              <button
+                type="button"
+                className="mt-3 min-h-8 font-medium text-brand-700 underline dark:text-brand-300"
+                onClick={() => {
+                  onClose();
+                  window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker'));
+                }}
+              >
+                Paste or import a transcript
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="mt-3 min-h-8 font-medium text-brand-700 underline dark:text-brand-300"
+                onClick={() => (sourceItems.length > 0 ? sourceRef.current : sourceTypeRef.current)?.focus()}
+              >
+                Choose a source
+              </button>
+            )}
+            <p className="mt-3 rounded bg-gray-50 p-2 text-gray-600 dark:bg-gray-900 dark:text-gray-300">
+              Example only: Travel costs made it harder to attend appointments. This illustrative sentence is not saved
+              research.
+            </p>
+          </div>
         )}
 
         {summaries.map((s) => (

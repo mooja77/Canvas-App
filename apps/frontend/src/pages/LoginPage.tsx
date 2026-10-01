@@ -63,12 +63,18 @@ export default function LoginPage() {
   const [code, setCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
+  const [googleStatus, setGoogleStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
 
   const { t } = useTranslation();
   const setAuth = useAuthStore((s) => s.setAuth);
   const setEmailAuth = useAuthStore((s) => s.setEmailAuth);
   const navigate = useNavigate();
-  usePageMeta('Sign In — QualCanvas', 'Sign in to QualCanvas with email, Google, or access code.');
+  usePageMeta(
+    mode === 'register' ? 'Create an account — QualCanvas' : 'Sign In — QualCanvas',
+    mode === 'register'
+      ? 'Create a QualCanvas account with Google or three email-signup fields. Start free, without a card.'
+      : 'Sign in to QualCanvas with email, Google, or access code.',
+  );
 
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const loginTabRef = useRef<HTMLButtonElement>(null);
@@ -138,40 +144,68 @@ export default function LoginPage() {
   useEffect(() => {
     if (!googleClientId) return;
 
+    let disposed = false;
+    let loadingTimer: ReturnType<typeof setTimeout> | undefined;
+    const unavailable = () => {
+      if (disposed) return;
+      if (loadingTimer) clearTimeout(loadingTimer);
+      setGoogleStatus('unavailable');
+    };
+
     const initializeGoogle = () => {
+      if (disposed) return;
       if (window.google && googleButtonRef.current) {
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: handleGoogleCallback,
-        });
-        const containerWidth = googleButtonRef.current.parentElement?.offsetWidth || 400;
-        window.google.accounts.id.renderButton(googleButtonRef.current, {
-          theme: 'outline',
-          size: 'large',
-          width: Math.max(240, Math.min(400, containerWidth - 16)),
-          text: 'continue_with',
-          shape: 'rectangular',
-          logo_alignment: 'left',
-        });
+        try {
+          window.google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: handleGoogleCallback,
+          });
+          const containerWidth = googleButtonRef.current.parentElement?.offsetWidth || 400;
+          window.google.accounts.id.renderButton(googleButtonRef.current, {
+            theme: 'outline',
+            size: 'large',
+            width: Math.max(240, Math.min(400, containerWidth - 16)),
+            text: 'continue_with',
+            shape: 'rectangular',
+            logo_alignment: 'left',
+          });
+          if (loadingTimer) clearTimeout(loadingTimer);
+          setGoogleStatus('ready');
+        } catch {
+          unavailable();
+        }
       }
     };
 
     // If script already loaded, just initialize
     if (window.google) {
       initializeGoogle();
-      return;
+      return () => {
+        disposed = true;
+      };
     }
 
-    // Load the GSI script
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = initializeGoogle;
-    document.head.appendChild(script);
+    // Share one SDK script across remounts, but clean up this page's listeners.
+    setGoogleStatus('loading');
+    let script = document.querySelector<HTMLScriptElement>('script[src="https://accounts.google.com/gsi/client"]');
+    const needsScript = !script;
+    if (!script) {
+      script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+    }
+    script.addEventListener('load', initializeGoogle);
+    script.addEventListener('error', unavailable);
+    loadingTimer = setTimeout(unavailable, 8000);
+    if (needsScript) document.head.appendChild(script);
 
     return () => {
-      // Don't remove the script on cleanup — it's shared
+      disposed = true;
+      if (loadingTimer) clearTimeout(loadingTimer);
+      script.removeEventListener('load', initializeGoogle);
+      script.removeEventListener('error', unavailable);
+      // Don't remove the script on cleanup — it's shared.
     };
   }, [googleClientId, handleGoogleCallback]);
 
@@ -333,6 +367,13 @@ export default function LoginPage() {
           {googleClientId && (
             <div className="mb-6">
               <div ref={googleButtonRef} className="flex min-h-11 w-full justify-center" />
+              {googleStatus !== 'ready' && (
+                <p role="status" className="mt-2 text-center text-xs text-gray-600 dark:text-gray-300">
+                  {googleStatus === 'loading'
+                    ? 'Loading Google sign-in. You can use email below.'
+                    : 'Google sign-in is unavailable. Use email below, or reload this page to try Google again.'}
+                </p>
+              )}
               <div className="relative mt-5">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-300 dark:border-gray-600" />
