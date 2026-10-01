@@ -80,6 +80,29 @@ exact remote-head lease. No scanner exclusion, shared-history rewrite or
 credential rotation is claimed. Fresh exact-head CI remains mandatory before
 merge; this section does not claim a deployment or programme certification.
 
+The next exact-head run, `81ad6cf` / CI `36847080312`, passed audit,
+GitGuardian and all ordinary gates but failed browser checks. Cross-browser
+reported **243 passed / 2 failed**: a broad Transcript `.first()` locator
+selected the offscreen new sidebar empty-state action on both mobile engines.
+The corrected test requires the exact toolbar button and visible Paste Text
+picker, without a skip or forced click. Focused local mobile Chrome and Safari
+cases both passed, but the runner then failed teardown when Vite exited with
+an unhandled ECONNRESET; this is **two test passes plus a runner failure**, not
+a clean suite. Only the reserved fixture account/canvas/access/audit rows were
+cleaned using the isolated database, and all owned processes/container stopped.
+Earlier runner readiness timeout and missing-Origin CSRF refusal are recorded
+as runner failures, not application passes.
+
+Chromium reported **724 passed / 1 failed / 9 skipped / 2 did not run**. Its
+new-account full path, including the random fixture credential, passed. The
+only failure was the navigator screenshot. Actual, expected and diff images
+were visually reviewed: the intended always-visible Cases (0) tab makes its
+teaching empty state discoverable and wraps Sources (1); the current source's
+17% orange coverage indicator remains truthful. First attempt and retry actual
+PNG hashes are identical. Only that reviewed Linux navigator baseline is
+updated; tolerances and all other snapshots remain unchanged. Neither failed
+CI head is represented as green; corrected-head CI is still required.
+
 ### Trusted setup funnel follow-up — 30 September
 
 Source commit `80bef4f840937deba717924669f917571ca64b40` adds all five
