@@ -127,6 +127,17 @@ PNG hashes are identical. Only that reviewed Linux navigator baseline is
 updated; tolerances and all other snapshots remain unchanged. Neither failed
 CI head is represented as green; corrected-head CI is still required.
 
+At `21214f2` / CI `36849993737`, all ordinary/scanner gates and cross-browser
+passed; Chromium reported **726 passed / 1 failed / 9 skipped**. Its phone
+axe assertion caught memo Collapse/Delete/Edit actions scaled to 2–3 pixels
+in overview. Unlike transcript/code nodes, memos did not consume the shared
+overview tier. Memo actions now follow the same minimal-overview safeguard,
+while content remains visible; editing controls have practical 32px layout
+sizes. The accessibility assertion is unchanged, with no rule exclusion.
+The focused memo regression failed first, then memo/transcript/code node tests
+passed **9/9**. This does not claim all zoom levels or manual screen-reader
+coverage. Full current-head CI remains the release gate.
+
 ### Trusted setup funnel follow-up — 30 September
 
 Source commit `80bef4f840937deba717924669f917571ca64b40` adds all five

@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { useCanvasStore } from '../../../stores/canvasStore';
+import { useUIStore } from '../../../stores/uiStore';
 import CrossCanvasRefBadge from '../CrossCanvasRefBadge';
 import ConfirmDialog from '../ConfirmDialog';
 import { reportNodeSaveError } from './nodeSave';
@@ -135,6 +136,7 @@ function formatInline(text: string): React.ReactNode {
 
 function MemoNode({ data, id, selected }: NodeProps) {
   const nodeData = data as unknown as MemoNodeData;
+  const isOverview = useUIStore((s) => s.zoomTier === 'minimal');
   const { updateMemo, deleteMemo } = useCanvasStore();
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(nodeData.content);
@@ -232,32 +234,36 @@ function MemoNode({ data, id, selected }: NodeProps) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1" title={isOverview ? 'Zoom in to use memo controls' : undefined}>
           <CrossCanvasRefBadge nodeId={id} />
-          <button
-            onClick={toggleCollapsed}
-            className="rounded p-0.5 text-gray-500/50 hover:text-gray-700 transition-colors"
-            title={collapsed ? 'Expand' : 'Collapse'}
-          >
-            <svg
-              className={`h-3 w-3 transition-transform ${collapsed ? 'rotate-180' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="rounded p-0.5 text-gray-500/50 hover:text-red-600 transition-colors"
-            title="Delete memo"
-          >
-            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
-          </button>
+          {!isOverview && (
+            <>
+              <button
+                onClick={toggleCollapsed}
+                className="nodrag flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-600 hover:text-gray-700 transition-colors"
+                title={collapsed ? 'Expand' : 'Collapse'}
+              >
+                <svg
+                  className={`h-3 w-3 transition-transform ${collapsed ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="nodrag flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-600 hover:text-red-600 transition-colors"
+                title="Delete memo"
+              >
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -371,6 +377,7 @@ function MemoNode({ data, id, selected }: NodeProps) {
               <div
                 className="cursor-text nodrag leading-relaxed space-y-0.5"
                 onDoubleClick={() => {
+                  if (isOverview) return;
                   setEditContent(nodeData.content);
                   setEditTitle(nodeData.title || '');
                   setEditing(true);
@@ -384,16 +391,18 @@ function MemoNode({ data, id, selected }: NodeProps) {
                 <span>
                   {wordCount} word{wordCount !== 1 ? 's' : ''}
                 </span>
-                <button
-                  onClick={() => {
-                    setEditContent(nodeData.content);
-                    setEditTitle(nodeData.title || '');
-                    setEditing(true);
-                  }}
-                  className="rounded px-1 py-0.5 hover:bg-white/30 transition-colors"
-                >
-                  Edit
-                </button>
+                {!isOverview && (
+                  <button
+                    onClick={() => {
+                      setEditContent(nodeData.content);
+                      setEditTitle(nodeData.title || '');
+                      setEditing(true);
+                    }}
+                    className="min-h-8 min-w-8 rounded px-2 hover:bg-white/30 transition-colors"
+                  >
+                    Edit
+                  </button>
+                )}
               </div>
             </div>
           )}
