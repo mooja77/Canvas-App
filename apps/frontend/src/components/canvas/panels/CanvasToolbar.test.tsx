@@ -60,6 +60,11 @@ vi.mock('./TranscriptSourceMenu', () => ({ default: () => null }));
 vi.mock('./AddComputedNodeMenu', () => ({ default: () => null }));
 vi.mock('./CanvasSwitcher', () => ({ default: () => null }));
 vi.mock('./QdpxExportButton', () => ({ default: () => null }));
+vi.mock('./SummaryPanel', () => ({
+  default: ({ requireAiConfig }: { requireAiConfig?: unknown }) => (
+    <div data-testid="summary-panel" data-guarded={Boolean(requireAiConfig)} />
+  ),
+}));
 vi.mock('../../FeatureTooltip', () => ({ default: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 vi.mock('../primitives/CollisionPopover', () => ({
   CollisionPopover: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
@@ -83,6 +88,15 @@ describe('CanvasToolbar — intercoder gate mirrors the backend', () => {
   it('uses the same sentence the 403 would carry', () => {
     expect(INTERCODER_UNAVAILABLE).toBe(featureAvailabilityMessage('Intercoder agreement', (l) => l.intercoderEnabled));
   });
+});
+
+it('opens saved summaries without a key but passes the generation guard to the panel', async () => {
+  const requireAiConfig = vi.fn();
+  render(<CanvasToolbar requireAiConfig={requireAiConfig} />);
+  fireEvent.click(screen.getByRole('button', { name: 'AI menu' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Summarize' }));
+  expect(await screen.findByTestId('summary-panel')).toHaveAttribute('data-guarded', 'true');
+  expect(requireAiConfig).not.toHaveBeenCalled();
 });
 
 describe('CanvasToolbar — intercoder on a non-Team plan', () => {

@@ -198,8 +198,29 @@ export default function HierarchyPanel({ onClose }: HierarchyPanelProps) {
         <div className="flex-1 overflow-y-auto p-2">
           {flatList.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-xs text-gray-400 dark:text-gray-500">No codes yet.</p>
-              <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-1">Add codes to organize your analysis.</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-100">No codes yet</p>
+              <p className="mt-2 px-4 text-xs text-gray-600 dark:text-gray-300">
+                Group related codes to see which ideas belong together. Start by highlighting a passage in a transcript
+                and naming the idea it carries.
+              </p>
+              <button
+                type="button"
+                className="mt-3 min-h-8 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white hover:bg-brand-700"
+                onClick={() => {
+                  onClose();
+                  window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker'));
+                }}
+              >
+                Paste or import a transcript
+              </button>
+              <a
+                href="/help/first-code.html"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 block text-xs text-brand-700 underline dark:text-brand-300"
+              >
+                See a coded-passage example (89 seconds)
+              </a>
             </div>
           ) : (
             <div className="space-y-0.5">
