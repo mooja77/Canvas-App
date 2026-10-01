@@ -102,7 +102,9 @@ test('email fallback and empty research panels recover without an AI key or prov
     ).toEqual([]);
     await hierarchy.getByRole('button', { name: 'Paste or import a transcript' }).click();
     await expect(hierarchy).toBeHidden();
-    await expect(page.getByRole('button', { name: 'Paste Text', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Paste Text Type or paste transcript content', exact: true }),
+    ).toBeVisible();
     await page.keyboard.press('Escape');
 
     const transcript = await page.request.post(`/api/canvas/${canvas.id}/transcripts`, {
