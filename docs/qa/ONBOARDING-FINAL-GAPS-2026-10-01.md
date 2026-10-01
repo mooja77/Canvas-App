@@ -43,12 +43,37 @@ listener cleanup, labels, named regions and the lack of new dependencies.
 
 ## Evidence limits / next closures
 
-| MUST item | Established                                                                                                                  | Remaining evidence or implementation                                                                                                                                                 |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Entry     | Email signup three fields, no card/verification first-use gate; Google server/token tests; explicit SDK-error recovery tests | Real Google-provider browser round-trip is not proved by a mocked SDK or blocked Google scripts.                                                                                     |
-| Teaching  | Primary first-run canvas/source/code/case/calendar/team/repository guidance retained; hierarchy and summary gaps addressed   | Complete every-route/list inventory is still required. Excerpt filtered/no-coding views, advanced tools and privileged admin lists need classification rather than assumed coverage. |
-| Robust    | Saved full path, durable progress, retry/recovery tests, scoped keyboard/axe and prior mobile engines retained               | New focused real-backend replay pending; all-route error/keyboard inventory and native assistive-technology evidence remain incomplete.                                              |
-| Proven    | Committed full onboarding E2E, measured before/after figures, exact green CI and incremental live release                    | This new follow-up has no PR/current-head CI or live release yet.                                                                                                                    |
+### Local real-backend recovery replay
+
+Exact clean source/test head `e017a81e68aa9d70d1a99684d75d5b4bd6951fe3`
+passed **3/3 in 33.8 seconds**, with no retries: desktop Chrome 1280×900
+(6.6s), phone Chrome 390×844 (9.3s), tablet WebKit 768×1024 (9.4s).
+Each used the real disposable local backend and database, a fictional account
+deleted in teardown, externally blocked Google SDK recovery, and an injected
+first summary-read 503 followed by a successful real GET. Each recorded two
+summary reads and zero generation requests, checked the labelled empty example,
+source focus, scoped WCAG 2.2 axe checks and keyboard close, and proved Generate
+still opens the existing AI-account configuration wizard without a provider call.
+This is not a real Google round-trip, provider generation or native screen-reader
+test. All owned processes exited normally and `qc-onboard-pg` was stopped;
+4750/4751/4759 had no listeners afterwards.
+
+The initial `55830ba` replay failed **0/3** at an incorrect test-only exact
+accessible-name locator. Its log and screenshots are retained: the import menu
+was visible, with actual name `Paste Text Type or paste transcript content`.
+Only that exact matcher was corrected; no application change, forced click,
+skip, tolerance or weakened visible assertion was used. The passing JSON is
+retained locally as `test-results/codex-20260930/recovery-browser-e017a81-passed.json`;
+the failed JSON's configured nested output was discovered after the successful
+rerun and therefore overwritten, while the copied failed log and failure
+screenshots remain. No claim is made that the original failed JSON survived.
+
+| MUST item | Established                                                                                                                                        | Remaining evidence or implementation                                                                                                                                                 |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Entry     | Email signup three fields, no card/verification first-use gate; Google server/token tests; explicit SDK-error recovery tests                       | Real Google-provider browser round-trip is not proved by a mocked SDK or blocked Google scripts.                                                                                     |
+| Teaching  | Primary first-run canvas/source/code/case/calendar/team/repository guidance retained; hierarchy and summary gaps addressed                         | Complete every-route/list inventory is still required. Excerpt filtered/no-coding views, advanced tools and privileged admin lists need classification rather than assumed coverage. |
+| Robust    | Saved full path, durable progress, retry/recovery tests, three-device real-backend recovery, scoped keyboard/axe and prior mobile engines retained | All-route error/keyboard inventory and native assistive-technology evidence remain incomplete.                                                                                       |
+| Proven    | Committed full onboarding E2E, measured before/after figures, exact green CI and incremental live release                                          | This new follow-up has no PR/current-head CI or live release yet.                                                                                                                    |
 
 There is no new migration, production setting/secret/customer write, campaign,
 provider call or video asset change. Existing production automation is ON;
