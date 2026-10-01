@@ -34,6 +34,7 @@ export default function TeamPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [activeTeam, setActiveTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [creating, setCreating] = useState(false);
   const [teamName, setTeamName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
@@ -44,6 +45,7 @@ export default function TeamPage() {
   const { plan } = useAuthStore();
 
   const loadTeams = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await teamApi.list();
       const teamList = res.data.data || [];
@@ -52,9 +54,13 @@ export default function TeamPage() {
         // Load full details of first team
         const detailRes = await teamApi.get(teamList[0].id);
         setActiveTeam(detailRes.data.data);
+      } else {
+        setActiveTeam(null);
       }
+      setLoadError(false);
     } catch {
-      // No teams or error
+      // An unavailable list is not evidence that this account has no team.
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -150,6 +156,33 @@ export default function TeamPage() {
     );
   }
 
+  if (loadError) {
+    return (
+      <main className="min-h-screen bg-gray-50 px-4 py-12 dark:bg-gray-900">
+        <div
+          role="alert"
+          className="mx-auto max-w-lg rounded-xl bg-white p-6 ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700"
+        >
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">We couldn't load your team</h1>
+          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+            Your team has not been changed. Check your connection and try again. If this keeps happening, email{' '}
+            <a className="text-brand-700 underline dark:text-brand-300" href="mailto:support@qualcanvas.com">
+              support@qualcanvas.com
+            </a>
+            .
+          </p>
+          <button
+            type="button"
+            onClick={loadTeams}
+            className="mt-5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            Try again
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   // Find the current user's role in the active team
   const myMembership = activeTeam?.members?.find(
     (m: TeamMember) => m.userId === activeTeam.ownerId && activeTeam.owner,
@@ -233,8 +266,15 @@ export default function TeamPage() {
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 mb-2">
                         Usually your lab, department, or project name.
                       </p>
+                      <label
+                        htmlFor="new-team-name"
+                        className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-200"
+                      >
+                        Team name
+                      </label>
                       <div className="flex gap-2">
                         <input
+                          id="new-team-name"
                           type="text"
                           placeholder="e.g. Health Comms Lab"
                           value={teamName}
@@ -303,6 +343,21 @@ export default function TeamPage() {
                 Members ({activeTeam.members?.length || 0})
               </h2>
               <div className="space-y-3">
+                {activeTeam.members?.length === 0 && (
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    Team members will appear here when they join.{' '}
+                    {canManage ? (
+                      <a
+                        href="#invite-member-email"
+                        className="font-medium text-brand-700 underline dark:text-brand-300"
+                      >
+                        Invite your first member below
+                      </a>
+                    ) : (
+                      'Ask your team owner to invite a colleague.'
+                    )}
+                  </p>
+                )}
                 {activeTeam.members?.map((member: TeamMember) => (
                   <div
                     key={member.id}
@@ -348,8 +403,15 @@ export default function TeamPage() {
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
                   Add Member
                 </h2>
+                <label
+                  htmlFor="invite-member-email"
+                  className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-200"
+                >
+                  Colleague's email address
+                </label>
                 <form onSubmit={handleInvite} className="flex gap-3">
                   <input
+                    id="invite-member-email"
                     type="email"
                     placeholder="Email address"
                     value={inviteEmail}

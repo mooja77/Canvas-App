@@ -380,7 +380,7 @@ function MemoNode({ data, id, selected }: NodeProps) {
                 {renderedContent}
               </div>
               {/* Footer */}
-              <div className="mt-1.5 flex items-center justify-between text-[9px] text-gray-500/50">
+              <div className="mt-1.5 flex items-center justify-between text-[9px] text-gray-700">
                 <span>
                   {wordCount} word{wordCount !== 1 ? 's' : ''}
                 </span>
@@ -390,7 +390,7 @@ function MemoNode({ data, id, selected }: NodeProps) {
                     setEditTitle(nodeData.title || '');
                     setEditing(true);
                   }}
-                  className="rounded px-1 py-0.5 hover:bg-white/30 hover:text-gray-700 transition-colors"
+                  className="rounded px-1 py-0.5 hover:bg-white/30 transition-colors"
                 >
                   Edit
                 </button>

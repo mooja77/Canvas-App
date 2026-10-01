@@ -327,6 +327,7 @@ export default function CanvasWorkspace() {
   // onNodesChange only fires for position/dimension events, not data mutations.
   const collapsedDigestRef = useRef<string | null>(null);
   const rfInstanceRef = useRef<ReactFlowInstance | null>(null);
+  const requestedFocusNodeRef = useRef<string | null>(null);
   const [relationLabel, setRelationLabel] = useState<{ show: boolean; source: string; target: string }>({
     show: false,
     source: '',
@@ -396,6 +397,7 @@ export default function CanvasWorkspace() {
       const tryFocus = () => {
         const node = nodesRef.current.find((n) => n.id === nodeId);
         if (node && rfInstanceRef.current) {
+          requestedFocusNodeRef.current = nodeId;
           rfInstanceRef.current.setCenter(node.position.x + 150, node.position.y + 100, { zoom: 0.8, duration: 500 });
           setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === nodeId })));
           return;
@@ -548,7 +550,10 @@ export default function CanvasWorkspace() {
     [],
   );
   const handleRfMove = useCallback(
-    (_event: unknown, viewport: { x: number; y: number; zoom: number }) => {
+    (event: unknown, viewport: { x: number; y: number; zoom: number }) => {
+      // A real pan/zoom takes ownership back from the setup deep link. React
+      // Flow reports null for programmatic viewport animation callbacks.
+      if (event) requestedFocusNodeRef.current = null;
       scheduleViewportSync(viewport);
     },
     [scheduleViewportSync],
@@ -653,8 +658,15 @@ export default function CanvasWorkspace() {
       const nodeId = `transcript-${t.id}`;
       const posData = posMap.get(nodeId);
       const pos = posData ? { x: posData.x, y: posData.y } : { x: 50, y: 50 + i * 500 };
-      const style: Record<string, unknown> = { transition: 'opacity 0.2s' };
-      if (posData?.width) style.width = posData.width;
+      // Without an explicit initial width, a pasted paragraph can give the
+      // node its full intrinsic text width. On phones that pushes the header
+      // controls outside the viewport even after the guide focuses the node.
+      // Preserve every user-resized width; only new, unsized transcripts get
+      // the readable column default.
+      const style: Record<string, unknown> = {
+        transition: 'opacity 0.2s',
+        width: posData?.width ?? 360,
+      };
       // Expanded transcripts need a readable, scrollable height. A persisted
       // height below ~120px is a leftover collapsed size (header ≈ 56px) — using
       // it would render the body as an unreadable sliver, so fall back to a
@@ -1034,6 +1046,21 @@ export default function CanvasWorkspace() {
       const width = workspaceSize.width;
       const height = workspaceSize.height;
       if (!width || !height) return;
+      // Expanding the phone setup guide changes the workspace height. Its
+      // delayed resize recovery must not undo a transcript link the user just
+      // chose by zooming back out to the whole sample study.
+      const requested =
+        intent === 'recover' && requestedFocusNodeRef.current
+          ? nodesRef.current.find((node) => node.id === requestedFocusNodeRef.current)
+          : null;
+      if (requested) {
+        void rf.setCenter(requested.position.x + 150, requested.position.y + 100, {
+          zoom: 0.8,
+          duration: FIT_DURATION_MS.recover,
+        });
+        return;
+      }
+      if (intent !== 'recover') requestedFocusNodeRef.current = null;
       // Delegate to React Flow's fitView so we get its battle-tested
       // node-visibility culling and edge-case handling. The breakpoint-aware
       // envelope is the part we own. The pure math in computeFit / nodesToBbox
@@ -1071,6 +1098,7 @@ export default function CanvasWorkspace() {
     const newEdges = buildEdges();
 
     if (isNewCanvas) {
+      requestedFocusNodeRef.current = null;
       // Full rebuild on canvas switch or initial load
       clearHistory();
       const newNodes = buildNodes();
@@ -2938,7 +2966,8 @@ export default function CanvasWorkspace() {
                         whisper (was gray-400/gray-300 ≈ 1.6–2.8:1). */}
                     <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Your workspace is ready</h3>
                     <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
-                      Start by adding your interview transcripts, then create codes to label what matters in them.
+                      Coding starts from your own material: add an interview, highlight what matters and give it a code.
+                      Your first coded excerpt is where patterns start to show.
                     </p>
 
                     {/* Steps */}
@@ -3011,6 +3040,52 @@ export default function CanvasWorkspace() {
                         Ctrl+K
                       </kbd>{' '}
                       for commands
+                    </p>
+
+                    {/* Actions. The overlay itself is pointer-events-none so
+                        the canvas stays usable underneath; the buttons opt back in. */}
+                    <div className="pointer-events-auto mt-6 flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker'))}
+                        className="btn-primary px-4 py-2 text-sm"
+                      >
+                        Add a transcript
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => window.dispatchEvent(new CustomEvent('qualcanvas:resume-onboarding'))}
+                        className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                      >
+                        Explore a coded sample study
+                      </button>
+                    </div>
+                    <p className="pointer-events-auto mt-3 text-[11px] text-gray-500 dark:text-gray-400">
+                      Coming from another tool?{' '}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.dispatchEvent(
+                            new CustomEvent('qualcanvas:open-canvas-modal', { detail: { modal: 'qdpx-import' } }),
+                          )
+                        }
+                        className="font-medium text-brand-700 underline dark:text-brand-300"
+                      >
+                        Import a QDPX project
+                      </button>{' '}
+                      or{' '}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.dispatchEvent(
+                            new CustomEvent('qualcanvas:open-canvas-modal', { detail: { modal: 'survey-import' } }),
+                          )
+                        }
+                        className="font-medium text-brand-700 underline dark:text-brand-300"
+                      >
+                        survey responses (CSV)
+                      </button>
+                      .
                     </p>
                   </div>
                 </div>
@@ -3141,7 +3216,9 @@ export default function CanvasWorkspace() {
                     </span>
                   )}
                   {selectedNodes.length > 0 && (
-                    <span className="text-blue-500 font-medium">{selectedNodes.length} selected</span>
+                    <span className="text-blue-700 font-medium dark:text-blue-300">
+                      {selectedNodes.length} selected
+                    </span>
                   )}
                   {/* Edge type legend — hidden on phones, where the ~493px
                       status bar would otherwise overflow the viewport. */}

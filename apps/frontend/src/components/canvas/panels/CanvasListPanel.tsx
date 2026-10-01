@@ -718,6 +718,13 @@ export default function CanvasListPanel() {
             >
               Get Started
             </button>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('qualcanvas:resume-onboarding'))}
+              className="text-sm font-medium text-gray-700 underline underline-offset-2 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
+            >
+              Or explore a coded sample study first
+            </button>
             <Link
               to="/training#learning-path"
               target="_blank"

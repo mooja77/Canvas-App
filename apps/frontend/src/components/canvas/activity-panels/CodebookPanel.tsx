@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useCanvasStore, useCanvasQuestions, useCanvasCodings } from '../../../stores/canvasStore';
 
 /**
@@ -35,7 +36,14 @@ export default function CodebookPanel() {
   }, [questions, sortMode, codingsByQuestion]);
 
   if (!activeCanvasId) {
-    return <p className="px-3 py-3 text-[11px] text-gray-400 dark:text-gray-500">Open a canvas to see its codebook.</p>;
+    return (
+      <div className="px-3 py-3 text-xs text-gray-700 dark:text-gray-200">
+        <p>Codes help you group meaningful passages. Open a canvas to see or create them.</p>
+        <Link to="/canvas" className="mt-2 inline-block font-medium text-brand-700 underline dark:text-brand-300">
+          Choose a canvas
+        </Link>
+      </div>
+    );
   }
 
   return (
@@ -65,9 +73,21 @@ export default function CodebookPanel() {
       </div>
 
       {ordered.length === 0 ? (
-        <p className="px-3 text-[11px] text-gray-400 dark:text-gray-500">
-          No codes yet. Highlight transcript text to create your first code.
-        </p>
+        <div className="px-3 text-xs text-gray-700 dark:text-gray-200">
+          <p>
+            Codes collect passages with a shared idea. Highlight a sentence in a transcript to create your first one.
+          </p>
+          <button
+            type="button"
+            className="mt-2 font-medium text-brand-700 underline dark:text-brand-300"
+            onClick={() => window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker'))}
+          >
+            Paste or import a transcript
+          </button>
+          <p className="mt-2 text-gray-600 dark:text-gray-300">
+            You can practise with the clearly labelled sample study in a starter canvas.
+          </p>
+        </div>
       ) : (
         <ul className="px-1">
           {ordered.map((q) => {

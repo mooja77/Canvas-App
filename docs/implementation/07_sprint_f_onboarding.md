@@ -1,5 +1,13 @@
 # Sprint F — 85-Second Onboarding
 
+> Historical design, superseded by the September 2026 onboarding lane. This is
+> not a description of the shipped application or verified timings. The current
+> flow has two optional-personalisation/template screens followed by the canvas
+> setup guide; AI uses the customer's own connected account, not automatic hosted
+> pre-coding. See `docs/qa/ONBOARDING-REBASE-EVIDENCE-2026-09-29.md` for measured
+> results and outstanding release gates. Do not report the targets or telemetry
+> names below as implemented evidence.
+
 ## Goal
 
 Replace the 22-step guided tour (skipped every time) with a 5-screen, 85-second flow that gets new users from signup to first coded excerpt in <90 seconds. Target: median time-to-first-coded-excerpt <90s, completion rate >70%.

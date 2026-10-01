@@ -6,29 +6,30 @@ import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import {
   buildCodebookCsv,
   buildCodebookTsv,
-  buildDataCsv,
   buildDataTsv,
   type CodebookEntry,
   type DataRow,
 } from './codebookExportFormat';
 import { useUIStore } from '../../../stores/uiStore';
-import { patchOnboardingState } from '../../onboarding/utils/onboardingState';
+import { canvasClient } from '../../../services/api';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface CodebookExportModalProps {
   onClose: () => void;
+  initialTab?: Tab;
 }
 
 type Tab = 'codebook' | 'data';
 
-export default function CodebookExportModal({ onClose }: CodebookExportModalProps) {
+export default function CodebookExportModal({ onClose, initialTab = 'codebook' }: CodebookExportModalProps) {
   // Keep Tab inside the dialog and give focus back to the trigger on close.
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
   const markChecklistItemComplete = useUIStore((s) => s.markChecklistItemComplete);
-  const [tab, setTab] = useState<Tab>('codebook');
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const [downloading, setDownloading] = useState(false);
 
   const entries = useMemo((): CodebookEntry[] => {
     if (!activeCanvas) return [];
@@ -99,34 +100,48 @@ export default function CodebookExportModal({ onClose }: CodebookExportModalProp
     }
   };
 
-  const handleDownloadCsv = () => {
-    let csv: string;
-    let filename: string;
+  const handleDownloadCsv = async () => {
+    if (downloading || !activeCanvas) return;
+    setDownloading(true);
+    try {
+      let blob: Blob;
+      let filename: string;
 
-    if (tab === 'codebook') {
-      csv = buildCodebookCsv(entries);
-      filename = `codebook-${activeCanvas?.name || 'export'}.csv`;
-    } else {
-      csv = buildDataCsv(dataRows);
-      filename = `coded-data-${activeCanvas?.name || 'export'}.csv`;
+      if (tab === 'codebook') {
+        blob = new Blob([buildCodebookCsv(entries)], { type: 'text/csv;charset=utf-8;' });
+        filename = `codebook-${activeCanvas?.name || 'export'}.csv`;
+      } else {
+        const response = await canvasClient.get(`/canvas/${activeCanvas.id}/export/coded-data.csv`, {
+          responseType: 'blob',
+        });
+        blob = response.data;
+        filename = `coded-data-${activeCanvas?.name || 'export'}.csv`;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      // The server generated the stored rows and observed the operation. No
+      // client completion marker is sent; reload hydrates server observations.
+      const containsOwnWork = activeCanvas?.codings.some(
+        (coding) =>
+          coding.source !== 'sample' &&
+          activeCanvas.transcripts.some(
+            (transcript) => transcript.id === coding.transcriptId && transcript.sourceType !== 'sample',
+          ),
+      );
+      if (tab === 'data' && containsOwnWork) {
+        markChecklistItemComplete('export-csv');
+      }
+      toast.success('CSV downloaded');
+    } catch {
+      toast.error('CSV could not be downloaded. Your work is saved; try Download CSV again.');
+    } finally {
+      setDownloading(false);
     }
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-    // Mark the onboarding "Export your codings to CSV" step complete. This is
-    // recorded against the ACCOUNT (onboardingState.checklistComplete), not
-    // the browser: a browser-wide localStorage bit ticked the row for every
-    // future account on the same machine. The server write is best-effort -
-    // patchOnboardingState swallows its own failures - and the local store
-    // keeps the row ticked for this session either way.
-    markChecklistItemComplete('export-csv');
-    void patchOnboardingState({ checklistComplete: useUIStore.getState().onboardingChecklistComplete });
-    toast.success('CSV downloaded');
   };
 
   return (
@@ -183,6 +198,7 @@ export default function CodebookExportModal({ onClose }: CodebookExportModalProp
             </button>
             <button
               onClick={handleDownloadCsv}
+              disabled={downloading}
               className="flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -192,7 +208,7 @@ export default function CodebookExportModal({ onClose }: CodebookExportModalProp
                   d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
                 />
               </svg>
-              Download CSV
+              {downloading ? 'Preparing CSV...' : 'Download CSV'}
             </button>
             <button
               onClick={onClose}

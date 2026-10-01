@@ -21,6 +21,14 @@ function select(options: { ageDays: number; delivered?: string[]; lastActivityDa
 }
 
 describe('selectTimedLifecycleEmail', () => {
+  it('selects the setup nudge only during the day 1 to day 3 window', () => {
+    expect(select({ ageDays: 0.9 })).toBeNull();
+    expect(select({ ageDays: 1 })).toBe('setup_nudge_1d');
+    expect(select({ ageDays: 2.9 })).toBe('setup_nudge_1d');
+    expect(select({ ageDays: 3 })).not.toBe('setup_nudge_1d');
+    expect(select({ ageDays: 2, delivered: ['setup_nudge_1d_v1'] })).toBeNull();
+  });
+
   it('selects the training tip only during the day 3 to day 7 window', () => {
     expect(select({ ageDays: 3 })).toBe('training_tip_3d');
     expect(select({ ageDays: 6.9 })).toBe('training_tip_3d');

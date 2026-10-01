@@ -16,6 +16,7 @@ import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.
 import { checkTranscriptLimit, checkWordLimit, resolveRequestPlan } from '../middleware/planLimits.js';
 import { getPlanLimits } from '../config/plans.js';
 import { deleteCanvasNodeArtifacts } from '../utils/canvasNodeCleanup.js';
+import { observeSetupStep } from '../lib/onboardingObservations.js';
 
 // Transcripts seeded by a starter template. They never count against a plan's
 // transcript cap: three sample interviews must not eat three of a Free user's
@@ -46,6 +47,8 @@ transcriptRoutes.post(
       const transcript = await prisma.canvasTranscript.create({
         data: { canvasId: req.params.id, ...req.body, sortOrder: total },
       });
+      if (transcript.sourceType !== 'sample')
+        await observeSetupStep(getAuthUserId(req), req.params.id, 'first-transcript');
       res.status(201).json({ success: true, data: transcript });
     } catch (err) {
       next(err);
@@ -208,6 +211,8 @@ transcriptRoutes.post(
         ),
       );
 
+      if (transcripts.some((transcript) => transcript.sourceType !== 'sample'))
+        await observeSetupStep(getAuthUserId(req), req.params.id, 'first-transcript');
       res.status(201).json({ success: true, data: transcripts });
     } catch (err) {
       next(err);
@@ -292,6 +297,7 @@ transcriptRoutes.post(
         results.push(newTranscript);
       }
 
+      if (results.length) await observeSetupStep(getAuthUserId(req), req.params.id, 'first-transcript');
       res.status(201).json({ success: true, data: results });
     } catch (err) {
       next(err);

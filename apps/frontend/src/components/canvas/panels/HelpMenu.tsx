@@ -2,6 +2,23 @@ import { useEffect, useRef, useState } from 'react';
 import { useUIStore } from '../../../stores/uiStore';
 import { patchOnboardingState } from '../../onboarding/utils/onboardingState';
 
+// Support routes to support@qualcanvas.com. The two-business-day reply time
+// matches what the site already promises (Press page). Asking for set-up help
+// by email is the self-serve alternative to a call: never ask for participant
+// data here, the Training page explains what to send.
+const SUPPORT_MAILTO = 'mailto:support@qualcanvas.com?subject=QualCanvas%20help';
+const SETUP_MAILTO =
+  'mailto:support@qualcanvas.com?subject=Please%20set%20up%20my%20QualCanvas%20project&body=' +
+  encodeURIComponent(
+    [
+      'My method (e.g. thematic analysis, grounded theory):',
+      'What I am moving from (tool or files):',
+      'The outcome I need:',
+      '',
+      'Please do not include participant data or transcripts.',
+    ].join('\n'),
+  );
+
 // A small, ALWAYS-VISIBLE "Help" entry point in the status bar. The product
 // tour and keyboard shortcuts existed before this, but only inside the
 // unlabelled "⋯" toolbar overflow — which non-technical users never open.
@@ -12,6 +29,7 @@ export default function HelpMenu({ onShowShortcuts }: { onShowShortcuts: () => v
   const ref = useRef<HTMLDivElement>(null);
   const openFullProductTour = useUIStore((s) => s.openFullProductTour);
   const resumeOnboardingChecklist = useUIStore((s) => s.resumeOnboardingChecklist);
+  const onboardingV2Complete = useUIStore((s) => s.onboardingV2Complete);
 
   useEffect(() => {
     if (!open) return;
@@ -36,7 +54,7 @@ export default function HelpMenu({ onShowShortcuts }: { onShowShortcuts: () => v
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
+        className="flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-600 hover:bg-gray-200 hover:text-gray-800 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 dark:hover:text-white transition-colors"
         title="Help — tour, shortcuts, user guide"
         aria-label="Help"
         aria-expanded={open}
@@ -63,15 +81,20 @@ export default function HelpMenu({ onShowShortcuts }: { onShowShortcuts: () => v
           // Not role="menu": that promises Arrow/Home/End/typeahead navigation
           // to a screen reader in application mode, and this menu implements
           // none of it. Plain buttons in a container Tab correctly today.
-          className="absolute bottom-full right-0 z-50 mb-1.5 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+          className="absolute bottom-full right-0 z-50 mb-1.5 w-64 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
         >
           <button
             className={item}
             onClick={() => {
               setOpen(false);
               resumeOnboardingChecklist();
-              void patchOnboardingState({ flowDismissed: false, checklistDismissed: false });
-              window.dispatchEvent(new CustomEvent('qualcanvas:resume-onboarding'));
+              void patchOnboardingState({
+                checklistDismissed: false,
+                ...(!onboardingV2Complete ? { flowDismissed: false } : {}),
+              });
+              if (!onboardingV2Complete) {
+                window.dispatchEvent(new CustomEvent('qualcanvas:resume-onboarding'));
+              }
             }}
           >
             Resume quick setup
@@ -106,6 +129,34 @@ export default function HelpMenu({ onShowShortcuts }: { onShowShortcuts: () => v
           >
             User guide
           </button>
+          <button
+            className={item}
+            onClick={() => {
+              setOpen(false);
+              window.open('/training', '_blank', 'noopener');
+            }}
+          >
+            Video lessons (under 2 min each)
+          </button>
+          <button
+            className={item}
+            onClick={() => {
+              setOpen(false);
+              window.open('/help/first-code.html', '_blank', 'noopener');
+            }}
+          >
+            Code your first passage (89s, captioned)
+          </button>
+          <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+          <a className={item} href={SUPPORT_MAILTO}>
+            Email support
+          </a>
+          <a className={item} href={SETUP_MAILTO}>
+            Have us set up your project
+          </a>
+          <p className="px-3 pb-1.5 pt-0.5 text-[10px] leading-snug text-gray-500 dark:text-gray-400">
+            support@qualcanvas.com · we reply within two business days, by email. No call needed.
+          </p>
         </div>
       )}
     </div>

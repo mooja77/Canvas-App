@@ -100,9 +100,15 @@ export default function TranscriptSourceMenu() {
 
   const handleAddTranscript = async (title: string, content: string) => {
     try {
-      await addTranscript(title, content);
+      const transcript = await addTranscript(title, content);
       setActiveModal(null);
-      toast.success('Transcript added');
+      toast.success('Transcript added. Highlight any sentence in it to code it.');
+      // Bring the new transcript into view. On a starter-template canvas it is
+      // placed below the sample study, off-screen, so without this the
+      // researcher's own interview seemed to vanish right before first coding.
+      window.dispatchEvent(
+        new CustomEvent('qualcanvas:focus-node', { detail: { nodeId: `transcript-${transcript.id}` } }),
+      );
     } catch {
       toast.error('Failed to add transcript');
     }

@@ -20,6 +20,7 @@ import { OWNER_PLAN_INCLUDE, canvasOwnerPlanPayload } from '../utils/ownerPlan.j
 import { getPlanLimits } from '../config/plans.js';
 import { trackJmsEvent } from '../lib/jms-events.js';
 import { deleteStoredUploads } from '../utils/fileCleanup.js';
+import { removeSampleData } from '../lib/sampleData.js';
 
 // Sub-routers
 import { transcriptRoutes } from './transcriptRoutes.js';
@@ -387,6 +388,20 @@ canvasRoutes.delete('/canvas/:canvasId', validateParams(canvasCanvasIdParam), as
       data: { deletedAt: new Date() },
     });
     res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /canvas/:canvasId/sample-data — remove the starter template's seeded
+// study (sample transcripts, their codings, unedited sample memos) in one step.
+// Owner only: a collaborator must not be able to strip the project's contents.
+canvasRoutes.delete('/canvas/:canvasId/sample-data', validateParams(canvasCanvasIdParam), async (req, res, next) => {
+  try {
+    const dashboardAccessId = getAuthId(req);
+    await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req), { requireOwner: true });
+    const removed = await prisma.$transaction((tx) => removeSampleData(tx, req.params.canvasId));
+    res.json({ success: true, data: { removed } });
   } catch (err) {
     next(err);
   }

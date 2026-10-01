@@ -249,7 +249,7 @@ export default function CanvasToolbar({
   const [showAutoCode, setShowAutoCode] = useState(false);
   const [showCaseManager, setShowCaseManager] = useState(false);
   const [showHierarchy, setShowHierarchy] = useState(false);
-  const [showCodebook, setShowCodebook] = useState(false);
+  const [showCodebook, setShowCodebook] = useState<boolean | 'data'>(false);
   const [showExcerpts, setShowExcerpts] = useState(false);
   const [showRichExport, setShowRichExport] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -297,6 +297,9 @@ export default function CanvasToolbar({
           break;
         case 'codebook':
           setShowCodebook(true);
+          break;
+        case 'coded-data':
+          setShowCodebook('data');
           break;
         case 'share':
           setShowShare(true);
@@ -1472,7 +1475,12 @@ export default function CanvasToolbar({
         {showAutoCode && <AutoCodeModal onClose={() => setShowAutoCode(false)} />}
         {showCaseManager && <CaseManagerPanel onClose={() => setShowCaseManager(false)} />}
         {showHierarchy && <HierarchyPanel onClose={() => setShowHierarchy(false)} />}
-        {showCodebook && <CodebookExportModal onClose={() => setShowCodebook(false)} />}
+        {showCodebook && (
+          <CodebookExportModal
+            initialTab={showCodebook === 'data' ? 'data' : 'codebook'}
+            onClose={() => setShowCodebook(false)}
+          />
+        )}
         {showExcerpts && <ExcerptBrowserModal onClose={() => setShowExcerpts(false)} />}
         {showRichExport && <RichExportModal onClose={() => setShowRichExport(false)} />}
         {showShare && <ShareCanvasModal onClose={() => setShowShare(false)} />}
@@ -1490,12 +1498,12 @@ export default function CanvasToolbar({
           <SurveyImportModal
             isOpen={showSurveyImport}
             onClose={() => setShowSurveyImport(false)}
-            onImport={async (rows) => {
+            onImport={async (rows, onSaved) => {
               for (const row of rows) {
                 await addTranscript(row.title, row.content);
+                onSaved();
               }
-              toast.success(`Imported ${rows.length} survey response(s)`);
-              setShowSurveyImport(false);
+              toast.success('Survey responses saved');
             }}
           />
         )}

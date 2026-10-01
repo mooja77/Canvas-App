@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { observeAnalysisRun } from '../lib/onboardingObservations.js';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -271,6 +272,7 @@ computedRoutes.post(
         where: { id: node.id },
         data: { result: JSON.stringify(resultWithMeta) },
       });
+      await observeAnalysisRun(getAuthUserId(req), req.params.id);
 
       res.json({
         success: true,

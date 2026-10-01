@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCanvasStore } from '../../../stores/canvasStore';
+import { useCanvasError, useCanvasLoading, useCanvasStore } from '../../../stores/canvasStore';
 
 /**
  * Sprint G — Canvases panel. Lists the user's canvases (most-recently
@@ -14,6 +14,8 @@ export default function CanvasesPanel() {
   const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
   const fetchCanvases = useCanvasStore((s) => s.fetchCanvases);
   const openCanvas = useCanvasStore((s) => s.openCanvas);
+  const loading = useCanvasLoading();
+  const error = useCanvasError();
 
   useEffect(() => {
     if (canvases.length === 0) {
@@ -33,8 +35,26 @@ export default function CanvasesPanel() {
         </button>
       </div>
 
-      {canvases.length === 0 ? (
-        <p className="px-3 text-[11px] text-gray-400 dark:text-gray-500">No canvases yet. Create one to get started.</p>
+      {loading && canvases.length === 0 ? (
+        <p role="status" className="px-3 text-xs text-gray-600 dark:text-gray-300">
+          Loading your canvases…
+        </p>
+      ) : error && canvases.length === 0 ? (
+        <div role="alert" className="px-3 text-xs text-gray-700 dark:text-gray-200">
+          <p>We couldn't load your canvases. Your work has not been changed.</p>
+          <button
+            type="button"
+            className="mt-2 font-medium text-brand-700 underline dark:text-brand-300"
+            onClick={() => void fetchCanvases()}
+          >
+            Try again
+          </button>
+        </div>
+      ) : canvases.length === 0 ? (
+        <p className="px-3 text-xs text-gray-700 dark:text-gray-200">
+          A canvas keeps your transcripts, codes and notes together. Create one above, then choose a sample study or add
+          your own material.
+        </p>
       ) : (
         <ul className="px-1">
           {canvases.map((c) => {

@@ -37,8 +37,9 @@ vi.mock('../../../stores/canvasStore', () => ({
   useSelectedQuestionId: () => null,
 }));
 
+let zoomTier = 'full';
 vi.mock('../../../stores/uiStore', () => ({
-  useUIStore: (selector?: (s: any) => any) => (selector ? selector({ zoomTier: 'full' }) : { zoomTier: 'full' }),
+  useUIStore: (selector?: (s: any) => any) => (selector ? selector({ zoomTier }) : { zoomTier }),
 }));
 
 import QuestionNode from './QuestionNode';
@@ -55,6 +56,7 @@ function renderNode() {
 describe('QuestionNode inline rename', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    zoomTier = 'full';
   });
 
   it('tells the user when the rename could not be saved and keeps the editor open', async () => {
@@ -95,5 +97,13 @@ describe('QuestionNode inline rename', () => {
     fireEvent.click(screen.getByTestId('pick-color'));
 
     await waitFor(() => expect(mockToastError).toHaveBeenCalled());
+  });
+
+  it('keeps colour identity but hides microscopic editing controls in overview', () => {
+    zoomTier = 'minimal';
+    const { container } = renderNode();
+    expect(screen.queryByRole('button', { name: 'Change code color' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete question' })).toBeNull();
+    expect(container.querySelector('[style*="background-color"]')).not.toBeNull();
   });
 });

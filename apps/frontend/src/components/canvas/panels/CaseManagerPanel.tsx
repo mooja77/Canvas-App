@@ -13,6 +13,7 @@ interface CaseManagerPanelProps {
 export default function CaseManagerPanel({ onClose }: CaseManagerPanelProps) {
   // Keep Tab inside the dialog and give focus back to the trigger on close.
   const dialogRef = useRef<HTMLDivElement>(null);
+  const caseNameRef = useRef<HTMLInputElement>(null);
   useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
@@ -47,7 +48,7 @@ export default function CaseManagerPanel({ onClose }: CaseManagerPanelProps) {
       setNewAttrs('');
       toast.success('Case created');
     } catch {
-      toast.error('Failed to create case');
+      toast.error('Could not create the case. Your entries are still here; try again.');
     }
   };
 
@@ -110,14 +111,23 @@ export default function CaseManagerPanel({ onClose }: CaseManagerPanelProps) {
           {/* Create new case */}
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
             <h4 className="text-xs font-medium text-gray-700 dark:text-gray-300">New Case</h4>
+            <label htmlFor="new-case-name" className="text-xs text-gray-700 dark:text-gray-300">
+              Case name
+            </label>
             <input
+              id="new-case-name"
+              ref={caseNameRef}
               type="text"
               className="input w-full text-sm"
               placeholder="Case name (e.g. Participant A)"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />
+            <label htmlFor="new-case-attributes" className="text-xs text-gray-700 dark:text-gray-300">
+              Attributes (optional)
+            </label>
             <input
+              id="new-case-attributes"
               type="text"
               className="input w-full text-xs"
               placeholder="Attributes (e.g. role: Manager, org: NHS)"
@@ -208,7 +218,33 @@ export default function CaseManagerPanel({ onClose }: CaseManagerPanelProps) {
           ))}
 
           {cases.length === 0 && (
-            <p className="text-center text-xs text-gray-400 py-4">No cases yet. Create one above.</p>
+            <div className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-700 dark:border-gray-600 dark:text-gray-200">
+              <p className="font-medium">No cases yet</p>
+              <p className="mt-1 text-xs">
+                Cases help you compare people or groups across your transcripts. For example, a case could represent one
+                interview participant.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn-primary px-3 py-1.5 text-xs"
+                  onClick={() => caseNameRef.current?.focus()}
+                >
+                  Create your first case
+                </button>
+                <button
+                  type="button"
+                  className="text-xs text-blue-700 underline dark:text-blue-300"
+                  onClick={() => {
+                    setNewName('Participant A');
+                    setNewAttrs('role: Interview participant');
+                    caseNameRef.current?.focus();
+                  }}
+                >
+                  Fill a fictional example (not saved)
+                </button>
+              </div>
+            </div>
           )}
         </div>
 

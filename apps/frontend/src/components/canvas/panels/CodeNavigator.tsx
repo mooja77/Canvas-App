@@ -241,18 +241,16 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
         >
           Sources ({transcripts.length})
         </button>
-        {cases.length > 0 && (
-          <button
-            onClick={() => setActiveTab('cases')}
-            className={`flex-1 px-3 py-2 text-[11px] font-medium transition-colors ${
-              activeTab === 'cases'
-                ? 'text-brand-600 dark:text-brand-400 border-b-2 border-brand-500'
-                : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-            }`}
-          >
-            Cases ({cases.length})
-          </button>
-        )}
+        <button
+          onClick={() => setActiveTab('cases')}
+          className={`flex-1 px-3 py-2 text-[11px] font-medium transition-colors ${
+            activeTab === 'cases'
+              ? 'text-brand-600 dark:text-brand-400 border-b-2 border-brand-500'
+              : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+          }`}
+        >
+          Cases ({cases.length})
+        </button>
       </div>
 
       {/* Content */}
@@ -379,7 +377,16 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
             {filteredTree.length === 0 ? (
               <div className="py-6 text-center">
                 {search.trim() ? (
-                  <p className="text-[11px] text-gray-400 dark:text-gray-500">No codes match &ldquo;{search}&rdquo;</p>
+                  <div className="text-[11px] text-gray-600 dark:text-gray-300">
+                    <p>No codes match &ldquo;{search}&rdquo;. Your codes have not been removed.</p>
+                    <button
+                      type="button"
+                      onClick={() => setSearch('')}
+                      className="mt-2 font-semibold text-blue-700 underline dark:text-blue-300"
+                    >
+                      Clear search
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 dark:bg-purple-900/20">
@@ -398,9 +405,28 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
                       </svg>
                     </div>
                     <p className="text-[11px] text-gray-400 dark:text-gray-500">No codes yet</p>
-                    <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-0.5">
-                      Select text in a transcript to start coding
+                    <p className="mt-1 text-[11px] text-gray-600 dark:text-gray-300">
+                      Codes let you gather related passages into themes. Highlight a passage to make your first one.
                     </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        transcripts.length > 0
+                          ? onFocusNode(`transcript-${transcripts[0].id}`)
+                          : window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker'))
+                      }
+                      className="mt-2 text-[11px] font-semibold text-blue-700 underline dark:text-blue-300"
+                    >
+                      {transcripts.length > 0 ? 'Open a transcript to code' : 'Add a transcript'}
+                    </button>
+                    <a
+                      href="/help/first-code.html"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 block text-[11px] text-blue-700 underline dark:text-blue-300"
+                    >
+                      See a coding example
+                    </a>
                   </>
                 )}
               </div>
@@ -431,7 +457,24 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
                   </svg>
                 </div>
                 <p className="text-[11px] text-gray-400 dark:text-gray-500">No sources yet</p>
-                <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-0.5">Add transcripts from the toolbar</p>
+                <p className="mt-1 text-[11px] text-gray-600 dark:text-gray-300">
+                  Sources are the interviews and documents you will analyse. Start with one transcript.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker'))}
+                  className="mt-2 text-[11px] font-semibold text-blue-700 underline dark:text-blue-300"
+                >
+                  Add a transcript
+                </button>
+                <a
+                  href="/training#video-03"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 block text-[11px] text-blue-700 underline dark:text-blue-300"
+                >
+                  See a sample source
+                </a>
               </div>
             ) : (
               <div className="space-y-1">
@@ -498,6 +541,28 @@ export default function CodeNavigator({ onFocusNode }: CodeNavigatorProps) {
             {cases.length === 0 ? (
               <div className="py-6 text-center">
                 <p className="text-[11px] text-gray-400 dark:text-gray-500">No cases yet</p>
+                <p className="mt-1 text-[11px] text-gray-600 dark:text-gray-300">
+                  Cases group sources by person, place, or another subject so you can compare findings.
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    window.dispatchEvent(
+                      new CustomEvent('qualcanvas:open-canvas-modal', { detail: { modal: 'case-manager' } }),
+                    )
+                  }
+                  className="mt-2 text-[11px] font-semibold text-blue-700 underline dark:text-blue-300"
+                >
+                  Create your first case
+                </button>
+                <a
+                  href="/training#video-14"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 block text-[11px] text-blue-700 underline dark:text-blue-300"
+                >
+                  See a worked example
+                </a>
               </div>
             ) : (
               <div className="space-y-1">

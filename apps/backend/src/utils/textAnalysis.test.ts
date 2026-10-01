@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   searchTranscripts,
   MAX_SEARCH_MATCHES,
@@ -173,12 +173,20 @@ describe('searchTranscripts caps the returned matches (result is persisted on th
   it('returns at most MAX_SEARCH_MATCHES, reports the true total and flags truncation', () => {
     // Measured before the cap: 220,000 matches, 43.3 MB of JSON for this
     // exact search - embedded in every fetch of the canvas, forever.
-    const result = searchTranscripts(corpus, 'e', 'literal');
-    expect(MAX_SEARCH_MATCHES).toBe(100);
-    expect(result.matches).toHaveLength(MAX_SEARCH_MATCHES);
-    expect(result.totalMatches).toBe(220_000);
-    expect(result.truncated).toBe(true);
-    expect(JSON.stringify(result).length).toBeLessThan(100_000);
+    // This test checks result size/count, not the separate wall-clock guard.
+    // A busy shared runner can exhaust 100ms halfway through this corpus.
+    // Keep the slow-regex timeout tests below on their real clock.
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1_000);
+    try {
+      const result = searchTranscripts(corpus, 'e', 'literal');
+      expect(MAX_SEARCH_MATCHES).toBe(100);
+      expect(result.matches).toHaveLength(MAX_SEARCH_MATCHES);
+      expect(result.totalMatches).toBe(220_000);
+      expect(result.truncated).toBe(true);
+      expect(JSON.stringify(result).length).toBeLessThan(100_000);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it('keeps the first matches in transcript order, with their real offsets', () => {

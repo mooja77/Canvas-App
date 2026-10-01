@@ -166,7 +166,30 @@ export default function RepositoryPage() {
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
               Repositories
             </h2>
-            {repositories.length === 0 && <p className="text-sm text-gray-400 italic">No repositories yet.</p>}
+            {repositories.length === 0 && (
+              <div className="rounded-lg border border-dashed border-gray-300 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">No repositories yet</p>
+                <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                  A repository keeps findings from several projects in one place, so a theme you found last term is
+                  still findable next year.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowNewRepo(true)}
+                  className="mt-3 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                >
+                  Create your first repository
+                </button>
+                <a
+                  href="/training#video-17"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 block text-xs font-medium text-blue-700 underline dark:text-blue-300"
+                >
+                  See an example repository (1:44 video)
+                </a>
+              </div>
+            )}
             {repositories.map((repo) => (
               <div
                 key={repo.id}
@@ -292,7 +315,28 @@ export default function RepositoryPage() {
                 )}
 
                 {insights.length === 0 && !showNewInsight && (
-                  <p className="text-sm text-gray-400 italic">No insights yet. Add one to get started.</p>
+                  <div className="rounded-lg border border-dashed border-gray-300 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100">No insights yet</p>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                      An insight is one finding in a sentence, with the evidence behind it. Keep it here so you can find
+                      and share it later.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewInsight(true)}
+                      className="mt-3 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
+                    >
+                      Add your first insight
+                    </button>
+                    <a
+                      href="/training#video-17"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 block text-sm font-medium text-blue-700 underline dark:text-blue-300"
+                    >
+                      See an example insight
+                    </a>
+                  </div>
                 )}
 
                 <div className="space-y-3">
@@ -348,8 +392,30 @@ export default function RepositoryPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-48 text-sm text-gray-400">
-                Select a repository to view its insights
+              <div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 p-5 text-center dark:border-gray-700">
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                  {repositories.length === 0 ? 'Keep your research findings together' : 'Choose a repository'}
+                </p>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  {repositories.length === 0
+                    ? 'Create a repository to save insights from your projects in one place.'
+                    : 'Choose a repository on the left to see its saved insights.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowNewRepo(true)}
+                  className="mt-3 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  {repositories.length === 0 ? 'Create your first repository' : 'Create another repository'}
+                </button>
+                <a
+                  href="/training#video-17"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 text-sm font-medium text-blue-700 underline dark:text-blue-300"
+                >
+                  See a worked example
+                </a>
               </div>
             )}
           </div>

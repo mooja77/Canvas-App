@@ -5,6 +5,7 @@ import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.
 import { exportQdpx } from '../utils/qdpxExport.js';
 import { importQdpx } from '../utils/qdpxImport.js';
 import { ensureDurableFirstValue } from '../lib/firstValue.js';
+import { observeSetupStep, observeCodingProgress } from '../lib/onboardingObservations.js';
 import { checkExportFormat } from '../middleware/planLimits.js';
 import { validateParams, canvasIdParam } from '../middleware/validation.js';
 import { isValidSignature } from '../utils/magicBytes.js';
@@ -123,7 +124,9 @@ qdpxRoutes.post(
       }
 
       const result = await importQdpx(req.params.id, req.file.buffer);
+      if (result.sources > 0) await observeSetupStep(userId, req.params.id, 'first-transcript');
       if (result.codings > 0 && userId) await ensureDurableFirstValue(userId);
+      if (result.codings > 0) await observeCodingProgress(userId, req.params.id);
 
       // Disclose what was dropped. An import that reports only what it created
       // reads as lossless, and the researcher finds out otherwise much later.

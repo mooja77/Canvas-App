@@ -29,6 +29,7 @@ const { mockPrisma, mockTrackJmsEvent } = vi.hoisted(() => {
       create: vi.fn(),
     },
     $transaction: vi.fn(),
+    $queryRaw: vi.fn(),
   };
   return { mockPrisma, mockTrackJmsEvent: vi.fn().mockResolvedValue(undefined) };
 });
@@ -98,6 +99,7 @@ describe('Template + onboarding routes', () => {
     // the mock tx (which is the same object as prisma here).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockPrisma.$transaction.mockImplementation(async (cb: any) => cb(mockPrisma));
+    mockPrisma.$queryRaw.mockResolvedValue([]);
     // The instantiate route reads the ids of the rows it creates so seeded
     // codings can point at them.
     let n = 0;
@@ -325,7 +327,8 @@ describe('Template + onboarding routes', () => {
 
     const res = await request(app).get('/api/user/onboarding').set('Authorization', `Bearer ${jwt}`);
     expect(res.status).toBe(200);
-    expect(res.body.data.state).toEqual({ currentStep: 2 });
+    expect(res.body.data.state).toEqual({ currentStep: 2, checklistComplete: [] });
+    expect(res.body.data.observedSteps).toEqual([]);
     expect(res.body.data.legacy).toBe(false);
   });
 
@@ -342,6 +345,7 @@ describe('Template + onboarding routes', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.state.currentStep).toBe(2);
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledOnce();
     expect(mockPrisma.user.update).toHaveBeenCalledWith({
       where: { id: userId },
       data: { onboardingState: expect.stringContaining('"currentStep":2') },

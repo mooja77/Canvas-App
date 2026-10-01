@@ -4,6 +4,7 @@ import {
   isLifecycleSendingEnabledFor,
   lifecycleTemplate,
   sendLifecycleEmail,
+  type SetupProgress,
 } from '../lib/lifecycleEmail.js';
 import { logError } from '../lib/logger.js';
 
@@ -22,9 +23,10 @@ type LifecycleUser = {
   firstValueAt: Date | null;
 };
 
-export type TimedLifecycleEmailType = 'onboarding_7d' | 'training_tip_3d' | 'inactivity_14d';
+export type TimedLifecycleEmailType = 'setup_nudge_1d' | 'onboarding_7d' | 'training_tip_3d' | 'inactivity_14d';
 
 const TIMED_EVENT_KEYS: Record<TimedLifecycleEmailType, string> = {
+  setup_nudge_1d: 'setup_nudge_1d_v1',
   training_tip_3d: 'training_tip_3d_v1',
   onboarding_7d: 'onboarding_7d_v1',
   inactivity_14d: 'inactivity_14d_v1',
@@ -62,6 +64,24 @@ async function hasFirstValue(userId: string): Promise<boolean> {
   return Boolean(user?.firstValueAt);
 }
 
+/**
+ * The researcher's next unfinished setup step. Starter-template sample rows are
+ * ours, so only their own transcripts count; a first own coding is first value,
+ * which ends the sequence before this is asked.
+ */
+export async function setupProgress(userId: string): Promise<SetupProgress> {
+  const projects = await prisma.codingCanvas.count({ where: { userId, deletedAt: null } });
+  if (projects === 0) return 'no_project';
+  const ownTranscripts = await prisma.canvasTranscript.count({
+    where: {
+      canvas: { userId, deletedAt: null },
+      deletedAt: null,
+      OR: [{ sourceType: null }, { sourceType: { not: 'sample' } }],
+    },
+  });
+  return ownTranscripts === 0 ? 'no_transcript' : 'no_coding';
+}
+
 async function lastUserActivity(userId: string): Promise<Date | null> {
   const last = await prisma.auditLog.findFirst({
     where: { actorId: userId },
@@ -80,7 +100,8 @@ async function sendTimedTemplate(user: LifecycleUser, type: TimedLifecycleEmailT
       const activity = await lastUserActivity(user.id);
       if (!activity || activity >= daysAgo(14)) return;
     }
-    await sendLifecycleEmail(user, lifecycleTemplate(type, user));
+    const progress = type === 'inactivity_14d' ? undefined : await setupProgress(user.id);
+    await sendLifecycleEmail(user, lifecycleTemplate(type, user, progress));
   } catch (err) {
     logError(err as Error, { action: 'lifecycleEmail.sendTimedTemplate', userId: user.id, type });
   }
@@ -106,6 +127,10 @@ export function selectTimedLifecycleEmail(
   // The sequence is an activation sequence, not generic engagement. Once the
   // first canvas exists, all timed activation messages stop.
   if (input.activated) return null;
+
+  if (ageDays >= 1 && ageDays < 3 && !input.deliveredEventKeys.has(TIMED_EVENT_KEYS.setup_nudge_1d)) {
+    return 'setup_nudge_1d';
+  }
 
   if (ageDays >= 3 && ageDays < 7 && !input.deliveredEventKeys.has(TIMED_EVENT_KEYS.training_tip_3d)) {
     return 'training_tip_3d';
