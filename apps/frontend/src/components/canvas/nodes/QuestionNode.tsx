@@ -130,14 +130,27 @@ function QuestionNode({ data, id, selected }: NodeProps) {
       <div className="drag-handle relative z-20 flex items-center justify-between gap-2 pl-4 pr-1.5 py-2 cursor-grab active:cursor-grabbing">
         <div className="flex items-center gap-2 min-w-0">
           <div className="relative nodrag">
-            <button
-              onClick={() => setShowColorPicker((c) => !c)}
-              className="h-3 w-3 shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/15 transition-transform hover:scale-125"
-              style={{ backgroundColor: nodeData.color }}
-              title="Change color"
-              aria-label="Change code color"
-            />
-            {showColorPicker && (
+            {isMinimal ? (
+              <span
+                className="block h-3 w-3 rounded-full"
+                style={{ backgroundColor: nodeData.color }}
+                aria-hidden="true"
+              />
+            ) : (
+              <button
+                onClick={() => setShowColorPicker((c) => !c)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                title="Change color"
+                aria-label="Change code color"
+              >
+                <span
+                  className="h-3 w-3 rounded-full ring-1 ring-black/10 dark:ring-white/15"
+                  style={{ backgroundColor: nodeData.color }}
+                  aria-hidden="true"
+                />
+              </button>
+            )}
+            {showColorPicker && !isMinimal && (
               <div className="absolute top-5 left-0 z-50">
                 <ColorPicker
                   color={nodeData.color}
@@ -179,46 +192,48 @@ function QuestionNode({ data, id, selected }: NodeProps) {
               {codingCount}
             </span>
           )}
-          <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
-            <button
-              onClick={toggleCollapsed}
-              className="rounded p-1 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200"
-              title={collapsed ? 'Expand' : 'Collapse'}
-            >
-              <svg
-                className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
+          {!isMinimal && (
+            <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+              <button
+                onClick={toggleCollapsed}
+                className="rounded p-1 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200"
+                title={collapsed ? 'Expand' : 'Collapse'}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setSelectedQuestionId(isSelected ? null : nodeData.questionId)}
-              className="rounded p-1 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200"
-              title="View coded segments"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
-                />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="rounded p-1 text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400"
-              title="Delete question"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+                <svg
+                  className={`h-3.5 w-3.5 transition-transform ${collapsed ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setSelectedQuestionId(isSelected ? null : nodeData.questionId)}
+                className="rounded p-1 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200"
+                title="View coded segments"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="rounded p-1 text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400"
+                title="Delete question"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -290,10 +305,9 @@ function QuestionNode({ data, id, selected }: NodeProps) {
 
       {/* Minimal zoom: count only */}
       {!collapsed && isMinimal && (
-        <div className="relative z-10 px-4 pb-1.5 pt-0.5">
-          <span className="text-[10px] font-medium" style={{ color: nodeData.color }}>
-            {codingCount}c
-          </span>
+        <div className="relative z-10 flex items-center gap-1 px-4 pb-1.5 pt-0.5">
+          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: nodeData.color }} aria-hidden="true" />
+          <span className="text-[10px] font-medium text-gray-700 dark:text-gray-200">{codingCount}c</span>
         </div>
       )}
 

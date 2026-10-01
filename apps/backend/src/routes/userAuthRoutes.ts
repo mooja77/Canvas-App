@@ -14,6 +14,7 @@ import { sha256 } from '../utils/hashing.js';
 import { nanoid } from 'nanoid';
 import { AppError } from '../middleware/errorHandler.js';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
+import { trackActivationEvent } from '../lib/jms-events.js';
 import { deleteStoredUploads } from '../utils/fileCleanup.js';
 import { claimUnverifiedAccount } from '../lib/accountClaim.js';
 import { deviceSummary } from '../utils/deviceSummary.js';
@@ -216,6 +217,7 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
       method: 'POST',
       path: '/api/auth/signup',
     });
+    void trackActivationEvent('sign_up', result.email, { method: 'email', user_id: result.id });
 
     setAuthCookie(res, jwt);
     res.status(201).json({
@@ -405,6 +407,7 @@ userAuthRoutes.post('/auth/google', authLimiter, async (req, res, next) => {
         path: '/api/auth/google',
         meta: JSON.stringify({ provider: 'google', googleId }),
       });
+      void trackActivationEvent('sign_up', user!.email, { method: 'google', user_id: user!.id });
     } else {
       if (!user.emailVerified) {
         // Google has just proven this person owns the address; whoever set the

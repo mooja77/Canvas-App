@@ -76,7 +76,7 @@ const ROUTES = [
     component: 'ForInstitutionsPage',
     title: 'For institutions — QualCanvas',
     description:
-      'SSO + SCIM, DPA, BAA, custom retention, EU residency, dedicated research desk. Department-wide qualitative research, procurement-ready.',
+      'Security documentation, deployment details, audit trails and a dedicated research contact for institutional review.',
   },
   {
     path: '/for-teams',

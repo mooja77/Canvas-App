@@ -7,6 +7,7 @@ import { getAuthId, getAuthUserId, safeJsonParse } from '../utils/routeHelpers.j
 import { checkCanvasLimit } from '../middleware/planLimits.js';
 import { getPlanLimits } from '../config/plans.js';
 import { trackJmsEvent } from '../lib/jms-events.js';
+import { setupStepsFromState, updateLockedOnboardingState, SETUP_STEPS } from '../lib/onboardingObservations.js';
 
 export const templateRoutes = Router();
 
@@ -247,10 +248,21 @@ templateRoutes.get('/user/onboarding', async (req, res, next) => {
     });
     if (!user) return next(new AppError('User not found', 404));
 
+    const state = user.onboardingState ? safeJsonParse(user.onboardingState, {}) : {};
+    const observed = setupStepsFromState(state);
+    // Historical client ticks are not observations. Keep UI preferences separate.
+    state.checklistComplete = [
+      ...(Array.isArray(state.checklistComplete)
+        ? state.checklistComplete.filter((id: string) => !SETUP_STEPS.includes(id as (typeof SETUP_STEPS)[number]))
+        : []),
+      ...observed,
+    ];
+
     res.json({
       success: true,
       data: {
-        state: user.onboardingState ? safeJsonParse(user.onboardingState, {}) : {},
+        state,
+        observedSteps: observed,
         completedAt: user.onboardingCompletedAt,
         firstValueAt: user.firstValueAt,
         firstValueCanvasId: user.firstValueCanvasId,
@@ -273,31 +285,27 @@ templateRoutes.patch('/user/onboarding', validate(onboardingPatchBodySchema), as
     if (!userId) return next(new AppError('Onboarding is only tracked for email-authenticated users', 400));
 
     const { state: patch } = req.body as { state: z.infer<typeof onboardingStatePatchSchema> };
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { onboardingState: true },
-    });
-    const current: Record<string, unknown> = user?.onboardingState ? safeJsonParse(user.onboardingState, {}) : {};
-    // Shallow merge for the scalar keys. checklistComplete is a UNION with the
-    // stored set: completion never goes backwards, so a second device that
-    // hydrated before the first one's export cannot erase the server's ticks.
-    const merged: Record<string, unknown> = { ...current, ...patch };
-    if (patch.checklistComplete) {
-      const stored = Array.isArray(current.checklistComplete)
-        ? current.checklistComplete.filter((v): v is string => typeof v === 'string')
-        : [];
-      merged.checklistComplete = Array.from(new Set([...stored, ...patch.checklistComplete]));
-    }
-    // Cap stored size — the frontend should never need more than a few KB.
-    const serialized = JSON.stringify(merged);
-    if (serialized.length > 16_384) {
-      return next(new AppError('Onboarding state too large', 413));
+    if (patch.checklistComplete?.some((id) => SETUP_STEPS.includes(id as (typeof SETUP_STEPS)[number]))) {
+      return next(
+        new AppError(
+          'Setup milestones are detected from saved work, analysis and generated exports, not checklist markers.',
+          400,
+        ),
+      );
     }
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { onboardingState: serialized },
+    const { state: merged } = await updateLockedOnboardingState(userId, (current) => {
+      // Shallow merge for the scalar keys. checklistComplete is a UNION with the
+      // stored set: completion never goes backwards, so a second device that
+      // hydrated before the first one's export cannot erase the server's ticks.
+      const merged: Record<string, unknown> = { ...current, ...patch };
+      if (patch.checklistComplete) {
+        const stored = Array.isArray(current.checklistComplete)
+          ? current.checklistComplete.filter((v): v is string => typeof v === 'string')
+          : [];
+        merged.checklistComplete = Array.from(new Set([...stored, ...patch.checklistComplete]));
+      }
+      return merged;
     });
 
     res.json({ success: true, data: { state: merged } });

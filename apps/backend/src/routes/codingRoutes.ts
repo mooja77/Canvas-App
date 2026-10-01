@@ -34,6 +34,8 @@ import { searchTranscripts } from '../utils/textAnalysis.js';
 import { buildSegmentCodeObservations, computeKrippendorffAlpha } from '../utils/intercoder.js';
 import { deleteCanvasNodeArtifacts } from '../utils/canvasNodeCleanup.js';
 import { ensureDurableFirstValue, recordFirstValue } from '../lib/firstValue.js';
+import { trackActivationEvent } from '../lib/jms-events.js';
+import { observeCodingProgress } from '../lib/onboardingObservations.js';
 
 export const codingRoutes = Router();
 
@@ -388,6 +390,7 @@ codingRoutes.post(
         );
       }
 
+      let reachedFirstValue = false;
       const coding = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const created = await tx.canvasTextCoding.create({
           data: {
@@ -401,7 +404,7 @@ codingRoutes.post(
             coderUserId,
           },
         });
-        await recordFirstValue(tx, {
+        reachedFirstValue = await recordFirstValue(tx, {
           userId: coderUserId,
           canvasId: req.params.id,
           codingId: created.id,
@@ -412,6 +415,19 @@ codingRoutes.post(
         });
         return created;
       });
+      if (reachedFirstValue && coderUserId) {
+        // The aha moment: a researcher's first coding of their own material.
+        // Recorded durably on the User row above; mirrored to the Command
+        // Centre funnel once, for real accounts only.
+        const coder = await prisma.user.findUnique({ where: { id: coderUserId }, select: { email: true } });
+        void trackActivationEvent('first_value_reached', coder?.email, {
+          user_id: coderUserId,
+          canvas_id: req.params.id,
+        });
+      }
+      if (coderUserId && transcript.sourceType !== 'sample' && coding.source !== 'sample') {
+        await observeCodingProgress(coderUserId, req.params.id);
+      }
 
       const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
       logAudit({
@@ -622,6 +638,7 @@ codingRoutes.post(
         orderBy: { createdAt: 'asc' },
       });
       if (insertResult.count > 0 && coderUserId) await ensureDurableFirstValue(coderUserId);
+      if (insertResult.count > 0) await observeCodingProgress(coderUserId, req.params.id);
 
       const rawIp = req.ip || req.socket.remoteAddress || 'unknown';
       logAudit({

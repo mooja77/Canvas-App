@@ -7,6 +7,7 @@ import { prisma } from '../lib/prisma.js';
 import { monthlyRecurringRevenue } from '../lib/revenue.js';
 import { createEmailCampaign, getEmailStats, listEmailCampaigns, sendCampaign } from '../lib/lifecycleEmail.js';
 import { getRealUserIds, isTestAccountEmail } from '../utils/testAccounts.js';
+import { SETUP_STEPS } from '../lib/onboardingObservations.js';
 
 export const adminRoutes = Router();
 
@@ -66,6 +67,45 @@ function adminAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 adminRoutes.use(adminAuth);
+
+// Observed setup funnel: unique real actors, never client checklist JSON or canvas owners.
+adminRoutes.get('/onboarding', async (_req, res, next) => {
+  try {
+    const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const users = (
+      await prisma.user.findMany({
+        where: { createdAt: { gte: since } },
+        select: { id: true, email: true, firstValueAt: true },
+      })
+    ).filter((user) => !isTestAccountEmail(user.email));
+    const observations = await prisma.auditLog.findMany({
+      where: {
+        timestamp: { gte: since },
+        actorId: { in: users.map((user) => user.id) },
+        actorType: 'user',
+        action: { in: SETUP_STEPS.map((step) => `onboarding.${step}`) },
+      },
+      select: { actorId: true, action: true },
+    });
+    res.json({
+      success: true,
+      data: {
+        cohortStartedAt: since.toISOString(),
+        signups: users.length,
+        ahaReached: users.filter((user) => user.firstValueAt).length,
+        steps: SETUP_STEPS.map((id) => ({
+          id,
+          users: new Set(observations.filter((row) => row.action === `onboarding.${id}`).map((row) => row.actorId))
+            .size,
+        })),
+        evidence:
+          'successful server operations; unique real actors; observations retained for the audit retention window',
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // ─── Email Campaigns & Lifecycle Stats ───
 adminRoutes.get('/email/stats', async (_req: Request, res: Response) => {
@@ -672,6 +712,14 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
     const realUserIds = await getRealUserIds(prisma);
     const byRealUser = { in: realUserIds };
 
+    // Starter templates seed a coded sample study on every new project. Those
+    // rows are ours, not the researcher's: counted, every template user would
+    // "add a transcript" and "code" the moment the project opened. A null
+    // sourceType is an ordinary transcript, so the null case is spelled out
+    // (NOT (sourceType = 'sample') is NULL, i.e. false, for those rows).
+    const ownTranscript = { OR: [{ sourceType: null }, { sourceType: { not: 'sample' } }] };
+    const ownCoding = { source: { not: 'sample' }, transcript: { is: ownTranscript } };
+
     const [
       cohortUsers,
       activeCanvasUsers,
@@ -704,10 +752,10 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
       // must not inflate the growth dashboard.
       prisma.codingCanvas.count({ where: { createdAt: { gte: since }, user: { is: realUsersWhere } } }),
       prisma.canvasTranscript.count({
-        where: { createdAt: { gte: since }, canvas: { user: { is: realUsersWhere } } },
+        where: { createdAt: { gte: since }, canvas: { user: { is: realUsersWhere } }, ...ownTranscript },
       }),
       prisma.canvasTextCoding.count({
-        where: { createdAt: { gte: since }, canvas: { user: { is: realUsersWhere } } },
+        where: { createdAt: { gte: since }, canvas: { user: { is: realUsersWhere } }, ...ownCoding },
       }),
       prisma.canvasComputedNode.count({
         where: { updatedAt: { gte: since }, canvas: { user: { is: realUsersWhere } } },
@@ -738,7 +786,7 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
         select: { userId: true, createdAt: true },
       }),
       prisma.canvasTranscript.findMany({
-        where: { canvas: { user: { is: cohortWhere } } },
+        where: { canvas: { user: { is: cohortWhere } }, ...ownTranscript },
         select: { createdAt: true, canvas: { select: { userId: true } } },
       }),
       // A coding belongs to whoever made it. A cohort member invited as a
@@ -748,6 +796,7 @@ adminRoutes.get('/usage', async (req: Request, res: Response) => {
       prisma.canvasTextCoding.findMany({
         where: {
           OR: [{ coder: { is: cohortWhere } }, { coderUserId: null, canvas: { user: { is: cohortWhere } } }],
+          ...ownCoding,
         },
         select: { createdAt: true, coderUserId: true, canvas: { select: { userId: true } } },
       }),

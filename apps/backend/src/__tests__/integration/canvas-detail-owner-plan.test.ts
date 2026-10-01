@@ -164,4 +164,29 @@ describe('GET /canvas/:id reports the OWNER plan (M6)', () => {
     expect(res.body.data.myRole).toBe('owner');
     expect(res.body.data.ownerPlan.effectivePlan).toBe('pro');
   });
+
+  it('keeps an existing canvas readable after the Pro trial ends', async () => {
+    const trialEndsAt = new Date(Date.now() - 86_400_000);
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({
+      ...canvasOwnedBy('free'),
+      user: { plan: 'free', emailVerified: true, trialEndsAt },
+    });
+    const jwt = signedInAs(ownerId, 'free', ownerAccessId);
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: ownerId,
+      email: `${ownerId}@example.com`,
+      plan: 'free',
+      role: 'researcher',
+      emailVerified: true,
+      sessionsInvalidAt: null,
+      trialEndsAt,
+      dashboardAccess: { id: ownerAccessId },
+    });
+
+    const res = await request(app).get(`/api/canvas/${canvasId}`).set('Authorization', `Bearer ${jwt}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.name).toBe('Shared canvas');
+    expect(res.body.data.ownerPlan.effectivePlan).toBe('free');
+  });
 });

@@ -14,7 +14,7 @@ interface Props {
   onClose: () => void;
   initialState?: {
     currentStep?: number;
-    personalization?: { method?: string };
+    personalization?: { method?: string; researchTopic?: string };
   };
 }
 
@@ -34,6 +34,8 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
   const [step, setStep] = useState(initialState?.currentStep === 2 ? 2 : 1);
   const [busy, setBusy] = useState(false);
   const [preferredMethod, setPreferredMethod] = useState<string>(initialState?.personalization?.method || 'interviews');
+  // The researcher's own words name the first project; otherwise the template's name does.
+  const [researchTopic, setResearchTopic] = useState<string>(initialState?.personalization?.researchTopic || '');
   const startedAtRef = useRef<number>(Date.now());
   const dialogRef = useRef<HTMLDivElement>(null);
   const openCanvas = useCanvasStore((s) => s.openCanvas);
@@ -71,7 +73,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
   useEscapeToClose(handleEscape);
   useFocusTrap(dialogRef, true);
 
-  const handlePersonalization = useCallback((answers: { researchTopic: string; method: string; solo: boolean }) => {
+  const handlePersonalization = useCallback((answers: { researchTopic: string; method: string }) => {
     trackEvent('onboarding_step_completed', {
       step: 1,
       seconds_elapsed: Math.round((Date.now() - startedAtRef.current) / 1000),
@@ -81,6 +83,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
       personalization: answers,
     });
     setPreferredMethod(answers.method);
+    setResearchTopic(answers.researchTopic);
     setStep(2);
   }, []);
 
@@ -94,7 +97,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
           // path closed onboarding onto an empty list and left activation for a
           // separate, easy-to-miss action.
           trackEvent('onboarding_step_completed', { step: 2, template: 'blank' });
-          const blankCanvas = await createCanvas('Untitled research project');
+          const blankCanvas = await createCanvas(researchTopic.trim() || 'Untitled research project');
           await openCanvas(blankCanvas.id);
           await finish('setup_finished');
           toast.success('Blank canvas ready — add a transcript when you are ready.', { duration: 5000 });
@@ -103,7 +106,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
         }
 
         const res = await templateApi.instantiate(tmpl.id, {
-          canvasName: tmpl.name,
+          canvasName: researchTopic.trim() || tmpl.name,
           includeSampleData: includeSample,
         });
         const newCanvas = res.data.data;
@@ -129,7 +132,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
         setBusy(false);
       }
     },
-    [busy, createCanvas, finish, fetchCanvases, navigate, openCanvas],
+    [busy, createCanvas, finish, fetchCanvases, navigate, openCanvas, researchTopic],
   );
 
   return (

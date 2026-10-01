@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useCanvasStore } from '../../../stores/canvasStore';
 import { useCanvasPlan } from '../../../hooks/useCanvasPlan';
 import type { PlanTier } from '../../../config/planLimits';
@@ -169,6 +169,12 @@ export default function AddComputedNodeMenu() {
   const allowedTypes = ANALYSIS_TYPES_BY_PLAN[effectivePlan as PlanTier] ?? ANALYSIS_TYPES_BY_PLAN.free;
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement | null>(null);
+  // Deep link from the setup guide's "Run an analysis" step.
+  useEffect(() => {
+    const openMenu = () => setOpen(true);
+    window.addEventListener('qualcanvas:open-analyze-menu', openMenu);
+    return () => window.removeEventListener('qualcanvas:open-analyze-menu', openMenu);
+  }, []);
   // Codings the researcher made themselves: seeded sample codings do not count.
   const ownCodings = useCanvasStore((s) => (s.activeCanvas?.codings ?? []).filter((c) => c.source !== 'sample').length);
   const [showAll, setShowAll] = useState(readShowAll);

@@ -11,6 +11,8 @@ import type { Request, Response, NextFunction } from 'express';
 const { mockPrisma } = vi.hoisted(() => ({
   mockPrisma: {
     user: { findUnique: vi.fn(), update: vi.fn() },
+    $transaction: vi.fn(),
+    $queryRaw: vi.fn(),
   },
 }));
 
@@ -64,6 +66,9 @@ describe('PATCH /user/onboarding validation and merge (L4)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.user.findUnique.mockReset();
+    mockPrisma.$transaction.mockImplementation(async (callback) => callback(mockPrisma));
+    mockPrisma.$queryRaw.mockResolvedValue([]);
     app = createApp();
     mockPrisma.user.update.mockResolvedValue({ ...mockUser });
   });
@@ -110,15 +115,13 @@ describe('PATCH /user/onboarding validation and merge (L4)', () => {
     expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
-  it('unions checklistComplete with the stored set so completion never goes backwards', async () => {
+  it('rejects forged successful-analysis markers without updating state', async () => {
     withStored({ currentStep: 3, checklistComplete: ['first-transcript', 'export-csv'] });
 
     const res = await patch({ state: { checklistComplete: ['run-analysis'] } });
 
-    expect(res.status).toBe(200);
-    expect(storedState().checklistComplete).toEqual(['first-transcript', 'export-csv', 'run-analysis']);
-    expect(res.body.data.state.checklistComplete).toEqual(['first-transcript', 'export-csv', 'run-analysis']);
-    expect(storedState().currentStep).toBe(3);
+    expect(res.status).toBe(400);
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
   it('keeps server ticks when a second device sends an empty checklist', async () => {
@@ -130,12 +133,13 @@ describe('PATCH /user/onboarding validation and merge (L4)', () => {
     expect(storedState().checklistComplete).toEqual(['export-csv', 'dismissed']);
   });
 
-  it('deduplicates ids already stored', async () => {
+  it('rejects forged export and two-code markers', async () => {
     withStored({ checklistComplete: ['export-csv'] });
 
-    await patch({ state: { checklistComplete: ['export-csv', 'create-theme'] } });
+    const response = await patch({ state: { checklistComplete: ['export-csv', 'create-theme'] } });
 
-    expect(storedState().checklistComplete).toEqual(['export-csv', 'create-theme']);
+    expect(response.status).toBe(400);
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
   it('leaves checklistComplete alone when the patch does not mention it', async () => {
@@ -154,7 +158,7 @@ describe('PATCH /user/onboarding validation and merge (L4)', () => {
         currentStep: 2,
         startedAt: '2026-09-02T10:00:00.000Z',
         dismissedTooltips: ['quick-code', 'auto-arrange'],
-        checklistComplete: ['first-transcript'],
+        checklistComplete: [],
         completionMode: 'setup_finished',
         flowDismissed: false,
         checklistDismissed: true,
@@ -169,7 +173,7 @@ describe('PATCH /user/onboarding validation and merge (L4)', () => {
       currentStep: 2,
       completionMode: 'setup_finished',
       checklistDismissed: true,
-      checklistComplete: ['first-transcript'],
+      checklistComplete: [],
     });
   });
 });

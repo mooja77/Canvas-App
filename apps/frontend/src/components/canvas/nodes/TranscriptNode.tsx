@@ -235,6 +235,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
   const codeInVivo = useCanvasStore((s) => s.codeInVivo);
   const spreadToParagraph = useCanvasStore((s) => s.spreadToParagraph);
   const nodeData = data as unknown as TranscriptNodeData;
+  const isOverview = useUIStore((s) => s.zoomTier === 'minimal');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [quickCodePopover, setQuickCodePopover] = useState<{ x: number; y: number } | null>(null);
   const [codingPopover, setCodingPopover] = useState<{ codingIds: string[]; x: number; y: number } | null>(null);
@@ -448,37 +449,44 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div
+          className="flex items-center gap-1"
+          title={isOverview ? 'Zoom in or choose a transcript from the sidebar to use its controls' : undefined}
+        >
           <CrossCanvasRefBadge nodeId={id} />
           {collapsed && codings.length > 0 && (
             <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
               {codings.length} coding{codings.length !== 1 ? 's' : ''}
             </span>
           )}
-          <button
-            onClick={toggleCollapsed}
-            className="rounded p-1 text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800"
-            title={collapsed ? 'Expand' : 'Collapse'}
-          >
-            <svg
-              className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="rounded p-1 text-blue-400 hover:bg-blue-100 hover:text-red-600 dark:hover:bg-blue-800 dark:hover:text-red-400"
-            title="Delete transcript"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
-          </button>
+          {!isOverview && (
+            <>
+              <button
+                onClick={toggleCollapsed}
+                className="nodrag flex h-8 w-8 shrink-0 items-center justify-center rounded text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800"
+                title={collapsed ? 'Expand' : 'Collapse'}
+              >
+                <svg
+                  className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="nodrag flex h-8 w-8 shrink-0 items-center justify-center rounded text-blue-400 hover:bg-blue-100 hover:text-red-600 dark:hover:bg-blue-800 dark:hover:text-red-400"
+                title="Delete transcript"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -571,7 +579,7 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-gray-300 dark:text-gray-600 tabular-nums">
+            <span className="text-[10px] text-gray-600 dark:text-gray-300 tabular-nums">
               {wordCount.toLocaleString()} word{wordCount !== 1 ? 's' : ''}
             </span>
           </div>

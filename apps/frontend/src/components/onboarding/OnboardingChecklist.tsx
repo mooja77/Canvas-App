@@ -1,20 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useCanvasStore } from '../../stores/canvasStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useMobile } from '../../hooks/useMobile';
 import { patchOnboardingState } from './utils/onboardingState';
+import toast from 'react-hot-toast';
 
 /**
  * Asana-style persistent checklist. Reads canvas content reactively so each
  * row updates as the user actually does the thing — we don't carry a parallel
  * piece of state that could drift.
  *
- * Collapsed-by-default after first action so it doesn't crowd the canvas.
+ * Open through the first-value path, collapsed by default afterwards so it
+ * does not crowd the canvas.
  *
- * Hidden entirely on mobile (live QA finding #9): the 288px floating card
- * fixed bottom-right covers most of a phone-width canvas and competes with
- * the canvas controls. Mobile is a review/navigation surface — the
- * activation checklist belongs on tablet/desktop where there's room.
+ * On a phone this sits in the page flow above the canvas, so the first-value
+ * deep links remain reachable without a floating card covering the controls.
  */
 export default function OnboardingChecklist() {
   const isMobile = useMobile();
@@ -22,7 +22,6 @@ export default function OnboardingChecklist() {
   // once the user has completed a step the card starts collapsed so it stops
   // crowding the canvas (this was always the stated intent).
   const [collapsed, setCollapsed] = useState<boolean | null>(null);
-  const [dismissed, setDismissed] = useState(false);
   const activeCanvas = useCanvasStore((s) => s.activeCanvas);
   const onboardingChecklistDismissed = useUIStore((s) => s.onboardingChecklistDismissed);
   const dismissOnboardingChecklist = useUIStore((s) => s.dismissOnboardingChecklist);
@@ -32,68 +31,85 @@ export default function OnboardingChecklist() {
   // with the row already ticked and the whole card collapsed.
   const checklistComplete = useUIStore((s) => s.onboardingChecklistComplete);
 
-  useEffect(() => {
-    if (onboardingChecklistDismissed) setDismissed(true);
-  }, [onboardingChecklistDismissed]);
-
   const tasks = useMemo(() => {
     const transcripts = activeCanvas?.transcripts ?? [];
     const codings = activeCanvas?.codings ?? [];
-    const questions = activeCanvas?.questions ?? [];
     const computedNodes = activeCanvas?.computedNodes ?? [];
+    // Starter templates seed transcripts, codes and coded excerpts marked
+    // 'sample'. The guide is about the researcher's own first steps, so seeded
+    // material never ticks a step: otherwise a template canvas would open with
+    // steps already done that the researcher never took.
+    const ownTranscripts = transcripts.filter((t) => t.sourceType !== 'sample');
+    const ownTranscriptIds = new Set(ownTranscripts.map((t) => t.id));
+    const ownCodings = codings.filter((c) => c.source !== 'sample' && ownTranscriptIds.has(c.transcriptId));
+    const codesUsed = new Set(ownCodings.map((c) => c.questionId)).size;
+    const openTranscriptPicker = () => window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker'));
+    // Coding happens in a transcript: centre the researcher's own transcript
+    // (or open the picker when there is none yet) and say what to do there.
+    const goCode = () => {
+      const target = ownTranscripts[0];
+      if (!target) return openTranscriptPicker();
+      window.dispatchEvent(new CustomEvent('qualcanvas:focus-node', { detail: { nodeId: `transcript-${target.id}` } }));
+      toast('Highlight a sentence in your transcript, type a code name and press Enter.', { duration: 6000 });
+    };
     return [
       {
         id: 'first-transcript',
         label: 'Add your first transcript',
-        // Starter templates seed transcripts and coded excerpts with source
-        // 'sample'. The arc is about the researcher's own first steps, so those
-        // are ignored here; otherwise two of five tasks would be done on arrival.
-        done: transcripts.some((t) => t.sourceType !== 'sample'),
-        action: () => window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker')),
+        done: ownTranscripts.length > 0,
+        action: openTranscriptPicker,
       },
       {
         id: 'first-coded-excerpt',
         label: 'Code your first excerpt',
-        done: codings.some((c) => c.source !== 'sample'),
-        action: null,
+        done: ownCodings.length > 0,
+        action: goCode,
       },
       {
         id: 'create-theme',
-        label: 'Create at least 2 codes',
-        done: questions.length >= 2,
-        action: null,
+        label: 'Use 2 different codes',
+        done: codesUsed >= 2,
+        action: goCode,
       },
       {
         id: 'run-analysis',
         label: 'Run an analysis (word cloud, frequency, ...)',
-        done: computedNodes.length > 0,
-        action: null,
+        // Creating a node only chooses an analysis; its initial result is {}.
+        // A successful server run returns a populated result object, including
+        // named empty collections when the analysis legitimately found nothing.
+        done: computedNodes.some((node) => Object.keys(node.result ?? {}).length > 0),
+        action: () => window.dispatchEvent(new CustomEvent('qualcanvas:open-analyze-menu')),
       },
       {
         id: 'export-csv',
         label: 'Export your codings to CSV',
         done: checklistComplete.includes('export-csv'),
-        action: null,
+        action: () =>
+          window.dispatchEvent(new CustomEvent('qualcanvas:open-canvas-modal', { detail: { modal: 'coded-data' } })),
       },
     ];
   }, [activeCanvas, checklistComplete]);
 
   const completedCount = tasks.filter((t) => t.done).length;
   const allDone = completedCount === tasks.length;
-  const isCollapsed = collapsed ?? completedCount > 0;
+  // Stay open through the first-value path (own transcript -> first coded
+  // excerpt), where the deep links matter most; afterwards start collapsed so
+  // the guide stops crowding the canvas.
+  const isCollapsed = collapsed ?? completedCount >= 2;
 
   // Auto-hide once everything is done; user has finished the activation arc.
-  // Also hidden on mobile so it doesn't crowd the phone-width canvas (#9).
-  // And hidden with no canvas open (e.g. the canvas list): every task is
+  // Hidden with no canvas open (e.g. the canvas list): every task is
   // canvas-scoped, so without an activeCanvas it reads a misleading "0 of 5"
   // and none of the rows are actionable. It reappears inside a canvas.
-  if (dismissed || allDone || isMobile || !activeCanvas) return null;
+  if (onboardingChecklistDismissed || allDone || !activeCanvas) return null;
 
   return (
     // bottom-12 keeps the card clear of the canvas status bar — at bottom-4 it
     // sat on top of Help / notifications / zoom and swallowed their clicks
     // (round-5 audit; exactly the controls a first-time user needs).
-    <div className="fixed bottom-12 right-4 z-40 w-72 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg">
+    <div
+      className={`${isMobile ? 'relative mx-3 my-2 w-auto shrink-0' : 'fixed bottom-12 right-4 z-40 w-72'} rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg`}
+    >
       <div className="flex items-stretch">
         <button
           type="button"
@@ -104,8 +120,26 @@ export default function OnboardingChecklist() {
         >
           <div>
             <div className="text-xs font-semibold text-gray-900 dark:text-white">Get started</div>
-            <div className="text-[10px] text-gray-500 dark:text-gray-400">
+            <div
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className="text-[10px] text-gray-500 dark:text-gray-400"
+            >
               {completedCount} of {tasks.length} complete
+            </div>
+            <div
+              role="progressbar"
+              aria-label="Setup progress"
+              aria-valuemin={0}
+              aria-valuemax={tasks.length}
+              aria-valuenow={completedCount}
+              className="mt-1.5 h-1.5 w-40 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700"
+            >
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${Math.round((completedCount / tasks.length) * 100)}%` }}
+              />
             </div>
           </div>
           <svg
@@ -123,7 +157,6 @@ export default function OnboardingChecklist() {
           type="button"
           onClick={() => {
             dismissOnboardingChecklist();
-            setDismissed(true);
             void patchOnboardingState({ checklistDismissed: true });
           }}
           className="px-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -150,7 +183,7 @@ export default function OnboardingChecklist() {
         >
           {tasks.map((task) => (
             <li key={task.id} className="px-4 py-2">
-              {task.action ? (
+              {!task.done ? (
                 <button
                   type="button"
                   onClick={task.action}

@@ -30,7 +30,7 @@ vi.mock('./utils/onboardingState', () => ({
 vi.mock('./Screen1_Personalization', () => ({
   default: ({ onContinue, onSkip }: { onContinue: (value: unknown) => void; onSkip: () => void }) => (
     <div>
-      <button type="button" onClick={() => onContinue({ researchTopic: 'Study', method: 'interviews', solo: true })}>
+      <button type="button" onClick={() => onContinue({ researchTopic: 'Study', method: 'interviews' })}>
         Continue test onboarding
       </button>
       <button type="button" onClick={onSkip}>
@@ -88,7 +88,7 @@ describe('OnboardingFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue test onboarding' }));
     fireEvent.click(screen.getByRole('button', { name: 'Choose blank canvas' }));
 
-    await waitFor(() => expect(mocks.createCanvas).toHaveBeenCalledWith('Untitled research project'));
+    await waitFor(() => expect(mocks.createCanvas).toHaveBeenCalledWith('Study'));
     expect(mocks.openCanvas).toHaveBeenCalledWith('canvas-1');
     expect(mocks.patchState).toHaveBeenCalledWith(
       expect.objectContaining({ completionMode: 'setup_finished', flowDismissed: false }),

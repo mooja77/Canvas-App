@@ -229,6 +229,14 @@ export const canvasApi = {
 
   permanentDeleteCanvas: (canvasId: string) => canvasClient.delete(`/canvas/${canvasId}/permanent`),
 
+  // Removes the starter template's seeded study; the codebook and the
+  // researcher's own material stay.
+  removeSampleData: (canvasId: string) =>
+    canvasClient.delete<{
+      success: boolean;
+      data: { removed: { transcripts: number; codings: number; memos: number } };
+    }>(`/canvas/${canvasId}/sample-data`),
+
   // ─── Transcripts ───
   addTranscript: (canvasId: string, data: CreateTranscriptInput) =>
     canvasClient.post(`/canvas/${canvasId}/transcripts`, data),

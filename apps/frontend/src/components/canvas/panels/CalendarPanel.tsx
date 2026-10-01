@@ -96,7 +96,9 @@ export default function CalendarPanel({ onClose }: CalendarPanelProps) {
   const emailAuthed = authType === 'email';
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [sampleVisible, setSampleVisible] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [submitting, setSubmitting] = useState(false);
@@ -120,12 +122,13 @@ export default function CalendarPanel({ onClose }: CalendarPanelProps) {
     }
     try {
       setLoading(true);
+      setLoadError(false);
       const params: Record<string, string> = {};
       if (filterType !== 'all') params.type = filterType;
       const res = await calendarApi.getEvents(params);
       setEvents(res.data.data || []);
     } catch {
-      toast.error('Failed to load calendar events');
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -437,6 +440,28 @@ export default function CalendarPanel({ onClose }: CalendarPanelProps) {
                 <div className="flex items-center justify-center py-12">
                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
                 </div>
+              ) : loadError ? (
+                <div role="alert" className="py-12 text-center text-sm text-gray-700 dark:text-gray-200">
+                  <p>We couldn&rsquo;t load your calendar. Your saved events have not been changed.</p>
+                  <button
+                    type="button"
+                    onClick={() => void loadEvents()}
+                    className="mt-3 rounded-lg bg-blue-600 px-3 py-1.5 font-medium text-white hover:bg-blue-700"
+                  >
+                    Try loading again
+                  </button>
+                </div>
+              ) : events.length === 0 && filterType !== 'all' ? (
+                <div className="py-12 text-center text-sm text-gray-700 dark:text-gray-200">
+                  <p>No events match this type. Your other events may still be here.</p>
+                  <button
+                    type="button"
+                    onClick={() => setFilterType('all')}
+                    className="mt-3 rounded-lg bg-blue-600 px-3 py-1.5 font-medium text-white hover:bg-blue-700"
+                  >
+                    Show all events
+                  </button>
+                </div>
               ) : events.length === 0 ? (
                 <div className="text-center py-12">
                   <svg
@@ -456,6 +481,29 @@ export default function CalendarPanel({ onClose }: CalendarPanelProps) {
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                     Add milestones, deadlines, and sessions to track your research timeline.
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetForm();
+                      setShowForm(true);
+                    }}
+                    className="mt-3 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                  >
+                    Add your first milestone
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSampleVisible((visible) => !visible)}
+                    className="mt-3 ml-3 text-xs font-medium text-blue-700 underline dark:text-blue-300"
+                  >
+                    {sampleVisible ? 'Hide sample milestone' : 'Show sample milestone'}
+                  </button>
+                  {sampleVisible && (
+                    <div className="mx-auto mt-3 max-w-sm rounded-lg border border-dashed border-blue-300 bg-blue-50 p-3 text-left text-xs text-blue-900 dark:border-blue-700 dark:bg-blue-900/20 dark:text-blue-100">
+                      <p className="font-semibold">Sample only — not saved to your calendar</p>
+                      <p className="mt-1">Milestone: Finish coding the first three interviews</p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-6">

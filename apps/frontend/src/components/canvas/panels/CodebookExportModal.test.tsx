@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { useUIStore } from '../../../stores/uiStore';
 
-const { mockToast } = vi.hoisted(() => ({
+const { mockToast, mockGet } = vi.hoisted(() => ({
+  mockGet: vi.fn(),
   mockToast: { success: vi.fn(), error: vi.fn() },
 }));
 
 vi.mock('react-hot-toast', () => ({ default: mockToast }));
+vi.mock('../../../services/api', () => ({ canvasClient: { get: mockGet } }));
+vi.mock('../../onboarding/utils/onboardingState', () => ({
+  patchOnboardingState: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('../../../stores/canvasStore', () => ({
   useActiveCanvas: () => ({
@@ -38,6 +44,8 @@ describe('CodebookExportModal output', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     blobs.length = 0;
+    useUIStore.setState({ onboardingChecklistComplete: [] });
+    mockGet.mockResolvedValue({ data: new Blob(['\uFEFFTranscript,Code\n"line one","Coopération"']) });
     global.URL.createObjectURL = vi.fn((blob: Blob) => {
       blobs.push(blob);
       return 'blob:mock';
@@ -70,5 +78,32 @@ describe('CodebookExportModal output', () => {
     // the tabbed annotation were pasted raw.
     expect(tsv).toContain('"line one\n\nline two"');
     expect(tsv).toContain('"note\twith tab"');
+  });
+
+  it('does not tick coded-data export when only the codebook was downloaded', () => {
+    render(<CodebookExportModal onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Download CSV/ }));
+    expect(useUIStore.getState().onboardingChecklistComplete).not.toContain('export-csv');
+  });
+
+  it('opens coded data directly for the guide and records only the actual data download', async () => {
+    render(<CodebookExportModal initialTab="data" onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Download CSV/ }));
+    await waitFor(() => expect(blobs).toHaveLength(1));
+    expect(await blobs[0].text()).toContain('line one');
+    expect(useUIStore.getState().onboardingChecklistComplete).toContain('export-csv');
+    expect(mockGet).toHaveBeenCalledWith('/canvas/canvas-1/export/coded-data.csv', { responseType: 'blob' });
+  });
+
+  it('does not tick progress on a failed server export and tells the user how to retry', async () => {
+    mockGet.mockRejectedValue(new Error('offline'));
+    render(<CodebookExportModal initialTab="data" onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Download CSV/ }));
+    await waitFor(() =>
+      expect(mockToast.error).toHaveBeenCalledWith(expect.stringContaining('try Download CSV again')),
+    );
+    expect(blobs).toHaveLength(0);
+    expect(useUIStore.getState().onboardingChecklistComplete).not.toContain('export-csv');
+    expect(screen.getByRole('button', { name: /Download CSV/ })).toBeEnabled();
   });
 });

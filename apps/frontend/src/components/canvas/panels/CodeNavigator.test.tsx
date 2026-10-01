@@ -159,6 +159,12 @@ describe('CodeNavigator', () => {
     expect(screen.getByText('Sadness')).toBeInTheDocument();
     expect(screen.queryByText('Happiness')).not.toBeInTheDocument();
     expect(screen.queryByText('Anger')).not.toBeInTheDocument();
+
+    fireEvent.change(filterInput, { target: { value: 'unmatched theme' } });
+    expect(screen.getByText(/Your codes have not been removed/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    expect(screen.getByText('Happiness')).toBeVisible();
+    expect(screen.getByText('Sadness')).toBeVisible();
   });
 
   it('empty state — renders without crash when no questions', () => {
@@ -166,6 +172,37 @@ describe('CodeNavigator', () => {
     render(<CodeNavigator onFocusNode={onFocusNode} />);
 
     expect(screen.getByText('No codes yet')).toBeInTheDocument();
+    expect(screen.getByText(/Codes let you gather related passages into themes/)).toBeVisible();
+    expect(screen.getByRole('link', { name: 'See a coding example' })).toHaveAttribute('href', '/help/first-code.html');
+  });
+
+  it('offers a direct source action from empty codes and sources', () => {
+    const dispatch = vi.spyOn(window, 'dispatchEvent');
+    render(<CodeNavigator onFocusNode={onFocusNode} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add a transcript' }));
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'qualcanvas:open-transcript-picker' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sources (0)' }));
+    expect(screen.getByText('No sources yet')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'See a sample source' })).toHaveAttribute('href', '/training#video-03');
+    fireEvent.click(screen.getByRole('button', { name: 'Add a transcript' }));
+    expect(dispatch).toHaveBeenCalledTimes(2);
+    dispatch.mockRestore();
+  });
+
+  it('shows the cases tab before any case exists and opens the case manager', () => {
+    const dispatch = vi.spyOn(window, 'dispatchEvent');
+    render(<CodeNavigator onFocusNode={onFocusNode} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cases (0)' }));
+    expect(screen.getByText('No cases yet')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'See a worked example' })).toHaveAttribute('href', '/training#video-14');
+    fireEvent.click(screen.getByRole('button', { name: 'Create your first case' }));
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'qualcanvas:open-canvas-modal', detail: { modal: 'case-manager' } }),
+    );
+    dispatch.mockRestore();
   });
 
   it('sort by count — codes ordered by coding count descending (default)', () => {

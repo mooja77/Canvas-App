@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { trackEvent } from '../../utils/analytics';
 
 interface Props {
-  onContinue: (answers: { researchTopic: string; method: string; solo: boolean }) => void;
+  onContinue: (answers: { researchTopic: string; method: string }) => void;
   onSkip: () => void;
 }
 
@@ -17,16 +17,17 @@ const METHODS = [
 export default function Screen1_Personalization({ onContinue, onSkip }: Props) {
   const [topic, setTopic] = useState('');
   const [method, setMethod] = useState<string>('interviews');
-  const [solo, setSolo] = useState<boolean | null>(null);
-
-  const canContinue = topic.trim().length > 0 && method && solo !== null;
+  // Two questions, both optional: the topic names the first project, the
+  // method pre-selects the template. (A third "solo or team?" question was
+  // asked and never used, so it is gone.)
+  const canContinue = Boolean(method);
 
   return (
     <div className="w-full max-w-xl">
       <div className="text-center mb-6">
         <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Let's tailor your workspace</h2>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Three quick questions so we can suggest the right starting template.
+          Two quick, optional questions: we name your first project and suggest a starting template.
         </p>
       </div>
 
@@ -36,7 +37,7 @@ export default function Screen1_Personalization({ onContinue, onSkip }: Props) {
             htmlFor="onboarding-topic"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
           >
-            What are you researching?
+            What are you researching? <span className="font-normal text-gray-500 dark:text-gray-400">(optional)</span>
           </label>
           <input
             id="onboarding-topic"
@@ -77,31 +78,6 @@ export default function Screen1_Personalization({ onContinue, onSkip }: Props) {
             ))}
           </div>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-            Just you, or a team?
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { id: 'solo', label: 'Solo', value: true },
-              { id: 'team', label: 'Team', value: false },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setSolo(opt.value)}
-                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                  solo === opt.value
-                    ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300'
-                    : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div className="flex items-center justify-between mt-7">
@@ -118,7 +94,7 @@ export default function Screen1_Personalization({ onContinue, onSkip }: Props) {
         <button
           type="button"
           disabled={!canContinue}
-          onClick={() => onContinue({ researchTopic: topic.trim(), method, solo: !!solo })}
+          onClick={() => onContinue({ researchTopic: topic.trim(), method })}
           className="btn-primary px-5 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Continue

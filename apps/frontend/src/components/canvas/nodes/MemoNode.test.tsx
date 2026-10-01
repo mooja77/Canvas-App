@@ -24,6 +24,9 @@ vi.mock('../../../stores/canvasStore', () => ({
   useCanvasStore: (selector?: (s: any) => any) => (selector ? selector(storeState) : storeState),
 }));
 
+let zoomTier = 'full';
+vi.mock('../../../stores/uiStore', () => ({ useUIStore: (selector: (s: any) => any) => selector({ zoomTier }) }));
+
 import MemoNode from './MemoNode';
 
 function renderNode() {
@@ -38,6 +41,16 @@ function renderNode() {
 describe('MemoNode inline edit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    zoomTier = 'full';
+  });
+
+  it('keeps memo content readable without microscopic actions in overview', () => {
+    zoomTier = 'minimal';
+    renderNode();
+    expect(screen.getByText('Original body')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Collapse' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete memo' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
   });
 
   it('tells the user when the memo could not be saved and keeps the editor open', async () => {

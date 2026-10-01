@@ -297,11 +297,72 @@ function baseEmailHtml(options: {
 </html>`.trim();
 }
 
+/**
+ * Where a not-yet-activated researcher stands. Activation (a first coding of
+ * their own material) ends the timed sequence, so these are the only states a
+ * nudge can meet.
+ */
+export type SetupProgress = 'no_project' | 'no_transcript' | 'no_coding';
+
+// Existing production lifecycle automation may already be enabled. New setup
+// timing/content is a separate, explicit release choice; absent stays legacy.
+export function isSetupSequenceEnabled(): boolean {
+  return process.env.LIFECYCLE_SETUP_SEQUENCE_ENABLED === 'true';
+}
+
+const NEXT_STEP: Record<SetupProgress, { title: string; sentence: string; body: string; cta: string }> = {
+  no_project: {
+    title: 'Start your first project',
+    sentence: 'Your next step: start your first project',
+    body: 'Pick a starter template and QualCanvas opens a small coded sample study, so you can see what a finished canvas looks like before you add anything of your own. Remove the sample in one click whenever you are ready.',
+    cta: 'Start a project',
+  },
+  no_transcript: {
+    title: 'Add your first transcript',
+    sentence: 'Your next step: add your first transcript',
+    body: 'Paste an interview or drop in a .docx, .pdf, .txt, .vtt or .srt file. The Get started guide in your project has a button that opens the transcript picker directly.',
+    cta: 'Add a transcript',
+  },
+  no_coding: {
+    title: 'Code your first excerpt',
+    sentence: 'Your next step: code your first excerpt',
+    body: 'Open your transcript, highlight a sentence that matters, type a code name and press Enter. That first coded excerpt is where the canvas starts showing you patterns.',
+    cta: 'Code an excerpt',
+  },
+};
+
+function nextStepParagraph(progress: SetupProgress | undefined): string {
+  if (!progress || !isSetupSequenceEnabled()) return '';
+  const step = NEXT_STEP[progress];
+  return `
+        <p style="margin:18px 0 0;"><strong>${step.sentence}.</strong> ${step.body}</p>`;
+}
+
 export function lifecycleTemplate(
-  type: 'welcome' | 'onboarding_7d' | 'training_tip_3d' | 'inactivity_14d',
+  type: 'welcome' | 'setup_nudge_1d' | 'onboarding_7d' | 'training_tip_3d' | 'inactivity_14d',
   user: EmailUser,
+  progress?: SetupProgress,
 ) {
   const name = escapeHtml(firstName(user.name));
+
+  if (type === 'setup_nudge_1d') {
+    if (!isSetupSequenceEnabled()) throw new Error('New lifecycle setup sequence is disabled');
+    const step = NEXT_STEP[progress ?? 'no_transcript'];
+    return {
+      category: 'lifecycle' as EmailCategory,
+      eventKey: 'setup_nudge_1d_v1',
+      setupSequence: true,
+      subject: `QualCanvas: ${step.title.toLowerCase()}`,
+      title: step.title,
+      preview: 'One small step to your first coded insight.',
+      ctaLabel: step.cta,
+      ctaUrl: appLink('/canvas'),
+      bodyHtml: `
+        <p style="margin:0 0 18px;">Hi ${name},</p>
+        <p style="margin:0 0 18px;">${step.body}</p>
+        <p style="margin:0;">Prefer us to set it up? Email <a href="mailto:support@qualcanvas.com?subject=Set%20up%20my%20QualCanvas%20project">support@qualcanvas.com</a> with your method and what you are moving from, and we will reply within two business days with a suggested template and codebook. No call needed.</p>`,
+    };
+  }
 
   if (type === 'welcome') {
     return {
@@ -323,6 +384,7 @@ export function lifecycleTemplate(
     return {
       category: 'lifecycle' as EmailCategory,
       eventKey: 'onboarding_7d_v1',
+      ...(progress && isSetupSequenceEnabled() ? { setupSequence: true } : {}),
       subject: 'A useful next step in QualCanvas',
       title: 'Turn early codes into a useful structure',
       preview: 'A one-week check-in with a practical coding workflow.',
@@ -331,7 +393,7 @@ export function lifecycleTemplate(
       bodyHtml: `
         <p style="margin:0 0 18px;">Hi ${name},</p>
         <p style="margin:0 0 18px;">After your first few codes, the next win is structure. Group related questions, add memos for emerging interpretations, and use the canvas view to spot weak or over-broad themes.</p>
-        <p style="margin:0;">If you are working with a team, invite collaborators before finalising the coding scheme so everyone can review the same structure.</p>`,
+        <p style="margin:0;">If you are working with a team, invite collaborators before finalising the coding scheme so everyone can review the same structure.</p>${nextStepParagraph(progress)}`,
     };
   }
 
@@ -339,6 +401,7 @@ export function lifecycleTemplate(
     return {
       category: 'trainingTips' as EmailCategory,
       eventKey: 'training_tip_3d_v1',
+      ...(progress && isSetupSequenceEnabled() ? { setupSequence: true } : {}),
       subject: 'Your short QualCanvas first-project path',
       title: 'See the complete workflow in under 15 minutes',
       preview: 'Eight focused videos take you from a first canvas to a defensible handoff.',
@@ -347,7 +410,7 @@ export function lifecycleTemplate(
       bodyHtml: `
         <p style="margin:0 0 18px;">Hi ${name},</p>
         <p style="margin:0 0 18px;">If the empty canvas feels unfamiliar, follow the eight-video first-project path. It covers project setup, transcripts, coding, analysis, memos, export and the complete workflow using only fictional demonstration data.</p>
-        <p style="margin:0;">Each lesson is focused, and you can keep QualCanvas open beside the video while you practise with a small synthetic project.</p>`,
+        <p style="margin:0;">Each lesson is focused, and you can keep QualCanvas open beside the video while you practise with a small synthetic project.</p>${nextStepParagraph(progress)}`,
     };
   }
 
@@ -415,6 +478,12 @@ export async function sendLifecycleEmail(
   campaignId?: string,
   options: { internalCanary?: boolean } = {},
 ): Promise<'accepted' | 'skipped' | 'failed'> {
+  // A template constructed before a switch change must not bypass the guard.
+  if (
+    (template.eventKey === 'setup_nudge_1d_v1' || ('setupSequence' in template && template.setupSequence)) &&
+    !isSetupSequenceEnabled()
+  )
+    return 'skipped';
   if (!emailPreference || !emailDelivery) {
     return 'skipped';
   }

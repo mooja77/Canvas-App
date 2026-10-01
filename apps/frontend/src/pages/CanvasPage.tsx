@@ -12,6 +12,7 @@ import AiSetupBanner from '../components/AiSetupBanner';
 import TrialBanner from '../components/TrialBanner';
 import SeatShortfallBanner from '../components/billing/SeatShortfallBanner';
 import OnboardingFlow from '../components/onboarding/OnboardingFlow';
+import SampleDataBanner from '../components/onboarding/SampleDataBanner';
 import OnboardingChecklist from '../components/onboarding/OnboardingChecklist';
 import StatusBar from '../components/canvas/StatusBar';
 import ActivityBar, { type ActivityId } from '../components/canvas/ActivityBar';
@@ -346,6 +347,8 @@ export default function CanvasPage() {
       <TrialBanner />
       <SeatShortfallBanner />
       <AiSetupBanner />
+      <SampleDataBanner />
+      {onboardingV2Enabled && onboardingV2Complete && firstRunSurface !== 'legacy_setup' && <OnboardingChecklist />}
 
       {showPlanWelcome && <PlanWelcome onClose={() => setShowPlanWelcome(false)} />}
 
@@ -371,7 +374,6 @@ export default function CanvasPage() {
             )}
             <main className="flex-1 overflow-hidden relative">
               <CodingCanvas />
-              {onboardingV2Enabled && onboardingV2Complete && <OnboardingChecklist />}
             </main>
           </div>
           <StatusBar />
@@ -382,7 +384,9 @@ export default function CanvasPage() {
       {(firstRunSurface === 'onboarding_v2' || resumeOnboarding) && (
         <OnboardingFlow
           initialState={
-            persistedOnboardingState as { currentStep?: number; personalization?: { method?: string } } | undefined
+            persistedOnboardingState as
+              | { currentStep?: number; personalization?: { method?: string; researchTopic?: string } }
+              | undefined
           }
           onClose={() => {
             completeOnboardingV2();

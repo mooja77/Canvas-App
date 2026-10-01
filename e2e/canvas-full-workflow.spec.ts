@@ -45,47 +45,15 @@ test.describe('Canvas Full Workflow', () => {
     }
   });
 
-  test('add a transcript opens dialog or shows toast', async ({ page }) => {
+  test('toolbar transcript opens the source picker', async ({ page }) => {
     await openCanvas(page);
 
-    // Find the Transcript button on the toolbar
-    const transcriptBtn = page.getByRole('button', { name: /Transcript/i });
-    if (
-      !(await transcriptBtn
-        .first()
-        .isVisible({ timeout: 3000 })
-        .catch(() => false))
-    ) {
-      test.skip(true, 'precondition not met');
-      return;
-    }
-
-    await transcriptBtn.first().click();
-
-    // Should see either a dialog/modal or the transcript input area
-    const dialog = page.locator('[role="dialog"], .modal, [class*="dialog"]');
-    const textarea = page.locator('textarea');
-    const titleInput = page.locator('input[placeholder*="title" i], input[placeholder*="Title" i]');
-    const pasteTextOption = page.getByRole('button', { name: /Paste Text/i });
-
-    const hasDialog = await dialog
-      .first()
-      .isVisible({ timeout: 2000 })
-      .catch(() => false);
-    const hasTextarea = await textarea
-      .first()
-      .isVisible({ timeout: 2000 })
-      .catch(() => false);
-    const hasTitle = await titleInput
-      .first()
-      .isVisible({ timeout: 1000 })
-      .catch(() => false);
-    const hasPasteOption = await pasteTextOption
-      .first()
-      .isVisible({ timeout: 1000 })
-      .catch(() => false);
-
-    expect(hasDialog || hasTextarea || hasTitle || hasPasteOption).toBe(true);
+    // Do not match the separate sidebar empty-state "Add a transcript" action,
+    // which remains offscreen when the mobile drawer is closed.
+    const transcriptBtn = page.getByRole('button', { name: 'Transcript', exact: true });
+    await expect(transcriptBtn).toBeVisible();
+    await transcriptBtn.click();
+    await expect(page.getByRole('button', { name: /Paste Text/i })).toBeVisible();
   });
 
   test('canvas list shows canvases', async ({ page }) => {

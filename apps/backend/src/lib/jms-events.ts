@@ -4,6 +4,8 @@
 // the admin-portal worker holds as ADMIN_KEY_QUALCANVAS secret. Best-
 // effort; failures are logged but never thrown.
 
+import { isTestAccountEmail } from '../utils/testAccounts.js';
+
 interface JmsEvent {
   name: string;
   email?: string;
@@ -41,4 +43,19 @@ export async function trackJmsEvent(event: JmsEvent): Promise<void> {
   } catch (err) {
     console.warn(`[jms-events] ingest ${event.name} threw:`, err);
   }
+}
+
+/**
+ * A funnel milestone for one researcher (sign-up, first value). Test, demo,
+ * smoke and internal accounts are dropped here, before anything leaves the
+ * server, using the same predicate as every admin count: a milestone the
+ * Command Centre cannot attribute to a real address must not reach it.
+ */
+export async function trackActivationEvent(
+  name: 'sign_up' | 'first_value_reached',
+  email: string | null | undefined,
+  properties: Record<string, unknown>,
+): Promise<void> {
+  if (isTestAccountEmail(email)) return;
+  await trackJmsEvent({ name, email: email ?? undefined, properties });
 }

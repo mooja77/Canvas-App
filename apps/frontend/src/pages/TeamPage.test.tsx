@@ -103,7 +103,33 @@ describe('TeamPage', () => {
     });
 
     expect(screen.getByPlaceholderText(/e.g\./i)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Team name' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Create Team/i })).toBeInTheDocument();
+  });
+
+  it('does not claim the account has no team when the list fails, and retries', async () => {
+    mockTeamApi.list
+      .mockRejectedValueOnce(new Error('network unavailable'))
+      .mockResolvedValueOnce({ data: { data: [sampleTeam] } });
+    mockTeamApi.get.mockResolvedValue({ data: { data: sampleTeam } });
+
+    render(<TeamPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't load your team");
+    expect(screen.queryByText(/Set up your team in 3 steps/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Research Team Alpha')).toBeInTheDocument();
+    expect(mockTeamApi.list).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not show a false empty team when team details fail to load', async () => {
+    mockTeamApi.list.mockResolvedValue({ data: { data: [sampleTeam] } });
+    mockTeamApi.get.mockRejectedValue(new Error('details unavailable'));
+
+    render(<TeamPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your team has not been changed');
+    expect(screen.queryByText(/Set up your team in 3 steps/i)).not.toBeInTheDocument();
   });
 
   it('shows team name and member list when team exists', async () => {
@@ -135,7 +161,21 @@ describe('TeamPage', () => {
     });
 
     expect(screen.getByPlaceholderText('Email address')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: "Colleague's email address" })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Add member/i })).toBeInTheDocument();
+  });
+
+  it('teaches the next action if a team has no listed members', async () => {
+    mockTeamApi.list.mockResolvedValue({ data: { data: [{ ...sampleTeam, members: [] }] } });
+    mockTeamApi.get.mockResolvedValue({ data: { data: { ...sampleTeam, members: [] } } });
+
+    render(<TeamPage />);
+
+    expect(await screen.findByText(/Team members will appear here/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Invite your first member below/ })).toHaveAttribute(
+      'href',
+      '#invite-member-email',
+    );
   });
 
   it('handles invite submission', async () => {

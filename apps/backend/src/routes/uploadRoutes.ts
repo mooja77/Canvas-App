@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { observeSetupStep } from '../lib/onboardingObservations.js';
 import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { randomBytes } from 'crypto';
@@ -662,6 +663,8 @@ uploadRoutes.post(
           sourceId: job.id,
         },
       });
+
+      await observeSetupStep(getAuthUserId(req), req.params.id, 'first-transcript');
 
       res.json({ success: true, data: transcript });
     } catch (err) {

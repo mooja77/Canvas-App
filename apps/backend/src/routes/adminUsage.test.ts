@@ -135,6 +135,19 @@ describe('GET /admin/usage - real-user exclusion on every aggregate', () => {
     expect(coding).toMatchObject({ users: 1, medianHoursToReach: 5 });
   });
 
+  it('never counts the starter template’s seeded sample study as the researcher’s own work', async () => {
+    const res = await getUsage();
+    expect(res.status).toBe(200);
+    const ownTranscript = { OR: [{ sourceType: null }, { sourceType: { not: 'sample' } }] };
+    const ownCoding = { source: { not: 'sample' }, transcript: { is: ownTranscript } };
+    // Funnel milestones.
+    expect(whereOf(mockPrisma.canvasTranscript.findMany)).toMatchObject(ownTranscript);
+    expect(whereOf(mockPrisma.canvasTextCoding.findMany)).toMatchObject(ownCoding);
+    // Content totals.
+    expect(whereOf(mockPrisma.canvasTranscript.count)).toMatchObject(ownTranscript);
+    expect(whereOf(mockPrisma.canvasTextCoding.count)).toMatchObject(ownCoding);
+  });
+
   it('still credits an unattributed coding to the canvas owner', async () => {
     mockPrisma.canvasTextCoding.findMany.mockResolvedValue([
       { createdAt: new Date('2026-09-01T02:00:00.000Z'), coderUserId: null, canvas: { userId: REAL_USER } },

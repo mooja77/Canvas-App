@@ -231,7 +231,33 @@ export default function ProjectDashboard({ onClose }: Props) {
         <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-750/50">
           <h4 className="mb-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Code Frequency</h4>
           {stats.codeFreqs.length === 0 ? (
-            <p className="py-4 text-center text-xs text-gray-400">No codes yet</p>
+            <div className="py-3 text-center text-xs text-gray-600 dark:text-gray-300">
+              <p className="font-medium">No codes yet</p>
+              <p className="mt-1">Code a passage to see which themes appear most often.</p>
+              <button
+                type="button"
+                onClick={() =>
+                  activeCanvas?.transcripts.length
+                    ? window.dispatchEvent(
+                        new CustomEvent('qualcanvas:focus-node', {
+                          detail: { nodeId: `transcript-${activeCanvas.transcripts[0].id}` },
+                        }),
+                      )
+                    : window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker'))
+                }
+                className="mt-2 font-semibold text-blue-700 underline dark:text-blue-300"
+              >
+                {activeCanvas?.transcripts.length ? 'Open a transcript to code' : 'Add a transcript'}
+              </button>
+              <a
+                href="/help/first-code.html"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 block text-blue-700 underline dark:text-blue-300"
+              >
+                See a coding example
+              </a>
+            </div>
           ) : (
             <div className="space-y-2">
               {stats.codeFreqs.map((cf, i) => (
@@ -259,7 +285,25 @@ export default function ProjectDashboard({ onClose }: Props) {
         <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-700 dark:bg-gray-750/50">
           <h4 className="mb-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Transcript Coverage</h4>
           {stats.transcriptCoverage.length === 0 ? (
-            <p className="py-4 text-center text-xs text-gray-400">No transcripts yet</p>
+            <div className="py-3 text-center text-xs text-gray-600 dark:text-gray-300">
+              <p className="font-medium">No transcripts yet</p>
+              <p className="mt-1">Add an interview or document to see how much of it you have coded.</p>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker'))}
+                className="mt-2 font-semibold text-blue-700 underline dark:text-blue-300"
+              >
+                Add a transcript
+              </button>
+              <a
+                href="/training#video-03"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 block text-blue-700 underline dark:text-blue-300"
+              >
+                See a sample transcript
+              </a>
+            </div>
           ) : (
             <div className="space-y-2">
               {stats.transcriptCoverage.map((tc, i) => (
