@@ -43,6 +43,39 @@ listener cleanup, labels, named regions and the lack of new dependencies.
 
 ## Evidence limits / next closures
 
+### Subsequent CI and development-mode correction (not released)
+
+PR #218 at `3a7860e` failed Chromium run `36861634671`: 727 passed,
+1 failed, 9 skipped. The recovery test assumed exactly two summary GETs;
+development StrictMode mounts twice, unlike the earlier production-preview
+replay. Commit `a1974c5` separates all failed initial reads from the explicit
+retry and requires exactly one successful retry, with zero generation requests.
+This retains the error and successful-empty assertions; it does not skip them.
+
+The first local startup attempt ran no tests because the API did not become
+ready within the local runner's 60-second startup budget. With only that startup
+budget raised to 180 seconds, the subsequent development replay returned
+2 passed / 1 failed: phone and tablet each recorded two failed initial reads,
+one successful user retry and zero generation requests. Desktop failed earlier
+at its five-second Tools-menu readiness assertion. Its screenshot and DOM show
+the initial static homepage, not the canvas. The required Tools-menu assertion
+now waits up to 30 seconds for hydration; no optional check, forced interaction
+or assertion removal is introduced. This later correction is still unverified.
+The partial replay log is preserved as `recovery-browser-a1974c5-partial.log`.
+Owned API/web/browser children stopped normally and the local database was
+stopped; no production data or provider was accessed. Current-head green CI
+and deployed proof remain required before release.
+
+The final development replay of the required 30-second readiness correction
+passed **3/3 in 1.7 minutes**, retries0/skips0: desktop Chrome28.8s, phone
+Chrome18.1s, tablet WebKit28.1s. Every case recorded two failed initial summary
+reads, exactly one successful explicit retry and zero generation requests.
+Owned children stopped normally, `qc-onboard-pg` stopped, and ports4750/4751/4759
+had no listeners. This proves the fixture in real development StrictMode;
+Google was externally blocked and native screen-reader evidence remains absent.
+The earlier partial log and its failed desktop screenshot were copied before
+the successful replay, rather than being erased or counted as a pass.
+
 ### Local real-backend recovery replay
 
 Exact clean source/test head `e017a81e68aa9d70d1a99684d75d5b4bd6951fe3`

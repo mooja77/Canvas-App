@@ -87,7 +87,7 @@ test('email fallback and empty research panels recover without an AI key or prov
       },
     );
     await page.goto(`/canvas/${canvas.id}`);
-    await expect(page.getByRole('button', { name: 'Tools menu', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Tools menu', exact: true })).toBeVisible({ timeout: 30_000 });
     await page.getByRole('button', { name: 'Tools menu', exact: true }).click();
     await page.getByRole('button', { name: 'Hierarchy', exact: true }).click();
     const hierarchy = page.getByRole('dialog', { name: 'Code Hierarchy' });
