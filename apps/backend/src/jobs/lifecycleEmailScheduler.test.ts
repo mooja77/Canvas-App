@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectTimedLifecycleEmail } from './lifecycleEmailScheduler.js';
 
 const NOW = new Date('2026-08-11T12:00:00.000Z');
@@ -21,6 +21,19 @@ function select(options: { ageDays: number; delivered?: string[]; lastActivityDa
 }
 
 describe('selectTimedLifecycleEmail', () => {
+  beforeEach(() => vi.stubEnv('LIFECYCLE_SETUP_SEQUENCE_ENABLED', 'true'));
+  afterEach(() => vi.unstubAllEnvs());
+
+  it.each([undefined, 'false'])('preserves the existing sequence when the new lane is %s', (flag) => {
+    vi.stubEnv('LIFECYCLE_EMAIL_AUTOMATION_ENABLED', 'true');
+    vi.stubEnv('LIFECYCLE_EMAIL_SEND_ENABLED', 'true');
+    vi.stubEnv('LIFECYCLE_SETUP_SEQUENCE_ENABLED', flag);
+    expect(select({ ageDays: 1 })).toBeNull();
+    expect(select({ ageDays: 4 })).toBe('training_tip_3d');
+    expect(select({ ageDays: 8 })).toBe('onboarding_7d');
+    expect(select({ ageDays: 30, lastActivityDaysAgo: 20 })).toBe('inactivity_14d');
+  });
+
   it('selects the setup nudge only during the day 1 to day 3 window', () => {
     expect(select({ ageDays: 0.9 })).toBeNull();
     expect(select({ ageDays: 1 })).toBe('setup_nudge_1d');

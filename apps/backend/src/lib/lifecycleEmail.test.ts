@@ -40,12 +40,14 @@ import {
 describe('lifecycle email reporting', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.LIFECYCLE_SETUP_SEQUENCE_ENABLED = 'true';
     process.env.RESEND_API_KEY = 'configured';
     process.env.RESEND_WEBHOOK_SECRET = 'configured';
     process.env.SMTP_FROM = 'QualCanvas <noreply@qualcanvas.com>';
   });
 
   afterEach(() => {
+    delete process.env.LIFECYCLE_SETUP_SEQUENCE_ENABLED;
     delete process.env.LIFECYCLE_EMAIL_SEND_ENABLED;
     delete process.env.RESEND_API_KEY;
     delete process.env.RESEND_WEBHOOK_SECRET;
@@ -150,6 +152,29 @@ describe('lifecycle email reporting', () => {
     expect(template.ctaUrl).toBe('http://localhost:5174/training#learning-path');
     expect(template.ctaLabel).toBe('Follow the first-project path');
     expect(template.bodyHtml).toContain('fictional demonstration data');
+  });
+
+  it.each([undefined, 'false'])('blocks all new sequence paths when its guard is %s', async (flag) => {
+    const user = { id: 'u1', email: 'r@ucc.ie', name: 'R' };
+    const pendingTemplates = [
+      lifecycleTemplate('setup_nudge_1d', user, 'no_transcript'),
+      lifecycleTemplate('training_tip_3d', user, 'no_transcript'),
+      lifecycleTemplate('onboarding_7d', user, 'no_coding'),
+    ];
+    process.env.LIFECYCLE_EMAIL_SEND_ENABLED = 'true';
+    process.env.LIFECYCLE_EMAIL_AUTOMATION_ENABLED = 'true';
+    if (flag === undefined) delete process.env.LIFECYCLE_SETUP_SEQUENCE_ENABLED;
+    else process.env.LIFECYCLE_SETUP_SEQUENCE_ENABLED = flag;
+    expect(isLifecycleSendingEnabledFor(user.email)).toBe(true);
+    expect(lifecycleTemplate('training_tip_3d', user, 'no_transcript')).toEqual(
+      lifecycleTemplate('training_tip_3d', user),
+    );
+    expect(lifecycleTemplate('onboarding_7d', user, 'no_coding')).toEqual(lifecycleTemplate('onboarding_7d', user));
+    expect(() => lifecycleTemplate('setup_nudge_1d', user)).toThrow(/disabled/i);
+    for (const template of pendingTemplates) expect(await sendLifecycleEmail(user, template)).toBe('skipped');
+    expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+    expect(mockPrisma.emailDelivery.create).not.toHaveBeenCalled();
+    expect(mockSendEmailWithResult).not.toHaveBeenCalled();
   });
 
   it.each([

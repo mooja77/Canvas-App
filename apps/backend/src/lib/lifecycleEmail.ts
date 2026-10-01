@@ -304,6 +304,12 @@ function baseEmailHtml(options: {
  */
 export type SetupProgress = 'no_project' | 'no_transcript' | 'no_coding';
 
+// Existing production lifecycle automation may already be enabled. New setup
+// timing/content is a separate, explicit release choice; absent stays legacy.
+export function isSetupSequenceEnabled(): boolean {
+  return process.env.LIFECYCLE_SETUP_SEQUENCE_ENABLED === 'true';
+}
+
 const NEXT_STEP: Record<SetupProgress, { title: string; sentence: string; body: string; cta: string }> = {
   no_project: {
     title: 'Start your first project',
@@ -326,7 +332,7 @@ const NEXT_STEP: Record<SetupProgress, { title: string; sentence: string; body: 
 };
 
 function nextStepParagraph(progress: SetupProgress | undefined): string {
-  if (!progress) return '';
+  if (!progress || !isSetupSequenceEnabled()) return '';
   const step = NEXT_STEP[progress];
   return `
         <p style="margin:18px 0 0;"><strong>${step.sentence}.</strong> ${step.body}</p>`;
@@ -340,10 +346,12 @@ export function lifecycleTemplate(
   const name = escapeHtml(firstName(user.name));
 
   if (type === 'setup_nudge_1d') {
+    if (!isSetupSequenceEnabled()) throw new Error('New lifecycle setup sequence is disabled');
     const step = NEXT_STEP[progress ?? 'no_transcript'];
     return {
       category: 'lifecycle' as EmailCategory,
       eventKey: 'setup_nudge_1d_v1',
+      setupSequence: true,
       subject: `QualCanvas: ${step.title.toLowerCase()}`,
       title: step.title,
       preview: 'One small step to your first coded insight.',
@@ -376,6 +384,7 @@ export function lifecycleTemplate(
     return {
       category: 'lifecycle' as EmailCategory,
       eventKey: 'onboarding_7d_v1',
+      ...(progress && isSetupSequenceEnabled() ? { setupSequence: true } : {}),
       subject: 'A useful next step in QualCanvas',
       title: 'Turn early codes into a useful structure',
       preview: 'A one-week check-in with a practical coding workflow.',
@@ -392,6 +401,7 @@ export function lifecycleTemplate(
     return {
       category: 'trainingTips' as EmailCategory,
       eventKey: 'training_tip_3d_v1',
+      ...(progress && isSetupSequenceEnabled() ? { setupSequence: true } : {}),
       subject: 'Your short QualCanvas first-project path',
       title: 'See the complete workflow in under 15 minutes',
       preview: 'Eight focused videos take you from a first canvas to a defensible handoff.',
@@ -468,6 +478,12 @@ export async function sendLifecycleEmail(
   campaignId?: string,
   options: { internalCanary?: boolean } = {},
 ): Promise<'accepted' | 'skipped' | 'failed'> {
+  // A template constructed before a switch change must not bypass the guard.
+  if (
+    (template.eventKey === 'setup_nudge_1d_v1' || ('setupSequence' in template && template.setupSequence)) &&
+    !isSetupSequenceEnabled()
+  )
+    return 'skipped';
   if (!emailPreference || !emailDelivery) {
     return 'skipped';
   }

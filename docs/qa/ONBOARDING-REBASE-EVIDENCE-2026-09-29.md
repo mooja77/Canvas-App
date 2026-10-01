@@ -8,6 +8,30 @@ claimed here. Lifecycle delivery remains off.
 
 ## Incremental-release preflight — 30 September 2026
 
+### Production automation assumption corrected — 1 October
+
+Before merging lifecycle behavior changes, the running baseline deployment
+`10c89a6` / Railway `fae41659-ec68-43a7-83b2-2ac7d3e75153` was checked.
+A narrowly filtered startup log said the lifecycle scheduler had started.
+A read-only runtime command returned only three non-secret booleans:
+`automationEnabled:true`, `sendEnabled:true`, `newSequenceEnabled:false`.
+The saved blanket “lifecycle OFF” statements were assumptions and are
+superseded: **existing production automation is ON; the new setup lane is OFF**.
+No environment values outside those switches, recipients, customer records
+or provider secrets were inspected; no setting, send or production write was
+performed. The initial metadata connector could not authorize log retrieval;
+the existing authenticated CLI supplied the scoped evidence instead.
+
+The new day-1 selection and day-3/day-7 progress content now require the
+separate `LIFECYCLE_SETUP_SEQUENCE_ENABLED=true` flag. Missing/false preserves
+baseline selection and template content without new progress queries. New
+templates also carry a guard marker, so a pending day-1/3/7 template cannot
+reach the provider after the new flag is off. Existing welcome, old day-3/7
+and inactivity behavior are not suppressed. TDD recorded **4 failing / 18
+passing** guard tests before implementation, then **22/22 passing** plus
+forced backend typecheck. No flag was enabled. The previously green gates
+remain historical proof; this source change requires fresh exact-head CI.
+
 Fetched origin and rebased the owned worktree: `origin/main` remains
 `10c89a6ec6b4a0fbfbe74bcc7fafc0d3224dfecf`; source head remains
 `539dd52`. The tracked and untracked tree was clean before this documentation

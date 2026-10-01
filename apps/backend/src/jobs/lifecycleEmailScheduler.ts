@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma.js';
 import {
   LIFECYCLE_BATCH_LIMIT,
   isLifecycleSendingEnabledFor,
+  isSetupSequenceEnabled,
   lifecycleTemplate,
   sendLifecycleEmail,
   type SetupProgress,
@@ -93,6 +94,7 @@ async function lastUserActivity(userId: string): Promise<Date | null> {
 
 async function sendTimedTemplate(user: LifecycleUser, type: TimedLifecycleEmailType) {
   try {
+    if (type === 'setup_nudge_1d' && !isSetupSequenceEnabled()) return;
     // Selection is advisory. Re-read activation immediately before claiming an
     // occurrence so a canvas created during the sweep suppresses stale help.
     if (await hasFirstValue(user.id)) return;
@@ -100,7 +102,7 @@ async function sendTimedTemplate(user: LifecycleUser, type: TimedLifecycleEmailT
       const activity = await lastUserActivity(user.id);
       if (!activity || activity >= daysAgo(14)) return;
     }
-    const progress = type === 'inactivity_14d' ? undefined : await setupProgress(user.id);
+    const progress = type === 'inactivity_14d' || !isSetupSequenceEnabled() ? undefined : await setupProgress(user.id);
     await sendLifecycleEmail(user, lifecycleTemplate(type, user, progress));
   } catch (err) {
     logError(err as Error, { action: 'lifecycleEmail.sendTimedTemplate', userId: user.id, type });
@@ -125,10 +127,15 @@ export function selectTimedLifecycleEmail(
   const ageDays = (now.getTime() - input.createdAt.getTime()) / (24 * 60 * 60 * 1000);
 
   // The sequence is an activation sequence, not generic engagement. Once the
-  // first canvas exists, all timed activation messages stop.
+  // first own coding exists, all timed activation messages stop.
   if (input.activated) return null;
 
-  if (ageDays >= 1 && ageDays < 3 && !input.deliveredEventKeys.has(TIMED_EVENT_KEYS.setup_nudge_1d)) {
+  if (
+    isSetupSequenceEnabled() &&
+    ageDays >= 1 &&
+    ageDays < 3 &&
+    !input.deliveredEventKeys.has(TIMED_EVENT_KEYS.setup_nudge_1d)
+  ) {
     return 'setup_nudge_1d';
   }
 
