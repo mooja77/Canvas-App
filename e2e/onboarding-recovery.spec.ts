@@ -118,17 +118,25 @@ test('email fallback and empty research panels recover without an AI key or prov
     const transcriptId = (await transcript.json()).data.id;
     await page.reload();
     let summaryReads = 0;
+    let failedSummaryReads = 0;
+    let successfulRetryReads = 0;
+    let retryRequested = false;
     await page.route(
       (url) => url.pathname === `/api/canvas/${canvas.id}/summaries`,
       (route) => {
         summaryReads++;
-        return summaryReads === 1
-          ? route.fulfill({
-              status: 503,
-              contentType: 'application/json',
-              body: JSON.stringify({ success: false, error: 'Fictional read failure' }),
-            })
-          : route.continue();
+        // Development StrictMode mounts effects twice. Keep every initial read
+        // failed until the explicit user retry instead of assuming one mount.
+        if (!retryRequested) {
+          failedSummaryReads++;
+          return route.fulfill({
+            status: 503,
+            contentType: 'application/json',
+            body: JSON.stringify({ success: false, error: 'Fictional read failure' }),
+          });
+        }
+        successfulRetryReads++;
+        return route.continue();
       },
     );
     await page.getByRole('button', { name: 'AI menu', exact: true }).click();
@@ -136,10 +144,14 @@ test('email fallback and empty research panels recover without an AI key or prov
     const summary = page.getByRole('complementary', { name: 'Summarize & Paraphrase' });
     await expect(summary.getByRole('alert')).toContainText("We couldn't load your summaries");
     await expect(summary.getByText('No summaries yet', { exact: true })).toHaveCount(0);
+    expect(failedSummaryReads).toBeGreaterThan(0);
+    expect(successfulRetryReads).toBe(0);
+    retryRequested = true;
     await summary.getByRole('button', { name: 'Try again' }).click();
     await expect(summary.getByText('No summaries yet', { exact: true })).toBeVisible();
     await expect(summary).toContainText('Example only: Travel costs');
-    expect(summaryReads).toBe(2);
+    expect(successfulRetryReads).toBe(1);
+    expect(summaryReads).toBe(failedSummaryReads + 1);
     expect(providerRequests).toBe(0);
     await summary.getByRole('button', { name: 'Choose a source' }).click();
     await expect(summary.getByLabel('Transcript or code')).toBeFocused();
@@ -162,7 +174,7 @@ test('email fallback and empty research panels recover without an AI key or prov
     await page.keyboard.press('Enter');
     await expect(summary).toBeHidden();
     console.log(
-      `RECOVERY_PROOF ${JSON.stringify({ viewport: page.viewportSize(), googleConfigured, summaryReads, providerRequests, networkFailureInjected: true, nativeScreenReader: false })}`,
+      `RECOVERY_PROOF ${JSON.stringify({ viewport: page.viewportSize(), googleConfigured, summaryReads, failedSummaryReads, successfulRetryReads, providerRequests, networkFailureInjected: true, nativeScreenReader: false })}`,
     );
   } finally {
     if (created) {
