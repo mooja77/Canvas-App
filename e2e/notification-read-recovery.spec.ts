@@ -48,6 +48,7 @@ for (const { width, height } of [
   { width: 1280, height: 900 },
   { width: 1280, height: 720 },
   { width: 390, height: 844 },
+  { width: 320, height: 844 },
 ]) {
   test(`notification GET recovery and open checklist Help at ${width}x${height}`, async ({
     page,
@@ -180,6 +181,8 @@ for (const { width, height } of [
       expect(card!.y + card!.height).toBeLessThanOrEqual(footer!.y);
       expect(helpBox!.width).toBeGreaterThanOrEqual(44);
       expect(helpBox!.height).toBeGreaterThanOrEqual(44);
+      expect(helpBox!.x).toBeGreaterThanOrEqual(0);
+      expect(helpBox!.x + helpBox!.width).toBeLessThanOrEqual(width);
       expect(hit.reachable).toBe(true);
       if (state === 'collapsed') await help.click();
       else {
