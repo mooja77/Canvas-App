@@ -1,5 +1,17 @@
 QualCanvas failed-confirmation recovery — LOCAL ONLY, NO PR/PUSH/LIVE CLAIM
 
+CONSOLIDATED20:50UTC: d0f7367 preserved, cherry-picked2c3751e into own227
+corrective branch with frozen226 and current225main92f2327. No conflicting
+files/other-owner edits. Full combined frontend1034/1034PASS119files157.54s/
+exit0, no final shutdown warnings. Source blobs unchanged from tested d0f7367.
+Final combined fulltypes/configuredlint/format/build2282modules/Vite27.23s/
+allprerendersPASS; combined24Chrome/Firefox/WebKit casesPASS3.7m/no retries.
+Both Account and memo fixtures at1280/820/390/320, actualWebKit320 screenshots
+inspected. Exact fictional mutation counts/no unexpected writes or pageerrors;
+external transport blocked, preview normally stopped. Ready for corrective227
+push, not current-headCI/merged/live. No separate PR to conserve CI/releases.
+Earlier separate-rebase plan superseded.
+
 Base frozen226dfdea2e, not current main. PR226/227 are unchanged. Rebase on
 their actual merged main before any new PR; preserve disjoint billing225.
 

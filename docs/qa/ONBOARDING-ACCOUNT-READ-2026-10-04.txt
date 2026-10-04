@@ -11,9 +11,25 @@ Test-only fixture phases now retain initial failure until actual retry action,
 with baseline-relative exact retry counts and independent reads preserved.
 No skip, longer timeout, source change or assertion weakening. Dedicated
 headless development config uses owned4751/no backend/external requests.
-Development12-engine replay in progress; finished Chromium/Firefox cases
-observe2 initialreads+1 retry per resource,0 writes/pageerrors. Built final
-combined proof still required before a corrective push. Original failures kept.
+Development12-engine replay12/12PASS1m/no retries. All engines observe2
+initialreads+1 retry per resource,0 writes/pageerrors. Combined owned local
+2c3751e preserves latestmain225 and includes frozen226 plus verified failed-
+confirmation follow-up d0f7367. This supersedes the separate future PR plan
+to save a CI/release cycle. Combined frontend1034/1034PASS119files157.54s/exit0,
+no final shutdown warnings. Source AccountPage and tests unchanged from e6399fc.
+FINAL COMBINED20:56UTC: fulltypes/configuredlint/formatPASS; frontend build
+2282modules/Vite27.23s and all prerenders PASS (existing PDF chunk warning).
+Combined actual built Chrome/Firefox/WebKit24/24PASS3.7m/no retries, both
+Account and memo fixtures at1280/820/390/320. Actual WebKit320 Account and
+failed-confirmation screenshots inspected readable/bounded. Production mode
+observes1initial+1retry per Account resource; devmode2initial+1retry; exactly
+one user retry, independent counts/no duplicate invocation assertions retained.
+Account writes/pageerrors0; memo only fictional3save+2delete+1layout requests,
+unexpectedwrites/pageerrors0. External transport blocked; one preview shut down
+normally. Artifact test-results/onboarding-recovery-combined-final. Ready for
+one genuine-failure correctivepush, not yet current-headCI/merge/live proof.
+Original failures kept; no production-data, authentication, billing, provider,
+flag/canary or customer changes.
 
 FINAL REBASED CHECKPOINT 20:14 UTC: candidateedd6e3e on latest default92f2327
 (other owner's PR225 preserved). Whole frontend1027/1027 PASS119files400.89s,
