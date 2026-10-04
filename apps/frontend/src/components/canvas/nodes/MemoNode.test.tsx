@@ -4,6 +4,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@xyflow/react', () => ({
   NodeResizer: () => null,
+  NodeToolbar: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Position: { Bottom: 'bottom' },
   useReactFlow: () => ({ setNodes: vi.fn(), getNode: vi.fn(() => undefined) }),
 }));
 
@@ -84,5 +86,64 @@ describe('MemoNode inline edit', () => {
     await waitFor(() => expect(screen.queryByPlaceholderText(/Write your memo/)).not.toBeInTheDocument());
     expect(mockUpdateMemo).toHaveBeenCalledWith('m1', { content: 'Revised body' });
     expect(mockToastError).not.toHaveBeenCalled();
+  });
+
+  it('opens a labelled screen-size editor outside the canvas node', () => {
+    renderNode();
+    fireEvent.click(screen.getByText('Edit'));
+    const dialog = screen.getByRole('dialog', { name: 'Edit memo' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog.closest('.react-flow__node')).toBeNull();
+    expect(screen.getByLabelText('Memo title (optional)')).toHaveFocus();
+    expect(screen.getByLabelText('Memo text')).toBeVisible();
+  });
+
+  it('does not save on focus changes and cancels without writing', () => {
+    renderNode();
+    fireEvent.click(screen.getByText('Edit'));
+    const body = screen.getByPlaceholderText(/Write your memo/);
+    fireEvent.change(body, { target: { value: 'Unsaved draft' } });
+    fireEvent.blur(body);
+    expect(mockUpdateMemo).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(mockUpdateMemo).not.toHaveBeenCalled();
+  });
+
+  it('lets keyboard users apply formatting before an explicit save', async () => {
+    mockUpdateMemo.mockResolvedValue(undefined);
+    renderNode();
+    fireEvent.click(screen.getByText('Edit'));
+    const body = screen.getByLabelText('Memo text') as HTMLTextAreaElement;
+    body.setSelectionRange(0, 8);
+    fireEvent.click(screen.getByRole('button', { name: 'Bold' }));
+    expect(body.value).toBe('**Original** body');
+    expect(mockUpdateMemo).not.toHaveBeenCalled();
+    fireEvent.keyDown(body, { key: 'Enter', ctrlKey: true });
+    await waitFor(() => expect(mockUpdateMemo).toHaveBeenCalledWith('m1', { content: '**Original** body' }));
+  });
+
+  it('keeps focus in the dialog and prevents duplicate saves while saving', async () => {
+    let resolveSave!: () => void;
+    mockUpdateMemo.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveSave = resolve;
+      }),
+    );
+    renderNode();
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.change(screen.getByLabelText('Memo text'), { target: { value: 'Pending draft' } });
+    const done = screen.getByRole('button', { name: 'Done' });
+    done.focus();
+    fireEvent.click(done);
+    const dialog = screen.getByRole('dialog', { name: 'Edit memo' });
+    expect(dialog).toHaveAttribute('aria-busy', 'true');
+    expect(dialog).toHaveFocus();
+    fireEvent.keyDown(dialog, { key: 'Enter', ctrlKey: true });
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(mockUpdateMemo).toHaveBeenCalledTimes(1);
+    resolveSave();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 });

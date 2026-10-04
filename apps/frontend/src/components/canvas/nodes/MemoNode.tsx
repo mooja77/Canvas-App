@@ -1,13 +1,14 @@
-import { memo, useState, useRef, useEffect, useMemo } from 'react';
+import { memo, useState, useRef, useEffect, useMemo, useId } from 'react';
 import { useNodeCollapsed } from './useNodeCollapsed';
 import { createPortal } from 'react-dom';
-import { NodeResizer } from '@xyflow/react';
+import { NodeResizer, NodeToolbar, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { useCanvasStore } from '../../../stores/canvasStore';
 import { useUIStore } from '../../../stores/uiStore';
 import CrossCanvasRefBadge from '../CrossCanvasRefBadge';
 import ConfirmDialog from '../ConfirmDialog';
 import { reportNodeSaveError } from './nodeSave';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 export interface MemoNodeData {
   memoId: string;
@@ -145,6 +146,21 @@ function MemoNode({ data, id, selected }: NodeProps) {
   const [saving, setSaving] = useState(false);
   const { collapsed, toggleCollapsed } = useNodeCollapsed(id, nodeData.collapsed);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const editorId = useId();
+  useFocusTrap(dialogRef, editing);
+
+  // Disabled controls can lose focus in a browser. Keep pending keyboard input
+  // inside the dialog, where the trap also blocks Tab when nothing is enabled.
+  useEffect(() => {
+    if (saving) dialogRef.current?.focus();
+  }, [saving]);
+
+  const startEditing = () => {
+    setEditContent(nodeData.content);
+    setEditTitle(nodeData.title || '');
+    setEditing(true);
+  };
 
   // Auto-resize textarea
   useEffect(() => {
@@ -234,180 +250,169 @@ function MemoNode({ data, id, selected }: NodeProps) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1" title={isOverview ? 'Zoom in to use memo controls' : undefined}>
-          <CrossCanvasRefBadge nodeId={id} />
-          {!isOverview && (
-            <>
-              <button
-                onClick={toggleCollapsed}
-                className="nodrag flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-600 hover:text-gray-700 transition-colors"
-                title={collapsed ? 'Expand' : 'Collapse'}
-              >
-                <svg
-                  className={`h-3 w-3 transition-transform ${collapsed ? 'rotate-180' : ''}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="nodrag flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-600 hover:text-red-600 transition-colors"
-                title="Delete memo"
-              >
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </>
-          )}
-        </div>
+        <CrossCanvasRefBadge nodeId={id} />
       </div>
 
-      {/* Memo body — shown whenever expanded, at ANY zoom (previously full-zoom
-          only, so expanding at the overview zoom showed just the first line). */}
+      {/* React Flow's portal toolbar keeps actual targets full-sized at every
+          zoom. Its default single-selection rule avoids overlapping toolbars. */}
+      {!isOverview && (
+        <NodeToolbar nodeId={id} position={Position.Bottom} align="center" offset={12}>
+          {createPortal(
+            <div
+              className="nodrag nopan fixed bottom-20 left-1/2 z-40 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap justify-center gap-1 rounded-xl border border-gray-300 bg-white p-1 text-sm text-gray-800 shadow-lg"
+              role="group"
+              aria-label="Memo actions"
+            >
+              <button
+                type="button"
+                onClick={startEditing}
+                className="min-h-11 min-w-11 rounded-lg px-3 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={toggleCollapsed}
+                className="min-h-11 min-w-11 rounded-lg px-3 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+              >
+                {collapsed ? 'Expand' : 'Collapse'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="min-h-11 min-w-11 rounded-lg px-3 text-red-700 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+              >
+                Delete memo
+              </button>
+            </div>,
+            document.body,
+          )}
+        </NodeToolbar>
+      )}
+
       {!collapsed && (
         <div className="px-3 pb-2 flex-1 min-h-0 overflow-y-auto">
-          {editing ? (
-            <div className="nodrag space-y-1.5">
-              <input
-                type="text"
-                className="w-full rounded border border-gray-300/50 bg-white/60 px-1.5 py-0.5 text-[10px] font-medium text-gray-700 placeholder:text-gray-400/70 focus:outline-none focus:ring-1 focus:ring-gray-400"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                placeholder="Memo title (optional)"
-              />
-              {/* Formatting toolbar */}
-              <div className="flex items-center gap-0.5 border-b border-gray-300/30 pb-1">
-                <button
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    insertFormat('**', '**');
-                  }}
-                  className="rounded p-0.5 text-gray-500/70 hover:bg-white/40 hover:text-gray-700 transition-colors"
-                  title="Bold"
-                >
-                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z" />
-                  </svg>
-                </button>
-                <button
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    insertFormat('*', '*');
-                  }}
-                  className="rounded p-0.5 text-gray-500/70 hover:bg-white/40 hover:text-gray-700 transition-colors"
-                  title="Italic"
-                >
-                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4z" />
-                  </svg>
-                </button>
-                <button
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    insertFormat('# ', '');
-                  }}
-                  className="rounded p-0.5 text-gray-500/70 hover:bg-white/40 hover:text-gray-700 transition-colors"
-                  title="Heading"
-                >
-                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M5 4v3h5.5v12h3V7H19V4z" />
-                  </svg>
-                </button>
-                <div className="w-px h-3 bg-gray-400/30 mx-0.5" />
-                <button
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    insertFormat('- ', '');
-                  }}
-                  className="rounded p-0.5 text-gray-500/70 hover:bg-white/40 hover:text-gray-700 transition-colors"
-                  title="Bullet list"
-                >
-                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0-6c-.83 0-1.5.67-1.5 1.5S3.17 7.5 4 7.5 5.5 6.83 5.5 6 4.83 4.5 4 4.5zm0 12c-.83 0-1.5.68-1.5 1.5s.68 1.5 1.5 1.5 1.5-.68 1.5-1.5-.67-1.5-1.5-1.5zM7 19h14v-2H7v2zm0-6h14v-2H7v2zm0-8v2h14V5H7z" />
-                  </svg>
-                </button>
-                <button
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    insertFormat('`', '`');
-                  }}
-                  className="rounded p-0.5 text-gray-500/70 hover:bg-white/40 hover:text-gray-700 transition-colors"
-                  title="Code"
-                >
-                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z" />
-                  </svg>
-                </button>
-              </div>
-              <textarea
-                ref={textareaRef}
-                className="w-full resize-none rounded border border-gray-300/50 bg-white/60 p-1.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-400 leading-relaxed font-mono"
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                onBlur={handleSave}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    setEditing(false);
-                  }
-                  if (e.key === 'Enter' && e.ctrlKey) {
-                    handleSave();
-                  }
-                }}
-                rows={3}
-                autoFocus
-                placeholder="Write your memo... (supports **bold**, *italic*, # headings, - lists)"
-              />
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] text-gray-500/60">Ctrl+Enter to save &middot; Markdown supported</span>
-                <button
-                  onClick={handleSave}
-                  className="rounded bg-white/40 px-2 py-0.5 text-[10px] font-medium text-gray-700 hover:bg-white/60 transition-colors"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <div
-                className="cursor-text nodrag leading-relaxed space-y-0.5"
-                onDoubleClick={() => {
-                  if (isOverview) return;
-                  setEditContent(nodeData.content);
-                  setEditTitle(nodeData.title || '');
-                  setEditing(true);
-                }}
-                title="Double-click to edit"
-              >
-                {renderedContent}
-              </div>
-              {/* Footer */}
-              <div className="mt-1.5 flex items-center justify-between text-[9px] text-gray-700">
-                <span>
-                  {wordCount} word{wordCount !== 1 ? 's' : ''}
-                </span>
-                {!isOverview && (
-                  <button
-                    onClick={() => {
-                      setEditContent(nodeData.content);
-                      setEditTitle(nodeData.title || '');
-                      setEditing(true);
-                    }}
-                    className="min-h-8 min-w-8 rounded px-2 hover:bg-white/30 transition-colors"
-                  >
-                    Edit
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+          <div
+            className="cursor-text nodrag leading-relaxed space-y-0.5"
+            onDoubleClick={() => {
+              if (!isOverview) startEditing();
+            }}
+            title={isOverview ? 'Zoom in to edit this memo' : 'Select this memo for controls, or double-click to edit'}
+          >
+            {renderedContent}
+          </div>
+          <div className="mt-1.5 text-[9px] text-gray-700">
+            {wordCount} word{wordCount !== 1 ? 's' : ''}
+          </div>
         </div>
       )}
+
+      {/* Editing lives outside the scaled canvas. Nothing is saved merely by
+          moving focus: Done or Ctrl/Cmd+Enter confirms; Cancel/Escape discards. */}
+      {editing &&
+        createPortal(
+          <div
+            className="nodrag nopan nowheel fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4"
+            onKeyDown={(event) => {
+              event.stopPropagation();
+              if (event.key === 'Escape' && !saving) {
+                event.preventDefault();
+                setEditing(false);
+              }
+              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                void handleSave();
+              }
+            }}
+          >
+            <div
+              ref={dialogRef}
+              role="dialog"
+              tabIndex={-1}
+              aria-modal="true"
+              aria-labelledby={editorId + '-heading'}
+              aria-describedby={editorId + '-help'}
+              aria-busy={saving}
+              className="max-h-[calc(100dvh-2rem)] w-full max-w-xl space-y-3 overflow-y-auto rounded-xl bg-white p-4 text-base text-gray-800 shadow-xl"
+            >
+              <h2 id={editorId + '-heading'} className="text-lg font-semibold">
+                Edit memo
+              </h2>
+              <p id={editorId + '-help'} className="text-sm text-gray-600">
+                Write your note, then choose Done to save. Cancel leaves your original note unchanged.
+              </p>
+              <div className="space-y-1">
+                <label htmlFor={editorId + '-title'} className="block text-sm font-medium">
+                  Memo title (optional)
+                </label>
+                <input
+                  id={editorId + '-title'}
+                  type="text"
+                  disabled={saving}
+                  className="min-h-11 w-full rounded border border-gray-400 bg-white px-3 text-base text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  value={editTitle}
+                  onChange={(event) => setEditTitle(event.target.value)}
+                  placeholder="Memo title (optional)"
+                />
+              </div>
+              <div className="flex flex-wrap gap-1" role="group" aria-label="Memo formatting">
+                {[
+                  { label: 'Bold', prefix: '**', suffix: '**' },
+                  { label: 'Italic', prefix: '*', suffix: '*' },
+                  { label: 'Heading', prefix: '# ', suffix: '' },
+                  { label: 'Bullet list', prefix: '- ', suffix: '' },
+                  { label: 'Code', prefix: '`', suffix: '`' },
+                ].map(({ label, prefix, suffix }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled={saving}
+                    className="min-h-11 min-w-11 rounded-lg border border-gray-300 px-3 text-sm hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => insertFormat(prefix, suffix)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="space-y-1">
+                <label htmlFor={editorId + '-text'} className="block text-sm font-medium">
+                  Memo text
+                </label>
+                <textarea
+                  id={editorId + '-text'}
+                  ref={textareaRef}
+                  disabled={saving}
+                  className="max-h-[40dvh] min-h-32 w-full resize-y rounded border border-gray-400 bg-white p-3 text-base text-gray-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  value={editContent}
+                  onChange={(event) => setEditContent(event.target.value)}
+                  rows={5}
+                  placeholder="Write your memo... (supports **bold**, *italic*, # headings, - lists)"
+                />
+              </div>
+              <p className="text-sm text-gray-600">Ctrl+Enter (or Cmd+Enter) to save · Markdown supported</p>
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => setEditing(false)}
+                  className="min-h-11 min-w-11 rounded-lg border border-gray-400 px-4 text-sm hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void handleSave()}
+                  className="min-h-11 min-w-11 rounded-lg bg-blue-700 px-4 text-sm font-medium text-white hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-60"
+                >
+                  {saving ? 'Saving…' : 'Done'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
 
       {/* Delete confirmation */}
       {showDeleteConfirm &&
