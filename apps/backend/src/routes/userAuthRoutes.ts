@@ -20,6 +20,7 @@ import { claimUnverifiedAccount } from '../lib/accountClaim.js';
 import { deviceSummary } from '../utils/deviceSummary.js';
 import { releaseUnusedSeats } from '../utils/seats.js';
 import { ENTITLED_SUBSCRIPTION_STATUSES } from '../lib/subscriptionStatus.js';
+import { isStripeSubscriptionId } from '../lib/stripeIds.js';
 import { z } from 'zod';
 
 const BCRYPT_ROUNDS = 12;
@@ -1184,12 +1185,14 @@ userAuthRoutes.delete('/auth/account', auth, async (req, res, next) => {
       return res.status(400).json({ success: false, error: 'Enter your account email to confirm deletion' });
     }
 
-    // Cancel Stripe subscription if active
-    if (user.subscription?.stripeSubscriptionId) {
+    // Cancel Stripe subscription if active. Complimentary rows ("comp_...")
+    // were never in Stripe, so there is nothing there to cancel.
+    const stripeSubscriptionId = user.subscription?.stripeSubscriptionId;
+    if (stripeSubscriptionId && isStripeSubscriptionId(stripeSubscriptionId)) {
       const { getStripe } = await import('../lib/stripe.js');
       const stripe = getStripe();
       try {
-        await stripe.subscriptions.cancel(user.subscription.stripeSubscriptionId);
+        await stripe.subscriptions.cancel(stripeSubscriptionId);
       } catch (err: unknown) {
         // A stale local record must not make a valid privacy deletion
         // impossible when Stripe already has no such subscription.

@@ -34,12 +34,25 @@ interface UserDetail extends AdminUser {
   authType?: string;
 }
 
-interface BillingData {
+// Shape of GET /api/admin/billing (apps/backend/src/routes/adminRoutes.ts).
+export interface BillingData {
   mrr: number;
   arr: number;
+  totalPaying: number;
+  /** Active rows with no Stripe subscription (hand-written "comp_..." Team rows). */
+  totalComplimentary?: number;
+  totalFree: number;
+  /** Fraction, e.g. 0.05 = 5%. */
+  churnRate30d: number;
   planBreakdown: { plan: string; count: number; revenue: number }[];
-  churnRate: number;
-  recentTransactions: { id: string; email: string; amount: number; date: string; type: string }[];
+  recentTransactions: {
+    id: string;
+    userEmail: string;
+    plan: string;
+    status: string;
+    complimentary?: boolean;
+    updatedAt: string;
+  }[];
 }
 
 interface HealthData {
@@ -541,7 +554,7 @@ function UserRow({
 
 // ─── Billing Tab ───
 
-function BillingTab({ adminKey }: { adminKey: string }) {
+export function BillingTab({ adminKey }: { adminKey: string }) {
   const [data, setData] = useState<BillingData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -567,13 +580,18 @@ function BillingTab({ adminKey }: { adminKey: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="MRR" value={`$${data.mrr.toLocaleString()}`} />
-        <StatCard label="ARR" value={`$${data.arr.toLocaleString()}`} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="MRR" value={`$${(data.mrr ?? 0).toLocaleString()}`} />
+        <StatCard label="ARR" value={`$${(data.arr ?? 0).toLocaleString()}`} />
         <StatCard
-          label="Churn Rate"
-          value={`${data.churnRate.toFixed(1)}%`}
-          sub={data.churnRate > 5 ? 'Above target' : 'On track'}
+          label="Paying"
+          value={String(data.totalPaying ?? 0)}
+          sub={`${data.totalComplimentary ?? 0} complimentary (not billed)`}
+        />
+        <StatCard
+          label="Churn Rate (30d)"
+          value={`${((data.churnRate30d ?? 0) * 100).toFixed(1)}%`}
+          sub={(data.churnRate30d ?? 0) * 100 > 5 ? 'Above target' : 'On track'}
         />
       </div>
 
@@ -588,7 +606,7 @@ function BillingTab({ adminKey }: { adminKey: string }) {
             </tr>
           </thead>
           <tbody>
-            {data.planBreakdown.map((p) => (
+            {(data.planBreakdown ?? []).map((p) => (
               <tr key={p.plan} className="border-b border-gray-100 dark:border-gray-700/50">
                 <td className="py-2 px-3 text-gray-900 dark:text-white font-medium">{p.plan}</td>
                 <td className="py-2 px-3 text-gray-700 dark:text-gray-300">{p.count}</td>
@@ -600,29 +618,33 @@ function BillingTab({ adminKey }: { adminKey: string }) {
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-5">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Recent Transactions</h3>
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Recent Subscription Changes</h3>
         <table className="w-full text-sm text-left">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
-              <th className="py-2 px-3 font-medium">Date</th>
+              <th className="py-2 px-3 font-medium">Updated</th>
               <th className="py-2 px-3 font-medium">Email</th>
-              <th className="py-2 px-3 font-medium">Type</th>
-              <th className="py-2 px-3 font-medium">Amount</th>
+              <th className="py-2 px-3 font-medium">Plan</th>
+              <th className="py-2 px-3 font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
-            {data.recentTransactions.map((tx) => (
+            {(data.recentTransactions ?? []).map((tx) => (
               <tr key={tx.id} className="border-b border-gray-100 dark:border-gray-700/50">
-                <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{new Date(tx.date).toLocaleDateString()}</td>
-                <td className="py-2 px-3 text-gray-900 dark:text-white">{tx.email}</td>
-                <td className="py-2 px-3 text-gray-700 dark:text-gray-300">{tx.type}</td>
-                <td className="py-2 px-3 text-gray-700 dark:text-gray-300">${tx.amount.toFixed(2)}</td>
+                <td className="py-2 px-3 text-gray-500 dark:text-gray-400">
+                  {new Date(tx.updatedAt).toLocaleDateString()}
+                </td>
+                <td className="py-2 px-3 text-gray-900 dark:text-white">{tx.userEmail}</td>
+                <td className="py-2 px-3 text-gray-700 dark:text-gray-300">{tx.plan}</td>
+                <td className="py-2 px-3 text-gray-700 dark:text-gray-300">
+                  {tx.complimentary ? 'Complimentary (not billed)' : tx.status}
+                </td>
               </tr>
             ))}
-            {data.recentTransactions.length === 0 && (
+            {(data.recentTransactions ?? []).length === 0 && (
               <tr>
                 <td colSpan={4} className="py-6 text-center text-gray-400">
-                  No recent transactions.
+                  No recent subscription changes.
                 </td>
               </tr>
             )}

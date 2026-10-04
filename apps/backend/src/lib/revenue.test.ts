@@ -69,7 +69,7 @@ describe('admin MRR is read from Stripe prices, not a hard-coded table', () => {
     expect(summary.mrr).toBe(15 + 39);
     expect(summary.source).toBe('mixed');
 
-    const offline = await monthlyRecurringRevenue([{ stripeSubscriptionId: 'x', user: { plan: 'student' } }], null);
+    const offline = await monthlyRecurringRevenue([{ stripeSubscriptionId: 'sub_x', user: { plan: 'student' } }], null);
     expect(offline).toMatchObject({ mrr: 5, source: 'published-prices' });
     expect(await monthlyRecurringRevenue([], null)).toMatchObject({ mrr: 0, source: 'none' });
   });
@@ -78,5 +78,32 @@ describe('admin MRR is read from Stripe prices, not a hard-coded table', () => {
     expect(stripeSubscriptionMonthlyValue(stripeSub([{ unit: 3000, interval: 'month', count: 3 }]))).toBe(10);
     expect(stripeSubscriptionMonthlyValue(stripeSub([{ unit: 1200, interval: 'week' }]))).toBeCloseTo(52, 5);
     expect(stripeSubscriptionMonthlyValue(stripeSub([{ unit: 1000, interval: 'fortnight' }]))).toBeNull();
+  });
+
+  // QUALCANVAS-7: GET /api/admin/billing sent a hand-written complimentary
+  // Team row's id ("comp_...") to Stripe -> "No such subscription", and the
+  // published-price fallback then counted the free row as paying revenue.
+  it('never sends complimentary (non-Stripe) subscription ids to Stripe and does not count them as revenue', async () => {
+    const stripe = fakeStripe({ sub_team: stripeSub([{ unit: 3900, interval: 'month', qty: 2 }]) });
+    const summary = await monthlyRecurringRevenue(
+      [
+        { stripeSubscriptionId: 'sub_team', user: { plan: 'team' } },
+        { stripeSubscriptionId: 'comp_c51e45042fd914d8cb7264bdd', user: { plan: 'team' } },
+      ],
+      stripe,
+    );
+    expect(stripe.subscriptions.retrieve).toHaveBeenCalledTimes(1);
+    expect(stripe.subscriptions.retrieve).toHaveBeenCalledWith('sub_team');
+    expect(summary.mrr).toBe(78);
+    expect(summary.byPlan).toEqual({ team: { count: 1, revenue: 78 } });
+    expect(summary.complimentary).toEqual({ count: 1, byPlan: { team: 1 } });
+    expect(summary.source).toBe('stripe');
+
+    const onlyComp = await monthlyRecurringRevenue(
+      [{ stripeSubscriptionId: 'comp_x', user: { plan: 'team' } }],
+      stripe,
+    );
+    expect(onlyComp).toMatchObject({ mrr: 0, byPlan: {}, source: 'none', complimentary: { count: 1 } });
+    expect(stripe.subscriptions.retrieve).toHaveBeenCalledTimes(1);
   });
 });

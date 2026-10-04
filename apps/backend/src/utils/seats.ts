@@ -1,4 +1,5 @@
 import type Stripe from 'stripe';
+import { isStripeSubscriptionId } from '../lib/stripeIds.js';
 import { prisma } from '../lib/prisma.js';
 import { getStripe } from '../lib/stripe.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -54,15 +55,12 @@ export type SeatMode = 'billed' | 'solo' | 'trial' | 'grandfathered' | 'comp' | 
 const ENFORCED_MODES = new Set<SeatMode>(['billed', 'solo']);
 
 /**
- * Real Stripe subscription ids start with "sub_". Production also holds
- * complimentary rows written by hand ("comp_...", read-only check 28 Sep 2026)
- * that Stripe has never seen. Treating those as billed would start a grace
- * period and then lock a comped team's coders out, and every seat change
- * would fail against Stripe.
+ * Real Stripe subscription ids start with "sub_"; complimentary rows ("comp_...")
+ * were never in Stripe. Treating those as billed would start a grace period and
+ * then lock a comped team's coders out, and every seat change would fail
+ * against Stripe. Lives in lib/stripeIds.ts so non-seat code can share it.
  */
-export function isStripeSubscriptionId(id: string | null | undefined): boolean {
-  return typeof id === 'string' && id.startsWith('sub_');
-}
+export { isStripeSubscriptionId };
 
 export interface SeatHolder {
   userId: string;
@@ -343,6 +341,10 @@ async function billedSubscription(ownerId: string) {
   const sub = await prisma.subscription.findUnique({ where: { userId: ownerId } });
   if (!sub || !BILLABLE_SUBSCRIPTION_STATUSES.has(sub.status)) {
     throw new AppError('An active paid subscription is required to change seats.', 409);
+  }
+  // Complimentary rows ("comp_...") are not in Stripe: never send their id there.
+  if (!isStripeSubscriptionId(sub.stripeSubscriptionId)) {
+    throw new AppError('This subscription is not billed through Stripe. Contact support to change seats.', 409);
   }
   return sub;
 }
