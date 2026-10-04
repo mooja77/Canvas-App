@@ -18,7 +18,15 @@ const canvas = {
     },
   ],
   questions: [{ id: 'local-code', text: 'First visit', color: '#3B82F6', type: 'CODE' }],
-  memos: [],
+  memos: [
+    {
+      id: 'local-memo',
+      title: 'Reflexive memo prompt',
+      content: 'A fictional practice note.',
+      color: '#fef08a',
+      createdAt: '2026-10-04T00:00:00Z',
+    },
+  ],
   codings: [
     {
       id: 'local-coding',
@@ -157,6 +165,21 @@ for (const { width, height } of [
     const bell = page.getByRole('button', { name: 'Notifications', exact: true });
     await expect(bell).toBeVisible();
     await page.getByRole('button', { name: 'Reject non-essential cookies', exact: true }).click();
+    const memoTitle = page.getByText('Reflexive memo prompt', { exact: true });
+    await expect(memoTitle).toBeVisible();
+    await expect(memoTitle).toBeInViewport();
+    await expect(memoTitle).toHaveCSS('color', 'rgb(55, 65, 81)');
+    // Audit the changed title, not a blanket certificate for unchanged,
+    // zoom-scaled memo controls. The full onboarding main-region audit stays
+    // untouched; the separate low-zoom target-size finding is retained in QA.
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .include('.react-flow__node-memo .drag-handle span.truncate')
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
     const progress = page.getByRole('progressbar', { name: 'Setup progress' });
     await expect(progress).toHaveAttribute('aria-valuenow', '2');
     const checklist = page.getByRole('button', { name: 'Dismiss checklist' }).locator('..').locator('..');

@@ -53,6 +53,12 @@ describe('MemoNode inline edit', () => {
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
   });
 
+  it('renders the memo title with an opaque readable foreground', () => {
+    renderNode();
+    expect(screen.getByText('Field note')).toHaveClass('text-gray-700');
+    expect(screen.getByText('Field note')).not.toHaveClass('text-gray-600/70');
+  });
+
   it('tells the user when the memo could not be saved and keeps the editor open', async () => {
     mockUpdateMemo.mockRejectedValue({ response: { data: { error: 'You have view-only access' } } });
 

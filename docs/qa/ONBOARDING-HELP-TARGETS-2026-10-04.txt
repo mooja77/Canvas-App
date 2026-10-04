@@ -79,3 +79,31 @@ unchanged. Final320px menu/recovery screenshots inspected. React checklist
 review kept this CSS/layout-only, without new effects, imperative geometry,
 data requests, dependencies or unrelated refactors. No full screen-reader or
 production authenticated-user certificate implied.
+Follow-up4Oct13:16UTC: exact-head CI37203134331 SUCCESS on8ebf67b;1361
+Final title-scoped + original Help/recovery four built cases PASS31.2s/retries0
+at1280x900/1280x720/390x844/320x844, actual opaque rgb55,65,81/title in viewport/
+scoped axe0. Calculated title contrast8.857:1 over the observed #fef08a. Final
+320px expanded Help image root-reviewed; entire Help/footer/notification bounds,
+keyboard/hit/44px/guide clearance and original failed/malformed/held/empty reads
+retained. Zero fixture writes/page errors. Prettier/check and git diff --check
+PASS. No full-node/native/screen-reader certificate. This final paragraph
+supersedes the earlier local running statements, not the retained failures.
+
+backendPASS19existingSKIP/1009frontendPASS/245cross-browserPASS8.1m/
+733ChromiumPASS20.3m/9existingSKIP/1flaky. The first activation attempt caught
+MemoNode title contrast3.3:1 (#81846f composited over #fef08a), not claimed clean.
+Merge held. New opaque-title unit RED1FAIL/3PASS; canonical phone fixture
+RED1FAIL6s actualrgba(75,85,99,.7). Sole production change is title class to
+text-gray-700; handlers/structure/memo actions unchanged.38affected units4files
+PASS2.77s/types/source strictlint/build2282modules22.42sPASS. Formatting first
+failed local line endings; formatter/check restored exact one-class source diff.
+New full-node phone axe first3PASS1FAIL caught10.3px action targets at reduced
+zoom. Root's initial animation hypothesis was not established: a proposed
+overview-readiness assertion also3PASS1FAIL because390px retained controls.
+That assertion was removed, not called PASS; memo-contrast-final-20261004
+retains the failure. New regression audits only the changed title, with actual
+computed opaque colour/in-viewport and scoped axe. Original full onboarding
+main-region axe and all Help/notification assertions untouched. Low-zoom memo
+target size is a separate open robustness defect, not a whole-memo certificate
+or disabled original check. Original red/first mixed outcomes retained in
+test-results/memo-contrast-red-20261004 and memo-contrast-green-20261004.
