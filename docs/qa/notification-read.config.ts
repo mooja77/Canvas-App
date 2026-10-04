@@ -9,7 +9,7 @@ export default defineConfig({
   outputDir: '../../test-results/notification-read-recovery',
   reporter: [['list']],
   use: {
-    baseURL: 'http://127.0.0.1:4751',
+    baseURL: 'http://localhost:4751',
     browserName: 'chromium',
     channel: 'chrome',
     serviceWorkers: 'block',

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+test.use({ storageState: { cookies: [], origins: [] }, serviceWorkers: 'block' });
 const canvas = {
   id: 'local-read-canvas',
   dashboardAccessId: 'local-access',
@@ -35,8 +36,12 @@ for (const width of [1280, 390]) {
     const writes: string[] = [];
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
+    await page.routeWebSocket('**', (socket) => {
+      socket.onMessage(() => writes.push('WebSocket client message blocked'));
+      socket.close();
+    });
     await context.addInitScript((user) => {
-      if (location.hostname !== '127.0.0.1') return;
+      if (!['localhost', '127.0.0.1'].includes(location.hostname)) return;
       localStorage.setItem(
         'qualcanvas-auth',
         JSON.stringify({
@@ -69,14 +74,28 @@ for (const width of [1280, 390]) {
     }, user);
     await context.route('**/*', async (route) => {
       const url = new URL(route.request().url());
+      const method = route.request().method();
+      if (method === 'OPTIONS' && route.request().headers()['access-control-request-method'] === 'GET') {
+        return route.fulfill({
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': route.request().headers().origin || 'http://localhost:4751',
+            'Access-Control-Allow-Credentials': 'true',
+            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Headers': 'Content-Type',
+          },
+        });
+      }
+      if (method !== 'GET') {
+        writes.push(
+          `${method} ${url.origin}${url.pathname} ${route.request().headers()['access-control-request-method'] || ''}`,
+        );
+        return route.abort();
+      }
       const loopback = ['127.0.0.1', 'localhost'].includes(url.hostname);
       if (!loopback && url.hostname !== 'api.qualcanvas.com') return route.abort();
       if (!url.pathname.startsWith('/api/'))
         return loopback && !url.pathname.startsWith('/socket.io') ? route.continue() : route.abort();
-      if (route.request().method() !== 'GET') {
-        writes.push(`${route.request().method()} ${url.pathname}`);
-        return route.fulfill({ status: 403, json: { success: false } });
-      }
       if (url.pathname === '/api/notifications') {
         reads++;
         if (hold) {
