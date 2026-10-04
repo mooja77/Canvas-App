@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface ConfirmDialogProps {
   title: string;
@@ -16,15 +17,25 @@ export default function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const messageId = useId();
   const [submitting, setSubmitting] = useState(false);
+  useFocusTrap(dialogRef);
 
   useEffect(() => {
-    cancelRef.current?.focus();
+    if (submitting) dialogRef.current?.focus();
+    else cancelRef.current?.focus();
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !submitting) onCancel();
+      if (e.key !== 'Escape') return;
+      // The canvas also uses Escape to deselect nodes. Consume it before
+      // background shortcuts can unmount the control that opened this modal.
+      e.preventDefault();
+      e.stopPropagation();
+      if (!submitting) onCancel();
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [onCancel, submitting]);
 
   const handleConfirm = async () => {
@@ -41,16 +52,20 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="modal-backdrop fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      ref={dialogRef}
+      tabIndex={-1}
+      className="modal-backdrop fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
       onClick={() => {
         if (!submitting) onCancel();
       }}
       role="alertdialog"
-      aria-labelledby="confirm-dialog-title"
-      aria-describedby="confirm-dialog-message"
+      aria-modal="true"
+      aria-busy={submitting}
+      aria-labelledby={titleId}
+      aria-describedby={messageId}
     >
       <div
-        className="modal-enter w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl ring-1 ring-black/5 dark:bg-gray-800"
+        className="modal-enter max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-5 shadow-xl ring-1 ring-black/5 dark:bg-gray-800"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3 mb-3">
@@ -70,10 +85,10 @@ export default function ConfirmDialog({
             </svg>
           </div>
           <div>
-            <h4 id="confirm-dialog-title" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h4 id={titleId} className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               {title}
             </h4>
-            <p id="confirm-dialog-message" className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+            <p id={messageId} className="mt-1 text-xs text-gray-600 dark:text-gray-400">
               {message}
             </p>
           </div>
@@ -84,7 +99,7 @@ export default function ConfirmDialog({
             ref={cancelRef}
             onClick={onCancel}
             disabled={submitting}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-750"
+            className="min-h-11 min-w-11 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-750"
           >
             Cancel
           </button>
@@ -92,7 +107,7 @@ export default function ConfirmDialog({
             type="button"
             onClick={handleConfirm}
             disabled={submitting}
-            className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-700 dark:hover:bg-red-600"
+            className="min-h-11 min-w-11 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-700 dark:hover:bg-red-600"
           >
             {submitting ? 'Working...' : confirmLabel}
           </button>

@@ -1,0 +1,65 @@
+QualCanvas confirmation accessibility — LOCAL CANDIDATE, NOT RELEASED
+
+RESUMED CHECKPOINT 4 October 19:55 UTC: final capture source rebased on actual
+main a0b79b53; clean candidate 68fb9a8. Fresh frontend build including all
+prerenders PASS (2282 modules, Vite 42.83s; existing PDF chunk warning).
+Final built app: 12/12 Chrome/Firefox/WebKit cases PASS, 2.1 minutes, no retries,
+widths 1280/820/390/320. Cancel first, forward/reverse focus trap, settled 44px
+targets, scoped axe, Escape cancellation restores real memo opener; actual
+low zoom preserved, existing save failure/retry/blank-title path still passes.
+No deletion or unexpected writes; all API responses fictional and locally
+fulfilled, external traffic blocked, no page errors. Screenshot at 320px
+inspected. Artifacts: test-results/memo-confirmation-capture-final.
+Fresh focused units 22/22 PASS (3 files,37.18s); full typecheck and configured
+ESLint PASS. Earlier failed attempts below are retained, not passing evidence.
+Native screen-reader/all-caller/hosted authenticated proof remains partial.
+Prior verification retry stop is historical; John resumed this fresh pass.
+Score remains21/28 provisional; no new first-value timing or global certificate.
+
+Owned worktree qualcanvas-onboarding-sota, branch
+onboarding/qualcanvas-confirm-dialog-20261004, initially based on frozen PR224
+7e27d69a. PR224 itself is unchanged. Rebase on actual merged main before push.
+
+Scope: shared ConfirmDialog only, its tests and existing memo browser fixture.
+Reuse existing useFocusTrap; Cancel first; labelled aria-modal alertdialog,
+unique React IDs,44px minimum buttons, viewport padding and bounded scrolling.
+Pending submission focuses container with both buttons disabled. Existing
+async confirm/cancel/delete/API contracts retained. Capture Escape so existing
+canvas deselection cannot remove the opener while cancelling the modal.
+No backend/auth/billing/provider/data changes or production deletion.
+
+Evidence and failures:
+- Initial unit regression:4FAIL/1PASS: modal semantics, reverse Tab escape,
+  focus restoration, disabled-action pending focus. After initial correction:
+ 21PASS across ConfirmDialog/useFocusTrap/MemoNode.
+- Full types/configured lint/format/build PASS on initial correction;
+ 2282modules/build26.46s. Existing >700kB PDF chunk warning retained.
+- First12-engine browser attempt: first case timed out on WRONG test locator
+  Delete instead of actual Delete memo; stopped remaining cases. Failure kept
+  in test-results/memo-confirmation-engines; desktop failure image inspected.
+- Corrected locator attempt: four Chromium cases FAIL, then stopped before
+  completing all engines. Existing modal-enter scale animation produced
+ 43.597px transient geometry. Failure kept in memo-confirmation-final.
+- Measurement now awaits actual getAnimations().finished, keeping44px/CSS/
+ 0.001px floating-point normalization/bounds/centre-hit requirements intact.
+- Settled animation attempt: first Chromium case reaches modal checks but
+  FAILS Escape focus return: canvas shortcut deselects node/removes toolbar.
+  Stopped remaining cases; retained memo-confirmation-settled evidence.
+- New Escape isolation unit RED1FAIL/5PASS proves background key handler runs.
+  Capture/consume correction then final22PASS/3files17.66s, no retries.
+
+Final capture correction has NOT had browser replay. Verification skill retry
+  limit reached in this pass: do not call these browser attempts passing, do
+  not push/merge this candidate until final actual built-browser proof passes.
+Broad unit/static/build evidence predates last Escape correction unless a
+later checkpoint explicitly records otherwise. No native screen-reader,
+VoiceOver/Safari, hosted authenticated flow or all-caller certificate claimed.
+
+Final checkpoint:22 focused PASS; full frontend1019PASS/118files379.80s was
+started on the initial correction before Escape capture. Final capture source
+full types/configured lint/format PASS. Final browser/build replay remains
+pending, no push. All own local previews stopped/4751quiet.
+
+Score21->21/28 provisional (historical14->21). TTFV not remeasured; prior
+driver10clicks/7fields/6.955–8.657s is not human/native evidence. ALL15 and
+QualCanvas final acceptance remain open; other owners/POS/GPU untouched.

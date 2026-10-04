@@ -216,6 +216,38 @@ for (const width of [1280, 820, 390, 320]) {
     await edit.click();
     await expect(dialog.getByLabel('Memo title (optional)')).toHaveValue('');
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    const deleteButton = actions.getByRole('button', { name: 'Delete memo', exact: true });
+    await deleteButton.focus();
+    await page.keyboard.press('Enter');
+    const confirmation = page.getByRole('alertdialog');
+    await expect(confirmation).toHaveAttribute('aria-modal', 'true');
+    // Existing modal-enter scales from0.95; measure targets after its actual
+    // animation finishes, without weakening the44px geometry requirement.
+    await confirmation.evaluate(async (el) => {
+      await Promise.all(el.getAnimations({ subtree: true }).map((animation) => animation.finished));
+    });
+    const cancelDelete = confirmation.getByRole('button', { name: 'Cancel', exact: true });
+    const confirmDelete = confirmation.getByRole('button', { name: 'Delete', exact: true });
+    await expect(cancelDelete).toBeFocused();
+    await reachable(cancelDelete);
+    await reachable(confirmDelete);
+    await page.keyboard.press('Shift+Tab');
+    await expect(confirmDelete).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(cancelDelete).toBeFocused();
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .include('[role="alertdialog"]')
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`memo-confirmation-${width}.png`), fullPage: true });
+    await page.keyboard.press('Escape');
+    await expect(confirmation).toHaveCount(0);
+    await expect(deleteButton).toBeFocused();
+    await expect(node.getByText('Revised local note.', { exact: true })).toBeVisible();
     expect(unexpectedWrites).toEqual([]);
     console.log(
       'MEMO_LOCAL_FIXTURE',
