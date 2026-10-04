@@ -42,6 +42,8 @@ interface UserProfile {
 export default function AccountPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState(false);
+  const [profileAttempt, setProfileAttempt] = useState(0);
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { authenticated, logout, authType: _authType, setEmailAuth, setName } = useAuthStore();
@@ -75,6 +77,8 @@ export default function AccountPage() {
     lastSent: string | null;
   }
   const [reportSchedules, setReportSchedules] = useState<ReportSchedule[]>([]);
+  const [scheduleStatus, setScheduleStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [scheduleAttempt, setScheduleAttempt] = useState(0);
   const [reportFrequency, setReportFrequency] = useState('weekly');
   const [reportSaving, setReportSaving] = useState(false);
   const [reportGenerating, setReportGenerating] = useState(false);
@@ -111,36 +115,85 @@ export default function AccountPage() {
       navigate('/login');
       return;
     }
+    let active = true;
+    setLoading(true);
+    setProfile(null);
     authApi
       .getMe()
       .then((res) => {
-        const data = res.data.data;
+        if (!active) return;
+        const data = res.data?.data;
+        if (
+          !data?.user ||
+          typeof data.user.name !== 'string' ||
+          typeof data.user.plan !== 'string' ||
+          typeof data.user.role !== 'string' ||
+          !['email', 'legacy'].includes(data.authType)
+        ) {
+          throw new Error('Invalid account response');
+        }
         setProfile(data);
         setEditName(data.user.name);
         setEditEmail(data.user.email || '');
+        setProfileError(false);
       })
-      .catch(() => toast.error('Failed to load profile'))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (active) setProfileError(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [authenticated, navigate, profileAttempt]);
 
-    // Load report schedules
+  useEffect(() => {
+    if (!authenticated) return;
+    let active = true;
+    setScheduleStatus('loading');
     reportApi
       .getSchedules()
       .then((res) => {
-        setReportSchedules(res.data.data || []);
+        if (!active) return;
+        const schedules = res.data?.data;
+        if (
+          !Array.isArray(schedules) ||
+          schedules.some(
+            (schedule) =>
+              !schedule ||
+              typeof schedule.id !== 'string' ||
+              typeof schedule.frequency !== 'string' ||
+              typeof schedule.enabled !== 'boolean',
+          )
+        )
+          throw new Error('Invalid schedules response');
+        setReportSchedules(schedules);
+        setScheduleStatus('ready');
       })
       .catch(() => {
-        /* no schedules yet */
+        if (active) setScheduleStatus('error');
       });
+    return () => {
+      active = false;
+    };
+  }, [authenticated, scheduleAttempt]);
 
+  useEffect(() => {
+    if (!authenticated) return;
+    let active = true;
     emailApi
       .getPreferences()
       .then((res) => {
-        setEmailPreferences(res.data.data);
+        if (active) setEmailPreferences(res.data.data);
       })
       .catch(() => {
         /* legacy access-code users do not have email preferences */
       });
-  }, [authenticated, navigate]);
+    return () => {
+      active = false;
+    };
+  }, [authenticated]);
 
   // The AI-setup banner links here with a #ai fragment. The AI Settings section
   // is email-auth-only and renders after the profile fetch resolves, so the
@@ -388,15 +441,59 @@ export default function AccountPage() {
     }
   };
 
-  if (loading) {
+  if (loading && !profileError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <p className="text-gray-500">Loading...</p>
+        <p role="status" className="text-gray-500">
+          Loading your account…
+        </p>
       </div>
     );
   }
 
-  if (!profile) return null;
+  if (!profile) {
+    return (
+      <main className="min-h-screen bg-gray-50 px-4 py-12 dark:bg-gray-900">
+        <section
+          className="mx-auto max-w-2xl rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800"
+          aria-busy={loading}
+        >
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Account</h1>
+          <div role="alert" className="mt-4 text-gray-700 dark:text-gray-200">
+            <h2 className="font-semibold">We couldn’t load your account</h2>
+            <p className="mt-2">
+              Check your connection and try again. You can also return to your canvas or email us for help.
+            </p>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => setProfileAttempt((attempt) => attempt + 1)}
+              className="min-h-11 min-w-11 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {loading ? 'Trying again…' : 'Try loading account again'}
+            </button>
+            <Link
+              to="/canvas"
+              className="inline-flex min-h-11 items-center px-3 text-brand-700 underline dark:text-brand-300"
+            >
+              Back to canvas
+            </Link>
+            <a
+              href="mailto:support@qualcanvas.com"
+              className="inline-flex min-h-11 items-center px-3 text-brand-700 underline dark:text-brand-300"
+            >
+              Email for help
+            </a>
+          </div>
+          <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+            We reply within two working days. Please don’t email passwords or sensitive research data.
+          </p>
+        </section>
+      </main>
+    );
+  }
 
   const planLabel =
     profile.user.plan === 'free'
@@ -878,7 +975,25 @@ export default function AccountPage() {
               updates.
             </p>
 
-            {reportSchedules.length > 0 ? (
+            {scheduleStatus === 'loading' ? (
+              <p role="status" className="mb-4 text-sm text-gray-600 dark:text-gray-300">
+                Loading report schedules…
+              </p>
+            ) : scheduleStatus === 'error' ? (
+              <div className="mb-4">
+                <p role="alert" className="text-sm text-gray-700 dark:text-gray-200">
+                  We couldn’t load your report schedules. Check your connection and try again before adding another
+                  schedule.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setScheduleAttempt((attempt) => attempt + 1)}
+                  className="mt-3 min-h-11 min-w-11 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium dark:border-gray-600"
+                >
+                  Try loading schedules again
+                </button>
+              </div>
+            ) : reportSchedules.length > 0 ? (
               <div className="space-y-3 mb-4">
                 {reportSchedules.map((schedule) => (
                   <div
@@ -939,7 +1054,7 @@ export default function AccountPage() {
               </select>
               <button
                 onClick={handleCreateSchedule}
-                disabled={reportSaving}
+                disabled={reportSaving || scheduleStatus !== 'ready'}
                 className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
               >
                 {reportSaving ? 'Creating...' : 'Add Schedule'}

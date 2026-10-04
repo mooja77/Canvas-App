@@ -1,0 +1,65 @@
+QualCanvas failed-confirmation recovery — LOCAL ONLY, NO PR/PUSH/LIVE CLAIM
+
+CONSOLIDATED20:50UTC: d0f7367 preserved, cherry-picked2c3751e into own227
+corrective branch with frozen226 and current225main92f2327. No conflicting
+files/other-owner edits. Full combined frontend1034/1034PASS119files157.54s/
+exit0, no final shutdown warnings. Source blobs unchanged from tested d0f7367.
+Final combined fulltypes/configuredlint/format/build2282modules/Vite27.23s/
+allprerendersPASS; combined24Chrome/Firefox/WebKit casesPASS3.7m/no retries.
+Both Account and memo fixtures at1280/820/390/320, actualWebKit320 screenshots
+inspected. Exact fictional mutation counts/no unexpected writes or pageerrors;
+external transport blocked, preview normally stopped. Ready for corrective227
+push, not current-headCI/merged/live. No separate PR to conserve CI/releases.
+Earlier separate-rebase plan superseded.
+
+Base frozen226dfdea2e, not current main. PR226/227 are unchanged. Rebase on
+their actual merged main before any new PR; preserve disjoint billing225.
+
+Real memo caller awaits canvasStore.deleteMemo, which awaits the DELETE API
+before removing the node. Rejection previously only console.error in shared
+ConfirmDialog, leaving no visible next step. New regression RED1FAIL6PASS.
+Added neutral persistent alert and described-by error ID; no raw provider errors
+or claim that server-side state definitely stayed unchanged. Copy tells users
+to choose Cancel/check what changed before trying again (avoids encouraging
+blind duplicate operations after uncertain network outcomes). Starting a new
+attempt clears the alert; existing async guards/focus/Cancel contracts unchanged.
+23 focused testsPASS. Type check caught unsupported Playwright-style exact
+option in new React Testing Library test; removed, then formatter warning fixed.
+Final types/configured ESLint/format PASS, frontend build/prerenders PASS
+2282modules/Vite24.06s; existing PDF chunk warning remains.
+
+Built-browser run under memo-confirmation-recovery-final: Chromium and Firefox
+four widths each PASS; WebKit1280 FAIL and remaining three stopped. A single
+diagnostic replay reproduced BODY focus after pointer Cancel. WebKit pointer
+clicks do not focus the opener; keyboard cancellation remains passing. New
+MemoNode opener regression RED1FAIL9PASS confirms the defect independently.
+Explicitly focus the invoking Delete memo button before opening the modal;
+final focused24PASS3files3.64s. No weakened browser focus assertion. One initial
+unit command had the wrong working-directory filter (no tests found); corrected
+frontend working-directory run supplied the actual24PASS evidence.
+Final full typecheck/configured ESLint/touched-file format PASS; frontend
+build/prerenders2282modules/Vite24.70s PASS (existing PDF chunk warning).
+Final rebuilt Chrome/Firefox/WebKit12/12 PASS3.4m, no retries, at1280/820/
+390/320. Artifacts memo-confirmation-recovery-pointer-final; 320 error image
+visually inspected readable and bounded with visible Cancel focus outline.
+Keyboard and pointer cancellation both restore invoking memo control. Exactly
+two fictional DELETEs per case (503/200), three memo-save attempts and one local
+layout write; no unexpected writes/pageerrors, external traffic blocked.
+No listener remains on owned4751 after normal test shutdown. Full frontend
+1022/1022PASS118files166.18s/exit0 with two workers on frozen226 base. Expected
+ErrorBoundary/unsupported jsdom navigation diagnostics were printed; no failing
+tests or shutdown warnings in final output. This is not combined-main proof:
+rebase on actual combined main and verify before any new PR.
+This extends prior memo controls
+fixture with exactly two locally fulfilled fictional DELETE requests (first
+503/pending, second200). External traffic and all unexpected writes blocked.
+Pending focus/Tab/Escape containment, visible failure/retained memo/Cancel
+focus return/reopen clean alert/successful removal of fictional node verified
+across all12 final cases after the explicit opener fix.
+No production/customer delete, credential, data, settings, email or billing write.
+The broad frontend suite and12 final controlled built-browser cases pass on
+this local base, not authenticated production or combined-main proof.
+
+Score21->21/28 provisional; no first-value timing remeasurement. All15/native/
+all-caller/hosted provider proof remain incomplete. One owned preview maximum,
+all other owners/worktrees/flags/canary/POS/GPU preserved.

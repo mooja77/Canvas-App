@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 // Mock react-router-dom
 const mockNavigate = vi.fn();
@@ -46,6 +46,7 @@ vi.mock('../stores/authStore', () => ({
 
 // Mock APIs
 const mockGetMe = vi.fn();
+const mockGetSchedules = vi.fn().mockResolvedValue({ data: { data: [] } });
 const mockGetSettings = vi.fn();
 const mockGetPreferences = vi.fn();
 const mockGetIntegrations = vi.fn();
@@ -70,7 +71,7 @@ vi.mock('../services/api', () => ({
     deleteSettings: vi.fn(),
   },
   reportApi: {
-    getSchedules: vi.fn().mockResolvedValue({ data: { data: [] } }),
+    getSchedules: (...args: unknown[]) => mockGetSchedules(...args),
     listSchedules: vi.fn().mockResolvedValue({ data: { data: [] } }),
     createSchedule: vi.fn(),
     updateSchedule: vi.fn(),
@@ -114,9 +115,125 @@ const mockProfile = {
   authType: 'email',
 };
 
+describe('Account read recovery', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetMe.mockReset().mockResolvedValue({ data: { data: mockProfile } });
+    mockGetSchedules.mockReset().mockResolvedValue({ data: { data: [] } });
+    mockGetSettings.mockResolvedValue({ data: { data: null } });
+    mockGetPreferences.mockResolvedValue({ data: { data: null } });
+    mockGetIntegrations.mockResolvedValue({ data: { integrations: [] } });
+  });
+
+  it('keeps a named error and safe exits, then retries without duplicate reads', async () => {
+    let resolveRetry!: (value: unknown) => void;
+    mockGetMe.mockRejectedValueOnce(new Error('offline')).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRetry = resolve;
+        }),
+    );
+    render(<AccountPage />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('We couldn’t load your account');
+    expect(screen.getByRole('link', { name: 'Back to canvas' })).toHaveAttribute('href', '/canvas');
+    expect(screen.getByRole('link', { name: 'Email for help' })).toHaveAttribute(
+      'href',
+      'mailto:support@qualcanvas.com',
+    );
+    const retry = screen.getByRole('button', { name: 'Try loading account again' });
+    expect(retry).toHaveClass('min-h-11');
+    fireEvent.click(retry);
+    const pending = await screen.findByRole('button', { name: 'Trying again…' });
+    expect(pending).toBeDisabled();
+    fireEvent.click(pending);
+    expect(mockGetMe).toHaveBeenCalledTimes(2);
+    await act(async () => resolveRetry({ data: { data: mockProfile } }));
+    expect(await screen.findByText('Profile')).toBeInTheDocument();
+    expect(screen.queryByText('We couldn’t load your account')).not.toBeInTheDocument();
+    expect(mockGetSchedules).toHaveBeenCalledTimes(1);
+    expect(mockGetPreferences).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([null, {}, { user: {} }])('treats malformed profile %j as recoverable, not a blank page', async (data) => {
+    mockGetMe.mockResolvedValueOnce({ data: { data } });
+    render(<AccountPage />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('We couldn’t load your account');
+    expect(screen.getByRole('button', { name: 'Try loading account again' })).toBeEnabled();
+  });
+
+  it('does not let a response from an unmounted page overwrite a fresh account read', async () => {
+    let resolveOld!: (value: unknown) => void;
+    mockGetMe.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveOld = resolve;
+        }),
+    );
+    const first = render(<AccountPage />);
+    first.unmount();
+    render(<AccountPage />);
+    expect(await screen.findByDisplayValue('Alice Researcher')).toBeInTheDocument();
+    await act(async () =>
+      resolveOld({ data: { data: { ...mockProfile, user: { ...mockProfile.user, name: 'Old page' } } } }),
+    );
+    expect(screen.getByDisplayValue('Alice Researcher')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Old page')).not.toBeInTheDocument();
+  });
+
+  it('never labels a failed schedule read as empty and independently retries it', async () => {
+    let resolveRetry!: (value: unknown) => void;
+    mockGetSchedules.mockRejectedValueOnce(new Error('offline')).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRetry = resolve;
+        }),
+    );
+    render(<AccountPage />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('We couldn’t load your report schedules');
+    expect(screen.queryByText('No report schedules configured.')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add Schedule' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Try loading schedules again' }));
+    expect(await screen.findByText('Loading report schedules…')).toBeInTheDocument();
+    expect(screen.queryByText('No report schedules configured.')).not.toBeInTheDocument();
+    await act(async () => resolveRetry({ data: { data: [] } }));
+    expect(await screen.findByText('No report schedules configured.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add Schedule' })).toBeEnabled();
+    expect(mockGetMe).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([{}, null, [null], [{ id: 'schedule', frequency: 'weekly', enabled: 'true' }]])(
+    'does not turn malformed schedules %j into an empty list',
+    async (data) => {
+      mockGetSchedules.mockResolvedValueOnce({ data: { data } });
+      render(<AccountPage />);
+      expect(await screen.findByRole('alert')).toHaveTextContent('We couldn’t load your report schedules');
+      expect(screen.queryByText('No report schedules configured.')).not.toBeInTheDocument();
+    },
+  );
+
+  it('still loads legacy access-code accounts without email preferences or usage', async () => {
+    mockGetMe.mockResolvedValueOnce({
+      data: {
+        data: {
+          user: { name: 'Legacy researcher', role: 'user', plan: 'pro' },
+          authType: 'legacy',
+          subscription: null,
+          usage: null,
+        },
+      },
+    });
+    mockGetPreferences.mockRejectedValueOnce(new Error('Legacy preferences absent'));
+    render(<AccountPage />);
+    expect(await screen.findByText('Legacy researcher')).toBeInTheDocument();
+    expect(screen.queryByText('We couldn’t load your account')).not.toBeInTheDocument();
+    expect(screen.queryByText('Email Preferences')).not.toBeInTheDocument();
+  });
+});
+
 describe('AccountPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetSchedules.mockReset().mockResolvedValue({ data: { data: [] } });
     mockSearchParams.delete('session_id');
     mockGetMe.mockResolvedValue({ data: { data: mockProfile } });
     mockGetSettings.mockResolvedValue({ data: { data: null } });
