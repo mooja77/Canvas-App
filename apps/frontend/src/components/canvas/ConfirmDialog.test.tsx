@@ -4,6 +4,26 @@ import ConfirmDialog from './ConfirmDialog';
 import userEvent from '@testing-library/user-event';
 
 describe('ConfirmDialog', () => {
+  it('keeps a failed action visible with a safe next step and a retry', async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Local simulated offline confirmation'))
+      .mockResolvedValueOnce(undefined);
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      render(<ConfirmDialog title="Delete note" message="Delete item?" onConfirm={onConfirm} onCancel={vi.fn()} />);
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('We couldn’t confirm this action finished');
+      expect(screen.getByRole('alert')).toHaveTextContent('Choose Cancel to check what changed before trying again');
+      expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+      await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(2));
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    } finally {
+      log.mockRestore();
+    }
+  });
   it('consumes Escape before background shortcuts can remove the opener', () => {
     const backgroundEscape = vi.fn();
     const onCancel = vi.fn();

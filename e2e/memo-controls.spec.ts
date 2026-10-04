@@ -35,6 +35,8 @@ for (const width of [1280, 820, 390, 320]) {
     const errors: string[] = [];
     const unexpectedWrites: string[] = [];
     const saves: unknown[] = [];
+    let deletes = 0;
+    let releaseDelete: (() => void) | undefined;
     const layoutWrites: unknown[] = [];
     let failSave = true;
     let savedMemo = { ...memo };
@@ -69,11 +71,29 @@ for (const width of [1280, 820, 390, 320]) {
       const cors = {
         'Access-Control-Allow-Origin': request.headers().origin || 'http://localhost:4751',
         'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Methods': 'GET, PUT',
+        'Access-Control-Allow-Methods': 'GET, PUT, DELETE',
         'Access-Control-Allow-Headers': 'Content-Type',
       };
-      if (request.method() === 'OPTIONS' && ['GET', 'PUT'].includes(request.headers()['access-control-request-method']))
+      if (
+        request.method() === 'OPTIONS' &&
+        ['GET', 'PUT', 'DELETE'].includes(request.headers()['access-control-request-method'])
+      )
         return route.fulfill({ status: 204, headers: cors });
+      if (request.method() === 'DELETE' && url.pathname === '/api/canvas/local-memo-canvas/memos/local-memo') {
+        deletes++;
+        if (deletes === 1)
+          await new Promise<void>((resolve) => {
+            releaseDelete = resolve;
+          });
+        return route.fulfill({
+          status: deletes === 1 ? 503 : 200,
+          headers: cors,
+          json:
+            deletes === 1
+              ? { success: false, error: 'Local simulated failed deletion' }
+              : { success: true, data: null },
+        });
+      }
       if (request.method() === 'PUT' && url.pathname === '/api/canvas/local-memo-canvas/memos/local-memo') {
         const body = request.postDataJSON();
         saves.push(body);
@@ -248,6 +268,40 @@ for (const width of [1280, 820, 390, 320]) {
     await expect(confirmation).toHaveCount(0);
     await expect(deleteButton).toBeFocused();
     await expect(node.getByText('Revised local note.', { exact: true })).toBeVisible();
+    await deleteButton.click();
+    await confirmDelete.click();
+    await expect(confirmation).toHaveAttribute('aria-busy', 'true');
+    await expect(confirmation).toBeFocused();
+    await expect.poll(() => deletes).toBe(1);
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Escape');
+    await expect(confirmation).toBeVisible();
+    await expect(confirmation).toBeFocused();
+    expect(deletes).toBe(1);
+    releaseDelete!();
+    await expect(confirmation.getByRole('alert')).toContainText('We couldn’t confirm this action finished');
+    await expect(cancelDelete).toBeFocused();
+    await expect(node.getByText('Revised local note.', { exact: true })).toBeVisible();
+    await reachable(cancelDelete);
+    await reachable(confirmDelete);
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .include('[role="alertdialog"]')
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`memo-confirmation-error-${width}.png`), fullPage: true });
+    await cancelDelete.click();
+    await expect(confirmation).toHaveCount(0);
+    await expect(deleteButton).toBeFocused();
+    await deleteButton.click();
+    await expect(confirmation.getByRole('alert')).toHaveCount(0);
+    await confirmDelete.click();
+    await expect(confirmation).toHaveCount(0);
+    await expect(node).toHaveCount(0);
+    expect(deletes).toBe(2);
     expect(unexpectedWrites).toEqual([]);
     console.log(
       'MEMO_LOCAL_FIXTURE',
@@ -256,6 +310,7 @@ for (const width of [1280, 820, 390, 320]) {
         initialZoom,
         finalZoom: await zoom(),
         memoSaves: saves.length,
+        fictionalDeletes: deletes,
         layoutWrites: layoutWrites.length,
       }),
     );

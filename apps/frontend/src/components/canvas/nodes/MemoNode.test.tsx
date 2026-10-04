@@ -41,6 +41,14 @@ function renderNode() {
 }
 
 describe('MemoNode inline edit', () => {
+  it('focuses the delete opener even when a pointer click does not focus buttons', () => {
+    renderNode();
+    const opener = screen.getByRole('button', { name: 'Delete memo' });
+    expect(opener).not.toHaveFocus();
+    fireEvent.click(opener);
+    expect(opener).toHaveFocus();
+    expect(storeState.deleteMemo).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     zoomTier = 'full';

@@ -20,7 +20,9 @@ export default function ConfirmDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const messageId = useId();
+  const errorId = useId();
   const [submitting, setSubmitting] = useState(false);
+  const [failed, setFailed] = useState(false);
   useFocusTrap(dialogRef);
 
   useEffect(() => {
@@ -40,10 +42,12 @@ export default function ConfirmDialog({
 
   const handleConfirm = async () => {
     if (submitting) return;
+    setFailed(false);
     setSubmitting(true);
     try {
       await onConfirm();
     } catch (error) {
+      setFailed(true);
       console.error('Confirmation action failed:', error);
     } finally {
       setSubmitting(false);
@@ -62,7 +66,7 @@ export default function ConfirmDialog({
       aria-modal="true"
       aria-busy={submitting}
       aria-labelledby={titleId}
-      aria-describedby={messageId}
+      aria-describedby={failed ? `${messageId} ${errorId}` : messageId}
     >
       <div
         className="modal-enter max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-5 shadow-xl ring-1 ring-black/5 dark:bg-gray-800"
@@ -93,6 +97,11 @@ export default function ConfirmDialog({
             </p>
           </div>
         </div>
+        {failed && (
+          <p id={errorId} role="alert" className="mb-3 text-sm text-red-700 dark:text-red-300">
+            We couldn’t confirm this action finished. Choose Cancel to check what changed before trying again.
+          </p>
+        )}
         <div className="flex justify-end gap-2">
           <button
             type="button"

@@ -279,7 +279,10 @@ function MemoNode({ data, id, selected }: NodeProps) {
               </button>
               <button
                 type="button"
-                onClick={() => setShowDeleteConfirm(true)}
+                onClick={(event) => {
+                  event.currentTarget.focus();
+                  setShowDeleteConfirm(true);
+                }}
                 className="min-h-11 min-w-11 rounded-lg px-3 text-red-700 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
               >
                 Delete memo
