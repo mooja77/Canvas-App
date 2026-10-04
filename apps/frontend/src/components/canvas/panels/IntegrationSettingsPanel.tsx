@@ -31,25 +31,56 @@ const PROVIDER_LABELS: Record<string, string> = {
   qualtrics: 'Qualtrics',
 };
 
+function isIntegrationInfo(value: unknown): value is IntegrationInfo {
+  if (!value || typeof value !== 'object') return false;
+  const row = value as Record<string, unknown>;
+  return (
+    typeof row.id === 'string' &&
+    row.id.trim().length > 0 &&
+    typeof row.provider === 'string' &&
+    row.provider.trim().length > 0 &&
+    typeof row.createdAt === 'string' &&
+    Number.isFinite(Date.parse(row.createdAt))
+  );
+}
+
 export default function IntegrationSettingsPanel() {
   const [integrations, setIntegrations] = useState<IntegrationInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [readAttempt, setReadAttempt] = useState(0);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const loadIntegrations = async () => {
-    try {
-      const res = await canvasApi.getIntegrations();
-      setIntegrations(res.data.integrations ?? []);
-    } catch {
-      toast.error('Could not load stored credentials');
-    } finally {
-      setLoading(false);
-    }
+  const loadIntegrations = () => {
+    if (loading) return;
+    setLoading(true);
+    setReadAttempt((attempt) => attempt + 1);
   };
 
   useEffect(() => {
-    loadIntegrations();
-  }, []);
+    let active = true;
+    setLoading(true);
+    setLoadError(false);
+    const read = async () => {
+      try {
+        const res = await canvasApi.getIntegrations();
+        const rows: unknown = res.data?.integrations;
+        if (!Array.isArray(rows) || !rows.every(isIntegrationInfo)) throw new Error('Invalid credential list');
+        if (active) setIntegrations(rows);
+      } catch {
+        if (active) {
+          setLoadError(true);
+          toast.error('Could not load stored credentials');
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void read();
+    return () => {
+      active = false;
+    };
+  }, [readAttempt]);
 
   const handleConfirmedDelete = async () => {
     if (!confirmDeleteId) return;
@@ -66,8 +97,8 @@ export default function IntegrationSettingsPanel() {
 
   if (loading) {
     return (
-      <div className="p-6 text-center">
-        <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent mx-auto" />
+      <div role="status" className="p-6 text-center text-sm text-gray-700 dark:text-gray-200">
+        Loading your stored credentials…
       </div>
     );
   }
@@ -82,7 +113,21 @@ export default function IntegrationSettingsPanel() {
         </p>
       </div>
 
-      {integrations.length === 0 ? (
+      {loadError ? (
+        <div role="alert" className="rounded-lg border border-amber-300 p-4 text-sm text-gray-700 dark:text-gray-200">
+          <p>
+            We couldn’t load your stored credentials. This does not mean none are stored. Check your connection and try
+            again.
+          </p>
+          <button
+            type="button"
+            onClick={loadIntegrations}
+            className="mt-3 min-h-11 min-w-11 rounded-lg border border-gray-300 px-4 py-2 font-medium dark:border-gray-600"
+          >
+            Try loading credentials again
+          </button>
+        </div>
+      ) : integrations.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300">
           No provider credentials are stored for your account. Nothing to remove.
         </div>

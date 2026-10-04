@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { StrictMode } from 'react';
 import userEvent from '@testing-library/user-event';
 
 const mockGetIntegrations = vi.fn();
@@ -33,6 +34,68 @@ describe('IntegrationSettingsPanel', () => {
   });
 
   const stored = [{ id: 'ckint0000000000000000001', provider: 'zoom', createdAt: '2026-01-05T00:00:00.000Z' }];
+
+  it('does not present a failed read as proof that no credentials are stored', async () => {
+    mockGetIntegrations.mockRejectedValue(new Error('network unavailable'));
+    render(<IntegrationSettingsPanel />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('couldn’t load your stored credentials');
+    expect(screen.queryByText(/No provider credentials are stored/i)).not.toBeInTheDocument();
+    expect(mockDisconnectIntegration).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, null, {}, [{}], [{ ...stored[0], createdAt: 'not a date' }]])(
+    'rejects malformed successful response %j without a false empty claim',
+    async (integrations) => {
+      mockGetIntegrations.mockResolvedValue({ data: { integrations } });
+      render(<IntegrationSettingsPanel />);
+      expect(await screen.findByRole('alert')).toHaveTextContent('couldn’t load your stored credentials');
+      expect(screen.queryByText(/No provider credentials are stored/i)).not.toBeInTheDocument();
+      expect(mockDisconnectIntegration).not.toHaveBeenCalled();
+    },
+  );
+
+  it('guards a held retry and shows verified stored rows without deleting anything', async () => {
+    let finish!: (value: unknown) => void;
+    mockGetIntegrations.mockRejectedValueOnce(new Error('offline')).mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    render(<IntegrationSettingsPanel />);
+    const retry = await screen.findByRole('button', { name: 'Try loading credentials again' });
+    fireEvent.click(retry);
+    fireEvent.click(retry);
+    expect(screen.getByRole('status')).toHaveTextContent('Loading your stored credentials');
+    expect(mockGetIntegrations).toHaveBeenCalledTimes(2);
+    expect(mockDisconnectIntegration).not.toHaveBeenCalled();
+    finish({ data: { integrations: stored } });
+    expect(await screen.findByText('Zoom')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText(/No provider credentials are stored/i)).not.toBeInTheDocument();
+  });
+
+  it('ignores the expired StrictMode read instead of replacing the current list', async () => {
+    let finishOld!: (value: unknown) => void;
+    mockGetIntegrations
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishOld = resolve;
+        }),
+      )
+      .mockResolvedValueOnce({ data: { integrations: stored } });
+    render(
+      <StrictMode>
+        <IntegrationSettingsPanel />
+      </StrictMode>,
+    );
+    expect(await screen.findByText('Zoom')).toBeInTheDocument();
+    await act(async () => {
+      finishOld({ data: { integrations: [] } });
+    });
+    expect(screen.getByText('Zoom')).toBeInTheDocument();
+    expect(screen.queryByText(/No provider credentials are stored/i)).not.toBeInTheDocument();
+  });
 
   it('states plainly that connections are retired', async () => {
     mockGetIntegrations.mockResolvedValue({ data: { integrations: [] } });
