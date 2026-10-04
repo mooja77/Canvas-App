@@ -1,0 +1,113 @@
+QualCanvas memo controls — narrow follow-up, 4 October 2026
+
+Base d763b57d (released PR222), clean owned worktree/new branch
+onboarding/qualcanvas-memo-controls-20261004. Open PR inventory was empty;
+the original checkout C:/JM Programs/QualCanvas was read-only and clean.
+No dependencies, auth/roles/API handlers, billing, source data, provider,
+production settings or lifecycle flags changed. The Canvas-App memory file's
+old Vercel/test-count notes are historical: current normal release is Git CI
+to Pages/Railway, as independently proved for PR222.
+
+Problem: the prior 32px memo controls and inline editor live inside the
+React Flow viewport. At ~32% canvas zoom their actual targets are ~10.3px.
+Selected-memo actions now use the existing NodeToolbar portal, not CSS
+enlargement inside the scaled node. It keeps single-selection/multi-selection
+default behaviour. Overview still hides actions. The editor is a body portal
+with labels, 16px fields, 44px buttons, viewport-limited scrolling and the
+existing focus-trap hook. Escape/Cancel leave the original note unchanged;
+Done or Ctrl/Cmd+Enter confirms. Focus changes no longer auto-save a draft.
+Formatting now supports click/keyboard activation, retaining cursor selection.
+Save rejection still reports the existing API error and keeps the draft open.
+The action toolbar stays mounted behind the editor for focus restoration.
+
+Primary component reference checked 4 October:
+https://reactflow.dev/api-reference/components/node-toolbar
+The documentation explicitly says NodeToolbar does not scale with the viewport
+and defaults to a single selected node to avoid overlapping multi-selection UI.
+
+Evidence so far (not yet pushed/live)
+- New behavioural unit regressions: original 3 failed/4 passed; corrected
+  MemoNode7/7 passed, then MemoNode+existing focus trap14/14 passed.
+- First full typecheck and configured ESLint passed; canonical frontend build
+  2282 modules/31.16s passed, existing >700kB PDF chunk warning retained.
+- First built browser replay: 3 failed, all at exact textarea label lookup.
+  Wrapping a textarea in a label made its default text participate in the
+  browser label string; unit-only evidence did not catch it. Replaced with
+  explicit id/htmlFor. All failures and traces remain under
+  test-results/memo-controls; the corrected run has a separate output directory.
+- Final low-zoom test uses real Zoom Out controls to reach 18–35%, not CSS
+  scaling or injected viewport state. It checks actual 44px geometry/hit targets,
+  labelled 16px editor fields, keyboard open/focus-cycle/restore, no blur save,
+  Escape cancellation, one failed PUT then a successful explicit retry,
+  updated node content and scoped dialog WCAG2.2 axe checks at1280/390/320.
+  All GET/PUT responses are fictional intercepted fixtures; no real data,
+  email, provider or external mutation is attempted. This is not a native
+  accessibility test or a new real-backend persistence certificate.
+
+Score remains21/28 provisional before/after this lane. Historical first-value
+10clicks/7fields/6.955–8.657 automated seconds were not remeasured by this
+memo-only regression. The earlier full onboarding tests remain unchanged.
+Remaining full-programme gaps include all-route coverage, native AT/provider
+round-trip and final score verification; this release must not claim ALL15 done.
+
+Second browser pass retained3 failures:1280/390 completed content-save, keyboard
+and dialog axe assertions but the mutation guard caught the existing independent
+layout auto-save PUT (previously blocked and reported as Not saved);320 proved
+the node-anchored toolbar could extend84.9px off the left edge. No target-size
+or viewport bound assertions were removed. Toolbar is now docked to the unscaled
+canvas bottom-centre, bounded to its width and still single-selection-only.
+The fixture separately counts/fulfils only the exact fictional layout PUT,
+while all unrecognised mutations remain blocked; content saves remain exact.
+Second failures/traces retained under memo-controls-labelled; third output is
+memo-controls-docked. This is not a claim of zero attempted HTTP writes.
+
+Third pass1PASS2FAIL15.1s retained: desktop passed all assertions; the two phone
+screens exposed the genuine teaching-empty-state overlay's buttons covering the
+canvas-local dock (centre-hit failed). No forced click/dismissal/masked overlay
+or fixture data added to evade it. NodeToolbar keeps its default single-selection
+visibility; its action group now portals to a bounded screen-bottom dock above
+the workspace stacking context. This also avoids pan/edge clipping. The existing
+empty teaching overlay and other canvas behaviours are unchanged. Output of that
+failure remains memo-controls-docked; next output is memo-controls-viewport.
+
+Pending: final browser outcome, full frontend tests/static checks, exact-head CI,
+normal green merge/release and current live bundle/provider proof.
+
+Fourth browser replay4/4PASS20.2s at1280/820/390/320, zero retries. It proved
+the portal dock clears the genuine empty teaching overlay and all four editors
+passed keyboard/labels/44px targets/failed-save/retry/scoped axe. Each recorded
+two intercepted memo PUTs and one separately intercepted layout PUT, zero
+unexpected writes/pageerrors. This intermediate run is not final low-zoom proof:
+inspection of its320px screenshot/log revealed node selection itself zoomed
+back to65% after the earlier zoom assertion. Final spec selects first, then
+uses the actual Zoom Out controls and records initial and final zoom separately.
+It never treats a pre-selection transform as the toolbar's measured scale.
+
+Additional pending-save TDD: new focused test1FAIL7PASS showed the disabled
+Done control was still the focus target rather than the dialog. The narrow
+DOM effect now focuses the tabIndex=-1 dialog while saving; the existing trap
+blocks Tab with no enabled controls. Final browser intentionally holds the
+fictional first PUT, verifies busy focus/Tab containment, duplicate shortcut
+suppression and Escape refusal while saving, then releases the failed response
+and proves the same draft can be retried. No real request is permitted.
+
+Final local outcome (4 October, before push)
+- Full frontend: 118 files, 1,014 tests passed, 263.11 seconds, one worker.
+- Full typecheck, configured ESLint and formatting check passed.
+- Canonical frontend build: 2,282 modules, 24.50 seconds; existing PDF chunk
+  size warning retained, not treated as a new failure.
+- Final built-browser replay: 4/4 passed, 21.1 seconds, zero retries.
+  Width1280: actual initial/final zoom0.334898;820:0.341596;
+  390 and320:0.313465. Every case recorded two fictional memo saves and
+  one independently intercepted layout save; no unexpected writes/pageerrors.
+- Final320px editor screenshot inspected: labels, readable fields, wrapped
+  formatting controls, Cancel/Done fit the viewport; deliberate failed-save
+  toast is visible. Scoped axe evidence is not a native screen-reader pass.
+- Source review: API/auth/store contracts and existing delete confirmation
+  untouched. An inherited optional-title clearing problem remains: clearing
+  a previously titled memo assigns undefined, which JSON omits. This is not
+  covered/fixed by this action-target lane and is recorded for follow-up.
+  Delete-confirmation target/focus coverage is also not certified here.
+
+Local checks are complete; exact-head CI and normal release/live proof remain
+pending until the PR/provider evidence is recorded separately.
