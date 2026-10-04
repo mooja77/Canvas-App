@@ -1,0 +1,58 @@
+QualCanvas optional memo-title clearing — follow-up4October2026
+
+Clean owned new branch onboarding/qualcanvas-memo-title-20261004 from merged
+4a8eec1c, no open app PRs; preceding PR223 controls release remains separately
+tracked while its normal main CI/Pages deployment completes. Shared tree intact.
+
+Inherited bug confirmed: clearing a titled memo assigned title:undefined.
+JSON serialization omits undefined fields, so the backend never receives the
+request to clear it. The existing update schema already allows a blank string
+(title:z.string().max(200).optional()); authenticated ownership-scoped route
+persists req.body. No backend/schema/auth change required or made.
+
+One production line now sends the trimmed title, including the empty string.
+Unit regression proves both the update call and its serialized JSON contain
+title:"". Original RED1failed/8passed; correction9/9passed. Existing successful
+content-save, no-blur-save, cancellation, rejection/draft retention, formatting,
+keyboard/focus and pending-duplicate regressions retained unchanged.
+
+Full typecheck/configured ESLint and canonical frontend build2282modules26.21s
+passed; existing PDF chunk size warning retained. Built4width browser matrix
+1280/820/390/320 passed21.6s/no retries. Existing low-zoom/44px/keyboard/retry/axe
+checks retained. Each adds a third fictional memo PUT exactly {title:""},
+asserts default Memo title, preserved revised content, and reopened blank title.
+Fixture successful responses now accumulate prior changes (matching the real
+server's partial update) rather than resetting unspecified content to its initial
+constant. No outside writes allowed; one separate fictional layout PUT recorded.
+
+Score21/28provisional before/after, historical10clicks/7fields/6.955–8.657
+automated seconds not remeasured. This is not native, all-route/provider,
+real-backend persistence or ALL15 certification. Delete-confirmation coverage
+remains open. Full frontend/current-head CI/normal release/live proof pending.
+
+Final full local frontend:118files/1,015tests passed243.83s, one worker.
+Full formatting check and diff whitespace check passed. Source review confirms
+the sole production change is removing ||undefined from the optional title
+assignment; all other production behaviours and API contracts unchanged.
+This source is not yet pushed or released; PR223 release is separate.
+
+Additional engine proof and measurement limits
+- Initial engine replay:4WebKitPASS43.8s overall,4Firefox launch failures
+  because F:/AI-Storage/Caches/playwright lacked firefox-1509/firefox.exe.
+  No Firefox application assertions ran. Failures retained memo-title-engines.
+- The exact package-required Firefox1509 already existed in the Windows cache.
+  Process-only PLAYWRIGHT_BROWSERS_PATH selected that cache, no install/global
+  change/copy. This replay4FAIL measured dialog-button height43.999969 or
+  43.999939 from coordinate subtraction, despite computed min-height44px.
+  Failure traces/images retained memo-title-firefox-correct-cache.
+- Geometry now rounds to0.001px AND explicitly asserts computed min-height
+  >=44px. All viewport bounds/centre-hit/keyboard/save/axe assertions remain.
+  This is an explicit numerical measurement correction, not a product target
+  enlargement or a silent waiver. Real43.9px targets still fail.
+- Corrected Firefox4/4PASS28.9s. Final SAME-SPEC Chromium/Firefox/WebKit,
+  each1280/820/390/320,12/12PASS1.3minutes/zero retries; actual final selected
+  zoom30.2–35%, each3fictional memo PUTs/1separate layout PUT, no unexpected
+  writes/pageerrors. Screenshot320Firefox editor reviewed. Final output
+  memo-title-final-all-engines; earlier failures retained separately.
+- New local engine config is reusable; existing CI's critical-path allowlist
+  is untouched. WebKit is not Safari/VoiceOver or a native-reader certificate.

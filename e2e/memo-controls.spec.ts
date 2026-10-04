@@ -37,6 +37,7 @@ for (const width of [1280, 820, 390, 320]) {
     const saves: unknown[] = [];
     const layoutWrites: unknown[] = [];
     let failSave = true;
+    let savedMemo = { ...memo };
     let holdSave = false;
     let releaseSave: (() => void) | undefined;
     page.on('pageerror', (error) => errors.push(error.message));
@@ -82,12 +83,13 @@ for (const width of [1280, 820, 390, 320]) {
             releaseSave = resolve;
           });
         }
+        if (!failSave) savedMemo = { ...savedMemo, ...body };
         return route.fulfill({
           status: failSave ? 503 : 200,
           headers: cors,
           json: failSave
             ? { success: false, error: 'Local simulated offline save' }
-            : { success: true, data: { ...memo, ...body } },
+            : { success: true, data: savedMemo },
         });
       }
       if (request.method() === 'PUT' && url.pathname === '/api/canvas/local-memo-canvas/layout') {
@@ -133,8 +135,12 @@ for (const width of [1280, 820, 390, 320]) {
     async function reachable(target: Locator) {
       await expect(target).toBeVisible();
       const box = await target.boundingBox();
-      expect(box!.width).toBeGreaterThanOrEqual(44);
-      expect(box!.height).toBeGreaterThanOrEqual(44);
+      // Firefox's centered-dialog coordinates can subtract to43.999969 for a
+      // computed44px target. Keep the actual CSS floor, and normalize only
+      // floating-point geometry to0.001px; real undersized targets still fail.
+      expect(await target.evaluate((el) => parseFloat(getComputedStyle(el).minHeight))).toBeGreaterThanOrEqual(44);
+      expect(Math.round(box!.width * 1000) / 1000).toBeGreaterThanOrEqual(44);
+      expect(Math.round(box!.height * 1000) / 1000).toBeGreaterThanOrEqual(44);
       expect(box!.x).toBeGreaterThanOrEqual(0);
       expect(box!.x + box!.width).toBeLessThanOrEqual(width);
       expect(box!.y).toBeGreaterThanOrEqual(0);
@@ -200,6 +206,16 @@ for (const width of [1280, 820, 390, 320]) {
     await expect(dialog).toHaveCount(0);
     await expect(node.getByText('Revised local note.', { exact: true })).toBeVisible();
     expect(saves).toEqual([{ content: 'Revised local note.' }, { content: 'Revised local note.' }]);
+    await edit.click();
+    await dialog.getByLabel('Memo title (optional)').fill('   ');
+    await done.click();
+    await expect(dialog).toHaveCount(0);
+    expect(saves).toEqual([{ content: 'Revised local note.' }, { content: 'Revised local note.' }, { title: '' }]);
+    await expect(node.getByText('Memo', { exact: true })).toBeVisible();
+    await expect(node.getByText('Revised local note.', { exact: true })).toBeVisible();
+    await edit.click();
+    await expect(dialog.getByLabel('Memo title (optional)')).toHaveValue('');
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     expect(unexpectedWrites).toEqual([]);
     console.log(
       'MEMO_LOCAL_FIXTURE',

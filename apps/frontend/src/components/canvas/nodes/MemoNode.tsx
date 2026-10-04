@@ -173,7 +173,7 @@ function MemoNode({ data, id, selected }: NodeProps) {
   const handleSave = async () => {
     const updates: { content?: string; title?: string } = {};
     if (editContent.trim() !== nodeData.content) updates.content = editContent.trim();
-    if (editTitle.trim() !== (nodeData.title || '')) updates.title = editTitle.trim() || undefined;
+    if (editTitle.trim() !== (nodeData.title || '')) updates.title = editTitle.trim();
     if (Object.keys(updates).length === 0) {
       setEditing(false);
       return;
