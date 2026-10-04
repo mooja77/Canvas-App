@@ -26,6 +26,8 @@ interface EnrichedExcerpt {
 export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProps) {
   // Keep Tab inside the dialog and give focus back to the trigger on close.
   const dialogRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const keywordRef = useRef<HTMLInputElement>(null);
   useFocusTrap(dialogRef);
   useEscapeToClose(onClose);
   const activeCanvas = useActiveCanvas();
@@ -141,7 +143,8 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
   // KWIC concordance view
   const kwicResults = useMemo(() => {
     if (!kwicWord.trim() || !activeCanvas) return [];
-    const word = kwicWord.toLowerCase();
+    const query = kwicWord.trim();
+    const word = query.toLowerCase();
     const results: {
       transcriptTitle: string;
       before: string;
@@ -155,8 +158,8 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
       let idx = lower.indexOf(word);
       while (idx !== -1) {
         const before = t.content.slice(Math.max(0, idx - kwicWindowSize), idx);
-        const match = t.content.slice(idx, idx + kwicWord.length);
-        const after = t.content.slice(idx + kwicWord.length, idx + kwicWord.length + kwicWindowSize);
+        const match = t.content.slice(idx, idx + query.length);
+        const after = t.content.slice(idx + query.length, idx + query.length + kwicWindowSize);
         results.push({ transcriptTitle: t.title, before, match, after, transcriptId: t.id, offset: idx });
         idx = lower.indexOf(word, idx + 1);
       }
@@ -178,7 +181,7 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
       await navigator.clipboard.writeText(text);
       toast.success('Copied');
     } catch {
-      toast.error('Failed to copy');
+      toast.error('Could not copy. Select the passage and copy it using your browser.');
     }
   }, []);
 
@@ -188,7 +191,7 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
         await deleteCoding(codingId);
         toast.success('Excerpt removed');
       } catch {
-        toast.error('Failed to remove');
+        toast.error('Could not remove the excerpt. Your passage is still saved; try again.');
       }
     },
     [deleteCoding],
@@ -204,6 +207,13 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
   const questions = activeCanvas?.questions ?? [];
   const transcripts = activeCanvas?.transcripts ?? [];
   const cases = activeCanvas?.cases ?? [];
+  const clearFilters = () => {
+    setSearchText('');
+    setFilterCode('all');
+    setFilterTranscript('all');
+    setFilterCase('all');
+    searchRef.current?.focus();
+  };
 
   return (
     <div
@@ -212,14 +222,14 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
     >
       <div
         ref={dialogRef}
-        className="modal-content w-[960px] max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10"
+        className="modal-content w-[960px] max-w-[calc(100vw-1rem)] max-h-[90dvh] flex flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="excerpt-browser-title"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-gray-700">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-5 py-3 dark:border-gray-700">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/30">
               <svg
@@ -240,7 +250,7 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
               <h3 id="excerpt-browser-title" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 Excerpt Browser
               </h3>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500">
+              <p role="status" className="text-xs text-gray-600 dark:text-gray-300">
                 {filteredExcerpts.length} excerpt{filteredExcerpts.length !== 1 ? 's' : ''} across {uniqueSources}{' '}
                 source{uniqueSources !== 1 ? 's' : ''} and {uniqueCodes} code{uniqueCodes !== 1 ? 's' : ''}
               </p>
@@ -251,13 +261,15 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
             <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
               <button
                 onClick={() => setViewMode('excerpts')}
-                className={`px-2.5 py-1 text-[11px] font-medium transition-colors ${viewMode === 'excerpts' ? 'bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400' : 'text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700'}`}
+                aria-pressed={viewMode === 'excerpts'}
+                className={`min-h-11 px-2.5 py-1 text-xs font-medium transition-colors ${viewMode === 'excerpts' ? 'bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'}`}
               >
                 Excerpts
               </button>
               <button
                 onClick={() => setViewMode('kwic')}
-                className={`px-2.5 py-1 text-[11px] font-medium transition-colors border-l border-gray-200 dark:border-gray-600 ${viewMode === 'kwic' ? 'bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400' : 'text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700'}`}
+                aria-pressed={viewMode === 'kwic'}
+                className={`min-h-11 px-2.5 py-1 text-xs font-medium transition-colors border-l border-gray-200 dark:border-gray-600 ${viewMode === 'kwic' ? 'bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'}`}
               >
                 KWIC
               </button>
@@ -265,7 +277,7 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
             <button
               onClick={onClose}
               aria-label="Close"
-              className="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded text-gray-600 hover:text-gray-900 dark:text-gray-300"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -276,9 +288,9 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
 
         {/* Filters */}
         {viewMode === 'excerpts' && (
-          <div className="flex items-center gap-2 border-b border-gray-100 dark:border-gray-700/50 px-5 py-2">
+          <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 dark:border-gray-700/50 px-5 py-2">
             {/* Search */}
-            <div className="relative flex-1 max-w-xs">
+            <div className="relative min-w-36 flex-1 max-w-xs">
               <svg
                 className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400"
                 fill="none"
@@ -293,8 +305,10 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
                 />
               </svg>
               <input
+                ref={searchRef}
+                aria-label="Search excerpts"
                 type="text"
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 pl-8 pr-3 py-1.5 text-[11px] text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-brand-400 focus:ring-1 focus:ring-brand-400 outline-none transition-colors"
+                className="min-h-11 w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 pl-8 pr-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 placeholder:text-gray-500 focus:border-brand-400 focus:ring-1 focus:ring-brand-400 outline-none transition-colors"
                 placeholder="Search excerpts..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
@@ -302,7 +316,8 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
             </div>
             {/* Code filter */}
             <select
-              className="rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-2 py-1.5 text-[11px] text-gray-600 dark:text-gray-400 focus:border-brand-400 outline-none"
+              aria-label="Filter by code"
+              className="min-h-11 max-w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-2 py-1.5 text-xs text-gray-700 dark:text-gray-200 focus:border-brand-400 outline-none"
               value={filterCode}
               onChange={(e) => setFilterCode(e.target.value)}
             >
@@ -315,7 +330,8 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
             </select>
             {/* Transcript filter */}
             <select
-              className="rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-2 py-1.5 text-[11px] text-gray-600 dark:text-gray-400 focus:border-brand-400 outline-none"
+              aria-label="Filter by source"
+              className="min-h-11 max-w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-2 py-1.5 text-xs text-gray-700 dark:text-gray-200 focus:border-brand-400 outline-none"
               value={filterTranscript}
               onChange={(e) => setFilterTranscript(e.target.value)}
             >
@@ -329,7 +345,8 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
             {/* Case filter */}
             {cases.length > 0 && (
               <select
-                className="rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-2 py-1.5 text-[11px] text-gray-600 dark:text-gray-400 focus:border-brand-400 outline-none"
+                aria-label="Filter by case"
+                className="min-h-11 max-w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-2 py-1.5 text-xs text-gray-700 dark:text-gray-200 focus:border-brand-400 outline-none"
                 value={filterCase}
                 onChange={(e) => setFilterCase(e.target.value)}
               >
@@ -343,7 +360,8 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
             )}
             {/* Sort */}
             <select
-              className="rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-2 py-1.5 text-[11px] text-gray-600 dark:text-gray-400 focus:border-brand-400 outline-none"
+              aria-label="Sort excerpts"
+              className="min-h-11 max-w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-2 py-1.5 text-xs text-gray-700 dark:text-gray-200 focus:border-brand-400 outline-none"
               value={sortMode}
               onChange={(e) => setSortMode(e.target.value as SortMode)}
             >
@@ -358,8 +376,8 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
 
         {/* KWIC search bar */}
         {viewMode === 'kwic' && (
-          <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-700/50 px-5 py-2">
-            <div className="relative flex-1 max-w-md">
+          <div className="flex flex-wrap items-center gap-3 border-b border-gray-100 dark:border-gray-700/50 px-5 py-2">
+            <div className="relative min-w-36 flex-1 max-w-md">
               <svg
                 className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400"
                 fill="none"
@@ -374,15 +392,17 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
                 />
               </svg>
               <input
+                ref={keywordRef}
+                aria-label="Keyword in context"
                 type="text"
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 pl-8 pr-3 py-1.5 text-[11px] text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-brand-400 focus:ring-1 focus:ring-brand-400 outline-none transition-colors"
+                className="min-h-11 w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 pl-8 pr-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 placeholder:text-gray-500 focus:border-brand-400 focus:ring-1 focus:ring-brand-400 outline-none transition-colors"
                 placeholder="Enter keyword for concordance view..."
                 value={kwicWord}
                 onChange={(e) => setKwicWord(e.target.value)}
                 autoFocus
               />
             </div>
-            <span className="text-[10px] text-gray-400">
+            <span role="status" className="text-xs text-gray-600 dark:text-gray-300">
               {kwicWord.trim()
                 ? `${kwicResults.length} occurrence${kwicResults.length !== 1 ? 's' : ''} across all transcripts`
                 : 'Type a word to see every occurrence in context'}
@@ -391,12 +411,12 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-auto">
           {/* EXCERPTS VIEW */}
           {viewMode === 'excerpts' && (
             <>
               {filteredExcerpts.length === 0 ? (
-                <div className="py-16 text-center">
+                <div className="px-5 py-8 text-center">
                   <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-750">
                     <svg
                       className="h-6 w-6 text-gray-300 dark:text-gray-600"
@@ -412,11 +432,49 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
                       />
                     </svg>
                   </div>
-                  <p className="text-sm text-gray-400 dark:text-gray-500">
-                    {searchText.trim() || filterCode !== 'all' || filterTranscript !== 'all'
-                      ? 'No excerpts match your filters.'
-                      : 'No coded excerpts yet. Select text in a transcript and assign a code to start.'}
-                  </p>
+                  {allExcerpts.length > 0 ? (
+                    <>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                        No excerpts match your filters.
+                      </p>
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                        Your saved passages are still here. Clear the filters to see them again.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={clearFilters}
+                        className="mt-3 min-h-11 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                      >
+                        Clear filters
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100">No coded excerpts yet</p>
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                        Keep meaningful passages together so you can compare ideas across your sources. Highlight a
+                        sentence in a transcript and give it a code.
+                      </p>
+                      <button
+                        type="button"
+                        className="mt-3 min-h-11 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                        onClick={() => {
+                          onClose();
+                          window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker'));
+                        }}
+                      >
+                        Paste or import a transcript
+                      </button>
+                      <a
+                        href="/help/first-code.html"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 flex min-h-11 items-center justify-center text-sm text-brand-700 underline dark:text-brand-300"
+                      >
+                        See a coded-passage example (89 seconds)
+                      </a>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
@@ -426,7 +484,8 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
                           {/* Group header */}
                           <button
                             onClick={() => toggleExpanded(group.questionId)}
-                            className="flex w-full items-center gap-2.5 px-5 py-2.5 bg-gray-50/80 dark:bg-gray-750/50 hover:bg-gray-100/80 dark:hover:bg-gray-750 transition-colors sticky top-0 z-10"
+                            aria-expanded={expandedIds.has(group.questionId) || expandedIds.size === 0}
+                            className="flex min-h-11 w-full items-center gap-2.5 px-5 py-2.5 bg-gray-50/80 dark:bg-gray-750/50 hover:bg-gray-100/80 dark:hover:bg-gray-750 transition-colors sticky top-0 z-10"
                           >
                             <svg
                               className={`h-3 w-3 text-gray-400 transition-transform ${expandedIds.has(group.questionId) || !expandedIds.size ? 'rotate-90' : ''}`}
@@ -442,9 +501,9 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
                               {group.codeName}
                             </span>
                             {group.parentTheme && (
-                              <span className="text-[10px] text-gray-400">/ {group.parentTheme}</span>
+                              <span className="text-xs text-gray-600 dark:text-gray-300">/ {group.parentTheme}</span>
                             )}
-                            <span className="ml-auto text-[10px] text-gray-400 tabular-nums">
+                            <span className="ml-auto text-xs text-gray-600 dark:text-gray-300 tabular-nums">
                               {group.excerpts.length}
                             </span>
                           </button>
@@ -497,23 +556,43 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
                       />
                     </svg>
                   </div>
-                  <p className="text-sm text-gray-400">Keyword-in-Context (KWIC) Concordance</p>
-                  <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">
-                    Enter a keyword above to see every occurrence with surrounding context
+                  <p className="text-sm text-gray-800 dark:text-gray-100">See a word in its original sentence</p>
+                  <p className="mt-2 px-5 text-sm text-gray-600 dark:text-gray-300">
+                    Keyword in context (KWIC) searches all transcripts, including uncoded text. Type a word above, such
+                    as “commute”. This example does not add research data.
                   </p>
                 </div>
               ) : kwicResults.length === 0 ? (
                 <div className="py-16 text-center">
-                  <p className="text-sm text-gray-400">No occurrences of &ldquo;{kwicWord}&rdquo; found</p>
+                  <p className="text-sm text-gray-800 dark:text-gray-100">
+                    No occurrences of &ldquo;{kwicWord.trim()}&rdquo; found
+                  </p>
+                  <p className="mt-2 px-5 text-sm text-gray-600 dark:text-gray-300">
+                    Check the spelling or try a shorter word. This searches transcript text, not code names.
+                  </p>
+                  <button
+                    type="button"
+                    className="mt-3 min-h-11 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                    onClick={() => {
+                      setKwicWord('');
+                      keywordRef.current?.focus();
+                    }}
+                  >
+                    Try another word
+                  </button>
                 </div>
               ) : (
-                <table className="w-full text-xs">
+                <table aria-label="Keyword occurrences" className="w-full text-xs">
                   <thead className="sticky top-0 bg-gray-50 dark:bg-gray-750 z-10">
                     <tr>
                       <th className="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-24">Source</th>
-                      <th className="px-1 py-2 text-right font-medium text-gray-400 w-[35%]">Before</th>
+                      <th className="px-1 py-2 text-right font-medium text-gray-600 dark:text-gray-300 w-[35%]">
+                        Before
+                      </th>
                       <th className="px-1 py-2 text-center font-medium text-brand-600 dark:text-brand-400">Keyword</th>
-                      <th className="px-1 py-2 text-left font-medium text-gray-400 w-[35%]">After</th>
+                      <th className="px-1 py-2 text-left font-medium text-gray-600 dark:text-gray-300 w-[35%]">
+                        After
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 dark:divide-gray-700/30 font-mono">
@@ -544,7 +623,7 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
 
         {/* Footer */}
         <div className="border-t border-gray-200 dark:border-gray-700 px-5 py-2 flex items-center justify-between">
-          <span className="text-[10px] text-gray-400">
+          <span className="text-xs text-gray-600 dark:text-gray-300">
             {viewMode === 'excerpts'
               ? `${filteredExcerpts.length} of ${allExcerpts.length} excerpt${allExcerpts.length !== 1 ? 's' : ''}`
               : kwicWord.trim()
@@ -553,20 +632,20 @@ export default function ExcerptBrowserModal({ onClose }: ExcerptBrowserModalProp
           </span>
           <div className="flex items-center gap-2">
             <button
+              disabled={viewMode === 'excerpts' ? filteredExcerpts.length === 0 : kwicResults.length === 0}
               onClick={() => {
                 if (viewMode === 'excerpts') {
                   const lines = filteredExcerpts.map(
                     (e) =>
                       `[${e.codeName}] "${e.coding.codedText}" — ${e.transcriptTitle}${e.coding.annotation ? ` (Note: ${e.coding.annotation})` : ''}`,
                   );
-                  navigator.clipboard.writeText(lines.join('\n'));
+                  void handleCopyExcerpt(lines.join('\n'));
                 } else {
                   const lines = kwicResults.map((r) => `${r.before}**${r.match}**${r.after} — ${r.transcriptTitle}`);
-                  navigator.clipboard.writeText(lines.join('\n'));
+                  void handleCopyExcerpt(lines.join('\n'));
                 }
-                toast.success('Copied to clipboard');
               }}
-              className="flex items-center gap-1 rounded-md bg-gray-100 px-3 py-1.5 text-[11px] font-medium text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
+              className="flex min-h-11 items-center gap-1 rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
             >
               <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path
@@ -604,17 +683,19 @@ function ExcerptCard({
       onMouseLeave={() => setShowActions(false)}
     >
       {/* Meta row */}
-      <div className="flex items-center gap-2 mb-1.5">
+      <div className="flex flex-wrap items-center gap-2 mb-1.5">
         <button
           onClick={() => onSelectCode(excerpt.coding.questionId)}
-          className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors hover:ring-1 hover:ring-gray-300 dark:hover:ring-gray-600"
-          style={{ backgroundColor: excerpt.codeColor + '18', color: excerpt.codeColor }}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium text-gray-800 dark:text-gray-100 transition-colors hover:ring-1 hover:ring-gray-300 dark:hover:ring-gray-600"
+          style={{ backgroundColor: excerpt.codeColor + '18' }}
         >
           <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: excerpt.codeColor }} />
           {excerpt.codeName}
         </button>
-        {excerpt.parentTheme && <span className="text-[9px] text-gray-400">/ {excerpt.parentTheme}</span>}
-        <span className="text-[10px] text-gray-400 ml-auto flex items-center gap-1">
+        {excerpt.parentTheme && (
+          <span className="text-xs text-gray-600 dark:text-gray-300">/ {excerpt.parentTheme}</span>
+        )}
+        <span className="text-xs text-gray-600 dark:text-gray-300 ml-auto flex items-center gap-1">
           <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path
               strokeLinecap="round"
@@ -625,18 +706,18 @@ function ExcerptCard({
           {excerpt.transcriptTitle}
         </span>
         {excerpt.caseName && (
-          <span className="text-[9px] text-gray-400 rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5">
+          <span className="text-xs text-gray-600 dark:text-gray-300 rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5">
             {excerpt.caseName}
           </span>
         )}
       </div>
       {/* Excerpt text with context */}
-      <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-        {excerpt.contextBefore && <span className="text-gray-400 dark:text-gray-500">...{excerpt.contextBefore}</span>}
+      <p className="break-words text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+        {excerpt.contextBefore && <span className="text-gray-600 dark:text-gray-300">...{excerpt.contextBefore}</span>}
         <span className="rounded px-0.5 font-medium" style={{ backgroundColor: excerpt.codeColor + '20' }}>
           {excerpt.coding.codedText}
         </span>
-        {excerpt.contextAfter && <span className="text-gray-400 dark:text-gray-500">{excerpt.contextAfter}...</span>}
+        {excerpt.contextAfter && <span className="text-gray-600 dark:text-gray-300">{excerpt.contextAfter}...</span>}
       </p>
       {/* Annotation */}
       {excerpt.coding.annotation && (
@@ -645,15 +726,24 @@ function ExcerptCard({
         </div>
       )}
       {/* Actions */}
-      <div className={`mt-1.5 flex items-center gap-2 transition-opacity ${showActions ? 'opacity-100' : 'opacity-0'}`}>
-        <span className="text-[9px] text-gray-400 tabular-nums">{excerpt.coding.codedText.length} chars</span>
+      <div
+        className={`mt-1.5 flex items-center gap-2 transition-opacity ${showActions ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-focus-within:opacity-100'}`}
+      >
+        <span className="text-xs text-gray-600 dark:text-gray-300 tabular-nums">
+          {excerpt.coding.codedText.length} chars
+        </span>
         <button
           onClick={() => onCopy(excerpt.coding.codedText)}
-          className="text-[10px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          aria-label={`Copy excerpt from ${excerpt.transcriptTitle}`}
+          className="min-h-11 min-w-11 text-xs text-gray-600 hover:text-gray-900 dark:text-gray-300"
         >
           Copy
         </button>
-        <button onClick={() => onDelete(excerpt.coding.id)} className="text-[10px] text-red-400 hover:text-red-600">
+        <button
+          aria-label={`Remove excerpt from ${excerpt.transcriptTitle}`}
+          onClick={() => onDelete(excerpt.coding.id)}
+          className="min-h-11 min-w-11 text-xs text-red-700 hover:text-red-800 dark:text-red-300"
+        >
           Remove
         </button>
       </div>
