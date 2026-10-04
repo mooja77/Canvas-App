@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { buildActivationFunnel } from '../lib/activationFunnel.js';
 import { prisma } from '../lib/prisma.js';
 import { monthlyRecurringRevenue } from '../lib/revenue.js';
+import { isStripeSubscriptionId } from '../lib/stripeIds.js';
 import { createEmailCampaign, getEmailStats, listEmailCampaigns, sendCampaign } from '../lib/lifecycleEmail.js';
 import { getRealUserIds, isTestAccountEmail } from '../utils/testAccounts.js';
 import { SETUP_STEPS } from '../lib/onboardingObservations.js';
@@ -555,7 +556,7 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
       prisma.user.count({ where: { ...realUsersWhere, plan: 'free' } }),
       prisma.subscription.findMany({
         orderBy: { updatedAt: 'desc' },
-        take: 10,
+        take: 50,
         include: { user: { select: { email: true, plan: true } } },
       }),
     ]);
@@ -563,11 +564,12 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
     // Filter to real (non-test) active subscriptions only
     const realActiveSubs = allSubs.filter((s) => s.status === 'active' && !isTestEmail(s.user.email));
     // Priced from Stripe (the source billing charges), seats included.
+    // Complimentary rows ("comp_...") are never sent to Stripe and are not paying.
     const revenue = await monthlyRecurringRevenue(realActiveSubs);
     const mrr = revenue.mrr;
     const planCounts = revenue.byPlan;
 
-    const totalPaying = realActiveSubs.length;
+    const totalPaying = realActiveSubs.length - revenue.complimentary.count;
     const realSubs = allSubs.filter((s) => !isTestEmail(s.user.email));
     const totalSubsForChurn = realSubs.length || 1;
     const churnRate30d = parseFloat((canceledRecent / totalSubsForChurn).toFixed(4));
@@ -586,21 +588,27 @@ adminRoutes.get('/billing', async (_req: Request, res: Response) => {
         mrrSource: revenue.source,
         mrrBasis: revenue.basis,
         totalPaying,
+        totalComplimentary: revenue.complimentary.count,
+        complimentaryByPlan: revenue.complimentary.byPlan,
         totalFree,
         churnRate30d,
         planBreakdown,
-        recentTransactions: recentTransactions.map((t) => ({
-          id: t.id,
-          userId: t.userId,
-          userEmail: t.user.email,
-          plan: t.user.plan,
-          status: t.status,
-          stripeSubscriptionId: t.stripeSubscriptionId,
-          currentPeriodStart: t.currentPeriodStart,
-          currentPeriodEnd: t.currentPeriodEnd,
-          cancelAtPeriodEnd: t.cancelAtPeriodEnd,
-          updatedAt: t.updatedAt,
-        })),
+        recentTransactions: recentTransactions
+          .filter((t) => !isTestEmail(t.user.email))
+          .slice(0, 10)
+          .map((t) => ({
+            id: t.id,
+            userId: t.userId,
+            userEmail: t.user.email,
+            plan: t.user.plan,
+            status: t.status,
+            stripeSubscriptionId: t.stripeSubscriptionId,
+            complimentary: !isStripeSubscriptionId(t.stripeSubscriptionId),
+            currentPeriodStart: t.currentPeriodStart,
+            currentPeriodEnd: t.currentPeriodEnd,
+            cancelAtPeriodEnd: t.cancelAtPeriodEnd,
+            updatedAt: t.updatedAt,
+          })),
       },
     });
   } catch (err) {

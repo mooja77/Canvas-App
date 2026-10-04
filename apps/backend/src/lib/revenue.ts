@@ -2,6 +2,7 @@ import type Stripe from 'stripe';
 import { PUBLISHED_PRICES_USD, type PaidPlanTier } from '@qualcanvas/shared';
 import { stripe as defaultStripe } from './stripe.js';
 import { logError } from './logger.js';
+import { isStripeSubscriptionId } from './stripeIds.js';
 
 /**
  * Monthly recurring revenue for the admin dashboard, read from the same place
@@ -18,6 +19,11 @@ import { logError } from './logger.js';
  * so. If Stripe is unreachable for a subscription, its published monthly price
  * (shared PUBLISHED_PRICES_USD, one seat) is used and `source` says `mixed` or
  * `published-prices` so the number is never presented as more exact than it is.
+ *
+ * Complimentary rows (ids that are not Stripe "sub_" ids, e.g. hand-written
+ * "comp_..." Team rows) are never sent to Stripe (Sentry QUALCANVAS-7) and are
+ * not revenue: they are left out of `mrr` / `byPlan` and counted in
+ * `complimentary` instead.
  */
 export interface RevenueSubscription {
   stripeSubscriptionId: string;
@@ -29,6 +35,8 @@ export interface RevenueSummary {
   byPlan: Record<string, { count: number; revenue: number }>;
   source: 'stripe' | 'published-prices' | 'mixed' | 'none';
   basis: 'list-price-before-discounts';
+  /** Active rows with no Stripe subscription behind them: not paying, not priced. */
+  complimentary: { count: number; byPlan: Record<string, number> };
 }
 
 type StripeLike = Pick<Stripe, 'subscriptions'>;
@@ -73,10 +81,21 @@ export async function monthlyRecurringRevenue(
   subscriptions: RevenueSubscription[],
   stripeClient: StripeLike | null = defaultStripe,
 ): Promise<RevenueSummary> {
+  const complimentary: RevenueSummary['complimentary'] = { count: 0, byPlan: {} };
+  const paying: RevenueSubscription[] = [];
+  for (const sub of subscriptions) {
+    if (isStripeSubscriptionId(sub.stripeSubscriptionId)) {
+      paying.push(sub);
+    } else {
+      complimentary.count++;
+      complimentary.byPlan[sub.user.plan] = (complimentary.byPlan[sub.user.plan] ?? 0) + 1;
+    }
+  }
+
   let fromStripe = 0;
   let fromPublished = 0;
   const values = await Promise.all(
-    subscriptions.map(async (sub) => {
+    paying.map(async (sub) => {
       if (stripeClient) {
         try {
           const live = await stripeClient.subscriptions.retrieve(sub.stripeSubscriptionId);
@@ -96,7 +115,7 @@ export async function monthlyRecurringRevenue(
 
   const byPlan: RevenueSummary['byPlan'] = {};
   let mrr = 0;
-  subscriptions.forEach((sub, i) => {
+  paying.forEach((sub, i) => {
     const plan = sub.user.plan;
     byPlan[plan] ??= { count: 0, revenue: 0 };
     byPlan[plan].count++;
@@ -105,12 +124,6 @@ export async function monthlyRecurringRevenue(
   });
 
   const source: RevenueSummary['source'] =
-    subscriptions.length === 0
-      ? 'none'
-      : fromPublished === 0
-        ? 'stripe'
-        : fromStripe === 0
-          ? 'published-prices'
-          : 'mixed';
-  return { mrr: cents(mrr), byPlan, source, basis: 'list-price-before-discounts' };
+    paying.length === 0 ? 'none' : fromPublished === 0 ? 'stripe' : fromStripe === 0 ? 'published-prices' : 'mixed';
+  return { mrr: cents(mrr), byPlan, source, basis: 'list-price-before-discounts', complimentary };
 }
