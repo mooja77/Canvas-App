@@ -178,6 +178,8 @@ for (const { width, height } of [
       await page.screenshot({ path: testInfo.outputPath(`checklist-${state}-${width}x${height}.png`), fullPage: true });
       expect(card!.y).toBeGreaterThanOrEqual(0);
       expect(card!.y + card!.height).toBeLessThanOrEqual(footer!.y);
+      expect(helpBox!.width).toBeGreaterThanOrEqual(44);
+      expect(helpBox!.height).toBeGreaterThanOrEqual(44);
       expect(hit.reachable).toBe(true);
       if (state === 'collapsed') await help.click();
       else {
@@ -194,6 +196,34 @@ for (const { width, height } of [
         }),
       ).toBe(true);
       await expect(page.getByText(/reply within two business days/)).toBeVisible();
+      const helpArea = help.locator('..');
+      for (const action of await helpArea.getByRole('button').or(helpArea.getByRole('link')).all()) {
+        await expect(action).toBeVisible();
+        const geometry = await action.boundingBox();
+        expect(geometry!.width).toBeGreaterThanOrEqual(44);
+        expect(geometry!.height).toBeGreaterThanOrEqual(44);
+        expect(geometry!.x).toBeGreaterThanOrEqual(0);
+        expect(geometry!.y).toBeGreaterThanOrEqual(0);
+        expect(geometry!.x + geometry!.width).toBeLessThanOrEqual(width);
+        expect(geometry!.y + geometry!.height).toBeLessThanOrEqual(height);
+        expect(
+          await action.evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+          }),
+        ).toBe(true);
+        await action.focus();
+        await expect(action).toBeFocused();
+      }
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .include('[aria-label="Help"]')
+            .include('[aria-label="Help"] + div')
+            .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+            .analyze()
+        ).violations,
+      ).toEqual([]);
       await page.screenshot({
         path: testInfo.outputPath(`help-open-${state}-${width}x${height}.png`),
         fullPage: true,

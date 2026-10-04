@@ -1,0 +1,41 @@
+QualCanvas Help targets — bounded onboarding improvement
+
+Base: origin/main 79c4d477181976c7aae7bab139cd51517f657ed8.
+Scope: two HelpMenu CSS class strings only; existing trigger and eight actions
+have min-height/min-width 44px and readable 12px labels. No handler, route,
+onboarding persistence, API, auth, footer, checklist or reliability-modal edits.
+Independent source/diff review by the Jewel Value agent: passed.
+
+TDD: new Help target regression failed against original classes (1 failed,
+3 passed). Final affected HelpMenu, NotificationBell and OnboardingChecklist
+unit suites: 33 passed across three files. Typecheck and configured source
+ESLint with zero-warning threshold passed; narrow formatting passed.
+An initial unsupported Testing Library option caused a type failure and was
+corrected. A mistaken Bell test path initially selected only 19 tests; the
+correct three-file invocation above ran 33. E2E is not covered by the existing
+flat ESLint configuration: the attempted invocation failed an ignored-file
+warning, not a clean lint result. No config or warning threshold was relaxed.
+
+First browser replay: 3 failed before canvas mounted. Root built with the wrong
+API base https://api.qualcanvas.com (missing /api). The fixture correctly blocked
+those unexpected paths. This was a build invocation error, not a Help regression;
+original failure contexts/traces remain in test-results/help-targets-20261004.
+Rebuilt with the production workflow's exact https://api.qualcanvas.com/api,
+NODE_ENV=production: 2,282 modules, 22.21 seconds, marketing/training prerenders
+passed. Existing large pdfjs chunk warning retained.
+
+Canonical existing notification-read.config.ts, workers=1, retries=0,
+test timeout=30 seconds and unchanged 5-second assertions. All three original
+cases passed at 1280x900, 1280x720 and 390x844; output retained under
+test-results/help-targets-canonical-api-20261004. Assertions additionally verify
+actual 44px dimensions, focus, centre-hit, full menu viewport containment and
+scoped axe. Existing notification failure/malformed/held-retry/empty states,
+2-of-5 guide progress, expanded/collapsed guide and footer clearance remain.
+All API GETs locally fulfilled; non-GET/provider/socket traffic blocked. No
+customer data, production writes, emails or provider calls.
+
+Desktop trigger actual 56.4375x44px; footer57px. Expanded guide bottoms804/624px
+at desktop heights900/720; footer tops819/639px. Mobile guide remains in flow,
+expanded bottom290px. This is not a full canvas toolbar or native screen-reader
+certificate. Score remains 21 provisional; time to first value not remeasured.
+App Store, native, all-route and media gaps are not declared closed by this PR.
