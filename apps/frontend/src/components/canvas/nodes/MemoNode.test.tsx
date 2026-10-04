@@ -98,6 +98,16 @@ describe('MemoNode inline edit', () => {
     expect(screen.getByLabelText('Memo text')).toBeVisible();
   });
 
+  it('sends an explicit blank title when the optional title is cleared', async () => {
+    mockUpdateMemo.mockResolvedValue(undefined);
+    renderNode();
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.change(screen.getByLabelText('Memo title (optional)'), { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(mockUpdateMemo).toHaveBeenCalledWith('m1', { title: '' }));
+    expect(JSON.parse(JSON.stringify(mockUpdateMemo.mock.calls[0][1]))).toEqual({ title: '' });
+  });
+
   it('does not save on focus changes and cancels without writing', () => {
     renderNode();
     fireEvent.click(screen.getByText('Edit'));
