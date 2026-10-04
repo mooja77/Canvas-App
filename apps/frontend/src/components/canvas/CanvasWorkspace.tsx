@@ -3142,15 +3142,17 @@ export default function CanvasWorkspace() {
               )}
             </div>
 
-            {/* In-flow footer: 44px controls plus padding take 57px. Avoid a
+            {/* In-flow footer: phone controls get their own full-width row so
+              every 44px target fits without horizontal scrolling. Desktop
+              controls plus padding take 57px. Avoid a
               backdrop-filter stacking context here: the existing z-50 Help
               and notification menus must appear above the z-40 checklist. */}
             {!focusMode && (
               <div
                 data-tour="canvas-status-bar"
-                className="flex shrink-0 items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-600 dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-400"
+                className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-y-1 border-t border-gray-200/80 bg-white/90 px-3 py-1.5 text-[10px] text-gray-600 dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-400 sm:flex-nowrap sm:gap-y-0 sm:px-4"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-3">
                   <span className="flex items-center gap-1">
                     <svg
                       className="h-3 w-3 text-blue-400"
@@ -3251,7 +3253,7 @@ export default function CanvasWorkspace() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap sm:justify-start sm:gap-3">
                   {/* Bookmark slot indicators — hidden on phones: the
                       Ctrl+Shift / Alt shortcuts they document need a keyboard,
                       and the row would otherwise overflow a phone viewport. */}
@@ -3298,7 +3300,7 @@ export default function CanvasWorkspace() {
                       {savingLayout ? 'Saving...' : layoutSaveFailed ? 'Not saved' : 'Saved'}
                     </span>
                   )}
-                  <NotificationBell />
+                  <NotificationBell className="order-last sm:order-none" />
                   {collaboration.isConnected && collaboration.collaborators.length > 0 && (
                     <PresenceAvatars
                       collaborators={collaboration.collaborators}

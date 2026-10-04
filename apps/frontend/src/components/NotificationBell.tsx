@@ -32,7 +32,7 @@ function currentReadScope() {
   return JSON.stringify([authenticated, authType, userId, email, dashboardAccessId]);
 }
 
-export default function NotificationBell() {
+export default function NotificationBell({ className = '' }: { className?: string } = {}) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -174,7 +174,7 @@ export default function NotificationBell() {
   if (!shouldShow) return null;
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className={`relative ${className}`} ref={dropdownRef}>
       {/* Bell button */}
       <button
         onClick={() => setIsOpen(!isOpen)}

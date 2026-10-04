@@ -31,6 +31,14 @@ afterEach(() => {
 });
 const open = () => fireEvent.click(screen.getByTitle('Notifications'));
 describe('NotificationBell GET recovery', () => {
+  it('accepts parent layout classes without changing notification reads', async () => {
+    render(<NotificationBell className="order-last sm:order-none" />);
+    await waitFor(() => expect(api.getNotifications).toHaveBeenCalledTimes(1));
+    expect(screen.getByTitle('Notifications').parentElement).toHaveClass('relative', 'order-last', 'sm:order-none');
+    expect(api.markAsRead).not.toHaveBeenCalled();
+    expect(api.markAllAsRead).not.toHaveBeenCalled();
+    expect(api.deleteNotification).not.toHaveBeenCalled();
+  });
   it('names a pending read and does not claim empty notifications', () => {
     api.getNotifications.mockReturnValue(new Promise(() => {}));
     render(<NotificationBell />);

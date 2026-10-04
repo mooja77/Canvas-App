@@ -1,0 +1,109 @@
+QualCanvas Help targets — bounded onboarding improvement
+
+Base: origin/main 79c4d477181976c7aae7bab139cd51517f657ed8.
+Scope: two HelpMenu CSS class strings only; existing trigger and eight actions
+have min-height/min-width 44px and readable 12px labels. No handler, route,
+onboarding persistence, API, auth, footer, checklist or reliability-modal edits.
+Independent source/diff review by the Jewel Value agent: passed.
+
+TDD: new Help target regression failed against original classes (1 failed,
+3 passed). Final affected HelpMenu, NotificationBell and OnboardingChecklist
+unit suites: 33 passed across three files. Typecheck and configured source
+ESLint with zero-warning threshold passed; narrow formatting passed.
+An initial unsupported Testing Library option caused a type failure and was
+corrected. A mistaken Bell test path initially selected only 19 tests; the
+correct three-file invocation above ran 33. E2E is not covered by the existing
+flat ESLint configuration: the attempted invocation failed an ignored-file
+warning, not a clean lint result. No config or warning threshold was relaxed.
+
+First browser replay: 3 failed before canvas mounted. Root built with the wrong
+API base https://api.qualcanvas.com (missing /api). The fixture correctly blocked
+those unexpected paths. This was a build invocation error, not a Help regression;
+original failure contexts/traces remain in test-results/help-targets-20261004.
+Rebuilt with the production workflow's exact https://api.qualcanvas.com/api,
+NODE_ENV=production: 2,282 modules, 22.21 seconds, marketing/training prerenders
+passed. Existing large pdfjs chunk warning retained.
+
+Canonical existing notification-read.config.ts, workers=1, retries=0,
+test timeout=30 seconds and unchanged 5-second assertions. All three original
+cases passed at 1280x900, 1280x720 and 390x844; output retained under
+test-results/help-targets-canonical-api-20261004. Assertions additionally verify
+actual 44px dimensions, focus, centre-hit, full menu viewport containment and
+scoped axe. Existing notification failure/malformed/held-retry/empty states,
+2-of-5 guide progress, expanded/collapsed guide and footer clearance remain.
+All API GETs locally fulfilled; non-GET/provider/socket traffic blocked. No
+customer data, production writes, emails or provider calls.
+
+Desktop trigger actual 56.4375x44px; footer57px. Expanded guide bottoms804/624px
+at desktop heights900/720; footer tops819/639px. Mobile guide remains in flow,
+expanded bottom290px. This is not a full canvas toolbar or native screen-reader
+certificate. Score remains 21 provisional; time to first value not remeasured.
+App Store, native, all-route and media gaps are not declared closed by this PR.
+
+Actual first-push CI37200964336 FAILED: two Linux visual baselines and one mobile
+centre-hit failure which passed on the existing retry. Chromium729passed,
+2failed/1flaky/9existing skipped/1notrun; cross-browser245passed, backend1361
+passed/19skipped, frontend1008passed. Failure artifact11303995032 retained in
+coordination/artifacts/qualcanvas-help-targets-ci-failure-20261004.
+Root reviewed original/actual/diff screenshots: taller Help intentionally expands
+the desktop footer and moves the masked canvas/minimap; already-released Training
+and Cases chrome also appears. Command-palette content itself is unchanged.
+Only these two Linux baseline PNGs mechanically refreshed from reviewed exact-CI
+actuals; first attempt and retry bytes identical for each, original expected PNGs
+verified equal to the inherited branch baselines. No image editing, threshold,
+mask, test skip, timeouts, retries or snapshot-generation workflow changes.
+Canvas SHA256797E71A9826D693889ECF139E380BEBCB9F86F73EDFB0F534A6261BCE09D4FDD;
+palette SHA2566C0AF7BE3E12BA0A0C93890611DE146045A5E271ED11E2E9531549BD24EE765E.
+
+Mobile regression reproduced before correction with full trigger viewport bounds:
+390px Help ended at475.59375px;320px ended at404.5px;2failed/retries0.
+Phone footer now gives existing controls their own full-width wrapping row;
+all information/actions/handlers retained, desktop breakpoint layout unchanged.
+Strengthened original assertions retain centre-hit and add full trigger bounds;
+added320px case. Original first-push and local RED evidence retained. Final
+four-case verification and corrective current-head CI recorded in release receipt.
+
+First wrapping-row replay2desktop passed/2phone failed existing notification-panel
+left bounds. No assertion relaxed. Bell now takes an optional parent layout class
+and moves last on phones only, with original DOM order on desktop; no new wrapper
+when the email-only visibility contract returns null. Other callers default to
+the original relative class. New layout-prop unit RED1failed/14filtered; final
+three affected suites34passed6.86s, types/source strictlint and fresh canonical
+production build2282modules21.80s passed. Full notification read/poll/scope and
+all mutation handler bodies unchanged; no auth or provider changes.
+Final same canonical four browser cases passed29.9s/retries0, including full
+trigger/menu/notification bounds, centre hit, keyboard and original recovery/
+malformed/pending/empty assertions. Phone footer76px, Help56.4375x44px and both
+menus fully visible at320/390px; desktop original57px footer/guide clearance
+unchanged. Final320px menu/recovery screenshots inspected. React checklist
+review kept this CSS/layout-only, without new effects, imperative geometry,
+data requests, dependencies or unrelated refactors. No full screen-reader or
+production authenticated-user certificate implied.
+Follow-up4Oct13:16UTC: exact-head CI37203134331 SUCCESS on8ebf67b;1361
+Final title-scoped + original Help/recovery four built cases PASS31.2s/retries0
+at1280x900/1280x720/390x844/320x844, actual opaque rgb55,65,81/title in viewport/
+scoped axe0. Calculated title contrast8.857:1 over the observed #fef08a. Final
+320px expanded Help image root-reviewed; entire Help/footer/notification bounds,
+keyboard/hit/44px/guide clearance and original failed/malformed/held/empty reads
+retained. Zero fixture writes/page errors. Prettier/check and git diff --check
+PASS. No full-node/native/screen-reader certificate. This final paragraph
+supersedes the earlier local running statements, not the retained failures.
+
+backendPASS19existingSKIP/1009frontendPASS/245cross-browserPASS8.1m/
+733ChromiumPASS20.3m/9existingSKIP/1flaky. The first activation attempt caught
+MemoNode title contrast3.3:1 (#81846f composited over #fef08a), not claimed clean.
+Merge held. New opaque-title unit RED1FAIL/3PASS; canonical phone fixture
+RED1FAIL6s actualrgba(75,85,99,.7). Sole production change is title class to
+text-gray-700; handlers/structure/memo actions unchanged.38affected units4files
+PASS2.77s/types/source strictlint/build2282modules22.42sPASS. Formatting first
+failed local line endings; formatter/check restored exact one-class source diff.
+New full-node phone axe first3PASS1FAIL caught10.3px action targets at reduced
+zoom. Root's initial animation hypothesis was not established: a proposed
+overview-readiness assertion also3PASS1FAIL because390px retained controls.
+That assertion was removed, not called PASS; memo-contrast-final-20261004
+retains the failure. New regression audits only the changed title, with actual
+computed opaque colour/in-viewport and scoped axe. Original full onboarding
+main-region axe and all Help/notification assertions untouched. Low-zoom memo
+target size is a separate open robustness defect, not a whole-memo certificate
+or disabled original check. Original red/first mixed outcomes retained in
+test-results/memo-contrast-red-20261004 and memo-contrast-green-20261004.

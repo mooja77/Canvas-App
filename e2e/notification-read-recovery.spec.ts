@@ -18,7 +18,15 @@ const canvas = {
     },
   ],
   questions: [{ id: 'local-code', text: 'First visit', color: '#3B82F6', type: 'CODE' }],
-  memos: [],
+  memos: [
+    {
+      id: 'local-memo',
+      title: 'Reflexive memo prompt',
+      content: 'A fictional practice note.',
+      color: '#fef08a',
+      createdAt: '2026-10-04T00:00:00Z',
+    },
+  ],
   codings: [
     {
       id: 'local-coding',
@@ -48,6 +56,7 @@ for (const { width, height } of [
   { width: 1280, height: 900 },
   { width: 1280, height: 720 },
   { width: 390, height: 844 },
+  { width: 320, height: 844 },
 ]) {
   test(`notification GET recovery and open checklist Help at ${width}x${height}`, async ({
     page,
@@ -156,6 +165,21 @@ for (const { width, height } of [
     const bell = page.getByRole('button', { name: 'Notifications', exact: true });
     await expect(bell).toBeVisible();
     await page.getByRole('button', { name: 'Reject non-essential cookies', exact: true }).click();
+    const memoTitle = page.getByText('Reflexive memo prompt', { exact: true });
+    await expect(memoTitle).toBeVisible();
+    await expect(memoTitle).toBeInViewport();
+    await expect(memoTitle).toHaveCSS('color', 'rgb(55, 65, 81)');
+    // Audit the changed title, not a blanket certificate for unchanged,
+    // zoom-scaled memo controls. The full onboarding main-region audit stays
+    // untouched; the separate low-zoom target-size finding is retained in QA.
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .include('.react-flow__node-memo .drag-handle span.truncate')
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
     const progress = page.getByRole('progressbar', { name: 'Setup progress' });
     await expect(progress).toHaveAttribute('aria-valuenow', '2');
     const checklist = page.getByRole('button', { name: 'Dismiss checklist' }).locator('..').locator('..');
@@ -178,6 +202,10 @@ for (const { width, height } of [
       await page.screenshot({ path: testInfo.outputPath(`checklist-${state}-${width}x${height}.png`), fullPage: true });
       expect(card!.y).toBeGreaterThanOrEqual(0);
       expect(card!.y + card!.height).toBeLessThanOrEqual(footer!.y);
+      expect(helpBox!.width).toBeGreaterThanOrEqual(44);
+      expect(helpBox!.height).toBeGreaterThanOrEqual(44);
+      expect(helpBox!.x).toBeGreaterThanOrEqual(0);
+      expect(helpBox!.x + helpBox!.width).toBeLessThanOrEqual(width);
       expect(hit.reachable).toBe(true);
       if (state === 'collapsed') await help.click();
       else {
@@ -194,6 +222,34 @@ for (const { width, height } of [
         }),
       ).toBe(true);
       await expect(page.getByText(/reply within two business days/)).toBeVisible();
+      const helpArea = help.locator('..');
+      for (const action of await helpArea.getByRole('button').or(helpArea.getByRole('link')).all()) {
+        await expect(action).toBeVisible();
+        const geometry = await action.boundingBox();
+        expect(geometry!.width).toBeGreaterThanOrEqual(44);
+        expect(geometry!.height).toBeGreaterThanOrEqual(44);
+        expect(geometry!.x).toBeGreaterThanOrEqual(0);
+        expect(geometry!.y).toBeGreaterThanOrEqual(0);
+        expect(geometry!.x + geometry!.width).toBeLessThanOrEqual(width);
+        expect(geometry!.y + geometry!.height).toBeLessThanOrEqual(height);
+        expect(
+          await action.evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+          }),
+        ).toBe(true);
+        await action.focus();
+        await expect(action).toBeFocused();
+      }
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .include('[aria-label="Help"]')
+            .include('[aria-label="Help"] + div')
+            .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+            .analyze()
+        ).violations,
+      ).toEqual([]);
       await page.screenshot({
         path: testInfo.outputPath(`help-open-${state}-${width}x${height}.png`),
         fullPage: true,
