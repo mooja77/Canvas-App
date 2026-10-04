@@ -1,0 +1,67 @@
+QualCanvas excerpt guidance/recovery — 4 October 2026
+
+Owned worktree, current dbd6291; no open app PRs at pickup. Existing released
+summary/repository/Google-error recovery remains intact. Frontend-only change:
+no API/auth/billing/plan/provider/lifecycle/configuration/customer changes.
+
+Confirmed gaps: bare empty text without import/example, case-only filtering
+mislabelled as no coding, no filter recovery, unnamed filters, fixed960px dialog,
+small touch controls, hover-only excerpt actions, inaccessible faint metadata,
+KWIC failed accidental surrounding spaces and offered no no-match next action.
+Copy All claimed success before its clipboard promise completed, including rejection.
+
+Now: explain purpose/import/existing89s lesson; clearly distinguish filtered-empty
+from no saved coding; reset all filters with search focus; label every input/select;
+44px buttons/filters, wrapping viewport-bounded dialog and scrollable content;
+focus-within/touch-visible excerpt actions, named copy/remove and stronger text
+contrast; trim keyword query, explain all-transcript vs code-name search, offer
+focused retry; disabled empty copy and actual clipboard result handling.
+No example is inserted as customer research. Existing removal handler unchanged.
+
+Local evidence
+- First unit invocation stopped on unsupported minWorkers option: no product test.
+- Correct invocation:7 new regressions FAILED on baseline. After implementation,
+  new/previous recovery suites14/14 passed. Final full frontend992/992 across
+  117files, no skips,263.23s. Production build/typecheck/full ESLint passed;
+  production dependency audit0 vulnerabilities. No new dependency.
+- Browser startup first failed because a narrowed process PATH omitted Docker;
+  second failed because the assumed disposable Postgres account was wrong.
+  Corrected harness using only the verified owned127.0.0.1:4759 container's
+  existing test account, without printing it or changing any credential.
+- Initial browser run1passed/3failed: full onboarding passed; desktop and phone
+  reached the last overbroad no-writes assertion. Their retained traces identify
+  one ordinary PUT /layout (positions), not research content. Tablet browser
+  package absent; installed official Playwright WebKit package. Not application
+  TDD evidence, and original outputs remain in excerpt-guidance-20261004-browser.
+- Corrected test separates ONLY that exact PUT/layout with positions-only payload
+  and independently compares complete saved transcripts/questions/codings before
+  and after. No application assertions skipped, forced, or given optional checks.
+- Final4/4 in1.7min, retries0/skips0: full onboarding and excerpt desktopChrome
+  1280x900, phoneChrome390x844, tabletWebKit768x1024. Keyboard Tab/ShiftTab trap,
+  real import-picker deep link, filter/keyword recovery,44px controls, no document
+  overflow and scoped WCAG2.2 axe passed. All3 excerpt cases zero research-content
+  mutations, one layout auto-save, saved research equality. All browser accounts
+  deleted from the disposable database in teardown; external egress blocked.
+- Output retained separately: test-results/excerpt-guidance-20261004-browser-02
+  and test-results/excerpt-guidance-20261004-02.json. Windows Vite emitted the known
+  unhandled read ECONNRESET during tablet teardown after its assertions passed.
+  The runner exited0/all4passed; that development-server defect is NOT repaired.
+  Prior repository lane records the same Windows teardown failure separately.
+
+React review: unconditional hooks, no new fetch/effect/counter races, memoized
+derivations retained, stable existing focus/escape hooks retained, semantic labels
+and status, no innerHTML/raw user markup. Example help uses existing published path.
+
+Score and time to first value
+Original baseline14/28; existing/current21/28 ->21/28 conservative after this lane.
+This closes concrete excerpt gaps but not every-route/native/provider certification,
+so no whole-MUST score upgraded. Target24/allMUST2 still not achieved.
+Previous full-path production-preview10clicks/7fields/4.553driver seconds to coding
+was historical. Fresh current development run10clicks/7fields/6.955driver seconds
+from signup submission,8.657seconds from website start; first preceding run6.892/
+9.924seconds. Different server/run conditions: NOT a speed improvement or human
+measurement, hosted signup, real Google round-trip or native screen-reader proof.
+The full path still proves firstValueAt/steps/export/sample removal/dismiss-restore.
+
+Current-head green CI, normal merge and actual deployed bundle proof required.
+No live claim at this checkpoint. App Store holds, other owners and GPU preserved.
