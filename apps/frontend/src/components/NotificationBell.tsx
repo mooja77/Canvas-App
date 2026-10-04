@@ -14,6 +14,24 @@ interface Notification {
 
 const POLL_INTERVAL_MS = 30_000;
 
+function isNotification(value: unknown): value is Notification {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as Record<string, unknown>;
+  return (
+    ['id', 'type', 'title', 'message', 'createdAt'].every((key) => typeof item[key] === 'string') &&
+    typeof item.read === 'boolean' &&
+    Number.isFinite(Date.parse(item.createdAt as string)) &&
+    !!item.metadata &&
+    typeof item.metadata === 'object' &&
+    !Array.isArray(item.metadata)
+  );
+}
+
+function currentReadScope() {
+  const { authenticated, authType, userId, email, dashboardAccessId } = useAuthStore.getState();
+  return JSON.stringify([authenticated, authType, userId, email, dashboardAccessId]);
+}
+
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -22,26 +40,61 @@ export default function NotificationBell() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const authType = useAuthStore((s) => s.authType);
   const authenticated = useAuthStore((s) => s.authenticated);
+  const userId = useAuthStore((s) => s.userId);
+  const email = useAuthStore((s) => s.email);
+  const dashboardAccessId = useAuthStore((s) => s.dashboardAccessId);
+  const scope = JSON.stringify([authenticated, authType, userId, email, dashboardAccessId]);
+  const [readState, setReadState] = useState<'pending' | 'ready' | 'error'>('pending');
+  const [readScope, setReadScope] = useState<string | null>(null);
+  const sequence = useRef(0);
+  const pending = useRef(false);
+  const shouldShow = authenticated && authType === 'email';
 
   const fetchNotifications = useCallback(async () => {
+    if (!shouldShow || pending.current) return;
+    pending.current = true;
+    const request = ++sequence.current;
+    const isCurrent = () => request === sequence.current && scope === currentReadScope();
+    setReadScope(scope);
+    setReadState('pending');
     try {
       const res = await notificationApi.getNotifications({ limit: 20 });
-      setNotifications(res.data.data || []);
-      setUnreadCount(res.data.unreadCount || 0);
+      if (!isCurrent()) return;
+      const payload = res.data;
+      if (
+        !Array.isArray(payload?.data) ||
+        !payload.data.every(isNotification) ||
+        !Number.isSafeInteger(payload.unreadCount) ||
+        payload.unreadCount < 0
+      ) {
+        throw new Error('Invalid notifications response');
+      }
+      setNotifications(payload.data);
+      setUnreadCount(payload.unreadCount);
+      setReadState('ready');
     } catch {
-      // silently fail
+      if (isCurrent()) setReadState('error');
+    } finally {
+      if (isCurrent()) pending.current = false;
     }
-  }, []);
+  }, [scope, shouldShow]);
 
   // Only show for email-authenticated users
-  const shouldShow = authenticated && authType === 'email';
+  const ready = readScope === scope && readState === 'ready';
+  const invalidateRead = useCallback(() => {
+    ++sequence.current;
+    pending.current = false;
+  }, []);
 
   useEffect(() => {
     if (!shouldShow) return;
     fetchNotifications();
     const interval = setInterval(fetchNotifications, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [shouldShow, fetchNotifications]);
+    return () => {
+      clearInterval(interval);
+      invalidateRead();
+    };
+  }, [shouldShow, fetchNotifications, invalidateRead]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -125,8 +178,9 @@ export default function NotificationBell() {
       {/* Bell button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+        className="relative min-h-11 min-w-11 p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
         title="Notifications"
+        aria-expanded={isOpen}
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -136,7 +190,7 @@ export default function NotificationBell() {
             d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
           />
         </svg>
-        {unreadCount > 0 && (
+        {ready && unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
@@ -145,11 +199,11 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 max-h-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
+        <div className="absolute right-0 bottom-full mb-2 w-64 sm:w-80 max-h-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Notifications</h3>
-            {unreadCount > 0 && (
+            {ready && unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
                 disabled={loading}
@@ -162,7 +216,28 @@ export default function NotificationBell() {
 
           {/* Notification list */}
           <div className="overflow-y-auto flex-1">
-            {notifications.length === 0 ? (
+            {readScope !== scope || readState === 'pending' ? (
+              <div
+                role="status"
+                aria-label="Loading notifications"
+                className="px-4 py-8 text-center text-sm text-gray-600 dark:text-gray-300"
+              >
+                Loading notifications…
+              </div>
+            ) : readState === 'error' ? (
+              <div role="region" aria-label="Notification read recovery" className="px-4 py-6 text-center space-y-3">
+                <p role="alert" className="text-sm text-gray-600 dark:text-gray-300">
+                  We couldn't load your notifications. Try again to see current updates.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void fetchNotifications()}
+                  className="w-full min-h-11 min-w-11 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:text-gray-100 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  Try loading notifications again
+                </button>
+              </div>
+            ) : notifications.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">No notifications yet</div>
             ) : (
               notifications.map((n) => (

@@ -1,0 +1,37 @@
+# Notification read recovery — scoped local candidate
+
+Branch `onboarding/qualcanvas-notification-read-recovery-20261004`, from actual fetched default `f105e44127905e83cef07ac44d12eb8f71f077cc`. Original branch preserved; pickup clean and no open PRs. JSM195 branch untouched. Only NotificationBell production source, its focused tests, isolated browser spec/config and this receipt. No push/deploy, backend/database/provider/customer writes, new auth rules or financial changes. Whole-app **21/28 remains provisional**; TTFV not remeasured, native assistive-technology and genuine Google-provider evidence remain separate.
+
+## Confirmed contract and implementation
+
+The original notification GET silently swallowed failures, presented `No notifications yet`, defaulted unread count to0 and could crash on malformed rows. Independently read backend `notificationRoutes.ts:24–61`: response has a notification array plus a non-negative global unread count (not the number of unread rows on the paginated20-item list). Backend/API contracts are unchanged.
+
+NotificationBell validates the array/row fields and unread-count shape independently, rejects an untrustworthy response instead of inventing emptiness/counts, and renders named pending status or actionable alert with guarded >=44px Retry. Old rows and count badges/mark-all controls are hidden during pending/error and when the read belongs to another auth scope. A synchronous guard deduplicates retries/polls; request sequence and live auth-scope checks ignore late success/failure after user/email/access-scope changes, logout or unmount. Existing email-only visibility and30-second polling interval remain. Mark single/all as read and delete handlers are unchanged; unit tests explicitly preserve all three API contracts with mocks, not real writes.
+
+Only production caller is `CanvasWorkspace.tsx:3301`, in the bottom status bar. First geometry proof exposed the downward dropdown putting recovery below the viewport. Root-approved in-component correction opens above (`bottom-full mb-2`); no workspace/global layout changes. Further visual inspection found the320px panel clipped on390px phone even though Retry's centre was hittable. The final panel is `w-64 sm:w-80`, with a wrapping full-width Retry. Entire-panel bounds are now required, not inferred from one button.
+
+React checklist informed unconditional hooks, primitive auth-scope dependencies, callback/ref request lifetime cleanup and semantic read states; no dependencies or global request machinery added.
+
+## Red/green and final static gates
+
+- Original source: **5 FAIL / 1 PASS**, exit1,6.18s, plus **one uncaught TypeError** reading `read` from a null row. Missing pending/retry/error and malformed-response assertions failed; legacy-auth hiding passed. This failure is not erased or counted as success.
+- Initial implementation **6 PASS**, exit0,2.07s. Extended polling, old-user/logout/scope/unmount and existing mutation-contract tests: final **14 PASS / 1 file**, exit0,2.56s on final formatted width-corrected source.
+- Final forced frontend types `npx tsc -b apps/frontend --force`: **PASS**, exit0. Final scoped strict lint of NotificationBell and its tests (`--max-warnings=0`): **PASS**, exit0. Final configured frontend production build, including `tsc -b`, Vite, PWA and all three prerender scripts: **PASS**, exit0. Earlier pre-width builds passed too; final build duration was not separately retained, so no seconds are invented. Existing chunk-size warnings retained.
+- No backend/full inventory, historical onboarding path, provider or broad estate rerun. Diff whitespace check passes.
+
+## Bounded browser history and final proof
+
+Canonical existing `qualcanvas-auth` storage fixture pattern reused for a fictional local email identity. Actual `/canvas/local-read-canvas` and CanvasWorkspace render with synthetic read-only canvas payload. Installed Chrome/Playwright fallback used because agent-browser CLI is unavailable. UI-only4751 preview; service workers blocked, every API request fulfilled synthetically, all mutation requests rejected/recorded and external non-API traffic aborted. No API server/database, provider, real cookie identity or signup was used.
+
+- Two runner configuration failures executed **no browser cases**: default cwd under `docs/qa` could not find npm workspace; first cwd correction used unavailable ESM `__dirname`. Final config uses portable `fileURLToPath(new URL('../..', import.meta.url))`. No timeout/approval bypass.
+- First rendered attempt **2 FAIL** at centre-hit. Downward dropdown and cookie overlay were observed. Preserved screenshots/traces/DOM in `test-results/notification-read-recovery-attempt1`.
+- Second attempt **2 FAIL**, each30-second timeout, at fixture cookie locator: visible `Reject` has actual accessible name `Reject non-essential cookies`. Corrected the exact matcher; no optional assertion or tolerance change. Artifacts preserved in `notification-read-recovery-attempt2`.
+- Third attempt **2 PASS / 8.1s**, but later screenshot inspection exposed left-clipped phone panel; this is **insufficient whole-panel proof**, not a final pass. Preserved in `notification-read-recovery-attempt3-clipped`.
+- Final width-corrected built replay **2 PASS / 7.6s**, exit0, retries0: desktop1280×900 and phone390×900. Both actual bell and Retry width/height>=44, centre-hit, keyboard focus/Enter. Entire panel left>=0/right<=viewport/top>=0/bottom<=height; panel, recovery region and page have no horizontal overflow. Scoped WCAG2.2 axe zero violations. Initial503 and malformed rows/count remain actionable/no false empty; held explicit retry exposes named loading status, second Enter makes no extra GET; exactly one GET per explicit retry, successful empty only after trusted response. Zero pageerrors and zero mutation requests. Polling/stale identity/scope/unmount and populated/mutation contracts are separately covered by focused units, not claimed as browser provider tests.
+
+Final phone screenshot visually inspected **before commit**; complete heading/copy/wrapping Retry is inside viewport. Desktop/phone files:
+
+- `C:\JM Programs\_worktrees\qualcanvas-onboarding-sota\test-results\notification-read-recovery\notification-read-recovery-570b0-tion-GET-recovery-at-1280px\notification-recovery-1280.png`
+- `C:\JM Programs\_worktrees\qualcanvas-onboarding-sota\test-results\notification-read-recovery\notification-read-recovery-fdba5-ation-GET-recovery-at-390px\notification-recovery-390.png`
+
+Final formatted NotificationBell filesystem SHA256: `560030555F2231F716742A1A61530A147669279F78C246AE94A123F0950BA88C` (checkout line endings may normalize). Playwright-owned preview stopped normally after exit0;4750–4759 listener check empty, sole slot explicitly released to root. Final pre-commit fetch still resolves default to `f105e441`, no open PRs. Normal local commit/hooks required, no push before root head review. This closes one notification read dead end, not every-route teaching/help/accessibility or final programme certification.
