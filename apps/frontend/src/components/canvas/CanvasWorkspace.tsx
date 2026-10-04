@@ -3142,13 +3142,13 @@ export default function CanvasWorkspace() {
               )}
             </div>
 
-            {/* Status bar — an in-flow flex-column child below the canvas, so it
-              takes its natural ~32px height and never competes for the canvas's
-              width (live QA finding #1). */}
+            {/* In-flow footer: 44px controls plus padding take 57px. Avoid a
+              backdrop-filter stacking context here: the existing z-50 Help
+              and notification menus must appear above the z-40 checklist. */}
             {!focusMode && (
               <div
                 data-tour="canvas-status-bar"
-                className="flex shrink-0 items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-600 backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-400"
+                className="flex shrink-0 items-center justify-between border-t border-gray-200/80 bg-white/90 px-4 py-1.5 text-[10px] text-gray-600 dark:border-gray-700/80 dark:bg-gray-800/90 dark:text-gray-400"
               >
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1">

@@ -104,11 +104,10 @@ export default function OnboardingChecklist() {
   if (onboardingChecklistDismissed || allDone || !activeCanvas) return null;
 
   return (
-    // bottom-12 keeps the card clear of the canvas status bar — at bottom-4 it
-    // sat on top of Help / notifications / zoom and swallowed their clicks
-    // (round-5 audit; exactly the controls a first-time user needs).
+    // Clear the 57px workspace footer (44px controls plus padding) and the
+    // separate 24px status bar without covering Help or notifications.
     <div
-      className={`${isMobile ? 'relative mx-3 my-2 w-auto shrink-0' : 'fixed bottom-12 right-4 z-40 w-72'} rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg`}
+      className={`${isMobile ? 'relative mx-3 my-2 w-auto shrink-0' : 'fixed bottom-24 right-4 z-40 w-72'} rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg`}
     >
       <div className="flex items-stretch">
         <button
