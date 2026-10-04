@@ -1,5 +1,20 @@
 QualCanvas Account read recovery — local candidate, not released
 
+CORRECTIVE CHECKPOINT20:46UTC: original PR227 e6399fc CI37231407095 FAILED
+four new Account tests at initial recovery heading (738PASS/9SKIP/4FAIL;
+all other jobs and GitGuardian SUCCESS). CI artifact downloaded unchanged to
+coordination/artifacts/qualcanvas-pr227-failed-37231407095. 320 failure image
+shows Loading your account, not an application exception. Local development
+mode reproduced1FAIL at same line107 with original fixture; StrictMode reruns
+mount effects, so its second read was incorrectly held as a user retry.
+Test-only fixture phases now retain initial failure until actual retry action,
+with baseline-relative exact retry counts and independent reads preserved.
+No skip, longer timeout, source change or assertion weakening. Dedicated
+headless development config uses owned4751/no backend/external requests.
+Development12-engine replay in progress; finished Chromium/Firefox cases
+observe2 initialreads+1 retry per resource,0 writes/pageerrors. Built final
+combined proof still required before a corrective push. Original failures kept.
+
 FINAL REBASED CHECKPOINT 20:14 UTC: candidateedd6e3e on latest default92f2327
 (other owner's PR225 preserved). Whole frontend1027/1027 PASS119files400.89s,
 two workers, exit0. Retain Vitest worker-shutdown timeout warnings for

@@ -24,6 +24,10 @@ for (const width of [1280, 820, 390, 320]) {
     const writes: string[] = [];
     let profileReads = 0;
     let scheduleReads = 0;
+    // Development StrictMode can repeat mount reads. A user attempt is a
+    // fixture phase, not a request ordinal; retry counts stay independently exact.
+    let profilePhase: 'error' | 'pending' | 'ready' = 'error';
+    let schedulePhase: 'error' | 'pending' | 'ready' = 'error';
     let releaseProfile!: () => void;
     let releaseSchedules!: () => void;
     page.on('pageerror', (error) => errors.push(error.message));
@@ -56,7 +60,7 @@ for (const width of [1280, 820, 390, 320]) {
         return loopback && !url.pathname.startsWith('/socket.io') ? route.continue() : route.abort();
       if (url.pathname === '/api/auth/me') {
         profileReads++;
-        if (profileReads === 1)
+        if (profilePhase === 'error')
           return route.fulfill({
             headers: cors,
             status: width === 390 ? 200 : 503,
@@ -65,7 +69,7 @@ for (const width of [1280, 820, 390, 320]) {
                 ? { success: true, data: { user: {} } }
                 : { success: false, error: 'Local simulated offline read' },
           });
-        if (profileReads === 2)
+        if (profilePhase === 'pending')
           await new Promise<void>((resolve) => {
             releaseProfile = resolve;
           });
@@ -73,13 +77,13 @@ for (const width of [1280, 820, 390, 320]) {
       }
       if (url.pathname === '/api/reports/schedules') {
         scheduleReads++;
-        if (scheduleReads === 1)
+        if (schedulePhase === 'error')
           return route.fulfill({
             headers: cors,
             status: 503,
             json: { success: false, error: 'Local simulated schedule read failure' },
           });
-        if (scheduleReads === 2)
+        if (schedulePhase === 'pending')
           await new Promise<void>((resolve) => {
             releaseSchedules = resolve;
           });
@@ -114,13 +118,20 @@ for (const width of [1280, 820, 390, 320]) {
         .violations,
     ).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath(`account-read-error-${width}.png`), fullPage: true });
+    const initialProfileReads = profileReads;
+    const initialScheduleReads = scheduleReads;
+    expect(initialProfileReads).toBeGreaterThanOrEqual(1);
+    expect(initialScheduleReads).toBeGreaterThanOrEqual(1);
+    profilePhase = 'pending';
     await retry.focus();
     await page.keyboard.press('Enter');
     const pending = page.getByRole('button', { name: 'Trying again…', exact: true });
     await expect(pending).toBeDisabled();
-    await expect.poll(() => profileReads).toBe(2);
+    await expect.poll(() => profileReads).toBe(initialProfileReads + 1);
     await page.keyboard.press('Enter');
-    expect(profileReads).toBe(2);
+    expect(profileReads).toBe(initialProfileReads + 1);
+    expect(scheduleReads).toBe(initialScheduleReads);
+    profilePhase = 'ready';
     releaseProfile();
     await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Local reader');
     await expect(page.getByRole('heading', { name: 'We couldn’t load your account' })).toHaveCount(0);
@@ -130,21 +141,31 @@ for (const width of [1280, 820, 390, 320]) {
     const scheduleRetry = page.getByRole('button', { name: 'Try loading schedules again', exact: true });
     await reachable(scheduleRetry);
     await page.screenshot({ path: testInfo.outputPath(`schedule-read-error-${width}.png`), fullPage: true });
+    schedulePhase = 'pending';
     await scheduleRetry.focus();
     await page.keyboard.press('Enter');
     await expect(page.getByText('Loading report schedules…', { exact: true })).toBeVisible();
-    await expect.poll(() => scheduleReads).toBe(2);
+    await expect.poll(() => scheduleReads).toBe(initialScheduleReads + 1);
     await expect(page.getByText('No report schedules configured.', { exact: true })).toHaveCount(0);
+    schedulePhase = 'ready';
     releaseSchedules();
     await expect(page.getByText('No report schedules configured.', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Add Schedule', exact: true })).toBeEnabled();
-    expect(profileReads).toBe(2);
-    expect(scheduleReads).toBe(2);
+    expect(profileReads).toBe(initialProfileReads + 1);
+    expect(scheduleReads).toBe(initialScheduleReads + 1);
     expect(writes).toEqual([]);
     expect(errors).toEqual([]);
     console.log(
       'ACCOUNT_READ_LOCAL_FIXTURE',
-      JSON.stringify({ width, profileReads, scheduleReads, writes: writes.length, pageErrors: errors.length }),
+      JSON.stringify({
+        width,
+        initialProfileReads,
+        initialScheduleReads,
+        profileReads,
+        scheduleReads,
+        writes: writes.length,
+        pageErrors: errors.length,
+      }),
     );
   });
 }
