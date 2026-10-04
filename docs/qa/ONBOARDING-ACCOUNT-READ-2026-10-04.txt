@@ -1,0 +1,54 @@
+QualCanvas Account read recovery — local candidate, not released
+
+FINAL REBASED CHECKPOINT 20:14 UTC: candidateedd6e3e on latest default92f2327
+(other owner's PR225 preserved). Whole frontend1027/1027 PASS119files400.89s,
+two workers, exit0. Retain Vitest worker-shutdown timeout warnings for
+methodologyParadigms/uiStore; do not omit or call an earlier pending run green.
+Final source full types/configured ESLint/format PASS; build/prerenders PASS
+2282modules/Vite56.92s, existing PDF warning. Final rebased actual built-browser
+12/12 PASS4.2m/no retries: all3 engines/all4 widths, zero writes/page errors,
+two observed reads per recovery path. Earlier52.2s pass also retained below.
+Normal hooks used; final PR must be exact-head green before merge/live proof.
+
+Scope: profile and report-schedule reads in AccountPage only. Persistent named
+profile error, guarded retry with pending state, 44px safe exits to canvas/email,
+agreed two-working-day support wording, no passwords/sensitive research by email.
+Malformed profile root/user fields rejected before setting render state.
+Independent schedule loading/error/ready states: failed/malformed reads no longer
+claim an empty list. Adding a schedule waits until its list has been observed,
+preventing accidental duplicate creation after a failed read. Existing write
+handlers, billing/password/deletion/auth and preference semantics unchanged.
+Effect cleanup prevents late unmounted reads from updating state. Separate
+retries do not fetch unrelated profile/preferences/schedules. Legacy preference
+absence remains tolerated. No dependencies, schemas or providers changed.
+
+TDD: original new tests reproduced6FAIL/16PASS plus malformed-profile render
+error. After implementation21PASS/1FAIL: assertion wrongly assumed no OTHER
+Account alert could exist; mocked SeatsPanel correctly had its own unrelated
+error. Scoped the assertion to the account recovery heading, not hidden alerts.
+Final Account22PASS; full typecheck/configured ESLint PASS.
+Production frontend build and prerenders PASS2282modules/Vite27.61s (existing
+large PDF warning retained). Whole frontend1022/1022 PASS118files151.74s,
+two local workers; expected ErrorBoundary simulated-error diagnostics retained.
+Additional malformed-schedule/legacy regression cases subsequently added;
+the full count above predates those extra test-only cases, not production edits.
+Final targeted26/26 PASS4.32s covers malformed array/null/object rows and the
+actual legacy profile shape with absent preferences/usage/subscription.
+
+Built-browser12/12 Chrome/Firefox/WebKit PASS52.2s, no retries; widths1280,
+820,390,320. Fictional eligible user/local GET responses only; all external
+traffic blocked and writes aborted. Initial503 profile/schedule failures and
+390px malformed profile, pending retry/no duplicates, restored profile,
+truthful schedule loading/error/empty recovery, independent read counts,
+44px recovery targets and scoped initial error axe verified. No page errors,
+no writes. 320px initial error screenshot inspected. Artifacts retained under
+test-results/account-read-final. This is not authenticated production API proof.
+The whole recovered Account form/native screen reader/every mutation/every role
+has not been certified; existing small mutation controls need separate review.
+
+Parent first passa0b79b53. Rebase on latest origin/main before opening PR;
+other owner's billing PR225 merged92f2327, disjoint backend/Admin BillingTab.
+Separate confirmation PR226dfdea2e remains in CI. Never absorb other work.
+Score21->21/28 provisional; historic14->21. TTFV not remeasured, historical
+10clicks/7fields/6.955-8.657 automated seconds not human timing. ALL15 programme
+is unfinished; incremental release is not a final >=24/all-MUST certificate.
