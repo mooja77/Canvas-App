@@ -6,7 +6,7 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   timeout: 30000,
-  outputDir: '../../test-results/notification-read-recovery',
+  outputDir: '../../test-results/notification-checklist-clearance-green',
   reporter: [['list']],
   use: {
     baseURL: 'http://localhost:4751',

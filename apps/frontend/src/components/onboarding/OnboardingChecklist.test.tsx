@@ -123,6 +123,11 @@ describe('OnboardingChecklist as a setup guide', () => {
     expect(container.firstElementChild?.className).toContain('relative');
     expect(container.firstElementChild?.className).not.toContain('fixed');
   });
+  it('clears the 44px workspace controls plus the separate 24px status bar on desktop', () => {
+    const { container } = renderChecklist();
+    expect(container.firstElementChild).toHaveClass('fixed', 'bottom-24');
+    expect(container.firstElementChild).not.toHaveClass('bottom-12');
+  });
   it('shows progress as an accessible progress bar', () => {
     mocks.activeCanvas.transcripts = [{ id: 't1' }];
     renderChecklist();
