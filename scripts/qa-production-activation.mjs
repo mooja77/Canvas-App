@@ -4,9 +4,12 @@ import path from 'node:path';
 
 import AxeBuilder from '@axe-core/playwright';
 import { chromium } from '@playwright/test';
+import { activationSteps, assertLocalOrigins, assertObservedProgress } from './activation-contract.mjs';
 
 const appOrigin = process.env.QUALCANVAS_QA_ORIGIN || 'https://qualcanvas.com';
 const apiOrigin = process.env.QUALCANVAS_QA_API_ORIGIN || 'https://api.qualcanvas.com/api';
+const localOnly = process.env.QUALCANVAS_QA_LOCAL_ONLY === 'true';
+if (localOnly) assertLocalOrigins(appOrigin, apiOrigin);
 const runId = Date.now();
 const email = process.env.QUALCANVAS_QA_EMAIL || `activation-journey-${runId}@example.com`;
 const password = process.env.QUALCANVAS_QA_PASSWORD || `Qc!Activation-${runId}`;
@@ -24,12 +27,22 @@ const transcript = [
 
 fs.mkdirSync(outputDirectory, { recursive: true });
 
-const browser = await chromium.launch({ headless: process.env.QUALCANVAS_QA_HEADFUL !== 'true' });
+const browser = await chromium.launch({
+  headless: process.env.QUALCANVAS_QA_HEADFUL !== 'true',
+  channel: process.env.QUALCANVAS_QA_BROWSER_CHANNEL || undefined,
+});
 const context = await browser.newContext({
   viewport: { width: 1440, height: 1000 },
   colorScheme: 'light',
 });
 const page = await context.newPage();
+if (localOnly)
+  await context.route('**/*', (route) => {
+    const url = new URL(route.request().url());
+    return [new URL(appOrigin).origin, new URL(apiOrigin).origin].includes(url.origin)
+      ? route.continue()
+      : route.abort();
+  });
 const startedAt = Date.now();
 const consoleErrors = [];
 const pageErrors = [];
@@ -55,6 +68,14 @@ page.on('response', (response) => {
 
 function mark(name) {
   milestones[name] = Number(((Date.now() - startedAt) / 1000).toFixed(1));
+}
+
+async function observe(expectedSteps) {
+  const response = await page.evaluate(async (apiUrl) => {
+    const result = await fetch(`${apiUrl}/user/onboarding`, { credentials: 'include' });
+    return { status: result.status, body: await result.json() };
+  }, apiOrigin);
+  return assertObservedProgress(response, expectedSteps);
 }
 
 async function screenshot(name) {
@@ -134,7 +155,6 @@ try {
   await onboardingHeading.waitFor({ state: 'visible', timeout: 20_000 });
   await screenshot('02-onboarding-personalisation');
   await page.locator('#onboarding-topic').fill(studyTitle);
-  await page.getByRole('button', { name: 'Solo', exact: true }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByRole('heading', { name: 'Pick a starting point' }).waitFor({ state: 'visible' });
   await screenshot('03-onboarding-template');
@@ -150,6 +170,7 @@ try {
   await page.locator('.react-flow__pane').waitFor({ state: 'visible', timeout: 30_000 });
   mark('blankCanvasReadySeconds');
   await screenshot('04-blank-canvas');
+  await observe([]);
 
   const verificationBannerVisible = await page
     .getByText(/Please verify your email/i)
@@ -177,6 +198,7 @@ try {
   await transcriptDialog.waitFor({ state: 'detached', timeout: 20_000 });
   await page.getByText(transcriptTitle, { exact: true }).waitFor({ state: 'visible', timeout: 20_000 });
   mark('transcriptAddedSeconds');
+  await observe(activationSteps.slice(0, 1));
   const checklistAfterTranscript = await page
     .getByText(/\d+ of \d+ complete/)
     .first()
@@ -197,6 +219,7 @@ try {
   if (createdCoding.status() !== 201) throw new Error(`Coding creation returned HTTP ${createdCoding.status()}`);
   await page.getByText(/1 segment/).waitFor({ state: 'visible', timeout: 20_000 });
   mark('firstCodingSeconds');
+  await observe(activationSteps.slice(0, 2));
   const checklistAfterCoding = await page
     .getByText(/\d+ of \d+ complete/)
     .first()
@@ -219,6 +242,8 @@ try {
     .first()
     .waitFor({ state: 'visible', timeout: 20_000 });
   mark('secondCodingSeconds');
+  // This guide step is the second distinct code, not a fabricated theme tick.
+  await observe(activationSteps.slice(0, 3));
   const checklistAfterSecondCode = await page
     .getByText(/\d+ of \d+ complete/)
     .first()
@@ -253,6 +278,7 @@ try {
   if (ranAnalysis.status() !== 200) throw new Error(`Statistics analysis returned HTTP ${ranAnalysis.status()}`);
   await statisticsNode.getByText('2 total', { exact: true }).waitFor({ state: 'visible', timeout: 20_000 });
   mark('analysisRunSeconds');
+  await observe(activationSteps.slice(0, 4));
   const checklistAfterAnalysis = await page
     .getByText(/\d+ of \d+ complete/)
     .first()
@@ -266,14 +292,16 @@ try {
   await exportDialog.waitFor({ state: 'visible', timeout: 10_000 });
   await exportDialog.getByRole('button', { name: /All Coded Data/ }).click();
   const downloadPromise = page.waitForEvent('download', { timeout: 20_000 });
-  const onboardingPatchPromise = page.waitForResponse(
-    (response) => response.url().endsWith('/api/user/onboarding') && response.request().method() === 'PATCH',
+  const exportResponsePromise = page.waitForResponse(
+    (response) =>
+      /\/api\/canvas\/[^/]+\/export\/coded-data\.csv$/.test(response.url()) && response.request().method() === 'GET',
     { timeout: 20_000 },
   );
   await exportDialog.getByRole('button', { name: 'Download CSV' }).click();
-  const [download, onboardingPatch] = await Promise.all([downloadPromise, onboardingPatchPromise]);
-  if (onboardingPatch.status() !== 200)
-    throw new Error(`Export checklist persistence returned HTTP ${onboardingPatch.status()}`);
+  const [download, exportedResponse] = await Promise.all([downloadPromise, exportResponsePromise]);
+  if (exportedResponse.status() !== 200)
+    throw new Error(`Coded-data export returned HTTP ${exportedResponse.status()}`);
+  await observe(activationSteps);
   const downloadedCsvPath = path.join(outputDirectory, 'coded-data-export.csv');
   await download.saveAs(downloadedCsvPath);
   const exportedCsv = fs.readFileSync(downloadedCsvPath, 'utf8');
@@ -294,6 +322,7 @@ try {
     const response = await fetch(`${apiUrl}/user/onboarding`, { credentials: 'include' });
     return { status: response.status, body: await response.json() };
   }, apiOrigin);
+  assertObservedProgress(persistedOnboarding, activationSteps);
   const persistedChecklistComplete = Array.isArray(persistedOnboarding.body?.data?.state?.checklistComplete)
     ? persistedOnboarding.body.data.state.checklistComplete
     : [];
@@ -364,6 +393,13 @@ try {
   fs.writeFileSync(path.join(outputDirectory, 'report.json'), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));
   if (verificationErrors.length > 0) throw new Error(verificationErrors.join('; '));
+} catch (error) {
+  await screenshot('failed-boundary').catch(() => {});
+  fs.writeFileSync(
+    path.join(outputDirectory, 'failure.json'),
+    JSON.stringify({ success: false, error: error.message, milestones, pageErrors, apiErrors }, null, 2),
+  );
+  throw error;
 } finally {
   if (accountCreated) {
     try {
