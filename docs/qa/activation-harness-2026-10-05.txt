@@ -1,0 +1,50 @@
+QualCanvas activation harness correction — 5 October 2026
+
+Scope: verification scripts only. No application UI, authentication, billing,
+production data, environment settings or lifecycle delivery changes.
+
+Scheduled production run 37279815068 failed on its obsolete Solo-button selector.
+The current onboarding screen has two optional questions, not that old button.
+The old export assertion also expected a client checklist PATCH, whereas the
+current coded-data export is observed by the server on its actual GET route.
+Neither failure was hidden or converted into a passing production result.
+
+Correction: assert the real server-observed prefix after each of five actions,
+including a durable firstValueAt after coding. The legacy create-theme step key
+means using a second distinct code; it does not require inventing a theme node.
+Wait for the actual CSV response and download. Capture failure evidence.
+An optional local-only mode rejects non-loopback origins and blocks external
+browser traffic. Production defaults and the existing schedule are unchanged.
+Nine Node contract tests are included in the normal root test command.
+
+Local full journey: PASS on an isolated PostgreSQL 16 database and owned API/
+frontend ports 4750/4751, using fictional data and headless Chrome.
+Observed progress: 0, 1, 2, 3, 4, then all five persisted steps; completed guide
+hidden. Actual CSV: 488 bytes with both codes and the transcript represented.
+No horizontal overflow; zero serious/critical automated axe violations;
+zero page errors and zero application API errors. This is not native screen-
+reader or complete WCAG certification. Final screenshot reviewed.
+
+Driver milestones, seconds from driver start: signup 1.9; blank canvas 5.0;
+transcript 6.2; first coding 7.0; second coding 7.8; analysis 10.6; export 11.7.
+These are machine-driver timings, not human TTFV or a comparable fresh baseline.
+Historical score remains 14/28 before, 21/28 provisional after; not rescored.
+Historical first-value measurement remains 10 actions, 7 fields, 6.955–8.657s.
+
+Retained local RED evidence: initial relative VITE_API_URL broke the socket URL
+constructor before onboarding. The launcher was corrected to an absolute local
+same-origin API URL; no application assertions were weakened. Failed accounts
+were deleted. The passing run also deleted its account (HTTP 200); independent
+local User count was zero afterwards. Only owned processes/container stopped.
+
+Network caveat: external Plausible was deliberately blocked; its console error
+and navigation-aborted local analytics requests remain in the report. Eight
+tracking responses were 204. This is not a zero-console/network-error claim.
+
+Generated screenshots, CSV, report and retained failure evidence remain under
+test-results/activation-harness-20261005 in the owned worktree, not committed.
+The existing workflow separately checks account cleanup.
+
+No production canary was rerun: it creates/deletes accounts, outside the standing
+production-data authority. A future scheduled result remains separate evidence.
+This correction does not certify all-app onboarding completion.
