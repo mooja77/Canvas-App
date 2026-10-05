@@ -1,0 +1,60 @@
+QualCanvas team entry/read recovery — 5 October 2026
+
+Scope: initial team reads and the successful-create refresh. Preserve backend
+auth, membership roles, seat billing, invite/send and deletion behaviour.
+No production accounts, memberships, messages, settings or secrets touched.
+
+Confirmed defects:
+1. null successful lists were presented as empty; malformed details could crash
+   members.find or dereference an absent user. Lists/details are now validated
+   before publishing either to the screen, with a read-only retry on bad data.
+2. POST /teams returns raw membership IDs, not the joined user read model. The
+   old page rendered that response immediately and crashed on member.user.name.
+   After successful creation, it now reloads the authoritative list/detail view.
+   A failed refresh is described as a read problem; retry never repeats creation.
+3. Pending reads now have a status announcement; retry has a 44px target.
+
+TDD: first malformed-response run9FAIL/6PASS with2 unhandled render errors;
+mock reset was tightened to isolate one-shot fixtures. After initial guard fix,
+15PASS. Real create-response-shape regression1FAIL/15PASS and an unhandled
+member.user error; after reload correction16PASS. Read-only post-create retry
+regression added; final focused suite17PASS.
+
+Typecheck, source ESLint at zero-warning threshold and narrow formatting passed.
+Source build passed from the correct frontend working directory:2282 modules,
+31.82s. The initial wrong-directory invocation failed on Tailwind's missing
+ink theme; this was retained as a launcher error, not a passing app build.
+Existing large pdfjs chunk warning remains. No dependency or lock changes.
+
+Committed browser fixture covers list-null, malformed-details and actual raw
+create-response shapes at1280/820/390px, keyboard retry, pending announcement,
+nonduplicated creation, no invitation/deletion writes, no page errors and no
+overflow. Error-region WCAG-tagged axe checks run without weakening assertions.
+Local Chrome/WebKit18/18 passed against the corrected production build; phone
+ready screenshot inspected. All API requests intercepted, not provider proof.
+
+Firefox evidence is deliberately NOT marked fully green:
+- First batch:18PASS/9FAIL; all9 Firefox failures were a missing executable.
+- Installed matching free Playwright Firefox1509 in the existing browser cache.
+- Firefox rerun:8PASS/1FAIL; first error-region axe audit exceeded30s.
+- One isolated case rerun failed navigation/teardown and logged Firefox's
+  RenderCompositorSWGL failed mapping default framebuffer / NS_ERROR_FAILURE.
+Failed traces/context/screenshots remain in separate output directories.
+No timeout increase, forced interaction, skipped assertion, browser waiver or
+GPU/system change. Stop further local Firefox retries. The existing required
+CI cross-browser job now includes this same file on Linux Firefox/WebKit and
+mobile projects; no new job or speculative CI rerun added.
+
+An initial full-frontend invocation from the root with --root apps/frontend
+failed filesystem-dependent suites (wrong process.cwd):3 files failed,116
+passed;1042 tests passed,1 failed. Correct frontend-workspace replay with four
+workers passed1051/1051 across119 files in91.71s. Expected mocked ErrorBoundary,
+jsdom/navigation and other fixture warnings remain; not silent-console proof.
+The wrong-directory failure is not silently called green.
+
+Historical score14/28 before,21/28 provisional remains unchanged. Historical
+TTFV10actions/7fields/6.955–8.657s is unchanged; no fresh human timing claimed.
+This is not whole-onboarding, native screen-reader or full WCAG certification.
+Later invitation/removal refresh handling and all-route/native proof remain
+outside this bounded read/create closure. Production deployment requires exact
+head green CI and normal live verification. No manual release or customer send.
