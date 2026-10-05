@@ -80,7 +80,7 @@ const sampleTeam = {
 
 describe('TeamPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     setMockPlan('team');
   });
 
@@ -128,8 +128,39 @@ describe('TeamPage', () => {
 
     render(<TeamPage />);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Your team has not been changed');
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't read your saved team details");
     expect(screen.queryByText(/Set up your team in 3 steps/i)).not.toBeInTheDocument();
+  });
+
+  it.each([null, {}, [null]])('recovers from a malformed team list %j without claiming no team', async (data) => {
+    mockTeamApi.list.mockResolvedValueOnce({ data: { data } }).mockResolvedValueOnce({ data: { data: [sampleTeam] } });
+    mockTeamApi.get.mockResolvedValue({ data: { data: sampleTeam } });
+    render(<TeamPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't load your team");
+    expect(screen.queryByText(/Set up your team in 3 steps/i)).not.toBeInTheDocument();
+    expect(mockTeamApi.create).not.toHaveBeenCalled();
+    expect(mockTeamApi.invite).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Research Team Alpha')).toBeVisible();
+  });
+
+  it.each([
+    null,
+    {},
+    { ...sampleTeam, members: {} },
+    { ...sampleTeam, members: [{ ...sampleTeam.members[0], user: null }] },
+  ])('recovers from malformed team details %j with a read-only retry', async (data) => {
+    mockTeamApi.list.mockResolvedValue({ data: { data: [sampleTeam] } });
+    mockTeamApi.get.mockResolvedValueOnce({ data: { data } }).mockResolvedValueOnce({ data: { data: sampleTeam } });
+    render(<TeamPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't read your saved team details");
+    expect(screen.queryByText(/Set up your team in 3 steps/i)).not.toBeInTheDocument();
+    expect(mockTeamApi.invite).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Bob Member')).toBeVisible();
+    expect(mockTeamApi.get).toHaveBeenCalledTimes(2);
   });
 
   it('shows team name and member list when team exists', async () => {
@@ -148,6 +179,41 @@ describe('TeamPage', () => {
     expect(screen.getByText('alice@example.com')).toBeInTheDocument();
     expect(screen.getByText('bob@example.com')).toBeInTheDocument();
     expect(screen.getByText('Members (2)')).toBeInTheDocument();
+  });
+
+  it('loads full details after creation instead of rendering the raw create response', async () => {
+    mockTeamApi.list.mockResolvedValueOnce({ data: { data: [] } }).mockResolvedValue({ data: { data: [sampleTeam] } });
+    mockTeamApi.create.mockResolvedValue({
+      data: { data: { ...sampleTeam, members: [{ userId: 'owner-1', role: 'owner' }] } },
+    });
+    mockTeamApi.get.mockResolvedValue({ data: { data: sampleTeam } });
+    render(<TeamPage />);
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Team name' }), { target: { value: sampleTeam.name } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Team' }));
+
+    expect(await screen.findByText('Alice Owner')).toBeVisible();
+    expect(mockTeamApi.create).toHaveBeenCalledWith(sampleTeam.name);
+    expect(mockTeamApi.get).toHaveBeenCalledWith('team-1');
+    expect(mockTeamApi.invite).not.toHaveBeenCalled();
+  });
+
+  it('retries only reads if the refresh fails after a successful creation', async () => {
+    mockTeamApi.list
+      .mockResolvedValueOnce({ data: { data: [] } })
+      .mockRejectedValueOnce(new Error('refresh offline'))
+      .mockResolvedValueOnce({ data: { data: [sampleTeam] } });
+    mockTeamApi.create.mockResolvedValue({ data: { data: { id: sampleTeam.id } } });
+    mockTeamApi.get.mockResolvedValue({ data: { data: sampleTeam } });
+    render(<TeamPage />);
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Team name' }), { target: { value: sampleTeam.name } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Team' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't read your saved team details");
+    expect(mockToast.success).toHaveBeenCalledWith('Team created');
+    expect(mockToast.error).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Alice Owner')).toBeVisible();
+    expect(mockTeamApi.create).toHaveBeenCalledTimes(1);
+    expect(mockTeamApi.invite).not.toHaveBeenCalled();
   });
 
   it('shows invite form for owners/admins', async () => {

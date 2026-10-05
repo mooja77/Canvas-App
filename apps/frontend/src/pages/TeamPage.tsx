@@ -29,9 +29,36 @@ interface Team {
   memberCount?: number;
 }
 
+type TeamSummary = Pick<Team, 'id' | 'name' | 'ownerId' | 'createdAt' | 'myRole' | 'memberCount'>;
+
+function hasTeamIdentity(value: unknown): value is TeamSummary {
+  if (!value || typeof value !== 'object') return false;
+  const team = value as Partial<Team>;
+  return (
+    ['id', 'name', 'ownerId', 'createdAt'].every((key) => typeof team[key as keyof Team] === 'string') &&
+    (team.myRole === undefined || typeof team.myRole === 'string')
+  );
+}
+
+function hasTeamDetails(value: unknown): value is Team {
+  if (!hasTeamIdentity(value)) return false;
+  const team = value as Partial<Team>;
+  if (!Array.isArray(team.members) || !team.owner || typeof team.owner.name !== 'string') return false;
+  return team.members.every(
+    (member) =>
+      member &&
+      typeof member.id === 'string' &&
+      typeof member.userId === 'string' &&
+      typeof member.role === 'string' &&
+      member.user &&
+      typeof member.user.name === 'string' &&
+      typeof member.user.email === 'string',
+  );
+}
+
 export default function TeamPage() {
   usePageMeta('Team — QualCanvas', 'Manage your QualCanvas team members, invitations, and collaborative workspace.');
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [teams, setTeams] = useState<TeamSummary[]>([]);
   const [activeTeam, setActiveTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -48,15 +75,19 @@ export default function TeamPage() {
     setLoading(true);
     try {
       const res = await teamApi.list();
-      const teamList = res.data.data || [];
-      setTeams(teamList);
+      const teamList = res.data.data;
+      if (!Array.isArray(teamList) || !teamList.every(hasTeamIdentity)) throw new Error('Invalid team list');
+      let loadedTeam: Team | null = null;
       if (teamList.length > 0) {
         // Load full details of first team
         const detailRes = await teamApi.get(teamList[0].id);
-        setActiveTeam(detailRes.data.data);
-      } else {
-        setActiveTeam(null);
+        const detail = detailRes.data.data;
+        if (!hasTeamDetails(detail) || detail.id !== teamList[0].id) throw new Error('Invalid team details');
+        loadedTeam = detail;
       }
+      // Publish only a fully validated read, not a partial or invented empty team.
+      setTeams(teamList);
+      setActiveTeam(loadedTeam);
       setLoadError(false);
     } catch {
       // An unavailable list is not evidence that this account has no team.
@@ -74,12 +105,12 @@ export default function TeamPage() {
     if (!teamName.trim()) return;
     setCreating(true);
     try {
-      const res = await teamApi.create(teamName.trim());
+      await teamApi.create(teamName.trim());
       toast.success('Team created');
-      const newTeam = res.data.data;
-      setActiveTeam(newTeam);
-      setTeams([newTeam]);
       setTeamName('');
+      // The create response has membership IDs, not the full member/user view.
+      // Reload the authoritative read model before rendering it.
+      await loadTeams();
     } catch (err: unknown) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       toast.error((err as any)?.response?.data?.error || 'Failed to create team');
@@ -151,7 +182,9 @@ export default function TeamPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <p className="text-gray-500">Loading...</p>
+        <p role="status" className="text-gray-500">
+          Loading...
+        </p>
       </div>
     );
   }
@@ -165,7 +198,8 @@ export default function TeamPage() {
         >
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white">We couldn't load your team</h1>
           <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-            Your team has not been changed. Check your connection and try again. If this keeps happening, email{' '}
+            We couldn't read your saved team details. Check your connection and try again. If this keeps happening,
+            email{' '}
             <a className="text-brand-700 underline dark:text-brand-300" href="mailto:support@qualcanvas.com">
               support@qualcanvas.com
             </a>
@@ -174,7 +208,7 @@ export default function TeamPage() {
           <button
             type="button"
             onClick={loadTeams}
-            className="mt-5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            className="mt-5 min-h-[44px] min-w-[44px] rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             Try again
           </button>
