@@ -8,7 +8,7 @@
     "db:migrate": "wrangler d1 execute qualcanvas-db --file=schema.sql --remote"
   },
   "dependencies": {
-    "hono": "^4.0.0",
+    "hono": "^4.13.7",
     "jose": "^5.0.0",
     "bcryptjs": "^2.4.3"
   },
