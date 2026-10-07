@@ -8,6 +8,7 @@ import {
   type SetupProgress,
 } from '../lib/lifecycleEmail.js';
 import { logError } from '../lib/logger.js';
+import { observedSetupSteps, SETUP_STEPS } from '../lib/onboardingObservations.js';
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 const AUTOMATION_ENABLED = process.env.LIFECYCLE_EMAIL_AUTOMATION_ENABLED === 'true';
@@ -38,6 +39,7 @@ type LifecycleSelectionInput = {
   deliveredEventKeys: ReadonlySet<string>;
   lastActivity: Date | null;
   activated: boolean;
+  setupProgress?: SetupProgress | null;
 };
 
 function daysAgo(days: number): Date {
@@ -67,10 +69,12 @@ async function hasFirstValue(userId: string): Promise<boolean> {
 
 /**
  * The researcher's next unfinished setup step. Starter-template sample rows are
- * ours, so only their own transcripts count; a first own coding is first value,
- * which ends the sequence before this is asked.
+ * ours, so only their own transcripts count. Durable server observations, not
+ * client checklist ticks, decide whether later guide steps remain unfinished.
  */
-export async function setupProgress(userId: string): Promise<SetupProgress> {
+export async function setupProgress(userId: string): Promise<SetupProgress | null> {
+  const completed = await observedSetupSteps(userId);
+  if (SETUP_STEPS.every((step) => completed.includes(step))) return null;
   const projects = await prisma.codingCanvas.count({ where: { userId, deletedAt: null } });
   if (projects === 0) return 'no_project';
   const ownTranscripts = await prisma.canvasTranscript.count({
@@ -80,7 +84,11 @@ export async function setupProgress(userId: string): Promise<SetupProgress> {
       OR: [{ sourceType: null }, { sourceType: { not: 'sample' } }],
     },
   });
-  return ownTranscripts === 0 ? 'no_transcript' : 'no_coding';
+  if (!completed.includes('first-transcript') && ownTranscripts === 0) return 'no_transcript';
+  if (!completed.includes('first-coded-excerpt')) return 'no_coding';
+  if (!completed.includes('create-theme')) return 'no_theme';
+  if (!completed.includes('run-analysis')) return 'no_analysis';
+  return 'no_export';
 }
 
 async function lastUserActivity(userId: string): Promise<Date | null> {
@@ -95,14 +103,19 @@ async function lastUserActivity(userId: string): Promise<Date | null> {
 async function sendTimedTemplate(user: LifecycleUser, type: TimedLifecycleEmailType) {
   try {
     if (type === 'setup_nudge_1d' && !isSetupSequenceEnabled()) return;
-    // Selection is advisory. Re-read activation immediately before claiming an
-    // occurrence so a canvas created during the sweep suppresses stale help.
-    if (await hasFirstValue(user.id)) return;
+    const setupSequence = isSetupSequenceEnabled() && type !== 'inactivity_14d';
+    // Selection is advisory. Re-read progress before claiming an occurrence.
+    // Legacy activation/inactivity behavior remains unchanged when the new flag is off.
+    let progress: SetupProgress | undefined;
+    if (setupSequence) {
+      const current = await setupProgress(user.id);
+      if (!current || !isSetupSequenceEnabled()) return;
+      progress = current;
+    } else if (await hasFirstValue(user.id)) return;
     if (type === 'inactivity_14d') {
       const activity = await lastUserActivity(user.id);
       if (!activity || activity >= daysAgo(14)) return;
     }
-    const progress = type === 'inactivity_14d' || !isSetupSequenceEnabled() ? undefined : await setupProgress(user.id);
     await sendLifecycleEmail(user, lifecycleTemplate(type, user, progress));
   } catch (err) {
     logError(err as Error, { action: 'lifecycleEmail.sendTimedTemplate', userId: user.id, type });
@@ -126,9 +139,12 @@ export function selectTimedLifecycleEmail(
 ): TimedLifecycleEmailType | null {
   const ageDays = (now.getTime() - input.createdAt.getTime()) / (24 * 60 * 60 * 1000);
 
-  // The sequence is an activation sequence, not generic engagement. Once the
-  // first own coding exists, all timed activation messages stop.
-  if (input.activated) return null;
+  // New setup help follows all five observed steps; first value is not full
+  // setup. Unknown progress cannot justify a new message. Keep legacy stopping
+  // and inactivity selection unchanged outside the day-1/3/7 setup windows.
+  if (isSetupSequenceEnabled() && ageDays < 14) {
+    if (!input.setupProgress) return null;
+  } else if (input.activated) return null;
 
   if (
     isSetupSequenceEnabled() &&
@@ -166,7 +182,7 @@ export async function processLifecycleEmails(): Promise<void> {
     where: {
       emailVerified: true,
       lifecycleCohortStartedAt: { not: null, gte: daysAgo(90) },
-      firstValueAt: null,
+      ...(!isSetupSequenceEnabled() ? { firstValueAt: null } : {}),
     },
     orderBy: { lifecycleCohortStartedAt: 'desc' },
     take: LIFECYCLE_BATCH_LIMIT,
@@ -190,12 +206,14 @@ export async function processLifecycleEmails(): Promise<void> {
       const activated = Boolean(user.firstValueAt) || (await hasFirstValue(user.id));
       const ageDays = (now.getTime() - cohortStartedAt.getTime()) / (24 * 60 * 60 * 1000);
       const lastActivity = ageDays >= 14 ? await lastUserActivity(user.id) : null;
+      const progress = isSetupSequenceEnabled() && ageDays < 14 ? await setupProgress(user.id) : undefined;
       const due = selectTimedLifecycleEmail(
         {
           createdAt: cohortStartedAt,
           deliveredEventKeys: delivered,
           lastActivity,
           activated,
+          setupProgress: progress,
         },
         now,
       );
