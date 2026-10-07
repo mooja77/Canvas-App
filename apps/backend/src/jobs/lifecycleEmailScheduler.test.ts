@@ -15,6 +15,7 @@ function select(options: { ageDays: number; delivered?: string[]; lastActivityDa
       deliveredEventKeys: new Set(options.delivered || []),
       lastActivity: options.lastActivityDaysAgo == null ? null : daysBeforeNow(options.lastActivityDaysAgo),
       activated: false,
+      setupProgress: 'no_coding',
     },
     NOW,
   );

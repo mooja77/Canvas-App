@@ -298,11 +298,10 @@ function baseEmailHtml(options: {
 }
 
 /**
- * Where a not-yet-activated researcher stands. Activation (a first coding of
- * their own material) ends the timed sequence, so these are the only states a
- * nudge can meet.
+ * The next unfinished step of the five-step guide. Completed setup is null in
+ * the scheduler and never reaches these templates.
  */
-export type SetupProgress = 'no_project' | 'no_transcript' | 'no_coding';
+export type SetupProgress = 'no_project' | 'no_transcript' | 'no_coding' | 'no_theme' | 'no_analysis' | 'no_export';
 
 // Existing production lifecycle automation may already be enabled. New setup
 // timing/content is a separate, explicit release choice; absent stays legacy.
@@ -329,6 +328,24 @@ const NEXT_STEP: Record<SetupProgress, { title: string; sentence: string; body: 
     body: 'Open your transcript, highlight a sentence that matters, type a code name and press Enter. That first coded excerpt is where the canvas starts showing you patterns.',
     cta: 'Code an excerpt',
   },
+  no_theme: {
+    title: 'Use two different codes',
+    sentence: 'Your next step: use two different codes',
+    body: 'Highlight another useful sentence in your own transcript. Type a different code name and press Enter. Two codes give you something to compare; your first coded sentence stays as it is.',
+    cta: 'Continue your project',
+  },
+  no_analysis: {
+    title: 'Try your first analysis',
+    sentence: 'Your next step: try your first analysis',
+    body: 'Open your project, choose Analyze, and try a Word Cloud or Frequency chart. Select the transcripts you want to include and run the analysis. The Get started guide takes you to the Analyze menu.',
+    cta: 'Try an analysis',
+  },
+  no_export: {
+    title: 'Download your coded passages',
+    sentence: 'Your next step: download your coded passages',
+    body: 'In Get started, choose Export your codings to CSV. Check the preview, then download the file. This saves a copy for your notes or a spreadsheet without removing anything from your project.',
+    cta: 'Download a copy',
+  },
 };
 
 function nextStepParagraph(progress: SetupProgress | undefined): string {
@@ -338,6 +355,8 @@ function nextStepParagraph(progress: SetupProgress | undefined): string {
         <p style="margin:18px 0 0;"><strong>${step.sentence}.</strong> ${step.body}</p>`;
 }
 
+const SETUP_HELP_PARAGRAPH = `<p style="margin:0;">Prefer us to help set it up? Email <a href="mailto:support@qualcanvas.com?subject=Set%20up%20my%20QualCanvas%20project">support@qualcanvas.com</a> with the kind of research you are doing and the tool or file format you use now. We can help you choose an import route, adjust your project and consider feature requests. We reply within two business days; no call needed. Please do not email participant data or identifiable transcripts. Import research through your signed-in account.</p>`;
+
 export function lifecycleTemplate(
   type: 'welcome' | 'setup_nudge_1d' | 'onboarding_7d' | 'training_tip_3d' | 'inactivity_14d',
   user: EmailUser,
@@ -345,22 +364,29 @@ export function lifecycleTemplate(
 ) {
   const name = escapeHtml(firstName(user.name));
 
-  if (type === 'setup_nudge_1d') {
-    if (!isSetupSequenceEnabled()) throw new Error('New lifecycle setup sequence is disabled');
-    const step = NEXT_STEP[progress ?? 'no_transcript'];
+  if (type === 'setup_nudge_1d' && !isSetupSequenceEnabled())
+    throw new Error('New lifecycle setup sequence is disabled');
+  if (type === 'setup_nudge_1d' && !progress) throw new Error('Observed setup progress required');
+  if (isSetupSequenceEnabled() && progress && type !== 'welcome' && type !== 'inactivity_14d') {
+    const step = NEXT_STEP[progress];
     return {
-      category: 'lifecycle' as EmailCategory,
-      eventKey: 'setup_nudge_1d_v1',
+      category: (type === 'training_tip_3d' ? 'trainingTips' : 'lifecycle') as EmailCategory,
+      eventKey:
+        type === 'setup_nudge_1d'
+          ? 'setup_nudge_1d_v1'
+          : type === 'training_tip_3d'
+            ? 'training_tip_3d_v1'
+            : 'onboarding_7d_v1',
       setupSequence: true,
       subject: `QualCanvas: ${step.title.toLowerCase()}`,
       title: step.title,
-      preview: 'One small step to your first coded insight.',
+      preview: 'One useful next step, based on your saved setup progress.',
       ctaLabel: step.cta,
       ctaUrl: appLink('/canvas'),
       bodyHtml: `
         <p style="margin:0 0 18px;">Hi ${name},</p>
-        <p style="margin:0 0 18px;">${step.body}</p>
-        <p style="margin:0;">Prefer us to set it up? Email <a href="mailto:support@qualcanvas.com?subject=Set%20up%20my%20QualCanvas%20project">support@qualcanvas.com</a> with your method and what you are moving from, and we will reply within two business days with a suggested template and codebook. No call needed.</p>`,
+        <p style="margin:0 0 18px;"><strong>${step.sentence}.</strong> ${step.body}</p>
+        ${SETUP_HELP_PARAGRAPH}`,
     };
   }
 
@@ -368,12 +394,18 @@ export function lifecycleTemplate(
     return {
       category: 'lifecycle' as EmailCategory,
       eventKey: 'welcome_v1',
+      ...(isSetupSequenceEnabled() ? { setupSequence: true } : {}),
       subject: 'Welcome to QualCanvas',
       title: 'Your qualitative workspace is ready',
       preview: 'A short path to your first coded insight.',
       ctaLabel: 'Open your canvas',
       ctaUrl: appLink('/canvas'),
-      bodyHtml: `
+      bodyHtml: isSetupSequenceEnabled()
+        ? `
+        <p style="margin:0 0 18px;">Hi ${name},</p>
+        <p style="margin:0 0 18px;">Start with a starter template and explore its clearly labelled sample. You can remove the sample in one click without removing your own work. When you are ready, add one transcript, highlight a useful sentence, type a code name and press Enter. The Get started guide shows each next step and remembers your progress.</p>
+        ${SETUP_HELP_PARAGRAPH}`
+        : `
         <p style="margin:0 0 18px;">Hi ${name},</p>
         <p style="margin:0 0 18px;">Welcome to ${PRODUCT_NAME}. A good first session is simple: create one canvas, upload one transcript, add 3-5 research questions, then code a few strong excerpts.</p>
         <p style="margin:0;">If you are evaluating QualCanvas, start with a small real project rather than sample data so you can judge the workflow against your own research.</p>`,
