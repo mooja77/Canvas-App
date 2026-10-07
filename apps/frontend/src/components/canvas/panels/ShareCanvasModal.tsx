@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { canvasApi } from '../../../services/api';
 import { useActiveCanvasId } from '../../../stores/canvasStore';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
@@ -21,6 +21,47 @@ interface CollaboratorInfo {
   userEmail: string;
 }
 
+const record = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+const nonEmpty = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
+const validDate = (value: unknown) =>
+  typeof value === 'string' &&
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) &&
+  Number.isFinite(Date.parse(value));
+
+function readRows<T>(envelope: unknown, valid: (row: unknown) => boolean): T[] {
+  if (!record(envelope) || envelope.success !== true || !Array.isArray(envelope.data) || !envelope.data.every(valid)) {
+    throw new Error('Unverified sharing response');
+  }
+  return envelope.data as T[];
+}
+
+function validShare(row: unknown, canvasId: string): boolean {
+  return (
+    record(row) &&
+    nonEmpty(row.id) &&
+    row.canvasId === canvasId &&
+    nonEmpty(row.shareCode) &&
+    typeof row.cloneCount === 'number' &&
+    Number.isSafeInteger(row.cloneCount) &&
+    row.cloneCount >= 0 &&
+    validDate(row.createdAt) &&
+    (row.expiresAt == null || validDate(row.expiresAt))
+  );
+}
+
+function validCollaborator(row: unknown, canvasId: string): boolean {
+  return (
+    record(row) &&
+    nonEmpty(row.id) &&
+    nonEmpty(row.userId) &&
+    row.canvasId === canvasId &&
+    (row.role === 'editor' || row.role === 'viewer') &&
+    typeof row.userName === 'string' &&
+    typeof row.userEmail === 'string'
+  );
+}
+
 export default function ShareCanvasModal({ onClose }: Props) {
   // Keep Tab inside the dialog and give focus back to the trigger on close.
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -28,6 +69,12 @@ export default function ShareCanvasModal({ onClose }: Props) {
   const activeCanvasId = useActiveCanvasId();
   const [shares, setShares] = useState<CanvasShare[]>([]);
   const [loading, setLoading] = useState(true);
+  const [shareError, setShareError] = useState(false);
+  const [collaboratorLoading, setCollaboratorLoading] = useState(true);
+  const [collaboratorError, setCollaboratorError] = useState(false);
+  const [readCanvasId, setReadCanvasId] = useState<string | null>(null);
+  const shareRead = useRef(0);
+  const collaboratorRead = useRef(0);
   const [generating, setGenerating] = useState(false);
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
   const [collaborators, setCollaborators] = useState<CollaboratorInfo[]>([]);
@@ -40,47 +87,80 @@ export default function ShareCanvasModal({ onClose }: Props) {
 
   useEscapeToClose(onClose);
 
-  const loadShares = async () => {
+  const loadShares = useCallback(async () => {
     if (!activeCanvasId) return;
+    const request = ++shareRead.current;
+    setLoading(true);
+    setShareError(false);
     try {
       const res = await canvasApi.getShares(activeCanvasId);
-      setShares(res.data.data || []);
+      const rows = readRows<CanvasShare>(res.data, (row) => validShare(row, activeCanvasId));
+      if (request === shareRead.current) setShares(rows);
     } catch {
-      toast.error('Failed to load share codes');
+      if (request === shareRead.current) setShareError(true);
     } finally {
-      setLoading(false);
+      if (request === shareRead.current) setLoading(false);
     }
-  };
+  }, [activeCanvasId]);
 
-  const loadCollaborators = async () => {
+  const loadCollaborators = useCallback(async () => {
     if (!activeCanvasId) return;
+    const request = ++collaboratorRead.current;
+    setCollaboratorLoading(true);
+    setCollaboratorError(false);
     try {
       const res = await canvasApi.getCollaborators(activeCanvasId);
-      setCollaborators(res.data.data || []);
+      const rows = readRows<CollaboratorInfo>(res.data, (row) => validCollaborator(row, activeCanvasId));
+      if (request === collaboratorRead.current) setCollaborators(rows);
     } catch {
-      // Legacy access-code accounts can't manage collaborators — keep the
-      // section in its empty state rather than toasting on open.
+      if (request === collaboratorRead.current) setCollaboratorError(true);
+    } finally {
+      if (request === collaboratorRead.current) setCollaboratorLoading(false);
     }
-  };
+  }, [activeCanvasId]);
 
   useEffect(() => {
+    let current = true;
     // Only owners billed per seat get the seat note; anyone else (a
     // collaborator, a legacy access code) just gets no note.
     Promise.resolve()
       .then(() => seatsApi.get())
-      .then((res) => setSeatStatus(res.data.data))
-      .catch(() => setSeatStatus(null));
+      .then((res) => {
+        if (current) setSeatStatus(res.data.data);
+      })
+      .catch(() => {
+        if (current) setSeatStatus(null);
+      });
+    return () => {
+      current = false;
+    };
   }, []);
 
   useEffect(() => {
+    const shareRequests = shareRead;
+    const collaboratorRequests = collaboratorRead;
+    setReadCanvasId(activeCanvasId);
+    setShares([]);
+    setCollaborators([]);
+    setInviteEmail('');
+    setInviteRole('editor');
+    setConfirmRevokeId(null);
+    setConfirmRemoveUserId(null);
     loadShares();
     loadCollaborators();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loaders are not memoized, activeCanvasId is the true trigger
-  }, [activeCanvasId]);
+    return () => {
+      shareRequests.current++;
+      collaboratorRequests.current++;
+    };
+  }, [activeCanvasId, loadShares, loadCollaborators]);
+
+  const currentScope = Boolean(activeCanvasId && readCanvasId === activeCanvasId);
+  const sharesReady = currentScope && !loading && !shareError;
+  const collaboratorsReady = currentScope && !collaboratorLoading && !collaboratorError;
 
   const handleInvite = async () => {
     const email = inviteEmail.trim();
-    if (!activeCanvasId || !email) return;
+    if (!activeCanvasId || !email || !collaboratorsReady || inviting) return;
     setInviting(true);
     try {
       // A coder may need a paid seat (Team) or, on Pro, the Team plan: the
@@ -116,7 +196,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
   };
 
   const handleRemoveCollaborator = async () => {
-    if (!activeCanvasId || !confirmRemoveUserId) return;
+    if (!activeCanvasId || !confirmRemoveUserId || !collaboratorsReady) return;
     try {
       await canvasApi.removeCollaborator(activeCanvasId, confirmRemoveUserId);
       toast.success('Coder removed');
@@ -129,7 +209,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
   };
 
   const handleGenerate = async () => {
-    if (!activeCanvasId) return;
+    if (!activeCanvasId || !sharesReady || generating) return;
     setGenerating(true);
     try {
       const res = await canvasApi.shareCanvas(activeCanvasId);
@@ -144,7 +224,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
   };
 
   const handleRevoke = async (shareId: string) => {
-    if (!activeCanvasId) return;
+    if (!activeCanvasId || !sharesReady) return;
     try {
       await canvasApi.revokeShare(activeCanvasId, shareId);
       setShares((prev) => prev.filter((s) => s.id !== shareId));
@@ -175,10 +255,10 @@ export default function ShareCanvasModal({ onClose }: Props) {
       aria-label="Share Canvas"
     >
       <div
-        className="modal-content w-full max-w-lg rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800"
+        className="modal-content flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-6 max-h-[80vh] overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6" role="region" aria-label="Sharing options" tabIndex={0}>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Share Canvas</h3>
 
           {/* Invite coders — live collaboration on THIS canvas */}
@@ -188,7 +268,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
               Coders work on this same canvas with you. Their coding is saved under their own name, so you can compare
               coders with Intercoder Agreement.
             </p>
-            <div className="mt-2 flex gap-2">
+            <div className="mt-2 flex flex-wrap gap-2">
               <input
                 type="email"
                 value={inviteEmail}
@@ -198,7 +278,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
                 }}
                 placeholder="colleague@university.edu"
                 aria-label="Coder's email address"
-                className="input h-9 flex-1 text-sm"
+                className="input h-9 min-w-0 flex-1 basis-40 text-sm"
               />
               <select
                 value={inviteRole}
@@ -211,23 +291,23 @@ export default function ShareCanvasModal({ onClose }: Props) {
               </select>
               <button
                 onClick={handleInvite}
-                disabled={inviting || !inviteEmail.trim()}
+                disabled={inviting || !inviteEmail.trim() || !collaboratorsReady}
                 className="btn-primary h-9 px-4 text-sm disabled:opacity-50"
               >
                 {inviting ? 'Inviting...' : 'Invite'}
               </button>
             </div>
-            <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+            <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
               Coders can code alongside you. Viewers can look but not change anything.
             </p>
             {(seatStatus?.mode === 'solo' || seatStatus?.mode === 'trial') && (
-              <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400" data-testid="share-seat-note">
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-300" data-testid="share-seat-note">
                 Pro is a one-person plan: viewers are free and unlimited. To add coders, upgrade to Team; you see the
                 price and confirm it first.
               </p>
             )}
             {seatStatus?.mode === 'billed' && (
-              <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400" data-testid="share-seat-note">
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-300" data-testid="share-seat-note">
                 Each coder uses a paid seat
                 {seatStatus.price?.unitAmount != null
                   ? ` (${formatMoney(seatStatus.price.unitAmount, seatStatus.price.currency)} / ${seatStatus.price.interval === 'year' ? 'year' : 'month'})`
@@ -235,7 +315,32 @@ export default function ShareCanvasModal({ onClose }: Props) {
                 ; you confirm the charge before it happens. Viewers are free.
               </p>
             )}
-            {collaborators.length > 0 && (
+            {collaboratorLoading && (
+              <p role="status" className="mt-2 text-sm">
+                Loading collaborators...
+              </p>
+            )}
+            {collaboratorError && (
+              <div
+                role="alert"
+                aria-label="Collaborators could not be verified"
+                className="mt-2 text-sm text-red-700 dark:text-red-300"
+              >
+                <p>
+                  Could not load collaborators. Check your connection and retry. Your email entry is kept; retry does
+                  not invite anyone.
+                </p>
+                <button type="button" onClick={loadCollaborators} className="btn-secondary mt-2 text-sm">
+                  Retry loading collaborators
+                </button>
+              </div>
+            )}
+            {collaboratorsReady && collaborators.length === 0 && (
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                No collaborators yet. Invite someone with a QualCanvas account, or keep working on your own.
+              </p>
+            )}
+            {currentScope && collaborators.length > 0 && (
               <div className="mt-2 space-y-1.5">
                 {collaborators.map((c) => (
                   <div
@@ -255,10 +360,11 @@ export default function ShareCanvasModal({ onClose }: Props) {
                           {c.role === 'viewer' ? 'Viewer' : 'Coder'}
                         </span>
                       </p>
-                      <p className="truncate text-[11px] text-gray-400">{c.userEmail}</p>
+                      <p className="truncate text-xs text-gray-600 dark:text-gray-300">{c.userEmail}</p>
                     </div>
                     <button
                       onClick={() => setConfirmRemoveUserId(c.userId)}
+                      disabled={!collaboratorsReady}
                       className="shrink-0 rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
                       title="Remove coder"
                       aria-label={`Remove coder ${c.userName}`}
@@ -280,18 +386,41 @@ export default function ShareCanvasModal({ onClose }: Props) {
               — changes don&apos;t sync back.
             </p>
 
-            <button onClick={handleGenerate} disabled={generating} className="btn-primary mt-3 w-full text-sm">
+            <button
+              onClick={handleGenerate}
+              disabled={generating || !sharesReady}
+              className="btn-primary mt-3 w-full text-sm"
+            >
               {generating ? 'Generating...' : 'Generate Share Code'}
             </button>
           </div>
 
           <div className="mt-5">
             <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Active Share Codes</h4>
-            {loading ? (
-              <div className="py-4 text-center text-sm text-gray-400">Loading...</div>
-            ) : shares.length === 0 ? (
-              <div className="py-4 text-center text-sm text-gray-400">No share codes yet</div>
-            ) : (
+            {loading && (
+              <div role="status" className="py-4 text-center text-sm text-gray-600 dark:text-gray-300">
+                Loading...
+              </div>
+            )}
+            {shareError && (
+              <div
+                role="alert"
+                aria-label="Share codes could not be verified"
+                className="mt-2 text-sm text-red-700 dark:text-red-300"
+              >
+                <p>
+                  Could not load share codes. Check your connection and retry. Retry only checks existing codes; it does
+                  not create or revoke one.
+                </p>
+                <button type="button" onClick={loadShares} className="btn-secondary mt-2 text-sm">
+                  Retry loading share codes
+                </button>
+              </div>
+            )}
+            {sharesReady && shares.length === 0 && (
+              <div className="py-4 text-center text-sm text-gray-600 dark:text-gray-300">No share codes yet</div>
+            )}
+            {currentScope && shares.length > 0 && (
               <div className="mt-2 space-y-2">
                 {shares.map((share) => (
                   <div
@@ -307,6 +436,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
                           onClick={() => copyToClipboard(share.shareCode)}
                           className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700"
                           title="Copy to clipboard"
+                          aria-label={`Copy share code ${share.shareCode}`}
                         >
                           <svg
                             className="h-3.5 w-3.5"
@@ -323,7 +453,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
                           </svg>
                         </button>
                       </div>
-                      <div className="mt-1 flex gap-3 text-[10px] text-gray-400">
+                      <div className="mt-1 flex gap-3 text-xs text-gray-600 dark:text-gray-300">
                         <span>
                           {share.cloneCount} clone{share.cloneCount !== 1 ? 's' : ''}
                         </span>
@@ -332,6 +462,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
                     </div>
                     <button
                       onClick={() => setConfirmRevokeId(share.id)}
+                      disabled={!sharesReady}
                       className="shrink-0 rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
                       title="Revoke share code"
                       aria-label="Revoke share code"
@@ -351,7 +482,20 @@ export default function ShareCanvasModal({ onClose }: Props) {
           </div>
         </div>
 
-        <div className="flex justify-end border-t border-gray-200 px-6 py-4 dark:border-gray-700">
+        <div className="shrink-0 px-6 pb-4 text-sm text-gray-600 dark:text-gray-300">
+          <a href="/help/sharing.html" target="_blank" rel="noopener noreferrer" className="underline">
+            Read the sharing guide
+          </a>
+          <p className="mt-2">
+            Want help choosing the right way to share? Email{' '}
+            <a href="mailto:support@qualcanvas.com?subject=Help%20with%20sharing" className="underline">
+              support@qualcanvas.com
+            </a>
+            . We reply within two business days; no call is needed. Please do not send participant data or transcripts.
+          </p>
+        </div>
+
+        <div className="flex shrink-0 justify-end border-t border-gray-200 px-6 py-4 dark:border-gray-700">
           <button onClick={onClose} className="btn-secondary text-sm">
             Close
           </button>

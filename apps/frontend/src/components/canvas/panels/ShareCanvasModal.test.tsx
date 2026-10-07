@@ -39,6 +39,13 @@ vi.mock('../ConfirmDialog', () => ({
 
 import ShareCanvasModal from './ShareCanvasModal';
 
+async function inviteWhenReady() {
+  // Real users cannot submit until the initial collaborator GET is verified.
+  const button = screen.getByRole('button', { name: 'Invite' });
+  await waitFor(() => expect(button).toBeEnabled());
+  fireEvent.click(button);
+}
+
 const sampleShares = [
   {
     id: 'share-1',
@@ -62,8 +69,8 @@ describe('ShareCanvasModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default: return empty shares + collaborators
-    mockCanvasApi.getShares.mockResolvedValue({ data: { data: [] } });
-    mockCanvasApi.getCollaborators.mockResolvedValue({ data: { data: [] } });
+    mockCanvasApi.getShares.mockResolvedValue({ data: { success: true, data: [] } });
+    mockCanvasApi.getCollaborators.mockResolvedValue({ data: { success: true, data: [] } });
   });
 
   it('renders share dialog with title', async () => {
@@ -81,7 +88,7 @@ describe('ShareCanvasModal', () => {
   });
 
   it('displays existing share codes', async () => {
-    mockCanvasApi.getShares.mockResolvedValue({ data: { data: sampleShares } });
+    mockCanvasApi.getShares.mockResolvedValue({ data: { success: true, data: sampleShares } });
 
     render(<ShareCanvasModal onClose={onClose} />);
 
@@ -92,7 +99,7 @@ describe('ShareCanvasModal', () => {
   });
 
   it('copy button copies code to clipboard', async () => {
-    mockCanvasApi.getShares.mockResolvedValue({ data: { data: sampleShares } });
+    mockCanvasApi.getShares.mockResolvedValue({ data: { success: true, data: sampleShares } });
     Object.assign(navigator, {
       clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
     });
@@ -113,7 +120,7 @@ describe('ShareCanvasModal', () => {
   });
 
   it('revoke button triggers confirm dialog and removes share code', async () => {
-    mockCanvasApi.getShares.mockResolvedValue({ data: { data: sampleShares } });
+    mockCanvasApi.getShares.mockResolvedValue({ data: { success: true, data: sampleShares } });
     mockCanvasApi.revokeShare.mockResolvedValue({});
 
     render(<ShareCanvasModal onClose={onClose} />);
@@ -138,7 +145,7 @@ describe('ShareCanvasModal', () => {
   });
 
   it('shows clone count for each code', async () => {
-    mockCanvasApi.getShares.mockResolvedValue({ data: { data: sampleShares } });
+    mockCanvasApi.getShares.mockResolvedValue({ data: { success: true, data: sampleShares } });
 
     render(<ShareCanvasModal onClose={onClose} />);
 
@@ -155,7 +162,7 @@ describe('ShareCanvasModal', () => {
   });
 
   it('empty state when no share codes exist', async () => {
-    mockCanvasApi.getShares.mockResolvedValue({ data: { data: [] } });
+    mockCanvasApi.getShares.mockResolvedValue({ data: { success: true, data: [] } });
 
     render(<ShareCanvasModal onClose={onClose} />);
 
@@ -172,7 +179,7 @@ describe('ShareCanvasModal', () => {
     fireEvent.change(screen.getByLabelText("Coder's email address"), {
       target: { value: 'colleague@uni.edu' },
     });
-    fireEvent.click(screen.getByText('Invite'));
+    await inviteWhenReady();
 
     await waitFor(() => {
       expect(mockCanvasApi.addCollaborator).toHaveBeenCalledWith('canvas-1', {
@@ -204,7 +211,7 @@ describe('ShareCanvasModal', () => {
 
     render(<ShareCanvasModal onClose={onClose} />);
     fireEvent.change(screen.getByLabelText("Coder's email address"), { target: { value: 'colleague@uni.edu' } });
-    fireEvent.click(screen.getByText('Invite'));
+    await inviteWhenReady();
 
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveTextContent('Inviting colleague@uni.edu as a coder adds a seat');
@@ -257,7 +264,7 @@ describe('ShareCanvasModal', () => {
       .mockResolvedValueOnce({ data: { data: { userId: 'u2', role: 'editor' } } });
     render(<ShareCanvasModal onClose={onClose} />);
     fireEvent.change(screen.getByLabelText("Coder's email address"), { target: { value: 'colleague@uni.edu' } });
-    fireEvent.click(screen.getByText('Invite'));
+    await inviteWhenReady();
 
     const dialog = await screen.findByTestId('team-upgrade-dialog');
     expect(dialog).toHaveTextContent('Pro is a one-person plan');
@@ -282,7 +289,7 @@ describe('ShareCanvasModal', () => {
       .mockResolvedValueOnce({ data: { data: { userId: 'u2', role: 'viewer' } } });
     render(<ShareCanvasModal onClose={onClose} />);
     fireEvent.change(screen.getByLabelText("Coder's email address"), { target: { value: 'colleague@uni.edu' } });
-    fireEvent.click(screen.getByText('Invite'));
+    await inviteWhenReady();
     fireEvent.click(await screen.findByRole('button', { name: 'Add as viewer (free)' }));
     await waitFor(() =>
       expect(mockCanvasApi.addCollaborator).toHaveBeenLastCalledWith('canvas-1', {
@@ -297,7 +304,7 @@ describe('ShareCanvasModal', () => {
     mockCanvasApi.addCollaborator.mockRejectedValueOnce(teamRequired(null));
     render(<ShareCanvasModal onClose={onClose} />);
     fireEvent.change(screen.getByLabelText("Coder's email address"), { target: { value: 'colleague@uni.edu' } });
-    fireEvent.click(screen.getByText('Invite'));
+    await inviteWhenReady();
     expect(await screen.findByTestId('team-upgrade-checkout')).toHaveTextContent('Team is $39 per seat a month');
     expect(screen.getByRole('link', { name: 'See the Team plan' })).toHaveAttribute('href', '/pricing');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -329,7 +336,7 @@ describe('ShareCanvasModal', () => {
     });
     render(<ShareCanvasModal onClose={onClose} />);
     fireEvent.change(screen.getByLabelText("Coder's email address"), { target: { value: 'c@uni.edu' } });
-    fireEvent.click(screen.getByText('Invite'));
+    await inviteWhenReady();
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
     expect(mockCanvasApi.addCollaborator).toHaveBeenCalledTimes(1);
@@ -346,7 +353,7 @@ describe('ShareCanvasModal', () => {
       target: { value: 'supervisor@uni.edu' },
     });
     fireEvent.change(screen.getByLabelText('Access level'), { target: { value: 'viewer' } });
-    fireEvent.click(screen.getByText('Invite'));
+    await inviteWhenReady();
 
     await waitFor(() => {
       expect(mockCanvasApi.addCollaborator).toHaveBeenCalledWith('canvas-1', {
@@ -366,7 +373,7 @@ describe('ShareCanvasModal', () => {
     fireEvent.change(screen.getByLabelText("Coder's email address"), {
       target: { value: 'nobody@uni.edu' },
     });
-    fireEvent.click(screen.getByText('Invite'));
+    await inviteWhenReady();
 
     await waitFor(() => {
       expect(mockToast.error).toHaveBeenCalledWith('No QualCanvas account found with that email.');
@@ -376,7 +383,17 @@ describe('ShareCanvasModal', () => {
   it('lists collaborators and removes one after confirmation', async () => {
     mockCanvasApi.getCollaborators.mockResolvedValue({
       data: {
-        data: [{ id: 'c1', userId: 'u2', role: 'editor', userName: 'Jody P', userEmail: 'jody@uni.edu' }],
+        success: true,
+        data: [
+          {
+            id: 'c1',
+            canvasId: 'canvas-1',
+            userId: 'u2',
+            role: 'editor',
+            userName: 'Jody P',
+            userEmail: 'jody@uni.edu',
+          },
+        ],
       },
     });
     mockCanvasApi.removeCollaborator.mockResolvedValue({});
