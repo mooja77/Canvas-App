@@ -20,6 +20,10 @@ export interface CanvasTranscript {
   content: string;
   sortOrder: number;
   caseId?: string | null;
+  eventDate?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  locationName?: string | null;
   sourceType?: string | null;
   sourceId?: string | null;
   createdAt: string;
@@ -352,6 +356,10 @@ export interface UpdateTranscriptInput {
   title?: string;
   content?: string;
   caseId?: string | null;
+  eventDate?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  locationName?: string | null;
 }
 
 export interface CreateQuestionInput {

@@ -18,6 +18,7 @@ import type {
   CanvasComputedNode,
   ComputedNodeType,
   SaveLayoutInput,
+  UpdateTranscriptInput,
 } from '@qualcanvas/shared';
 import { canvasApi, getAllCanvases } from '../services/api';
 import { emitSocketEvent } from '../lib/socket';
@@ -126,7 +127,7 @@ interface CanvasState {
 
   // Canvas item actions
   addTranscript: (title: string, content: string) => Promise<CanvasTranscript>;
-  updateTranscript: (tid: string, data: { title?: string; content?: string; caseId?: string | null }) => Promise<void>;
+  updateTranscript: (tid: string, data: UpdateTranscriptInput) => Promise<void>;
   deleteTranscript: (tid: string) => Promise<void>;
 
   addQuestion: (text: string, color?: string) => Promise<CanvasQuestion>;

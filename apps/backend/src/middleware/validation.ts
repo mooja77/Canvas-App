@@ -177,11 +177,25 @@ export const importFromCanvasSchema = z.object({
   transcriptIds: z.array(z.string().min(1)).min(1, 'At least one transcript ID is required').max(100),
 });
 
-export const updateTranscriptSchema = z.object({
-  title: z.string().min(1).max(200).optional(),
-  content: z.string().min(1).optional(),
-  caseId: z.string().nullable().optional(),
-});
+export const updateTranscriptSchema = z
+  .object({
+    title: z.string().min(1).max(200).optional(),
+    content: z.string().min(1).optional(),
+    caseId: z.string().nullable().optional(),
+    // These columns already exist. Do not silently strip a user's analysis
+    // metadata or invent dates/zero coordinates when a field is absent.
+    eventDate: z.string().datetime({ offset: true }).nullable().optional(),
+    latitude: z.number().finite().min(-90).max(90).nullable().optional(),
+    longitude: z.number().finite().min(-180).max(180).nullable().optional(),
+    locationName: z.string().trim().max(200).nullable().optional(),
+  })
+  .refine(
+    (data) =>
+      (data.latitude === undefined && data.longitude === undefined) ||
+      (data.latitude === null && data.longitude === null) ||
+      (typeof data.latitude === 'number' && typeof data.longitude === 'number'),
+    { message: 'Enter both latitude and longitude, or clear both.', path: ['latitude'] },
+  );
 
 export const createCanvasQuestionSchema = z.object({
   text: z.string().trim().min(1, 'Question text is required').max(1000),

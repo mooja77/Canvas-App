@@ -262,6 +262,43 @@ describe('Transcript integration tests', () => {
   });
 
   // ─── Coding integrity: transcript text cannot move under existing codings ───
+  it('PUT persists validated analysis metadata without rewriting coded text', async () => {
+    const transcriptId = 'transcript-t1';
+    const metadata = { eventDate: '2026-10-07T12:30:00Z', latitude: 51.9, longitude: -8.5, locationName: 'Cork' };
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ id: transcriptId, canvasId, content: 'Original text' });
+    mockPrisma.canvasTranscript.update.mockResolvedValue({ id: transcriptId, canvasId, ...metadata });
+    const res = await request(app)
+      .put(`/api/canvas/${canvasId}/transcripts/${transcriptId}`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send(metadata);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject(metadata);
+    expect(mockPrisma.canvasTranscript.update).toHaveBeenCalledWith({ where: { id: transcriptId }, data: metadata });
+    expect(mockPrisma.canvasTextCoding.count).not.toHaveBeenCalled();
+  });
+
+  it('PUT rejects malformed coordinates before any transcript mutation', async () => {
+    const res = await request(app)
+      .put(`/api/canvas/${canvasId}/transcripts/transcript-t1`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ latitude: 51.9 });
+    expect(res.status).toBe(400);
+    expect(mockPrisma.canvasTranscript.update).not.toHaveBeenCalled();
+  });
+
+  it('PUT cannot change metadata on a transcript belonging to another canvas', async () => {
+    mockPrisma.codingCanvas.findUnique.mockResolvedValue({ ...mockCanvas });
+    mockPrisma.canvasTranscript.findUnique.mockResolvedValue({ canvasId: 'different-canvas' });
+    const res = await request(app)
+      .put(`/api/canvas/${canvasId}/transcripts/transcript-t1`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ latitude: 0, longitude: 0 });
+    expect(res.status).toBe(404);
+    expect(mockPrisma.canvasTranscript.update).not.toHaveBeenCalled();
+  });
+
+  // ─── Coding integrity: transcript text cannot move under existing codings ───
   //
   // Codings are absolute character offsets into the content. Rewriting the text
   // silently repoints every one of them at whatever now occupies those

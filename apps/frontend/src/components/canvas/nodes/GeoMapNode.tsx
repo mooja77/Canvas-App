@@ -83,11 +83,27 @@ function GeoMapNode({ data, id, selected }: NodeProps) {
       color="#10B981"
       selected={selected}
     >
-      <div className="p-3 min-w-[350px]">
+      <div className="p-3">
         {points.length === 0 ? (
-          <p className="text-xs text-gray-400 italic">
-            No transcripts with location data found. Set latitude/longitude on transcripts and run again.
-          </p>
+          <div className="space-y-3 text-xs text-gray-700 dark:text-gray-200">
+            <p>
+              Compare interview or event locations using a coordinate plot, not a street map. Add coordinates you have
+              permission to record, then choose Run above. We do not look up or guess locations.
+            </p>
+            <button
+              className="nodrag nopan min-h-11 rounded border border-gray-400 px-3"
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent('qualcanvas:open-canvas-modal', { detail: { modal: 'transcript-details' } }),
+                )
+              }
+            >
+              Add or check transcript locations
+            </button>
+            <a className="nodrag block underline" href="/help/first-code.html">
+              See a worked transcript example
+            </a>
+          </div>
         ) : (
           <>
             <div className="text-xs text-gray-500 mb-2">
