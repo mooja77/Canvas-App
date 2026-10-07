@@ -120,3 +120,24 @@ The latest separately measured first-value path before this guide-only change
 was 9 pointer actions plus 1 drag, 7 fields, 4.484 seconds from signup and 5.186
 seconds from the website, in the owned automated local stack. It is not a human
 study, Shopify install measurement or new timing of this guide branch.
+
+## Actual CI failure and scoped correction
+
+PR #240 at `b73963a41114e7dab7f264dada38fd73d4c79884` completed CI
+run `37609220931` with ten successful checks and one failed Chromium check.
+Chromium reported 780 passed, 9 skipped, 1 flaky and 1 failed. The failing
+case was the Guide hero/first-section visual comparison against the old Linux
+baseline. The rendered changes match this PR: the new beginner introduction,
+darker Contents label and resulting section spacing. The actual screenshot was
+visually reviewed. Both first-attempt and retry actual PNGs are byte-identical;
+the artifact's expected PNG matches the repository's original baseline.
+
+Only `guide-page-chromium-linux.png` is replaced with that reviewed actual PNG:
+SHA-256 `a544f155e5da7cc6dc1d89b3ef47871159176d0acad9b6c02b03bdf8b2a2bc69`.
+No other platform baseline, threshold, assertion, retry or accessibility rule is
+changed. The original failed artifact is retained under the coordination folder
+`qualcanvas-guide-ci37609220931`. This fixes a genuine observed CI failure, not
+a speculative rerun. The flaky sharing read-recovery contrast case passed on
+retry and remains disclosed; it is not evidence of deterministic accessibility.
+The correction still requires green checks on its exact new head before merge
+and independent live proof after normal deployment.
