@@ -1,8 +1,8 @@
 QualCanvas analysis setup — local release evidence, 7 October 2026
 
-Status: local implementation and checks, not yet pushed/merged/deployed.
-Base: origin/main 08082158e044308f5b9ba1bb8f56cd6fc9fa9fc4.
-Separate ethics PR235 remains outside this branch and must not be reverted.
+Status: PR236 open; original exact-head CI failed, corrective proof in progress.
+Current base: origin/main a4adcaf8dc371d2725f8b7a82c932e741a96bb77, including
+the separately verified live ethics PR235. Original base/evidence below retained.
 Before/after lower-bound rubric: 21/28 -> 21/28. This is not a fresh complete
 14-item certificate; remaining role/provider/native/page/video audit stays open.
 
@@ -59,5 +59,36 @@ Fictional disposable localhost accounts only; normal account DELETE cleanup.
 Paid-plan fixture uses explicitly guarded own PostgreSQL database, not checkout.
 All browser external requests blocked. No production rows/settings/credentials,
 provider actions, real-person messages, lifecycle enabling, GPU or POS changes.
-Release still needs latest-main rebase, exact-head green CI, normal deployment
-and independent live module/API verification. All15 goal remains active.
+Release still needs exact-head green CI, normal deployment and independent live
+module/API verification. All15 goal remains active.
+
+Necessary CI correction, 7 October 2026
+Original head 7f9de072c43dbd8bee8f4f6c229fe990ac13689f: CI37591190325
+Chromium770PASS9SKIP3FAIL. All three new cases failed before any UI/database
+write: the inline guard refused the repository's approved ephemeral PostgreSQL
+service (localhost55432/qualcanvas_e2e, role qualcanvas). All other checks passed.
+Failure log and artifact11470235274 retained in owned test-results.
+Extracted guard baseline16PASS5FAIL; corrected21PASS. Allow only two exact owned
+local targets or this exact repository's disposable workflow target, with exact
+CI/E2E/GitHub flags, loopback host, port, database, role and schema. Remote hosts,
+production names, other owners, wrong roles and connection overrides rejected.
+No blanket CI exception or relaxed UI/accessibility/save assertions.
+Rebased full frontend1108PASS124files164.33s; activation+guard30PASS;
+production build/shared/backend/frontend types PASS, 2285 frontend modules.
+First corrective browser attempt stopped at template seed: Windows database port
+was temporarily unreachable although pg_isready inside Docker accepted. Failure
+retained; read-only pg connection subsequently confirmed owned database and role.
+A direct E2E ESLint invocation failed ignored-file warning; repository config
+does not lint E2E. The actual npm run lint gate passed; no config suppression.
+Corrected six Chrome/WebKit x1280/820/390 browser cases PASS, 1.7m, zero retries.
+Artifacts: test-results/analysis-ci-fixture-corrected-port-ready-20261007.
+Actual PostgreSQL persistence/computed results/reload and one-PUT-only recovery
+proved; keyboard/scoped Axe/no-overflow/page-errors and account DELETE200 pass.
+Read-only owned database check confirms zero analysis-setup fixture accounts.
+Root typecheck/lint/build budget/full formatting/diff checks PASS.
+Frozen tested build: _coordination/qualcanvas-analysis-tested-dist-20261007/dist.
+Rebased full saved onboarding journey PASS, 1 test, 16.3s runner/13.9s test.
+Artifacts: test-results/analysis-corrected-full-onboarding-20261007.
+Measured after: 9 pointer clicks plus 1 selection drag, 7 fields, 4.488s
+signup-to-first-coded-excerpt / 5.259s homepage-to-first-coded-excerpt.
+Same interaction count as earlier baseline; no causal human speed gain claimed.

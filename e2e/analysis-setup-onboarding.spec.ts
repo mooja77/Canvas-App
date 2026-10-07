@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { randomBytes } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
+import { ownedAnalysisDatabase } from '../scripts/analysis-fixture-database.mjs';
 
 test.use({ storageState: { cookies: [], origins: [] }, serviceWorkers: 'block' });
 test.describe.configure({ timeout: 120_000 });
@@ -14,15 +15,7 @@ for (const width of [1280, 820, 390]) {
   }) => {
     if (!baseURL || !['localhost', '127.0.0.1'].includes(new URL(baseURL).hostname))
       throw new Error('Fictional proof is local only');
-    const databaseUrl = process.env.DATABASE_URL;
-    if (!databaseUrl) throw new Error('Explicit owned local database required');
-    const address = new URL(databaseUrl);
-    if (
-      address.hostname !== '127.0.0.1' ||
-      address.port !== '4759' ||
-      !/^\/qc_(activation|team)_/.test(address.pathname)
-    )
-      throw new Error('Refusing any non-owned database');
+    const databaseUrl = ownedAnalysisDatabase();
     const db = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
