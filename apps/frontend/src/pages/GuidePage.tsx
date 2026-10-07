@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { PUBLISHED_PRICES_USD } from '@qualcanvas/shared';
@@ -10,13 +10,37 @@ interface GuideSection {
   content: React.ReactNode;
 }
 
+// Intrinsic sizes reserve space before lazy loading. Narrow navigator/mobile
+// screenshots must not be stretched into tall, blurry full-column pictures.
+const GUIDE_IMAGE_DIMENSIONS: Record<string, readonly [number, number]> = {
+  '/guide/01-login.png': [1280, 800],
+  '/guide/03-new-canvas-templates.png': [1440, 900],
+  '/guide/05-toolbar.png': [1040, 86],
+  '/guide/06-add-transcript.png': [1280, 800],
+  '/guide/07-transcript-node.png': [1280, 800],
+  '/guide/08-canvas-workspace.png': [1440, 900],
+  '/guide/12-navigator.png': [224, 754],
+  '/guide/13-ai-dropdown.png': [1440, 900],
+  '/guide/15-analyze-menu.png': [1440, 900],
+  '/guide/18-export-dropdown.png': [1440, 900],
+  '/guide/19-share-modal.png': [1440, 900],
+  '/guide/20-pricing-current-20261007.png': [1104, 610],
+  '/guide/23-command-palette.png': [1440, 900],
+  '/guide/24-mobile-canvas.png': [375, 812],
+  '/guide/25-dark-mode.png': [1280, 800],
+};
+
 function Screenshot({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
+  const dimensions = GUIDE_IMAGE_DIMENSIONS[src];
   return (
     <figure className="my-6">
       <img
         src={src}
         alt={alt}
-        className="w-full rounded-xl border border-gray-200 shadow-lg dark:border-gray-700"
+        width={dimensions?.[0]}
+        height={dimensions?.[1]}
+        style={dimensions ? { width: dimensions[0], aspectRatio: `${dimensions[0]} / ${dimensions[1]}` } : undefined}
+        className="mx-auto h-auto w-auto max-w-full rounded-xl border border-gray-200 shadow-lg dark:border-gray-700"
         loading="lazy"
       />
       {caption && (
@@ -81,8 +105,10 @@ const SECTIONS: GuideSection[] = [
         <Steps
           steps={[
             'Visit qualcanvas.com and click "Start Free" or "Sign In".',
-            'Sign in with Google for the fastest setup, or create an email account.',
-            "You'll land on the Canvas List page where you can create your first workspace.",
+            'Choose Google or create an email account with your name, email and password. No card is needed for the Free plan.',
+            'Answer the two optional starting questions, or skip them. Choose a template or a blank canvas.',
+            'Use Transcript → Paste Text to add a short fictional practice paragraph. Give it a title, then save it.',
+            'Highlight one sentence, type a short code name and press Enter. Your saved coded excerpt is your first result.',
           ]}
         />
         <Screenshot
@@ -91,13 +117,19 @@ const SECTIONS: GuideSection[] = [
           caption="Choose a methodology template or start with a blank canvas"
         />
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          Choose from six methodology templates (Thematic Analysis, Grounded Theory, IPA, Framework Analysis, Content
-          Analysis) or start with a blank canvas. Each template comes with pre-configured starter codes.
+          A template gives you starter codes to adapt; it does not decide your findings. Start with a blank canvas if
+          you prefer to build your own structure.
         </p>
         <ProTip>
-          The Thematic Analysis template is perfect for beginners — it sets up codes based on Braun & Clarke's
-          framework.
+          The Get started guide tracks five steps automatically as you save your own work. You can dismiss it and bring
+          it back from Help. Sample material is labelled and can be removed without deleting your own work.
         </ProTip>
+        <a
+          className="inline-block text-sm font-semibold text-brand-700 underline dark:text-brand-300"
+          href="/help/first-code.html"
+        >
+          Watch the 89-second captioned coding lesson, or follow its written example
+        </a>
       </>
     ),
   },
@@ -231,8 +263,8 @@ const SECTIONS: GuideSection[] = [
           caption="A transcript node on the canvas — select text to start coding"
         />
         <ProTip>
-          The more you code, the richer your visual network becomes. Codes with many connections indicate strong themes
-          in your data.
+          A frequently used code is not automatically an important finding. Read its passages in context and keep a memo
+          explaining your interpretation.
         </ProTip>
       </>
     ),
@@ -277,10 +309,10 @@ const SECTIONS: GuideSection[] = [
         <Screenshot
           src="/guide/15-analyze-menu.png"
           alt="Analysis tools menu"
-          caption="12 analysis types organized by category: Text, Coding, and Frameworks"
+          caption="The Analyze menu groups tools by research task"
         />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-2">Available Analysis Types</h3>
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mt-4 mb-1">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300 mt-4 mb-1">
           Text Analysis
         </p>
         <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
@@ -294,7 +326,7 @@ const SECTIONS: GuideSection[] = [
             <strong>Sentiment:</strong> Positive/negative/neutral analysis of coded text.
           </li>
         </ul>
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mt-4 mb-1">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300 mt-4 mb-1">
           Coding Analysis
         </p>
         <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
@@ -311,7 +343,7 @@ const SECTIONS: GuideSection[] = [
             <strong>Clustering:</strong> Group similar coded segments together.
           </li>
         </ul>
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mt-4 mb-1">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300 mt-4 mb-1">
           Frameworks & Comparison
         </p>
         <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
@@ -326,8 +358,9 @@ const SECTIONS: GuideSection[] = [
           </li>
         </ul>
         <ProTip>
-          Analysis nodes update live as you add more codings. Keep a word cloud on your canvas to see patterns emerge in
-          real time.
+          Choose a tool, check its settings, then press Run computation. Run computation again after changing your
+          transcripts or codes; a saved result does not refresh automatically. Frequency counts are coded excerpts, not
+          numbers of people or proof of importance.
         </ProTip>
       </>
     ),
@@ -453,6 +486,9 @@ const SECTIONS: GuideSection[] = [
             <strong>HTML/Markdown Report:</strong> Generate a formatted analysis report with excerpts and statistics.
           </li>
           <li>
+            <strong>Word Report:</strong> In Export → Report, choose Word to download an editable .docx report.
+          </li>
+          <li>
             <strong>QDPX:</strong> Export for NVivo and ATLAS.ti interoperability (open standard).
           </li>
           <li>
@@ -476,8 +512,8 @@ const SECTIONS: GuideSection[] = [
     content: (
       <>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          Team plan users can collaborate in real time on the same canvas. See who's online, where they're working, and
-          what they're coding — all live.
+          Invite a viewer or coder to work on the original canvas. Review the role and any seat price before confirming.
+          Share codes make independent copies instead; editing a copy does not update the original.
         </p>
         <Screenshot
           src="/guide/19-share-modal.png"
@@ -493,13 +529,14 @@ const SECTIONS: GuideSection[] = [
             <strong>Live Cursors:</strong> Watch other researchers' cursors move in real time.
           </li>
           <li>
-            <strong>Real-time Sync:</strong> All changes sync instantly via WebSocket.
+            <strong>Shared changes:</strong> Updates use a live connection. Check the saved/connection status before
+            closing; a lost connection is not proof that everyone received a change.
           </li>
           <li>
             <strong>Intercoder Reliability:</strong> Run Cohen's Kappa with one click (Team plan).
           </li>
           <li>
-            <strong>Share Codes:</strong> Generate share codes so collaborators can access your canvas.
+            <strong>Share Codes:</strong> Give someone a starting copy, not permission to edit your original canvas.
           </li>
         </ul>
         <ProTip>
@@ -521,11 +558,10 @@ const SECTIONS: GuideSection[] = [
           <li>
             <strong>Transcribe audio:</strong> upload an MP3, WAV, M4A, MP4, OGG, WEBM or FLAC recording (up to 25 MB)
             and add the timestamped result to the canvas as a transcript. Transcription uses OpenAI Whisper on your own
-            OpenAI account, and OpenAI bills you directly ($0.006 a minute on OpenAI&apos;s published price). No plan
-            includes transcription minutes. The first time you try, a short guide walks you through creating and
-            connecting your key. Uploading needs a Student, Pro or Team plan. On a shared canvas, collaborators use
-            their own key, or the owner&apos;s if the owner has switched on &ldquo;Let collaborators transcribe with my
-            key&rdquo; under Account → AI.
+            OpenAI account, and OpenAI bills you directly at its current provider price. No plan includes transcription
+            minutes. The first time you try, a short guide walks you through creating and connecting your key. Uploading
+            needs a Student, Pro or Team plan. On a shared canvas, collaborators use their own key, or the owner&apos;s
+            if the owner has switched on &ldquo;Let collaborators transcribe with my key&rdquo; under Account → AI.
           </li>
           <li>
             <strong>Coder training:</strong> the canvas owner writes an exercise by coding a transcript as an answer
@@ -592,16 +628,23 @@ const SECTIONS: GuideSection[] = [
     content: (
       <>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          QualCanvas offers four plans: Free, Student (${PUBLISHED_PRICES_USD.student.monthly}/mo), Pro ($
+          QualCanvas offers four self-service plans: Free, Student (${PUBLISHED_PRICES_USD.student.monthly}/mo), Pro ($
           {PUBLISHED_PRICES_USD.pro.monthly}/mo, one person), and Team (${PUBLISHED_PRICES_USD.team.monthly}/mo per
           seat). Pro is for one researcher: you code, and viewers are free. Team has a seat for you and one for each
           coder; viewers are free there too. Upgrade anytime from the Pricing page or Account settings, and manage seats
           under Account → Seats.
         </p>
+        <p className="mt-3 text-gray-600 dark:text-gray-300 leading-relaxed">
+          Institutions have a separate option with custom pricing. Check the{' '}
+          <Link to="/pricing" className="text-brand-700 underline dark:text-brand-300">
+            current pricing page
+          </Link>{' '}
+          for the full limits and annual total before choosing a paid plan.
+        </p>
         <Screenshot
-          src="/guide/20-pricing.png"
-          alt="Pricing plans"
-          caption="Free, Student, Pro, and Team plans with feature comparison"
+          src="/guide/20-pricing-current-20261007.png"
+          alt="Current monthly pricing plans"
+          caption="Monthly Free, Student, Pro and Team prices, plus the custom Institutions option"
         />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-2">Plan Comparison</h3>
         <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
@@ -623,8 +666,9 @@ const SECTIONS: GuideSection[] = [
           </li>
         </ul>
         <ProTip>
-          Students get the dedicated Student plan at $5/mo with a verified academic email; faculty and staff get 40% off
-          Pro and Team automatically at checkout. Annual billing saves ~20%.
+          Students get the dedicated Student plan at ${PUBLISHED_PRICES_USD.student.monthly}/mo with a verified academic
+          email; faculty and staff get 40% off Pro and Team automatically at checkout. Annual savings vary by plan;
+          compare the total yearly charge on the pricing page, not just the monthly equivalent.
         </ProTip>
       </>
     ),
@@ -636,8 +680,8 @@ const SECTIONS: GuideSection[] = [
     content: (
       <>
         <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-          QualCanvas works on any device — desktop, tablet, or phone. The interface adapts to your screen size, and dark
-          mode is supported throughout.
+          Use a desktop, tablet or phone browser. On small screens, menus and the code navigator collapse to leave more
+          room for your transcript. You can reopen the navigator when you need it.
         </p>
         <Screenshot
           src="/guide/25-dark-mode.png"
@@ -662,15 +706,17 @@ const SECTIONS: GuideSection[] = [
             <strong>Touch Gestures:</strong> Pinch to zoom, swipe to pan on touch devices.
           </li>
           <li>
-            <strong>Keyboard Navigation:</strong> Full keyboard accessibility with skip links and focus management.
+            <strong>Keyboard Navigation:</strong> Use Tab to move between controls and Enter to activate a focused
+            button. If you cannot reach a control, email support with the page and browser you use.
           </li>
           <li>
-            <strong>Offline Mode:</strong> Canvas data is cached locally for offline access.
+            <strong>Offline Mode:</strong> A previously loaded canvas may be available from this browser&apos;s cache.
+            Offline changes are not saved; reconnect and check the saved status before closing your work.
           </li>
         </ul>
         <ProTip>
-          Install QualCanvas as a PWA (Progressive Web App) for a native app experience — look for the install prompt in
-          your browser.
+          If your browser offers Install, you can add a shortcut that opens QualCanvas in its own window. It remains the
+          web app and still needs a connection to save changes.
         </ProTip>
       </>
     ),
@@ -680,6 +726,7 @@ const SECTIONS: GuideSection[] = [
 export default function GuidePage() {
   const [activeSection, setActiveSection] = useState('getting-started');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const contentsButton = useRef<HTMLButtonElement>(null);
   usePageMeta(
     'Guide — QualCanvas',
     'Complete guide to QualCanvas: transcripts, coding, analysis tools, AI features, collaboration, and more.',
@@ -706,16 +753,39 @@ export default function GuidePage() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setSidebarOpen(false);
+      contentsButton.current?.focus();
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [sidebarOpen]);
+
   const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById(id)?.scrollIntoView({
+      // A long guide with lazy images needs a stable destination, not an
+      // animation whose target moves as images enter the loading threshold.
+      behavior: 'instant',
+      block: 'start',
+    });
+    document.getElementById(`guide-heading-${id}`)?.focus({ preventScroll: true });
     setSidebarOpen(false);
   };
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
+      <a
+        href="#guide-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded focus:bg-white focus:p-3 focus:text-gray-900"
+      >
+        Skip to guide
+      </a>
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-4">
             <Link
               to="/"
@@ -737,6 +807,11 @@ export default function GuidePage() {
             </Link>
             {/* Mobile sidebar toggle */}
             <button
+              ref={contentsButton}
+              type="button"
+              aria-label="Guide contents"
+              aria-expanded={sidebarOpen}
+              aria-controls="guide-contents"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="lg:hidden rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
@@ -751,9 +826,11 @@ export default function GuidePage() {
       <div className="mx-auto max-w-7xl flex">
         {/* Sidebar Navigation */}
         <nav
-          className={`${sidebarOpen ? 'block' : 'hidden'} lg:block fixed lg:sticky top-14 z-30 w-64 shrink-0 overflow-y-auto border-r border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 h-[calc(100vh-3.5rem)]`}
+          id="guide-contents"
+          aria-label="Guide contents"
+          className={`${sidebarOpen ? 'block' : 'hidden'} lg:block fixed lg:sticky top-[6.5rem] sm:top-14 z-30 w-64 shrink-0 overflow-y-auto border-r border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 h-[calc(100vh-6.5rem)] sm:h-[calc(100vh-3.5rem)]`}
         >
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
             Contents
           </p>
           <ul className="space-y-0.5">
@@ -768,10 +845,11 @@ export default function GuidePage() {
                   }`}
                 >
                   <span
+                    aria-hidden="true"
                     className={`flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold ${
                       activeSection === s.id
-                        ? 'bg-brand-500 text-white'
-                        : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                        ? 'bg-brand-700 text-white'
+                        : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
                     }`}
                   >
                     {s.icon}
@@ -789,25 +867,52 @@ export default function GuidePage() {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 px-6 py-10 lg:px-12 max-w-4xl">
+        <main id="guide-main" tabIndex={-1} className="min-w-0 flex-1 px-6 py-10 lg:px-12 max-w-4xl">
           {/* Hero */}
           <div className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">Complete Guide to QualCanvas</h2>
             <p className="text-lg text-gray-500 dark:text-gray-400 leading-relaxed max-w-2xl">
-              Learn how to use every feature of QualCanvas — from importing your first transcript to publishing your
-              analysis. This guide covers the complete qualitative research workflow.
+              Start with one short practice paragraph. Then use the sections below when you need them; you do not have
+              to learn every tool before you begin.
             </p>
           </div>
 
           {/* Sections */}
           {SECTIONS.map((section) => (
-            <section key={section.id} id={section.id} className="mb-16 scroll-mt-20">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+            <section key={section.id} id={section.id} className="mb-16 scroll-mt-32 sm:scroll-mt-20">
+              <h2
+                id={`guide-heading-${section.id}`}
+                tabIndex={-1}
+                className="text-2xl font-bold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700 focus:outline-brand-500"
+              >
                 {section.title}
               </h2>
               {section.content}
             </section>
           ))}
+
+          <section
+            aria-labelledby="guide-support-heading"
+            className="rounded-xl border border-brand-200 bg-brand-50 p-6 dark:border-brand-800 dark:bg-brand-900/20"
+          >
+            <h2 id="guide-support-heading" className="text-xl font-semibold text-gray-900 dark:text-white">
+              Need a hand?
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
+              We can help with setup, import formats, a workflow that fits your research, or a feature request. Email
+              us; we reply within two business days, in writing. No call is needed.
+            </p>
+            <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
+              Please do not email participant data or transcripts. Describe the task and file format, or use a small
+              fictional example. We will suggest a safe way to use the authenticated in-app import.
+            </p>
+            <a
+              href="mailto:support@qualcanvas.com?subject=QualCanvas%20setup%20help"
+              className="mt-3 inline-block text-sm font-semibold text-brand-700 underline dark:text-brand-300"
+            >
+              Email us for setup help
+            </a>
+          </section>
 
           {/* CTA */}
           <div className="mt-16 mb-8 rounded-2xl bg-gradient-to-br from-brand-50 to-blue-50 dark:from-brand-900/20 dark:to-blue-900/20 p-8 text-center border border-brand-200 dark:border-brand-800">
