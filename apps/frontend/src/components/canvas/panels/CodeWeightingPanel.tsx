@@ -44,7 +44,7 @@ function StarRating({
           onClick={() => onChange(star === value ? 0 : star)}
           onMouseEnter={() => setHover(star)}
           onMouseLeave={() => setHover(0)}
-          className="p-0 transition-colors"
+          className="inline-flex min-h-8 min-w-8 items-center justify-center transition-colors"
           aria-label={star === value ? 'Clear rating' : `Rate ${star} star${star === 1 ? '' : 's'}`}
           aria-pressed={value >= star}
           title={star === value ? 'Clear rating' : `Rate ${star}/5`}
@@ -206,7 +206,7 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
             <h3 id="code-weighting-title" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               Code Weighting
             </h3>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400">
+            <p className="text-[10px] text-gray-600 dark:text-gray-300">
               Rate importance/intensity of coded segments (1-5 stars)
             </p>
           </div>
@@ -222,7 +222,7 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
         </div>
 
         {/* Stats bar */}
-        <div className="border-b border-gray-100 dark:border-gray-700/50 px-5 py-2 flex items-center gap-4 text-[10px] text-gray-500 dark:text-gray-400">
+        <div className="border-b border-gray-100 dark:border-gray-700/50 px-5 py-2 flex items-center gap-4 text-[10px] text-gray-600 dark:text-gray-300">
           <span>
             {stats.totalCodings} coding{stats.totalCodings !== 1 ? 's' : ''}
           </span>
@@ -231,6 +231,7 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
           <div className="flex-1" />
           <div className="flex items-center gap-2">
             <select
+              aria-label="Filter by code"
               value={filterCode}
               onChange={(e) => setFilterCode(e.target.value)}
               className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
@@ -243,6 +244,7 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
               ))}
             </select>
             <select
+              aria-label="Sort codings"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'source' | 'code' | 'weight')}
               className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
@@ -282,8 +284,56 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
         {/* Codings list */}
         <div className="flex-1 overflow-y-auto px-5 py-2">
           {displayCodings.length === 0 ? (
-            <div className="py-12 text-center text-xs text-gray-400 dark:text-gray-500">
-              No codings found{filterCode ? ' for this code' : ''}
+            <div className="py-8 text-center text-sm text-gray-700 dark:text-gray-300">
+              {codings.length > 0 ? (
+                <>
+                  <p className="font-medium">No coded passages match this filter</p>
+                  <p className="mt-2">
+                    Your saved codings have not been removed. Choose another code or show them all.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setFilterCode('')}
+                    className="mt-3 min-h-[44px] rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
+                  >
+                    Show all codings
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="font-medium">No coded passages to rate yet</p>
+                  <p className="mt-2">
+                    Stars help you compare how important a passage is in your research. First highlight some transcript
+                    text and give it a code, then return here to rate it.
+                  </p>
+                  <button
+                    type="button"
+                    className="mt-3 min-h-[44px] rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
+                    onClick={() => {
+                      onClose();
+                      if (transcripts.length > 0) {
+                        window.dispatchEvent(
+                          new CustomEvent('qualcanvas:focus-node', {
+                            detail: { nodeId: `transcript-${transcripts[0].id}` },
+                          }),
+                        );
+                      } else {
+                        window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker'));
+                      }
+                    }}
+                  >
+                    {transcripts.length > 0 ? 'Open a transcript to code' : 'Paste or import a transcript'}
+                  </button>
+                  <a
+                    href="/help/first-code.html"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 flex min-h-[44px] items-center justify-center text-brand-700 underline dark:text-brand-300"
+                  >
+                    See a coded-passage example
+                  </a>
+                </>
+              )}
             </div>
           ) : (
             <div className="space-y-1">
@@ -301,7 +351,7 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
                       <span className="text-[10px] font-medium text-gray-600 dark:text-gray-400">
                         {c.question?.text ?? 'Unknown'}
                       </span>
-                      <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                      <span className="text-[10px] text-gray-600 dark:text-gray-300">
                         in {c.transcript?.title ?? 'Unknown'}
                       </span>
                     </div>
@@ -318,7 +368,7 @@ export default function CodeWeightingPanel({ onClose }: CodeWeightingPanelProps)
 
         {/* Footer */}
         <div className="border-t border-gray-100 dark:border-gray-700/50 px-5 py-2 flex items-center justify-between">
-          <p className="text-[10px] text-gray-400 dark:text-gray-500">
+          <p className="text-[10px] text-gray-600 dark:text-gray-300">
             Click stars to rate importance. Click again to clear.
           </p>
           <button
