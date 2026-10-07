@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { teamApi } from '../services/api';
@@ -56,6 +56,16 @@ function hasTeamDetails(value: unknown): value is Team {
   );
 }
 
+function assertActionAcknowledged(response: unknown) {
+  if (
+    !response ||
+    typeof response !== 'object' ||
+    (response as { data?: { success?: unknown } }).data?.success !== true
+  ) {
+    throw new Error('Team action was not acknowledged');
+  }
+}
+
 export default function TeamPage() {
   usePageMeta('Team — QualCanvas', 'Manage your QualCanvas team members, invitations, and collaborative workspace.');
   const [teams, setTeams] = useState<TeamSummary[]>([]);
@@ -69,9 +79,17 @@ export default function TeamPage() {
   const { withSeat, seatDialog } = useSeatCharge();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const { plan } = useAuthStore();
+  const [removing, setRemoving] = useState(false);
+  const [actionNotice, setActionNotice] = useState('');
+  const { plan, userId } = useAuthStore();
+  const actionLock = useRef(false);
+  const mounted = useRef(true);
+  const readVersion = useRef(0);
+  const busy = creating || inviting || deleting || removing;
 
   const loadTeams = useCallback(async () => {
+    const version = ++readVersion.current;
+    const current = () => mounted.current && readVersion.current === version;
     setLoading(true);
     try {
       const res = await teamApi.list();
@@ -86,42 +104,59 @@ export default function TeamPage() {
         loadedTeam = detail;
       }
       // Publish only a fully validated read, not a partial or invented empty team.
+      if (!current()) return;
       setTeams(teamList);
       setActiveTeam(loadedTeam);
       setLoadError(false);
+      setActionNotice('');
     } catch {
       // An unavailable list is not evidence that this account has no team.
-      setLoadError(true);
+      if (current()) setLoadError(true);
     } finally {
-      setLoading(false);
+      if (current()) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadTeams();
+    mounted.current = true;
+    void loadTeams();
+    return () => {
+      mounted.current = false;
+    };
   }, [loadTeams]);
 
   const handleCreateTeam = async () => {
-    if (!teamName.trim()) return;
+    if (!teamName.trim() || actionLock.current) return;
+    actionLock.current = true;
     setCreating(true);
     try {
-      await teamApi.create(teamName.trim());
+      const created = await teamApi.create(teamName.trim());
+      assertActionAcknowledged(created);
+      if (!mounted.current) return;
       toast.success('Team created');
+      setActionNotice('Your team was created. Retry below only reloads its details; it will not create another team.');
       setTeamName('');
       // The create response has membership IDs, not the full member/user view.
       // Reload the authoritative read model before rendering it.
       await loadTeams();
     } catch (err: unknown) {
+      if (!mounted.current) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      toast.error((err as any)?.response?.data?.error || 'Failed to create team');
+      toast.error((err as any)?.response?.data?.error || 'We could not confirm creation. Reload your saved teams.');
+      setActionNotice(
+        'We could not confirm creation. Reload your saved teams below before trying to create this team again.',
+      );
+      setLoadError(true);
     } finally {
-      setCreating(false);
+      actionLock.current = false;
+      if (mounted.current) setCreating(false);
     }
   };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeTeam || !inviteEmail.trim()) return;
+    if (!activeTeam || !inviteEmail.trim() || actionLock.current) return;
+    actionLock.current = true;
     setInviting(true);
     try {
       // Team is billed per seat: a new member may need a confirmed seat charge.
@@ -134,48 +169,85 @@ export default function TeamPage() {
           confirmLabel: 'Add seat and member',
         },
       );
-      if (added === null) return;
-      toast.success(`Invitation sent to ${inviteEmail.trim()}`);
+      if (added === null || !mounted.current) return;
+      assertActionAcknowledged(added);
+      // The API acknowledges membership, not delivery of its best-effort email.
+      toast.success(`Member added: ${email}`);
+      setActionNotice(
+        'The member was added. Retry below only reloads your team; it will not add or charge for another seat.',
+      );
       setInviteEmail('');
-      // Reload team details
-      const res = await teamApi.get(activeTeam.id);
-      setActiveTeam(res.data.data);
+      await loadTeams();
     } catch (err: unknown) {
+      if (!mounted.current) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      toast.error((err as any)?.response?.data?.error || 'Failed to invite member');
+      toast.error((err as any)?.response?.data?.error || 'We could not confirm the addition. Reload your saved team.');
+      if (mounted.current) {
+        setActionNotice(
+          'We could not confirm the addition. Reload your saved team below before trying to add this person again.',
+        );
+        setLoadError(true);
+      }
     } finally {
-      setInviting(false);
+      actionLock.current = false;
+      if (mounted.current) setInviting(false);
     }
   };
 
   const handleRemoveMember = async (userId: string, userName: string) => {
-    if (!activeTeam) return;
+    if (!activeTeam || actionLock.current) return;
     if (!confirm(`Remove ${userName} from the team?`)) return;
+    actionLock.current = true;
+    setRemoving(true);
     try {
-      await teamApi.removeMember(activeTeam.id, userId);
+      const removed = await teamApi.removeMember(activeTeam.id, userId);
+      assertActionAcknowledged(removed);
+      if (!mounted.current) return;
       toast.success(`${userName} removed from team`);
-      const res = await teamApi.get(activeTeam.id);
-      setActiveTeam(res.data.data);
+      setActionNotice(
+        'The member was removed. Retry below only reloads your saved team; it will not repeat the removal.',
+      );
+      await loadTeams();
     } catch (err: unknown) {
+      if (!mounted.current) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      toast.error((err as any)?.response?.data?.error || 'Failed to remove member');
+      toast.error((err as any)?.response?.data?.error || 'We could not confirm the removal. Reload your saved team.');
+      if (mounted.current) {
+        setActionNotice('We could not confirm the removal. Reload your saved team below before trying again.');
+        setLoadError(true);
+      }
+    } finally {
+      actionLock.current = false;
+      if (mounted.current) setRemoving(false);
     }
   };
 
   const handleDeleteTeam = async () => {
-    if (!activeTeam) return;
+    if (!activeTeam || actionLock.current) return;
+    actionLock.current = true;
     setDeleting(true);
     try {
-      await teamApi.deleteTeam(activeTeam.id);
+      const deleted = await teamApi.deleteTeam(activeTeam.id);
+      assertActionAcknowledged(deleted);
+      if (!mounted.current) return;
       toast.success('Team deleted');
-      setActiveTeam(null);
-      setTeams([]);
+      setActionNotice(
+        'The team was deleted. Retry below only reloads your remaining teams; it will not delete another team.',
+      );
       setShowDeleteConfirm(false);
+      await loadTeams();
     } catch (err: unknown) {
+      if (!mounted.current) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      toast.error((err as any)?.response?.data?.error || 'Failed to delete team');
+      toast.error((err as any)?.response?.data?.error || 'We could not confirm the deletion. Reload your saved teams.');
+      if (mounted.current) {
+        setActionNotice('We could not confirm the deletion. Reload your saved teams below before trying again.');
+        setLoadError(true);
+        setShowDeleteConfirm(false);
+      }
     } finally {
-      setDeleting(false);
+      actionLock.current = false;
+      if (mounted.current) setDeleting(false);
     }
   };
 
@@ -197,6 +269,7 @@ export default function TeamPage() {
           className="mx-auto max-w-lg rounded-xl bg-white p-6 ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700"
         >
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white">We couldn't load your team</h1>
+          {actionNotice && <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">{actionNotice}</p>}
           <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
             We couldn't read your saved team details. Check your connection and try again. If this keeps happening,
             email{' '}
@@ -218,10 +291,8 @@ export default function TeamPage() {
   }
 
   // Find the current user's role in the active team
-  const myMembership = activeTeam?.members?.find(
-    (m: TeamMember) => m.userId === activeTeam.ownerId && activeTeam.owner,
-  );
-  const myRole = teams[0]?.myRole || myMembership?.role || 'member';
+  const myMembership = activeTeam?.members.find((member) => member.userId === userId);
+  const myRole = teams.find((team) => team.id === activeTeam?.id)?.myRole || myMembership?.role || 'member';
   const canManage = ['owner', 'admin'].includes(myRole);
 
   const roleBadge = (role: string) => {
@@ -248,6 +319,11 @@ export default function TeamPage() {
             Back to canvas
           </Link>
         </div>
+        {busy && (
+          <p role="status" className="mb-4 text-sm text-gray-700 dark:text-gray-300">
+            Saving team changes. Please wait before making another change.
+          </p>
+        )}
 
         {!activeTeam ? (
           /* No team — guided 3-step setup */
@@ -312,12 +388,13 @@ export default function TeamPage() {
                           type="text"
                           placeholder="e.g. Health Comms Lab"
                           value={teamName}
+                          disabled={busy}
                           onChange={(e) => setTeamName(e.target.value)}
-                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                          className="min-w-0 flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                         />
                         <button
                           onClick={handleCreateTeam}
-                          disabled={creating || !teamName.trim()}
+                          disabled={busy || !teamName.trim()}
                           className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors text-sm disabled:opacity-50"
                         >
                           {creating ? 'Creating...' : 'Create Team'}
@@ -332,7 +409,7 @@ export default function TeamPage() {
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Invite members by email</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        Registered users are added immediately and receive an email notice.
+                        Add colleagues who already have an account. They can then sign in and find the team here.
                       </p>
                     </div>
                   </li>
@@ -411,7 +488,9 @@ export default function TeamPage() {
                       {canManage && member.role !== 'owner' && (
                         <button
                           onClick={() => handleRemoveMember(member.userId, member.user.name)}
-                          className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          disabled={busy}
+                          aria-label={`Remove ${member.user.name} from team`}
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
                           title="Remove member"
                         >
                           <svg
@@ -449,13 +528,14 @@ export default function TeamPage() {
                     type="email"
                     placeholder="Email address"
                     value={inviteEmail}
+                    disabled={busy}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     required
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                    className="min-w-0 flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                   />
                   <button
                     type="submit"
-                    disabled={inviting || !inviteEmail.trim()}
+                    disabled={busy || !inviteEmail.trim()}
                     className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                   >
                     {inviting ? 'Adding...' : 'Add member'}
@@ -476,6 +556,7 @@ export default function TeamPage() {
                 {!showDeleteConfirm ? (
                   <button
                     onClick={() => setShowDeleteConfirm(true)}
+                    disabled={busy}
                     className="px-4 py-2 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium transition-colors"
                   >
                     Delete Team
@@ -484,13 +565,14 @@ export default function TeamPage() {
                   <div className="flex gap-3">
                     <button
                       onClick={() => setShowDeleteConfirm(false)}
+                      disabled={busy}
                       className="flex-1 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleDeleteTeam}
-                      disabled={deleting}
+                      disabled={busy}
                       className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                     >
                       {deleting ? 'Deleting...' : 'Delete Forever'}
@@ -501,6 +583,25 @@ export default function TeamPage() {
             )}
           </>
         )}
+        <aside
+          aria-label="Team setup help"
+          className="mt-6 rounded-xl bg-white p-6 ring-1 ring-gray-200 dark:bg-gray-800 dark:ring-gray-700"
+        >
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Need a hand setting up?</h2>
+          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+            We can help get your team ready, bring in your existing research, and adjust how you work in the app. Email{' '}
+            <a href="mailto:support@qualcanvas.com" className="text-brand-700 underline dark:text-brand-300">
+              support@qualcanvas.com
+            </a>
+            . We reply within two working days. No call needed.
+          </p>
+          <Link
+            to="/guide"
+            className="mt-3 inline-flex min-h-[44px] items-center text-sm font-medium text-brand-700 underline dark:text-brand-300"
+          >
+            Read the step-by-step guide
+          </Link>
+        </aside>
       </div>
       {seatDialog}
     </main>

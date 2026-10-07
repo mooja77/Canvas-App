@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { StrictMode } from 'react';
 
 // Use vi.hoisted so these are available in the hoisted vi.mock factories
-const { mockTeamApi, mockToast, getMockPlan, setMockPlan } = vi.hoisted(() => {
+const { mockTeamApi, mockToast, getMockPlan, setMockPlan, getMockUserId, setMockUserId } = vi.hoisted(() => {
   const mockTeamApi = {
     list: vi.fn(),
     get: vi.fn(),
@@ -13,10 +14,15 @@ const { mockTeamApi, mockToast, getMockPlan, setMockPlan } = vi.hoisted(() => {
   };
   const mockToast = { success: vi.fn(), error: vi.fn() };
   let mockPlan = 'team';
+  let mockUserId = 'owner-1';
   return {
     mockTeamApi,
     mockToast,
     getMockPlan: () => mockPlan,
+    getMockUserId: () => mockUserId,
+    setMockUserId: (id: string) => {
+      mockUserId = id;
+    },
     setMockPlan: (p: string) => {
       mockPlan = p;
     },
@@ -43,7 +49,7 @@ vi.mock('../services/api', () => ({
 // Mock authStore — default to 'team' plan so create form is accessible
 vi.mock('../stores/authStore', () => ({
   useAuthStore: (selector?: (s: Record<string, unknown>) => unknown) => {
-    const state = { plan: getMockPlan() };
+    const state = { plan: getMockPlan(), userId: getMockUserId() };
     if (typeof selector === 'function') return selector(state);
     return state;
   },
@@ -79,9 +85,11 @@ const sampleTeam = {
 };
 
 describe('TeamPage', () => {
+  afterEach(() => vi.restoreAllMocks());
   beforeEach(() => {
     vi.resetAllMocks();
     setMockPlan('team');
+    setMockUserId('owner-1');
   });
 
   it('shows loading state', () => {
@@ -91,6 +99,187 @@ describe('TeamPage', () => {
     render(<TeamPage />);
 
     expect(screen.getByText('Loading...')).toBeInTheDocument();
+  });
+
+  it.each(['create', 'add', 'remove', 'delete'] as const)(
+    'does not claim success for an unacknowledged %s response',
+    async (action) => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const initial = action === 'create' ? [] : [sampleTeam];
+      mockTeamApi.list
+        .mockResolvedValueOnce({ data: { data: initial } })
+        .mockResolvedValue({ data: { data: [sampleTeam] } });
+      mockTeamApi.get.mockResolvedValue({ data: { data: sampleTeam } });
+      const response = { data: { success: false } };
+      mockTeamApi.create.mockResolvedValue(response);
+      mockTeamApi.invite.mockResolvedValue(response);
+      mockTeamApi.removeMember.mockResolvedValue(response);
+      mockTeamApi.deleteTeam.mockResolvedValue(response);
+      render(<TeamPage />);
+      if (action === 'create') {
+        fireEvent.change(await screen.findByRole('textbox', { name: 'Team name' }), {
+          target: { value: sampleTeam.name },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Create Team' }));
+      } else if (action === 'add') {
+        fireEvent.change(await screen.findByRole('textbox', { name: "Colleague's email address" }), {
+          target: { value: 'newmember@example.test' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Add member' }));
+      } else if (action === 'remove') {
+        fireEvent.click(await screen.findByRole('button', { name: 'Remove Bob Member from team' }));
+      } else {
+        fireEvent.click(await screen.findByRole('button', { name: 'Delete Team' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+      }
+      expect(await screen.findByRole('alert')).toHaveTextContent('We could not confirm');
+      expect(mockToast.success).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      expect(await screen.findByText(sampleTeam.name)).toBeVisible();
+      const changedApi = {
+        create: mockTeamApi.create,
+        add: mockTeamApi.invite,
+        remove: mockTeamApi.removeMember,
+        delete: mockTeamApi.deleteTeam,
+      }[action];
+      expect(changedApi).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('does not publish an older read after the StrictMode replacement read', async () => {
+    let finish!: (value: unknown) => void;
+    mockTeamApi.list
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+      )
+      .mockResolvedValueOnce({ data: { data: [sampleTeam] } });
+    mockTeamApi.get.mockResolvedValue({ data: { data: sampleTeam } });
+    render(
+      <StrictMode>
+        <TeamPage />
+      </StrictMode>,
+    );
+    expect(await screen.findByText('Research Team Alpha')).toBeVisible();
+    await act(async () => finish({ data: { data: [] } }));
+    expect(screen.getByText('Research Team Alpha')).toBeVisible();
+    expect(screen.queryByText(/Set up your team in 3 steps/)).not.toBeInTheDocument();
+  });
+
+  it('recovers through reads only when an addition has an uncertain network outcome', async () => {
+    mockTeamApi.list.mockResolvedValue({ data: { data: [sampleTeam] } });
+    mockTeamApi.get.mockResolvedValue({ data: { data: sampleTeam } });
+    mockTeamApi.invite.mockRejectedValue(new Error('connection dropped before acknowledgement'));
+    render(<TeamPage />);
+    fireEvent.change(await screen.findByRole('textbox', { name: "Colleague's email address" }), {
+      target: { value: 'newmember@example.test' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add member' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('We could not confirm the addition');
+    expect(mockToast.success).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Research Team Alpha')).toBeVisible();
+    expect(mockTeamApi.invite).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('textbox', { name: "Colleague's email address" })).toHaveValue('newmember@example.test');
+  });
+
+  it.each(['remove', 'delete'] as const)('does not repeat acknowledged %s when the refresh fails', async (action) => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockTeamApi.list.mockResolvedValue({ data: { data: [sampleTeam] } });
+    mockTeamApi.get
+      .mockResolvedValueOnce({ data: { data: sampleTeam } })
+      .mockRejectedValueOnce(new Error('refresh unavailable'))
+      .mockResolvedValue({ data: { data: sampleTeam } });
+    mockTeamApi.removeMember.mockResolvedValue({ data: { success: true } });
+    mockTeamApi.deleteTeam.mockResolvedValue({ data: { success: true } });
+    render(<TeamPage />);
+    if (action === 'remove')
+      fireEvent.click(await screen.findByRole('button', { name: 'Remove Bob Member from team' }));
+    else {
+      fireEvent.click(await screen.findByRole('button', { name: 'Delete Team' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    }
+    expect(await screen.findByRole('alert')).toHaveTextContent('Retry below only reloads');
+    expect(mockToast.error).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Research Team Alpha')).toBeVisible();
+    expect(action === 'remove' ? mockTeamApi.removeMember : mockTeamApi.deleteTeam).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the signed-in member, not the owner, when the summary omits myRole', async () => {
+    setMockUserId('user-2');
+    mockTeamApi.list.mockResolvedValue({ data: { data: [{ ...sampleTeam, myRole: undefined }] } });
+    mockTeamApi.get.mockResolvedValue({ data: { data: { ...sampleTeam, myRole: undefined } } });
+    render(<TeamPage />);
+    expect(await screen.findByText('Research Team Alpha')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Add member' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete Team' })).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Remove member')).not.toBeInTheDocument();
+  });
+
+  it.each([null, {}, { ...sampleTeam, id: 'wrong-team' }])(
+    'retries GETs only after acknowledged member addition with invalid refresh %j',
+    async (data) => {
+      mockTeamApi.list.mockResolvedValue({ data: { data: [sampleTeam] } });
+      mockTeamApi.get
+        .mockResolvedValueOnce({ data: { data: sampleTeam } })
+        .mockResolvedValueOnce({ data: { data } })
+        .mockResolvedValue({ data: { data: sampleTeam } });
+      mockTeamApi.invite.mockResolvedValue({ data: { success: true } });
+      render(<TeamPage />);
+      fireEvent.change(await screen.findByRole('textbox', { name: "Colleague's email address" }), {
+        target: { value: 'newmember@example.test' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Add member' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't read your saved team details");
+      expect(mockToast.success).toHaveBeenCalledWith('Member added: newmember@example.test');
+      expect(mockToast.error).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      expect(await screen.findByText('Research Team Alpha')).toBeVisible();
+      expect(mockTeamApi.invite).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('loads the remaining team after deleting the first, instead of inventing an empty account', async () => {
+    const remaining = { ...sampleTeam, id: 'team-2', name: 'Remaining Research Team' };
+    mockTeamApi.list
+      .mockResolvedValueOnce({ data: { data: [sampleTeam, remaining] } })
+      .mockResolvedValue({ data: { data: [remaining] } });
+    mockTeamApi.get
+      .mockResolvedValueOnce({ data: { data: sampleTeam } })
+      .mockResolvedValue({ data: { data: remaining } });
+    mockTeamApi.deleteTeam.mockResolvedValue({ data: { success: true } });
+    render(<TeamPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete Team' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    expect(await screen.findByText('Remaining Research Team')).toBeVisible();
+    expect(screen.queryByText(/Set up your team in 3 steps/)).not.toBeInTheDocument();
+    expect(mockTeamApi.deleteTeam).toHaveBeenCalledTimes(1);
+    expect(mockTeamApi.get).toHaveBeenLastCalledWith('team-2');
+  });
+
+  it('locks all member mutations while a removal is pending', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    let finish!: (value: unknown) => void;
+    mockTeamApi.removeMember.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    mockTeamApi.list.mockResolvedValue({ data: { data: [sampleTeam] } });
+    mockTeamApi.get.mockResolvedValue({ data: { data: sampleTeam } });
+    render(<TeamPage />);
+    const remove = await screen.findByRole('button', { name: 'Remove Bob Member from team' });
+    fireEvent.click(remove);
+    fireEvent.click(remove);
+    expect(remove).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Delete Team' })).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: "Colleague's email address" })).toBeDisabled();
+    expect(mockTeamApi.removeMember).toHaveBeenCalledTimes(1);
+    finish({ data: { success: true } });
+    await waitFor(() => expect(mockTeamApi.list).toHaveBeenCalledTimes(2));
+    confirmSpy.mockRestore();
   });
 
   it('shows guided 3-step setup with create form for users without a team on team plan', async () => {
@@ -179,12 +368,20 @@ describe('TeamPage', () => {
     expect(screen.getByText('alice@example.com')).toBeInTheDocument();
     expect(screen.getByText('bob@example.com')).toBeInTheDocument();
     expect(screen.getByText('Members (2)')).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Team setup help' })).toHaveTextContent(
+      'We reply within two working days. No call needed.',
+    );
+    expect(screen.getByRole('link', { name: 'support@qualcanvas.com' })).toHaveAttribute(
+      'href',
+      'mailto:support@qualcanvas.com',
+    );
+    expect(screen.getByRole('link', { name: 'Read the step-by-step guide' })).toHaveAttribute('href', '/guide');
   });
 
   it('loads full details after creation instead of rendering the raw create response', async () => {
     mockTeamApi.list.mockResolvedValueOnce({ data: { data: [] } }).mockResolvedValue({ data: { data: [sampleTeam] } });
     mockTeamApi.create.mockResolvedValue({
-      data: { data: { ...sampleTeam, members: [{ userId: 'owner-1', role: 'owner' }] } },
+      data: { success: true, data: { ...sampleTeam, members: [{ userId: 'owner-1', role: 'owner' }] } },
     });
     mockTeamApi.get.mockResolvedValue({ data: { data: sampleTeam } });
     render(<TeamPage />);
@@ -202,7 +399,7 @@ describe('TeamPage', () => {
       .mockResolvedValueOnce({ data: { data: [] } })
       .mockRejectedValueOnce(new Error('refresh offline'))
       .mockResolvedValueOnce({ data: { data: [sampleTeam] } });
-    mockTeamApi.create.mockResolvedValue({ data: { data: { id: sampleTeam.id } } });
+    mockTeamApi.create.mockResolvedValue({ data: { success: true, data: { id: sampleTeam.id } } });
     mockTeamApi.get.mockResolvedValue({ data: { data: sampleTeam } });
     render(<TeamPage />);
     fireEvent.change(await screen.findByRole('textbox', { name: 'Team name' }), { target: { value: sampleTeam.name } });
@@ -266,7 +463,7 @@ describe('TeamPage', () => {
     });
 
     await waitFor(() => {
-      expect(mockToast.success).toHaveBeenCalledWith('Invitation sent to newmember@example.com');
+      expect(mockToast.success).toHaveBeenCalledWith('Member added: newmember@example.com');
     });
   });
 });

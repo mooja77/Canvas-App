@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { randomBytes } from 'node:crypto';
+import { selectExcerptByPointer } from '../scripts/select-excerpt-by-pointer.mjs';
 
 /**
  * The full self-serve onboarding path, as a brand-new researcher meets it:
@@ -52,41 +53,7 @@ async function deleteFixtureAccount(page: Page, password: string) {
 }
 
 async function selectExcerpt(page: Page, startText: string, characterCount: number) {
-  const text = page.locator('.select-text').filter({ hasText: startText }).first();
-  await text.waitFor({ state: 'visible', timeout: 20_000 });
-  await text.evaluate(
-    (element, excerpt) => {
-      const fullText = element.textContent ?? '';
-      const startOffset = fullText.indexOf(excerpt.startText);
-      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-      const nodes: Text[] = [];
-      let node: Node | null;
-      while ((node = walker.nextNode())) nodes.push(node as Text);
-      const pointAt = (absolute: number) => {
-        let consumed = 0;
-        for (const textNode of nodes) {
-          const length = textNode.textContent?.length ?? 0;
-          if (absolute <= consumed + length) return { node: textNode, offset: Math.max(0, absolute - consumed) };
-          consumed += length;
-        }
-        const last = nodes[nodes.length - 1];
-        return { node: last, offset: last.textContent?.length ?? 0 };
-      };
-      const start = pointAt(startOffset);
-      const end = pointAt(startOffset + excerpt.characterCount);
-      const range = document.createRange();
-      range.setStart(start.node, start.offset);
-      range.setEnd(end.node, end.offset);
-      const selection = window.getSelection();
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-      const rect = range.getBoundingClientRect();
-      element.parentElement?.dispatchEvent(
-        new MouseEvent('mouseup', { bubbles: true, clientX: rect.left + rect.width / 2, clientY: rect.top }),
-      );
-    },
-    { startText, characterCount },
-  );
+  await selectExcerptByPointer(page, startText, characterCount);
 }
 
 test('a new researcher reaches a first coded excerpt on their own, then clears the sample study', async ({ page }) => {
@@ -175,10 +142,14 @@ test('a new researcher reaches a first coded excerpt on their own, then clears t
   const websiteSecondsToAha = (Date.now() - websiteStartedAt) / 1000;
   const measurement = {
     clicks,
+    pointerClicks: clicks - 1,
+    selectionGestures: 1,
+    actions: clicks,
     fields,
     secondsToAha,
     websiteSecondsToAha,
-    timing: 'automated local driver, not a human measurement',
+    timing:
+      'automated local driver with real pointer selection; clicks is the legacy action count including one drag, not a human measurement',
   };
   console.log(
     `${baseline ? 'ONBOARDING_BASELINE_MEASUREMENT' : 'ONBOARDING_MEASUREMENT'} ${JSON.stringify(measurement)}`,
