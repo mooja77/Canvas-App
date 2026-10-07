@@ -5,12 +5,20 @@ import toast from 'react-hot-toast';
 import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import { AUDIT_EXPORT_PAGE_SIZE, buildAuditCsv, fetchAllAuditEntries, type AuditEntry } from './auditLogExport';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
+import {
+  ethicsReadPayload,
+  readEthicsSettings,
+  readConsentRecords,
+  readAuditEntries,
+  readJournalEntries,
+} from './ethicsPanelReads';
 
 interface EthicsCompliancePanelProps {
   onClose: () => void;
 }
 
 type Tab = 'settings' | 'consent' | 'anonymize' | 'audit' | 'journal';
+type ReadTab = Exclude<Tab, 'anonymize'>;
 
 interface EthicsSettings {
   irbNumber: string;
@@ -103,44 +111,74 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [journalDraft, setJournalDraft] = useState('');
   const [journalCategory, setJournalCategory] = useState('reflection');
+  const [journalLoading, setJournalLoading] = useState(false);
+  const participantInput = useRef<HTMLInputElement>(null);
+  const journalInput = useRef<HTMLTextAreaElement>(null);
+  const [readErrors, setReadErrors] = useState<Partial<Record<ReadTab, boolean>>>({});
+  const [verifiedReads, setVerifiedReads] = useState<Partial<Record<ReadTab, string>>>({});
+  const readVersions = useRef({ settings: 0, consent: 0, audit: 0, journal: 0 });
+  const mounted = useRef(true);
 
   const canvasId = activeCanvas?.id;
+  const currentCanvas = useRef(canvasId);
+  currentCanvas.current = canvasId;
+  useEffect(() => {
+    mounted.current = true;
+    const versions = readVersions.current;
+    return () => {
+      mounted.current = false;
+      for (const key of Object.keys(versions) as ReadTab[]) versions[key]++;
+    };
+  }, []);
+  useEffect(() => {
+    setSettings(defaultSettings);
+    setConsents([]);
+    setAuditEntries([]);
+    setJournalEntries([]);
+    setNewConsent({ participantId: '', consentType: 'informed', ethicsProtocol: '', notes: '' });
+    setJournalDraft('');
+    setSelectedTranscriptId('');
+    setFindText('');
+    setReplaceText('');
+    setPreviewMode(false);
+    setReadErrors({});
+    setVerifiedReads({});
+  }, [canvasId]);
+  const beginRead = useCallback(
+    (kind: ReadTab) => {
+      const version = ++readVersions.current[kind];
+      setReadErrors((prev) => ({ ...prev, [kind]: false }));
+      return {
+        current: () => mounted.current && currentCanvas.current === canvasId && readVersions.current[kind] === version,
+        ready: () => setVerifiedReads((prev) => ({ ...prev, [kind]: canvasId })),
+        failed: () => setReadErrors((prev) => ({ ...prev, [kind]: true })),
+      };
+    },
+    [canvasId],
+  );
+  const readVerified = (kind: ReadTab) => Boolean(canvasId && verifiedReads[kind] === canvasId);
 
   // ─── Load ethics settings ───
   const loadSettings = useCallback(async () => {
     if (!canvasId) return;
+    const read = beginRead('settings');
     setSettingsLoading(true);
     try {
       const res = await canvasClient.get(`/canvas/${canvasId}/ethics`);
-      const d = res.data?.data || res.data;
-      if (d) {
-        setSettings({
-          irbNumber: d.ethicsApprovalId || '',
-          ethicsStatus: d.ethicsStatus || 'pending',
-          dataRetentionDate: d.dataRetentionDate ? d.dataRetentionDate.split('T')[0] : '',
-          checklist: d.checklist || defaultSettings.checklist,
-        });
-        // Also load consent records if present
-        if (Array.isArray(d.consentRecords)) {
-          setConsents(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            d.consentRecords.map((c: any) => ({
-              ...c,
-              status: c.consentStatus || c.status || 'active',
-            })),
-          );
-        }
-      }
+      const settings = readEthicsSettings(ethicsReadPayload(res));
+      if (!read.current()) return;
+      setSettings({ ...settings, checklist: defaultSettings.checklist });
+      read.ready();
     } catch {
-      // Settings not yet created — use defaults
+      if (read.current()) read.failed();
     } finally {
-      setSettingsLoading(false);
+      if (read.current()) setSettingsLoading(false);
     }
-  }, [canvasId]);
+  }, [canvasId, beginRead]);
 
   // ─── Save ethics settings ───
   const saveSettings = async () => {
-    if (!canvasId) return;
+    if (!canvasId || !readVerified('settings') || readErrors.settings || settingsLoading) return;
     setSettingsSaving(true);
     try {
       await canvasClient.put(`/canvas/${canvasId}/ethics`, {
@@ -159,22 +197,24 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
   // ─── Load consent records ───
   const loadConsents = useCallback(async () => {
     if (!canvasId) return;
+    const read = beginRead('consent');
     setConsentsLoading(true);
     try {
       const res = await canvasClient.get(`/canvas/${canvasId}/consent`);
-      const records = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : [];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setConsents(records.map((c: any) => ({ ...c, status: c.consentStatus || c.status || 'active' })));
+      const records = readConsentRecords(ethicsReadPayload(res), canvasId);
+      if (!read.current()) return;
+      setConsents(records);
+      read.ready();
     } catch {
-      // No consents yet
-      setConsents([]);
+      if (read.current()) read.failed();
     } finally {
-      setConsentsLoading(false);
+      if (read.current()) setConsentsLoading(false);
     }
-  }, [canvasId]);
+  }, [canvasId, beginRead]);
 
   // ─── Add consent record ───
   const addConsent = async () => {
+    if (!readVerified('consent') || readErrors.consent || consentsLoading) return;
     if (!canvasId || !newConsent.participantId.trim()) {
       toast.error('Participant ID is required');
       return;
@@ -192,7 +232,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
 
   // ─── Withdraw consent ───
   const withdrawConsent = async (consentId: string) => {
-    if (!canvasId) return;
+    if (!canvasId || !readVerified('consent') || readErrors.consent || consentsLoading) return;
     try {
       await canvasClient.put(`/canvas/${canvasId}/consent/${consentId}/withdraw`);
       setConsents((prev) => prev.map((c) => (c.id === consentId ? { ...c, status: 'withdrawn' } : c)));
@@ -237,17 +277,18 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
       params.set('offset', String(offset));
 
       const res = await canvasClient.get(`/audit-log?${params.toString()}`);
-      const payload = res.data?.data || res.data;
-      return Array.isArray(payload?.entries) ? payload.entries : Array.isArray(payload) ? payload : [];
+      return readAuditEntries(ethicsReadPayload(res));
     },
     [auditDateFrom, auditDateTo, auditActionFilter],
   );
 
   const loadAuditLog = useCallback(
     async (offset = 0, append = false) => {
+      const read = beginRead('audit');
       setAuditLoading(true);
       try {
         const entries = await fetchAuditPage(offset, AUDIT_LIMIT);
+        if (!read.current()) return;
         if (append) {
           setAuditEntries((prev) => [...prev, ...entries]);
         } else {
@@ -255,13 +296,14 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
         }
         setAuditHasMore(entries.length >= AUDIT_LIMIT);
         setAuditOffset(offset + entries.length);
+        read.ready();
       } catch {
-        if (!append) setAuditEntries([]);
+        if (read.current()) read.failed();
       } finally {
-        setAuditLoading(false);
+        if (read.current()) setAuditLoading(false);
       }
     },
-    [fetchAuditPage],
+    [fetchAuditPage, beginRead],
   );
 
   // ─── Export audit log as CSV ───
@@ -304,58 +346,74 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
   // from exports, and lost with site data.
   const journalKey = canvasId ? `canvas-journal-${canvasId}` : null;
 
-  const loadJournal = useCallback(async () => {
-    if (!canvasId) return;
-    try {
-      const res = await canvasClient.get(`/canvas/${canvasId}/journal`);
-      const serverEntries: JournalEntry[] = (Array.isArray(res.data?.data) ? res.data.data : []).map(toJournalEntry);
+  const loadJournal = useCallback(
+    async (migrateLegacy = true) => {
+      if (!canvasId) return;
+      const read = beginRead('journal');
+      setJournalLoading(true);
+      try {
+        const res = await canvasClient.get(`/canvas/${canvasId}/journal`);
+        const serverEntries = readJournalEntries(ethicsReadPayload(res), canvasId);
+        if (!read.current()) return;
 
-      // One-time lift of anything this browser still holds locally, so a
-      // researcher's existing notes are not stranded by the move.
-      let local: JournalEntry[] = [];
-      if (journalKey) {
-        try {
+        // One-time lift of anything this browser still holds locally, so a
+        // researcher's existing notes are not stranded by the move.
+        let local: JournalEntry[] = [];
+        if (migrateLegacy && journalKey) {
           const stored = localStorage.getItem(journalKey);
-          if (stored) local = JSON.parse(stored);
-        } catch {
-          /* unreadable local entries are not worth failing the panel over */
+          if (stored) local = readJournalEntries(JSON.parse(stored), canvasId);
         }
-      }
 
-      if (local.length > 0) {
-        const existing = new Set(serverEntries.map((e) => e.content));
-        const pending = local.filter((e) => !existing.has(e.content));
-        for (const entry of pending) {
-          try {
-            await canvasClient.post(`/canvas/${canvasId}/journal`, {
-              content: entry.content,
-              category: entry.category,
-            });
-          } catch {
-            /* keep the local copy if the upload fails - do not drop it */
-            setJournalEntries(serverEntries);
+        if (local.length > 0) {
+          const existing = new Set(serverEntries.map((e) => e.content));
+          const pending = local.filter((e) => !existing.has(e.content));
+          for (const entry of pending) {
+            if (!read.current()) return;
+            try {
+              const uploaded = await canvasClient.post(`/canvas/${canvasId}/journal`, {
+                content: entry.content,
+                category: entry.category,
+              });
+              readJournalEntries([ethicsReadPayload(uploaded)], canvasId);
+            } catch {
+              /* keep the local copy if the upload fails - do not drop it */
+              if (read.current()) {
+                setJournalEntries(serverEntries);
+                read.failed();
+              }
+              return;
+            }
+          }
+          if (!read.current()) return;
+          if (pending.length > 0) {
+            const refreshed = await canvasClient.get(`/canvas/${canvasId}/journal`);
+            const entries = readJournalEntries(ethicsReadPayload(refreshed), canvasId);
+            if (!read.current()) return;
+            if (pending.some((note) => !entries.some((entry) => entry.content === note.content)))
+              throw new Error('Migrated journal notes were not confirmed');
+            if (journalKey) localStorage.removeItem(journalKey);
+            toast.success(`Moved ${pending.length} journal entr${pending.length === 1 ? 'y' : 'ies'} to your account`);
+            setJournalEntries(entries);
+            read.ready();
             return;
           }
+          if (journalKey) localStorage.removeItem(journalKey);
         }
-        if (journalKey) localStorage.removeItem(journalKey);
-        if (pending.length > 0) {
-          toast.success(`Moved ${pending.length} journal entr${pending.length === 1 ? 'y' : 'ies'} to your account`);
-          const refreshed = await canvasClient.get(`/canvas/${canvasId}/journal`);
-          setJournalEntries(
-            Array.isArray(refreshed.data?.data) ? refreshed.data.data.map(toJournalEntry) : serverEntries,
-          );
-          return;
-        }
-      }
 
-      setJournalEntries(serverEntries);
-    } catch {
-      toast.error('Could not load your reflexivity journal');
-    }
-  }, [canvasId, journalKey]);
+        setJournalEntries(serverEntries);
+        read.ready();
+      } catch {
+        if (read.current()) read.failed();
+      } finally {
+        if (read.current()) setJournalLoading(false);
+      }
+    },
+    [canvasId, journalKey, beginRead],
+  );
 
   const saveJournalEntry = useCallback(async () => {
-    if (!journalDraft.trim() || !canvasId) return;
+    if (!journalDraft.trim() || !canvasId || verifiedReads.journal !== canvasId || readErrors.journal || journalLoading)
+      return;
     try {
       const res = await canvasClient.post(`/canvas/${canvasId}/journal`, {
         content: journalDraft.trim(),
@@ -369,11 +427,11 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
       // server ever saw. Report the real outcome instead.
       toast.error('Could not save the journal entry');
     }
-  }, [journalDraft, journalCategory, canvasId]);
+  }, [journalDraft, journalCategory, canvasId, verifiedReads.journal, readErrors.journal, journalLoading]);
 
   const deleteJournalEntry = useCallback(
     async (id: string) => {
-      if (!canvasId) return;
+      if (!canvasId || verifiedReads.journal !== canvasId || readErrors.journal || journalLoading) return;
       try {
         await canvasClient.delete(`/canvas/${canvasId}/journal/${id}`);
         setJournalEntries((prev) => prev.filter((e) => e.id !== id));
@@ -381,7 +439,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
         toast.error('Could not delete the journal entry');
       }
     },
-    [canvasId],
+    [canvasId, verifiedReads.journal, readErrors.journal, journalLoading],
   );
 
   // ─── Load data when tab changes ───
@@ -432,6 +490,19 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
     { key: 'audit', label: 'Audit Trail' },
     { key: 'journal', label: 'Reflexivity Journal' },
   ];
+  const readLabels: Record<ReadTab, string> = {
+    settings: 'ethics settings',
+    consent: 'consent records',
+    audit: 'the audit trail',
+    journal: 'journal entries',
+  };
+  const retryRead = () => {
+    if (tab === 'settings') void loadSettings();
+    if (tab === 'consent') void loadConsents();
+    if (tab === 'audit') void loadAuditLog();
+    if (tab === 'journal') void loadJournal(false);
+  };
+  const currentReadError = tab !== 'anonymize' && readErrors[tab];
 
   return (
     <div
@@ -440,7 +511,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
     >
       <div
         ref={dialogRef}
-        className="modal-content w-[900px] max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-xl backdrop-blur-xl ring-1 ring-black/5 dark:bg-gray-800"
+        className="modal-content w-full max-w-[900px] max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-xl backdrop-blur-xl ring-1 ring-black/5 dark:bg-gray-800"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -448,7 +519,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
       >
         {/* ─── Header ─── */}
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <svg
                 className="h-4 w-4 text-emerald-600 dark:text-emerald-400"
@@ -467,7 +538,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                 Ethics & Compliance
               </h2>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               {tabs.map((t) => (
                 <button
                   key={t.key}
@@ -475,7 +546,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                   className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                     tab === t.key
                       ? 'bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
+                      : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
                   }`}
                 >
                   {t.label}
@@ -486,7 +557,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
           <button
             onClick={onClose}
             aria-label="Close"
-            className="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            className="inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded p-1 text-gray-600 hover:text-gray-800 dark:text-gray-300"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -496,23 +567,64 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
 
         {/* ─── Content ─── */}
         <div className="flex-1 overflow-auto p-4">
+          {!canvasId ? (
+            <p role="alert" className="mb-4 text-sm text-gray-700 dark:text-gray-300">
+              Open a study before viewing its ethics records.
+            </p>
+          ) : currentReadError ? (
+            <div
+              role="alert"
+              className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-700 dark:bg-red-950 dark:text-red-200"
+            >
+              <p className="font-medium">Could not load {readLabels[tab]}.</p>
+              <p className="mt-1">
+                This is not evidence that your records are empty. Previously loaded records remain visible. Retry
+                reloads saved records without repeating an earlier action.
+              </p>
+              <button
+                type="button"
+                onClick={retryRead}
+                className="mt-2 min-h-[44px] rounded-md border border-current px-3 font-medium"
+              >
+                Retry loading {readLabels[tab]}
+              </button>
+            </div>
+          ) : null}
+          <p className="mb-4 text-xs text-gray-600 dark:text-gray-300">
+            <a className="underline" href="/methodology/ethics-in-practice" target="_blank" rel="noreferrer">
+              Ethics guidance
+            </a>
+            {' · '}
+            <a className="underline" href="mailto:support@qualcanvas.com">
+              Email setup help
+            </a>
+            {' — '}We can help you organize existing records and adapt your workflow. We reply within two working days.
+            No call needed.
+          </p>
           {/* ═══════════════ TAB 1: ETHICS SETTINGS ═══════════════ */}
           {tab === 'settings' && (
             <div className="space-y-6">
-              {settingsLoading ? (
-                <div className="flex items-center justify-center py-12">
+              {settingsLoading || (!readVerified('settings') && !readErrors.settings) ? (
+                <div
+                  role="status"
+                  aria-label="Loading ethics settings"
+                  className="flex items-center justify-center py-12"
+                >
                   <svg className="h-5 w-5 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                 </div>
-              ) : (
+              ) : readVerified('settings') ? (
                 <>
                   {/* IRB Number + Status */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="label">IRB/HREC Approval Number</label>
+                      <label htmlFor="ethics-approval-number" className="label">
+                        IRB/HREC Approval Number
+                      </label>
                       <input
+                        id="ethics-approval-number"
                         type="text"
                         className="input text-sm"
                         placeholder="e.g. IRB-2026-0142"
@@ -521,9 +633,12 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                       />
                     </div>
                     <div>
-                      <label className="label">Ethics Status</label>
+                      <label htmlFor="ethics-status" className="label">
+                        Ethics Status
+                      </label>
                       <div className="flex items-center gap-3">
                         <select
+                          id="ethics-status"
                           className="input text-sm flex-1"
                           value={settings.ethicsStatus}
                           onChange={(e) =>
@@ -544,11 +659,14 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
 
                   {/* Data Retention Date */}
                   <div>
-                    <label className="label">Data Retention Date</label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">
+                    <label htmlFor="ethics-retention-date" className="label">
+                      Data Retention Date
+                    </label>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-1.5">
                       When should project data be deleted per your ethics protocol?
                     </p>
                     <input
+                      id="ethics-retention-date"
                       type="date"
                       className="input text-sm w-64"
                       value={settings.dataRetentionDate}
@@ -559,8 +677,9 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                   {/* Compliance Checklist */}
                   <div>
                     <label className="label">Compliance Checklist</label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                      Track your compliance progress. This checklist is for your reference only and is not enforced.
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
+                      This session-only checklist is for your reference, not proof of compliance. Save Settings does not
+                      save these ticks.
                     </p>
                     <div className="space-y-2">
                       {[
@@ -603,12 +722,16 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
 
                   {/* Save Button */}
                   <div className="flex justify-end pt-2">
-                    <button onClick={saveSettings} disabled={settingsSaving} className="btn-primary text-sm px-6">
+                    <button
+                      onClick={saveSettings}
+                      disabled={settingsSaving || Boolean(readErrors.settings)}
+                      className="btn-primary text-sm px-6"
+                    >
                       {settingsSaving ? 'Saving...' : 'Save Settings'}
                     </button>
                   </div>
                 </>
-              )}
+              ) : null}
             </div>
           )}
 
@@ -617,11 +740,17 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
             <div className="space-y-4">
               {/* Summary */}
               <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{activeConsents}</span> of{' '}
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{totalConsents}</span> participants
-                  with active consent
-                </p>
+                {readVerified('consent') ? (
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{activeConsents}</span> of{' '}
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{totalConsents}</span> participants
+                    with active consent
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Saved consent counts are not yet available.
+                  </p>
+                )}
               </div>
 
               {/* Add new consent form */}
@@ -629,10 +758,14 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                 <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">
                   Add Consent Record
                 </h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="label text-xs">Participant ID</label>
+                    <label htmlFor="ethics-participant-id" className="label text-xs">
+                      Participant ID
+                    </label>
                     <input
+                      id="ethics-participant-id"
+                      ref={participantInput}
                       type="text"
                       className="input text-sm"
                       placeholder="e.g. P001"
@@ -641,8 +774,11 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                     />
                   </div>
                   <div>
-                    <label className="label text-xs">Consent Type</label>
+                    <label htmlFor="ethics-consent-type" className="label text-xs">
+                      Consent Type
+                    </label>
                     <select
+                      id="ethics-consent-type"
                       className="input text-sm"
                       value={newConsent.consentType}
                       onChange={(e) =>
@@ -658,8 +794,11 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                     </select>
                   </div>
                   <div>
-                    <label className="label text-xs">Ethics Protocol</label>
+                    <label htmlFor="ethics-consent-protocol" className="label text-xs">
+                      Ethics Protocol
+                    </label>
                     <input
+                      id="ethics-consent-protocol"
                       type="text"
                       className="input text-sm"
                       placeholder="e.g. Protocol v2.1"
@@ -668,8 +807,11 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                     />
                   </div>
                   <div>
-                    <label className="label text-xs">Notes</label>
+                    <label htmlFor="ethics-consent-notes" className="label text-xs">
+                      Notes
+                    </label>
                     <input
+                      id="ethics-consent-notes"
                       type="text"
                       className="input text-sm"
                       placeholder="Optional notes"
@@ -681,7 +823,12 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                 <div className="mt-3 flex justify-end">
                   <button
                     onClick={addConsent}
-                    disabled={!newConsent.participantId.trim()}
+                    disabled={
+                      !newConsent.participantId.trim() ||
+                      !readVerified('consent') ||
+                      Boolean(readErrors.consent) ||
+                      consentsLoading
+                    }
                     className="btn-primary text-xs px-4 py-1.5"
                   >
                     Add Record
@@ -690,23 +837,33 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
               </div>
 
               {/* Consent table */}
-              <div className="overflow-auto rounded-lg border border-gray-200 dark:border-gray-700">
+              <div
+                role="region"
+                aria-label="Consent records"
+                tabIndex={0}
+                className="overflow-auto rounded-lg border border-gray-200 dark:border-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+              >
                 <table className="w-full text-xs">
                   <thead className="bg-gray-50 dark:bg-gray-750">
                     <tr>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">
+                      <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">
                         Participant ID
                       </th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Type</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Status</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Date</th>
-                      <th className="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Action</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Type</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Status</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Date</th>
+                      <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-300">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {consentsLoading ? (
                       <tr>
-                        <td colSpan={5} className="px-3 py-8 text-center text-gray-400">
+                        <td
+                          colSpan={5}
+                          role="status"
+                          aria-label="Loading consent records"
+                          className="px-3 py-8 text-center text-gray-600"
+                        >
                           <svg className="h-5 w-5 animate-spin mx-auto text-gray-400" fill="none" viewBox="0 0 24 24">
                             <circle
                               className="opacity-25"
@@ -724,10 +881,30 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                           </svg>
                         </td>
                       </tr>
-                    ) : consents.length === 0 ? (
+                    ) : readErrors.consent && consents.length === 0 ? null : readVerified('consent') &&
+                      consents.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-3 py-8 text-center text-gray-400">
-                          No consent records yet.
+                        <td colSpan={5} className="px-3 py-8 text-center text-gray-700 dark:text-gray-300">
+                          <p>No consent records yet.</p>
+                          <p className="mt-2">
+                            Record permission you have already received so you can find it later. Adding a record does
+                            not obtain consent from a participant.
+                          </p>
+                          <button
+                            type="button"
+                            className="mt-3 min-h-[44px] rounded-md bg-brand-600 px-4 text-white"
+                            onClick={() => participantInput.current?.focus()}
+                          >
+                            Enter a participant ID
+                          </button>
+                          <a
+                            className="mt-2 block underline"
+                            href="/methodology/ethics-in-practice#consent"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            See consent guidance
+                          </a>
                         </td>
                       </tr>
                     ) : (
@@ -746,13 +923,14 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                               {c.status === 'active' ? 'Active' : 'Withdrawn'}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-gray-500 dark:text-gray-400 tabular-nums">
+                          <td className="px-3 py-2 text-gray-600 dark:text-gray-300 tabular-nums">
                             {new Date(c.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-3 py-2 text-right">
                             {c.status === 'active' && (
                               <button
                                 onClick={() => withdrawConsent(c.id)}
+                                disabled={consentsLoading || Boolean(readErrors.consent)}
                                 className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 transition-colors"
                               >
                                 Withdraw
@@ -771,6 +949,33 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
           {/* ═══════════════ TAB 3: ANONYMIZATION TOOL ═══════════════ */}
           {tab === 'anonymize' && (
             <div className="space-y-4">
+              {activeCanvas?.transcripts.length === 0 && (
+                <div className="rounded-lg border border-gray-200 p-4 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-300">
+                  <p>No transcripts to edit yet.</p>
+                  <p className="mt-2">
+                    Import a transcript, then choose the exact text to find and replace. This tool does not
+                    automatically detect names or guarantee that a transcript is anonymous.
+                  </p>
+                  <button
+                    type="button"
+                    className="mt-3 min-h-[44px] rounded-md bg-brand-600 px-4 text-white"
+                    onClick={() => {
+                      onClose();
+                      window.dispatchEvent(new CustomEvent('qualcanvas:open-transcript-picker'));
+                    }}
+                  >
+                    Paste or import a transcript
+                  </button>
+                  <a
+                    className="mt-2 block underline"
+                    href="/methodology/ethics-in-practice#anonymisation"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    See anonymisation guidance
+                  </a>
+                </div>
+              )}
               {/* Warning */}
               <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-800/50 dark:bg-amber-900/20">
                 <svg
@@ -798,8 +1003,11 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
 
               {/* Transcript selector */}
               <div>
-                <label className="label">Select Transcript</label>
+                <label htmlFor="ethics-anonymize-transcript" className="label">
+                  Select Transcript
+                </label>
                 <select
+                  id="ethics-anonymize-transcript"
                   className="input text-sm"
                   value={selectedTranscriptId}
                   onChange={(e) => {
@@ -817,10 +1025,13 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
               </div>
 
               {/* Find and Replace */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Find</label>
+                  <label htmlFor="ethics-find" className="label">
+                    Find
+                  </label>
                   <input
+                    id="ethics-find"
                     type="text"
                     className="input text-sm"
                     placeholder="Text to find..."
@@ -832,8 +1043,11 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                   />
                 </div>
                 <div>
-                  <label className="label">Replace with</label>
+                  <label htmlFor="ethics-replace" className="label">
+                    Replace with
+                  </label>
                   <input
+                    id="ethics-replace"
                     type="text"
                     className="input text-sm"
                     placeholder="e.g. [REDACTED]"
@@ -913,7 +1127,12 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
               {previewMode && selectedTranscript && findText && (
                 <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
                   <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Preview</h3>
-                  <div className="max-h-64 overflow-auto rounded bg-gray-50 dark:bg-gray-900 p-3 text-xs text-gray-700 dark:text-gray-300 font-mono leading-relaxed whitespace-pre-wrap">
+                  <div
+                    role="region"
+                    aria-label="Anonymization preview"
+                    tabIndex={0}
+                    className="max-h-64 overflow-auto rounded bg-gray-50 dark:bg-gray-900 p-3 text-xs text-gray-700 dark:text-gray-300 font-mono leading-relaxed whitespace-pre-wrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+                  >
                     {(() => {
                       const content = previewContent || '';
                       const parts: { text: string; highlighted: boolean }[] = [];
@@ -937,7 +1156,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                       }
 
                       if (parts.length === 0) {
-                        return <span className="text-gray-400 italic">No matches found.</span>;
+                        return <span className="text-gray-600 dark:text-gray-300 italic">No matches found.</span>;
                       }
 
                       return parts.map((part, i) =>
@@ -965,8 +1184,11 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
               {/* Filters */}
               <div className="flex items-end gap-3 flex-wrap">
                 <div>
-                  <label className="label text-xs">From</label>
+                  <label htmlFor="ethics-audit-from" className="label text-xs">
+                    From
+                  </label>
                   <input
+                    id="ethics-audit-from"
                     type="date"
                     className="input text-sm w-40"
                     value={auditDateFrom}
@@ -974,8 +1196,11 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                   />
                 </div>
                 <div>
-                  <label className="label text-xs">To</label>
+                  <label htmlFor="ethics-audit-to" className="label text-xs">
+                    To
+                  </label>
                   <input
+                    id="ethics-audit-to"
                     type="date"
                     className="input text-sm w-40"
                     value={auditDateTo}
@@ -983,8 +1208,11 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                   />
                 </div>
                 <div>
-                  <label className="label text-xs">Action Type</label>
+                  <label htmlFor="ethics-audit-action" className="label text-xs">
+                    Action Type
+                  </label>
                   <input
+                    id="ethics-audit-action"
                     type="text"
                     className="input text-sm w-40"
                     placeholder="e.g. create, delete"
@@ -1003,7 +1231,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                 </button>
                 <button
                   onClick={exportAuditCsv}
-                  disabled={auditEntries.length === 0 || auditExporting}
+                  disabled={auditEntries.length === 0 || auditExporting || auditLoading || Boolean(readErrors.audit)}
                   className="flex items-center gap-1 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -1018,21 +1246,31 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
               </div>
 
               {/* Audit table */}
-              <div className="overflow-auto rounded-lg border border-gray-200 dark:border-gray-700">
+              <div
+                role="region"
+                aria-label="Audit records"
+                tabIndex={0}
+                className="overflow-auto rounded-lg border border-gray-200 dark:border-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+              >
                 <table className="w-full text-xs">
                   <thead className="bg-gray-50 dark:bg-gray-750">
                     <tr>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Date/Time</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Action</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Resource</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Actor</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Details</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Date/Time</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Action</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Resource</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Actor</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Details</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {auditLoading && auditEntries.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-3 py-8 text-center text-gray-400">
+                        <td
+                          colSpan={5}
+                          role="status"
+                          aria-label="Loading the audit trail"
+                          className="px-3 py-8 text-center text-gray-600"
+                        >
                           <svg className="h-5 w-5 animate-spin mx-auto text-gray-400" fill="none" viewBox="0 0 24 24">
                             <circle
                               className="opacity-25"
@@ -1050,10 +1288,44 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                           </svg>
                         </td>
                       </tr>
-                    ) : auditEntries.length === 0 ? (
+                    ) : readErrors.audit && auditEntries.length === 0 ? null : readVerified('audit') &&
+                      auditEntries.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-3 py-8 text-center text-gray-400">
-                          No audit log entries found.
+                        <td colSpan={5} className="px-3 py-8 text-center text-gray-700 dark:text-gray-300">
+                          <p>No recorded activity matches these filters.</p>
+                          <p className="mt-2">
+                            The trail records account activity automatically. An empty result does not mean all previous
+                            records were deleted.
+                          </p>
+                          {auditDateFrom || auditDateTo || auditActionFilter ? (
+                            <button
+                              type="button"
+                              className="mt-3 min-h-[44px] rounded-md bg-brand-600 px-4 text-white"
+                              onClick={() => {
+                                setAuditDateFrom('');
+                                setAuditDateTo('');
+                                setAuditActionFilter('');
+                              }}
+                            >
+                              Clear audit filters
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="mt-3 min-h-[44px] rounded-md bg-brand-600 px-4 text-white"
+                              onClick={onClose}
+                            >
+                              Return to your research
+                            </button>
+                          )}
+                          <a
+                            className="mt-2 block underline"
+                            href="/help/first-code.html"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            See a first-coding example
+                          </a>
                         </td>
                       </tr>
                     ) : (
@@ -1071,7 +1343,7 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                             {entry.resource}
                           </td>
                           <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{entry.actor}</td>
-                          <td className="px-3 py-2 text-gray-500 dark:text-gray-400 max-w-[200px] truncate">
+                          <td className="px-3 py-2 text-gray-600 dark:text-gray-300 max-w-[200px] truncate">
                             {entry.details}
                           </td>
                         </tr>
@@ -1129,9 +1401,9 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
 
               {/* New entry form */}
               <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Category:</label>
-                  <div className="flex gap-1">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="text-[11px] font-medium text-gray-600 dark:text-gray-300">Category:</span>
+                  <div className="flex flex-wrap gap-1" role="group" aria-label="Journal category">
                     {[
                       { value: 'reflection', label: 'Reflection', color: '#8B5CF6' },
                       { value: 'positionality', label: 'Positionality', color: '#3B82F6' },
@@ -1141,13 +1413,13 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                     ].map((cat) => (
                       <button
                         key={cat.value}
+                        aria-pressed={journalCategory === cat.value}
                         onClick={() => setJournalCategory(cat.value)}
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors border ${
-                          journalCategory === cat.value ? 'shadow-sm' : 'opacity-50 hover:opacity-80'
+                        className={`min-h-8 rounded-full px-2 py-0.5 text-[10px] font-medium text-gray-700 dark:text-gray-200 transition-colors border ${
+                          journalCategory === cat.value ? 'shadow-sm' : ''
                         }`}
                         style={{
                           borderColor: cat.color + '60',
-                          color: cat.color,
                           backgroundColor: journalCategory === cat.value ? cat.color + '15' : 'transparent',
                         }}
                       >
@@ -1157,6 +1429,8 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                   </div>
                 </div>
                 <textarea
+                  ref={journalInput}
+                  aria-label="Journal note"
                   className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none resize-none transition-colors"
                   rows={3}
                   placeholder="Write your journal entry... (e.g., 'I noticed I was drawn to participant stories that align with my own experience. Need to actively seek disconfirming evidence.')"
@@ -1167,10 +1441,12 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                   }}
                 />
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-[10px] text-gray-400">Ctrl+Enter to save</span>
+                  <span className="text-[10px] text-gray-600 dark:text-gray-300">Ctrl+Enter to save</span>
                   <button
                     onClick={saveJournalEntry}
-                    disabled={!journalDraft.trim()}
+                    disabled={
+                      !journalDraft.trim() || !readVerified('journal') || Boolean(readErrors.journal) || journalLoading
+                    }
                     className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Save Entry
@@ -1180,11 +1456,26 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
 
               {/* Journal entries */}
               <div className="space-y-2">
-                {journalEntries.length === 0 ? (
+                {journalLoading ? (
+                  <p role="status" className="py-4 text-sm text-gray-600 dark:text-gray-300">
+                    Loading journal entries…
+                  </p>
+                ) : readErrors.journal && journalEntries.length === 0 ? null : readVerified('journal') &&
+                  journalEntries.length === 0 ? (
                   <div className="py-8 text-center">
-                    <p className="text-xs text-gray-400 dark:text-gray-500">No journal entries yet.</p>
-                    <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-1">
-                      Start documenting your analytical decisions and reflections above.
+                    <p className="text-sm text-gray-700 dark:text-gray-300">No journal entries yet.</p>
+                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                      Keep short notes about your choices and assumptions so you can explain how you reached a finding.
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-3 min-h-[44px] rounded-md bg-brand-600 px-4 text-sm text-white"
+                      onClick={() => journalInput.current?.focus()}
+                    >
+                      Start a journal note
+                    </button>
+                    <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
+                      Example: I checked whether my own experience was affecting which passages I noticed.
                     </p>
                   </div>
                 ) : (
@@ -1204,12 +1495,12 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                       >
                         <div className="flex items-center gap-2 mb-1.5">
                           <span
-                            className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
-                            style={{ color, backgroundColor: color + '15' }}
+                            className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-200"
+                            style={{ backgroundColor: color + '15' }}
                           >
                             {entry.category}
                           </span>
-                          <span className="text-[10px] text-gray-400 tabular-nums">
+                          <span className="text-[10px] text-gray-600 dark:text-gray-300 tabular-nums">
                             {new Date(entry.date).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -1220,7 +1511,9 @@ export default function EthicsCompliancePanel({ onClose }: EthicsCompliancePanel
                           </span>
                           <button
                             onClick={() => deleteJournalEntry(entry.id)}
-                            className="ml-auto text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                            disabled={journalLoading || Boolean(readErrors.journal)}
+                            aria-label="Delete journal entry"
+                            className="ml-auto inline-flex min-h-8 min-w-8 items-center justify-center rounded text-gray-600 hover:text-red-700 dark:text-gray-300"
                             title="Delete entry"
                           >
                             <svg
