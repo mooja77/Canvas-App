@@ -1,0 +1,63 @@
+QualCanvas analysis setup — local release evidence, 7 October 2026
+
+Status: local implementation and checks, not yet pushed/merged/deployed.
+Base: origin/main 08082158e044308f5b9ba1bb8f56cd6fc9fa9fc4.
+Separate ethics PR235 remains outside this branch and must not be reverted.
+Before/after lower-bound rubric: 21/28 -> 21/28. This is not a fresh complete
+14-item certificate; remaining role/provider/native/page/video audit stays open.
+
+Scope
+- Real transcript dates/location editor reached through Tools and empty nodes.
+- Optional UTC date, paired finite coordinates, nullable removal, broad label.
+- Validated PUT acknowledgement and authoritative GET; verified values alone
+  update the canvas. Uncertain save retains draft and locks duplicate Save.
+- Check saved details is GET-only, preserves draft and never repeats PUT.
+- Late/cross-canvas reads cannot publish state; viewer cannot edit.
+- Existing transcript text/codes remain; no migration/new default metadata.
+- Cross-case teaching opens the actual case manager, labels filters, separates
+  unassigned sources/filter misses and resets filters without changing grouping.
+- Keyboard-readable matrix passages and named scroll region; corrected excerpt
+  count contrast after actual browser Axe failure (2.53:1, not suppressed).
+- Current written metadata guide, fictional example and email-first setup help.
+  No new captioned metadata video or human accessibility certification claimed.
+
+Local evidence
+Frontend full: 1090 passed, 123 files, 147.72s, before last count contrast fix.
+Focused analysis: 20 passed, 5.98s. Backend: 1379 passed, 19 skipped, 37.76s.
+Root typecheck/lint, changed-source lint (zero warnings), formatting and build
+budget checked; shared/backend/frontend production build passed. 2284 modules,
+26.12s frontend build, 6 methodology/19 marketing/18 training prerenders.
+Existing oversized PDF chunk warning retained; skips are not passing evidence.
+
+Final six browser cases: Chrome/WebKit x1280/820/390, 6 passed, 1.7m, zero retries.
+Artifacts: test-results/analysis-cross-case-contrast-fixed-20261007.
+Actual local UI case creation/assignment -> PostgreSQL assignment -> grouped
+matrix/passages -> excerpt filter miss -> keyboard clear filters. Metadata UI
+PUT -> validated GET -> actual PostgreSQL fields -> real computed timeline/map
+results -> reload persistence. Negative acknowledgement: exactly one PUT,
+read-only Check does not repeat it, draft retained, stored fields unchanged.
+Scoped automated WCAG checks zero, no document overflow or page errors.
+Phone cross-case/editor screenshots reviewed; no cookie-banner overlap.
+Guide rendered at all three widths, keyboard/automated WCAG/no-overflow passed;
+phone full-page screenshot reviewed. Owned coordination verifier records checks.
+
+Retained failed runs: analysis-setup-real-backend-20261007 (native date input),
+analysis-cross-case-real-20261007 (immediate checkbox assertion before real PUT
+confirmation), analysis-cross-case-confirmed-20261007 (genuine contrast defect).
+No timeout, rule, security boundary or assertion weakened to obtain passes.
+
+Saved full onboarding path: 1 passed, 17.7s runner / 15.0s test.
+Artifacts: test-results/analysis-full-onboarding-20261007.
+After: 9 pointer clicks plus 1 drag, 7 fields, 5.398s signup-to-first-coded-excerpt
+and 6.146s homepage-to-first-coded-excerpt. Before ethics local baseline:
+5.336s/6.218s, identical interactions. These are automated local fixture timings,
+not human measurements or a causal speed claim. Final two observations use the
+real API rather than all-UI actions; provider/native certification is not inferred.
+
+Safety/limits
+Fictional disposable localhost accounts only; normal account DELETE cleanup.
+Paid-plan fixture uses explicitly guarded own PostgreSQL database, not checkout.
+All browser external requests blocked. No production rows/settings/credentials,
+provider actions, real-person messages, lifecycle enabling, GPU or POS changes.
+Release still needs latest-main rebase, exact-head green CI, normal deployment
+and independent live module/API verification. All15 goal remains active.

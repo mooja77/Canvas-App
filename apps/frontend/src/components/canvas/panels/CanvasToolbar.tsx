@@ -15,6 +15,7 @@ import { useCanvasPlan } from '../../../hooks/useCanvasPlan';
 
 const AutoCodeModal = lazy(() => import('./AutoCodeModal'));
 const CaseManagerPanel = lazy(() => import('./CaseManagerPanel'));
+const TranscriptDetailsPanel = lazy(() => import('./TranscriptDetailsPanel'));
 const HierarchyPanel = lazy(() => import('./HierarchyPanel'));
 const CodebookExportModal = lazy(() => import('./CodebookExportModal'));
 const ExcerptBrowserModal = lazy(() => import('./ExcerptBrowserModal'));
@@ -248,6 +249,7 @@ export default function CanvasToolbar({
   const [questionText, setQuestionText] = useState('');
   const [showAutoCode, setShowAutoCode] = useState(false);
   const [showCaseManager, setShowCaseManager] = useState(false);
+  const [showTranscriptDetails, setShowTranscriptDetails] = useState(false);
   const [showHierarchy, setShowHierarchy] = useState(false);
   const [showCodebook, setShowCodebook] = useState<boolean | 'data'>(false);
   const [showExcerpts, setShowExcerpts] = useState(false);
@@ -291,6 +293,9 @@ export default function CanvasToolbar({
           break;
         case 'case-manager':
           setShowCaseManager(true);
+          break;
+        case 'transcript-details':
+          setShowTranscriptDetails(true);
           break;
         case 'hierarchy':
           setShowHierarchy(true);
@@ -861,6 +866,11 @@ export default function CanvasToolbar({
                 onClick={() => setShowWeighting(true)}
               />
               <DropdownLabel>Sources &amp; training</DropdownLabel>
+              <DropdownItem
+                icon={<span aria-hidden="true">◷</span>}
+                label="Transcript dates and locations"
+                onClick={() => setShowTranscriptDetails(true)}
+              />
               {!isViewer && (
                 <DropdownItem
                   icon={
@@ -1469,6 +1479,7 @@ export default function CanvasToolbar({
       <Suspense fallback={null}>
         {showAutoCode && <AutoCodeModal onClose={() => setShowAutoCode(false)} />}
         {showCaseManager && <CaseManagerPanel onClose={() => setShowCaseManager(false)} />}
+        {showTranscriptDetails && <TranscriptDetailsPanel onClose={() => setShowTranscriptDetails(false)} />}
         {showHierarchy && <HierarchyPanel onClose={() => setShowHierarchy(false)} />}
         {showCodebook && (
           <CodebookExportModal
