@@ -12,7 +12,7 @@ for (const width of [1280, 820, 390]) {
     const errors: string[] = [];
     const forbidden: string[] = [];
     let fault: string | null = 'ethics';
-    let failures = 0;
+    const failedReadKinds = new Set<string>();
     let created = false;
     const password = randomBytes(24).toString('base64');
     const headers = { Origin: new URL(baseURL).origin };
@@ -27,8 +27,10 @@ for (const width of [1280, 820, 390]) {
         return route.abort('blockedbyclient');
       }
       if (key === fault && request.method() === 'GET') {
-        fault = null;
-        failures++;
+        // Keep the outage active until the explicit Retry interaction below.
+        // Development StrictMode may mount/read twice; a one-shot failure lets
+        // the second read recover before the error-screen assertion runs.
+        failedReadKinds.add(key);
         return route.fulfill({
           status: 503,
           contentType: 'application/json',
@@ -99,6 +101,7 @@ for (const width of [1280, 820, 390]) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
       };
       await audit();
+      fault = null;
       await dialog.getByRole('button', { name: 'Retry loading ethics settings' }).focus();
       await page.keyboard.press('Enter');
       await expect(dialog.getByRole('button', { name: 'Save Settings' })).toBeEnabled();
@@ -124,6 +127,7 @@ for (const width of [1280, 820, 390]) {
           ),
         ).toHaveCount(0);
         await audit();
+        fault = null;
         await dialog.getByRole('button', { name: `Retry loading ${label}` }).focus();
         await page.keyboard.press('Enter');
         await expect(dialog.getByRole('status')).toHaveCount(0);
@@ -163,7 +167,7 @@ for (const width of [1280, 820, 390]) {
       await expect(
         page.getByRole('button', { name: 'Paste Text Type or paste transcript content', exact: true }),
       ).toBeVisible();
-      expect(failures).toBe(4);
+      expect([...failedReadKinds].sort()).toEqual(['audit', 'consent', 'ethics', 'journal']);
       expect(forbidden).toEqual([]);
       expect(errors).toEqual([]);
     } finally {

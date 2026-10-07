@@ -26,6 +26,29 @@ The full saved production-build onboarding journey also passed: **16.7 seconds t
 
 Retained failures: `test-results/ethics-static-production-20261007` and `test-results/ethics-static-corrected-20261007`. Successful pre-rebase run: `test-results/ethics-static-final-20261007`. No assertions, timeouts, skips or security gates were weakened.
 
+## CI development-mode correction
+
+Initial exact-head CI run `37585645170` failed three new Chromium cases at the
+first settings-error assertion (770 passed, nine skipped); the other ten checks
+succeeded. Its retained retry trace shows two settings GETs, 503 then 200, during
+React StrictMode's development mount. The one-shot injected outage was consumed
+by the first read, allowing the second to succeed before the assertion. The test
+now holds each outage until the explicit keyboard Retry and checks the four
+distinct failed read kinds. It does not change application behavior, relax an
+assertion, add a skip or extend a timeout. Corrected local development and frozen
+production-build results are recorded here before the corrective push.
+
+Corrected local development run: all three Chrome widths and WebKit 1280/820
+passed. Vite then crashed with an unhandled `ECONNRESET`; WebKit 390 failed at
+initial navigation before signup. That failure is retained, not marked passing
+(`test-results/ethics-strictmode-correction-20261007`). The corrected test then
+passed **all six Chrome/WebKit cases, 1.3 minutes, zero retries**, against the
+original preserved production build and real local API/Postgres
+(`test-results/ethics-corrected-frozen-production-20261007`). All four outage,
+read-only Retry, keyboard, scoped automated WCAG, overflow and no-mutation
+assertions remain. Focused ethics/audit unit suites: **27 passed, 5.13 seconds**.
+Application code and its frozen build were not changed for this correction.
+
 ## First value and limitations
 
 The saved onboarding path reaches the first real coding, not an ethics action: **nine pointer clicks plus one drag, seven fields**. Before (PR #234): **4.911 seconds signup-to-aha / 5.711 seconds homepage-to-aha**. After: **5.336 / 6.218 seconds**. These are automated fixture timings, not human estimates or causal performance changes attributable to the ethics panel. The interaction and field counts are unchanged.
