@@ -19,6 +19,17 @@ import { selectExcerptByPointer } from '../scripts/select-excerpt-by-pointer.mjs
 
 test.use({ storageState: { cookies: [], origins: [] } });
 test.describe.configure({ timeout: 180_000 });
+const fixturePasswords = new WeakMap<Page, string>();
+
+test.afterEach(async ({ page }) => {
+  const password = fixturePasswords.get(page);
+  if (!password) return;
+  try {
+    await deleteFixtureAccount(page, password);
+  } finally {
+    fixturePasswords.delete(page);
+  }
+});
 
 test.beforeEach(async ({ context }) => {
   // Browser connections do not inherit the Node preload's network guard.
@@ -84,7 +95,12 @@ test('a new researcher reaches a first coded excerpt on their own, then clears t
   await fill(page.locator('#register-email'), email);
   await fill(page.locator('#register-password'), password);
   const signedUpAt = Date.now();
+  const signupResponse = page.waitForResponse(
+    (r) => r.url().endsWith('/api/auth/signup') && r.request().method() === 'POST',
+  );
   await click(page.getByRole('button', { name: /Create Free Account/i }));
+  expect((await signupResponse).status()).toBe(201);
+  fixturePasswords.set(page, password);
   await page.waitForURL(/\/canvas/, { timeout: 30_000 });
 
   // ── Two optional questions; the topic names the first project ──
@@ -156,7 +172,6 @@ test('a new researcher reaches a first coded excerpt on their own, then clears t
   );
   if (baseline) {
     test.info().annotations.push({ type: 'ttfv-baseline', description: JSON.stringify(measurement) });
-    await deleteFixtureAccount(page, password);
     return;
   }
   await expect(progress).toHaveAttribute('aria-valuenow', '2');
@@ -213,6 +228,11 @@ test('a new researcher reaches a first coded excerpt on their own, then clears t
   await page.reload();
   await expect(progress).toHaveAttribute('aria-valuenow', '2', { timeout: 20_000 });
   await expect(page.getByRole('button', { name: 'Help', exact: true })).toBeVisible();
+  const hiddenCodeFilter = page.getByPlaceholder('Filter codes...');
+  await expect(hiddenCodeFilter).toHaveCount(1); // Keep the navigator's local state, not its hidden focus targets.
+  await expect(page.getByRole('textbox').and(hiddenCodeFilter)).toHaveCount(0);
+  await hiddenCodeFilter.evaluate((element) => (element as HTMLElement).focus());
+  await expect(hiddenCodeFilter).not.toBeFocused();
   const mobileAccessibility = await new AxeBuilder({ page })
     .include('main')
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
@@ -277,34 +297,61 @@ test('a new researcher reaches a first coded excerpt on their own, then clears t
   await page.keyboard.press('Escape');
   await expect(progress).toHaveAttribute('aria-valuenow', '3');
 
-  // The last two guide observations are actual authorized server operations,
-  // not node creation, a supplied result, or a client checklist marker.
-  const observed = await page.evaluate(async (firstCoding) => {
-    const canvasId = location.pathname.split('/').pop();
-    const post = async (path: string, body: unknown) => {
-      const response = await fetch(`/api/canvas/${canvasId}/${path}`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!response.ok) throw new Error(`Expected successful ${path}, got ${response.status}`);
-      return (await response.json()).data;
-    };
-    const question = await post('questions', { text: 'Confidence', color: '#3B82F6' });
-    await post('codings', {
-      transcriptId: firstCoding.transcriptId,
-      questionId: question.id,
-      startOffset: firstCoding.startOffset,
-      endOffset: firstCoding.endOffset,
-      codedText: firstCoding.codedText,
-    });
-    const analysis = await post('computed', { nodeType: 'stats', label: 'First coding frequencies' });
-    const before = (await (await fetch('/api/user/onboarding', { credentials: 'include' })).json()).data.observedSteps;
-    if (before.includes('run-analysis')) throw new Error('Creating an empty node must not observe an analysis');
-    await post(`computed/${analysis.id}/run`, {});
-    return (await (await fetch('/api/user/onboarding', { credentials: 'include' })).json()).data;
-  }, savedCoding);
+  // Complete the remaining guide steps through the real UI, not API shortcuts.
+  await page.getByRole('button', { name: 'Use 2 different codes', exact: true }).click();
+  await selectExcerpt(page, 'A fictional support worker', 80);
+  await expect(quickCode).toBeVisible();
+  await quickCode.fill('Confidence');
+  const secondCodingResponse = page.waitForResponse(
+    (r) => /\/api\/canvas\/[^/]+\/codings$/.test(r.url()) && r.request().method() === 'POST',
+  );
+  await quickCode.press('Enter');
+  const secondCoding = await secondCodingResponse;
+  expect(secondCoding.status()).toBe(201);
+  expect((await secondCoding.json()).data.questionId).not.toBe(savedCoding.questionId);
+  await expect(progress).toHaveAttribute('aria-valuenow', '4');
+
+  await page.getByRole('button', { name: /Run an analysis \(word cloud, frequency/ }).click();
+  const createAnalysisResponse = page.waitForResponse(
+    (r) => /\/api\/canvas\/[^/]+\/computed$/.test(r.url()) && r.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: /^Statistics\s+Coding frequency charts$/ }).click();
+  const createdAnalysis = await createAnalysisResponse;
+  expect(createdAnalysis.status()).toBe(201);
+  const analysis = (await createdAnalysis.json()).data;
+  expect(analysis.nodeType).toBe('stats');
+  const beforeRun = await page.evaluate(
+    async () => (await (await fetch('/api/user/onboarding', { credentials: 'include' })).json()).data.observedSteps,
+  );
+  expect(beforeRun).not.toContain('run-analysis');
+  await expect(progress).toHaveAttribute('aria-valuenow', '4');
+  const statistics = page.locator('.react-flow__node-stats');
+  const run = statistics.getByRole('button', { name: 'Run computation', exact: true });
+  await expect(run).toBeVisible();
+  await expect(run).toBeEnabled();
+  const runResponse = page.waitForResponse(
+    (r) => r.url().endsWith(`/computed/${analysis.id}/run`) && r.request().method() === 'POST',
+  );
+  await run.click();
+  const computed = await runResponse;
+  expect(computed.status()).toBe(200);
+  const result = (await computed.json()).data.result;
+  const positive = result.items.filter((item: { count: number }) => item.count > 0);
+  expect(positive.map((item: { label: string }) => item.label).sort()).toEqual(['Access barriers', 'Confidence']);
+  expect(positive.every((item: { count: number }) => item.count === 1)).toBe(true);
+  expect(result.items.every((item: { count: number }) => Number.isFinite(item.count) && item.count >= 0)).toBe(true);
+  const counts = statistics.getByRole('table', { name: 'Coding frequency counts' });
+  const countsRegion = statistics.getByRole('region', { name: 'All coding counts' });
+  await countsRegion.focus();
+  await page.keyboard.press('End');
+  await expect.poll(() => countsRegion.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await expect(counts.getByRole('row', { name: 'Access barriers 1' })).toBeVisible();
+  await expect(counts.getByRole('row', { name: 'Confidence 1' })).toBeVisible();
+  await expect(counts.getByRole('row', { name: 'Confidence 1' })).toBeInViewport();
+  await expect(progress).toBeHidden();
+  const observed = await page.evaluate(
+    async () => (await (await fetch('/api/user/onboarding', { credentials: 'include' })).json()).data,
+  );
   expect(observed.observedSteps).toEqual([
     'first-transcript',
     'first-coded-excerpt',
@@ -313,7 +360,13 @@ test('a new researcher reaches a first coded excerpt on their own, then clears t
     'export-csv',
   ]);
   expect(observed.state.checklistComplete).toContain('export-csv');
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Help', exact: true })).toBeVisible();
+  await expect(progress).toBeHidden();
+  const resumed = await page.evaluate(
+    async () => (await (await fetch('/api/user/onboarding', { credentials: 'include' })).json()).data,
+  );
+  expect(resumed.observedSteps).toEqual(observed.observedSteps);
 
-  // Clean up the account this test created.
-  await deleteFixtureAccount(page, password);
+  // afterEach deletes exactly this account on success AND failed assertions.
 });

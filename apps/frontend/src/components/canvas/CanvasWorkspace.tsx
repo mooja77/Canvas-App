@@ -342,7 +342,10 @@ export default function CanvasWorkspace() {
   }>({ show: false, sourceId: '', targetId: '', sourceName: '', targetName: '' });
 
   // UI state
-  const [showNavigator, setShowNavigator] = useState(true);
+  // Don't briefly mount a desktop-width navigator over phone controls while
+  // ResizeObserver waits for its first frame. Container measurements below
+  // still handle later resizing and preserve explicit navigator choices.
+  const [showNavigator, setShowNavigator] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 900);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -2581,7 +2584,13 @@ export default function CanvasWorkspace() {
     <div ref={workspaceRef} className="flex h-full">
       {/* Code Navigator Sidebar — animated collapse */}
       {!focusMode && (
-        <div className={`transition-all duration-200 overflow-hidden ${showNavigator ? 'w-60' : 'w-0'}`}>
+        <div
+          aria-hidden={!showNavigator}
+          ref={(element) => {
+            if (element) element.inert = !showNavigator;
+          }}
+          className={`transition-all duration-200 overflow-hidden ${showNavigator ? 'w-60' : 'w-0'}`}
+        >
           <ErrorBoundary>
             <CodeNavigator onFocusNode={handleFocusNode} />
           </ErrorBoundary>
