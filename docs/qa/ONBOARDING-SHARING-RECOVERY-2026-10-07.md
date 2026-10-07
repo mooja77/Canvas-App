@@ -33,7 +33,13 @@ The server's existing ownership checks, collaborator email verification, seat qu
 - A preceding final-run attempt timed out in the harness startup navigation before any test/account was created. It was retained under `test-results/sharing-combined-guide-compact-20261007`. The startup smoke page now uses the same local-only external-request guard as the tests; corrected run passed without increasing timeouts.
 - Complete saved onboarding journey on the final build: one passed, 2.9-minute runner / 1.8-minute test, under `test-results/sharing-full-onboarding-20261007`. Landing/signup/sample/own transcript/pointer coding/progress/help/return/phone/tablet/sample removal/real CSV content/actual server-observed steps and cleanup. The existing later setup-step checks include API observations, not proof of every later UI pathway.
 
-## Scope, score and first value
+## CI visual correction (7 October)
+
+PR #237 head `ce2cf9c95bb9ce2f9f0b93f8a6e82fb34e899d26`, CI run `37595501429`: ten checks passed, but Chromium finished with 775 passed, nine skipped and one failed. The only failure was the existing Share modal Linux screenshot; the three new sharing recovery Chromium cases passed. This failed run is retained, not labelled green.
+
+Artifact `11471228434` contains the expected, actual and diff screenshots plus the retry. The expected PNG's Git blob (`012668a5924b98fbadc29952d787f07144e557b2`) exactly matches the tracked baseline. The actual and retry PNGs are identical SHA-256 `CD4D58164DAB39AF3074F85DB11B8DF8B3526B1677874B49DAA509A91F46FCAD`. The reviewed actual is 512 by 664 instead of 512 by 514: intentional collaborator guidance, sharing-guide link and privacy-aware email support add height. Text and controls are legible, and Close remains visible. Only `share-modal-chromium-linux.png` is replaced with that reviewed actual. No application source, visual thresholds, masks, assertions, retries or timeouts change. The previously verified phone/tablet/short-screen behaviour remains covered separately. Corrective exact-head CI must pass before merge.
+
+## Scope, score and first value (unchanged)
 
 This repairs a concrete robustness/teaching gap, not the whole app. Conservative inherited rubric lower bound remains 21/28 before and after; this is not a fresh fourteen-item certificate and does not satisfy the all-app completion gate.
 
