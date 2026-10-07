@@ -139,6 +139,41 @@ function StatsNode({ data, id, selected }: NodeProps) {
                 </ResponsiveContainer>
               )}
             </div>
+            <p className="mt-3 text-xs text-gray-600 dark:text-gray-300">
+              Counts are saved coded excerpts, not people.
+            </p>
+            <div
+              role="region"
+              aria-label="All coding counts"
+              tabIndex={0}
+              className="mt-2 max-h-48 overflow-y-auto rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700"
+            >
+              <table
+                aria-label="Coding frequency counts"
+                className="w-full table-fixed text-xs text-gray-700 dark:text-gray-200"
+              >
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-gray-900/30">
+                    <th scope="col" className="w-3/4 px-2 py-2 text-left font-semibold">
+                      {config?.groupBy === 'transcript' ? 'Transcript' : 'Code'}
+                    </th>
+                    <th scope="col" className="px-2 py-2 text-right font-semibold">
+                      Saved excerpts
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.items.map((item, index) => (
+                    <tr key={`${item.label}-${index}`} className="border-t border-gray-100 dark:border-gray-700">
+                      <th scope="row" className="px-2 py-2 text-left font-normal [overflow-wrap:anywhere]">
+                        {item.label}
+                      </th>
+                      <td className="px-2 py-2 text-right tabular-nums">{item.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
       </div>
