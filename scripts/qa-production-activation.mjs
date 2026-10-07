@@ -5,6 +5,7 @@ import path from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { chromium } from '@playwright/test';
 import { activationSteps, assertLocalOrigins, assertObservedProgress } from './activation-contract.mjs';
+import { selectExcerptByPointer } from './select-excerpt-by-pointer.mjs';
 
 const appOrigin = process.env.QUALCANVAS_QA_ORIGIN || 'https://qualcanvas.com';
 const apiOrigin = process.env.QUALCANVAS_QA_API_ORIGIN || 'https://api.qualcanvas.com/api';
@@ -83,52 +84,7 @@ async function screenshot(name) {
 }
 
 async function selectTranscriptExcerpt(startText, characterCount) {
-  const text = page.locator('.select-text').filter({ hasText: startText }).first();
-  await text.waitFor({ state: 'visible' });
-  await text.evaluate(
-    (element, excerpt) => {
-      const fullText = element.textContent ?? '';
-      const startOffset = fullText.indexOf(excerpt.startText);
-      if (startOffset < 0) throw new Error(`Excerpt start text was not found: ${excerpt.startText}`);
-
-      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-      const textNodes = [];
-      let node;
-      while ((node = walker.nextNode())) textNodes.push(node);
-
-      const pointAt = (absoluteOffset) => {
-        let consumed = 0;
-        for (const textNode of textNodes) {
-          const nodeLength = textNode.textContent?.length ?? 0;
-          if (absoluteOffset <= consumed + nodeLength) {
-            return { node: textNode, offset: Math.max(0, absoluteOffset - consumed) };
-          }
-          consumed += nodeLength;
-        }
-        const last = textNodes.at(-1);
-        if (!last) throw new Error('Transcript text node was not found');
-        return { node: last, offset: last.textContent?.length ?? 0 };
-      };
-
-      const start = pointAt(startOffset);
-      const end = pointAt(Math.min(startOffset + excerpt.characterCount, fullText.length));
-      const range = document.createRange();
-      range.setStart(start.node, start.offset);
-      range.setEnd(end.node, end.offset);
-      const selection = window.getSelection();
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-      const rect = range.getBoundingClientRect();
-      element.parentElement?.dispatchEvent(
-        new MouseEvent('mouseup', {
-          bubbles: true,
-          clientX: rect.left + rect.width / 2,
-          clientY: rect.top,
-        }),
-      );
-    },
-    { startText, characterCount },
-  );
+  await selectExcerptByPointer(page, startText, characterCount);
 }
 
 try {
