@@ -22,7 +22,7 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22.23.4
           cache: npm
       - run: npm ci
       - run: npx prisma generate --schema=apps/backend/prisma/schema.prisma
