@@ -15,10 +15,10 @@ async function openCanvas(page: Page) {
     s.state = { ...s.state, onboardingComplete: true, setupWizardComplete: true };
     localStorage.setItem('qualcanvas-ui', JSON.stringify(s));
   });
-  await page.goto('/canvas');
-  await page.waitForLoadState('networkidle');
+  await page.goto('/canvas', { waitUntil: 'domcontentloaded' });
   const card = page.getByText(PREFIX).first();
-  if (await card.isVisible({ timeout: 3000 }).catch(() => false)) await card.click();
+  await expect(card).toBeVisible();
+  await card.click();
   await page.waitForSelector('.react-flow__pane', { timeout: 10000 });
 }
 
@@ -26,8 +26,9 @@ test.describe('Deep Canvas: Keyboard Workflow', () => {
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
     const p = await ctx.newPage();
-    await p.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
-    await p.waitForLoadState('domcontentloaded');
+    await p.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`, {
+      waitUntil: 'domcontentloaded',
+    });
     jwt = await p.evaluate(() => {
       const r = localStorage.getItem('qualcanvas-auth');
       return r ? JSON.parse(r)?.state?.jwt || '' : '';
@@ -48,17 +49,12 @@ test.describe('Deep Canvas: Keyboard Workflow', () => {
   test.afterAll(async ({ browser }) => {
     if (!canvasId) return;
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
-    const p = await ctx.newPage();
-    await p.goto(`http://localhost:${process.env.E2E_FRONTEND_PORT ?? 5174}/canvas`);
-    await p.waitForLoadState('domcontentloaded');
-    jwt = await p.evaluate(() => {
-      const r = localStorage.getItem('qualcanvas-auth');
-      return r ? JSON.parse(r)?.state?.jwt || '' : '';
-    });
-    await p.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
-    await p.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
-    await p.close();
-    await ctx.close();
+    try {
+      await ctx.request.delete(`${API}/canvas/${canvasId}`, { headers: headers() });
+      await ctx.request.delete(`${API}/canvas/${canvasId}/permanent`, { headers: headers() });
+    } finally {
+      await ctx.close();
+    }
   });
 
   test('1 - F key triggers Fit View', async ({ page }) => {

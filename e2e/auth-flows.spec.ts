@@ -247,6 +247,23 @@ test.describe('Navigation Guards', () => {
     await signInCodeBtn.click();
     await page.waitForURL('**/canvas**', { timeout: 15000 });
 
+    // A fresh access-code account must leave the first-run setup before logout.
+    // Read through the authenticated request context: Firefox can discard a
+    // body from the UI's cancelled duplicate fetch during route hydration.
+    const canvasList = await page.request.get('/api/canvas');
+    expect(canvasList.ok()).toBe(true);
+    const { data: canvases } = await canvasList.json();
+    expect(Array.isArray(canvases)).toBe(true);
+    if (canvases.length === 0) {
+      const skipSetup = page.getByRole('button', { name: 'Skip setup', exact: true });
+      await expect(skipSetup).toBeVisible();
+      await skipSetup.click();
+      await expect(skipSetup).not.toBeVisible();
+      const closeWelcome = page.getByRole('button', { name: 'Close welcome dialog', exact: true });
+      await closeWelcome.click();
+      await expect(closeWelcome).not.toBeVisible();
+    }
+
     const logoutResponse = page.waitForResponse(
       (response) => response.url().includes('/auth/logout') && response.request().method() === 'POST',
     );

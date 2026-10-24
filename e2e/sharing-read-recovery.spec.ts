@@ -128,6 +128,7 @@ for (const width of [1280, 820, 390]) {
       await dialog.getByRole('button', { name: 'Retry loading collaborators' }).focus();
       await page.keyboard.press('Enter');
       await expect(dialog.getByRole('button', { name: 'Invite', exact: true })).toBeEnabled();
+      await expect(dialog.getByRole('button', { name: 'Invite', exact: true })).toHaveCSS('opacity', '1');
       await expect(dialog.getByLabel("Coder's email address")).toHaveValue('fictional-colleague@example.com');
       await expect(dialog.getByLabel('Access level')).toHaveValue('viewer');
       await expect(dialog.getByText(/No collaborators yet/)).toBeVisible();
