@@ -47,14 +47,14 @@ export const pilotFeedbackSchema = z
   .superRefine((data, ctx) => {
     if (data.contactEmail && !data.consentToContact) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: ['consentToContact'],
         message: 'Consent is required before an email address can be stored',
       });
     }
     if (!data.contactEmail && data.consentToContact) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: ['contactEmail'],
         message: 'Enter an email address if you consent to follow-up',
       });

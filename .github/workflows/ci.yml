@@ -173,7 +173,7 @@ jobs:
 
   e2e-chromium:
     name: E2E Chromium
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # Playwright 1.58 cannot install browsers on ubuntu-latest (26.04)
     needs: [build, unit-tests]
     timeout-minutes: 45
     env:
@@ -220,7 +220,7 @@ jobs:
 
   e2e-cross-browser:
     name: E2E Cross-browser Critical Paths
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # Playwright 1.58 cannot install browsers on ubuntu-latest (26.04)
     needs: [build, unit-tests]
     timeout-minutes: 35
     env:

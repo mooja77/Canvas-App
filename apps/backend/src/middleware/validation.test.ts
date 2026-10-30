@@ -16,6 +16,10 @@ import {
   ONBOARDING_CHECKLIST_TASK_IDS,
   canvasArtifactValueSchemas,
   CODE_WEIGHTS_MAX_KEYS,
+  isoDateTime,
+  updateCanvasArtifactSchema,
+  updateTranscriptSchema,
+  createDocumentSchema,
 } from './validation.js';
 
 function mockReq(body: unknown): Request {
@@ -466,5 +470,63 @@ describe('code-weights artifact schema caps the number of keys', () => {
   it('accepts weights 1 through 5 and an empty map', () => {
     expect(schema.safeParse({ a: 1, b: 2, c: 3, d: 4, e: 5 }).success).toBe(true);
     expect(schema.safeParse({}).success).toBe(true);
+  });
+});
+
+// zod 3 -> 4 upgrade: these pin the request contract the API had under zod 3,
+// so the dependency upgrade cannot quietly start rejecting requests that used
+// to be valid (or the reverse).
+describe('zod 4 upgrade keeps the zod 3 request contract', () => {
+  it('ISO datetimes: optional seconds, Z, and +hh:mm / +hhmm offsets where allowed', () => {
+    const utc = isoDateTime();
+    const withOffset = isoDateTime({ offset: true });
+    for (const v of [
+      '2026-10-30T10:00:00Z',
+      '2026-10-30T10:00:00.123456Z',
+      '2026-10-30T10:00Z',
+      '2028-02-29T00:00:00Z',
+    ]) {
+      expect(utc.safeParse(v).success).toBe(true);
+      expect(withOffset.safeParse(v).success).toBe(true);
+    }
+    for (const v of ['2026-10-30T10:00:00+01:00', '2026-10-30T10:00:00-0530']) {
+      expect(utc.safeParse(v).success).toBe(false);
+      expect(withOffset.safeParse(v).success).toBe(true);
+    }
+    for (const v of [
+      '2026-10-30',
+      '2026-10-30T10:00:00',
+      '2026-02-30T10:00:00Z',
+      '2026-10-30T24:00:00Z',
+      'not a date',
+    ]) {
+      expect(utc.safeParse(v).success).toBe(false);
+      expect(withOffset.safeParse(v).success).toBe(false);
+    }
+    expect(updateTranscriptSchema.safeParse({ eventDate: '2026-10-30T10:00+01:00' }).success).toBe(true);
+  });
+
+  it('an absent artifact value still reaches the per-type schema in the route', () => {
+    expect(updateCanvasArtifactSchema.safeParse({}).success).toBe(true);
+    expect(updateCanvasArtifactSchema.safeParse({ value: [] }).success).toBe(true);
+  });
+
+  it('single-value metadata records still accept any string-keyed object', () => {
+    const base = { fileUploadId: 'f', title: 't', docType: 'pdf' };
+    expect(createDocumentSchema.safeParse({ ...base, metadata: { a: 1, b: { c: 2 } } }).success).toBe(true);
+    expect(createDocumentSchema.safeParse({ ...base, metadata: 'x' }).success).toBe(false);
+  });
+
+  it('validation failures keep the { success, error, details: fieldErrors } response shape', () => {
+    const res = mockRes();
+    const next: NextFunction = vi.fn();
+    validate(createCanvasSchema)(mockReq({ name: '' }), res, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      error: 'Validation failed',
+      details: { name: ['Canvas name is required'] },
+    });
   });
 });
