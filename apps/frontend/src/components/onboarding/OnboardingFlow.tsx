@@ -160,7 +160,12 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
         </div>
 
         {step === 1 && (
-          <Screen1_Personalization onContinue={handlePersonalization} onSkip={() => finish('dismissed')} />
+          <Screen1_Personalization
+            initialResearchTopic={researchTopic}
+            initialMethod={preferredMethod}
+            onContinue={handlePersonalization}
+            onSkip={() => finish('dismissed')}
+          />
         )}
         {step === 2 && (
           <Screen2_TemplateGallery
