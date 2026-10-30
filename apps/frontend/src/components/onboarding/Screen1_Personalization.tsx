@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { trackEvent } from '../../utils/analytics';
 
 interface Props {
+  initialResearchTopic?: string;
+  initialMethod?: string;
   onContinue: (answers: { researchTopic: string; method: string }) => void;
   onSkip: () => void;
 }
@@ -14,9 +16,14 @@ const METHODS = [
   { id: 'other', label: 'Other' },
 ] as const;
 
-export default function Screen1_Personalization({ onContinue, onSkip }: Props) {
-  const [topic, setTopic] = useState('');
-  const [method, setMethod] = useState<string>('interviews');
+export default function Screen1_Personalization({
+  initialResearchTopic = '',
+  initialMethod = 'interviews',
+  onContinue,
+  onSkip,
+}: Props) {
+  const [topic, setTopic] = useState(initialResearchTopic);
+  const [method, setMethod] = useState<string>(initialMethod);
   // Two questions, both optional: the topic names the first project, the
   // method pre-selects the template. (A third "solo or team?" question was
   // asked and never used, so it is gone.)

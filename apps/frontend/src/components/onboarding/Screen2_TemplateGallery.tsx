@@ -4,7 +4,7 @@ import { trackEvent } from '../../utils/analytics';
 
 interface Props {
   preferredMethod: string;
-  onSelect: (template: CanvasTemplate | null, includeSampleData: boolean) => void;
+  onSelect: (template: CanvasTemplate | null, includeSampleData: boolean) => void | Promise<void>;
   onSkip: () => void;
   onBack: () => void;
 }
@@ -26,6 +26,7 @@ export default function Screen2_TemplateGallery({ preferredMethod, onSelect, onS
   const [error, setError] = useState<string | null>(null);
   const [includeSample, setIncludeSample] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,17 +55,20 @@ export default function Screen2_TemplateGallery({ preferredMethod, onSelect, onS
     return [...matching, ...rest].slice(0, 4);
   }, [templates, preferredMethod]);
 
-  const handlePick = (tmpl: CanvasTemplate) => {
+  const handlePick = async (tmpl: CanvasTemplate) => {
     setSelectedId(tmpl.id);
+    setSelectionError(null);
     trackEvent('template_selected', {
       template_name: tmpl.name,
       method: tmpl.method ?? 'blank',
       include_sample_data: includeSample,
     });
-    if (tmpl.id === '__blank__') {
-      onSelect(null, false);
-    } else {
-      onSelect(tmpl, includeSample);
+    try {
+      await onSelect(tmpl.id === '__blank__' ? null : tmpl, tmpl.id !== '__blank__' && includeSample);
+    } catch {
+      setSelectionError('Could not create your canvas. Please try again, or choose another starting point.');
+    } finally {
+      setSelectedId(null);
     }
   };
 
@@ -82,6 +86,7 @@ export default function Screen2_TemplateGallery({ preferredMethod, onSelect, onS
           <input
             type="checkbox"
             checked={includeSample}
+            disabled={selectedId !== null}
             onChange={(e) => setIncludeSample(e.target.checked)}
             className="rounded text-brand-600 focus:ring-brand-500"
           />
@@ -92,6 +97,15 @@ export default function Screen2_TemplateGallery({ preferredMethod, onSelect, onS
       {error && (
         <div className="rounded-md bg-rose-50 dark:bg-rose-900/20 p-3 text-xs text-rose-700 dark:text-rose-300 mb-3">
           {error}. You can still skip and start with a blank canvas.
+        </div>
+      )}
+
+      {selectionError && (
+        <div
+          role="alert"
+          className="rounded-md bg-rose-50 dark:bg-rose-900/20 p-3 text-xs text-rose-700 dark:text-rose-300 mb-3"
+        >
+          {selectionError}
         </div>
       )}
 
@@ -143,12 +157,14 @@ export default function Screen2_TemplateGallery({ preferredMethod, onSelect, onS
           <button
             type="button"
             onClick={onBack}
+            disabled={selectedId !== null}
             className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
           >
             Back
           </button>
           <button
             type="button"
+            disabled={selectedId !== null}
             onClick={() => {
               trackEvent('onboarding_skipped', { at_step: 2 });
               onSkip();
