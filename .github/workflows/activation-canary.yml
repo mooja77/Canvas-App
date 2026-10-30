@@ -23,12 +23,12 @@ jobs:
           POSTGRES_USER: qualcanvas
           POSTGRES_PASSWORD: qualcanvas
           POSTGRES_DB: qualcanvas_fullstack
-        ports: ['5432/tcp']
+        ports: ['55433:5432']
         options: >-
           --health-cmd pg_isready --health-interval 5s
           --health-timeout 5s --health-retries 12
     env:
-      QC_FS_DATABASE_URL: postgresql://qualcanvas:qualcanvas@127.0.0.1:${{ job.services.postgres.ports[5432] }}/qualcanvas_fullstack?schema=public
+      QC_FS_DATABASE_URL: postgresql://qualcanvas:qualcanvas@127.0.0.1:55433/qualcanvas_fullstack?schema=public
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
