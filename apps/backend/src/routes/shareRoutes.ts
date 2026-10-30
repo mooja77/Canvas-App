@@ -4,7 +4,13 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { nanoid } from 'nanoid';
-import { validateParams, canvasIdParam, canvasShareIdParams, shareCodeParam } from '../middleware/validation.js';
+import {
+  validateParams,
+  canvasIdParam,
+  canvasShareIdParams,
+  shareCodeParam,
+  isoDateTime,
+} from '../middleware/validation.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas, safeJsonParse } from '../utils/routeHelpers.js';
 import { checkCanvasLimit, checkShareLimit } from '../middleware/planLimits.js';
 import { getPlanLimits } from '../config/plans.js';
@@ -28,7 +34,7 @@ const MAX_SHARE_DAYS = 365;
  */
 const createShareSchema = z
   .object({
-    expiresAt: z.string().datetime().optional(),
+    expiresAt: isoDateTime().optional(),
     expiresInDays: z.number().int().positive().max(MAX_SHARE_DAYS).optional(),
   })
   .strict();
