@@ -1,14 +1,14 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 
-export function validate(schema: z.ZodSchema) {
+export function validate(schema: z.ZodType) {
   return (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req.body);
     if (!result.success) {
       return res.status(400).json({
         success: false,
         error: 'Validation failed',
-        details: result.error.flatten().fieldErrors,
+        details: z.flattenError(result.error).fieldErrors,
       });
     }
     req.body = result.data;
@@ -16,14 +16,14 @@ export function validate(schema: z.ZodSchema) {
   };
 }
 
-export function validateParams(schema: z.ZodSchema) {
+export function validateParams(schema: z.ZodType) {
   return (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req.params);
     if (!result.success) {
       return res.status(400).json({
         success: false,
         error: 'Invalid URL parameters',
-        details: result.error.flatten().fieldErrors,
+        details: z.flattenError(result.error).fieldErrors,
       });
     }
     // Write the parsed value back (matches validate()) so any future coercion /
@@ -31,6 +31,21 @@ export function validateParams(schema: z.ZodSchema) {
     req.params = result.data as typeof req.params;
     next();
   };
+}
+
+// ISO 8601 timestamps, exactly as zod 3's string datetime check accepted them.
+// zod 4's replacement (z.iso.datetime) requires seconds and a colon in the
+// offset, so "2026-10-30T10:00Z" or "+0100" would start returning 400 to API
+// clients that were valid before the upgrade. Same pattern zod 3.25 used:
+// leap-year-aware date, optional seconds with any fractional precision, then
+// Z or (when offset is allowed) +hh:mm / +hhmm.
+const ISO_DATE = String.raw`((\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-((0[13578]|1[02])-(0[1-9]|[12]\d|3[01])|(0[469]|11)-(0[1-9]|[12]\d|30)|(02)-(0[1-9]|1\d|2[0-8])))`;
+const ISO_TIME = String.raw`([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d+)?)?`;
+const ISO_DATETIME_UTC = new RegExp(`^${ISO_DATE}T${ISO_TIME}Z$`);
+const ISO_OFFSET = String.raw`[+-]\d{2}:?\d{2}`;
+const ISO_DATETIME_OFFSET = new RegExp(`^${ISO_DATE}T${ISO_TIME}(Z|${ISO_OFFSET})$`);
+export function isoDateTime(options: { offset?: boolean } = {}) {
+  return z.string().regex(options.offset ? ISO_DATETIME_OFFSET : ISO_DATETIME_UTC, 'Invalid datetime');
 }
 
 // Reusable param schemas
@@ -67,7 +82,7 @@ export const createDocumentSchema = z.object({
   title: z.string().trim().min(1).max(200),
   docType: z.enum(['image', 'pdf']),
   pageCount: z.number().int().min(1).max(10_000).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 const percent = z.number().finite().min(0).max(100);
 export const createRegionSchema = z.object({
@@ -184,7 +199,7 @@ export const updateTranscriptSchema = z
     caseId: z.string().nullable().optional(),
     // These columns already exist. Do not silently strip a user's analysis
     // metadata or invent dates/zero coordinates when a field is absent.
-    eventDate: z.string().datetime({ offset: true }).nullable().optional(),
+    eventDate: isoDateTime({ offset: true }).nullable().optional(),
     latitude: z.number().finite().min(-90).max(90).nullable().optional(),
     longitude: z.number().finite().min(-180).max(180).nullable().optional(),
     locationName: z.string().trim().max(200).nullable().optional(),
@@ -323,7 +338,10 @@ export const canvasArtifactValueSchemas = {
     }),
 } as const;
 
-export const updateCanvasArtifactSchema = z.object({ value: z.unknown() });
+// `.optional()` keeps zod 3's behaviour: an absent `value` passes here and is
+// rejected by the per-type schema in the route (zod 4 treats a bare unknown key
+// as required).
+export const updateCanvasArtifactSchema = z.object({ value: z.unknown().optional() });
 
 export const reassignCodingSchema = z.object({
   newQuestionId: z.string().min(1),
@@ -408,7 +426,7 @@ export const googleAuthSchema = z.object({
 export const updateEthicsSchema = z.object({
   ethicsApprovalId: z.string().max(200).nullable().optional(),
   ethicsStatus: z.enum(['pending', 'approved', 'expired', 'not_required']).optional(),
-  dataRetentionDate: z.string().datetime().nullable().optional(),
+  dataRetentionDate: isoDateTime().nullable().optional(),
 });
 
 export const createConsentSchema = z.object({
@@ -515,8 +533,8 @@ export const onboardingStatePatchSchema = z
     completionMode: z.enum(['setup_finished', 'dismissed']).optional(),
     flowDismissed: z.boolean().optional(),
     checklistDismissed: z.boolean().optional(),
-    startedAt: z.string().datetime({ offset: true }).optional(),
-    completedAtClient: z.string().datetime({ offset: true }).optional(),
+    startedAt: isoDateTime({ offset: true }).optional(),
+    completedAtClient: isoDateTime({ offset: true }).optional(),
     templateChoice: z
       .object({ id: shortString(64), name: shortString(200) })
       .strict()

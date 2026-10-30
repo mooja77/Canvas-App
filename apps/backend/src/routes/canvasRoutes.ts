@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { AppError } from '../middleware/errorHandler.js';
 import {
@@ -357,13 +358,13 @@ canvasRoutes.put(
     try {
       const dashboardAccessId = getAuthId(req);
       await getOwnedCanvas(req.params.canvasId, dashboardAccessId, getAuthUserId(req));
-      const schema = canvasArtifactValueSchemas[req.params.type as keyof typeof canvasArtifactValueSchemas];
+      const schema: z.ZodType = canvasArtifactValueSchemas[req.params.type as keyof typeof canvasArtifactValueSchemas];
       const parsed = schema.safeParse(req.body.value);
       if (!parsed.success) {
         return res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: parsed.error.flatten(),
+          details: z.flattenError(parsed.error),
         });
       }
       const artifact = await prisma.canvasArtifact.upsert({
