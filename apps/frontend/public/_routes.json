@@ -1,16 +1,5 @@
 {
   "version": 1,
-  "include": [
-    "/account",
-    "/admin",
-    "/canvas",
-    "/canvas/*",
-    "/forgot-password",
-    "/repository",
-    "/reset-password",
-    "/team",
-    "/verify-email",
-    "/vs/*"
-  ],
-  "exclude": []
+  "include": ["/*"],
+  "exclude": ["/assets/*"]
 }
