@@ -9,10 +9,8 @@ import HairlineRule from '../components/marketing/HairlineRule';
 /**
  * /customers — research stories index per docs/refresh/06-pages/04.
  *
- * Real customer stories ship via MDX during Phase 3 follow-on, after
- * outreach yeses land (docs/refresh/10 R3 + §8.6 sourcing email).
- * Until then, the page is honest about the state — one worked-example
- * card to set the bar (per §8.8), plus a participation invite.
+ * Shows one clearly labelled synthetic worked example. We do not solicit
+ * customer stories, reviews or testimonials (no invite, no incentive).
  */
 export default function CustomersIndexPage() {
   usePageMeta(
@@ -33,8 +31,7 @@ export default function CustomersIndexPage() {
           What researchers do with QualCanvas.
         </DisplayHeading>
         <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed max-w-2xl">
-          Clearly labelled worked examples show how the product can support a study. Customer stories will only appear
-          here after the participant has reviewed and approved them.
+          Clearly labelled worked examples show how the product can support a study.
         </p>
 
         {/* Worked example card — sets the bar per §8.8 */}
@@ -72,37 +69,6 @@ export default function CustomersIndexPage() {
                 a real study&apos;s agreement or research outcome.
               </p>
             </div>
-          </div>
-        </section>
-
-        {/* Participation invite */}
-        <section className="mt-16 pt-10 border-t border-gray-200 dark:border-gray-800">
-          <h2
-            className="font-display text-2xl mb-4 text-gray-900 dark:text-white"
-            style={{ fontVariationSettings: "'opsz' 48, 'wght' 580" }}
-          >
-            Tell us your study.
-          </h2>
-          <div className="prose prose-base dark:prose-invert max-w-2xl text-gray-700 dark:text-gray-300 leading-relaxed">
-            <p>
-              If QualCanvas was part of how you coded your last study, we'd love to feature your work. About 800 words
-              total — three sections (challenge / approach / outcome), three numbers, one quote. You can be anonymized
-              at any granularity, from named institution + named you to fully anonymous worked example.
-            </p>
-            <p>
-              The commitment is a written interview by email, two email rounds on the draft, and final review rights
-              before publish. We pay a $200 honorarium (cash or charitable donation in your name).
-            </p>
-            <p>
-              Interested? Email{' '}
-              <a
-                className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
-                href="mailto:stories@qualcanvas.com?subject=Customer%20story%20participation"
-              >
-                stories@qualcanvas.com
-              </a>{' '}
-              with a one-line description of your study. We'll send a draft outline before you decide.
-            </p>
           </div>
         </section>
       </article>

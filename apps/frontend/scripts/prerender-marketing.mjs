@@ -113,7 +113,7 @@ const ROUTES = [
     component: 'CustomersIndexPage',
     title: 'Research stories — QualCanvas',
     description:
-      'What researchers do with QualCanvas. Real labs, real methods, real artifacts. Anonymized when participants need it.',
+      'What researchers do with QualCanvas. A clearly labelled synthetic worked example of a multi-coder study.',
   },
   {
     path: '/press',
