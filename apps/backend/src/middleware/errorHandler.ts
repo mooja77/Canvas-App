@@ -63,6 +63,16 @@ function asClientRequestError(err: Error): { statusCode: number; message: string
     return { statusCode: status && status >= 400 && status < 500 ? status : 400, message: BODY_PARSER_MESSAGES[type] };
   }
 
+  // Express's router decodes the path with decodeURIComponent before routing.
+  // A malformed escape such as GET /%c0 (bot probes; Sentry QUALCANVAS-5)
+  // throws a URIError that Express marks status 400 but not `expose`, so it
+  // used to fall through to a logged 500. Only a URIError Express already
+  // classed as 4xx is treated this way; a bare URIError from our own code
+  // still logs as a server fault.
+  if (err instanceof URIError && status !== null && status >= 400 && status < 500) {
+    return { statusCode: 400, message: 'Malformed URL' };
+  }
+
   // Any other http-errors-style client error that explicitly marked itself
   // safe to expose (`expose: true` is only set for 4xx) — honour its status
   // and message rather than masking it as a 500.

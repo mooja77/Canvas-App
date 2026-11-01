@@ -266,3 +266,40 @@ describe('errorHandler — malformed and oversized request bodies', () => {
     }
   });
 });
+
+// Sentry QUALCANVAS-5 (259 events by 31 Oct 2026): bots request paths like
+// GET /%c0. Express's router calls decodeURIComponent on the path, throws a
+// URIError marked status 400 (but not `expose`), and the handler turned it
+// into a logged 500, which paged through the Sentry hook on traffic we
+// cannot act on. A malformed URL is a client error.
+describe('errorHandler – malformed URL encoding', () => {
+  it('answers 400 and does not log a URIError from path decoding', async () => {
+    const app = express();
+    app.get('*', (_req, res) => res.json({ ok: true }));
+    app.use(errorHandler);
+    const previousHook = logger.onException;
+    const onException = vi.fn();
+    logger.onException = onException;
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      const res = await request(app).get('/%c0');
+
+      expect(res.status).toBe(400);
+      expect(res.body).toMatchObject({ success: false, error: 'Malformed URL' });
+      expect(onException).not.toHaveBeenCalled();
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      logger.onException = previousHook;
+      consoleError.mockRestore();
+    }
+  });
+
+  it('still treats a URIError without a 4xx status as a server fault', () => {
+    const res = mockRes();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    errorHandler(new URIError('URI malformed'), req, res, next);
+    consoleError.mockRestore();
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
