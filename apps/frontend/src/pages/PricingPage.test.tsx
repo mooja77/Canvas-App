@@ -208,9 +208,9 @@ describe('PricingPage (refresh)', () => {
     expect(screen.getByText(/How does the academic discount work/i)).toBeInTheDocument();
   });
 
-  it('money-back guarantee text appears on the page', () => {
+  it('makes no money-back guarantee claim', () => {
     render(<PricingPage />);
-    expect(screen.getByText(/30-day money-back guarantee/i)).toBeInTheDocument();
+    expect(screen.queryByText(/money-back guarantee/i)).not.toBeInTheDocument();
   });
 
   it('CompetitorRow strip surfaces NVivo, ATLAS.ti, and Dedoose comparisons', () => {
