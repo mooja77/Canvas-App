@@ -221,10 +221,10 @@ export default function PricingPage() {
           <HairlineRule className="mb-6" />
           <Eyebrow className="mb-3">Pricing</Eyebrow>
           <DisplayHeading as="h1" size="lg" className="mb-5">
-            Pricing.
+            QualCanvas plans and prices.
           </DisplayHeading>
           <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
-            Start free. Upgrade when your dissertation does.
+            Start free. Upgrade when your dissertation does. Prices are in US dollars.
           </p>
         </div>
 
