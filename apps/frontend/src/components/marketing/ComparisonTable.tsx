@@ -29,7 +29,9 @@ interface ComparisonTableProps {
  */
 export default function ComparisonTable({ columns, groups, className = '' }: ComparisonTableProps) {
   return (
-    <div className={`overflow-x-auto ${className}`}>
+    // Focusable + labelled so keyboard users can scroll the table sideways on
+    // narrow screens (axe scrollable-region-focusable).
+    <div className={`overflow-x-auto ${className}`} tabIndex={0} role="region" aria-label="Plan comparison table">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-200 dark:border-gray-800">

@@ -64,12 +64,23 @@ export default defineConfig({
     chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'flow-vendor': ['@xyflow/react'],
-          'chart-vendor': ['recharts'],
-          'layout-vendor': ['dagre'],
-          'visx-vendor': ['@visx/wordcloud', '@visx/text'],
+        // Function form, not the object form: with the object form Rollup put
+        // react/jsx-runtime (also a dependency of @xyflow/react) into
+        // flow-vendor, so every marketing page downloaded the canvas library
+        // just to get jsx(). The groups are otherwise the same as before.
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined;
+          if (
+            /node_modules[\/](react|react-dom|react-router|react-router-dom|scheduler|cookie|set-cookie-parser)[\/]/.test(
+              id,
+            )
+          )
+            return 'react-vendor';
+          if (/node_modules[\/]@xyflow[\/]/.test(id)) return 'flow-vendor';
+          if (/node_modules[\/]recharts[\/]/.test(id)) return 'chart-vendor';
+          if (/node_modules[\/]dagre[\/]/.test(id)) return 'layout-vendor';
+          if (/node_modules[\/]@visx[\/](wordcloud|text)[\/]/.test(id)) return 'visx-vendor';
+          return undefined;
         },
       },
     },

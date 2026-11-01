@@ -1,7 +1,11 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useLayoutEffect } from 'react';
+import { removePrerender } from '../../utils/prerenderHandoff';
 import SiteHeader from '../SiteHeader';
 import SiteFooter from '../SiteFooter';
 import { useFeatureFlag } from '../../stores/featureFlagsStore';
+
+// useLayoutEffect warns under renderToStaticMarkup (build-time prerender).
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 interface PageShellProps {
   children: ReactNode;
@@ -22,6 +26,12 @@ interface PageShellProps {
 export default function PageShell({ children, hideAuthCtas = false }: PageShellProps) {
   const inkOchre = useFeatureFlag('ink_ochre_palette');
   const fraunces = useFeatureFlag('fraunces_display');
+
+  // Swap out the prerendered copy of this page in the same frame React's copy
+  // is committed (see utils/prerenderHandoff.ts).
+  useIsomorphicLayoutEffect(() => {
+    removePrerender();
+  }, []);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;

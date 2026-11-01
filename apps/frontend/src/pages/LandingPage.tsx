@@ -10,6 +10,8 @@ import { Bento, BentoCell } from '../components/marketing/Bento';
 import StatBlock from '../components/marketing/StatBlock';
 import FAQ from '../components/marketing/FAQ';
 import CTAStripe from '../components/marketing/CTAStripe';
+import { PUBLISHED_PRICES_USD } from '@qualcanvas/shared';
+import { LANDING_FAQS } from '../content/marketingFaqs';
 
 // Lazy — the real interactive demo (with IndexedDB + idb-keyval) loads after
 // first paint so it doesn't bloat the initial bundle. SSR / no-JS visitors get
@@ -35,8 +37,8 @@ const InteractiveDemo = lazy(() => import('../components/marketing/InteractiveDe
 export default function LandingPage() {
   const navigate = useNavigate();
   usePageMeta(
-    'QualCanvas — Code interviews like you think. Visually.',
-    'A visual workspace for coding transcripts, finding themes, and writing memos you can defend in front of a committee. Free tier. Verified academic pricing.',
+    'QualCanvas — Qualitative coding software on a visual canvas',
+    'Code interview transcripts, group codes into themes and write memos in your browser. For students, academics and research teams. Free plan; paid plans from $5 a month.',
   );
 
   useEffect(() => {
@@ -55,13 +57,13 @@ export default function LandingPage() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-12">
         <div className="max-w-4xl">
           <HairlineRule className="mb-6" />
-          <Eyebrow className="mb-5">A qualitative workspace</Eyebrow>
+          <Eyebrow className="mb-5">Qualitative coding software</Eyebrow>
           <DisplayHeading size="xl" className="mb-7">
-            Code interviews like you think. Visually.
+            Code interview transcripts on a visual canvas.
           </DisplayHeading>
           <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl leading-relaxed mb-8">
-            QualCanvas is a visual workspace for coding transcripts, finding themes, and writing memos you can defend in
-            front of a committee.
+            QualCanvas is for students, academics and research teams who analyze interviews. Highlight a passage and tag
+            it with a code. Then drag codes into themes and write memos beside them, in your browser.
           </p>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <button
@@ -79,12 +81,12 @@ export default function LandingPage() {
               Start free
             </button>
             <Link
-              to="/methodology"
+              to="/pricing"
               onClick={() =>
                 trackEvent('cta_clicked', {
-                  cta_label: 'See the method',
+                  cta_label: 'See pricing',
                   location: 'landing_hero',
-                  target_route: '/methodology',
+                  target_route: '/pricing',
                 })
               }
               className="
@@ -97,13 +99,46 @@ export default function LandingPage() {
                 rounded
               "
             >
-              See the method →
+              See pricing →
             </Link>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-5">
-            No credit card. Free forever for basic use. Every new account opens on a small coded study.
+            Free plan with no card. New accounts get Pro features for 14 days after verifying their email.
           </p>
         </div>
+      </section>
+
+      {/* ─── 1b. Real product screenshot (sample study, fictional data) ─── */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16" aria-labelledby="product-shot-heading">
+        <h2 id="product-shot-heading" className="sr-only">
+          The QualCanvas workspace
+        </h2>
+        <figure>
+          <picture>
+            <source
+              type="image/avif"
+              srcSet="/product/canvas-workspace-800.avif 800w, /product/canvas-workspace-1600.avif 1600w"
+              sizes="(min-width: 1152px) 1104px, calc(100vw - 32px)"
+            />
+            <source
+              type="image/webp"
+              srcSet="/product/canvas-workspace-800.webp 800w, /product/canvas-workspace-1600.webp 1600w"
+              sizes="(min-width: 1152px) 1104px, calc(100vw - 32px)"
+            />
+            <img
+              src="/product/canvas-workspace-1600.webp"
+              width={1600}
+              height={1000}
+              loading="lazy"
+              decoding="async"
+              alt="The QualCanvas workspace: a code list on the left, an interview transcript with highlighted passages in the middle, and the codes they are tagged with linked on the canvas."
+              className="w-full h-auto rounded-2xl ring-1 ring-gray-200 dark:ring-gray-700 shadow-xl shadow-ink-900/5"
+            />
+          </picture>
+          <figcaption className="mt-3 text-sm text-center text-gray-600 dark:text-gray-300">
+            The real app, opened on a sample study. Every participant and transcript in it is fictional.
+          </figcaption>
+        </figure>
       </section>
 
       {/* ─── 2. Interactive coding micro-demo ─── */}
@@ -298,10 +333,25 @@ export default function LandingPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { name: 'Free', price: '$0', bullet: '2 canvases · 10 codes · CSV export' },
-            { name: 'Student', price: '$5', bullet: 'Verified academic email · All 13 tools · Auto-code' },
-            { name: 'Pro', price: '$15', bullet: 'One researcher · Free viewers · All 13 tools · Auto-code' },
-            { name: 'Team', price: '$39', bullet: 'Everything in Pro · Intercoder κ · Per-seat' },
+            { name: 'Free', price: '$0', yearly: 'No time limit', bullet: '2 canvases · 10 codes · CSV export' },
+            {
+              name: 'Student',
+              price: `$${PUBLISHED_PRICES_USD.student.monthly}`,
+              yearly: `or $${PUBLISHED_PRICES_USD.student.annual} a year`,
+              bullet: 'Verified academic email · All 13 tools · Auto-code',
+            },
+            {
+              name: 'Pro',
+              price: `$${PUBLISHED_PRICES_USD.pro.monthly}`,
+              yearly: `or $${PUBLISHED_PRICES_USD.pro.annual} a year`,
+              bullet: 'One researcher · Free viewers · All 13 tools · Auto-code',
+            },
+            {
+              name: 'Team',
+              price: `$${PUBLISHED_PRICES_USD.team.monthly}`,
+              yearly: `per seat, or $${PUBLISHED_PRICES_USD.team.annual} a year`,
+              bullet: 'Everything in Pro · Intercoder κ · Per-seat',
+            },
           ].map((tier) => (
             <div
               key={tier.name}
@@ -319,11 +369,13 @@ export default function LandingPage() {
                   )}
                 </span>
               </div>
+              <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">{tier.yearly}</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">{tier.bullet}</p>
             </div>
           ))}
         </div>
         <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-8">
+          Prices in US dollars.{' '}
           <span className="font-medium">40% off Pro and Team with a verified academic email.</span> Applied
           automatically at checkout.
         </p>
@@ -342,83 +394,17 @@ export default function LandingPage() {
         <div className="mb-10">
           <HairlineRule className="mb-4" />
           <Eyebrow className="mb-3">Common questions</Eyebrow>
+          <DisplayHeading as="h2" size="md">
+            Questions and answers.
+          </DisplayHeading>
         </div>
-        <FAQ
-          items={[
-            {
-              question: 'What is qualitative coding?',
-              answer:
-                "A research method where you label segments of qualitative data — interview transcripts, field notes, open-ended survey responses — to identify themes and build theory. It's the foundation of methods like thematic analysis, grounded theory, and IPA.",
-            },
-            {
-              question: 'Who is QualCanvas for?',
-              answer:
-                "Qualitative researchers and graduate students working on theses or papers, research labs running multi-coder studies, and UX teams running longitudinal research. If your method has a name with a hyphen in it — cross-case, in-vivo, semi-structured — you're our audience.",
-            },
-            {
-              question: 'How is this different from NVivo or ATLAS.ti?',
-              answer: (
-                <>
-                  Three things. (1) Pricing is on this page; theirs isn't. (2) Your codes, transcripts, and themes live
-                  on a visual canvas you can see all at once — not behind menus. (3) You can export to QDPX whenever you
-                  want. No lock-in. See the sourced, side-by-side breakdown on{' '}
-                  <Link
-                    to="/vs"
-                    className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
-                  >
-                    our comparisons page
-                  </Link>
-                  .
-                </>
-              ),
-            },
-            {
-              question: 'Is my research data secure? Are you training a model on my transcripts?',
-              answer: (
-                <>
-                  QualCanvas uses HTTPS in transit and provider-managed encryption at rest. The production database is
-                  currently hosted in the US; an EU-resident database is not available. AI actions are opt-in and
-                  provider terms apply. The full posture is on{' '}
-                  <Link
-                    to="/trust"
-                    className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
-                  >
-                    /trust
-                  </Link>{' '}
-                  and the AI-specific policy is on{' '}
-                  <Link
-                    to="/trust/ai"
-                    className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
-                  >
-                    /trust/ai
-                  </Link>
-                  .
-                </>
-              ),
-            },
-            {
-              question: 'How do I cite QualCanvas in a paper?',
-              answer: (
-                <>
-                  BibTeX, APA, and Chicago entries on{' '}
-                  <Link
-                    to="/cite"
-                    className="underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white"
-                  >
-                    /cite
-                  </Link>
-                  . Send it to your advisor.
-                </>
-              ),
-            },
-          ]}
-        />
+        <FAQ items={LANDING_FAQS} />
       </section>
 
       {/* ─── 10. CTA stripe ─── */}
       <CTAStripe
         headline="Start coding. Free."
-        sub="No credit card. Academic discount automatic. Cancel any time."
+        sub="Free plan with no card. 14 days of Pro features for new accounts. Cancel any time."
         primary={
           <button
             onClick={handleStartFree}

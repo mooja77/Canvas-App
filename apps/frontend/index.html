@@ -12,9 +12,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Code interview transcripts on a visual canvas. Thematic analysis, IPA, grounded theory. Free tier and verified academic pricing."
+      content="Code interview transcripts, group codes into themes and write memos in your browser. For students, academics and research teams. Free plan; paid plans from $5 a month."
     />
-    <meta property="og:title" content="QualCanvas — Visual Coding for Interview Research" />
+    <meta property="og:title" content="QualCanvas — Qualitative coding software on a visual canvas" />
     <meta
       property="og:description"
       content="A drag-and-drop workspace for coding interviews, spotting patterns across sessions, and building theory you can defend. Free tier and verified academic pricing."
@@ -24,7 +24,7 @@
     <meta property="og:url" content="https://qualcanvas.com/" />
     <meta property="og:image" content="https://qualcanvas.com/og-image.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="QualCanvas — Visual Coding for Interview Research" />
+    <meta name="twitter:title" content="QualCanvas — Qualitative coding software on a visual canvas" />
     <meta
       name="twitter:description"
       content="A drag-and-drop workspace for coding interviews and building theory. Free tier and verified academic pricing."
@@ -49,7 +49,7 @@
               "Nested code and theme hierarchy",
               "Inline transcript coding",
               "AI-assisted auto-coding (paid plans)",
-              "Real-time multi-coder collaboration (Pro and Team)",
+              "Real-time multi-coder collaboration (Team)",
               "Inter-rater reliability reports (Team)",
               "Audit trail of coding decisions",
               "Research ethics panel (paid plans)",
@@ -73,58 +73,109 @@
                   "price": "0",
                   "priceCurrency": "USD",
                   "url": "https://qualcanvas.com/pricing",
-                  "description": "2 canvases, 5 transcripts per canvas, 10,000 words per transcript, 10 codes, CSV export, 4 analysis types. No AI, no file upload, no collaborators."
+                  "description": "No time limit. 2 canvases, 5 transcripts per canvas, 10,000 words per transcript, 10 codes, CSV export, 4 analysis types. No AI, no file upload, no collaborators. New accounts get Pro features for 14 days after verifying their email; no card needed."
                 },
                 {
                   "@type": "Offer",
                   "name": "Student",
+                  "price": "5",
                   "priceCurrency": "USD",
                   "url": "https://qualcanvas.com/pricing",
-                  "description": "Requires a verified academic email. 5 canvases, unlimited transcripts and codes, AI auto-coding, all 13 analyses, all export formats, 500 MB storage. No collaborators, no inter-rater reliability. $5/month, or $4/month billed annually ($48/year).",
-                  "priceSpecification": {
-                    "@type": "UnitPriceSpecification",
-                    "price": "5",
-                    "priceCurrency": "USD",
-                    "referenceQuantity": {
-                      "@type": "QuantitativeValue",
-                      "value": 1,
-                      "unitCode": "MON"
+                  "description": "Requires a verified academic email. 5 canvases, unlimited transcripts and codes, AI auto-coding, all 13 analyses, all export formats, 500 MB storage. No collaborators, no inter-rater reliability. $5 a month, or $48 a year.",
+                  "priceSpecification": [
+                    {
+                      "@type": "UnitPriceSpecification",
+                      "name": "Student monthly",
+                      "price": "5",
+                      "priceCurrency": "USD",
+                      "billingDuration": "P1M",
+                      "referenceQuantity": {
+                        "@type": "QuantitativeValue",
+                        "value": 1,
+                        "unitCode": "MON"
+                      }
+                    },
+                    {
+                      "@type": "UnitPriceSpecification",
+                      "name": "Student yearly",
+                      "price": "48",
+                      "priceCurrency": "USD",
+                      "billingDuration": "P1Y",
+                      "referenceQuantity": {
+                        "@type": "QuantitativeValue",
+                        "value": 1,
+                        "unitCode": "ANN"
+                      }
                     }
-                  }
+                  ]
                 },
                 {
                   "@type": "Offer",
                   "name": "Pro",
+                  "price": "15",
                   "priceCurrency": "USD",
                   "url": "https://qualcanvas.com/pricing",
-                  "description": "For one researcher: unlimited canvases, AI auto-coding, all 13 analyses, unlimited free read-only viewers, 5 share links, 500 MB storage. Other coders need Team. Inter-rater reliability is Team-only. $15/month, or $12/month billed annually ($144/year). 40% off with a verified academic email.",
-                  "priceSpecification": {
-                    "@type": "UnitPriceSpecification",
-                    "price": "15",
-                    "priceCurrency": "USD",
-                    "referenceQuantity": {
-                      "@type": "QuantitativeValue",
-                      "value": 1,
-                      "unitCode": "MON"
+                  "description": "For one researcher: unlimited canvases, AI auto-coding, all 13 analyses, unlimited free read-only viewers, 5 share links, 500 MB storage. Other coders need Team. Inter-rater reliability is Team-only. $15 a month, or $144 a year. 40% off with a verified academic email.",
+                  "priceSpecification": [
+                    {
+                      "@type": "UnitPriceSpecification",
+                      "name": "Pro monthly",
+                      "price": "15",
+                      "priceCurrency": "USD",
+                      "billingDuration": "P1M",
+                      "referenceQuantity": {
+                        "@type": "QuantitativeValue",
+                        "value": 1,
+                        "unitCode": "MON"
+                      }
+                    },
+                    {
+                      "@type": "UnitPriceSpecification",
+                      "name": "Pro yearly",
+                      "price": "144",
+                      "priceCurrency": "USD",
+                      "billingDuration": "P1Y",
+                      "referenceQuantity": {
+                        "@type": "QuantitativeValue",
+                        "value": 1,
+                        "unitCode": "ANN"
+                      }
                     }
-                  }
+                  ]
                 },
                 {
                   "@type": "Offer",
                   "name": "Team",
+                  "price": "39",
                   "priceCurrency": "USD",
                   "url": "https://qualcanvas.com/pricing",
-                  "description": "Per seat: one for you and one for each coder; viewers are free. Everything in Pro plus unlimited coders and share links, inter-rater reliability reports, 5 GB storage. $39/seat/month, or $32/seat/month billed annually ($384/year). 40% off with a verified academic email.",
-                  "priceSpecification": {
-                    "@type": "UnitPriceSpecification",
-                    "price": "39",
-                    "priceCurrency": "USD",
-                    "referenceQuantity": {
-                      "@type": "QuantitativeValue",
-                      "value": 1,
-                      "unitCode": "MON"
+                  "description": "Per seat: one for you and one for each coder; viewers are free. Everything in Pro plus unlimited coders and share links, inter-rater reliability reports, 5 GB storage. $39 per seat a month, or $384 per seat a year. 40% off with a verified academic email.",
+                  "priceSpecification": [
+                    {
+                      "@type": "UnitPriceSpecification",
+                      "name": "Team monthly",
+                      "price": "39",
+                      "priceCurrency": "USD",
+                      "billingDuration": "P1M",
+                      "referenceQuantity": {
+                        "@type": "QuantitativeValue",
+                        "value": 1,
+                        "unitCode": "MON"
+                      }
+                    },
+                    {
+                      "@type": "UnitPriceSpecification",
+                      "name": "Team yearly",
+                      "price": "384",
+                      "priceCurrency": "USD",
+                      "billingDuration": "P1Y",
+                      "referenceQuantity": {
+                        "@type": "QuantitativeValue",
+                        "value": 1,
+                        "unitCode": "ANN"
+                      }
                     }
-                  }
+                  ]
                 }
               ]
             },
@@ -158,7 +209,7 @@
     </script>
     <!-- Inter is now self-hosted via @fontsource-variable/inter, loaded from
          src/index.css. No Google Fonts <link> needed. -->
-    <title>QualCanvas — Visual Coding for Interview Research</title>
+    <title>QualCanvas — Qualitative coding software on a visual canvas</title>
 
     <!-- Cookie Consent (must load BEFORE GTM) -->
     <link rel="stylesheet" href="/cookie-consent.css" />
@@ -337,11 +388,11 @@
          Removed by main.tsx once React mounts at #root. -->
     <main id="marketing-root">
       <div class="qc-rule"></div>
-      <div class="qc-eyebrow">A qualitative workspace</div>
-      <h1>Code interviews like you think. Visually.</h1>
+      <div class="qc-eyebrow">Qualitative coding software</div>
+      <h1>Code interview transcripts on a visual canvas.</h1>
       <p class="lede">
-        QualCanvas is a visual workspace for coding transcripts, finding themes, and writing memos you can defend in
-        front of a committee.
+        QualCanvas is for students, academics and research teams who analyze interviews. Highlight a passage and tag it
+        with a code. Then drag codes into themes and write memos beside them, in your browser.
       </p>
       <a href="/login" class="cta">Start free</a>
 
@@ -374,17 +425,17 @@
         <li>
           <strong>Student</strong>
           <div class="price">$5<small>/mo</small></div>
-          Verified academic email · all 13 tools
+          or $48 a year · Verified academic email · all 13 tools
         </li>
         <li>
           <strong>Pro</strong>
           <div class="price">$15<small>/mo</small></div>
-          One researcher · all 13 tools
+          or $144 a year · One researcher · all 13 tools
         </li>
         <li>
           <strong>Team</strong>
           <div class="price">$39<small>/mo</small></div>
-          Intercoder κ · per seat
+          per seat, or $384 a year · Intercoder κ · per seat
         </li>
       </ul>
 
@@ -416,7 +467,11 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script type="module">
-      if (import.meta.env?.VITE_E2E !== 'true') {
+      // The support chat widget loads only on the signed-in app. On marketing
+      // pages its unlabelled text input failed WCAG 1.3.1/4.1.2 (pa11y H91,
+      // F68) and contact there is email only.
+      const appPath = /^\/(canvas|account|team|repository|admin)(\/|$)/.test(window.location.pathname);
+      if (import.meta.env?.VITE_E2E !== 'true' && appPath) {
         const script = document.createElement('script');
         script.src = 'https://jms-admin-portal.mooja77.workers.dev/api/chat/widget.js';
         script.dataset.app = 'qualcanvas';

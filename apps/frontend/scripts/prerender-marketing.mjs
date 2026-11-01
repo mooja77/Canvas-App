@@ -46,14 +46,33 @@ const ORIGIN = 'https://qualcanvas.com';
 // component         -> default-exported page component in src/pages
 // title/description -> mirror each page's own usePageMeta(...) call, so the
 //                      crawler-facing head matches what the SPA sets on mount.
+// handoff -> true for pages wrapped in PageShell. The prerendered block is
+//            stamped with data-prerendered-path, main.tsx keeps it on screen
+//            until PageShell commits the React copy (utils/prerenderHandoff.ts),
+//            and the hand-written #prerender-styles are dropped so the real
+//            Tailwind CSS styles the block exactly like the React page.
+// faq     -> name of an export in src/content/marketingFaqs.ts; emits FAQPage
+//            JSON-LD built from the same strings the page shows.
 const ROUTES = [
+  {
+    path: '/',
+    file: 'index.html',
+    component: 'LandingPage',
+    title: 'QualCanvas — Qualitative coding software on a visual canvas',
+    description:
+      'Code interview transcripts, group codes into themes and write memos in your browser. For students, academics and research teams. Free plan; paid plans from $5 a month.',
+    handoff: true,
+    faq: 'LANDING_FAQS',
+  },
   {
     path: '/pricing',
     file: 'pricing.html',
     component: 'PricingPage',
     title: 'Pricing — QualCanvas',
     description:
-      'Free, Student ($5/mo with a verified academic email), Pro ($15/mo), Team ($39/seat/mo), and Institutions plans. 40% academic discount on Pro/Team. Compare against NVivo, ATLAS.ti, Dedoose.',
+      'Free, Student ($5/mo with a verified academic email), Pro ($15/mo, one person), Team ($39/seat/mo), and Institutions plans. Viewers are free. 40% academic discount on Pro/Team. Compare against NVivo, ATLAS.ti, Dedoose.',
+    handoff: true,
+    faq: 'PRICING_FAQS',
   },
   {
     path: '/cite',
@@ -74,6 +93,7 @@ const ROUTES = [
     path: '/for-institutions',
     file: 'for-institutions.html',
     component: 'ForInstitutionsPage',
+    handoff: true,
     title: 'For institutions — QualCanvas',
     description:
       'Security documentation, deployment details, audit trails and a dedicated research contact for institutional review.',
@@ -82,6 +102,7 @@ const ROUTES = [
     path: '/for-teams',
     file: 'for-teams.html',
     component: 'ForTeamsPage',
+    handoff: true,
     title: 'For research groups — QualCanvas',
     description:
       'Manage a research group, collaborate on shared canvases, calculate intercoder reliability, and review project audit trails.',
@@ -207,6 +228,7 @@ const entry = `
 import { renderToStaticMarkup } from 'react-dom/server';
 import { StaticRouter } from 'react-router';
 import '../src/i18n';
+export * as faqs from '../src/content/marketingFaqs';
 ${ROUTES.map((r, i) => `import P${i} from '../src/pages/${r.component}';`).join('\n')}
 const routes = [
 ${ROUTES.map((r, i) => `  { path: ${JSON.stringify(r.path)}, Comp: P${i} }`).join(',\n')}
@@ -291,7 +313,7 @@ for (const re of REQUIRED_ANCHORS) {
   }
 }
 
-function renderRouteHtml({ title, description, url, body, robots }) {
+function renderRouteHtml({ title, description, url, body, robots, handoff, jsonLd }) {
   let html = template;
   const t = esc(title);
   const d = esc(description);
@@ -303,6 +325,16 @@ function renderRouteHtml({ title, description, url, body, robots }) {
   html = html.replace(/<meta\s+property="og:title"[^>]*>/, `<meta property="og:title" content="${t}" />`);
   html = html.replace(/<meta\s+property="og:description"[^>]*>/, `<meta property="og:description" content="${d}" />`);
   html = html.replace(/<meta\s+property="og:url"[^>]*>/, `<meta property="og:url" content="${url}" />`);
+  html = html.replace(/<meta\s+name="twitter:title"[^>]*>/, `<meta name="twitter:title" content="${t}" />`);
+  html = html.replace(/<meta\s+name="twitter:description"[^>]*>/, `<meta name="twitter:description" content="${d}" />`);
+  if (jsonLd) {
+    // `<` escaped so text inside the JSON can never close the script element.
+    const json = JSON.stringify(jsonLd).replace(/</g, '\u003c');
+    html = html.replace('</head>', () => `    <script type="application/ld+json">${json}</script>\n  </head>`);
+  }
+  if (handoff) {
+    html = html.replace(/<style id="prerender-styles">[\s\S]*?<\/style>\s*/, '');
+  }
   if (robots) {
     const robotsTag = `<meta name="robots" content="${esc(robots)}" />`;
     html = /<meta\s+name="robots"[^>]*>/i.test(html)
@@ -311,7 +343,13 @@ function renderRouteHtml({ title, description, url, body, robots }) {
   }
   // Real page content for crawlers + first paint. main.tsx strips
   // #marketing-root once React mounts at #root, so the SPA takes over cleanly.
-  html = html.replace(/<main id="marketing-root">[\s\S]*?<\/main>/, `<main id="marketing-root">\n${body}\n    </main>`);
+  // email_off stops Cloudflare's email obfuscation rewriting mailto links in
+  // this block, which also injected a render-blocking email-decode.min.js.
+  const attrs = handoff ? ` data-prerendered-path="${esc(new URL(url).pathname)}"` : '';
+  html = html.replace(
+    /<main id="marketing-root">[\s\S]*?<\/main>/,
+    () => `<main id="marketing-root"${attrs}>\n<!--email_off-->${body}<!--/email_off-->\n    </main>`,
+  );
   return html;
 }
 
@@ -340,6 +378,8 @@ for (const route of ROUTES) {
       url,
       body: result.html,
       robots: route.robots,
+      handoff: route.handoff,
+      jsonLd: route.faq ? mod.faqs.faqPageJsonLd(mod.faqs[route.faq], url) : null,
     }),
     'utf8',
   );

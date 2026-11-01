@@ -90,8 +90,8 @@ export default function CustomersIndexPage() {
               at any granularity, from named institution + named you to fully anonymous worked example.
             </p>
             <p>
-              The commitment is a 45-minute call, two email rounds on the draft, and final review rights before publish.
-              We pay a $200 honorarium (cash or charitable donation in your name).
+              The commitment is a written interview by email, two email rounds on the draft, and final review rights
+              before publish. We pay a $200 honorarium (cash or charitable donation in your name).
             </p>
             <p>
               Interested? Email{' '}

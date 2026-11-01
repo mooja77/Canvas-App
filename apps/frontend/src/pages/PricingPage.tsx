@@ -22,6 +22,7 @@ import CompetitorRow from '../components/marketing/CompetitorRow';
 import FAQ from '../components/marketing/FAQ';
 import CTAStripe from '../components/marketing/CTAStripe';
 import { trackEvent } from '../utils/analytics';
+import { PRICING_FAQS } from '../content/marketingFaqs';
 import toast from 'react-hot-toast';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
@@ -57,7 +58,28 @@ function coderCap(tier: 'free' | 'student' | 'pro' | 'team'): string {
   return Number.isFinite(l.maxCoders) ? `You + ${l.maxCoders}` : 'Unlimited';
 }
 
-const RESEARCH_DESK_CALENDLY = 'mailto:research@qualcanvas.com?subject=Institution%20plan%20inquiry';
+const RESEARCH_DESK_EMAIL = 'mailto:research@qualcanvas.com?subject=Institution%20plan%20inquiry';
+
+/**
+ * The amount a card is charged for a paid tier at the selected period, plus
+ * the line under it. The big figure is always a real charge ($5 a month, or
+ * $48 a year), never a per-month equivalent of an annual price: showing "$4"
+ * for Student while every other page said "$5" read as two different prices.
+ */
+function tierPrice(tier: 'student' | 'pro' | 'team', period: 'monthly' | 'annual') {
+  const p = PUBLISHED_PRICES_USD[tier];
+  const seat = tier === 'team' ? 'per seat ' : '';
+  if (period === 'monthly') {
+    return {
+      price: `$${p.monthly}`,
+      pricePeriod: `${seat}a month, or $${p.annual} ${seat}a year`,
+    };
+  }
+  return {
+    price: `$${p.annual}`,
+    pricePeriod: `${seat}a year, which works out at $${annualPricePerMonth(tier)} a month (save ${annualSavingPercent(tier)}%)`,
+  };
+}
 
 /**
  * Pricing page — refresh per docs/refresh/06-pages/02-pricing.md.
@@ -76,7 +98,7 @@ const RESEARCH_DESK_CALENDLY = 'mailto:research@qualcanvas.com?subject=Instituti
 export default function PricingPage() {
   // Keep Tab inside the dialog and give focus back to the trigger on close.
   const dialogRef = useRef<HTMLDivElement>(null);
-  const [period, setPeriod] = useState<'monthly' | 'annual'>('annual');
+  const [period, setPeriod] = useState<'monthly' | 'annual'>('monthly');
   const [loading, setLoading] = useState(false);
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false);
   // The `active` argument matters here: this component stays mounted and the
@@ -210,6 +232,8 @@ export default function PricingPage() {
         <div className="flex items-center gap-3 mb-10">
           <div className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
             <button
+              type="button"
+              aria-pressed={period === 'monthly'}
               onClick={() => {
                 setPeriod('monthly');
                 trackEvent('pricing_toggle_changed', { new_value: 'monthly' });
@@ -223,6 +247,8 @@ export default function PricingPage() {
               Monthly
             </button>
             <button
+              type="button"
+              aria-pressed={period === 'annual'}
               onClick={() => {
                 setPeriod('annual');
                 trackEvent('pricing_toggle_changed', { new_value: 'annual' });
@@ -236,7 +262,7 @@ export default function PricingPage() {
               Annual
               {/* Derived from PUBLISHED_PRICES_USD: Team saves 18%, not 20%, so a flat
                   "Save 20%" was false for Team. */}
-              <span className="ml-1.5 text-xs text-ochre-700 dark:text-ochre-400 font-semibold">
+              <span className="ml-1.5 text-xs text-ochre-800 dark:text-ochre-300 font-semibold">
                 Save up to {maxAnnualSavingPercent()}%
               </span>
             </button>
@@ -268,12 +294,8 @@ export default function PricingPage() {
 
           <TierCardV2
             name="Student"
-            price={`$${period === 'annual' ? annualPricePerMonth('student') : PUBLISHED_PRICES_USD.student.monthly}`}
-            pricePeriod={
-              period === 'annual'
-                ? `per month, billed annually ($${PUBLISHED_PRICES_USD.student.annual}/yr, save ${annualSavingPercent('student')}%)`
-                : `$${PUBLISHED_PRICES_USD.student.monthly} / month`
-            }
+            price={tierPrice('student', period).price}
+            pricePeriod={tierPrice('student', period).pricePeriod}
             audience="Verified academic email — for students"
             features={['5 canvases', 'AI auto-code', 'All 13 analysis tools', 'Ethics + cases']}
             isCurrent={plan === 'student'}
@@ -295,12 +317,8 @@ export default function PricingPage() {
 
           <TierCardV2
             name="Pro"
-            price={`$${period === 'annual' ? annualPricePerMonth('pro') : PUBLISHED_PRICES_USD.pro.monthly}`}
-            pricePeriod={
-              period === 'annual'
-                ? `per month, billed annually ($${PUBLISHED_PRICES_USD.pro.annual}/yr, save ${annualSavingPercent('pro')}%)`
-                : `$${PUBLISHED_PRICES_USD.pro.monthly} / month`
-            }
+            price={tierPrice('pro', period).price}
+            pricePeriod={tierPrice('pro', period).pricePeriod}
             audience="For one researcher"
             features={[
               'One coder: you',
@@ -337,12 +355,8 @@ export default function PricingPage() {
 
           <TierCardV2
             name="Team"
-            price={`$${period === 'annual' ? annualPricePerMonth('team') : PUBLISHED_PRICES_USD.team.monthly}`}
-            pricePeriod={
-              period === 'annual'
-                ? `per seat / month, billed annually ($${PUBLISHED_PRICES_USD.team.annual}/yr, save ${annualSavingPercent('team')}%)`
-                : `$${PUBLISHED_PRICES_USD.team.monthly} / seat / month`
-            }
+            price={tierPrice('team', period).price}
+            pricePeriod={tierPrice('team', period).pricePeriod}
             audience="For research groups"
             features={[
               'Everything in Pro',
@@ -383,17 +397,17 @@ export default function PricingPage() {
             ]}
             cta={
               <a
-                href={RESEARCH_DESK_CALENDLY}
+                href={RESEARCH_DESK_EMAIL}
                 onClick={() =>
                   trackEvent('cta_clicked', {
-                    cta_label: 'Book a call',
+                    cta_label: 'Email the research desk',
                     location: 'pricing_card',
                     target_route: 'research_desk',
                   })
                 }
                 className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2"
               >
-                Book a call
+                Email the research desk
               </a>
             }
           />
@@ -401,7 +415,9 @@ export default function PricingPage() {
 
         {/* Academic discount strip */}
         <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          <span className="font-medium text-gray-900 dark:text-white">Students: $5/mo on the Student plan.</span>{' '}
+          <span className="font-medium text-gray-900 dark:text-white">
+            Students: ${PUBLISHED_PRICES_USD.student.monthly} a month on the Student plan.
+          </span>{' '}
           Faculty and staff get{' '}
           <span className="font-medium text-gray-900 dark:text-white">
             40% off Pro and Team with a verified academic email
@@ -472,7 +488,9 @@ export default function PricingPage() {
                     '—',
                     '—',
                     'One person',
-                    `$${period === 'annual' ? annualPricePerMonth('team') : PUBLISHED_PRICES_USD.team.monthly}/seat/mo`,
+                    period === 'annual'
+                      ? `$${PUBLISHED_PRICES_USD.team.annual}/seat/yr`
+                      : `$${PUBLISHED_PRICES_USD.team.monthly}/seat/mo`,
                     'Custom',
                   ],
                 },
@@ -557,7 +575,10 @@ export default function PricingPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
         <CompetitorRow
           eyebrow="How we compare"
-          qualcanvas={{ pricing: '$5–15/mo · published', note: 'On this page. $5 students, 40% academic discount.' }}
+          qualcanvas={{
+            pricing: `$${PUBLISHED_PRICES_USD.student.monthly}–$${PUBLISHED_PRICES_USD.team.monthly}/mo · published`,
+            note: `On this page. $${PUBLISHED_PRICES_USD.student.monthly} students, 40% academic discount.`,
+          }}
           competitors={[
             { name: 'NVivo', pricing: '~$1,200/yr · gated', href: 'https://shop.lumivero.com', vsSlug: 'nvivo' },
             {
@@ -603,52 +624,7 @@ export default function PricingPage() {
           <HairlineRule className="mb-4" />
           <Eyebrow className="mb-3">Frequently asked</Eyebrow>
         </div>
-        <FAQ
-          items={[
-            {
-              question: 'Can I try before I buy?',
-              answer:
-                'Yes. The Free plan is free forever and includes core coding features. Upgrade when you need more capacity or advanced analysis tools.',
-            },
-            {
-              question: 'What payment methods do you accept?',
-              answer:
-                'Online subscriptions use major credit cards through Stripe. Contact the research desk to discuss institutional procurement requirements before relying on another payment method.',
-            },
-            {
-              question: 'Can I cancel anytime?',
-              answer:
-                'Yes. Cancel from your Account page. You keep Pro/Team access until the end of the billing period. No retention friction.',
-            },
-            {
-              question: 'How does the academic discount work?',
-              answer:
-                'Students get the dedicated Student plan at $5/mo with a verified institution email. Faculty and staff on Pro or Team get 40% off automatically at checkout with a recognised academic email. Eligibility is based on the verified institution address; contact support if your institution uses an unrecognised domain.',
-            },
-            {
-              question: 'How do seats work?',
-              answer: `Pro is for one person: you code, and you can invite as many read-only viewers as you like for free. Team is priced per seat ($${PUBLISHED_PRICES_USD.team.monthly}/seat/mo, or $${annualPricePerMonth('team')} billed annually): you hold one seat, and each person who codes with you — on your canvases or in your teams — holds one more; a person counts once. Viewers are free on Team too. If you are on Pro and invite a coder, QualCanvas offers the upgrade to Team and shows what it costs today and at renewal; nothing is charged until you confirm, or you can add them as a viewer instead. On Team, inviting a coder shows the prorated charge for the rest of the billing period and asks you to confirm it first. Removing a coder, or making them a viewer, frees the seat straight away and credits the unused time to your next bill.`,
-            },
-            {
-              question: 'What happens to my data if I downgrade?',
-              answer:
-                "Your data is preserved. You can't create new resources beyond the Free-plan limits until you re-upgrade, but nothing is deleted.",
-            },
-            {
-              question: 'Do you offer institutional licensing?',
-              answer: (
-                <>
-                  We discuss volume access, onboarding and procurement with institutions. QualCanvas does not currently
-                  provide SAML/OIDC SSO, SCIM, a HIPAA BAA, custom automatic retention or EU data residency. Review the{' '}
-                  <a className="underline decoration-ochre-500 underline-offset-2" href="/for-institutions">
-                    institutions page
-                  </a>{' '}
-                  before treating any of those requirements as available.
-                </>
-              ),
-            },
-          ]}
-        />
+        <FAQ items={PRICING_FAQS} />
       </div>
 
       {/* ─── CTA stripe ─── */}
@@ -672,7 +648,7 @@ export default function PricingPage() {
         }
         secondary={
           <a
-            href={RESEARCH_DESK_CALENDLY}
+            href={RESEARCH_DESK_EMAIL}
             className="
               inline-flex items-center justify-center
               text-gray-300 hover:text-white
