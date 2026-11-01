@@ -8,6 +8,7 @@ import { useUIStore } from './stores/uiStore';
 import { useThemePreferenceStore, type ThemePreference } from './stores/themePreferenceStore';
 import { useFeatureFlagsStore, applyUrlFlagOverrides } from './stores/featureFlagsStore';
 import { trackEvent } from './utils/analytics';
+import { removeStalePrerender } from './utils/prerenderHandoff';
 import './i18n';
 import './index.css';
 import './brand-v2.css';
@@ -189,11 +190,15 @@ const updateSW = registerSW({
   },
 });
 
-// Remove the prerendered marketing block + its inline styles so React owns
-// the page from here on. The block only exists for first-paint visibility
-// and SEO/AI-search crawlers — see index.html #marketing-root.
-document.getElementById('marketing-root')?.remove();
-document.getElementById('prerender-styles')?.remove();
+// The prerendered marketing block (index.html #marketing-root) exists for
+// first paint and for crawlers that do not run JS. When it is the build-time
+// render of THIS route's page (scripts/prerender-marketing.mjs stamps
+// data-prerendered-path), keep it on screen until the React page commits:
+// PageShell removes it in a layout effect, so the swap happens in one frame
+// and the first paint stays the LCP. Until then it is inert, so nobody clicks
+// a button that has no handler yet. Any other block (a different route's
+// prerender served as the SPA fallback, or the dev-server fallback) goes now.
+removeStalePrerender();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

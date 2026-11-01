@@ -67,7 +67,7 @@ export default function CompetitorRow({
                   href={c.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline-offset-2 hover:underline"
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline-offset-2 hover:underline inline-flex items-center min-h-6"
                 >
                   Source ↗
                 </a>
@@ -75,7 +75,7 @@ export default function CompetitorRow({
               {c.vsSlug && (
                 <a
                   href={`/vs#${c.vsSlug}`}
-                  className="text-ochre-700 dark:text-ochre-400 hover:text-ochre-800 dark:hover:text-ochre-300 underline-offset-2 hover:underline"
+                  className="text-ochre-700 dark:text-ochre-400 hover:text-ochre-800 dark:hover:text-ochre-300 underline-offset-2 hover:underline inline-flex items-center min-h-6"
                 >
                   See the comparison →
                 </a>

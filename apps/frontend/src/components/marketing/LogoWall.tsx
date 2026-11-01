@@ -41,7 +41,7 @@ export default function LogoWall({ items, eyebrow, className = '' }: LogoWallPro
               className="max-h-8 w-auto opacity-70 hover:opacity-100 transition-opacity duration-150"
             />
           ) : (
-            <span className="text-sm text-gray-400 dark:text-gray-500 font-medium">{item.name}</span>
+            <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">{item.name}</span>
           );
           return item.href ? (
             <a key={item.name} href={item.href} target="_blank" rel="noopener noreferrer" className="block">

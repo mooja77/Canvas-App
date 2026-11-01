@@ -17,8 +17,8 @@ const RESEARCH_DESK = 'mailto:research@qualcanvas.com?subject=Institution%20plan
  *
  * Spec: docs/refresh/06-pages/06-for-institutions.md. Follows the Overleaf
  * "for/universities" pattern (hybrid self-serve + sales). Primary CTA is
- * "Book a 20-minute call" — specific time period is more honest than
- * "Talk to sales."
+ * "Email the research desk". Contact is by email only: no calls or demos
+ * (house rule, 1 Nov 2026).
  */
 export default function ForInstitutionsPage() {
   usePageMeta(
@@ -30,9 +30,9 @@ export default function ForInstitutionsPage() {
     trackEvent('marketing_page_viewed', { page: '/for-institutions' });
   }, []);
 
-  const handleBookCall = () => {
+  const handleEmailDesk = () => {
     trackEvent('cta_clicked', {
-      cta_label: 'Book a 20-minute call',
+      cta_label: 'Email the research desk',
       location: 'for-institutions_hero',
       target_route: 'research_desk',
     });
@@ -55,10 +55,10 @@ export default function ForInstitutionsPage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <a
               href={RESEARCH_DESK}
-              onClick={handleBookCall}
+              onClick={handleEmailDesk}
               className="inline-flex items-center justify-center bg-ochre-500 hover:bg-ochre-600 active:bg-ochre-700 text-ink-950 font-semibold px-8 py-3.5 rounded-lg shadow-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2"
             >
-              Book a 20-minute call
+              Email the research desk
             </a>
             <Link
               to="/pricing"
@@ -189,7 +189,7 @@ export default function ForInstitutionsPage() {
             {
               question: 'Can we sign a DPA?',
               answer:
-                'You can request the current DPA materials before a call. Availability, transfer terms and any requested amendments are confirmed during legal review; no signature timeline is guaranteed.',
+                'You can request the current DPA materials by email. Availability, transfer terms and any requested amendments are confirmed during legal review; no signature timeline is guaranteed.',
             },
             {
               question: 'Do you support SSO and SCIM?',
@@ -227,16 +227,16 @@ export default function ForInstitutionsPage() {
       </section>
 
       <CTAStripe
-        eyebrow="Twenty minutes."
-        headline="Book a call with our research desk."
+        eyebrow="Research desk"
+        headline="Email our research desk."
         sub="Bring your residency, identity, retention and AI-control requirements. We’ll compare them with the controls available today."
         primary={
           <a
             href={RESEARCH_DESK}
-            onClick={handleBookCall}
+            onClick={handleEmailDesk}
             className="inline-flex items-center justify-center bg-ochre-400 hover:bg-ochre-300 active:bg-ochre-500 text-ink-950 font-semibold px-8 py-3.5 rounded-lg transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-300 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900"
           >
-            Book a 20-minute call
+            Email the research desk
           </a>
         }
         secondary={

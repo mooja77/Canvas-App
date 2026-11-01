@@ -8,7 +8,6 @@ import {
   PLAN_LIMITS,
   AI_REQUESTS_PER_DAY_FAIR_USE,
   PUBLISHED_PRICES_USD,
-  annualPricePerMonth,
   annualSavingPercent,
   maxAnnualSavingPercent,
   type PlanTier,
@@ -114,18 +113,25 @@ describe('PricingPage (refresh)', () => {
     expect(screen.getByRole('heading', { name: 'Institutions', level: 3 })).toBeInTheDocument();
   });
 
-  it('defaults to annual billing and shows discounted prices', () => {
+  // Monthly is the default so the headline figures match every other page
+  // and llms.txt ($5 / $15 / $39). The page used to open on Annual and show
+  // Student at "$4", which read as a second Student price.
+  it('defaults to monthly billing and shows the monthly charge', () => {
     render(<PricingPage />);
-    // Annual is the default — Pro $12/mo (billed annually), Team $32/mo.
-    expect(screen.getByText('$12')).toBeInTheDocument();
-    expect(screen.getByText('$32')).toBeInTheDocument();
-  });
-
-  it('Monthly toggle switches to higher prices', () => {
-    render(<PricingPage />);
-    fireEvent.click(screen.getByRole('button', { name: /^Monthly$/ }));
+    expect(screen.getByText('$5')).toBeInTheDocument();
     expect(screen.getByText('$15')).toBeInTheDocument();
     expect(screen.getByText('$39')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Monthly$/ })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('Annual toggle shows the yearly charge, never a per-month equivalent as the headline', () => {
+    render(<PricingPage />);
+    fireEvent.click(screen.getByRole('button', { name: /Annual/ }));
+    expect(screen.getByText('$48')).toBeInTheDocument();
+    expect(screen.getByText('$144')).toBeInTheDocument();
+    expect(screen.getByText('$384')).toBeInTheDocument();
+    expect(screen.queryByText('$4')).not.toBeInTheDocument();
+    expect(screen.queryByText('$12')).not.toBeInTheDocument();
   });
 
   // "Save 20%" was false for Team ($32 x 12 = $384 vs $39 x 12 = $468 is 17.9%).
@@ -134,9 +140,10 @@ describe('PricingPage (refresh)', () => {
     render(<PricingPage />);
     const annualButton = screen.getByRole('button', { name: /Annual/ });
     expect(within(annualButton).getByText('Save up to 20%')).toBeInTheDocument();
+    fireEvent.click(annualButton);
     expect(screen.queryByText(/^Save 20%$/)).not.toBeInTheDocument();
-    expect(screen.getByText('per seat / month, billed annually ($384/yr, save 18%)')).toBeInTheDocument();
-    expect(screen.getByText('per month, billed annually ($144/yr, save 20%)')).toBeInTheDocument();
+    expect(screen.getByText('per seat a year, which works out at $32 a month (save 18%)')).toBeInTheDocument();
+    expect(screen.getByText('a year, which works out at $12 a month (save 20%)')).toBeInTheDocument();
     expect(screen.getByText(/Save \$36\/year on Pro · \$84\/seat\/year on Team/)).toBeInTheDocument();
   });
 
@@ -175,7 +182,7 @@ describe('PricingPage (refresh)', () => {
     expect(screen.getAllByRole('button', { name: 'Start free' }).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole('button', { name: 'Start Pro' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start Team' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Book a call' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Email the research desk' })).toBeInTheDocument();
   });
 
   it('mentions the academic discount inline', () => {
@@ -195,7 +202,8 @@ describe('PricingPage (refresh)', () => {
 
   it('FAQ surfaces the academic-discount, cancellation, and downgrade questions', () => {
     render(<PricingPage />);
-    expect(screen.getByText(/Can I try before I buy/i)).toBeInTheDocument();
+    expect(screen.getByText(/Is there a free trial/i)).toBeInTheDocument();
+    expect(screen.getByText(/How much does each plan cost/i)).toBeInTheDocument();
     expect(screen.getByText(/Can I cancel anytime/i)).toBeInTheDocument();
     expect(screen.getByText(/How does the academic discount work/i)).toBeInTheDocument();
   });
@@ -324,10 +332,10 @@ describe('PricingPage comparison table vs the enforced plan limits', () => {
     });
     expect(PLAN_LIMITS.pro.maxCoders).toBe(0);
     expect(price[2]).toBe('One person');
-    // Annual is the default view: the per-seat price is the annual one, from
-    // the same table the Stripe prices were created with.
-    expect(price[3]).toBe(`$${annualPricePerMonth('team')}/seat/mo`);
-    expect(price[3]).toBe('$32/seat/mo');
+    // Monthly is the default view: the per-seat price is the monthly charge,
+    // from the same table the Stripe prices were created with.
+    expect(price[3]).toBe(`$${PUBLISHED_PRICES_USD.team.monthly}/seat/mo`);
+    expect(price[3]).toBe('$39/seat/mo');
     // Nothing on the page may still sell Pro per seat.
     expect(document.body.textContent ?? '').not.toMatch(/\$1[25]\/seat/);
     expect(document.body.textContent ?? '').not.toMatch(/Pro and Team are priced per seat/);

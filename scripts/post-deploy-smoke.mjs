@@ -165,7 +165,7 @@ async function smokeFrontendWithRetry(browser, frontendUrl, maxAttempts = 3, bas
 // apps/frontend/scripts/prerender-marketing.mjs. Self-canonical is always
 // qualcanvas.com regardless of which host serves the bytes.
 const PRERENDER_ORIGIN = 'https://qualcanvas.com';
-const HOMEPAGE_TITLE = 'QualCanvas — Visual Coding for Interview Research';
+const HOMEPAGE_TITLE = 'QualCanvas — Qualitative coding software on a visual canvas';
 // Routes that prerender-marketing.mjs emits as their own static HTML. Each must
 // carry its OWN <title> (NOT the homepage title) and its OWN canonical equal to
 // the requested URL — otherwise the SPA fallback is being served (regression:

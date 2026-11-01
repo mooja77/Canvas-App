@@ -50,12 +50,16 @@ test.describe('Browser journey', () => {
   test('pricing page shows the published prices', async ({ page }) => {
     await page.goto('/pricing');
     const body = page.locator('body');
-    // Annual is the default view.
-    await expect(body).toContainText('$4per month, billed annually ($48/yr, save 20%)');
-    await expect(body).toContainText('$12per month, billed annually ($144/yr, save 20%)');
-    // Team saves 17.9% (rounded 18%), so the page must not claim a flat 20%.
-    await expect(body).toContainText('$32per seat / month, billed annually ($384/yr, save 18%)');
+    // Monthly is the default view: the headline is the monthly charge.
+    await expect(body).toContainText('$5a month, or $48 a year');
+    await expect(body).toContainText('$15a month, or $144 a year');
+    await expect(body).toContainText('$39per seat a month, or $384 per seat a year');
     await expect(body).toContainText('Save up to 20%');
+    // Annual shows the yearly charge. Team saves 17.9% (rounded 18%), so the
+    // page must not claim a flat 20%.
+    await page.getByRole('button', { name: /Annual/ }).click();
+    await expect(body).toContainText('$48a year, which works out at $4 a month (save 20%)');
+    await expect(body).toContainText('$384per seat a year, which works out at $32 a month (save 18%)');
     // Transcription runs only on the researcher's own OpenAI key: no plan
     // includes minutes or hours (decision 28 Sep 2026).
     await expect(body).toContainText('Audio transcription (with your own OpenAI key)');

@@ -1,4 +1,6 @@
 import { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { faqParts } from '../../content/marketingFaqs';
 
 export interface FAQItem {
   question: ReactNode;
@@ -45,10 +47,31 @@ export default function FAQ({ items, className = '' }: FAQProps) {
             </svg>
           </summary>
           <div className="px-2 pb-4 text-base text-gray-600 dark:text-gray-300 leading-relaxed max-w-3xl">
-            {item.answer}
+            {typeof item.answer === 'string' ? <FaqAnswerText answer={item.answer} /> : item.answer}
           </div>
         </details>
       ))}
     </div>
+  );
+}
+
+/** Renders a string answer, turning `[label](href)` into a link. */
+function FaqAnswerText({ answer }: { answer: string }) {
+  return (
+    <>
+      {faqParts(answer).map((part, i) => {
+        if (!part.href) return <span key={i}>{part.text}</span>;
+        const cls = 'underline decoration-ochre-500 underline-offset-2 hover:text-gray-900 dark:hover:text-white';
+        return part.href.startsWith('/') ? (
+          <Link key={i} to={part.href} className={cls}>
+            {part.text}
+          </Link>
+        ) : (
+          <a key={i} href={part.href} className={cls}>
+            {part.text}
+          </a>
+        );
+      })}
+    </>
   );
 }

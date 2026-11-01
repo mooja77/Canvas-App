@@ -1,14 +1,36 @@
 # QualCanvas
 
-> QualCanvas is a visual workspace for qualitative research. Researchers can import transcripts, code excerpts, organise themes, write memos, compare cases, collaborate, and export their work.
+> QualCanvas is qualitative coding software that runs in a web browser. Researchers import interview transcripts, highlight passages, tag them with codes, arrange codes into themes on a visual canvas, write memos, compare cases and export their work. It is for graduate students, academics, research labs and UX research teams, and is an alternative to desktop tools such as NVivo and ATLAS.ti. It is made by JMS Dev Lab in Ireland.
+
+## Key facts
+
+- Web app; nothing to install. Imports .docx, .txt, .csv and .vtt/.srt captions, and REFI-QDA (.qdpx) projects from NVivo or ATLAS.ti.
+- 13 built-in analyses, including word cloud, co-occurrence, coding query, framework matrix, cluster and sentiment.
+- Intercoder reliability (Cohen's kappa and Krippendorff's alpha) on the Team plan.
+- AI auto-coding suggestions on paid plans. AI runs on the researcher's own OpenAI, Anthropic or Google account, and the researcher reviews every suggestion.
+- Production database hosted in the US. No EU data residency, SAML/OIDC SSO, SCIM or HIPAA BAA at present.
+
+## Pricing (US dollars, as charged at checkout)
+
+- Free: $0, no time limit. 2 canvases, 5 transcripts per canvas, 10 codes, CSV export.
+- Free trial: new accounts get Pro features for 14 days after verifying their email. No card needed.
+- Student: $5 a month or $48 a year. Requires a verified academic email.
+- Pro: $15 a month or $144 a year. One researcher; read-only viewers are free.
+- Team: $39 per seat a month or $384 per seat a year. One seat for each person who codes; viewers are free.
+- Institutions: priced on request by email to research@qualcanvas.com.
+- Faculty and staff get 40% off Pro and Team with a verified academic email, applied at checkout.
 
 ## Product and training
 
-- [QualCanvas home](https://qualcanvas.com/): Product overview and first steps.
-- [Pricing](https://qualcanvas.com/pricing): Current plans and academic pricing.
+- [QualCanvas home](https://qualcanvas.com/): What QualCanvas does, who it is for, plans and common questions.
+- [Pricing](https://qualcanvas.com/pricing): Every plan, monthly and yearly prices, and a full feature comparison.
+- [For research teams](https://qualcanvas.com/for-teams): Shared canvases, seats and intercoder reliability.
+- [For institutions](https://qualcanvas.com/for-institutions): Security documentation and procurement information.
+- [Comparisons](https://qualcanvas.com/vs): Sourced comparisons with NVivo, ATLAS.ti and Dedoose.
 - [Training centre](https://qualcanvas.com/training/): Focused product tutorials and complete workflows.
 - [User guide](https://qualcanvas.com/guide): Detailed feature guidance.
 - [Methodology library](https://qualcanvas.com/methodology/): Evidence-led qualitative methods chapters.
+- [Changelog](https://qualcanvas.com/changelog): What has shipped and when.
 - [Real-user pilot](https://qualcanvas.com/pilot): Structured usability pilot information.
 
 ## Trust and policies
