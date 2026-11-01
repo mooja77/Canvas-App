@@ -17,8 +17,8 @@ export default function TermsPage() {
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-6">1. Acceptance of Terms</h2>
           <p>
-            By accessing or using QualCanvas ("the Service"), you agree to be bound by these Terms of Service. If you do
-            not agree, do not use the Service.
+            By accessing or using QualCanvas ("the Service"), you agree to be bound by these Terms of Service. The
+            Service is operated by JMS DEV LAB LIMITED. If you do not agree, do not use the Service.
           </p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-6">2. Description of Service</h2>
@@ -43,7 +43,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-6">5. Billing & Refunds</h2>
           <p>
             Paid plans are billed monthly or annually through Stripe. You may cancel at any time and retain access until
-            the end of the billing period. We offer a 30-day money-back guarantee for new subscribers.
+            the end of the billing period.
           </p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-6">6. Account Termination</h2>

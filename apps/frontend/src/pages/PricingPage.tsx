@@ -598,18 +598,8 @@ export default function PricingPage() {
         />
       </div>
 
-      {/* ─── Money-back guarantee + annual savings callout (preserved) ─── */}
+      {/* ─── Annual savings callout ─── */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 text-center">
-        <div className="inline-flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 px-4 py-2 rounded-full text-sm font-medium">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"
-            />
-          </svg>
-          30-day money-back guarantee. Email us and we'll refund the last charge — no form, no script.
-        </div>
         {period === 'annual' && (
           <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-3 font-medium">
             Save ${annualSavingUsd('pro')}/year on Pro · ${annualSavingUsd('team')}/seat/year on Team with annual
