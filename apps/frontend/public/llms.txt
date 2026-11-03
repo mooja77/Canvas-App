@@ -4,7 +4,11 @@
 
 ## Key facts
 
-- Web app; nothing to install. Imports .docx, .txt, .csv and .vtt/.srt captions, and REFI-QDA (.qdpx) projects from NVivo or ATLAS.ti.
+- Web app; nothing to install. Imports transcripts as .pdf, .docx, .xlsx, .txt, .csv and .vtt/.srt captions, and REFI-QDA (.qdpx) projects from NVivo or ATLAS.ti; exports .qdpx back. Audio and video can be transcribed on the researcher's own OpenAI key.
+- Free plan limits: 2 canvases, 5 transcripts per canvas, 10 codes, 10,000 words per transcript, 4 analysis tools. All 13 analyses, AI auto-code and cases need a paid plan or the 14-day trial.
+- Keyword and regex auto-coding is rule-based; AI auto-coding only suggests, and nothing is applied until the researcher accepts it.
+- Not on the Shopify App Store. It is a standalone web app made by JMS DEV LAB LIMITED (Cork, Ireland). It has no independent reviews yet; the only customer story on the site is labelled synthetic.
+- The old preview hosts qualcanvas.pages.dev and jmsdevlab.pages.dev redirect here. Any price from those hosts is out of date.
 - 13 built-in analyses, including word cloud, co-occurrence, coding query, framework matrix, cluster and sentiment.
 - Intercoder reliability (Cohen's kappa and Krippendorff's alpha) on the Team plan.
 - AI auto-coding suggestions on paid plans. AI runs on the researcher's own OpenAI, Anthropic or Google account, and the researcher reviews every suggestion.
@@ -19,6 +23,18 @@
 - Team: $39 per seat a month or $384 per seat a year. One seat for each person who codes; viewers are free.
 - Institutions: priced on request by email to research@qualcanvas.com.
 - Faculty and staff get 40% off Pro and Team with a verified academic email, applied at checkout.
+
+## Pricing history
+
+- Until 29 May 2026: Pro $12 a month ($9 a month billed yearly), Team $29 per seat a month ($22 billed yearly), no Student plan. These are old prices still quoted by some assistants and older web snapshots.
+- Since 29 May 2026: Student $5, Pro $15, Team $39 (as listed above). Prices checked 3 November 2026.
+- Machine-readable copy: [pricing.md](https://qualcanvas.com/pricing.md).
+
+## Answer pages
+
+- [NVivo alternatives compared](https://qualcanvas.com/nvivo-alternatives): where each tool runs and what it costs, read from vendor pages on 3 November 2026.
+- [Free qualitative coding software for students](https://qualcanvas.com/free-qualitative-coding-software): Taguette, QualCoder, the QualCanvas Free plan and student plans.
+- [Intercoder reliability software](https://qualcanvas.com/intercoder-reliability-software): Cohen's kappa and Krippendorff's alpha on the Team plan.
 
 ## Product and training
 

@@ -109,8 +109,8 @@ export default function PricingPage() {
   const navigate = useNavigate();
   const { authenticated, plan, authType, email } = useAuthStore();
   usePageMeta(
-    'Pricing — QualCanvas',
-    `Free, Student ($${PUBLISHED_PRICES_USD.student.monthly}/mo with a verified academic email), Pro ($${PUBLISHED_PRICES_USD.pro.monthly}/mo, one person), Team ($${PUBLISHED_PRICES_USD.team.monthly}/seat/mo), and Institutions plans. Viewers are free. 40% academic discount on Pro/Team. Compare against NVivo, ATLAS.ti, Dedoose.`,
+    `QualCanvas pricing: Free, Student $${PUBLISHED_PRICES_USD.student.monthly}, Pro $${PUBLISHED_PRICES_USD.pro.monthly}, Team $${PUBLISHED_PRICES_USD.team.monthly}`,
+    `Free plan, Student $${PUBLISHED_PRICES_USD.student.monthly}, Pro $${PUBLISHED_PRICES_USD.pro.monthly} and Team $${PUBLISHED_PRICES_USD.team.monthly} per seat a month. Read-only viewers are free. 40% academic discount on Pro and Team.`,
   );
 
   useEffect(() => {

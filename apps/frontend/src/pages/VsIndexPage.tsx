@@ -32,27 +32,27 @@ const TARGETS: VsTarget[] = [
     competitor: 'NVivo (Lumivero)',
     quickVerdict:
       'NVivo is the most-cited tool in the field. If your committee already reads NVivo papers, that lineage is real. If you are starting fresh, QualCanvas is the cleaner option: pricing is on the page, the codebook is real-time-shared, no lock-in via QDPX in both directions.',
-    pricing: 'Pro $15/mo or $144/yr vs ~$1,200/yr NVivo',
-    pricingSource: 'usercall.co NVivo pricing guide, 2026',
-    status: 'draft',
+    pricing: 'Pro $15/mo or $144/yr; NVivo pricing varies by licence and is not listed on its product page',
+    pricingSource: 'lumivero.com/products/nvivo, checked 3 November 2026',
+    status: 'published',
   },
   {
     slug: 'atlas-ti',
     competitor: 'ATLAS.ti',
     quickVerdict:
-      'ATLAS.ti pushes "reduce analysis time 90% with OpenAI." We push "AI assists; you decide." Same software category, different register. We publish prices and a working /trust page; theirs 404. Pick by how confident you feel about a 90% time-saving claim before you ship a methods section.',
-    pricing: 'Pro $15/mo or $144/yr vs ~$5/mo student or $99/2 years',
-    pricingSource: 'atlasti.com/student-licenses + usercall.co, 2026',
-    status: 'draft',
+      'ATLAS.ti is an established desktop and web tool with strong multimedia support. QualCanvas keeps AI to suggestions you accept or reject, and publishes every price and its security and AI policies on this site. If your supervisor or team already uses ATLAS.ti, use it; .qdpx lets you move a project between the two.',
+    pricing: 'Pro $15/mo or $144/yr; ATLAS.ti student licences last one year, price on its site',
+    pricingSource: 'atlasti.com/student-licenses, checked 3 November 2026',
+    status: 'published',
   },
   {
     slug: 'dedoose',
     competitor: 'Dedoose',
     quickVerdict:
       "Dedoose's active-month billing is genuinely flexible. If you code in bursts (a month here, a month there) Dedoose can be cheaper. QualCanvas is steadier — pay-as-you-need, academic discount applied automatically for recognised institution emails, real-time collab built in instead of as an upgrade.",
-    pricing: 'Pro $15/mo or $144/yr vs $17.95 active month',
-    pricingSource: 'dedoose.com/home/pricing, 2026',
-    status: 'draft',
+    pricing: 'Pro $15/mo or $144/yr vs Dedoose $17.95 per active month (student $12.95)',
+    pricingSource: 'dedoose.com/home/pricing, checked 3 November 2026',
+    status: 'published',
   },
 ];
 
@@ -122,9 +122,19 @@ export default function VsIndexPage() {
         {/* Note on the longer pages */}
         <div className="mt-16 pt-10 border-t border-gray-200 dark:border-gray-800 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
           <p>
-            Each comparison ships as a longer page (~1,200 words) with the full six-section breakdown: quick verdict,
-            pricing, where the competitor is better, where QualCanvas is better, migration path, FAQ. We are reviewing
-            them with legal counsel before publish — competitive comparisons need to be defensible, not just truthful.
+            Longer answers:{' '}
+            <a className="underline" href="/nvivo-alternatives">
+              NVivo alternatives compared
+            </a>
+            ,{' '}
+            <a className="underline" href="/free-qualitative-coding-software">
+              free qualitative coding software for students
+            </a>{' '}
+            and{' '}
+            <a className="underline" href="/intercoder-reliability-software">
+              intercoder reliability software
+            </a>
+            . Competitor facts are read from their own pages on the date shown and can change.
           </p>
           <p className="mt-3">
             Want a specific question answered ahead of the full pages? Email{' '}

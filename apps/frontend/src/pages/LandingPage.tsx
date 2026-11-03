@@ -38,7 +38,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
   usePageMeta(
     'QualCanvas — Qualitative coding software on a visual canvas',
-    'Code interview transcripts, group codes into themes and write memos in your browser. For students, academics and research teams. Free plan; paid plans from $5 a month.',
+    'Code interview transcripts, group codes into themes and write memos in your browser. For students, academics and teams. Free plan; paid plans from $5 a month.',
   );
 
   useEffect(() => {

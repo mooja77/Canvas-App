@@ -66,6 +66,30 @@ export default function SiteFooter() {
               </Link>
             </li>
             <li>
+              <a
+                href="/nvivo-alternatives"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                NVivo alternatives
+              </a>
+            </li>
+            <li>
+              <a
+                href="/free-qualitative-coding-software"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                Free coding software
+              </a>
+            </li>
+            <li>
+              <a
+                href="/intercoder-reliability-software"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                Intercoder reliability
+              </a>
+            </li>
+            <li>
               <Link
                 to="/changelog"
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
