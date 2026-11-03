@@ -122,10 +122,19 @@ export default function VsIndexPage() {
         {/* Note on the longer pages */}
         <div className="mt-16 pt-10 border-t border-gray-200 dark:border-gray-800 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
           <p>
-            Longer answers: <a className="underline" href="/nvivo-alternatives">NVivo alternatives compared</a>,{' '}
-            <a className="underline" href="/free-qualitative-coding-software">free qualitative coding software for students</a>{' '}
-            and <a className="underline" href="/intercoder-reliability-software">intercoder reliability software</a>.
-            Competitor facts are read from their own pages on the date shown and can change.
+            Longer answers:{' '}
+            <a className="underline" href="/nvivo-alternatives">
+              NVivo alternatives compared
+            </a>
+            ,{' '}
+            <a className="underline" href="/free-qualitative-coding-software">
+              free qualitative coding software for students
+            </a>{' '}
+            and{' '}
+            <a className="underline" href="/intercoder-reliability-software">
+              intercoder reliability software
+            </a>
+            . Competitor facts are read from their own pages on the date shown and can change.
           </p>
           <p className="mt-3">
             Want a specific question answered ahead of the full pages? Email{' '}
