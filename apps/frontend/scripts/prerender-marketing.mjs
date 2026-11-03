@@ -60,7 +60,7 @@ const ROUTES = [
     component: 'LandingPage',
     title: 'QualCanvas — Qualitative coding software on a visual canvas',
     description:
-      'Code interview transcripts, group codes into themes and write memos in your browser. For students, academics and research teams. Free plan; paid plans from $5 a month.',
+      'Code interview transcripts, group codes into themes and write memos in your browser. For students, academics and teams. Free plan; paid plans from $5 a month.',
     handoff: true,
     faq: 'LANDING_FAQS',
   },
@@ -68,9 +68,9 @@ const ROUTES = [
     path: '/pricing',
     file: 'pricing.html',
     component: 'PricingPage',
-    title: 'Pricing — QualCanvas',
+    title: 'QualCanvas pricing: Free, Student $5, Pro $15, Team $39',
     description:
-      'Free, Student ($5/mo with a verified academic email), Pro ($15/mo, one person), Team ($39/seat/mo), and Institutions plans. Viewers are free. 40% academic discount on Pro/Team. Compare against NVivo, ATLAS.ti, Dedoose.',
+      'Free plan, Student $5, Pro $15 and Team $39 per seat a month. Read-only viewers are free. 40% academic discount on Pro and Team.',
     handoff: true,
     faq: 'PRICING_FAQS',
   },
