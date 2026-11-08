@@ -68,6 +68,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: updated-snapshots
+          retention-days: 7
           path: e2e/**/*-linux.png
           if-no-files-found: warn
       - name: Upload Playwright report on failure
@@ -75,6 +76,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: playwright-report
+          retention-days: 7
           path: |
             playwright-report/
             test-results/
