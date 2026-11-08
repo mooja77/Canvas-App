@@ -3,7 +3,6 @@ import { trackActivationEvent } from './jms-events.js';
 // This suite stubs fetch; opt in explicitly (telemetry is off under test/CI by default).
 process.env.JMS_TELEMETRY_ENABLED = '1';
 
-
 describe('trackActivationEvent', () => {
   const fetchMock = vi.fn();
 
