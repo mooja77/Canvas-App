@@ -41,6 +41,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
   const openCanvas = useCanvasStore((s) => s.openCanvas);
   const fetchCanvases = useCanvasStore((s) => s.fetchCanvases);
   const createCanvas = useCanvasStore((s) => s.createCanvas);
+  const addTranscript = useCanvasStore((s) => s.addTranscript);
 
   useEffect(() => {
     trackEvent('onboarding_started', { step });
@@ -86,6 +87,28 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
     setResearchTopic(answers.researchTopic);
     setStep(2);
   }, []);
+
+  // Fast path: the researcher's own text becomes the first transcript on a real
+  // project. A failure keeps them on this screen with their pasted text intact.
+  const handlePasteTranscript = useCallback(
+    async (text: string) => {
+      if (busy || !text.trim()) return;
+      setBusy(true);
+      try {
+        const canvas = await createCanvas(researchTopic.trim() || 'My first project');
+        await openCanvas(canvas.id);
+        await addTranscript('My transcript', text);
+        trackEvent('onboarding_step_completed', { step: 1, template: 'pasted_transcript' });
+        await finish('setup_finished');
+        toast.success('Transcript ready. Highlight any sentence to add a code.', { duration: 5000 });
+        navigate(`/canvas/${canvas.id}`);
+      } catch {
+        toast.error('Could not save your transcript. Your text is still here, so try again.');
+        setBusy(false);
+      }
+    },
+    [addTranscript, busy, createCanvas, finish, navigate, openCanvas, researchTopic],
+  );
 
   const handleTemplatePick = useCallback(
     async (tmpl: CanvasTemplate | null, includeSample: boolean) => {
@@ -165,6 +188,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
             initialMethod={preferredMethod}
             onContinue={handlePersonalization}
             onSkip={() => finish('dismissed')}
+            onPasteTranscript={handlePasteTranscript}
           />
         )}
         {step === 2 && (

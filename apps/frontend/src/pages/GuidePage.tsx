@@ -106,7 +106,7 @@ const SECTIONS: GuideSection[] = [
           steps={[
             'Visit qualcanvas.com and click "Start Free" or "Sign In".',
             'Choose Google or create an email account with your name, email and password. No card is needed for the Free plan.',
-            'Answer the two optional starting questions, or skip them. Choose a template or a blank canvas.',
+            'On the first screen, paste your own transcript to start coding straight away, or answer the two optional starting questions and choose a template or a blank canvas.',
             'Use Transcript → Paste Text to add a short fictional practice paragraph. Give it a title, then save it.',
             'Highlight one sentence, type a short code name and press Enter. Your saved coded excerpt is your first result.',
           ]}
