@@ -15,7 +15,21 @@ interface JmsEvent {
 const INGEST_URL = 'https://admin.jmsdevlab.com/api/events/ingest';
 const APP_ID = 'qualcanvas';
 
+/**
+ * Telemetry must never reach the production Command Centre from tests or CI.
+ * Disabled when NODE_ENV=test, VITEST is set or CI is set, unless explicitly
+ * enabled with JMS_TELEMETRY_ENABLED=1 (tests that stub fetch). 0 forces off.
+ */
+export function isTelemetryDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  const flag = String(env.JMS_TELEMETRY_ENABLED ?? '').toLowerCase();
+  if (flag === '1' || flag === 'true') return false;
+  if (flag === '0' || flag === 'false') return true;
+  const ci = String(env.CI ?? '').toLowerCase();
+  return env.NODE_ENV === 'test' || Boolean(env.VITEST) || (ci !== '' && ci !== '0' && ci !== 'false');
+}
+
 export async function trackJmsEvent(event: JmsEvent): Promise<void> {
+  if (isTelemetryDisabled()) return;
   const adminKey = process.env.ADMIN_API_KEY;
   if (!adminKey) return; // soft-fail when key is not set
   try {
