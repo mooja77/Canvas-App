@@ -20,7 +20,7 @@ const APP_ID = 'qualcanvas';
  * Disabled when NODE_ENV=test, VITEST is set or CI is set, unless explicitly
  * enabled with JMS_TELEMETRY_ENABLED=1 (tests that stub fetch). 0 forces off.
  */
-export function isTelemetryDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
+export function isTelemetryDisabled(env: Record<string, string | undefined> = process.env): boolean {
   const flag = String(env.JMS_TELEMETRY_ENABLED ?? '').toLowerCase();
   if (flag === '1' || flag === 'true') return false;
   if (flag === '0' || flag === 'false') return true;
