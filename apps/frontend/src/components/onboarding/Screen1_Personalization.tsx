@@ -6,6 +6,8 @@ interface Props {
   initialMethod?: string;
   onContinue: (answers: { researchTopic: string; method: string }) => void;
   onSkip: () => void;
+  /** Fast path: create a project with this pasted transcript and open it for coding. */
+  onPasteTranscript?: (text: string) => void | Promise<void>;
 }
 
 const METHODS = [
@@ -21,7 +23,10 @@ export default function Screen1_Personalization({
   initialMethod = 'interviews',
   onContinue,
   onSkip,
+  onPasteTranscript,
 }: Props) {
+  const [pasted, setPasted] = useState('');
+  const [pasting, setPasting] = useState(false);
   const [topic, setTopic] = useState(initialResearchTopic);
   const [method, setMethod] = useState<string>(initialMethod);
   // Two questions, both optional: the topic names the first project, the
@@ -38,6 +43,42 @@ export default function Screen1_Personalization({
         </p>
       </div>
 
+      {onPasteTranscript && (
+        <div className="mb-6 rounded-xl border border-brand-200 bg-brand-50/60 p-4 dark:border-brand-800 dark:bg-brand-900/20">
+          <label htmlFor="onboarding-paste" className="block text-sm font-semibold text-gray-900 dark:text-white mb-1">
+            Have a transcript ready? Paste it and start coding
+          </label>
+          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+            No template, method or AI key needed. Highlight a sentence next and choose a code.
+          </p>
+          <textarea
+            id="onboarding-paste"
+            rows={5}
+            value={pasted}
+            onChange={(e) => setPasted(e.target.value)}
+            placeholder="Paste your interview, focus group or field-note text here"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+          <div className="mt-2 flex justify-end">
+            <button
+              type="button"
+              disabled={!pasted.trim() || pasting}
+              onClick={async () => {
+                setPasting(true);
+                try {
+                  await onPasteTranscript(pasted);
+                } finally {
+                  setPasting(false);
+                }
+              }}
+              className="btn-primary px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {pasting ? 'Opening…' : 'Start coding this transcript'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-5">
         <div>
           <label
@@ -48,7 +89,6 @@ export default function Screen1_Personalization({
           </label>
           <input
             id="onboarding-topic"
-            autoFocus
             type="text"
             maxLength={80}
             value={topic}

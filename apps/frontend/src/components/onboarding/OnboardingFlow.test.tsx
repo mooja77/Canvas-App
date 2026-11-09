@@ -5,6 +5,7 @@ import OnboardingFlow from './OnboardingFlow';
 
 const mocks = vi.hoisted(() => ({
   createCanvas: vi.fn(),
+  addTranscript: vi.fn(),
   openCanvas: vi.fn(),
   fetchCanvases: vi.fn(),
   onClose: vi.fn(),
@@ -12,10 +13,13 @@ const mocks = vi.hoisted(() => ({
   trackEvent: vi.fn(),
 }));
 
+const PASTED = ['Interviewer: hello', 'P1: I felt supported.'].join(String.fromCharCode(10));
+
 vi.mock('../../stores/canvasStore', () => ({
   useCanvasStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       createCanvas: mocks.createCanvas,
+      addTranscript: mocks.addTranscript,
       openCanvas: mocks.openCanvas,
       fetchCanvases: mocks.fetchCanvases,
     }),
@@ -28,8 +32,19 @@ vi.mock('./utils/onboardingState', () => ({
 }));
 
 vi.mock('./Screen1_Personalization', () => ({
-  default: ({ onContinue, onSkip }: { onContinue: (value: unknown) => void; onSkip: () => void }) => (
+  default: ({
+    onContinue,
+    onSkip,
+    onPasteTranscript,
+  }: {
+    onContinue: (value: unknown) => void;
+    onSkip: () => void;
+    onPasteTranscript?: (text: string) => void;
+  }) => (
     <div>
+      <button type="button" onClick={() => onPasteTranscript?.(PASTED)}>
+        Paste test transcript
+      </button>
       <button type="button" onClick={() => onContinue({ researchTopic: 'Study', method: 'interviews' })}>
         Continue test onboarding
       </button>
@@ -58,6 +73,7 @@ describe('OnboardingFlow', () => {
     vi.clearAllMocks();
     mocks.createCanvas.mockResolvedValue({ id: 'canvas-1' });
     mocks.openCanvas.mockResolvedValue(undefined);
+    mocks.addTranscript.mockResolvedValue({ id: 't-1' });
     mocks.patchState.mockResolvedValue(undefined);
   });
 
@@ -95,6 +111,40 @@ describe('OnboardingFlow', () => {
     );
     expect(mocks.onClose).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/canvas/canvas-1'));
+  });
+
+  it('opens a canvas with the pasted transcript so the first code needs no template', async () => {
+    render(
+      <MemoryRouter>
+        <OnboardingFlow onClose={mocks.onClose} />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Paste test transcript' }));
+
+    await waitFor(() => expect(mocks.addTranscript).toHaveBeenCalledTimes(1));
+    expect(mocks.createCanvas).toHaveBeenCalledWith('My first project');
+    expect(mocks.openCanvas).toHaveBeenCalledWith('canvas-1');
+    expect(mocks.addTranscript).toHaveBeenCalledWith('My transcript', PASTED);
+    expect(mocks.patchState).toHaveBeenCalledWith(expect.objectContaining({ completionMode: 'setup_finished' }));
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/canvas/canvas-1'));
+  });
+
+  it('keeps the pasted text and stays on screen when the transcript cannot be saved', async () => {
+    mocks.addTranscript.mockRejectedValueOnce(new Error('boom'));
+    render(
+      <MemoryRouter>
+        <OnboardingFlow onClose={mocks.onClose} />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Paste test transcript' }));
+
+    await waitFor(() => expect(mocks.addTranscript).toHaveBeenCalledTimes(1));
+    expect(mocks.onClose).not.toHaveBeenCalled();
+    expect(screen.getByTestId('location')).toHaveTextContent('/');
   });
 
   it('persists an intentional skip as a resumable dismissal', async () => {
