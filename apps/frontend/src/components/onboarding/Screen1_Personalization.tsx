@@ -45,10 +45,7 @@ export default function Screen1_Personalization({
 
       {onPasteTranscript && (
         <div className="mb-6 rounded-xl border border-brand-200 bg-brand-50/60 p-4 dark:border-brand-800 dark:bg-brand-900/20">
-          <label
-            htmlFor="onboarding-paste"
-            className="block text-sm font-semibold text-gray-900 dark:text-white mb-1"
-          >
+          <label htmlFor="onboarding-paste" className="block text-sm font-semibold text-gray-900 dark:text-white mb-1">
             Have a transcript ready? Paste it and start coding
           </label>
           <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
