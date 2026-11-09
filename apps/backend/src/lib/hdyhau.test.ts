@@ -12,10 +12,12 @@ describe('forwardHdyhau payload', () => {
     fetchMock.mockResolvedValue({ ok: true, status: 200 });
     vi.stubGlobal('fetch', fetchMock);
     process.env.ADMIN_API_KEY = 'test-admin-key';
+    process.env.JMS_TELEMETRY_ENABLED = '1'; // fetch is stubbed; off under test/CI by default
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    delete process.env.JMS_TELEMETRY_ENABLED;
     if (originalKey === undefined) delete process.env.ADMIN_API_KEY;
     else process.env.ADMIN_API_KEY = originalKey;
   });
