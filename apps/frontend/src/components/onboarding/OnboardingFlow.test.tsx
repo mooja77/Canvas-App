@@ -6,6 +6,7 @@ import OnboardingFlow from './OnboardingFlow';
 const mocks = vi.hoisted(() => ({
   createCanvas: vi.fn(),
   addTranscript: vi.fn(),
+  apiAddTranscript: vi.fn(),
   openCanvas: vi.fn(),
   fetchCanvases: vi.fn(),
   onClose: vi.fn(),
@@ -23,6 +24,14 @@ vi.mock('../../stores/canvasStore', () => ({
       openCanvas: mocks.openCanvas,
       fetchCanvases: mocks.fetchCanvases,
     }),
+}));
+
+// The store's addTranscript needs activeCanvasId, which the /canvas route effect
+// clears right after openCanvas (the URL has no canvas id yet). The paste path
+// must therefore save through the API by canvas id, not through the store.
+vi.mock('../../services/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../services/api')>()),
+  canvasApi: { addTranscript: (...args: unknown[]) => mocks.apiAddTranscript(...args) },
 }));
 
 vi.mock('../../utils/analytics', () => ({ trackEvent: mocks.trackEvent }));
@@ -73,7 +82,8 @@ describe('OnboardingFlow', () => {
     vi.clearAllMocks();
     mocks.createCanvas.mockResolvedValue({ id: 'canvas-1' });
     mocks.openCanvas.mockResolvedValue(undefined);
-    mocks.addTranscript.mockResolvedValue({ id: 't-1' });
+    mocks.addTranscript.mockRejectedValue(new Error('No canvas open'));
+    mocks.apiAddTranscript.mockResolvedValue({ data: { data: { id: 't-1' } } });
     mocks.patchState.mockResolvedValue(undefined);
   });
 
@@ -123,16 +133,16 @@ describe('OnboardingFlow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Paste test transcript' }));
 
-    await waitFor(() => expect(mocks.addTranscript).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.apiAddTranscript).toHaveBeenCalledTimes(1));
     expect(mocks.createCanvas).toHaveBeenCalledWith('My first project');
-    expect(mocks.openCanvas).toHaveBeenCalledWith('canvas-1');
-    expect(mocks.addTranscript).toHaveBeenCalledWith('My transcript', PASTED);
+    expect(mocks.apiAddTranscript).toHaveBeenCalledWith('canvas-1', { title: 'My transcript', content: PASTED });
+    expect(mocks.addTranscript).not.toHaveBeenCalled();
     expect(mocks.patchState).toHaveBeenCalledWith(expect.objectContaining({ completionMode: 'setup_finished' }));
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/canvas/canvas-1'));
   });
 
   it('keeps the pasted text and stays on screen when the transcript cannot be saved', async () => {
-    mocks.addTranscript.mockRejectedValueOnce(new Error('boom'));
+    mocks.apiAddTranscript.mockRejectedValueOnce(new Error('boom'));
     render(
       <MemoryRouter>
         <OnboardingFlow onClose={mocks.onClose} />
@@ -142,7 +152,7 @@ describe('OnboardingFlow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Paste test transcript' }));
 
-    await waitFor(() => expect(mocks.addTranscript).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.apiAddTranscript).toHaveBeenCalledTimes(1));
     expect(mocks.onClose).not.toHaveBeenCalled();
     expect(screen.getByTestId('location')).toHaveTextContent('/');
   });

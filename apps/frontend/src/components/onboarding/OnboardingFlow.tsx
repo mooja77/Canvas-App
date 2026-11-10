@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Screen1_Personalization from './Screen1_Personalization';
 import Screen2_TemplateGallery from './Screen2_TemplateGallery';
-import { templateApi, type CanvasTemplate } from '../../services/api';
+import { canvasApi, templateApi, type CanvasTemplate } from '../../services/api';
 import { trackEvent } from '../../utils/analytics';
 import { patchOnboardingState } from './utils/onboardingState';
 import { useCanvasStore } from '../../stores/canvasStore';
@@ -41,7 +41,6 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
   const openCanvas = useCanvasStore((s) => s.openCanvas);
   const fetchCanvases = useCanvasStore((s) => s.fetchCanvases);
   const createCanvas = useCanvasStore((s) => s.createCanvas);
-  const addTranscript = useCanvasStore((s) => s.addTranscript);
 
   useEffect(() => {
     trackEvent('onboarding_started', { step });
@@ -96,8 +95,10 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
       setBusy(true);
       try {
         const canvas = await createCanvas(researchTopic.trim() || 'My first project');
-        await openCanvas(canvas.id);
-        await addTranscript('My transcript', text);
+        // Save by canvas id. The store's addTranscript needs activeCanvasId, but the
+        // /canvas route effect clears it again (no id in the URL yet), which made this
+        // fail with "No canvas open". The /canvas/:id route opens the canvas after navigate.
+        await canvasApi.addTranscript(canvas.id, { title: 'My transcript', content: text });
         trackEvent('onboarding_step_completed', { step: 1, template: 'pasted_transcript' });
         await finish('setup_finished');
         toast.success('Transcript ready. Highlight any sentence to add a code.', { duration: 5000 });
@@ -107,7 +108,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
         setBusy(false);
       }
     },
-    [addTranscript, busy, createCanvas, finish, navigate, openCanvas, researchTopic],
+    [busy, createCanvas, finish, navigate, researchTopic],
   );
 
   const handleTemplatePick = useCallback(
