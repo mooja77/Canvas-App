@@ -23,7 +23,10 @@ export default function SiteHeader({ hideAuthCtas = false }: SiteHeaderProps) {
 
   return (
     <>
-      <nav aria-label="Main navigation" className="w-full max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <nav
+        aria-label="Main navigation"
+        className="w-full max-w-6xl mx-auto px-4 py-4 flex items-center justify-between"
+      >
         <Link to="/" className="flex items-center gap-2 group" aria-label="QualCanvas home">
           <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg flex items-center justify-center">
             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
