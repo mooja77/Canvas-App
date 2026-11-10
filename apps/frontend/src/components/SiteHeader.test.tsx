@@ -21,4 +21,15 @@ describe('SiteHeader', () => {
     const desktopGuide = screen.getByRole('link', { name: 'Guide' });
     expect(desktopGuide.parentElement).toHaveClass('md:flex');
   });
+
+  it('spans the full page width so the logo is not squeezed against the first link', () => {
+    render(
+      <MemoryRouter>
+        <SiteHeader />
+      </MemoryRouter>,
+    );
+
+    // In the flex-column page shell, mx-auto without w-full shrinks the nav to its content.
+    expect(screen.getByRole('navigation', { name: 'Main navigation' })).toHaveClass('w-full');
+  });
 });
