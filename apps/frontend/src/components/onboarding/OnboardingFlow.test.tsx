@@ -77,6 +77,21 @@ describe('OnboardingFlow', () => {
     mocks.patchState.mockResolvedValue(undefined);
   });
 
+  it('stays reachable on a phone: the overlay scrolls and leaves room for the cookie banner', () => {
+    render(
+      <MemoryRouter>
+        <OnboardingFlow onClose={mocks.onClose} />
+      </MemoryRouter>,
+    );
+
+    const overlay = screen.getByRole('dialog', { name: 'Set up your QualCanvas workspace' })
+      .parentElement as HTMLElement;
+    // Without overflow-y-auto a dialog taller than the screen cannot be scrolled, so Continue is unreachable.
+    expect(overlay.className).toContain('overflow-y-auto');
+    // The fixed cookie banner publishes its height; the overlay must keep clear of it.
+    expect(overlay.className).toContain('--cookie-consent-height');
+  });
+
   it('records onboarding start only after the visible flow mounts', async () => {
     render(
       <MemoryRouter>
