@@ -160,13 +160,13 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex overflow-y-auto bg-black/50 p-4 pb-[calc(1rem+var(--cookie-consent-height,0px))] backdrop-blur-sm">
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboarding-dialog-title"
-        className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-900 sm:p-8"
+        className="m-auto w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-900 sm:p-8"
       >
         <h1 id="onboarding-dialog-title" className="sr-only">
           Set up your QualCanvas workspace
