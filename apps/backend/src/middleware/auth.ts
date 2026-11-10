@@ -30,6 +30,10 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
         where: { id: jwtPayload.userId },
         include: { dashboardAccess: true },
       });
+
+      // The 30 s request timeout may already have answered while we waited on the
+      // database. Setting headers now throws ERR_HTTP_HEADERS_SENT and crashes the server.
+      if (res.headersSent) return;
       if (user) {
         // Session invalidation: if the user rotated credentials after this
         // JWT was issued, reject the token so stolen/shared tokens can't

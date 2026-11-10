@@ -310,3 +310,30 @@ describe('auth middleware — cookie priority and session invalidation', () => {
     expect(req.userPlan).toBe('free');
   });
 });
+
+describe('auth middleware — response already sent by the request timeout', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('does not set headers or continue when the 408 timeout response went out during the user lookup', async () => {
+    const jwt = signUserToken('user-1', 'researcher', 'pro');
+    const res = {
+      headersSent: false,
+      setHeader: vi.fn(() => {
+        // Node throws ERR_HTTP_HEADERS_SENT here, which crashed the process.
+        if (res.headersSent) throw new Error('Cannot set headers after they are sent to the client');
+      }),
+    } as unknown as Response & { headersSent: boolean };
+    mockPrisma.user.findUnique.mockImplementation(async () => {
+      res.headersSent = true; // the 30 s timeout handler answered while we waited on the DB
+      return { id: 'user-1', plan: 'pro', role: 'researcher', sessionsInvalidAt: null, dashboardAccess: null };
+    });
+    const next = vi.fn() as unknown as NextFunction;
+
+    await expect(auth(makeReq({ cookies: { jwt } }), res, next)).resolves.toBeUndefined();
+
+    expect(res.setHeader).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+  });
+});
