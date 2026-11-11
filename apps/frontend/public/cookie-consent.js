@@ -196,6 +196,8 @@
       var persisted = readConsent() === 'rejected';
       denyAnalyticsConsent();
       clearOptionalAnalyticsCookies();
+      // Close the error-reporting client now, even if the page stays up.
+      window.dispatchEvent(new Event('qualcanvas:consent-rejected'));
       if (wasAccepted && !persisted) {
         // Storage still says "accepted". A reload would re-inject GTM from
         // that stored choice with no banner to say the withdrawal failed, so
