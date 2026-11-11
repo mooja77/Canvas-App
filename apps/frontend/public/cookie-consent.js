@@ -29,6 +29,23 @@
     document.head.appendChild(script);
   }
 
+  // Plausible is optional analytics too: it is requested only after Accept
+  // (now, or on a later visit with a stored accepted choice). The queue shim in
+  // index.html keeps window.plausible() calls harmless until then.
+  function loadPlausible() {
+    if (document.getElementById('plausible-analytics')) return;
+    var script = document.createElement('script');
+    script.id = 'plausible-analytics';
+    script.defer = true;
+    script.setAttribute('data-domain', 'qualcanvas.com');
+    script.setAttribute(
+      'data-exclude',
+      '/canvas, /canvas/**, /account, /admin, /repository, /team, /forgot-password, /reset-password, /verify-email',
+    );
+    script.src = 'https://plausible.io/js/script.exclusions.tagged-events.outbound-links.js';
+    document.head.appendChild(script);
+  }
+
   function readConsent() {
     try {
       return localStorage.getItem(CONSENT_KEY);
@@ -54,6 +71,7 @@
       ad_personalization: 'granted',
     });
     loadGoogleTagManager();
+    loadPlausible();
   }
 
   function denyAnalyticsConsent() {
@@ -126,15 +144,15 @@
     }
     var preferenceSummary =
       currentConsent === 'accepted'
-        ? 'Optional analytics and conversion measurement are currently on. '
+        ? 'Optional analytics and error reporting are currently on. '
         : currentConsent === 'rejected'
-          ? 'Optional analytics and conversion measurement are currently off. '
-          : 'We use optional analytics and conversion measurement only with your permission. ';
+          ? 'Optional analytics and error reporting are currently off. '
+          : 'Optional analytics and error reporting load only if you accept. ';
     banner.innerHTML =
       '<div class="cc-inner">' +
       '<p>' +
       preferenceSummary +
-      '<a href="/cookies">Cookie Policy</a></p>' +
+      '<a href="/cookies" aria-label="Cookie Policy">Cookies</a></p>' +
       '<div class="cc-buttons">' +
       '<button id="cc-reject" class="cc-btn cc-btn-reject" type="button" aria-label="Reject non-essential cookies">Reject</button>' +
       '<button id="cc-accept" class="cc-btn cc-btn-accept" type="button" aria-label="Accept all cookies">Accept</button>' +
@@ -165,6 +183,8 @@
     document.getElementById('cc-accept').addEventListener('click', function () {
       writeConsent('accepted');
       grantAnalyticsConsent();
+      // Lets the app start Sentry error reporting for this visit.
+      window.dispatchEvent(new Event('qualcanvas:consent-accepted'));
       dismissBanner();
     });
 

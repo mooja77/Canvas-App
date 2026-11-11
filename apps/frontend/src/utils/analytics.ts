@@ -99,7 +99,20 @@ export type AnalyticsEvent =
 // the POST hits the API rather than the static host (which returned 405).
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
+/** True only when the visitor has accepted optional analytics (public/cookie-consent.js). */
+export function analyticsAllowed(): boolean {
+  try {
+    return window.localStorage.getItem('jms_cookie_consent') === 'accepted';
+  } catch {
+    return false;
+  }
+}
+
 export function trackEvent(eventName: AnalyticsEvent, params?: Record<string, unknown>) {
+  // Optional analytics: nothing is sent, here or to our own API, unless the
+  // visitor accepted. Rejected or undecided visitors send no event at all.
+  if (!analyticsAllowed()) return;
+
   // GTM / GA4 via gtag
   window.gtag?.('event', eventName, params);
 
