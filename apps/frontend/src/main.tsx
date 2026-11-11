@@ -7,7 +7,7 @@ import { registerSW } from 'virtual:pwa-register';
 import { useUIStore } from './stores/uiStore';
 import { useThemePreferenceStore, type ThemePreference } from './stores/themePreferenceStore';
 import { useFeatureFlagsStore, applyUrlFlagOverrides } from './stores/featureFlagsStore';
-import { trackEvent } from './utils/analytics';
+import { analyticsAllowed, trackEvent } from './utils/analytics';
 import { removeStalePrerender } from './utils/prerenderHandoff';
 import './i18n';
 import './index.css';
@@ -19,7 +19,9 @@ import './brand-v2.css';
 // GDPR; recording DOM sessions (even masked) is a consent decision we don't
 // make by default. Revisit behind explicit opt-in. We capture errors +
 // lightweight performance traces only, and never default PII.
-if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+// It starts only after the visitor accepts optional analytics (stored choice on
+// this or a later visit, or the accept event from /cookie-consent.js).
+function startSentry() {
   Sentry.init({
     dsn: import.meta.env.VITE_SENTRY_DSN,
     environment: 'production',
@@ -38,6 +40,11 @@ if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
       'Non-Error promise rejection captured',
     ],
   });
+}
+
+if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+  if (analyticsAllowed()) startSentry();
+  else window.addEventListener('qualcanvas:consent-accepted', startSentry, { once: true });
 }
 
 // Keep the legacy canvas theme state and the newer three-state marketing
