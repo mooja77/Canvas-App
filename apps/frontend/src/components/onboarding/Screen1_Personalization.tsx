@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { trackEvent } from '../../utils/analytics';
+import { FIRST_TRANSCRIPT_ACCEPT, readFirstTranscript } from '../../utils/transcriptFileText';
+import { getExt } from '../../utils/transcriptFiles';
 
 interface Props {
   initialResearchTopic?: string;
   initialMethod?: string;
   onContinue: (answers: { researchTopic: string; method: string }) => void;
   onSkip: () => void;
-  /** Fast path: create a project with this pasted transcript and open it for coding. */
-  onPasteTranscript?: (text: string) => void | Promise<void>;
+  /** Fast path: create a project with this pasted or chosen transcript and open it for coding. */
+  onPasteTranscript?: (text: string, title?: string) => void | Promise<void>;
 }
 
 const METHODS = [
@@ -27,6 +29,28 @@ export default function Screen1_Personalization({
 }: Props) {
   const [pasted, setPasted] = useState('');
   const [pasting, setPasting] = useState(false);
+  const [fileError, setFileError] = useState('');
+  const [dragging, setDragging] = useState(false);
+
+  // A researcher's transcript is usually a file (Word, PDF, or the captions
+  // Zoom and Teams save), so the first screen takes the file itself. A file
+  // that cannot be read says why and leaves the paste box as the way through.
+  const startFromFile = async (file: File | undefined) => {
+    if (!file || !onPasteTranscript || pasting) return;
+    const format = getExt(file.name) ?? 'unknown';
+    setFileError('');
+    setPasting(true);
+    try {
+      const { title, content } = await readFirstTranscript(file);
+      trackEvent('transcript_import', { stage: 'first_run', outcome: 'read', format });
+      await onPasteTranscript(content, title);
+    } catch (error) {
+      trackEvent('transcript_import', { stage: 'first_run', outcome: 'failed', format });
+      setFileError(`${file.name}: ${error instanceof Error ? error.message : 'This file could not be read.'}`);
+    } finally {
+      setPasting(false);
+    }
+  };
   const [topic, setTopic] = useState(initialResearchTopic);
   const [method, setMethod] = useState<string>(initialMethod);
   // Two questions, both optional: the topic names the first project, the
@@ -44,7 +68,24 @@ export default function Screen1_Personalization({
       </div>
 
       {onPasteTranscript && (
-        <div className="mb-6 rounded-xl border border-brand-200 bg-brand-50/60 p-4 dark:border-brand-800 dark:bg-brand-900/20">
+        <div
+          data-testid="onboarding-transcript-start"
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            void startFromFile(e.dataTransfer.files?.[0]);
+          }}
+          className={`mb-6 rounded-xl border p-4 dark:bg-brand-900/20 ${
+            dragging
+              ? 'border-brand-500 bg-brand-100 dark:border-brand-400'
+              : 'border-brand-200 bg-brand-50/60 dark:border-brand-800'
+          }`}
+        >
           <label htmlFor="onboarding-paste" className="block text-sm font-semibold text-gray-900 dark:text-white mb-1">
             Have a transcript ready? Paste it and start coding
           </label>
@@ -59,7 +100,38 @@ export default function Screen1_Personalization({
             placeholder="Paste your interview, focus group or field-note text here"
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
-          <div className="mt-2 flex justify-end">
+          {fileError && (
+            <p role="alert" className="mt-2 text-xs text-red-700 dark:text-red-300">
+              {fileError}
+            </p>
+          )}
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <label
+                htmlFor="onboarding-file"
+                className={`inline-flex min-h-[36px] cursor-pointer items-center rounded-lg border border-brand-300 bg-white px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 focus-within:ring-2 focus-within:ring-brand-500 dark:border-brand-700 dark:bg-gray-800 dark:text-brand-200 ${
+                  pasting ? 'pointer-events-none opacity-50' : ''
+                }`}
+              >
+                Choose a transcript file
+                <input
+                  id="onboarding-file"
+                  type="file"
+                  accept={FIRST_TRANSCRIPT_ACCEPT}
+                  disabled={pasting}
+                  className="sr-only"
+                  onChange={(e) => {
+                    const chosen = e.target.files?.[0];
+                    // Reset so choosing the same file again after an error still fires.
+                    e.target.value = '';
+                    void startFromFile(chosen);
+                  }}
+                />
+              </label>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Word, PDF, text or caption file. You can also drop it here.
+              </span>
+            </div>
             <button
               type="button"
               disabled={!pasted.trim() || pasting}

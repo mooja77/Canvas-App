@@ -90,7 +90,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
   // Fast path: the researcher's own text becomes the first transcript on a real
   // project. A failure keeps them on this screen with their pasted text intact.
   const handlePasteTranscript = useCallback(
-    async (text: string) => {
+    async (text: string, title?: string) => {
       if (busy || !text.trim()) return;
       setBusy(true);
       try {
@@ -98,7 +98,7 @@ export default function OnboardingFlow({ onClose, initialState }: Props) {
         // Save by canvas id. The store's addTranscript needs activeCanvasId, but the
         // /canvas route effect clears it again (no id in the URL yet), which made this
         // fail with "No canvas open". The /canvas/:id route opens the canvas after navigate.
-        await canvasApi.addTranscript(canvas.id, { title: 'My transcript', content: text });
+        await canvasApi.addTranscript(canvas.id, { title: title?.trim() || 'My transcript', content: text });
         trackEvent('onboarding_step_completed', { step: 1, template: 'pasted_transcript' });
         await finish('setup_finished');
         toast.success('Transcript ready. Highlight any sentence to add a code.', { duration: 5000 });
