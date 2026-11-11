@@ -235,6 +235,14 @@ export default function SiteFooter() {
                 Colophon
               </Link>
             </li>
+            <li>
+              <a
+                href="mailto:support@qualcanvas.com?subject=QualCanvas%20question"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                Contact
+              </a>
+            </li>
           </ul>
         </div>
       </div>

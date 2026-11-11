@@ -54,7 +54,8 @@ export default function LandingPage() {
   return (
     <PageShell>
       {/* ─── 1. Hero ─── */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-12">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-12 lg:pb-20">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center lg:gap-10">
         <div className="max-w-4xl">
           <HairlineRule className="mb-6" />
           <Eyebrow className="mb-5">Qualitative coding software</Eyebrow>
@@ -106,30 +107,27 @@ export default function LandingPage() {
             Free plan with no card. New accounts get Pro features for 14 days after verifying their email.
           </p>
         </div>
-      </section>
 
-      {/* ─── 1b. Real product screenshot (sample study, fictional data) ─── */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16" aria-labelledby="product-shot-heading">
-        <h2 id="product-shot-heading" className="sr-only">
-          The QualCanvas workspace
-        </h2>
-        <figure>
+        <figure aria-labelledby="product-shot-heading">
+          <h2 id="product-shot-heading" className="sr-only">
+            The QualCanvas workspace
+          </h2>
           <picture>
             <source
               type="image/avif"
               srcSet="/product/canvas-workspace-800.avif 800w, /product/canvas-workspace-1600.avif 1600w"
-              sizes="(min-width: 1152px) 1104px, calc(100vw - 32px)"
+              sizes="(min-width: 1024px) 580px, calc(100vw - 32px)"
             />
             <source
               type="image/webp"
               srcSet="/product/canvas-workspace-800.webp 800w, /product/canvas-workspace-1600.webp 1600w"
-              sizes="(min-width: 1152px) 1104px, calc(100vw - 32px)"
+              sizes="(min-width: 1024px) 580px, calc(100vw - 32px)"
             />
             <img
               src="/product/canvas-workspace-1600.webp"
               width={1600}
               height={1000}
-              loading="lazy"
+              fetchPriority="high"
               decoding="async"
               alt="The QualCanvas workspace: a code list on the left, an interview transcript with highlighted passages in the middle, and the codes they are tagged with linked on the canvas."
               className="w-full h-auto rounded-2xl ring-1 ring-gray-200 dark:ring-gray-700 shadow-xl shadow-ink-900/5"
@@ -139,6 +137,7 @@ export default function LandingPage() {
             The real app, opened on a sample study. Every participant and transcript in it is fictional.
           </figcaption>
         </figure>
+        </div>
       </section>
 
       {/* ─── 2. Interactive coding micro-demo ─── */}
