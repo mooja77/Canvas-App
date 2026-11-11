@@ -56,20 +56,20 @@ export default function LandingPage() {
       {/* ─── 1. Hero ─── */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-12 lg:pb-20">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center lg:gap-10">
-        <div className="max-w-4xl">
-          <HairlineRule className="mb-6" />
-          <Eyebrow className="mb-5">Qualitative coding software</Eyebrow>
-          <DisplayHeading size="xl" className="mb-7">
-            Code interview transcripts on a visual canvas.
-          </DisplayHeading>
-          <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl leading-relaxed mb-8">
-            QualCanvas is for students, academics and research teams who analyze interviews. Highlight a passage and tag
-            it with a code. Then drag codes into themes and write memos beside them, in your browser.
-          </p>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-            <button
-              onClick={handleStartFree}
-              className="
+          <div className="max-w-4xl">
+            <HairlineRule className="mb-6" />
+            <Eyebrow className="mb-5">Qualitative coding software</Eyebrow>
+            <DisplayHeading size="xl" className="mb-7">
+              Code interview transcripts on a visual canvas.
+            </DisplayHeading>
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl leading-relaxed mb-8">
+              QualCanvas is for students, academics and research teams who analyze interviews. Highlight a passage and
+              tag it with a code. Then drag codes into themes and write memos beside them, in your browser.
+            </p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+              <button
+                onClick={handleStartFree}
+                className="
                 inline-flex items-center justify-center
                 bg-ochre-500 hover:bg-ochre-600 active:bg-ochre-700
                 text-ink-950 font-semibold
@@ -78,19 +78,19 @@ export default function LandingPage() {
                 transition-colors duration-150
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2
               "
-            >
-              Start free
-            </button>
-            <Link
-              to="/pricing"
-              onClick={() =>
-                trackEvent('cta_clicked', {
-                  cta_label: 'See pricing',
-                  location: 'landing_hero',
-                  target_route: '/pricing',
-                })
-              }
-              className="
+              >
+                Start free
+              </button>
+              <Link
+                to="/pricing"
+                onClick={() =>
+                  trackEvent('cta_clicked', {
+                    cta_label: 'See pricing',
+                    location: 'landing_hero',
+                    target_route: '/pricing',
+                  })
+                }
+                className="
                 inline-flex items-center text-base font-medium
                 text-gray-700 dark:text-gray-300
                 hover:text-gray-900 dark:hover:text-white
@@ -99,44 +99,44 @@ export default function LandingPage() {
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2
                 rounded
               "
-            >
-              See pricing →
-            </Link>
+              >
+                See pricing →
+              </Link>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-5">
+              Free plan with no card. New accounts get Pro features for 14 days after verifying their email.
+            </p>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-5">
-            Free plan with no card. New accounts get Pro features for 14 days after verifying their email.
-          </p>
-        </div>
 
-        <figure aria-labelledby="product-shot-heading">
-          <h2 id="product-shot-heading" className="sr-only">
-            The QualCanvas workspace
-          </h2>
-          <picture>
-            <source
-              type="image/avif"
-              srcSet="/product/canvas-workspace-800.avif 800w, /product/canvas-workspace-1600.avif 1600w"
-              sizes="(min-width: 1024px) 580px, calc(100vw - 32px)"
-            />
-            <source
-              type="image/webp"
-              srcSet="/product/canvas-workspace-800.webp 800w, /product/canvas-workspace-1600.webp 1600w"
-              sizes="(min-width: 1024px) 580px, calc(100vw - 32px)"
-            />
-            <img
-              src="/product/canvas-workspace-1600.webp"
-              width={1600}
-              height={1000}
-              fetchPriority="high"
-              decoding="async"
-              alt="The QualCanvas workspace: a code list on the left, an interview transcript with highlighted passages in the middle, and the codes they are tagged with linked on the canvas."
-              className="w-full h-auto rounded-2xl ring-1 ring-gray-200 dark:ring-gray-700 shadow-xl shadow-ink-900/5"
-            />
-          </picture>
-          <figcaption className="mt-3 text-sm text-center text-gray-600 dark:text-gray-300">
-            The real app, opened on a sample study. Every participant and transcript in it is fictional.
-          </figcaption>
-        </figure>
+          <figure aria-labelledby="product-shot-heading">
+            <h2 id="product-shot-heading" className="sr-only">
+              The QualCanvas workspace
+            </h2>
+            <picture>
+              <source
+                type="image/avif"
+                srcSet="/product/canvas-workspace-800.avif 800w, /product/canvas-workspace-1600.avif 1600w"
+                sizes="(min-width: 1024px) 580px, calc(100vw - 32px)"
+              />
+              <source
+                type="image/webp"
+                srcSet="/product/canvas-workspace-800.webp 800w, /product/canvas-workspace-1600.webp 1600w"
+                sizes="(min-width: 1024px) 580px, calc(100vw - 32px)"
+              />
+              <img
+                src="/product/canvas-workspace-1600.webp"
+                width={1600}
+                height={1000}
+                fetchPriority="high"
+                decoding="async"
+                alt="The QualCanvas workspace: a code list on the left, an interview transcript with highlighted passages in the middle, and the codes they are tagged with linked on the canvas."
+                className="w-full h-auto rounded-2xl ring-1 ring-gray-200 dark:ring-gray-700 shadow-xl shadow-ink-900/5"
+              />
+            </picture>
+            <figcaption className="mt-3 text-sm text-center text-gray-600 dark:text-gray-300">
+              The real app, opened on a sample study. Every participant and transcript in it is fictional.
+            </figcaption>
+          </figure>
         </div>
       </section>
 
