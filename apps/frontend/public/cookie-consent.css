@@ -13,7 +13,7 @@
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  padding: 12px 16px;
+  padding: 8px 16px;
   font-family:
     ui-sans-serif,
     system-ui,
@@ -24,7 +24,7 @@
     Arial,
     sans-serif;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.4;
   color: #1f2937;
   /* A non-overshooting ease keeps the banner from briefly jumping above its
      final position and encroaching on the support control during entry. */
@@ -76,7 +76,8 @@
 }
 
 #cookie-consent-banner .cc-btn {
-  padding: 8px 16px;
+  padding: 6px 16px;
+  min-height: 38px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
@@ -162,13 +163,23 @@ body.cookie-consent-visible #jms-chat-panel {
 
 /* Small screens — stack the text and buttons */
 @media (max-width: 640px) {
+  #cookie-consent-banner {
+    padding: 6px 12px;
+  }
   #cookie-consent-banner .cc-inner {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
+    gap: 6px;
+  }
+  #cookie-consent-banner p {
+    font-size: 13px;
+    min-width: 0;
   }
   #cookie-consent-banner .cc-buttons {
-    justify-content: flex-end;
+    justify-content: stretch;
+  }
+  #cookie-consent-banner .cc-btn {
+    flex: 1 1 0;
   }
 
   body.cookie-consent-visible #jms-chat-panel {
