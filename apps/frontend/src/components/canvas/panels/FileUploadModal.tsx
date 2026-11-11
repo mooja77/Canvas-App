@@ -11,40 +11,7 @@ import toast from 'react-hot-toast';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import { apiErrorMessage } from '../../../services/api';
 import { trackEvent } from '../../../utils/analytics';
-
-function readFileText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => resolve((e.target?.result as string) ?? '');
-    reader.onerror = () => reject(new Error('read failed'));
-    reader.readAsText(file);
-  });
-}
-
-// .docx and .pdf are binary, so they are read as an ArrayBuffer and extracted
-// to plain text. Both parsers are lazy-imported so they only load when a
-// researcher actually opens that kind of file, and neither enters the canvas
-// bundle.
-async function extractFileText(file: File): Promise<string> {
-  const ext = getExt(file.name);
-  if (ext === 'docx') {
-    const mammoth = (await import('mammoth')).default;
-    const arrayBuffer = await file.arrayBuffer();
-    const { value } = await mammoth.extractRawText({ arrayBuffer });
-    return value;
-  }
-  if (ext === 'pdf') {
-    const { extractPdfText } = await import('../../../utils/pdfText');
-    return extractPdfText(await file.arrayBuffer());
-  }
-  if (ext === 'xlsx') {
-    // The first sheet is re-serialised as CSV so the CSV transcript parser,
-    // which already understands Qualtrics and Excel survey exports, handles it.
-    const { readXlsxRecords, recordsToCsv } = await import('../../../utils/xlsxText');
-    return recordsToCsv(await readXlsxRecords(await file.arrayBuffer()));
-  }
-  return readFileText(file);
-}
+import { extractFileText } from '../../../utils/transcriptFileText';
 
 /**
  * The parser keys on the extension, and an .xlsx has been turned into CSV text
