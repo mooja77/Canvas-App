@@ -7,7 +7,8 @@ import { registerSW } from 'virtual:pwa-register';
 import { useUIStore } from './stores/uiStore';
 import { useThemePreferenceStore, type ThemePreference } from './stores/themePreferenceStore';
 import { useFeatureFlagsStore, applyUrlFlagOverrides } from './stores/featureFlagsStore';
-import { analyticsAllowed, trackEvent } from './utils/analytics';
+import { trackEvent } from './utils/analytics';
+import { bindSentryConsent } from './utils/sentryConsent';
 import { removeStalePrerender } from './utils/prerenderHandoff';
 import './i18n';
 import './index.css';
@@ -42,9 +43,14 @@ function startSentry() {
   });
 }
 
+// Reject or Withdraw while the page is open closes the client at once, for
+// signed-in and anonymous visitors alike; Accept starts it again.
+function stopSentry() {
+  void Sentry.getClient()?.close(0);
+}
+
 if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
-  if (analyticsAllowed()) startSentry();
-  else window.addEventListener('qualcanvas:consent-accepted', startSentry, { once: true });
+  bindSentryConsent({ start: startSentry, stop: stopSentry });
 }
 
 // Keep the legacy canvas theme state and the newer three-state marketing
