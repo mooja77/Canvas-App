@@ -114,8 +114,8 @@ export default function CookiePolicyPage() {
         <p>
           Sentry may use a short-lived <code>sentry-trace</code> value to connect frontend and backend errors. We use
           this for service reliability, not advertising, and QualCanvas does not enable Sentry Session Replay because
-          research content can be sensitive. Browser Sentry error reporting and Plausible analytics start only after
-          you accept optional analytics; if you reject, neither loads.
+          research content can be sensitive. Browser Sentry error reporting and Plausible analytics start only after you
+          accept optional analytics; if you reject, neither loads.
         </p>
 
         <h2>Boundaries</h2>
