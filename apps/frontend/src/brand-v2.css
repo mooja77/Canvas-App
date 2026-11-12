@@ -32,6 +32,10 @@ html.brand-v2 {
   --bv2-bg-card: #ffffff;
   --bv2-accent: theme('colors.ochre.500');
   --bv2-accent-hover: theme('colors.ochre.600');
+  /* Accent used as TEXT (links). ochre.500 is 3.06:1 on ink.50, under AA, so
+     text uses the darker stops: ochre.700 = 6.82:1, ochre.800 hover. */
+  --bv2-accent-text: theme('colors.ochre.700');
+  --bv2-accent-text-hover: theme('colors.ochre.800');
   --bv2-ring: theme('colors.ochre.400');
 
   /* ─── Semantic role tokens (Phase 1) — bound to ink/ochre stops per
@@ -41,13 +45,14 @@ html.brand-v2 {
   --fg-primary: theme('colors.ink.900');
   --fg-secondary: theme('colors.ink.700');
   --fg-muted: theme('colors.ink.500');
-  --fg-subtle: theme('colors.ink.400');
+  --fg-subtle: theme('colors.ink.500'); /* ink.400 was 4.12:1 on ink.50 */
   --bg-page: theme('colors.ink.50');
   --bg-card: #ffffff;
   --bg-inset: theme('colors.ink.100');
   --rule-hairline: rgba(199, 206, 217, 0.5);
   --accent: theme('colors.ochre.500');
   --accent-hover: theme('colors.ochre.600');
+  --accent-text: theme('colors.ochre.700');
   --accent-muted: theme('colors.ochre.100');
   --focus-ring: theme('colors.ochre.400');
 
@@ -62,19 +67,22 @@ html.brand-v2.dark {
   --bv2-bg-card: theme('colors.ink.900');
   --bv2-accent: theme('colors.ochre.300');
   --bv2-accent-hover: theme('colors.ochre.200');
+  --bv2-accent-text: theme('colors.ochre.300');
+  --bv2-accent-text-hover: theme('colors.ochre.200');
   --bv2-ring: theme('colors.ochre.400');
 
   /* Semantic role tokens, designed (not inverted) for dark mode. */
   --fg-primary: theme('colors.ink.100');
   --fg-secondary: theme('colors.ink.200');
   --fg-muted: theme('colors.ink.300');
-  --fg-subtle: theme('colors.ink.400');
+  --fg-subtle: theme('colors.ink.300'); /* ink.400 was 4.04:1 on ink.900 */
   --bg-page: theme('colors.ink.950');
   --bg-card: theme('colors.ink.900');
   --bg-inset: theme('colors.ink.800');
   --rule-hairline: theme('colors.ink.700');
   --accent: theme('colors.ochre.300');
   --accent-hover: theme('colors.ochre.200');
+  --accent-text: theme('colors.ochre.300');
   --accent-muted: rgba(54, 36, 12, 0.4);
   --focus-ring: theme('colors.ochre.400');
 
@@ -89,7 +97,8 @@ html.brand-v2 .btn-primary {
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 html.brand-v2 .btn-primary:hover {
-  background-color: var(--bv2-accent-hover);
+  /* ochre.400 keeps the ink.950 label at 7.81:1; ochre.600 was 4.01:1. */
+  background-color: theme('colors.ochre.400');
 }
 html.brand-v2 .btn-primary:focus-visible {
   outline: 2px solid var(--bv2-ring);
@@ -100,11 +109,11 @@ html.brand-v2 .btn-primary:focus-visible {
 html.brand-v2 a.text-brand-600,
 html.brand-v2 .text-brand-600,
 html.brand-v2 .text-brand-700 {
-  color: var(--bv2-accent);
+  color: var(--bv2-accent-text);
 }
 html.brand-v2 a.text-brand-600:hover,
 html.brand-v2 .text-brand-600:hover {
-  color: var(--bv2-accent-hover);
+  color: var(--bv2-accent-text-hover);
 }
 
 /* Focus rings — swap the indigo halo for ochre. */
