@@ -24,15 +24,15 @@ export default function PrivacyPage() {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Privacy Policy</h1>
         <p className="text-xs text-gray-600 dark:text-gray-300 mb-8">
           QualCanvas is operated by JMS DEV LAB LIMITED. Last updated: 2026-11-01. See also:{' '}
-          <Link to="/trust" className="text-brand-600 hover:underline">
+          <Link to="/trust" className="text-brand-600 dark:text-brand-400 hover:underline">
             Trust
           </Link>{' '}
           ·{' '}
-          <Link to="/cookies" className="text-brand-600 hover:underline">
+          <Link to="/cookies" className="text-brand-600 dark:text-brand-400 hover:underline">
             Cookies
           </Link>{' '}
           ·{' '}
-          <Link to="/terms" className="text-brand-600 hover:underline">
+          <Link to="/terms" className="text-brand-600 dark:text-brand-400 hover:underline">
             Terms
           </Link>
         </p>
