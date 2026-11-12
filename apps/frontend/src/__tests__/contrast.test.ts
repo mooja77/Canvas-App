@@ -9,7 +9,14 @@ import { describe, expect, it } from 'vitest';
  * from tailwind.config.js.
  */
 const gray = {
-  50: '#F9FAFB', 300: '#D1D5DB', 400: '#9CA3AF', 500: '#6B7280', 600: '#4B5563', 700: '#374151', 800: '#1F2937', 900: '#111827',
+  50: '#F9FAFB',
+  300: '#D1D5DB',
+  400: '#9CA3AF',
+  500: '#6B7280',
+  600: '#4B5563',
+  700: '#374151',
+  800: '#1F2937',
+  900: '#111827',
   white: '#FFFFFF',
 } as const;
 const brand = { 200: '#C7D2FE', 400: '#818CF8' } as const;
@@ -17,7 +24,9 @@ const ink = { 50: '#F4F6F8', 300: '#9CA7B9', 500: '#475569', 800: '#16213D', 900
 const ochre = { 300: '#DDB761', 400: '#CC9C3A', 500: '#B7841F', 700: '#724F10' } as const;
 
 function luminance(hex: string): number {
-  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  const c = [1, 3, 5]
+    .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 }
 export function contrast(a: string, b: string): number {
