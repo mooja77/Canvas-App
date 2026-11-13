@@ -1,5 +1,5 @@
-import { Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Suspense, useLayoutEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import ConnectAiWizardHost from './components/ai/ConnectAiWizardHost';
 import UpgradePrompt from './components/UpgradePrompt';
@@ -8,6 +8,7 @@ import { PageSkeleton } from './components/LoadingSkeleton';
 import RouteErrorFallback from './components/RouteErrorFallback';
 import { useAuthStore } from './stores/authStore';
 import { lazyRoute } from './utils/lazyRoute';
+import { shellMismatchTarget } from './utils/appShell';
 
 const ForgotPasswordPage = lazyRoute(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazyRoute(() => import('./pages/ResetPasswordPage'));
@@ -51,10 +52,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Keeps the loaded HTML shell in step with the route. The marketing shell
+ * (which can start Google Tag Manager after consent) and the app shell (which
+ * has no marketing loader) are different documents, so crossing between them
+ * must be a full page load, never a client-side route change.
+ */
+function ShellGuard() {
+  const { pathname, search, hash } = useLocation();
+  useLayoutEffect(() => {
+    const target = shellMismatchTarget(pathname, search, hash);
+    if (target) window.location.replace(target);
+  }, [pathname, search, hash]);
+  return null;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <ShellGuard />
         <OfflineBanner />
         <UpgradePrompt />
         <ConnectAiWizardHost />

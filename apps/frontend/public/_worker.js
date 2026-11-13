@@ -6,7 +6,12 @@
 // This keeps deep links working without turning every typo and missing file
 // into a 200 response containing the homepage.
 
-const SPA_ROUTE_PATTERNS = Object.freeze([
+//
+// Two shells: routes that can show research or account data get app-shell.html,
+// which contains no advertising or marketing loader. Every other client route
+// gets the marketing index.html. APP_ROUTE_PATTERNS is mirrored in
+// src/utils/appShell.ts; a unit test keeps the two lists identical.
+const APP_ROUTE_PATTERNS = Object.freeze([
   /^\/account\/?$/,
   /^\/admin\/?$/,
   /^\/canvas(?:\/[^/]+)?\/?$/,
@@ -15,11 +20,16 @@ const SPA_ROUTE_PATTERNS = Object.freeze([
   /^\/reset-password\/?$/,
   /^\/team\/?$/,
   /^\/verify-email\/?$/,
-  /^\/vs\/[^/]+\/?$/,
 ]);
 
+const MARKETING_SPA_ROUTE_PATTERNS = Object.freeze([/^\/vs\/[^/]+\/?$/]);
+
+function isAppRoute(pathname) {
+  return APP_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
+}
+
 function isSpaRoute(pathname) {
-  return SPA_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
+  return isAppRoute(pathname) || MARKETING_SPA_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
 }
 
 // 2026-10-31: 301 the production Pages alias to the custom domain.
@@ -54,7 +64,7 @@ export default {
     const url = new URL(request.url);
     if (!isSpaRoute(url.pathname)) return assetResponse;
 
-    url.pathname = '/';
+    url.pathname = isAppRoute(url.pathname) ? '/app-shell' : '/';
     const indexRequest = new Request(url, request);
     return env.ASSETS.fetch(indexRequest);
   },

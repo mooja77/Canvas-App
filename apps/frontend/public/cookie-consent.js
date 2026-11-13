@@ -8,6 +8,19 @@
 
   var CONSENT_KEY = 'jms_cookie_consent';
 
+  // Defence in depth only. App routes are served app-shell.html, which never
+  // references this file, so this normally cannot run there. It can still be
+  // reached from a stale service-worker copy of the old shared index.html; in
+  // that case do nothing at all (no consent default, no GTM, no Plausible).
+  // Mirrors APP_ROUTE_PATTERNS in src/utils/appShell.ts (unit-tested).
+  if (
+    /^\/(account|admin|canvas(\/[^/]+)?|forgot-password|repository|reset-password|team|verify-email)\/?$/.test(
+      window.location.pathname,
+    )
+  ) {
+    return;
+  }
+
   // Default consent state — deny all until user accepts
   window.dataLayer = window.dataLayer || [];
   function gtag() {

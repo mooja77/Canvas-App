@@ -2,6 +2,29 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
+import type { Plugin } from 'vite';
+import { isAppRoute } from './src/utils/appShell';
+
+// Serve app-shell.html (no marketing loader) for app routes in dev and preview,
+// matching public/_worker.js in production.
+function appShellRouting(): Plugin {
+  const rewrite = (req: { url?: string; method?: string }, _res: unknown, next: () => void) => {
+    if (req.method === 'GET' || req.method === 'HEAD') {
+      const pathname = (req.url ?? '').split('?')[0];
+      if (isAppRoute(pathname)) req.url = '/app-shell.html' + (req.url ?? '').slice(pathname.length);
+    }
+    next();
+  };
+  return {
+    name: 'qualcanvas-app-shell-routing',
+    configureServer(server) {
+      server.middlewares.use(rewrite);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(rewrite);
+    },
+  };
+}
 
 const frontendPort = Number(process.env.FRONTEND_PORT ?? 5174);
 const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:3007';
@@ -9,6 +32,7 @@ const frontendHost = process.env.FRONTEND_HOST;
 
 export default defineConfig({
   plugins: [
+    appShellRouting(),
     react(),
     VitePWA({
       // Switched from 'autoUpdate' to 'prompt' (Reliability fix #10) so we
@@ -30,7 +54,27 @@ export default defineConfig({
         // Keep install lightweight. Route chunks are cached on first use
         // instead of eagerly downloading the entire application (~7 MB).
         globPatterns: ['**/*.{html,ico,png,svg,woff,woff2}', 'assets/*.css'],
+        // App routes are served a different shell (app-shell.html) from the
+        // marketing index.html, so the precached index.html must never answer
+        // them. They go to the network; the shell is NetworkFirst-cached below.
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [
+          /^\/account\/?$/,
+          /^\/admin\/?$/,
+          /^\/canvas(?:\/[^/]+)?\/?$/,
+          /^\/forgot-password\/?$/,
+          /^\/repository\/?$/,
+          /^\/reset-password\/?$/,
+          /^\/team\/?$/,
+          /^\/verify-email\/?$/,
+        ],
         runtimeCaching: [
+          {
+            urlPattern: ({ request, url }: { request: Request; url: URL }) =>
+              request.mode === 'navigate' && isAppRoute(url.pathname),
+            handler: 'NetworkFirst',
+            options: { cacheName: 'app-shell-navigations', networkTimeoutSeconds: 4 },
+          },
           {
             urlPattern: ({ request }) => request.destination === 'script' || request.destination === 'style',
             handler: 'StaleWhileRevalidate',
@@ -63,6 +107,11 @@ export default defineConfig({
     // split so real regressions still stand out.
     chunkSizeWarningLimit: 700,
     rollupOptions: {
+      // Two HTML entry points: the marketing shell and the app shell.
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        'app-shell': path.resolve(__dirname, 'app-shell.html'),
+      },
       output: {
         // Function form, not the object form: with the object form Rollup put
         // react/jsx-runtime (also a dependency of @xyflow/react) into
