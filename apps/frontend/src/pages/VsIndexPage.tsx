@@ -113,7 +113,7 @@ export default function VsIndexPage() {
               <p className="text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-4">{t.quickVerdict}</p>
               <div className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                 <strong className="font-semibold text-gray-900 dark:text-white">Pricing today:</strong> {t.pricing}.{' '}
-                <em className="text-gray-500">Source: {t.pricingSource}.</em>
+                <em className="text-gray-500 dark:text-gray-400">Source: {t.pricingSource}.</em>
               </div>
             </section>
           ))}

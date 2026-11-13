@@ -48,11 +48,14 @@ vi.mock('./Screen1_Personalization', () => ({
   }: {
     onContinue: (value: unknown) => void;
     onSkip: () => void;
-    onPasteTranscript?: (text: string) => void;
+    onPasteTranscript?: (text: string, title?: string) => void;
   }) => (
     <div>
       <button type="button" onClick={() => onPasteTranscript?.(PASTED)}>
         Paste test transcript
+      </button>
+      <button type="button" onClick={() => onPasteTranscript?.(PASTED, 'Interview 01 - Mary')}>
+        Choose test transcript file
       </button>
       <button type="button" onClick={() => onContinue({ researchTopic: 'Study', method: 'interviews' })}>
         Continue test onboarding
@@ -154,6 +157,21 @@ describe('OnboardingFlow', () => {
     expect(mocks.addTranscript).not.toHaveBeenCalled();
     expect(mocks.patchState).toHaveBeenCalledWith(expect.objectContaining({ completionMode: 'setup_finished' }));
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/canvas/canvas-1'));
+  });
+
+  it('names the first transcript after the chosen file', async () => {
+    render(
+      <MemoryRouter>
+        <OnboardingFlow onClose={mocks.onClose} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Choose test transcript file' }));
+    await waitFor(() =>
+      expect(mocks.apiAddTranscript).toHaveBeenCalledWith('canvas-1', {
+        title: 'Interview 01 - Mary',
+        content: PASTED,
+      }),
+    );
   });
 
   it('keeps the pasted text and stays on screen when the transcript cannot be saved', async () => {

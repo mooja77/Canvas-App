@@ -338,7 +338,7 @@ export default function LoginPage() {
               onKeyDown={handleTabKeyDown}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
                 mode === 'login'
-                  ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300'
+                  ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-200'
                   : 'text-gray-600 dark:text-gray-300'
               }`}
             >
@@ -355,7 +355,7 @@ export default function LoginPage() {
               onKeyDown={handleTabKeyDown}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
                 mode === 'register'
-                  ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-300'
+                  ? 'bg-white dark:bg-gray-600 shadow text-brand-600 dark:text-brand-200'
                   : 'text-gray-600 dark:text-gray-300'
               }`}
             >
@@ -710,7 +710,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">
+        <p className="text-center text-xs text-gray-600 dark:text-gray-400 mt-6">
           <Link to="/pricing" className="hover:underline">
             View pricing
           </Link>
