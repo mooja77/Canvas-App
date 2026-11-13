@@ -45,6 +45,7 @@ const AccountPage = lazyRoute(() => import('./pages/AccountPage'));
 const RepositoryPage = lazyRoute(() => import('./pages/RepositoryPage'));
 const TeamPage = lazyRoute(() => import('./pages/TeamPage'));
 const AdminPage = lazyRoute(() => import('./pages/AdminPage'));
+const SupportPage = lazyRoute(() => import('./pages/SupportPage'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const authenticated = useAuthStore((s) => s.authenticated);
@@ -152,6 +153,7 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/support" element={<SupportPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />

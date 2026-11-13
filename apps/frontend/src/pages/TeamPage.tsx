@@ -5,6 +5,7 @@ import { teamApi } from '../services/api';
 import { useSeatCharge } from '../hooks/useSeatCharge';
 import toast from 'react-hot-toast';
 import { usePageMeta } from '../hooks/usePageMeta';
+import NeedHelpLink from '../components/NeedHelpLink';
 
 interface TeamMember {
   id: string;
@@ -315,9 +316,12 @@ export default function TeamPage() {
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Team</h1>
-          <Link to="/canvas" className="text-sm text-brand-600 dark:text-brand-400 hover:underline">
-            Back to canvas
-          </Link>
+          <div className="flex items-center gap-4">
+            <NeedHelpLink />
+            <Link to="/canvas" className="text-sm text-brand-600 dark:text-brand-400 hover:underline">
+              Back to canvas
+            </Link>
+          </div>
         </div>
         {busy && (
           <p role="status" className="mb-4 text-sm text-gray-700 dark:text-gray-300">

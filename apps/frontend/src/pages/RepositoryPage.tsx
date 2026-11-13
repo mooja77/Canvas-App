@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { canvasApi } from '../services/api';
 import toast from 'react-hot-toast';
 import { usePageMeta } from '../hooks/usePageMeta';
+import NeedHelpLink from '../components/NeedHelpLink';
 
 interface Repository {
   id: string;
@@ -208,6 +209,7 @@ export default function RepositoryPage() {
             <p className="text-sm text-gray-500 mt-1">Collect and organize insights across your research projects.</p>
           </div>
           <div className="flex items-center gap-3">
+            <NeedHelpLink className="inline-flex min-h-[44px] items-center text-sm text-blue-700 dark:text-blue-300 hover:underline" />
             <Link
               to="/canvas"
               className="inline-flex min-h-[44px] items-center text-sm text-blue-700 dark:text-blue-300 hover:underline"
