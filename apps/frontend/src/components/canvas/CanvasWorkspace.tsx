@@ -26,6 +26,7 @@ import CodingDetailPanel from './panels/CodingDetailPanel';
 import CanvasSearchOverlay from './panels/CanvasSearchOverlay';
 import CommandPalette from './panels/CommandPalette';
 import HelpMenu from './panels/HelpMenu';
+import NeedHelpLink from '../NeedHelpLink';
 import FullProductTour from '../help/FullProductTour';
 import WiseshiftWalkthrough from './WiseshiftWalkthrough';
 import CanvasContextMenu from './panels/CanvasContextMenu';
@@ -3339,6 +3340,7 @@ export default function CanvasWorkspace() {
                     {scrollMode === 'zoom' ? 'Wheel zooms' : 'Wheel pans'}
                   </button>
                   <span className="tabular-nums">{zoomLevel}%</span>
+                  <NeedHelpLink className="flex min-h-11 items-center px-1 text-xs font-medium text-brand-700 hover:underline dark:text-brand-300" />
                   <HelpMenu onShowShortcuts={() => setShowShortcuts(true)} />
                 </div>
               </div>

@@ -1,0 +1,58 @@
+<!doctype html>
+<!--
+  Support shell. Served by public/_worker.js (production) and the Vite
+  plugin in vite.config.ts (dev/preview) for every route in
+  src/utils/appShell.ts SUPPORT_ROUTE_PATTERNS: /account (account, billing,
+  settings) and /support (the help screen). These screens never render
+  transcripts, codes or coding.
+
+  This is the ONLY shell that loads the JMS support chat widget. It must never
+  contain, or load, an advertising or marketing tag:
+  no Google Tag Manager, gtag, Google Ads, Meta pixel, Plausible or
+  Consent-Mode defaults, and it does not reference the marketing consent
+  loader. The banner here is a separate, much smaller script that has none of
+  that code. Enforced by src/__tests__/appShell.test.ts.
+-->
+<html lang="en" data-shell="support">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%234f46e5'/%3E%3Ctext x='16' y='24' font-size='22' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QualCanvas</title>
+
+    <link rel="stylesheet" href="/cookie-consent.css" />
+    <script src="/cookie-consent-app.js" defer></script>
+
+    <!-- Chat widget: hidden on narrow viewports, where it overlaps page text. -->
+    <style>
+      @media (max-width: 767px) {
+        #jms-chat-widget,
+        [id^='jms-chat'],
+        iframe[src*='chat/widget'] {
+          display: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-900 antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script type="module">
+      // JMS support chat widget (our own portal; not an advertising tag). The
+      // widget reads neither page content nor the URL; it sends only what the
+      // visitor types. No referrer is sent with the script request.
+      if (import.meta.env?.VITE_E2E !== 'true') {
+        const script = document.createElement('script');
+        script.src = 'https://jms-admin-portal.mooja77.workers.dev/api/chat/widget.js';
+        script.dataset.app = 'qualcanvas';
+        script.referrerPolicy = 'no-referrer';
+        document.body.appendChild(script);
+      }
+    </script>
+  </body>
+</html>

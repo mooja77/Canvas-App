@@ -14,7 +14,7 @@
   // that case do nothing at all (no consent default, no GTM, no Plausible).
   // Mirrors APP_ROUTE_PATTERNS in src/utils/appShell.ts (unit-tested).
   if (
-    /^\/(account|admin|canvas(\/[^/]+)?|forgot-password|repository|reset-password|team|verify-email)\/?$/.test(
+    /^\/(account|admin|canvas(\/[^/]+)?|forgot-password|repository|reset-password|support|team|verify-email)\/?$/.test(
       window.location.pathname,
     )
   ) {
