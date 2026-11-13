@@ -1,0 +1,61 @@
+<!doctype html>
+<!--
+  Signed-in app shell. Served by public/_worker.js (production) and the Vite
+  plugin in vite.config.ts (dev/preview) for every route in
+  src/utils/appShell.ts (canvas, account, team, repository, admin and the
+  token pages: forgot-password, reset-password, verify-email).
+
+  This document must never contain, or load, an advertising or marketing tag:
+  no Google Tag Manager, gtag, Google Ads, Meta pixel, Plausible or
+  Consent-Mode defaults, and it does not reference the marketing consent
+  loader. The banner here is a separate, much smaller script that has none of
+  that code. Enforced by src/__tests__/appShell.test.ts.
+-->
+<html lang="en" data-shell="app">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%234f46e5'/%3E%3Ctext x='16' y='24' font-size='22' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QualCanvas</title>
+
+    <link rel="stylesheet" href="/cookie-consent.css" />
+    <script src="/cookie-consent-app.js" defer></script>
+
+    <!-- Chat widget visibility rules (hidden on narrow viewports and on the
+         canvas page, where it overlaps the status bar). -->
+    <style>
+      @media (max-width: 767px) {
+        #jms-chat-widget,
+        [id^='jms-chat'],
+        iframe[src*='chat/widget'] {
+          display: none !important;
+        }
+      }
+      body[data-page='canvas'] #jms-chat-widget,
+      body[data-page='canvas'] [id^='jms-chat'],
+      body[data-page='canvas'] iframe[src*='chat/widget'] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-900 antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script type="module">
+      // JMS support chat widget (our own portal; not an advertising tag). Loads
+      // only on the signed-in app surfaces, as before.
+      const appPath = /^\/(canvas|account|team|repository|admin)(\/|$)/.test(window.location.pathname);
+      if (import.meta.env?.VITE_E2E !== 'true' && appPath) {
+        const script = document.createElement('script');
+        script.src = 'https://jms-admin-portal.mooja77.workers.dev/api/chat/widget.js';
+        script.dataset.app = 'qualcanvas';
+        document.body.appendChild(script);
+      }
+    </script>
+  </body>
+</html>
