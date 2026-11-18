@@ -7,12 +7,13 @@
 // into a 200 response containing the homepage.
 
 //
-// Two shells: routes that can show research or account data get app-shell.html,
-// which contains no advertising or marketing loader. Every other client route
-// gets the marketing index.html. APP_ROUTE_PATTERNS is mirrored in
-// src/utils/appShell.ts; a unit test keeps the two lists identical.
-const APP_ROUTE_PATTERNS = Object.freeze([
-  /^\/account\/?$/,
+// Three shells. Research routes (canvas, repository, team, admin, token pages)
+// get app-shell.html: no advertising/marketing loader and no support chat
+// widget. /account and /support get support-shell.html, the only shell that
+// loads the support widget. Everything else that is a client route gets the
+// marketing index.html. The pattern lists are mirrored in src/utils/appShell.ts;
+// a unit test keeps them identical.
+const RESEARCH_ROUTE_PATTERNS = Object.freeze([
   /^\/admin\/?$/,
   /^\/canvas(?:\/[^/]+)?\/?$/,
   /^\/forgot-password\/?$/,
@@ -22,14 +23,24 @@ const APP_ROUTE_PATTERNS = Object.freeze([
   /^\/verify-email\/?$/,
 ]);
 
+const SUPPORT_ROUTE_PATTERNS = Object.freeze([/^\/account\/?$/, /^\/support\/?$/]);
+
 const MARKETING_SPA_ROUTE_PATTERNS = Object.freeze([/^\/vs\/[^/]+\/?$/]);
 
-function isAppRoute(pathname) {
-  return APP_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
+function isResearchRoute(pathname) {
+  return RESEARCH_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
+}
+
+function isSupportRoute(pathname) {
+  return SUPPORT_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
 }
 
 function isSpaRoute(pathname) {
-  return isAppRoute(pathname) || MARKETING_SPA_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname));
+  return (
+    isResearchRoute(pathname) ||
+    isSupportRoute(pathname) ||
+    MARKETING_SPA_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname))
+  );
 }
 
 // 2026-10-31: 301 the production Pages alias to the custom domain.
@@ -64,7 +75,7 @@ export default {
     const url = new URL(request.url);
     if (!isSpaRoute(url.pathname)) return assetResponse;
 
-    url.pathname = isAppRoute(url.pathname) ? '/app-shell' : '/';
+    url.pathname = isSupportRoute(url.pathname) ? '/support-shell' : isResearchRoute(url.pathname) ? '/app-shell' : '/';
     const indexRequest = new Request(url, request);
     return env.ASSETS.fetch(indexRequest);
   },
