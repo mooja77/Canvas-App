@@ -3,15 +3,16 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 import type { Plugin } from 'vite';
-import { isAppRoute } from './src/utils/appShell';
+import { SHELL_FILES, isAppRoute, shellForRoute } from './src/utils/appShell';
 
-// Serve app-shell.html (no marketing loader) for app routes in dev and preview,
-// matching public/_worker.js in production.
+// Serve app-shell.html (research) or support-shell.html (account, support) for
+// app routes in dev and preview, matching public/_worker.js in production.
 function appShellRouting(): Plugin {
   const rewrite = (req: { url?: string; method?: string }, _res: unknown, next: () => void) => {
     if (req.method === 'GET' || req.method === 'HEAD') {
       const pathname = (req.url ?? '').split('?')[0];
-      if (isAppRoute(pathname)) req.url = '/app-shell.html' + (req.url ?? '').slice(pathname.length);
+      const shell = shellForRoute(pathname);
+      if (shell !== 'marketing') req.url = `/${SHELL_FILES[shell]}.html` + (req.url ?? '').slice(pathname.length);
     }
     next();
   };
@@ -59,7 +60,6 @@ export default defineConfig({
         // them. They go to the network; the shell is NetworkFirst-cached below.
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [
-          /^\/account\/?$/,
           /^\/admin\/?$/,
           /^\/canvas(?:\/[^/]+)?\/?$/,
           /^\/forgot-password\/?$/,
@@ -67,6 +67,8 @@ export default defineConfig({
           /^\/reset-password\/?$/,
           /^\/team\/?$/,
           /^\/verify-email\/?$/,
+          /^\/account\/?$/,
+          /^\/support\/?$/,
         ],
         runtimeCaching: [
           {
@@ -111,6 +113,7 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         'app-shell': path.resolve(__dirname, 'app-shell.html'),
+        'support-shell': path.resolve(__dirname, 'support-shell.html'),
       },
       output: {
         // Function form, not the object form: with the object form Rollup put

@@ -26,6 +26,7 @@ import CodingDetailPanel from './panels/CodingDetailPanel';
 import CanvasSearchOverlay from './panels/CanvasSearchOverlay';
 import CommandPalette from './panels/CommandPalette';
 import HelpMenu from './panels/HelpMenu';
+import NeedHelpLink from '../NeedHelpLink';
 import FullProductTour from '../help/FullProductTour';
 import WiseshiftWalkthrough from './WiseshiftWalkthrough';
 import CanvasContextMenu from './panels/CanvasContextMenu';
@@ -3320,7 +3321,7 @@ export default function CanvasWorkspace() {
                       mouse wheel; also keeps the status bar from overflowing. */}
                   <button
                     onClick={() => setScrollMode(scrollMode === 'zoom' ? 'pan' : 'zoom')}
-                    className="hidden sm:flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
+                    className="hidden sm:flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-600 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
                     title={`Mouse wheel ${scrollMode === 'zoom' ? 'zooms the canvas' : 'pans the canvas'} — click to switch`}
                     aria-label={`Scroll: ${scrollMode === 'zoom' ? 'Zoom' : 'Pan'}`}
                   >
@@ -3339,6 +3340,7 @@ export default function CanvasWorkspace() {
                     {scrollMode === 'zoom' ? 'Wheel zooms' : 'Wheel pans'}
                   </button>
                   <span className="tabular-nums">{zoomLevel}%</span>
+                  <NeedHelpLink className="flex min-h-11 items-center px-1 text-xs font-medium text-brand-700 hover:underline dark:text-brand-300" />
                   <HelpMenu onShowShortcuts={() => setShowShortcuts(true)} />
                 </div>
               </div>

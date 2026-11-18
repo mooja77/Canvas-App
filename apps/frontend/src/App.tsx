@@ -1,5 +1,5 @@
-import { Suspense, useLayoutEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Suspense, useEffect, type ReactNode } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import ConnectAiWizardHost from './components/ai/ConnectAiWizardHost';
 import UpgradePrompt from './components/UpgradePrompt';
@@ -8,7 +8,7 @@ import { PageSkeleton } from './components/LoadingSkeleton';
 import RouteErrorFallback from './components/RouteErrorFallback';
 import { useAuthStore } from './stores/authStore';
 import { lazyRoute } from './utils/lazyRoute';
-import { shellMismatchTarget } from './utils/appShell';
+import { currentShell, shellForRoute, shellMismatchTarget } from './utils/appShell';
 
 const ForgotPasswordPage = lazyRoute(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazyRoute(() => import('./pages/ResetPasswordPage'));
@@ -45,6 +45,7 @@ const AccountPage = lazyRoute(() => import('./pages/AccountPage'));
 const RepositoryPage = lazyRoute(() => import('./pages/RepositoryPage'));
 const TeamPage = lazyRoute(() => import('./pages/TeamPage'));
 const AdminPage = lazyRoute(() => import('./pages/AdminPage'));
+const SupportPage = lazyRoute(() => import('./pages/SupportPage'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const authenticated = useAuthStore((s) => s.authenticated);
@@ -52,134 +53,179 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function CanonicalShellRoutes({ shell }: { shell: 'app' | 'support' }) {
+  const { pathname } = useLocation();
+  // React Router decodes segments before matching even a case-sensitive
+  // route. Reject aliases the Worker did not assign to this shell before
+  // mounting any private page.
+  return shellForRoute(pathname) === shell ? <Outlet /> : <NotFoundPage />;
+}
+
 /**
- * Keeps the loaded HTML shell in step with the route. The marketing shell
- * (which can start Google Tag Manager after consent) and the app shell (which
- * has no marketing loader) are different documents, so crossing between them
- * must be a full page load, never a client-side route change.
+ * A route must not mount in a document with a different set of scripts.
+ * Even if automatic navigation is throttled, keep the route unmounted.
  */
-function ShellGuard() {
+function ShellGuard({ children }: { children: ReactNode }) {
   const { pathname, search, hash } = useLocation();
-  useLayoutEffect(() => {
-    const target = shellMismatchTarget(pathname, search, hash);
-    if (target) window.location.replace(target);
-  }, [pathname, search, hash]);
-  return null;
+  const mismatch = shellForRoute(pathname) !== currentShell();
+  // Setting URL components explicitly keeps even a path beginning with // on
+  // this origin.
+  const destination = new URL(window.location.origin);
+  destination.pathname = pathname;
+  destination.search = search;
+  destination.hash = hash;
+  const href = destination.href;
+
+  useEffect(() => {
+    if (!mismatch) return;
+    const controller = new AbortController();
+    void shellMismatchTarget(pathname, search, hash, undefined, undefined, undefined, controller.signal).then(
+      (target) => {
+        if (!target || controller.signal.aborted) return;
+        // BrowserRouter normally set this URL already. Replacing it with the
+        // same fragment URL is not guaranteed to leave the current document.
+        if (window.location.href === href) window.location.reload();
+        else window.location.replace(href);
+      },
+    );
+    return () => controller.abort();
+  }, [mismatch, pathname, search, hash, href]);
+
+  if (!mismatch) return children;
+  return (
+    <main className="mx-auto max-w-md p-6">
+      <p role="status">Opening this page safely. If it doesn't open, reload it.</p>
+      <button type="button" onClick={() => window.location.reload()} className="text-brand-700 underline">
+        Reload this page
+      </button>
+    </main>
+  );
 }
 
 export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <ShellGuard />
-        <OfflineBanner />
-        <UpgradePrompt />
-        <ConnectAiWizardHost />
-        {/* Route failures are caught here rather than by the outer boundary so
+        <ShellGuard>
+          <OfflineBanner />
+          <UpgradePrompt />
+          <ConnectAiWizardHost />
+          {/* Route failures are caught here rather than by the outer boundary so
             the app chrome survives them. The outer one replaced the whole tree
             - including OfflineBanner - which meant a chunk that failed while
             offline destroyed the one element explaining why. */}
-        <ErrorBoundary fallback={<RouteErrorFallback />}>
-          <Suspense fallback={<PageSkeleton />}>
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              {/* Never a route, but four static pages linked to it and the 404 is what a
+          <ErrorBoundary fallback={<RouteErrorFallback />}>
+            <Suspense fallback={<PageSkeleton />}>
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                {/* Never a route, but four static pages linked to it and the 404 is what a
                   "Try free" click got. public/_redirects catches it at the edge; this
                   catches in-app navigation and any host that is not Cloudflare. */}
-              <Route path="/register" element={<Navigate to="/login?mode=register" replace />} />
-              <Route path="/pricing" element={<PricingPage />} />
-              <Route path="/cite" element={<CitePage />} />
-              <Route path="/colophon" element={<ColophonPage />} />
-              <Route path="/accessibility-statement" element={<AccessibilityStatementPage />} />
-              <Route path="/press" element={<PressPage />} />
-              <Route path="/trust/ai" element={<TrustAIPage />} />
-              <Route path="/for-teams" element={<ForTeamsPage />} />
-              <Route path="/for-institutions" element={<ForInstitutionsPage />} />
-              <Route path="/methodology" element={<MethodologyIndexPage />} />
-              <Route
-                path="/methodology/:slug"
-                element={
-                  <Suspense fallback={<PageSkeleton />}>
-                    <MethodologyChapterPage />
-                  </Suspense>
-                }
-              />
-              <Route path="/customers" element={<CustomersIndexPage />} />
-              <Route path="/changelog" element={<ChangelogPage />} />
-              <Route path="/vs" element={<VsIndexPage />} />
-              {/* Per-competitor pages aren't published yet — redirect to the /vs index so these URLs don't 404. */}
-              <Route path="/vs/:competitor" element={<VsCompetitorRedirect />} />
-              <Route path="/subscribe" element={<SubscribePage />} />
-              <Route path="/pilot" element={<PilotPage />} />
-              <Route
-                path="/account"
-                element={
-                  <ProtectedRoute>
+                <Route path="/register" element={<Navigate to="/login?mode=register" replace />} />
+                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/cite" element={<CitePage />} />
+                <Route path="/colophon" element={<ColophonPage />} />
+                <Route path="/accessibility-statement" element={<AccessibilityStatementPage />} />
+                <Route path="/press" element={<PressPage />} />
+                <Route path="/trust/ai" element={<TrustAIPage />} />
+                <Route path="/for-teams" element={<ForTeamsPage />} />
+                <Route path="/for-institutions" element={<ForInstitutionsPage />} />
+                <Route path="/methodology" element={<MethodologyIndexPage />} />
+                <Route
+                  path="/methodology/:slug"
+                  element={
                     <Suspense fallback={<PageSkeleton />}>
-                      <AccountPage />
+                      <MethodologyChapterPage />
                     </Suspense>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/canvas/:canvasId?"
-                element={
-                  <ProtectedRoute>
+                  }
+                />
+                <Route path="/customers" element={<CustomersIndexPage />} />
+                <Route path="/changelog" element={<ChangelogPage />} />
+                <Route path="/vs" element={<VsIndexPage />} />
+                {/* Per-competitor pages aren't published yet — redirect to the /vs index so these URLs don't 404. */}
+                <Route path="/vs/:competitor" element={<VsCompetitorRedirect />} />
+                <Route path="/subscribe" element={<SubscribePage />} />
+                <Route path="/pilot" element={<PilotPage />} />
+                <Route element={<CanonicalShellRoutes shell="support" />}>
+                  <Route
+                    caseSensitive
+                    path="/account"
+                    element={
+                      <ProtectedRoute>
+                        <Suspense fallback={<PageSkeleton />}>
+                          <AccountPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route caseSensitive path="/support" element={<SupportPage />} />
+                </Route>
+                <Route element={<CanonicalShellRoutes shell="app" />}>
+                  <Route
+                    caseSensitive
+                    path="/canvas/:canvasId?"
+                    element={
+                      <ProtectedRoute>
+                        <Suspense fallback={<PageSkeleton />}>
+                          <CanvasPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    caseSensitive
+                    path="/repository"
+                    element={
+                      <ProtectedRoute>
+                        <Suspense fallback={<PageSkeleton />}>
+                          <RepositoryPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    caseSensitive
+                    path="/team"
+                    element={
+                      <ProtectedRoute>
+                        <Suspense fallback={<PageSkeleton />}>
+                          <TeamPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route caseSensitive path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route caseSensitive path="/reset-password" element={<ResetPasswordPage />} />
+                  <Route caseSensitive path="/verify-email" element={<VerifyEmailPage />} />
+                  <Route
+                    caseSensitive
+                    path="/admin"
+                    element={
+                      <Suspense fallback={<PageSkeleton />}>
+                        <AdminPage />
+                      </Suspense>
+                    }
+                  />
+                </Route>
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/trust" element={<TrustPage />} />
+                <Route path="/cookies" element={<CookiePolicyPage />} />
+                <Route path="/guide" element={<GuidePage />} />
+                <Route
+                  path="/training"
+                  element={
                     <Suspense fallback={<PageSkeleton />}>
-                      <CanvasPage />
+                      <TrainingPage />
                     </Suspense>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/repository"
-                element={
-                  <ProtectedRoute>
-                    <Suspense fallback={<PageSkeleton />}>
-                      <RepositoryPage />
-                    </Suspense>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/team"
-                element={
-                  <ProtectedRoute>
-                    <Suspense fallback={<PageSkeleton />}>
-                      <TeamPage />
-                    </Suspense>
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/verify-email" element={<VerifyEmailPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/trust" element={<TrustPage />} />
-              <Route path="/cookies" element={<CookiePolicyPage />} />
-              <Route path="/guide" element={<GuidePage />} />
-              <Route
-                path="/training"
-                element={
-                  <Suspense fallback={<PageSkeleton />}>
-                    <TrainingPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  <Suspense fallback={<PageSkeleton />}>
-                    <AdminPage />
-                  </Suspense>
-                }
-              />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </Suspense>
-        </ErrorBoundary>
+                  }
+                />
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
+        </ShellGuard>
       </BrowserRouter>
     </ErrorBoundary>
   );
