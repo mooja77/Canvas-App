@@ -3321,7 +3321,7 @@ export default function CanvasWorkspace() {
                       mouse wheel; also keeps the status bar from overflowing. */}
                   <button
                     onClick={() => setScrollMode(scrollMode === 'zoom' ? 'pan' : 'zoom')}
-                    className="hidden sm:flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
+                    className="hidden sm:flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-600 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
                     title={`Mouse wheel ${scrollMode === 'zoom' ? 'zooms the canvas' : 'pans the canvas'} — click to switch`}
                     aria-label={`Scroll: ${scrollMode === 'zoom' ? 'Zoom' : 'Pan'}`}
                   >
