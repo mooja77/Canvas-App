@@ -20,7 +20,9 @@ describe('static public pages', () => {
     for (const file of htmlFiles(publicDir)) {
       const html = readFileSync(file, 'utf8');
       const refs = [
-        ...html.matchAll(/<link\b[^>]*\brel="(?:icon|shortcut icon|apple-touch-icon|stylesheet)"[^>]*\bhref="(\/[^"?#]+)"/g),
+        ...html.matchAll(
+          /<link\b[^>]*\brel="(?:icon|shortcut icon|apple-touch-icon|stylesheet)"[^>]*\bhref="(\/[^"?#]+)"/g,
+        ),
         ...html.matchAll(/<script\b[^>]*\bsrc="(\/[^"?#]+)"/g),
       ].map((m) => m[1]);
       for (const ref of refs) {
