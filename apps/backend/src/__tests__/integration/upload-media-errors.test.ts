@@ -14,7 +14,7 @@ import { Readable } from 'node:stream';
 
 const { mockPrisma } = vi.hoisted(() => {
   const mockPrisma = {
-    user: { findUnique: vi.fn() },
+    user: { findUnique: vi.fn(), update: vi.fn() },
     subscription: { findUnique: vi.fn() },
     canvasCollaborator: { findUnique: vi.fn() },
     codingCanvas: { findUnique: vi.fn() },
@@ -122,6 +122,9 @@ describe('media upload rejections are client errors, not 500s', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Accepting a file now counts it on the account inside a transaction (utils/audioImports.ts).
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => unknown) => cb(mockPrisma));
+    mockPrisma.user.update.mockResolvedValue({});
     jwt = signUserToken(userId, 'researcher', 'pro');
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({

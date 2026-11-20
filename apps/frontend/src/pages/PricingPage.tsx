@@ -544,7 +544,11 @@ export default function PricingPage() {
                 {
                   feature: 'Audio transcription (with your own OpenAI key)',
                   values: [
-                    PLAN_LIMITS.free.fileUploadEnabled ? '✓' : '—',
+                    PLAN_LIMITS.free.fileUploadEnabled
+                      ? '✓'
+                      : PLAN_LIMITS.free.maxAudioImports > 0
+                        ? `${PLAN_LIMITS.free.maxAudioImports} file`
+                        : '—',
                     PLAN_LIMITS.student.fileUploadEnabled ? '✓' : '—',
                     PLAN_LIMITS.pro.fileUploadEnabled ? '✓' : '—',
                     PLAN_LIMITS.team.fileUploadEnabled ? '✓' : '—',
