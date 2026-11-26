@@ -55,12 +55,15 @@ describe('OfflineBanner', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('has correct ARIA role="alert" attribute', () => {
+  it('has correct ARIA role="alert" attribute and WCAG AA contrast classes', () => {
     mockOnlineStatus(false);
     render(<OfflineBanner />);
     const banner = screen.getByRole('alert');
     expect(banner).toBeInTheDocument();
     expect(banner.tagName).toBe('DIV');
+    expect(banner.className).toContain('bg-amber-200');
+    expect(banner.className).toContain('text-amber-950');
+    expect(banner.className).not.toContain('bg-amber-500');
   });
 
   // Restore

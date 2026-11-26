@@ -32,17 +32,22 @@ const GUIDE_IMAGE_DIMENSIONS: Record<string, readonly [number, number]> = {
 
 function Screenshot({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
   const dimensions = GUIDE_IMAGE_DIMENSIONS[src];
+  const webpSrc = src.endsWith('.png') ? src.replace(/\.png$/, '.webp') : undefined;
   return (
     <figure className="my-6">
-      <img
-        src={src}
-        alt={alt}
-        width={dimensions?.[0]}
-        height={dimensions?.[1]}
-        style={dimensions ? { width: dimensions[0], aspectRatio: `${dimensions[0]} / ${dimensions[1]}` } : undefined}
-        className="mx-auto h-auto w-auto max-w-full rounded-xl border border-gray-200 shadow-lg dark:border-gray-700"
-        loading="lazy"
-      />
+      <picture>
+        {webpSrc && <source srcSet={webpSrc} type="image/webp" />}
+        <img
+          src={src}
+          alt={alt}
+          width={dimensions?.[0]}
+          height={dimensions?.[1]}
+          style={dimensions ? { width: dimensions[0], aspectRatio: `${dimensions[0]} / ${dimensions[1]}` } : undefined}
+          className="mx-auto h-auto w-auto max-w-full rounded-xl border border-gray-200 shadow-lg dark:border-gray-700"
+          loading="lazy"
+          decoding="async"
+        />
+      </picture>
       {caption && (
         <figcaption className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400 italic">{caption}</figcaption>
       )}
