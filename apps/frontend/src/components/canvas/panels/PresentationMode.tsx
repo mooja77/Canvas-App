@@ -1,5 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useActiveCanvas } from '../../../stores/canvasStore';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import type { CanvasQuestion, CanvasTextCoding, CanvasMemo, CanvasCase, CanvasTranscript } from '@qualcanvas/shared';
 
 interface PresentationModeProps {
@@ -7,6 +9,9 @@ interface PresentationModeProps {
 }
 
 export default function PresentationMode({ onExit }: PresentationModeProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
+  useEscapeToClose(onExit);
   const activeCanvas = useActiveCanvas();
 
   const rawQuestions = activeCanvas?.questions;
@@ -64,11 +69,19 @@ export default function PresentationMode({ onExit }: PresentationModeProps) {
   if (!activeCanvas) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-white dark:bg-gray-900 print:relative print:overflow-visible">
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="presentation-mode-title"
+      className="fixed inset-0 z-[9999] overflow-y-auto bg-white dark:bg-gray-900 print:relative print:overflow-visible"
+    >
       {/* Sticky header */}
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white/95 px-6 py-3 backdrop-blur-md dark:border-gray-700 dark:bg-gray-900/95 print:static print:border-b-2">
         <div>
-          <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">{activeCanvas.name}</h1>
+          <h1 id="presentation-mode-title" className="text-lg font-bold text-gray-900 dark:text-gray-100">
+            {activeCanvas.name}
+          </h1>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {transcripts.length} source{transcripts.length !== 1 ? 's' : ''} &middot; {questions.length} code
             {questions.length !== 1 ? 's' : ''} &middot; {codings.length} coding{codings.length !== 1 ? 's' : ''}
