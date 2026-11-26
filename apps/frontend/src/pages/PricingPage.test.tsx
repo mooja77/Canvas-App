@@ -353,10 +353,11 @@ describe('PricingPage comparison table vs the enforced plan limits', () => {
     expect(within(block).getByRole('cell', { name: 'QualCanvas Student' })).toBeInTheDocument();
     expect(
       within(block).getByRole('cell', {
-        name: `$${PUBLISHED_PRICES_USD.student.annual}/year ($${PUBLISHED_PRICES_USD.student.monthly}/month)`,
+        name: `$${PUBLISHED_PRICES_USD.student.annual}/year ($${PUBLISHED_PRICES_USD.student.monthly}/month) USD`,
       }),
     ).toBeInTheDocument();
-    expect(within(block).getByText(/\$114 to \$142\/year/)).toBeInTheDocument();
+    expect(within(block).getByText(/EUR 115\/year \(Desktop\), EUR 170\/year \(AI Cloud\)/)).toBeInTheDocument();
     expect(within(block).getByText(/\$12\.95\/active month/)).toBeInTheDocument();
+    expect(block.textContent ?? '').not.toMatch(/third-party|\$114/i);
   });
 });
