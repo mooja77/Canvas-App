@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUIStore } from '../../stores/uiStore';
 import { useCanvasStore } from '../../stores/canvasStore';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface TourStep {
   target: string; // data-tour attribute value or 'center'
@@ -798,6 +799,9 @@ export default function FullProductTour() {
     }
   }, [isCenter, targetRect, currentStep.position]);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, !onboardingComplete);
+
   // Don't render if already completed
   if (onboardingComplete) return null;
 
@@ -826,6 +830,10 @@ export default function FullProductTour() {
         style={tooltipStyle}
       >
         <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="product-tour-title"
           className={`w-[calc(100vw-32px)] max-w-[360px] rounded-2xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-black/10 dark:ring-white/10 overflow-hidden ${step === 0 ? 'tour-tooltip-enter' : ''}`}
         >
           {/* Progress bar at top */}
@@ -844,7 +852,10 @@ export default function FullProductTour() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-[15px] font-semibold text-gray-900 dark:text-gray-100 leading-tight">
+                  <h3
+                    id="product-tour-title"
+                    className="text-[15px] font-semibold text-gray-900 dark:text-gray-100 leading-tight"
+                  >
                     {currentStep.title}
                   </h3>
                   {demoMode && (
