@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { adminApi } from '../services/api';
 import ActivationTab from '../components/admin/ActivationTab';
+import ConfirmDialog from '../components/canvas/ConfirmDialog';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 // ─── Types ───
@@ -1058,6 +1059,7 @@ function EmailsTab({ adminKey }: { adminKey: string }) {
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [pendingSendId, setPendingSendId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [sendMessage, setSendMessage] = useState('');
   const [form, setForm] = useState({
@@ -1108,8 +1110,14 @@ function EmailsTab({ adminKey }: { adminKey: string }) {
     }
   };
 
-  const sendNow = async (id: string) => {
-    if (!window.confirm('Send this campaign now? This cannot be undone.')) return;
+  const sendNow = (id: string) => {
+    setPendingSendId(id);
+  };
+
+  const confirmSendNow = async () => {
+    if (!pendingSendId) return;
+    const id = pendingSendId;
+    setPendingSendId(null);
     setSendingId(id);
     setError('');
     setSendMessage('');
@@ -1264,6 +1272,15 @@ function EmailsTab({ adminKey }: { adminKey: string }) {
           </div>
         )}
       </div>
+      {pendingSendId && (
+        <ConfirmDialog
+          title="Send email campaign?"
+          message="Send this campaign now? This cannot be undone."
+          confirmLabel="Send campaign"
+          onConfirm={confirmSendNow}
+          onCancel={() => setPendingSendId(null)}
+        />
+      )}
     </div>
   );
 }

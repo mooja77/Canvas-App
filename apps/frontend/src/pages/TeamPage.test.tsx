@@ -104,7 +104,6 @@ describe('TeamPage', () => {
   it.each(['create', 'add', 'remove', 'delete'] as const)(
     'does not claim success for an unacknowledged %s response',
     async (action) => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
       const initial = action === 'create' ? [] : [sampleTeam];
       mockTeamApi.list
         .mockResolvedValueOnce({ data: { data: initial } })
@@ -128,6 +127,7 @@ describe('TeamPage', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Add member' }));
       } else if (action === 'remove') {
         fireEvent.click(await screen.findByRole('button', { name: 'Remove Bob Member from team' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Remove member' }));
       } else {
         fireEvent.click(await screen.findByRole('button', { name: 'Delete Team' }));
         fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
@@ -185,7 +185,6 @@ describe('TeamPage', () => {
   });
 
   it.each(['remove', 'delete'] as const)('does not repeat acknowledged %s when the refresh fails', async (action) => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     mockTeamApi.list.mockResolvedValue({ data: { data: [sampleTeam] } });
     mockTeamApi.get
       .mockResolvedValueOnce({ data: { data: sampleTeam } })
@@ -194,9 +193,10 @@ describe('TeamPage', () => {
     mockTeamApi.removeMember.mockResolvedValue({ data: { success: true } });
     mockTeamApi.deleteTeam.mockResolvedValue({ data: { success: true } });
     render(<TeamPage />);
-    if (action === 'remove')
+    if (action === 'remove') {
       fireEvent.click(await screen.findByRole('button', { name: 'Remove Bob Member from team' }));
-    else {
+      fireEvent.click(await screen.findByRole('button', { name: 'Remove member' }));
+    } else {
       fireEvent.click(await screen.findByRole('button', { name: 'Delete Team' }));
       fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
     }
@@ -260,7 +260,6 @@ describe('TeamPage', () => {
   });
 
   it('locks all member mutations while a removal is pending', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     let finish!: (value: unknown) => void;
     mockTeamApi.removeMember.mockReturnValue(
       new Promise((resolve) => {
@@ -272,6 +271,7 @@ describe('TeamPage', () => {
     render(<TeamPage />);
     const remove = await screen.findByRole('button', { name: 'Remove Bob Member from team' });
     fireEvent.click(remove);
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove member' }));
     fireEvent.click(remove);
     expect(remove).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Delete Team' })).toBeDisabled();
@@ -279,7 +279,6 @@ describe('TeamPage', () => {
     expect(mockTeamApi.removeMember).toHaveBeenCalledTimes(1);
     finish({ data: { success: true } });
     await waitFor(() => expect(mockTeamApi.list).toHaveBeenCalledTimes(2));
-    confirmSpy.mockRestore();
   });
 
   it('shows guided 3-step setup with create form for users without a team on team plan', async () => {

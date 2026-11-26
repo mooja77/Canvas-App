@@ -6,6 +6,7 @@ import { useSeatCharge } from '../hooks/useSeatCharge';
 import toast from 'react-hot-toast';
 import { usePageMeta } from '../hooks/usePageMeta';
 import NeedHelpLink from '../components/NeedHelpLink';
+import ConfirmDialog from '../components/canvas/ConfirmDialog';
 
 interface TeamMember {
   id: string;
@@ -79,6 +80,7 @@ export default function TeamPage() {
   const [inviting, setInviting] = useState(false);
   const { withSeat, seatDialog } = useSeatCharge();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [pendingRemoveMember, setPendingRemoveMember] = useState<{ userId: string; userName: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [actionNotice, setActionNotice] = useState('');
@@ -195,9 +197,15 @@ export default function TeamPage() {
     }
   };
 
-  const handleRemoveMember = async (userId: string, userName: string) => {
+  const handleRemoveMember = (userId: string, userName: string) => {
     if (!activeTeam || actionLock.current) return;
-    if (!confirm(`Remove ${userName} from the team?`)) return;
+    setPendingRemoveMember({ userId, userName });
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!activeTeam || !pendingRemoveMember || actionLock.current) return;
+    const { userId, userName } = pendingRemoveMember;
+    setPendingRemoveMember(null);
     actionLock.current = true;
     setRemoving(true);
     try {
@@ -607,6 +615,15 @@ export default function TeamPage() {
           </Link>
         </aside>
       </div>
+      {pendingRemoveMember && (
+        <ConfirmDialog
+          title="Remove team member?"
+          message={`Remove ${pendingRemoveMember.userName} from the team?`}
+          confirmLabel="Remove member"
+          onConfirm={confirmRemoveMember}
+          onCancel={() => setPendingRemoveMember(null)}
+        />
+      )}
       {seatDialog}
     </main>
   );

@@ -8,6 +8,7 @@ import { getFrontendPlanLimits } from '../config/planLimits';
 import { usePageMeta } from '../hooks/usePageMeta';
 import IntegrationSettingsPanel from '../components/canvas/panels/IntegrationSettingsPanel';
 import SeatsPanel from '../components/billing/SeatsPanel';
+import ConfirmDialog from '../components/canvas/ConfirmDialog';
 import toast from 'react-hot-toast';
 
 interface UserProfile {
@@ -66,6 +67,7 @@ export default function AccountPage() {
   const [deleteLegacyCanvases, setDeleteLegacyCanvases] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [exportingAccount, setExportingAccount] = useState(false);
+  const [pendingProfileUpdate, setPendingProfileUpdate] = useState<Record<string, string> | null>(null);
 
   // Scheduled reports state
   interface ReportSchedule {
@@ -230,12 +232,15 @@ export default function AccountPage() {
     // Changing the email is a credential change: the server invalidates the
     // session and clears the auth cookie. Warn first so the user isn't
     // surprised by a "session expired" bounce, then sign out cleanly.
-    if (
-      emailChanging &&
-      !window.confirm("Changing your email signs you out — you'll verify the new address and log back in. Continue?")
-    ) {
+    if (emailChanging) {
+      setPendingProfileUpdate(data);
       return;
     }
+    await submitProfileUpdate(data, false);
+  };
+
+  const submitProfileUpdate = async (data: Record<string, string>, emailChanging: boolean) => {
+    setPendingProfileUpdate(null);
     setSavingProfile(true);
     try {
       const res = await authApi.updateProfile(data);
@@ -1250,6 +1255,15 @@ export default function AccountPage() {
           </div>
         )}
       </div>
+      {pendingProfileUpdate && (
+        <ConfirmDialog
+          title="Change email address?"
+          message="Changing your email signs you out so you can verify the new address and log back in."
+          confirmLabel="Change email"
+          onConfirm={() => submitProfileUpdate(pendingProfileUpdate, true)}
+          onCancel={() => setPendingProfileUpdate(null)}
+        />
+      )}
     </main>
   );
 }
