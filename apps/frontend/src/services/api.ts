@@ -120,11 +120,39 @@ canvasClient.interceptors.response.use(
 /**
  * The server's error messages are written for end users ("You have view-only
  * access…", "Your plan allows…") — prefer them over a generic fallback so a
- * failed action explains itself.
+ * failed action explains itself, and translate raw Axios/network failures into
+ * plain language so users never see "Request failed with status code 500".
  */
-export const apiErrorMessage = (err: unknown, fallback: string): string =>
+export const apiErrorMessage = (err: unknown, fallback: string): string => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (err as any)?.response?.data?.error || fallback;
+  const axiosErr = err as any;
+  const serverMsg = axiosErr?.response?.data?.error;
+  if (typeof serverMsg === 'string' && serverMsg.trim() && !/^Request failed with status code \d+/i.test(serverMsg)) {
+    return serverMsg;
+  }
+  const status: number | undefined = axiosErr?.response?.status;
+  if (
+    !axiosErr?.response &&
+    ((typeof navigator !== 'undefined' && navigator.onLine === false) ||
+      axiosErr?.code === 'ERR_NETWORK' ||
+      axiosErr?.message === 'Network Error')
+  ) {
+    return 'No internet connection. Your change was not saved. Check your connection and try again.';
+  }
+  if (axiosErr?.code === 'ECONNABORTED') {
+    return 'That request timed out. Please try again.';
+  }
+  if (status === 429) {
+    return 'Too many requests right now. Wait a moment and try again.';
+  }
+  if (status === 413) {
+    return 'That file or text is too large to upload. Try a smaller file.';
+  }
+  if (typeof status === 'number' && status >= 500) {
+    return 'Something went wrong on our side. Please try again in a moment.';
+  }
+  return fallback;
+};
 
 const DETAIL_COLLECTIONS = [
   'transcripts',

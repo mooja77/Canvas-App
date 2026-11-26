@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { ChatMessage } from '@qualcanvas/shared';
-import { canvasApi } from '../services/api';
+import { apiErrorMessage, canvasApi } from '../services/api';
 
 interface ChatState {
   messages: ChatMessage[];
@@ -27,8 +27,7 @@ export const useChatStore = create<ChatState>((set, _get) => ({
       const res = await canvasApi.getChatHistory(canvasId);
       set({ messages: res.data.data, error: null });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load chat history';
-      set({ error: msg });
+      set({ error: apiErrorMessage(err, 'Could not load chat history. Try again.') });
     }
   },
 
@@ -52,8 +51,7 @@ export const useChatStore = create<ChatState>((set, _get) => ({
         loading: false,
       }));
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to send message';
-      set({ loading: false, error: msg });
+      set({ loading: false, error: apiErrorMessage(err, 'Could not send your message. Try again.') });
     }
   },
 
@@ -63,8 +61,7 @@ export const useChatStore = create<ChatState>((set, _get) => ({
       await canvasApi.embedCanvasData(canvasId);
       set({ indexing: false, indexed: true });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to index canvas data';
-      set({ indexing: false, error: msg });
+      set({ indexing: false, error: apiErrorMessage(err, 'Could not index canvas data. Try again.') });
     }
   },
 
