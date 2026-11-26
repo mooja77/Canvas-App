@@ -63,6 +63,22 @@ describe('ConnectAiWizard', () => {
     expect(pricing).toHaveAttribute('target', '_blank');
   });
 
+  it('step 1 and step 4 disclose that transcript text is sent to OpenAI, Anthropic, or Google', async () => {
+    renderWizard();
+    const notice = screen.getByTestId('connect-ai-data-disclosure');
+    expect(notice).toHaveTextContent(/transcript text/i);
+    expect(notice).toHaveTextContent(/OpenAI, Anthropic, or Google/);
+    expect(notice).toHaveTextContent(/ethics or IRB/i);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Get started' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Anthropic/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'I have my key' }));
+    expect(screen.getByTestId('connect-ai-provider-disclosure')).toHaveTextContent(
+      /transcript text or audio you choose is sent to Anthropic/i,
+    );
+  });
+
   it('step 3 gives numbered steps with links to the provider, including a spending limit', () => {
     renderWizard();
     fireEvent.click(screen.getByRole('button', { name: 'Get started' }));

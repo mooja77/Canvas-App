@@ -101,7 +101,8 @@ export default function AiAccountSection() {
       </h2>
       <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
         Transcription and AI features run on your own AI account. Your provider bills you directly; QualCanvas never
-        charges for AI.
+        charges for AI. When you run an AI feature, the transcript text or audio you choose is sent to your connected
+        provider (OpenAI, Anthropic, or Google).
       </p>
 
       {loadError ? (
