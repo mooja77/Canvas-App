@@ -123,6 +123,7 @@ export default function App() {
                   "Try free" click got. public/_redirects catches it at the edge; this
                   catches in-app navigation and any host that is not Cloudflare. */}
                 <Route path="/register" element={<Navigate to="/login?mode=register" replace />} />
+                <Route path="/signup" element={<Navigate to="/login?mode=register" replace />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/cite" element={<CitePage />} />
                 <Route path="/colophon" element={<ColophonPage />} />
