@@ -266,8 +266,8 @@ export default function AccountPage() {
       toast.error('Passwords do not match');
       return;
     }
-    if (newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters');
+    if (newPassword.length < 12) {
+      toast.error('Password must be at least 12 characters');
       return;
     }
     setSavingPassword(true);
@@ -669,7 +669,7 @@ export default function AccountPage() {
                         <span aria-hidden="true" className="ml-0.5 text-red-500">
                           *
                         </span>
-                        <span className="ml-2 font-normal text-amber-700 dark:text-amber-300">(min 8 characters)</span>
+                        <span className="ml-2 font-normal text-amber-700 dark:text-amber-300">(min 12 characters)</span>
                       </label>
                       <input
                         id="link-password"
@@ -678,7 +678,7 @@ export default function AccountPage() {
                         onChange={(e) => setLinkPassword(e.target.value)}
                         autoComplete="new-password"
                         required
-                        minLength={8}
+                        minLength={12}
                         className="w-full px-3 py-2 border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                       />
                     </div>
@@ -919,7 +919,7 @@ export default function AccountPage() {
                   <span aria-hidden="true" className="ml-0.5 text-red-500">
                     *
                   </span>
-                  <span className="ml-2 font-normal text-gray-500 dark:text-gray-400">(min 8 characters)</span>
+                  <span className="ml-2 font-normal text-gray-500 dark:text-gray-400">(min 12 characters)</span>
                 </label>
                 <input
                   id="account-new-password"
@@ -928,7 +928,7 @@ export default function AccountPage() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   autoComplete="new-password"
                   required
-                  minLength={8}
+                  minLength={12}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 />
               </div>
@@ -949,7 +949,7 @@ export default function AccountPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   autoComplete="new-password"
                   required
-                  minLength={8}
+                  minLength={12}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 />
               </div>
