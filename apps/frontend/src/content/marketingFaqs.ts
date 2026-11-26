@@ -75,9 +75,10 @@ export const LANDING_FAQS: MarketingFaq[] = [
   {
     question: 'Is my research data secure? Are you training a model on my transcripts?',
     answer:
-      'QualCanvas uses HTTPS in transit and provider-managed encryption at rest. The production database is ' +
-      'currently hosted in the US; an EU-resident database is not available. AI actions are opt-in and provider ' +
-      'terms apply. The full posture is on [/trust](/trust) and the AI-specific policy is on [/trust/ai](/trust/ai).',
+      'No. QualCanvas never trains AI models on your transcripts or codes. AI features are off unless you connect ' +
+      'your own OpenAI, Anthropic, or Google API key, and your text is only sent to that provider when you run an ' +
+      'AI tool. Data uses HTTPS in transit and encryption at rest on a US-hosted database. Full details are on ' +
+      '[/trust](/trust) and [/trust/ai](/trust/ai).',
   },
   {
     question: 'How do I cite QualCanvas in a paper?',
