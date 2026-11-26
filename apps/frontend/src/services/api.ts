@@ -38,6 +38,32 @@ export const canvasClient = axios.create({
   withCredentials: true,
 });
 
+const WRITE_METHODS = new Set(['post', 'put', 'patch', 'delete']);
+
+// Fail write requests fast with a clear honest message when the browser is
+// offline instead of sending doomed requests that time out or surface raw
+// Axios errors. Offline edits are not queued.
+canvasClient.interceptors.request.use((config) => {
+  const method = (config.method || 'get').toLowerCase();
+  if (typeof navigator !== 'undefined' && navigator.onLine === false && WRITE_METHODS.has(method)) {
+    const err = new axios.AxiosError(
+      'You are offline. Changes are not saved until you reconnect.',
+      'ERR_NETWORK',
+      config,
+      undefined,
+      {
+        status: 0,
+        statusText: 'Offline',
+        headers: {},
+        config,
+        data: { error: 'You are offline. Changes are not saved until you reconnect.' },
+      },
+    );
+    return Promise.reject(err);
+  }
+  return config;
+});
+
 // Auth is now carried by the httpOnly jwt cookie (set by login endpoints and
 // automatically sent with every request thanks to withCredentials above).
 // The previous localStorage-based Bearer header injection was removed as part
