@@ -332,7 +332,8 @@ export const canvasApi = {
     canvasClient.post(`/canvas/${canvasId}/import-from-canvas`, data),
 
   // ─── Canvas Sharing ───
-  shareCanvas: (canvasId: string) => canvasClient.post(`/canvas/${canvasId}/share`),
+  shareCanvas: (canvasId: string, options?: { expiresInDays?: number; expiresAt?: string }) =>
+    canvasClient.post(`/canvas/${canvasId}/share`, options),
 
   getShares: (canvasId: string) => canvasClient.get(`/canvas/${canvasId}/shares`),
 
