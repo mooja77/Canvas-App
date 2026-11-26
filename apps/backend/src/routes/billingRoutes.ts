@@ -157,15 +157,16 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
     }
 
     // Auto-apply the academic discount for recognised institution domains.
-    // The Student tier is already academically priced ($5), so it must NOT
-    // stack the 40% coupon on top (that would drop it to ~$3). The coupon
-    // applies only to the full-price Pro/Team plans. `plan` is server-derived
-    // from the price, so this can't be bypassed by a forged request body.
+    // The Student ($5) and Solo ($9.99) tiers must NOT stack the 40% coupon on
+    // top. The coupon applies only to the full-price Pro/Team plans. `plan` is
+    // server-derived from the price, so this can't be bypassed by a forged
+    // request body.
     const discounts: { coupon: string }[] = [];
     if (
       user.emailVerified &&
       isAcademicEmail(user.email) &&
       plan !== 'student' &&
+      plan !== 'solo' &&
       process.env.STRIPE_ACADEMIC_COUPON_ID
     ) {
       discounts.push({ coupon: process.env.STRIPE_ACADEMIC_COUPON_ID });

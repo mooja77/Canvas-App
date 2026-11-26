@@ -140,8 +140,9 @@ describe('CanvasListPanel — quota copy mirrors the backend refusal', () => {
     );
   });
 
-  it('names the tiers that offer more, cheapest first', () => {
-    expect(canvasUpgradePhrase(2)).toBe('Student and Solo allow 5, Pro and Team allow unlimited');
+  it('names the tiers that offer more, cheapest first, excluding Solo until configured', () => {
+    expect(canvasUpgradePhrase(2)).toBe('Student allows 5, Pro and Team allow unlimited');
+    expect(canvasUpgradePhrase(2, true)).toBe('Student and Solo allow 5, Pro and Team allow unlimited');
   });
 });
 

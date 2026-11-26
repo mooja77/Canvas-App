@@ -277,14 +277,30 @@ export function planLabel(plan: string): string {
 }
 
 /**
+ * Solo ($9.99) stays hidden from refusal copy and upgrade suggestions until
+ * its Stripe billing object is configured on the server (`STRIPE_SOLO_MONTHLY_PRICE_ID`
+ * or `SOLO_PLAN_ENABLED=true`).
+ */
+export function isSoloPlanEnabled(): boolean {
+  return (
+    typeof process !== 'undefined' &&
+    Boolean(process.env?.STRIPE_SOLO_MONTHLY_PRICE_ID || process.env?.SOLO_PLAN_ENABLED === 'true')
+  );
+}
+
+function visibleTiers(includeSolo: boolean): PlanTier[] {
+  return includeSolo ? TIER_ORDER : TIER_ORDER.filter((tier) => tier !== 'solo');
+}
+
+/**
  * Tiers whose limits satisfy `has`, in upgrade order.
  *
  * Free is excluded: these lists are only ever rendered inside a refusal, and
  * "available on the Free plan" is never a useful thing to tell someone who was
  * just refused. (A capability Free has cannot produce a refusal anyway.)
  */
-export function plansWith(has: (limits: PlanLimits) => boolean): PlanTier[] {
-  return TIER_ORDER.filter((tier) => tier !== 'free' && has(PLAN_LIMITS[tier]));
+export function plansWith(has: (limits: PlanLimits) => boolean, includeSolo = isSoloPlanEnabled()): PlanTier[] {
+  return visibleTiers(includeSolo).filter((tier) => tier !== 'free' && has(PLAN_LIMITS[tier]));
 }
 
 function joinList(names: string[]): string {
@@ -307,9 +323,9 @@ export function planListPhrase(tiers: PlanTier[]): string {
 export function featureAvailabilityMessage(
   subject: string,
   has: (limits: PlanLimits) => boolean,
-  opts: { plural?: boolean } = {},
+  opts: { plural?: boolean; includeSolo?: boolean } = {},
 ): string {
-  const tiers = plansWith(has);
+  const tiers = plansWith(has, opts.includeSolo);
   const verb = opts.plural ? 'are' : 'is';
   if (tiers.length === 0) {
     // Reachable today: integrationsEnabled is false on every tier because the
@@ -330,8 +346,12 @@ export function formatAllowance(value: number): string {
  * Empty string when no plan offers more, which is itself the useful signal:
  * the caller must then NOT pitch an upgrade.
  */
-export function higherAllowancePhrase(current: number, pick: (limits: PlanLimits) => number): string {
-  const better = TIER_ORDER.filter((tier) => tier !== 'free' && pick(PLAN_LIMITS[tier]) > current);
+export function higherAllowancePhrase(
+  current: number,
+  pick: (limits: PlanLimits) => number,
+  includeSolo = isSoloPlanEnabled(),
+): string {
+  const better = visibleTiers(includeSolo).filter((tier) => tier !== 'free' && pick(PLAN_LIMITS[tier]) > current);
   const groups: { value: number; tiers: PlanTier[] }[] = [];
   for (const tier of better) {
     const value = pick(PLAN_LIMITS[tier]);

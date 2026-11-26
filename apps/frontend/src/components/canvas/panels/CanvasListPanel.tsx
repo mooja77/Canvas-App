@@ -51,15 +51,21 @@ function joinList(names: string[]): string {
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
 }
 
+function isSoloVisible(): boolean {
+  return Boolean(import.meta.env.VITE_STRIPE_SOLO_MONTHLY_PRICE_ID);
+}
+
 /**
  * "Student allows 5, Pro and Team allow unlimited" — the tiers that offer more
  * canvases than `current`, grouped where their allowance matches. `null` in the
  * frontend table means the same thing `Infinity` means in the backend one.
+ * Solo is excluded until VITE_STRIPE_SOLO_MONTHLY_PRICE_ID is configured.
  */
-export function canvasUpgradePhrase(current: number): string {
+export function canvasUpgradePhrase(current: number, includeSolo = isSoloVisible()): string {
   const groups: { value: number | null; tiers: PlanTier[] }[] = [];
   for (const tier of TIER_ORDER) {
     if (tier === 'free') continue;
+    if (tier === 'solo' && !includeSolo) continue;
     const value = FRONTEND_PLAN_LIMITS[tier].maxCanvases;
     if (value !== null && value <= current) continue;
     const last = groups[groups.length - 1];

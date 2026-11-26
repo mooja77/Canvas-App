@@ -141,9 +141,7 @@ describe('Plan limits — canvas creation', () => {
       // The refusal names the cap AND both remedies (delete one / upgrade to a
       // tier that allows more) — see §3.2 items 2, 8 and 12 of the
       // 2026-08-23 audit. It used to state only the allowance.
-      error: expect.stringMatching(
-        /all 2 canvases included in the Free plan.*delete a canvas.*Student and Solo allow 5/s,
-      ),
+      error: expect.stringMatching(/all 2 canvases included in the Free plan.*delete a canvas.*Student allows 5/s),
       code: 'PLAN_LIMIT_EXCEEDED',
       limit: 'maxCanvases',
       current: expect.any(Number),
