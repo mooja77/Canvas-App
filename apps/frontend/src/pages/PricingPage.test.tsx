@@ -347,4 +347,16 @@ describe('PricingPage comparison table vs the enforced plan limits', () => {
     // No server OpenAI key in production yet: included minutes are not sold.
     expect(document.body.textContent ?? '').not.toMatch(/hrs/);
   });
+
+  it('shows the student price comparison side by side (qualcanvas-29)', () => {
+    const block = screen.getByTestId('student-price-comparison');
+    expect(within(block).getByRole('cell', { name: 'QualCanvas Student' })).toBeInTheDocument();
+    expect(
+      within(block).getByRole('cell', {
+        name: `$${PUBLISHED_PRICES_USD.student.annual}/year ($${PUBLISHED_PRICES_USD.student.monthly}/month)`,
+      }),
+    ).toBeInTheDocument();
+    expect(within(block).getByText(/\$114 to \$142\/year/)).toBeInTheDocument();
+    expect(within(block).getByText(/\$12\.95\/active month/)).toBeInTheDocument();
+  });
 });

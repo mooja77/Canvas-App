@@ -596,6 +596,55 @@ export default function PricingPage() {
           ]}
           footnote="Competitor prices verified 2026-05-14 from each vendor's public page where available; third-party sourced otherwise. See /vs for the full side-by-side comparison."
         />
+
+        <div
+          className="mt-10 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/60 p-6"
+          data-testid="student-price-comparison"
+        >
+          <div className="mb-4">
+            <Eyebrow className="mb-1.5">Student pricing side by side</Eyebrow>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              QualCanvas Student is ${PUBLISHED_PRICES_USD.student.annual}/year (${PUBLISHED_PRICES_USD.student.monthly}
+              /month)
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <th className="py-2.5 pr-4 font-medium">Tool</th>
+                  <th className="py-2.5 px-4 font-medium">Student price</th>
+                  <th className="py-2.5 pl-4 font-medium">Notes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
+                <tr className="bg-ochre-50/50 dark:bg-ochre-900/15 font-medium text-gray-900 dark:text-white">
+                  <td className="py-3 pr-4">QualCanvas Student</td>
+                  <td className="py-3 px-4">
+                    ${PUBLISHED_PRICES_USD.student.annual}/year (${PUBLISHED_PRICES_USD.student.monthly}/month)
+                  </td>
+                  <td className="py-3 pl-4">
+                    Verified academic email, browser-based, all 13 analysis tools, QDPX import and export.
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4">NVivo / MAXQDA / ATLAS.ti</td>
+                  <td className="py-3 px-4">$114 to $142/year</td>
+                  <td className="py-3 pl-4">
+                    Third-party student figures (Nov 2026); regional pricing and eligibility checked on vendor sites.
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4">Dedoose Student</td>
+                  <td className="py-3 px-4">$12.95/active month</td>
+                  <td className="py-3 pl-4">
+                    Published on dedoose.com/home/pricing (about $155/year if active all 12 months).
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {/* ─── Annual savings callout ─── */}
