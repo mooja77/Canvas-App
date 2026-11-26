@@ -26,7 +26,9 @@ const budgets = [
   // gzipped 145.49 -> 148.59 kB. The chunk was inspected for pulled-in
   // dependencies (none: zero zod references, no new vendor code); it is all
   // functional code. Headroom is again ~14 KiB.
-  { pattern: /^CanvasPage-.*\.js$/, limitKiB: 575 },
+  // Raised 575 -> 585 on 2026-11-26 after sharing ConfirmDialog across pages
+  // (qualcanvas-19): 574.9 KiB -> 575.1 KiB (+0.2 KiB, zero new vendor code).
+  { pattern: /^CanvasPage-.*\.js$/, limitKiB: 585 },
   { pattern: /^chart-vendor-.*\.js$/, limitKiB: 450 },
   { pattern: /^flow-vendor-.*\.js$/, limitKiB: 220 },
   { pattern: /^react-vendor-.*\.js$/, limitKiB: 220 },
