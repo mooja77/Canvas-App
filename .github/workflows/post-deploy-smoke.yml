@@ -16,7 +16,7 @@ on:
     types: [completed]
 
 concurrency:
-  group: post-deploy-smoke-${{ github.event_name }}-${{ github.ref }}
+  group: post-deploy-smoke-${{ github.event_name }}-${{ (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && github.ref || format('skipped-{0}', github.run_id) }}
   cancel-in-progress: true
 
 jobs:
