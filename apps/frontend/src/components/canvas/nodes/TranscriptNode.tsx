@@ -240,6 +240,9 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
   const [quickCodePopover, setQuickCodePopover] = useState<{ x: number; y: number } | null>(null);
   const [codingPopover, setCodingPopover] = useState<{ codingIds: string[]; x: number; y: number } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [keyboardCodingOpen, setKeyboardCodingOpen] = useState(false);
+  const [keyboardRange, setKeyboardRange] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
+  const keyboardTextareaRef = useRef<HTMLTextAreaElement>(null);
   const { collapsed, toggleCollapsed } = useNodeCollapsed(id, nodeData.collapsed);
 
   // "Verify in context": when an AI suggestion's Locate action targets this
@@ -337,6 +340,51 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
       y: rect.top,
     });
   }, [nodeData.transcriptId, setPendingSelection, isViewer]);
+
+  const handleTextKeyUp = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.shiftKey || e.key === 'Shift' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a')) {
+        handleMouseUp();
+      }
+    },
+    [handleMouseUp],
+  );
+
+  const readKeyboardSelection = useCallback(() => {
+    const el = keyboardTextareaRef.current;
+    if (!el) return;
+    setKeyboardRange({ start: el.selectionStart ?? 0, end: el.selectionEnd ?? 0 });
+  }, []);
+
+  const applyKeyboardSelection = useCallback(() => {
+    if (isViewer) return;
+    const el = keyboardTextareaRef.current;
+    if (!el) return;
+    const rawStart = el.selectionStart ?? 0;
+    const rawEnd = el.selectionEnd ?? 0;
+    if (rawEnd <= rawStart) return;
+    const rawText = content.slice(rawStart, rawEnd);
+    if (!rawText.trim()) return;
+
+    const leading = rawText.length - rawText.trimStart().length;
+    const trailing = rawText.length - rawText.trimEnd().length;
+    const startIdx = rawStart + leading;
+    const endIdx = rawEnd - trailing;
+    const selText = rawText.slice(leading, rawText.length - trailing);
+
+    setPendingSelection({
+      transcriptId: nodeData.transcriptId,
+      startOffset: startIdx,
+      endOffset: endIdx,
+      codedText: selText,
+    });
+    setCodingPopover(null);
+    const rect = el.getBoundingClientRect();
+    setQuickCodePopover({
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+    });
+  }, [content, isViewer, nodeData.transcriptId, setPendingSelection]);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -541,7 +589,8 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
             )}
             <div
               ref={textRef}
-              className="nodrag nowheel flex-1 min-h-0 overflow-y-auto px-3 py-2"
+              tabIndex={0}
+              className="nodrag nowheel flex-1 min-h-0 overflow-y-auto px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
               style={{
                 paddingLeft:
                   codings.length > 0
@@ -551,17 +600,66 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
                     : undefined,
               }}
               onMouseUp={handleMouseUp}
+              onKeyUp={handleTextKeyUp}
               onContextMenu={handleContextMenu}
             >
-              <div className="whitespace-pre-wrap text-xs leading-relaxed text-gray-700 dark:text-gray-300 select-text">
-                <HighlightedTranscript
-                  text={content}
-                  codings={codings}
-                  questions={questions}
-                  onSegmentClick={handleSegmentClick}
-                  verifyRange={verifyRange}
-                />
-              </div>
+              {keyboardCodingOpen && !isViewer ? (
+                <div className="space-y-2" data-testid="keyboard-coding-panel">
+                  <p className="text-[11px] text-gray-600 dark:text-gray-300">
+                    Use Shift + arrow keys to select a passage, then press Code selection or Enter.
+                  </p>
+                  <textarea
+                    ref={keyboardTextareaRef}
+                    readOnly
+                    value={content}
+                    rows={8}
+                    aria-label="Select transcript passage with keyboard"
+                    onSelect={readKeyboardSelection}
+                    onKeyUp={readKeyboardSelection}
+                    onMouseUp={readKeyboardSelection}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        applyKeyboardSelection();
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        setKeyboardCodingOpen(false);
+                      }
+                    }}
+                    className="w-full rounded-md border border-blue-200 bg-white p-2 text-xs leading-relaxed text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-blue-800 dark:bg-gray-900 dark:text-gray-200"
+                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={applyKeyboardSelection}
+                      disabled={
+                        keyboardRange.end <= keyboardRange.start ||
+                        !content.slice(keyboardRange.start, keyboardRange.end).trim()
+                      }
+                      className="rounded-md bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                    >
+                      Code selection
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setKeyboardCodingOpen(false)}
+                      className="rounded-md px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="whitespace-pre-wrap text-xs leading-relaxed text-gray-700 dark:text-gray-300 select-text">
+                  <HighlightedTranscript
+                    text={content}
+                    codings={codings}
+                    questions={questions}
+                    onSegmentClick={handleSegmentClick}
+                    verifyRange={verifyRange}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -579,9 +677,24 @@ function TranscriptNode({ data, id, selected }: NodeProps) {
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-gray-600 dark:text-gray-300 tabular-nums">
-              {wordCount.toLocaleString()} word{wordCount !== 1 ? 's' : ''}
-            </span>
+            <div className="flex items-center gap-2">
+              {!isViewer && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setKeyboardCodingOpen((v) => !v);
+                    setTimeout(() => keyboardTextareaRef.current?.focus(), 0);
+                  }}
+                  aria-pressed={keyboardCodingOpen}
+                  className="rounded px-1.5 py-0.5 text-[10px] font-medium text-brand-700 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-brand-300 dark:hover:bg-brand-900/30"
+                >
+                  {keyboardCodingOpen ? 'Close keyboard coding' : 'Code with keyboard'}
+                </button>
+              )}
+              <span className="text-[10px] text-gray-600 dark:text-gray-300 tabular-nums">
+                {wordCount.toLocaleString()} word{wordCount !== 1 ? 's' : ''}
+              </span>
+            </div>
           </div>
         </div>
       )}
