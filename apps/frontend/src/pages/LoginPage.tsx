@@ -247,8 +247,8 @@ export default function LoginPage() {
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password || !name.trim()) return;
-    if (password.length < 8) {
-      toast.error('Password must be at least 8 characters');
+    if (password.length < 12) {
+      toast.error('Password must be at least 12 characters');
       return;
     }
     setLoading(true);
@@ -558,10 +558,10 @@ export default function LoginPage() {
                     id="register-password"
                     type={showPassword ? 'text' : 'password'}
                     required
-                    minLength={8}
+                    minLength={12}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 8 characters"
+                    placeholder="At least 12 characters"
                     autoComplete="new-password"
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent pr-12"
                   />
