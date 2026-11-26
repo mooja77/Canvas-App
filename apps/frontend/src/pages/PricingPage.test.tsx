@@ -285,7 +285,7 @@ describe('PricingPage comparison table vs the enforced plan limits', () => {
       ['CSV export', ['csv']],
       ['PNG / HTML / Markdown', ['png', 'html', 'md']],
       ['Word + Excel reports', ['docx', 'xlsx']],
-      ['QDPX (NVivo / ATLAS.ti)', ['qdpx']],
+      ['QDPX import & export (NVivo / ATLAS.ti)', ['qdpx']],
     ];
     for (const [feature, formats] of formatRows) {
       const row = cells(feature);

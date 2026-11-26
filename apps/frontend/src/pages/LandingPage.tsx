@@ -165,7 +165,7 @@ export default function LandingPage() {
             {
               n: '1.0',
               title: 'Import',
-              body: 'Bring transcripts, field notes, and consent letters into one canvas. PDF, DOCX, audio, video.',
+              body: 'Bring transcripts, field notes, and consent letters into one canvas. PDF, DOCX, audio, video, or QDPX projects from NVivo and ATLAS.ti.',
             },
             {
               n: '2.0',
@@ -247,8 +247,8 @@ export default function LandingPage() {
           </BentoCell>
           <BentoCell span={2}>
             <FeatureContent
-              title="Export QDPX"
-              body="Take everything to NVivo or ATLAS.ti if you need to. Or hand a Word report to your committee. No lock-in by design."
+              title="Import & export QDPX"
+              body="Move existing projects in from NVivo or ATLAS.ti with QDPX import, and export back out or hand a Word report to your committee."
             />
           </BentoCell>
         </Bento>

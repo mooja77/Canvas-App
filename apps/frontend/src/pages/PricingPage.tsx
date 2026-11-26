@@ -522,7 +522,7 @@ export default function PricingPage() {
                 // the Student, Pro, and Team plans") pointed at a page that
                 // never named the format they had just been refused.
                 { feature: 'Word + Excel reports', values: ['—', '✓', '✓', '✓', '✓'] },
-                { feature: 'QDPX (NVivo / ATLAS.ti)', values: ['—', '✓', '✓', '✓', '✓'] },
+                { feature: 'QDPX import & export (NVivo / ATLAS.ti)', values: ['—', '✓', '✓', '✓', '✓'] },
               ],
             },
             {
