@@ -641,6 +641,22 @@ export default function LoginPage() {
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
                 Start free, upgrade anytime. Verified academic emails get 40% off Pro.
               </p>
+              <div
+                className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300"
+                data-testid="signup-data-summary"
+              >
+                <p className="font-medium text-gray-900 dark:text-gray-100">Your research data</p>
+                <ul className="mt-1 space-y-1">
+                  <li>Stored in the US with HTTPS in transit and encryption at rest.</li>
+                  <li>Export your work anytime (CSV on Free; QDPX, Word, and Excel on paid plans).</li>
+                  <li>
+                    Delete canvases or your whole account anytime from Account settings.{' '}
+                    <a href="/trust" className="underline hover:text-gray-900 dark:hover:text-white">
+                      Data posture
+                    </a>
+                  </li>
+                </ul>
+              </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
                 By creating an account, you agree to our{' '}
                 <a href="/terms" className="underline hover:text-gray-700 dark:hover:text-gray-300">
