@@ -209,10 +209,9 @@ export default function ConnectAiWizard({ onClose, reason, initialProvider, onCo
               >
                 <p className="font-medium">What is sent to your AI provider</p>
                 <p className="mt-1">
-                  When you run an AI feature, the transcript text (or audio file for transcription) you choose is sent
-                  to your connected provider (OpenAI, Anthropic, or Google) to generate the result. AI stays off until
-                  you connect a key and run an AI tool. Check your ethics or IRB protocol before sending participant
-                  data, and remove identifying details if your study requires it.
+                  When you run an AI feature, the transcript text you choose is sent to your connected provider (OpenAI,
+                  Anthropic, or Google) to generate the result. Audio for transcription is sent to OpenAI only. AI stays
+                  off until you connect a key and run an AI tool.
                 </p>
               </div>
               <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
@@ -394,7 +393,9 @@ export default function ConnectAiWizard({ onClose, reason, initialProvider, onCo
                 className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-950 dark:bg-amber-900/20 dark:text-amber-100"
                 data-testid="connect-ai-provider-disclosure"
               >
-                When you run an AI tool, the transcript text or audio you choose is sent to {provider.name}.
+                {provider.id === 'openai'
+                  ? 'When you run an AI tool, the transcript text or audio you choose is sent to OpenAI.'
+                  : `When you run an AI tool, the transcript text you choose is sent to ${provider.name}.`}
               </p>
               <div className="flex justify-between pt-2">
                 <button

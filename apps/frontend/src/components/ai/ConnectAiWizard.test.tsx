@@ -63,19 +63,31 @@ describe('ConnectAiWizard', () => {
     expect(pricing).toHaveAttribute('target', '_blank');
   });
 
-  it('step 1 and step 4 disclose that transcript text is sent to OpenAI, Anthropic, or Google', async () => {
+  it('step 1 and step 4 disclose transcript text provider and OpenAI-only audio accurately', async () => {
     renderWizard();
     const notice = screen.getByTestId('connect-ai-data-disclosure');
-    expect(notice).toHaveTextContent(/transcript text/i);
-    expect(notice).toHaveTextContent(/OpenAI, Anthropic, or Google/);
-    expect(notice).toHaveTextContent(/ethics or IRB/i);
+    expect(notice).toHaveTextContent(
+      /transcript text you choose is sent to your connected provider \(OpenAI, Anthropic, or Google\)/i,
+    );
+    expect(notice).toHaveTextContent(/Audio for transcription is sent to OpenAI only/i);
+    expect(notice).not.toHaveTextContent(/ethics or IRB/i);
 
     fireEvent.click(screen.getByRole('button', { name: 'Get started' }));
     fireEvent.click(screen.getByRole('radio', { name: /Anthropic/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     fireEvent.click(screen.getByRole('button', { name: 'I have my key' }));
+    const anthropicNotice = screen.getByTestId('connect-ai-provider-disclosure');
+    expect(anthropicNotice).toHaveTextContent(/transcript text you choose is sent to Anthropic/i);
+    expect(anthropicNotice).not.toHaveTextContent(/audio/i);
+  });
+
+  it('step 4 mentions audio only when OpenAI is selected', () => {
+    renderWizard({ initialProvider: 'openai' });
+    fireEvent.click(screen.getByRole('button', { name: 'Get started' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'I have my key' }));
     expect(screen.getByTestId('connect-ai-provider-disclosure')).toHaveTextContent(
-      /transcript text or audio you choose is sent to Anthropic/i,
+      /transcript text or audio you choose is sent to OpenAI/i,
     );
   });
 
