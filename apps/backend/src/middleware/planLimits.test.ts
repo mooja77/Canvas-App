@@ -117,10 +117,10 @@ describe('plan-gate refusal copy is derived from PLAN_LIMITS', () => {
     expect(message).toContain('Team');
   });
 
-  it('names Student for auto-code, ethics and AI', async () => {
+  it('names Student and Solo for auto-code, ethics and AI', async () => {
     for (const mw of [checkAutoCode(), checkEthicsAccess(), checkAiAccess()]) {
       const { res } = await runMiddleware(mw, 'free');
-      expect(bodyOf(res).error).toMatch(/Student, Pro, and Team/);
+      expect(bodyOf(res).error).toMatch(/Student, Solo, Pro, and Team/);
     }
   });
 

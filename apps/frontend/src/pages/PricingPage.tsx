@@ -8,6 +8,7 @@ import {
   annualPricePerMonth,
   annualSavingPercent,
   annualSavingUsd,
+  formatUsdAmount,
   maxAnnualSavingPercent,
 } from '@qualcanvas/shared';
 import { billingApi } from '../services/api';
@@ -26,20 +27,26 @@ import { PRICING_FAQS } from '../content/marketingFaqs';
 import toast from 'react-hot-toast';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
-const PRICE_IDS = {
-  student: {
-    monthly: import.meta.env.VITE_STRIPE_STUDENT_MONTHLY_PRICE_ID || '',
-    annual: import.meta.env.VITE_STRIPE_STUDENT_ANNUAL_PRICE_ID || '',
-  },
-  pro: {
-    monthly: import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID || '',
-    annual: import.meta.env.VITE_STRIPE_PRO_ANNUAL_PRICE_ID || '',
-  },
-  team: {
-    monthly: import.meta.env.VITE_STRIPE_TEAM_MONTHLY_PRICE_ID || '',
-    annual: import.meta.env.VITE_STRIPE_TEAM_ANNUAL_PRICE_ID || '',
-  },
-};
+function getPriceIds() {
+  return {
+    student: {
+      monthly: import.meta.env.VITE_STRIPE_STUDENT_MONTHLY_PRICE_ID || '',
+      annual: import.meta.env.VITE_STRIPE_STUDENT_ANNUAL_PRICE_ID || '',
+    },
+    solo: {
+      monthly: import.meta.env.VITE_STRIPE_SOLO_MONTHLY_PRICE_ID || '',
+      annual: import.meta.env.VITE_STRIPE_SOLO_ANNUAL_PRICE_ID || '',
+    },
+    pro: {
+      monthly: import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID || '',
+      annual: import.meta.env.VITE_STRIPE_PRO_ANNUAL_PRICE_ID || '',
+    },
+    team: {
+      monthly: import.meta.env.VITE_STRIPE_TEAM_MONTHLY_PRICE_ID || '',
+      annual: import.meta.env.VITE_STRIPE_TEAM_ANNUAL_PRICE_ID || '',
+    },
+  };
+}
 
 /** Collaborators per canvas, from the cap the server enforces. */
 function collaboratorCap(max: number): string {
@@ -51,7 +58,7 @@ function collaboratorCap(max: number): string {
  * Who can code, from PLAN_LIMITS.maxCoders (the cap the server enforces) and
  * whether the tier allows sharing at all. Pro is a one-person plan.
  */
-function coderCap(tier: 'free' | 'student' | 'pro' | 'team'): string {
+function coderCap(tier: 'free' | 'student' | 'solo' | 'pro' | 'team'): string {
   const l = PLAN_LIMITS[tier];
   if (l.maxCollaborators === 0) return '—';
   if (l.maxCoders === 0) return 'Just you';
@@ -66,18 +73,18 @@ const RESEARCH_DESK_EMAIL = 'mailto:research@qualcanvas.com?subject=Institution%
  * $48 a year), never a per-month equivalent of an annual price: showing "$4"
  * for Student while every other page said "$5" read as two different prices.
  */
-function tierPrice(tier: 'student' | 'pro' | 'team', period: 'monthly' | 'annual') {
+function tierPrice(tier: 'student' | 'solo' | 'pro' | 'team', period: 'monthly' | 'annual') {
   const p = PUBLISHED_PRICES_USD[tier];
   const seat = tier === 'team' ? 'per seat ' : '';
   if (period === 'monthly') {
     return {
-      price: `$${p.monthly}`,
-      pricePeriod: `${seat}a month, or $${p.annual} ${seat}a year`,
+      price: `$${formatUsdAmount(p.monthly)}`,
+      pricePeriod: `${seat}a month, or $${formatUsdAmount(p.annual)} ${seat}a year`,
     };
   }
   return {
-    price: `$${p.annual}`,
-    pricePeriod: `${seat}a year, which works out at $${annualPricePerMonth(tier)} a month (save ${annualSavingPercent(tier)}%)`,
+    price: `$${formatUsdAmount(p.annual)}`,
+    pricePeriod: `${seat}a year, which works out at $${formatUsdAmount(annualPricePerMonth(tier))} a month (save ${annualSavingPercent(tier)}%)`,
   };
 }
 
@@ -118,7 +125,10 @@ export default function PricingPage() {
     trackEvent('marketing_page_viewed', { page: '/pricing' });
   }, []);
 
-  const handleUpgrade = async (tier: 'student' | 'pro' | 'team') => {
+  const priceIds = getPriceIds();
+  const soloEnabled = Boolean(priceIds.solo.monthly);
+
+  const handleUpgrade = async (tier: 'student' | 'solo' | 'pro' | 'team') => {
     trackEvent('cta_clicked', {
       cta_label: `Start ${tier}`,
       location: 'pricing_card',
@@ -138,7 +148,7 @@ export default function PricingPage() {
       return;
     }
 
-    const priceId = PRICE_IDS[tier][period];
+    const priceId = priceIds[tier][period];
     if (!priceId) {
       toast.error('Billing is not configured yet');
       return;
@@ -269,9 +279,9 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* ─── 5 tier cards ─── */}
+        {/* ─── Tier cards (Solo appears once VITE_STRIPE_SOLO_MONTHLY_PRICE_ID is configured) ─── */}
         <h2 className="sr-only">QualCanvas plans</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${soloEnabled ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-4`}>
           <TierCardV2
             name="Free"
             price="$0"
@@ -314,6 +324,37 @@ export default function PricingPage() {
               )
             }
           />
+
+          {soloEnabled && (
+            <TierCardV2
+              name="Solo"
+              price={tierPrice('solo', period).price}
+              pricePeriod={tierPrice('solo', period).pricePeriod}
+              audience="Code your whole project, not just a sample"
+              features={[
+                '5 canvases',
+                'Unlimited transcripts & codes',
+                '50,000 words / transcript',
+                'All 13 analysis tools',
+                'AI on your own key',
+                'CSV, Word & Excel export',
+              ]}
+              isCurrent={plan === 'solo'}
+              cta={
+                plan === 'solo' ? (
+                  currentPlanCta
+                ) : (
+                  <button
+                    onClick={() => handleUpgrade('solo')}
+                    disabled={loading}
+                    className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ochre-400 focus-visible:ring-offset-2 disabled:opacity-50"
+                  >
+                    {loading ? 'Loading…' : 'Start Solo'}
+                  </button>
+                )
+              }
+            />
+          )}
 
           <TierCardV2
             name="Pro"

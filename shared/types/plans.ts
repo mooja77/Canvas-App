@@ -1,4 +1,4 @@
-export type PlanTier = 'free' | 'student' | 'pro' | 'team';
+export type PlanTier = 'free' | 'student' | 'solo' | 'pro' | 'team';
 
 export interface PlanLimits {
   maxCanvases: number;
@@ -93,6 +93,44 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     ],
     allowedExportFormats: ['csv', 'png', 'html', 'md', 'docx', 'xlsx', 'qdpx'],
     maxShares: 2,
+    ethicsEnabled: true,
+    casesEnabled: true,
+    intercoderEnabled: false,
+    aiEnabled: true,
+    aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
+    fileUploadEnabled: true,
+    maxStorageMb: 500,
+    maxCollaborators: 0,
+    maxCoders: 0,
+    repositoryEnabled: true,
+    integrationsEnabled: false,
+  },
+  // Solo tier ($9.99/mo): for an independent researcher coding a full project
+  // without needing unlimited canvases, share codes, QDPX, or collaborators.
+  // AI runs strictly on the customer's own provider key (never our key).
+  solo: {
+    maxCanvases: 5,
+    maxTranscriptsPerCanvas: Infinity,
+    maxWordsPerTranscript: 50000,
+    maxCodes: Infinity,
+    autoCodeEnabled: true,
+    allowedAnalysisTypes: [
+      'search',
+      'cooccurrence',
+      'matrix',
+      'stats',
+      'comparison',
+      'wordcloud',
+      'cluster',
+      'codingquery',
+      'sentiment',
+      'treemap',
+      'documentportrait',
+      'timeline',
+      'geomap',
+    ],
+    allowedExportFormats: ['csv', 'png', 'html', 'md', 'docx', 'xlsx'],
+    maxShares: 0,
     ethicsEnabled: true,
     casesEnabled: true,
     intercoderEnabled: false,
@@ -223,11 +261,12 @@ export function serializePlanLimits(limits: PlanLimits): PlanLimitsJson {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Cheapest → most capable. The order refusal messages list upgrades in. */
-const TIER_ORDER: PlanTier[] = ['free', 'student', 'pro', 'team'];
+const TIER_ORDER: PlanTier[] = ['free', 'student', 'solo', 'pro', 'team'];
 
 export const PLAN_LABELS: Record<PlanTier, string> = {
   free: 'Free',
   student: 'Student',
+  solo: 'Solo',
   pro: 'Pro',
   team: 'Team',
 };

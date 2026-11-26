@@ -3,6 +3,10 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL: string | undefined;
+  readonly VITE_STRIPE_STUDENT_MONTHLY_PRICE_ID: string | undefined;
+  readonly VITE_STRIPE_STUDENT_ANNUAL_PRICE_ID: string | undefined;
+  readonly VITE_STRIPE_SOLO_MONTHLY_PRICE_ID: string | undefined;
+  readonly VITE_STRIPE_SOLO_ANNUAL_PRICE_ID: string | undefined;
   readonly VITE_STRIPE_PRO_MONTHLY_PRICE_ID: string | undefined;
   readonly VITE_STRIPE_PRO_ANNUAL_PRICE_ID: string | undefined;
   readonly VITE_STRIPE_TEAM_MONTHLY_PRICE_ID: string | undefined;

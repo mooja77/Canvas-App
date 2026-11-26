@@ -47,7 +47,7 @@ import AddComputedNodeMenu, {
   planAvailabilityMessage,
 } from './AddComputedNodeMenu';
 
-const TIERS: PlanTier[] = ['free', 'student', 'pro', 'team'];
+const TIERS: PlanTier[] = ['free', 'student', 'solo', 'pro', 'team'];
 
 /** The six tools the audit measured as dead ends on Free. */
 const FREE_LOCKED = ['cooccurrence', 'codingquery', 'cluster', 'matrix', 'comparison', 'treemap'];
@@ -101,7 +101,7 @@ describe('AddComputedNodeMenu — locked tools on Free', () => {
     openMenu();
     expect(
       screen.getByRole('button', {
-        name: 'Co-occurrence — Co-occurrence analysis is available on the Student, Pro, and Team plans.',
+        name: 'Co-occurrence — Co-occurrence analysis is available on the Student, Solo, Pro, and Team plans.',
       }),
     ).toBeInTheDocument();
   });
@@ -111,7 +111,7 @@ describe('AddComputedNodeMenu — locked tools on Free', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Framework Matrix —/ }));
     expect(addComputedNode).not.toHaveBeenCalled();
     expect(toastError).toHaveBeenCalledWith(
-      'Framework Matrix analysis is available on the Student, Pro, and Team plans.',
+      'Framework Matrix analysis is available on the Student, Solo, Pro, and Team plans.',
     );
   });
 
@@ -183,7 +183,7 @@ describe('AddComputedNodeMenu — locks follow the canvas owner plan', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Framework Matrix —/ }));
     expect(addComputedNode).not.toHaveBeenCalled();
     expect(toastError).toHaveBeenCalledWith(
-      'Framework Matrix analysis is available on the Student, Pro, and Team plans.',
+      'Framework Matrix analysis is available on the Student, Solo, Pro, and Team plans.',
     );
   });
 

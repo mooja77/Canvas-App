@@ -38,11 +38,18 @@ const ALL_ANALYSIS_TYPES = [
 export const ANALYSIS_TYPES_BY_PLAN: Record<PlanTier, readonly string[]> = {
   free: ['stats', 'wordcloud', 'sentiment', 'search'],
   student: ALL_ANALYSIS_TYPES,
+  solo: ALL_ANALYSIS_TYPES,
   pro: ALL_ANALYSIS_TYPES,
   team: ALL_ANALYSIS_TYPES,
 };
 
-const PLAN_LABELS: Record<PlanTier, string> = { free: 'Free', student: 'Student', pro: 'Pro', team: 'Team' };
+const PLAN_LABELS: Record<PlanTier, string> = {
+  free: 'Free',
+  student: 'Student',
+  solo: 'Solo',
+  pro: 'Pro',
+  team: 'Team',
+};
 
 /**
  * First-run disclosure. Usage in production is seven runs of Statistics, six
@@ -64,7 +71,7 @@ function readShowAll(): boolean {
     return false;
   }
 }
-const TIER_ORDER: PlanTier[] = ['free', 'student', 'pro', 'team'];
+const TIER_ORDER: PlanTier[] = ['free', 'student', 'solo', 'pro', 'team'];
 
 /** Paid tiers that may create `type`, cheapest first. Free is never listed —
  *  "available on the Free plan" is not a useful thing to tell someone who was

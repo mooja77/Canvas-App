@@ -28,8 +28,8 @@ async function seatsNeededAtCheckout(userId: string): Promise<number> {
 
 export const billingRoutes = Router();
 
-type QcPlan = 'student' | 'pro' | 'team';
-const QC_PLANS: readonly QcPlan[] = ['student', 'pro', 'team'];
+type QcPlan = 'student' | 'solo' | 'pro' | 'team';
+const QC_PLANS: readonly QcPlan[] = ['student', 'solo', 'pro', 'team'];
 
 /**
  * Resolve the QualCanvas plan tier from a Stripe Price, trusting ONLY Stripe —
@@ -58,6 +58,7 @@ export async function deriveQualcanvasPlan(stripe: ReturnType<typeof getStripe>,
     const name = String(product?.name || '').toLowerCase();
     if (!name.startsWith('qualcanvas')) return null;
     if (name.includes('student')) return 'student';
+    if (name.includes('solo')) return 'solo';
     if (name.includes('team')) return 'team';
     if (name.includes('pro')) return 'pro';
   } catch {

@@ -31,8 +31,14 @@ type SortMode = 'newest' | 'az' | 'codings';
 // byte-identical strings, so the dashboard warning and the 403 that follows it
 // can never say different things.
 
-const PLAN_LABELS: Record<PlanTier, string> = { free: 'Free', student: 'Student', pro: 'Pro', team: 'Team' };
-const TIER_ORDER: PlanTier[] = ['free', 'student', 'pro', 'team'];
+const PLAN_LABELS: Record<PlanTier, string> = {
+  free: 'Free',
+  student: 'Student',
+  solo: 'Solo',
+  pro: 'Pro',
+  team: 'Team',
+};
+const TIER_ORDER: PlanTier[] = ['free', 'student', 'solo', 'pro', 'team'];
 
 function planLabel(plan: string): string {
   return PLAN_LABELS[plan as PlanTier] ?? plan;
