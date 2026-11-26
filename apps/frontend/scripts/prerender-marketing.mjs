@@ -85,9 +85,9 @@ const ROUTES = [
     path: '/vs',
     file: 'vs.html',
     component: 'VsIndexPage',
-    title: 'Compare QualCanvas — NVivo, ATLAS.ti, Dedoose',
+    title: 'NVivo, ATLAS.ti & Dedoose Alternative | Compare QualCanvas',
     description:
-      'Honest, sourced comparisons. How QualCanvas stacks up against NVivo, ATLAS.ti, and Dedoose. Pricing, features, migration path.',
+      'Looking for an NVivo, ATLAS.ti, or Dedoose alternative? Compare pricing, QDPX import and export, student rates ($48/yr), and browser-based qualitative coding.',
   },
   {
     path: '/for-institutions',
