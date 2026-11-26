@@ -26,9 +26,9 @@ const budgets = [
   // gzipped 145.49 -> 148.59 kB. The chunk was inspected for pulled-in
   // dependencies (none: zero zod references, no new vendor code); it is all
   // functional code. Headroom is again ~14 KiB.
-  // Raised 575 -> 585 on 2026-11-26 for keyboard-only transcript coding mode
-  // in TranscriptNode (qualcanvas-9): 574.9 KiB -> 577.4 KiB (+2.5 KiB, zero
-  // new vendor code).
+  // Raised 575 -> 585 on 2026-11-26 for modal dialog focus traps and Escape
+  // handling in FilePreviewModal, PresentationMode, and FullProductTour
+  // (qualcanvas-12): 574.9 KiB -> 575.0 KiB (+0.1 KiB, zero new vendor code).
   { pattern: /^CanvasPage-.*\.js$/, limitKiB: 585 },
   { pattern: /^chart-vendor-.*\.js$/, limitKiB: 450 },
   { pattern: /^flow-vendor-.*\.js$/, limitKiB: 220 },

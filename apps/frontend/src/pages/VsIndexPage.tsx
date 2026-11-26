@@ -58,8 +58,8 @@ const TARGETS: VsTarget[] = [
 
 export default function VsIndexPage() {
   usePageMeta(
-    'Compare QualCanvas — NVivo, ATLAS.ti, Dedoose',
-    'Honest, sourced comparisons. How QualCanvas stacks up against NVivo, ATLAS.ti, and Dedoose. Pricing, features, migration path.',
+    'NVivo, ATLAS.ti & Dedoose Alternative | Compare QualCanvas',
+    'Looking for an NVivo, ATLAS.ti, or Dedoose alternative? Compare pricing, QDPX import and export, student rates ($48/yr), and browser-based qualitative coding.',
   );
 
   useEffect(() => {
@@ -82,11 +82,11 @@ export default function VsIndexPage() {
         <HairlineRule className="mb-6" />
         <Eyebrow className="mb-3">Comparisons</Eyebrow>
         <DisplayHeading size="lg" className="mb-7">
-          How we compare.
+          A browser-based alternative to NVivo, ATLAS.ti, and Dedoose.
         </DisplayHeading>
         <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed max-w-2xl">
-          Three honest, sourced comparisons against the most-used qualitative-analysis tools. Every claim has a date and
-          a source link. We review quarterly.
+          Three sourced comparisons against the most-used qualitative-analysis tools, including pricing, QDPX project
+          import and export, and what moves over cleanly. Every claim has a date and a source link.
         </p>
 
         {/* Quick verdicts */}

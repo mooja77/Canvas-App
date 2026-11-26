@@ -87,6 +87,68 @@ describe('ShareCanvasModal', () => {
     expect(screen.getByText('Generate Share Code')).toBeInTheDocument();
   });
 
+  it('warns that a share code hands over a full copy of every transcript and defaults expiry to 30 days (qualcanvas-5)', async () => {
+    const expiresAt = '2026-12-26T10:00:00Z';
+    mockCanvasApi.shareCanvas.mockResolvedValue({
+      data: {
+        success: true,
+        data: {
+          id: 'share-new',
+          canvasId: 'canvas-1',
+          shareCode: 'SHARE-EXP30',
+          cloneCount: 0,
+          createdAt: '2026-11-26T10:00:00Z',
+          expiresAt,
+        },
+      },
+    });
+
+    render(<ShareCanvasModal onClose={onClose} />);
+    expect(screen.getByTestId('share-copy-warning')).toHaveTextContent(
+      /full independent copy of every transcript, code, and memo/i,
+    );
+
+    const expirySelect = screen.getByLabelText('Code expires in') as HTMLSelectElement;
+    expect(expirySelect.value).toBe('30');
+
+    const generateBtn = screen.getByRole('button', { name: 'Generate Share Code' });
+    await waitFor(() => expect(generateBtn).toBeEnabled());
+    fireEvent.click(generateBtn);
+
+    await waitFor(() => {
+      expect(mockCanvasApi.shareCanvas).toHaveBeenCalledWith('canvas-1', { expiresInDays: 30 });
+      expect(screen.getByText('SHARE-EXP30')).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(`Expires ${new Date(expiresAt).toLocaleDateString()}`))).toBeInTheDocument();
+    });
+  });
+
+  it('passes selected 7-day expiry when changed before generating (qualcanvas-5)', async () => {
+    mockCanvasApi.shareCanvas.mockResolvedValue({
+      data: {
+        success: true,
+        data: {
+          id: 'share-7d',
+          canvasId: 'canvas-1',
+          shareCode: 'SHARE-EXP7',
+          cloneCount: 0,
+          createdAt: '2026-11-26T10:00:00Z',
+          expiresAt: '2026-12-03T10:00:00Z',
+        },
+      },
+    });
+
+    render(<ShareCanvasModal onClose={onClose} />);
+    fireEvent.change(screen.getByLabelText('Code expires in'), { target: { value: '7' } });
+
+    const generateBtn = screen.getByRole('button', { name: 'Generate Share Code' });
+    await waitFor(() => expect(generateBtn).toBeEnabled());
+    fireEvent.click(generateBtn);
+
+    await waitFor(() => {
+      expect(mockCanvasApi.shareCanvas).toHaveBeenCalledWith('canvas-1', { expiresInDays: 7 });
+    });
+  });
+
   it('displays existing share codes', async () => {
     mockCanvasApi.getShares.mockResolvedValue({ data: { success: true, data: sampleShares } });
 

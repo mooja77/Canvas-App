@@ -88,6 +88,13 @@ function canonicalPath(pathname) {
   return pathname;
 }
 
+function withPreviewNoIndex(response, hostname) {
+  if (!hostname.endsWith('.pages.dev')) return response;
+  const result = new Response(response.body, response);
+  result.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return result;
+}
+
 export default {
   async fetch(request, env) {
     const requestUrl = new URL(request.url);
@@ -104,14 +111,14 @@ export default {
           ? 'support'
           : null;
     if (assetResponse.status !== 404 || !['GET', 'HEAD'].includes(request.method)) {
-      return withShellPolicy(assetResponse, shell);
+      return withPreviewNoIndex(withShellPolicy(assetResponse, shell), requestUrl.hostname);
     }
 
     const url = new URL(request.url);
-    if (!isSpaRoute(url.pathname)) return assetResponse;
+    if (!isSpaRoute(url.pathname)) return withPreviewNoIndex(assetResponse, requestUrl.hostname);
 
     url.pathname = isSupportRoute(url.pathname) ? '/support-shell' : isResearchRoute(url.pathname) ? '/app-shell' : '/';
     const indexRequest = new Request(url, request);
-    return withShellPolicy(await env.ASSETS.fetch(indexRequest), shell);
+    return withPreviewNoIndex(withShellPolicy(await env.ASSETS.fetch(indexRequest), shell), requestUrl.hostname);
   },
 };

@@ -50,4 +50,24 @@ describe('effective CSP on the response returned by the Pages worker', () => {
     expect(r.headers.get('X-Asset-Marker')).toBe('preserved');
     expect(await r.text()).toBe('synthetic shell');
   });
+
+  it('redirects qualcanvas.pages.dev to qualcanvas.com with 301 and marks preview pages.dev hosts noindex', async () => {
+    const env = {
+      ASSETS: {
+        async fetch() {
+          return new Response('preview body', { status: 200 });
+        },
+      },
+    };
+    const apex = await worker.fetch(new Request('https://qualcanvas.pages.dev/pricing'), env);
+    expect(apex.status).toBe(301);
+    expect(apex.headers.get('Location')).toBe('https://qualcanvas.com/pricing');
+
+    const preview = await worker.fetch(new Request('https://branch-preview.qualcanvas.pages.dev/pricing'), env);
+    expect(preview.status).toBe(200);
+    expect(preview.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+
+    const prod = await worker.fetch(new Request('https://qualcanvas.com/pricing'), env);
+    expect(prod.headers.get('X-Robots-Tag')).toBeNull();
+  });
 });

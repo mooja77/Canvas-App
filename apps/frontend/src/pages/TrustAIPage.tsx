@@ -59,12 +59,13 @@ export default function TrustAIPage() {
           </h2>
           <div className="space-y-4 text-gray-700 dark:text-gray-300 leading-relaxed">
             <p>
-              <strong className="font-semibold text-gray-900 dark:text-white">No.</strong> When you ask QualCanvas to
-              auto-code, summarize a theme, or sketch a framework, the QualCanvas backend forwards your prompt to the
-              model provider you've chosen (OpenAI, Anthropic, or Google), receives the response, and returns it to your
-              browser. Source transcripts already stored in your project may be included in that request. QualCanvas
-              stores selected AI work products—such as suggestions, summaries and chat messages—so you can review them
-              later; usage analytics store feature, provider, model and token counts.
+              <strong className="font-semibold text-gray-900 dark:text-white">No.</strong> QualCanvas never trains AI
+              models on your transcripts or codes. AI features are off unless you connect your own OpenAI, Anthropic, or
+              Google API key, and your text is only sent to that provider when you run an AI tool. When you ask
+              QualCanvas to auto-code, summarize a theme, or sketch a framework, the backend forwards your request to
+              the provider you chose and returns the result to your browser. QualCanvas stores selected AI work products
+              (such as suggestions, summaries, and chat messages) so you can review them later; usage records store
+              feature, provider, model, and token counts.
             </p>
             <p>The model providers we support contractually exclude this API traffic from training. Their policies:</p>
             <ul className="list-disc list-inside space-y-2 ml-2">
