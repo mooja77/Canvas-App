@@ -484,6 +484,11 @@ canvasRoutes.put(
 
       res.json({ success: true });
     } catch (err) {
+      // The canvas can be permanently deleted after the ownership check.
+      // The layout upsert has one foreign key, to that canvas.
+      if ((err as { code?: string })?.code === 'P2003') {
+        return next(new AppError('Canvas not found', 404));
+      }
       next(err);
     }
   },
