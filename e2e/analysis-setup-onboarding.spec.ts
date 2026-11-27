@@ -3,6 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { randomBytes } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import { ownedAnalysisDatabase } from '../scripts/analysis-fixture-database.mjs';
+import { waitForAnimations } from './helpers';
 
 test.use({ storageState: { cookies: [], origins: [] }, serviceWorkers: 'block' });
 test.describe.configure({ timeout: 120_000 });
@@ -37,6 +38,7 @@ for (const width of [1280, 820, 390]) {
       return dialog;
     };
     const audit = async (selector = '[aria-labelledby="transcript-details-title"]') => {
+      await waitForAnimations(page.locator(selector));
       expect(
         (
           await new AxeBuilder({ page })

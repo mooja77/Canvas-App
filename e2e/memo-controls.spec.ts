@@ -132,6 +132,11 @@ for (const width of [1280, 820, 390, 320]) {
         data = { state: { flowDismissed: true, checklistDismissed: true }, completedAt: '2026-10-04' };
       return route.fulfill({ headers: cors, json: { success: true, data, unreadCount: 0, total: 1 } });
     });
+    if (width === 1280) {
+      const start = Date.now();
+      await page.clock.install({ time: start });
+      await page.clock.pauseAt(start + 1_000);
+    }
     await page.goto('/canvas/local-memo-canvas');
     await page.getByRole('button', { name: 'Reject non-essential cookies', exact: true }).click();
     const node = page.locator('.react-flow__node-memo');
@@ -141,10 +146,21 @@ for (const width of [1280, 820, 390, 320]) {
       page
         .locator('.react-flow__viewport')
         .evaluate((el) => Number((el as HTMLElement).style.transform.match(/scale\(([^)]+)\)/)?.[1]));
+    const zoomOut = page.getByRole('button', { name: 'Zoom Out', exact: true });
+    if (width === 1280) {
+      // Click while the automatic fit is pending, then let the fit timer run.
+      const before = await zoom();
+      await zoomOut.click();
+      await expect.poll(zoom).toBeLessThan(before);
+      const chosenZoom = await zoom();
+      await page.clock.runFor(450);
+      expect(await zoom()).toBe(chosenZoom);
+      await page.clock.resume();
+    }
     // Use the real canvas controls; do not fake a CSS scale or modify store state.
     for (let i = 0; i < 12 && (await zoom()) > 0.35; i++) {
       const before = await zoom();
-      await page.getByRole('button', { name: 'Zoom Out', exact: true }).click();
+      await zoomOut.click();
       await expect.poll(zoom).toBeLessThan(before);
     }
     expect(await zoom()).toBeLessThanOrEqual(0.35);
