@@ -156,7 +156,13 @@ describe('Stripe Billing – Extended Tests', () => {
     // client body). Default: resolve a tagged QualCanvas price whose plan is
     // inferred from the priceId these tests pass.
     mockStripe.prices.retrieve.mockImplementation((id: string) => {
-      const plan = String(id).includes('student') ? 'student' : String(id).includes('team') ? 'team' : 'pro';
+      const plan = String(id).includes('student')
+        ? 'student'
+        : String(id).includes('solo')
+          ? 'solo'
+          : String(id).includes('team')
+            ? 'team'
+            : 'pro';
       return Promise.resolve({ id, metadata: { app: 'qualcanvas', plan }, product: { name: `QualCanvas ${plan}` } });
     });
   });
@@ -959,6 +965,33 @@ describe('Stripe Billing – Extended Tests', () => {
       const createCall = mockStripe.checkout.sessions.create.mock.calls[0][0];
       expect(createCall.discounts).toBeUndefined();
       expect(createCall.metadata).toEqual(expect.objectContaining({ plan: 'student' }));
+      delete process.env.STRIPE_ACADEMIC_COUPON_ID;
+    });
+
+    it('does NOT apply the 40% academic coupon to Solo ($9.99) checkout', async () => {
+      process.env.STRIPE_ACADEMIC_COUPON_ID = 'coupon_academic';
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: userId,
+        email: 'researcher@university.edu',
+        name: 'Solo Academic',
+        role: 'researcher',
+        plan: 'free',
+        emailVerified: true,
+        stripeCustomerId: 'cus_solo_1',
+      });
+      mockStripe.checkout.sessions.create.mockResolvedValue({
+        url: 'https://checkout.stripe.com/session/solo',
+      });
+
+      const res = await request(app)
+        .post('/api/billing/create-checkout')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ priceId: 'price_solo_monthly', plan: 'solo' });
+
+      expect(res.status).toBe(200);
+      const createCall = mockStripe.checkout.sessions.create.mock.calls[0][0];
+      expect(createCall.discounts).toBeUndefined();
+      expect(createCall.metadata).toEqual(expect.objectContaining({ plan: 'solo' }));
       delete process.env.STRIPE_ACADEMIC_COUPON_ID;
     });
 

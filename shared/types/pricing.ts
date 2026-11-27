@@ -14,9 +14,15 @@ export type PaidPlanTier = Exclude<PlanTier, 'free'>;
  */
 export const PUBLISHED_PRICES_USD: Record<PaidPlanTier, { monthly: number; annual: number }> = {
   student: { monthly: 5, annual: 48 },
+  solo: { monthly: 9.99, annual: 99 },
   pro: { monthly: 15, annual: 144 },
   team: { monthly: 39, annual: 384 },
 };
+
+/** Format USD amounts cleanly: 5 -> "5", 9.99 -> "9.99", 8.25 -> "8.25". */
+export function formatUsdAmount(amount: number): string {
+  return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+}
 
 /** Monthly equivalent of the annual price (e.g. Pro $144/yr -> $12). */
 export function annualPricePerMonth(tier: PaidPlanTier): number {

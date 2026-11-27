@@ -28,8 +28,8 @@ async function seatsNeededAtCheckout(userId: string): Promise<number> {
 
 export const billingRoutes = Router();
 
-type QcPlan = 'student' | 'pro' | 'team';
-const QC_PLANS: readonly QcPlan[] = ['student', 'pro', 'team'];
+type QcPlan = 'student' | 'solo' | 'pro' | 'team';
+const QC_PLANS: readonly QcPlan[] = ['student', 'solo', 'pro', 'team'];
 
 /**
  * Resolve the QualCanvas plan tier from a Stripe Price, trusting ONLY Stripe —
@@ -58,6 +58,7 @@ export async function deriveQualcanvasPlan(stripe: ReturnType<typeof getStripe>,
     const name = String(product?.name || '').toLowerCase();
     if (!name.startsWith('qualcanvas')) return null;
     if (name.includes('student')) return 'student';
+    if (name.includes('solo')) return 'solo';
     if (name.includes('team')) return 'team';
     if (name.includes('pro')) return 'pro';
   } catch {
@@ -156,15 +157,16 @@ billingRoutes.post('/billing/create-checkout', auth, async (req: Request, res: R
     }
 
     // Auto-apply the academic discount for recognised institution domains.
-    // The Student tier is already academically priced ($5), so it must NOT
-    // stack the 40% coupon on top (that would drop it to ~$3). The coupon
-    // applies only to the full-price Pro/Team plans. `plan` is server-derived
-    // from the price, so this can't be bypassed by a forged request body.
+    // The Student ($5) and Solo ($9.99) tiers must NOT stack the 40% coupon on
+    // top. The coupon applies only to the full-price Pro/Team plans. `plan` is
+    // server-derived from the price, so this can't be bypassed by a forged
+    // request body.
     const discounts: { coupon: string }[] = [];
     if (
       user.emailVerified &&
       isAcademicEmail(user.email) &&
       plan !== 'student' &&
+      plan !== 'solo' &&
       process.env.STRIPE_ACADEMIC_COUPON_ID
     ) {
       discounts.push({ coupon: process.env.STRIPE_ACADEMIC_COUPON_ID });
