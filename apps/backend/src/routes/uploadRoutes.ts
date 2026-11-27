@@ -163,6 +163,17 @@ async function readFilePrefix(filePath: string, maxBytes = 32): Promise<Buffer> 
   }
 }
 
+function closeReadStream(stream: fs.ReadStream): Promise<void> {
+  if (stream.closed) return Promise.resolve();
+  return new Promise((resolve) => {
+    stream.once('close', () => resolve());
+    stream.once('error', () => resolve());
+    if (!stream.destroyed) {
+      stream.destroy();
+    }
+  });
+}
+
 // Multer for direct file uploads: stream to a temp file on disk instead of
 // holding up to 25 MB per request in V8 heap memory.
 const upload = multer({
@@ -364,6 +375,17 @@ uploadRoutes.post(
   async (req: Request, res: Response, next: NextFunction) => {
     const tempFilePath = req.file?.path;
     let uploadStream: fs.ReadStream | undefined;
+    let cleanedUp = false;
+    const cleanupTempUpload = async () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      if (uploadStream) {
+        await closeReadStream(uploadStream);
+      }
+      if (tempFilePath) {
+        await fsPromises.unlink(tempFilePath).catch(() => undefined);
+      }
+    };
     try {
       const userId = getAuthUserId(req);
       if (!req.file || !tempFilePath) {
@@ -381,6 +403,7 @@ uploadRoutes.post(
       const kind: 'audio' | 'video' = mimeType.startsWith('video/') ? 'video' : 'audio';
       const prefix = await readFilePrefix(tempFilePath);
       if (!isValidSignature(prefix, kind)) {
+        await cleanupTempUpload();
         return res.status(400).json({ success: false, error: 'File contents do not match declared type' });
       }
       await ensureStorageAvailable(req, req.file.size);
@@ -390,12 +413,16 @@ uploadRoutes.post(
       const key = `canvas/${req.params.id}/${randomBytes(16).toString('hex')}${ext}`;
 
       uploadStream = fs.createReadStream(tempFilePath);
+      // Swallow late async open/read errors (for example if storage.upload rejects
+      // or returns before consuming the stream and cleanup destroys it).
+      uploadStream.on('error', () => {});
       const { size } = await storage.upload({
         key,
         body: uploadStream,
         contentType: mimeType,
         sizeBytes: req.file.size,
       });
+      await cleanupTempUpload();
 
       let fileUpload;
       try {
@@ -417,12 +444,10 @@ uploadRoutes.post(
 
       res.json({ success: true, data: fileUpload });
     } catch (err) {
+      await cleanupTempUpload();
       next(err);
     } finally {
-      uploadStream?.destroy();
-      if (tempFilePath) {
-        await fsPromises.unlink(tempFilePath).catch(() => undefined);
-      }
+      await cleanupTempUpload();
     }
   },
 );

@@ -278,4 +278,39 @@ describe('qualcanvas-17: large canvas clone batching and streaming uploads', () 
     );
     expect(after).toEqual([]);
   });
+
+  it('closes and unlinks the temp file without unhandled errors when storage.upload does not consume the stream', async () => {
+    let observedStreamPath: string | undefined;
+    mockStorageUpload.mockImplementation(async ({ body }: { body: Readable }) => {
+      observedStreamPath = (body as Readable & { path?: string }).path;
+      // Return immediately without reading the stream (exercises pending open + destroy + unlink race)
+      return { key: 'k', size: 1024 };
+    });
+
+    const res = await request(app)
+      .post(`/api/canvas/${canvasId}/upload/direct`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .attach('file', wavBuffer(1024), { filename: 'unread.wav', contentType: 'audio/wav' });
+
+    expect(res.status).toBe(200);
+    expect(observedStreamPath).toBeTruthy();
+    await expect(fsPromises.access(observedStreamPath!)).rejects.toThrow();
+  });
+
+  it('closes and unlinks the temp file without unhandled errors when storage.upload rejects immediately', async () => {
+    let observedStreamPath: string | undefined;
+    mockStorageUpload.mockImplementation(async ({ body }: { body: Readable }) => {
+      observedStreamPath = (body as Readable & { path?: string }).path;
+      throw new Error('simulated storage failure');
+    });
+
+    const res = await request(app)
+      .post(`/api/canvas/${canvasId}/upload/direct`)
+      .set('Authorization', `Bearer ${jwt}`)
+      .attach('file', wavBuffer(1024), { filename: 'reject.wav', contentType: 'audio/wav' });
+
+    expect(res.status).toBe(500);
+    expect(observedStreamPath).toBeTruthy();
+    await expect(fsPromises.access(observedStreamPath!)).rejects.toThrow();
+  });
 });
