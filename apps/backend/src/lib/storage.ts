@@ -10,6 +10,7 @@ export interface UploadOptions {
   key: string;
   body: Buffer | NodeJS.ReadableStream;
   contentType: string;
+  sizeBytes?: number;
   metadata?: Record<string, string>;
 }
 

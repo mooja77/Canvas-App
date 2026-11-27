@@ -158,9 +158,39 @@ async function requireOwnedCanvas(req: Request, _res: Response, next: NextFuncti
   }
 }
 
-// Multer for local file uploads (dev mode / local storage)
+async function readFilePrefix(filePath: string, maxBytes = 32): Promise<Buffer> {
+  const handle = await fsPromises.open(filePath, 'r');
+  try {
+    const buffer = Buffer.alloc(maxBytes);
+    const { bytesRead } = await handle.read(buffer, 0, maxBytes, 0);
+    return buffer.subarray(0, bytesRead);
+  } finally {
+    await handle.close();
+  }
+}
+
+function closeReadStream(stream: fs.ReadStream): Promise<void> {
+  if (stream.closed) return Promise.resolve();
+  return new Promise((resolve) => {
+    stream.once('close', () => resolve());
+    stream.once('error', () => resolve());
+    if (!stream.destroyed) {
+      stream.destroy();
+    }
+  });
+}
+
+// Multer for direct file uploads: stream to a temp file on disk instead of
+// holding up to 25 MB per request in V8 heap memory.
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, os.tmpdir()),
+    filename: (_req, file, cb) => {
+      const rawExt = path.extname(file.originalname);
+      const ext = /^\.[a-z0-9]{1,10}$/i.test(rawExt) ? rawExt.toLowerCase() : '';
+      cb(null, `qualcanvas-upload-${randomBytes(16).toString('hex')}${ext}`);
+    },
+  }),
   limits: { fileSize: MAX_UPLOAD_BYTES },
   fileFilter: (req, file, cb) => {
     const resolved = resolveMediaType(file.mimetype, file.originalname);
@@ -360,9 +390,22 @@ uploadRoutes.post(
   requireOwnedCanvas,
   uploadSingleMedia,
   async (req: Request, res: Response, next: NextFunction) => {
+    const tempFilePath = req.file?.path;
+    let uploadStream: fs.ReadStream | undefined;
+    let cleanedUp = false;
+    const cleanupTempUpload = async () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      if (uploadStream) {
+        await closeReadStream(uploadStream);
+      }
+      if (tempFilePath) {
+        await fsPromises.unlink(tempFilePath).catch(() => undefined);
+      }
+    };
     try {
       const userId = getAuthUserId(req);
-      if (!req.file) {
+      if (!req.file || !tempFilePath) {
         return res.status(400).json({ success: false, error: 'No file uploaded' });
       }
 
@@ -372,10 +415,12 @@ uploadRoutes.post(
         resolveMediaType(req.file.mimetype, req.file.originalname) ??
         req.file.mimetype;
 
-      // Content-sniff the first bytes so a renamed .exe or .html can't slip
-      // through just because multer accepted the MIME string from the client.
+      // Content-sniff only the first 32 bytes from disk so a renamed .exe or .html
+      // is rejected without buffering the whole upload in memory.
       const kind: 'audio' | 'video' = mimeType.startsWith('video/') ? 'video' : 'audio';
-      if (!isValidSignature(req.file.buffer, kind)) {
+      const prefix = await readFilePrefix(tempFilePath);
+      if (!isValidSignature(prefix, kind)) {
+        await cleanupTempUpload();
         return res.status(400).json({ success: false, error: 'File contents do not match declared type' });
       }
       await ensureStorageAvailable(req, req.file.size);
@@ -384,11 +429,17 @@ uploadRoutes.post(
       const ext = /^\.[a-z0-9]{1,10}$/i.test(rawExt) ? rawExt.toLowerCase() : '';
       const key = `canvas/${req.params.id}/${randomBytes(16).toString('hex')}${ext}`;
 
+      uploadStream = fs.createReadStream(tempFilePath);
+      // Swallow late async open/read errors (for example if storage.upload rejects
+      // or returns before consuming the stream and cleanup destroys it).
+      uploadStream.on('error', () => {});
       const { size } = await storage.upload({
         key,
-        body: req.file.buffer,
+        body: uploadStream,
         contentType: mimeType,
+        sizeBytes: req.file.size,
       });
+      await cleanupTempUpload();
 
       const plan = await resolveRequestPlan(req);
       const file = req.file;
@@ -415,7 +466,10 @@ uploadRoutes.post(
 
       res.json({ success: true, data: fileUpload });
     } catch (err) {
+      await cleanupTempUpload();
       next(err);
+    } finally {
+      await cleanupTempUpload();
     }
   },
 );
