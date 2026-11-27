@@ -147,6 +147,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
     fileUploadEnabled: true,
     maxStorageMb: 500,
+    maxAudioImports: Infinity,
     maxCollaborators: 0,
     maxCoders: 0,
     repositoryEnabled: true,
