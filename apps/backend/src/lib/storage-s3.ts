@@ -53,13 +53,14 @@ const s3Provider: StorageProvider = {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       Body: options.body as any,
       ContentType: options.contentType,
+      ContentLength: typeof options.sizeBytes === 'number' ? options.sizeBytes : undefined,
       Metadata: options.metadata,
     });
 
     await getClient().send(command);
 
-    // Get size from the body if it's a Buffer
-    const size = Buffer.isBuffer(options.body) ? options.body.length : 0;
+    // Get size from the body if it's a Buffer, or the caller-reported stream size
+    const size = Buffer.isBuffer(options.body) ? options.body.length : (options.sizeBytes ?? 0);
     return { key: options.key, size };
   },
 
