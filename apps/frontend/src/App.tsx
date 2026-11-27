@@ -40,6 +40,7 @@ const MethodologyChapterPage = lazyRoute(() => import('./pages/MethodologyChapte
 const TrainingPage = lazyRoute(() =>
   import('./pages/TrainingPage').then((module) => ({ default: module.TrainingPage })),
 );
+const CoursePage = lazyRoute(() => import('./pages/CoursePage'));
 const CanvasPage = lazyRoute(() => import('./pages/CanvasPage'));
 const AccountPage = lazyRoute(() => import('./pages/AccountPage'));
 const RepositoryPage = lazyRoute(() => import('./pages/RepositoryPage'));
@@ -219,6 +220,14 @@ export default function App() {
                   element={
                     <Suspense fallback={<PageSkeleton />}>
                       <TrainingPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/course"
+                  element={
+                    <Suspense fallback={<PageSkeleton />}>
+                      <CoursePage />
                     </Suspense>
                   }
                 />

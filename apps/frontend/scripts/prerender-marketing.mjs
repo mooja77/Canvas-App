@@ -169,6 +169,15 @@ const ROUTES = [
       'Complete guide to QualCanvas: transcripts, coding, analysis tools, AI features, collaboration, and more.',
   },
   {
+    path: '/course',
+    file: 'course.html',
+    component: 'CoursePage',
+    handoff: true,
+    title: 'Free Online Qualitative Coding Course | QualCanvas',
+    description:
+      'A free, self-paced 6-module online course covering privacy-first setup, codebook design, thematic analysis, cross-case comparison, team agreement, and defensible exports. No account required.',
+  },
+  {
     path: '/pilot',
     file: 'pilot.html',
     component: 'PilotPage',
