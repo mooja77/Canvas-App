@@ -7,7 +7,7 @@ import os from 'node:os';
 const { mockPrisma, mockStorageUpload } = vi.hoisted(() => {
   const mockStorageUpload = vi.fn();
   const mockPrisma = {
-    user: { findUnique: vi.fn() },
+    user: { findUnique: vi.fn(), update: vi.fn() },
     subscription: { findUnique: vi.fn() },
     canvasCollaborator: { findUnique: vi.fn() },
     codingCanvas: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
@@ -119,6 +119,9 @@ describe('qualcanvas-17: large canvas clone batching and streaming uploads', () 
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.$transaction.mockImplementation(async (fn: (tx: typeof mockPrisma) => Promise<unknown>) =>
+      fn(mockPrisma),
+    );
     jwt = signUserToken(userId, 'researcher', 'pro');
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({
@@ -208,10 +211,6 @@ describe('qualcanvas-17: large canvas clone batching and streaming uploads', () 
     mockPrisma.canvasNodePosition.createMany.mockResolvedValue({ count: CLONE_BATCH_SIZE });
     mockPrisma.canvasShare.update.mockResolvedValue({});
 
-    mockPrisma.$transaction.mockImplementation(async (fn: (tx: typeof mockPrisma) => Promise<unknown>) =>
-      fn(mockPrisma),
-    );
-
     const res = await request(app).post('/api/canvas/clone/SHARE-BIG-1').set('Authorization', `Bearer ${jwt}`);
 
     expect(res.status).toBe(201);
@@ -254,6 +253,10 @@ describe('qualcanvas-17: large canvas clone batching and streaming uploads', () 
 
     expect(res.status).toBe(200);
     expect(mockStorageUpload).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.user.update).toHaveBeenCalledExactlyOnceWith({
+      where: { id: userId },
+      data: { audioImportsUsed: { increment: 1 } },
+    });
     expect(observedStreamPath).toBeTruthy();
     expect(observedStreamPath!.startsWith(os.tmpdir())).toBe(true);
     await expect(fsPromises.access(observedStreamPath!)).rejects.toThrow();
