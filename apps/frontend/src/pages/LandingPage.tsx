@@ -252,6 +252,35 @@ export default function LandingPage() {
             />
           </BentoCell>
         </Bento>
+
+        <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" data-testid="research-extras">
+          {[
+            {
+              title: 'Methods statement',
+              body: 'Draft a methods section from your codebook, coding counts, and audit log (paid plans, with your own AI key).',
+            },
+            {
+              title: 'Coder training',
+              body: 'Set a gold-standard coded transcript so new coders can practice and check agreement before coding live data.',
+            },
+            {
+              title: 'Research repository',
+              body: 'Save key insights, quotes, and themes across projects so findings stay searchable beyond one study (paid plans).',
+            },
+            {
+              title: '30-day trash recovery',
+              body: 'Deleted canvases stay recoverable in Trash for 30 days before permanent removal, on every plan.',
+            },
+          ].map((item) => (
+            <div
+              key={item.title}
+              className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/60 p-5"
+            >
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1.5">{item.title}</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{item.body}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* ─── 5. Stats strip ─── */}
