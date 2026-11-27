@@ -5,7 +5,7 @@ import { FRONTEND_PLAN_LIMITS, getFrontendPlanLimits } from './planLimits';
 // this batch was opened for.
 import { PLAN_LIMITS, type PlanTier } from '@qualcanvas/shared';
 
-const TIERS: PlanTier[] = ['free', 'student', 'pro', 'team'];
+const TIERS: PlanTier[] = ['free', 'student', 'solo', 'pro', 'team'];
 
 /** Backend uses Infinity for "no cap"; the frontend copy uses null. */
 const norm = (n: number) => (n === Infinity ? null : n);

@@ -63,7 +63,7 @@ const LANGUAGES: [string, string][] = [
   ['ko', 'Korean'],
   ['ar', 'Arabic'],
 ];
-const PLAN_NAMES: Record<string, string> = { free: 'Free', student: 'Student', pro: 'Pro', team: 'Team' };
+const PLAN_NAMES: Record<string, string> = { free: 'Free', student: 'Student', solo: 'Solo', pro: 'Pro', team: 'Team' };
 
 const FREE_WORD_LIMIT = 10000;
 const FREE_WARN_DURATION_SECONDS = 55 * 60;
