@@ -28,6 +28,7 @@ interface CommandPaletteProps {
   onShowIntercoder?: () => void;
   onShowWeighting?: () => void;
   onShowCrossCase?: () => void;
+  onShowConnectNodes?: () => void;
 }
 
 interface CommandItem {
@@ -57,6 +58,7 @@ export default function CommandPalette({
   onShowIntercoder,
   onShowWeighting,
   onShowCrossCase,
+  onShowConnectNodes,
 }: CommandPaletteProps) {
   // Keep Tab inside the dialog and give focus back to the trigger on close.
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -321,6 +323,21 @@ export default function CommandPalette({
       });
     }
 
+    if (onShowConnectNodes) {
+      items.push({
+        id: 'action-connect-nodes',
+        category: 'action',
+        icon: <IconAnalysis />,
+        label: 'Connect Nodes',
+        description: 'Create or remove relationships between codes and cases without dragging',
+        shortcut: 'Shift+C',
+        action: () => {
+          onShowConnectNodes();
+          onClose();
+        },
+      });
+    }
+
     // ── Sprint G slice — modals lazy-loaded inside CanvasToolbar ──
     // Cmd+K can't open these directly (their state is scoped to the toolbar),
     // so we dispatch a window event that CanvasToolbar listens for. Falls
@@ -558,6 +575,7 @@ export default function CommandPalette({
     onShowIntercoder,
     onShowWeighting,
     onShowCrossCase,
+    onShowConnectNodes,
   ]);
 
   // Filter items by search query

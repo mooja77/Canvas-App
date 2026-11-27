@@ -66,6 +66,9 @@ export interface CanvasKeyboardOptions {
 
   // Mute/bypass
   onToggleMute?: () => void;
+
+  // Non-drag node connection dialog
+  onConnectNodes?: () => void;
 }
 
 export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
@@ -110,6 +113,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     onNextTab,
     onPrevTab,
     onToggleMute,
+    onConnectNodes,
   } = options;
 
   const shortcuts = useShortcutStore((s) => s.shortcuts);
@@ -352,6 +356,11 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
         handleDistributeH();
         return;
       }
+      if (matchesShortcut(e, shortcuts.connectNodes)) {
+        e.preventDefault();
+        onConnectNodes?.();
+        return;
+      }
 
       // Arrow key panning (no ctrl/alt/meta modifier, shift for larger jump)
       if (
@@ -419,5 +428,6 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions): void {
     onNextTab,
     onPrevTab,
     onToggleMute,
+    onConnectNodes,
   ]);
 }

@@ -51,7 +51,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
         />
       </svg>
     ),
-    actions: ['copy', 'paste', 'duplicate', 'group', 'autoLayout', 'undo', 'redo', 'mute', 'delete'],
+    actions: ['copy', 'paste', 'duplicate', 'connectNodes', 'group', 'autoLayout', 'undo', 'redo', 'mute', 'delete'],
   },
   {
     title: 'Selection & Layout',

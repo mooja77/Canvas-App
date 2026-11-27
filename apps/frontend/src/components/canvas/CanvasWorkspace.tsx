@@ -66,6 +66,7 @@ const CrossCaseAnalysisModal = React.lazy(() => import('./panels/CrossCaseAnalys
 const PresentationMode = React.lazy(() => import('./panels/PresentationMode'));
 const AiAutoCodeModal = React.lazy(() => import('./panels/AiAutoCodeModal'));
 const KeyboardShortcutsModal = React.lazy(() => import('./panels/KeyboardShortcutsModal'));
+const ConnectNodesModal = React.lazy(() => import('./panels/ConnectNodesModal'));
 import PresenceAvatars from './panels/PresenceAvatars';
 import NotificationBell from '../NotificationBell';
 import CollabCursors from './CollabCursors';
@@ -348,6 +349,8 @@ export default function CanvasWorkspace() {
   // still handle later resizing and preserve explicit navigator choices.
   const [showNavigator, setShowNavigator] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 900);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showConnectNodes, setShowConnectNodes] = useState(false);
+  const [connectFromNodeId, setConnectFromNodeId] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showExcerpts, setShowExcerpts] = useState(false);
@@ -2424,6 +2427,11 @@ export default function CanvasWorkspace() {
     canUndo,
     canRedo,
     onToggleMute: handleToggleMute,
+    onConnectNodes: () => {
+      const firstSelected = nodes.find((n) => n.selected && (n.type === 'question' || n.type === 'case'));
+      setConnectFromNodeId(firstSelected?.id ?? null);
+      setShowConnectNodes(true);
+    },
   });
 
   const handleFocusNode = useCallback(
@@ -2903,6 +2911,10 @@ export default function CanvasWorkspace() {
                   onToggleCollapse={handleNodeToggleCollapse}
                   onResetSize={handleNodeResetSize}
                   onSetNodeColor={setNodeColor}
+                  onConnectNode={(nId) => {
+                    setConnectFromNodeId(nId);
+                    setShowConnectNodes(true);
+                  }}
                   onClose={() => setNodeContextMenu(null)}
                 />
               )}
@@ -3404,7 +3416,26 @@ export default function CanvasWorkspace() {
             setShowCommandPalette(false);
             setShowCrossCase(true);
           }}
+          onShowConnectNodes={() => {
+            setShowCommandPalette(false);
+            const firstSelected = nodes.find((n) => n.selected && (n.type === 'question' || n.type === 'case'));
+            setConnectFromNodeId(firstSelected?.id ?? null);
+            setShowConnectNodes(true);
+          }}
         />
+      )}
+
+      {/* Non-drag Connect Nodes modal */}
+      {showConnectNodes && (
+        <React.Suspense fallback={null}>
+          <ConnectNodesModal
+            initialFromNodeId={connectFromNodeId}
+            onClose={() => {
+              setShowConnectNodes(false);
+              setConnectFromNodeId(null);
+            }}
+          />
+        </React.Suspense>
       )}
 
       {/* Excerpt Browser */}

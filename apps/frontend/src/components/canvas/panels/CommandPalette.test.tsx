@@ -80,6 +80,14 @@ describe('CommandPalette', () => {
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
+  it('shows Connect Nodes action when onShowConnectNodes is provided', () => {
+    const onShowConnectNodes = vi.fn();
+    render(<CommandPalette {...defaultProps} onShowConnectNodes={onShowConnectNodes} />);
+    fireEvent.click(screen.getByText('Connect Nodes'));
+    expect(onShowConnectNodes).toHaveBeenCalled();
+    expect(defaultProps.onClose).toHaveBeenCalled();
+  });
+
   it('Escape key closes palette', () => {
     render(<CommandPalette {...defaultProps} />);
     fireEvent.keyDown(document, { key: 'Escape' });

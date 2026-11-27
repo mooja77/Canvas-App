@@ -28,6 +28,7 @@ export const DEFAULT_SHORTCUTS: ShortcutMap = {
   collapseAll: 'ctrl+shift+c',
   alignLeft: 'shift+a',
   distributeH: 'shift+d',
+  connectNodes: 'shift+c',
 };
 
 export const SHORTCUT_LABELS: Record<string, string> = {
@@ -53,6 +54,7 @@ export const SHORTCUT_LABELS: Record<string, string> = {
   collapseAll: 'Collapse/expand all nodes',
   alignLeft: 'Align selected left',
   distributeH: 'Distribute horizontally',
+  connectNodes: 'Connect nodes without dragging',
 };
 
 interface ShortcutState {
