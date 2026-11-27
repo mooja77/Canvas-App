@@ -16,6 +16,13 @@ export interface PlanLimits {
   aiRequestsPerDay: number;
   fileUploadEnabled: boolean;
   maxStorageMb: number;
+  /**
+   * Audio/video files an account may ever import for transcription. Counted
+   * per account (User.audioImportsUsed) and never handed back when a file is
+   * deleted. Plans with fileUploadEnabled are unlimited. Free allows one, so
+   * a researcher can try transcription on their own OpenAI key before paying.
+   */
+  maxAudioImports: number;
   /** People (coders and viewers) the owner may share one canvas with. */
   maxCollaborators: number;
   /**
@@ -61,6 +68,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: 0,
     fileUploadEnabled: false,
     maxStorageMb: 0,
+    maxAudioImports: 1,
     maxCollaborators: 0,
     maxCoders: 0,
     repositoryEnabled: false,
@@ -100,6 +108,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
     fileUploadEnabled: true,
     maxStorageMb: 500,
+    maxAudioImports: Infinity,
     maxCollaborators: 0,
     maxCoders: 0,
     repositoryEnabled: true,
@@ -138,6 +147,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
     fileUploadEnabled: true,
     maxStorageMb: 500,
+    maxAudioImports: Infinity,
     maxCollaborators: 0,
     maxCoders: 0,
     repositoryEnabled: true,
@@ -173,6 +183,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
     fileUploadEnabled: true,
     maxStorageMb: 500,
+    maxAudioImports: Infinity,
     // A one-person plan (John, 28 Sep 2026): unlimited free viewers, no extra
     // coders. Adding a coder offers the upgrade to Team (utils/seats.ts).
     maxCollaborators: Infinity,
@@ -210,6 +221,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
     fileUploadEnabled: true,
     maxStorageMb: 5000,
+    maxAudioImports: Infinity,
     maxCollaborators: Infinity,
     maxCoders: Infinity,
     repositoryEnabled: true,

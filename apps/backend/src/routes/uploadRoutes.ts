@@ -10,12 +10,13 @@ import path from 'path';
 import { pipeline } from 'stream/promises';
 import { prisma } from '../lib/prisma.js';
 import { getAuthId, getAuthUserId, getOwnedCanvas } from '../utils/routeHelpers.js';
+import { checkTranscriptLimit, resolveRequestPlan } from '../middleware/planLimits.js';
 import {
-  checkFileUploadAccess,
-  checkTranscriptLimit,
-  checkTranscriptionAccess,
-  resolveRequestPlan,
-} from '../middleware/planLimits.js';
+  checkAudioUploadAccess,
+  checkAudioTranscriptionAccess,
+  recordAudioImport,
+  audioImportAllowance,
+} from '../utils/audioImports.js';
 import { validateParams, canvasIdParam, canvasIdJobIdParams } from '../middleware/validation.js';
 import { storage } from '../lib/storage.js';
 import '../lib/storage-s3.js'; // register S3/R2 when configured
@@ -111,7 +112,12 @@ function validCanvasStorageKey(canvasId: string, key: string): boolean {
 
 export async function ensureStorageAvailable(req: Request, additionalBytes: number): Promise<void> {
   const plan = await resolveRequestPlan(req);
-  const maxBytes = getPlanLimits(plan).maxStorageMb * 1024 * 1024;
+  const planLimits = getPlanLimits(plan);
+  // The Free plan has no storage quota but may import one recording: room for
+  // exactly one file at the upload size cap, never a general allowance.
+  const storageMb =
+    planLimits.maxStorageMb === 0 && planLimits.maxAudioImports > 0 ? MAX_UPLOAD_MB : planLimits.maxStorageMb;
+  const maxBytes = storageMb * 1024 * 1024;
   const canvas = await prisma.codingCanvas.findUnique({
     where: { id: req.params.id },
     select: { userId: true, dashboardAccessId: true },
@@ -126,7 +132,7 @@ export async function ensureStorageAvailable(req: Request, additionalBytes: numb
   });
   const usedBytes = aggregate._sum.sizeBytes ?? 0;
   if (maxBytes !== Infinity && usedBytes + additionalBytes > maxBytes) {
-    throw new AppError(`Storage limit exceeded (${getPlanLimits(plan).maxStorageMb} MB on the ${plan} plan)`, 403);
+    throw new AppError(`Storage limit exceeded (${storageMb} MB on the ${plan} plan)`, 403);
   }
 }
 
@@ -204,7 +210,7 @@ function uploadSingleMedia(req: Request, res: Response, next: NextFunction): voi
 uploadRoutes.post(
   '/canvas/:id/upload/presigned',
   validateParams(canvasIdParam),
-  checkFileUploadAccess(),
+  checkAudioUploadAccess(),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dashboardAccessId = getAuthId(req);
@@ -250,7 +256,7 @@ uploadRoutes.post(
 uploadRoutes.post(
   '/canvas/:id/upload/confirm',
   validateParams(canvasIdParam),
-  checkFileUploadAccess(),
+  checkAudioUploadAccess(),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dashboardAccessId = getAuthId(req);
@@ -315,17 +321,28 @@ uploadRoutes.post(
         return res.json({ success: true, data: existing, cached: true });
       }
 
-      const fileUpload = await prisma.fileUpload.create({
-        data: {
-          canvasId: req.params.id,
-          userId,
-          storageKey,
-          originalName,
-          mimeType,
-          sizeBytes: object.size,
-          status: 'uploaded',
-        },
-      });
+      const plan = await resolveRequestPlan(req);
+      let fileUpload;
+      try {
+        fileUpload = await prisma.$transaction(async (tx) => {
+          await recordAudioImport(tx, req.params.id, plan);
+          return tx.fileUpload.create({
+            data: {
+              canvasId: req.params.id,
+              userId,
+              storageKey,
+              originalName,
+              mimeType,
+              sizeBytes: object.size,
+              status: 'uploaded',
+            },
+          });
+        });
+      } catch (err) {
+        // Refused or failed: the object was never registered, so do not keep it.
+        await storage.delete(storageKey).catch(() => undefined);
+        throw err;
+      }
 
       res.json({ success: true, data: fileUpload });
     } catch (err) {
@@ -339,7 +356,7 @@ uploadRoutes.post(
 uploadRoutes.post(
   '/canvas/:id/upload/direct',
   validateParams(canvasIdParam),
-  checkFileUploadAccess(),
+  checkAudioUploadAccess(),
   requireOwnedCanvas,
   uploadSingleMedia,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -373,18 +390,23 @@ uploadRoutes.post(
         contentType: mimeType,
       });
 
+      const plan = await resolveRequestPlan(req);
+      const file = req.file;
       let fileUpload;
       try {
-        fileUpload = await prisma.fileUpload.create({
-          data: {
-            canvasId: req.params.id,
-            userId,
-            storageKey: key,
-            originalName: req.file.originalname,
-            mimeType,
-            sizeBytes: size || req.file.size,
-            status: 'uploaded',
-          },
+        fileUpload = await prisma.$transaction(async (tx) => {
+          await recordAudioImport(tx, req.params.id, plan);
+          return tx.fileUpload.create({
+            data: {
+              canvasId: req.params.id,
+              userId,
+              storageKey: key,
+              originalName: file.originalname,
+              mimeType,
+              sizeBytes: size || file.size,
+              status: 'uploaded',
+            },
+          });
         });
       } catch (err) {
         await storage.delete(key).catch(() => undefined);
@@ -412,6 +434,7 @@ uploadRoutes.get(
       // No included minutes: the screen shows whose own OpenAI key would pay
       // (utils/aiKeys.ts) and, for that key, plain usage this month.
       const key = userId ? await resolveTranscriptionKey(req.params.id, userId) : null;
+      const audioAllowance = await audioImportAllowance(req.params.id, plan);
       const [owner, usage] = await Promise.all([
         key && !key.isCanvasOwner
           ? prisma.user.findUnique({ where: { id: key.canvasOwnerId }, select: { name: true } })
@@ -423,6 +446,7 @@ uploadRoutes.get(
         data: {
           plan,
           fileUploadEnabled: getPlanLimits(plan).fileUploadEnabled,
+          ...audioAllowance,
           maxUploadMb: MAX_UPLOAD_MB,
           emailAccount: Boolean(userId),
           keySource: key?.source ?? null,
@@ -486,7 +510,7 @@ uploadRoutes.get('/canvas/:id/transcribe', validateParams(canvasIdParam), async 
 uploadRoutes.post(
   '/canvas/:id/transcribe',
   validateParams(canvasIdParam),
-  checkTranscriptionAccess(),
+  checkAudioTranscriptionAccess(),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dashboardAccessId = getAuthId(req);

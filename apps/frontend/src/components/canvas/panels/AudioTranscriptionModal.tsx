@@ -21,6 +21,10 @@ import { apiErrorCode, apiErrorMessage, formatBytes } from './featureScreenUtils
 interface Allowance {
   plan: string;
   fileUploadEnabled: boolean;
+  /** Recordings this account has imported so far (never reduced by deleting one). */
+  audioImportsUsed: number;
+  /** Recordings the plan allows in total; null means no limit. */
+  maxAudioImports: number | null;
   maxUploadMb: number;
   emailAccount: boolean;
   /** Whose own OpenAI key pays: the researcher's, the canvas owner's (shared), or none. */
@@ -225,6 +229,7 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
           setPhase({ kind: 'uploading', pct, name: file.name }),
         );
         uploadedId = res.data.data.id;
+        void loadAllowance();
       } catch (err) {
         setPhase({ kind: 'idle' });
         setUploadError({
@@ -235,7 +240,7 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
       }
       await startJob(uploadedId, file.name);
     },
-    [canvasId, allowance, startJob],
+    [canvasId, allowance, startJob, loadAllowance],
   );
 
   const handleFile = useCallback(
@@ -299,9 +304,10 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
   );
 
   const busy = phase.kind !== 'idle';
-  const blockedByPlan = allowance !== null && !allowance.fileUploadEnabled;
+  const blockedByPlan = allowance !== null && audioNotIncluded(allowance);
+  const importsUsedUp = allowance !== null && audioImportsUsedUp(allowance);
   const needsKey = allowance !== null && allowance.keySource === null;
-  const canUpload = !isViewer && allowance !== null && !blockedByPlan && !needsKey && !busy;
+  const canUpload = !isViewer && allowance !== null && !blockedByPlan && !importsUsedUp && !needsKey && !busy;
 
   return createPortal(
     <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -368,7 +374,8 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
           </section>
 
           {/* Upload */}
-          {!isViewer && allowance && !blockedByPlan && (
+          {!isViewer && allowance && importsUsedUp && <AudioUpgradePrompt allowance={allowance} />}
+          {!isViewer && allowance && !blockedByPlan && !importsUsedUp && (
             <section aria-labelledby="transcription-upload-heading" className="space-y-3">
               <h3 id="transcription-upload-heading" className="text-sm font-semibold text-gray-800 dark:text-gray-200">
                 Upload a recording
@@ -424,6 +431,12 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       MP3, WAV, M4A, MP4, OGG, WEBM or FLAC, up to {allowance.maxUploadMb} MB.
                     </p>
+                    {!allowance.fileUploadEnabled && allowance.maxAudioImports !== null && (
+                      <p className="text-xs text-gray-600 dark:text-gray-300" data-testid="audio-trial-note">
+                        Your {PLAN_NAMES[allowance.plan] ?? allowance.plan} plan includes {allowance.maxAudioImports}{' '}
+                        recording. Deleting it does not add another.
+                      </p>
+                    )}
                     {allowance.plan === 'free' && (
                       <p className="text-xs text-amber-800 dark:text-amber-200" data-testid="free-word-limit-note">
                         Free plan transcripts hold up to {FREE_WORD_LIMIT.toLocaleString()} words (about 60 minutes of
@@ -648,10 +661,46 @@ function StatusBadge({ status, added }: { status: JobRow['status']; added: boole
   return <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
 }
 
+/** True when the plan has no audio import at all (not even a trial file). */
+function audioNotIncluded(a: Allowance): boolean {
+  return !a.fileUploadEnabled && !((a.maxAudioImports ?? 0) > 0);
+}
+
+/** True when a limited plan's recordings have all been imported. */
+function audioImportsUsedUp(a: Allowance): boolean {
+  return (
+    !audioNotIncluded(a) &&
+    !a.fileUploadEnabled &&
+    a.maxAudioImports !== null &&
+    a.audioImportsUsed >= a.maxAudioImports
+  );
+}
+
+function AudioUpgradePrompt({ allowance }: { allowance: Allowance }) {
+  const planName = PLAN_NAMES[allowance.plan] ?? allowance.plan;
+  return (
+    <section
+      aria-labelledby="audio-upgrade-heading"
+      className="rounded-lg bg-indigo-50 p-3 text-sm text-indigo-900 dark:bg-indigo-900/20 dark:text-indigo-200"
+      data-testid="audio-upgrade-prompt"
+    >
+      <h3 id="audio-upgrade-heading" className="font-medium">
+        You have used the recording included in the {planName} plan
+      </h3>
+      <p className="mt-1">
+        Student, Pro and Team can import as many recordings as you need.{' '}
+        <a href="/pricing" className="font-medium underline">
+          Compare plans
+        </a>
+      </p>
+    </section>
+  );
+}
+
 function AllowancePanel({ allowance, onConnect }: { allowance: Allowance; onConnect: () => void }) {
   const planName = PLAN_NAMES[allowance.plan] ?? allowance.plan;
   const box = 'rounded-lg p-3 text-sm';
-  if (!allowance.fileUploadEnabled) {
+  if (audioNotIncluded(allowance)) {
     return (
       <div
         className={`${box} bg-indigo-50 text-indigo-900 dark:bg-indigo-900/20 dark:text-indigo-200`}

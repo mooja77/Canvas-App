@@ -8,6 +8,7 @@ const { mockPrisma } = vi.hoisted(() => {
     user: {
       findUnique: vi.fn(),
       updateMany: vi.fn(),
+      update: vi.fn(),
     },
     subscription: {
       findUnique: vi.fn(),
@@ -193,6 +194,9 @@ describe('Upload and QDPX integration tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Accepting a file now counts it on the account inside a transaction (utils/audioImports.ts).
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => unknown) => cb(mockPrisma));
+    mockPrisma.user.update.mockResolvedValue({});
     jwt = signUserToken(userId, 'researcher', 'pro');
     app = createApp();
     mockPrisma.user.findUnique.mockResolvedValue({ ...mockUser });

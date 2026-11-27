@@ -343,7 +343,9 @@ describe('PricingPage comparison table vs the enforced plan limits', () => {
 
   it('offers own-key transcription on exactly the tiers that can upload audio, and no included hours yet', () => {
     const row = cells('Audio transcription (with your own OpenAI key)');
-    TIERS.forEach((tier, i) => expect(row[i]).toBe(tick(PLAN_LIMITS[tier].fileUploadEnabled)));
+    // Free includes one file; every paid tier that can upload is unlimited.
+    expect(row[0]).toBe('1 file');
+    TIERS.slice(1).forEach((tier, i) => expect(row[i + 1]).toBe(tick(PLAN_LIMITS[tier].fileUploadEnabled)));
     // No server OpenAI key in production yet: included minutes are not sold.
     expect(document.body.textContent ?? '').not.toMatch(/hrs/);
   });
