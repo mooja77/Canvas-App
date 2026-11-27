@@ -12,6 +12,19 @@ test('desktop hero puts the workspace beside the heading and links to support', 
   await expect(workspace).toBeVisible();
   await expect(workspace).toHaveAttribute('fetchpriority', 'high');
   await workspace.evaluate((image: HTMLImageElement) => image.decode());
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+
+  const consentBanner = page.locator('#cookie-consent-banner');
+  await expect(consentBanner).toBeVisible();
+  await consentBanner.evaluate(async (element) => {
+    await Promise.all(element.getAnimations().map((animation) => animation.finished));
+  });
+  const start = hero.getByRole('button', { name: 'Start free', exact: true });
+  const startBox = (await start.boundingBox())!;
+  const consentBox = (await consentBanner.boundingBox())!;
+  expect(startBox.y + startBox.height).toBeLessThan(consentBox.y);
 
   const headingBox = (await heading.boundingBox())!;
   const workspaceBox = (await workspace.boundingBox())!;
