@@ -118,4 +118,15 @@ describe('AiSetupBanner', () => {
       expect(screen.queryByText(CTA)).not.toBeInTheDocument();
     });
   });
+
+  it('opens the no-key worked AI coding sample modal and lets users proceed to connect their own key', () => {
+    render(<AiSetupBanner />);
+    fireEvent.click(screen.getByRole('button', { name: /See worked sample \(no key\)/i }));
+    expect(screen.getByRole('dialog', { name: 'See how AI coding works' })).toBeInTheDocument();
+    expect(screen.getByTestId('ai-coding-sample')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Connect your AI key to code your own transcripts/i }));
+    expect(screen.queryByRole('dialog', { name: 'See how AI coding works' })).not.toBeInTheDocument();
+    expect(aiState.openWizard).toHaveBeenCalled();
+  });
 });
