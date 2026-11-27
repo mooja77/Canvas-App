@@ -1,14 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useChatStore } from './chatStore';
 
-// Mock the API module
-vi.mock('../services/api', () => ({
-  canvasApi: {
-    getChatHistory: vi.fn(),
-    chatQuery: vi.fn(),
-    embedCanvasData: vi.fn(),
-  },
-}));
+// Mock the API module while preserving apiErrorMessage
+vi.mock('../services/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../services/api')>();
+  return {
+    ...actual,
+    canvasApi: {
+      getChatHistory: vi.fn(),
+      chatQuery: vi.fn(),
+      embedCanvasData: vi.fn(),
+    },
+  };
+});
 
 import { canvasApi } from '../services/api';
 
@@ -121,13 +125,13 @@ describe('chatStore', () => {
     });
 
     it('sets error on API failure', async () => {
-      mockChatQuery.mockRejectedValue(new Error('Network error'));
+      mockChatQuery.mockRejectedValue(new Error('Network Error'));
 
       await useChatStore.getState().sendMessage('c1', 'Hi');
 
       const state = useChatStore.getState();
       expect(state.loading).toBe(false);
-      expect(state.error).toBe('Network error');
+      expect(state.error).toMatch(/no internet connection/i);
       // User message should still be there from optimistic add
       expect(state.messages).toHaveLength(1);
     });
@@ -164,7 +168,7 @@ describe('chatStore', () => {
 
       await useChatStore.getState().loadHistory('c1');
 
-      expect(useChatStore.getState().error).toBe('Server down');
+      expect(useChatStore.getState().error).toBe('Could not load chat history. Try again.');
     });
   });
 
@@ -193,7 +197,7 @@ describe('chatStore', () => {
       await useChatStore.getState().indexCanvas('c1');
 
       expect(useChatStore.getState().indexing).toBe(false);
-      expect(useChatStore.getState().error).toBe('Index failed');
+      expect(useChatStore.getState().error).toBe('Could not index canvas data. Try again.');
     });
   });
 

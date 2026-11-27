@@ -17,7 +17,7 @@ test.describe('Browser journey', () => {
     const panel = page.locator('#auth-panel-register');
     await panel.getByPlaceholder('Dr. Jane Doe').fill('Estate UI Researcher');
     await panel.getByPlaceholder('you@university.edu').fill(email);
-    await panel.getByPlaceholder('At least 8 characters').fill(testPassword());
+    await panel.getByPlaceholder('At least 12 characters').fill(testPassword());
     await panel.locator('button[type="submit"]').click();
     await page.waitForURL(/\/(canvas|onboarding|welcome)/, { timeout: 30_000 });
 

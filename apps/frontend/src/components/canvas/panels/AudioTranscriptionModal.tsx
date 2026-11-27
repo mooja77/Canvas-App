@@ -69,6 +69,37 @@ const LANGUAGES: [string, string][] = [
 ];
 const PLAN_NAMES: Record<string, string> = { free: 'Free', student: 'Student', pro: 'Pro', team: 'Team' };
 
+const FREE_WORD_LIMIT = 10000;
+const FREE_WARN_DURATION_SECONDS = 55 * 60;
+
+function readAudioDurationSeconds(file: File): Promise<number | null> {
+  if (typeof window === 'undefined' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+    return Promise.resolve(null);
+  }
+  return new Promise((resolve) => {
+    const audio = document.createElement('audio');
+    const url = URL.createObjectURL(file);
+    let settled = false;
+    const finish = (value: number | null) => {
+      if (settled) return;
+      settled = true;
+      URL.revokeObjectURL(url);
+      resolve(value);
+    };
+    const timer = window.setTimeout(() => finish(null), 1500);
+    audio.preload = 'metadata';
+    audio.onloadedmetadata = () => {
+      window.clearTimeout(timer);
+      finish(Number.isFinite(audio.duration) ? audio.duration : null);
+    };
+    audio.onerror = () => {
+      window.clearTimeout(timer);
+      finish(null);
+    };
+    audio.src = url;
+  });
+}
+
 type Phase = { kind: 'idle' } | { kind: 'uploading'; pct: number; name: string } | { kind: 'starting'; name: string };
 
 export default function AudioTranscriptionModal({ onClose }: { onClose: () => void }) {
@@ -91,6 +122,7 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
   const [language, setLanguage] = useState('');
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [uploadError, setUploadError] = useState<{ message: string; needsKey: boolean } | null>(null);
+  const [longFileWarning, setLongFileWarning] = useState<{ file: File; minutes: number } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [titles, setTitles] = useState<Record<string, string>>({});
   const [accepting, setAccepting] = useState<string | null>(null);
@@ -184,17 +216,10 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
     [canvasId, language, loadJobs],
   );
 
-  const handleFile = useCallback(
+  const uploadAndStart = useCallback(
     async (file: File) => {
       if (!canvasId || !allowance) return;
-      setUploadError(null);
-      if (file.size > allowance.maxUploadMb * 1024 * 1024) {
-        setUploadError({
-          message: `${file.name} is ${formatBytes(file.size)}. The limit is ${allowance.maxUploadMb} MB — split or compress the recording first.`,
-          needsKey: false,
-        });
-        return;
-      }
+      setLongFileWarning(null);
       setPhase({ kind: 'uploading', pct: 0, name: file.name });
       let uploadedId: string;
       try {
@@ -218,6 +243,30 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
     [canvasId, allowance, startJob, loadAllowance],
   );
 
+  const handleFile = useCallback(
+    async (file: File) => {
+      if (!canvasId || !allowance) return;
+      setUploadError(null);
+      setLongFileWarning(null);
+      if (file.size > allowance.maxUploadMb * 1024 * 1024) {
+        setUploadError({
+          message: `${file.name} is ${formatBytes(file.size)}. The limit is ${allowance.maxUploadMb} MB — split or compress the recording first.`,
+          needsKey: false,
+        });
+        return;
+      }
+      if (allowance.plan === 'free') {
+        const duration = await readAudioDurationSeconds(file);
+        if (duration !== null && duration > FREE_WARN_DURATION_SECONDS) {
+          setLongFileWarning({ file, minutes: Math.round(duration / 60) });
+          return;
+        }
+      }
+      await uploadAndStart(file);
+    },
+    [canvasId, allowance, uploadAndStart],
+  );
+
   const retry = useCallback(
     async (job: JobRow) => {
       const fileUploadId = fileByJob.current[job.id] ?? job.fileUploadId;
@@ -236,9 +285,13 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
       setAccepting(job.id);
       try {
         const title = (titles[job.id] ?? job.fileName.replace(/\.[^.]+$/, '')).trim();
-        await canvasApi.acceptTranscription(canvasId, job.id, title || undefined);
+        const res = await canvasApi.acceptTranscription(canvasId, job.id, title || undefined);
         await refreshCanvas();
-        toast.success('Transcript added to the canvas');
+        if (res.data?.trimmed && typeof res.data?.maxWords === 'number') {
+          toast.success(`Added the first ${res.data.maxWords.toLocaleString()} words (Free plan limit).`);
+        } else {
+          toast.success('Transcript added to the canvas');
+        }
         setAnnouncement(`${title || job.fileName} was added to the canvas as a transcript.`);
         await loadJobs();
       } catch (err) {
@@ -384,6 +437,13 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
                         recording. Deleting it does not add another.
                       </p>
                     )}
+                    {allowance.plan === 'free' && (
+                      <p className="text-xs text-amber-800 dark:text-amber-200" data-testid="free-word-limit-note">
+                        Free plan transcripts hold up to {FREE_WORD_LIMIT.toLocaleString()} words (about 60 minutes of
+                        speech). Longer recordings are trimmed to the first {FREE_WORD_LIMIT.toLocaleString()} words
+                        when added to your canvas.
+                      </p>
+                    )}
                   </>
                 )}
                 <input
@@ -419,6 +479,35 @@ export default function AudioTranscriptionModal({ onClose }: { onClose: () => vo
                   ))}
                 </select>
               </div>
+              {longFileWarning && (
+                <div
+                  role="alert"
+                  data-testid="free-long-recording-warning"
+                  className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-100"
+                >
+                  <p>
+                    {longFileWarning.file.name} is about {longFileWarning.minutes} minutes long, which may exceed the
+                    Free plan&apos;s {FREE_WORD_LIMIT.toLocaleString()}-word transcript limit. Only the first{' '}
+                    {FREE_WORD_LIMIT.toLocaleString()} words will be kept on Free.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn-primary px-3 py-1.5 text-xs"
+                      onClick={() => uploadAndStart(longFileWarning.file)}
+                    >
+                      Upload anyway
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary px-3 py-1.5 text-xs"
+                      onClick={() => setLongFileWarning(null)}
+                    >
+                      Choose a shorter file
+                    </button>
+                  </div>
+                </div>
+              )}
               {uploadError && (
                 <div
                   role="alert"

@@ -164,6 +164,7 @@ for (const width of [1280, 820, 390]) {
           expect(box.height).toBeGreaterThanOrEqual(44);
           expect(box.width).toBeGreaterThanOrEqual(44);
           await remove.click();
+          await page.getByRole('button', { name: 'Remove member', exact: true }).click();
         } else {
           await page.getByRole('button', { name: 'Delete Team', exact: true }).click();
           await page.getByRole('button', { name: 'Delete Forever', exact: true }).click();
