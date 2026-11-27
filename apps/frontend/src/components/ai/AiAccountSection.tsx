@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { aiSettingsApi } from '../../services/api';
 import { useAiConfigStore } from '../../stores/aiConfigStore';
+import ConfirmDialog from '../canvas/ConfirmDialog';
 import { formatUsd, providerGuide } from './aiProviders';
 
 interface Usage {
@@ -32,6 +33,7 @@ export default function AiAccountSection() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState<'remove' | 'share' | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const openWizard = useAiConfigStore((s) => s.openWizard);
   const wizardOpen = useAiConfigStore((s) => s.wizard.open);
   const fetchConfig = useAiConfigStore((s) => s.fetchConfig);
@@ -54,8 +56,12 @@ export default function AiAccountSection() {
     if (!wizardOpen) load();
   }, [wizardOpen, load]);
 
-  const remove = async () => {
-    if (!window.confirm('Remove your AI key? AI features and transcription stop until you connect one again.')) return;
+  const remove = () => {
+    setConfirmRemove(true);
+  };
+
+  const performRemove = async () => {
+    setConfirmRemove(false);
     setBusy('remove');
     try {
       await aiSettingsApi.deleteSettings();
@@ -203,6 +209,15 @@ export default function AiAccountSection() {
             </div>
           )}
         </div>
+      )}
+      {confirmRemove && (
+        <ConfirmDialog
+          title="Remove AI key?"
+          message="AI features and transcription stop until you connect a key again."
+          confirmLabel="Remove key"
+          onConfirm={performRemove}
+          onCancel={() => setConfirmRemove(false)}
+        />
       )}
     </div>
   );

@@ -58,10 +58,9 @@ export default function ImportNarrativesModal({ onClose }: Props) {
       } else {
         toast.success(`Found ${data.length} narrative responses`);
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      const msg = err.response?.data?.error || err.message || 'Connection failed';
-      toast.error(`Failed to connect: ${msg}`);
+    } catch (err: unknown) {
+      const msg = apiErrorMessage(err, 'Could not connect. Check the URL and dashboard code and try again.');
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

@@ -23,6 +23,7 @@ import '../lib/storage-local.js'; // register local fallback
 import { createJob } from '../lib/jobs.js';
 import { registerJobHandler } from '../lib/jobs.js';
 import { transcribeAudio } from '../utils/transcription.js';
+import { trimTranscriptToWordLimit } from '../utils/transcriptTrim.js';
 import { isValidSignature } from '../utils/magicBytes.js';
 import { resolveTranscriptionKey, transcriptionUsageOnKey, WHISPER_USD_PER_MINUTE } from '../utils/aiKeys.js';
 import { friendlyProviderError } from '../lib/aiKeyCheck.js';
@@ -638,25 +639,34 @@ uploadRoutes.post(
           ? requestedTitle.trim()
           : job.fileUpload.originalName.replace(/\.[^.]+$/, '').slice(0, 200);
 
-      const maxWords = getPlanLimits(await resolveRequestPlan(req)).maxWordsPerTranscript;
+      const plan = await resolveRequestPlan(req);
+      const maxWords = getPlanLimits(plan).maxWordsPerTranscript;
       const words = job.resultText.trim().split(/\s+/).filter(Boolean).length;
+      let content = job.resultText;
+      let trimmed = false;
       if (maxWords !== Infinity && words > maxWords) {
-        return res.status(403).json({
-          success: false,
-          error: `This transcription has ${words.toLocaleString()} words; your plan allows ${maxWords.toLocaleString()} words per transcript. Split the recording and transcribe it in parts.`,
-          code: 'PLAN_LIMIT_EXCEEDED',
-          limit: 'maxWordsPerTranscript',
-          current: words,
-          max: maxWords,
-          upgrade: false,
-        });
+        if (plan === 'free') {
+          const result = trimTranscriptToWordLimit(job.resultText, maxWords);
+          content = result.text;
+          trimmed = result.trimmed;
+        } else {
+          return res.status(403).json({
+            success: false,
+            error: `This transcription has ${words.toLocaleString()} words; your plan allows ${maxWords.toLocaleString()} words per transcript. Split the recording and transcribe it in parts.`,
+            code: 'PLAN_LIMIT_EXCEEDED',
+            limit: 'maxWordsPerTranscript',
+            current: words,
+            max: maxWords,
+            upgrade: false,
+          });
+        }
       }
 
       const transcript = await prisma.canvasTranscript.create({
         data: {
           canvasId: req.params.id,
           title,
-          content: job.resultText,
+          content,
           fileUploadId: job.fileUploadId,
           timestamps: job.resultSegments,
           sourceType: 'transcription',
@@ -666,7 +676,11 @@ uploadRoutes.post(
 
       await observeSetupStep(getAuthUserId(req), req.params.id, 'first-transcript');
 
-      res.json({ success: true, data: transcript });
+      res.json({
+        success: true,
+        data: transcript,
+        ...(trimmed ? { trimmed: true, originalWordCount: words, maxWords } : {}),
+      });
     } catch (err) {
       next(err);
     }

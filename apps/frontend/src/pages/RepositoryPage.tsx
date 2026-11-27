@@ -4,6 +4,7 @@ import { canvasApi } from '../services/api';
 import toast from 'react-hot-toast';
 import { usePageMeta } from '../hooks/usePageMeta';
 import NeedHelpLink from '../components/NeedHelpLink';
+import ConfirmDialog from '../components/canvas/ConfirmDialog';
 
 interface Repository {
   id: string;
@@ -155,8 +156,16 @@ export default function RepositoryPage() {
     }
   };
 
-  const handleDeleteRepo = async (id: string) => {
-    if (!confirm('Delete this repository and all its insights?')) return;
+  const [pendingDeleteRepoId, setPendingDeleteRepoId] = useState<string | null>(null);
+
+  const handleDeleteRepo = (id: string) => {
+    setPendingDeleteRepoId(id);
+  };
+
+  const confirmDeleteRepo = async () => {
+    if (!pendingDeleteRepoId) return;
+    const id = pendingDeleteRepoId;
+    setPendingDeleteRepoId(null);
     try {
       await canvasApi.deleteRepository(id);
       toast.success('Repository deleted');
@@ -591,6 +600,15 @@ export default function RepositoryPage() {
           </div>
         </div>
       </div>
+      {pendingDeleteRepoId && (
+        <ConfirmDialog
+          title="Delete repository?"
+          message="Delete this repository and all its insights? This cannot be undone."
+          confirmLabel="Delete repository"
+          onConfirm={confirmDeleteRepo}
+          onCancel={() => setPendingDeleteRepoId(null)}
+        />
+      )}
     </main>
   );
 }

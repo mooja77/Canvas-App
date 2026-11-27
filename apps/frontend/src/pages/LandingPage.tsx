@@ -165,7 +165,7 @@ export default function LandingPage() {
             {
               n: '1.0',
               title: 'Import',
-              body: 'Bring transcripts, field notes, and consent letters into one canvas. PDF, DOCX, audio, video, or QDPX projects from NVivo and ATLAS.ti.',
+              body: 'Bring transcripts, field notes, and consent letters into one canvas (PDF, DOCX, text, or QDPX projects from NVivo and ATLAS.ti). Paid plans add audio transcription with your own OpenAI key.',
             },
             {
               n: '2.0',
@@ -185,7 +185,7 @@ export default function LandingPage() {
             {
               n: '5.0',
               title: 'Export',
-              body: "Out to QDPX for NVivo and ATLAS.ti. Or a Word report for your supervisor. Or to your institution's preservation archive.",
+              body: 'Export to QDPX for NVivo and ATLAS.ti, CSV, or Word and Excel reports for your supervisor.',
             },
           ].map((step) => (
             <li key={step.n} className="flex flex-col gap-3">

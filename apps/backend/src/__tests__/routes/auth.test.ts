@@ -125,7 +125,7 @@ describe('Auth routes', () => {
 
       const res = await request(app)
         .post('/api/auth/signup')
-        .send({ email: 'test@example.com', password: 'password123', name: 'Test User' });
+        .send({ email: 'test@example.com', password: 'password1234', name: 'Test User' });
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
@@ -135,7 +135,7 @@ describe('Auth routes', () => {
       expect(res.body.data.user.plan).toBe('free');
     });
 
-    it('rejects duplicate email with 409', async () => {
+    it('rejects duplicate email without disclosing account existence', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'existing-user',
         email: 'test@example.com',
@@ -143,11 +143,12 @@ describe('Auth routes', () => {
 
       const res = await request(app)
         .post('/api/auth/signup')
-        .send({ email: 'test@example.com', password: 'password123', name: 'Test User' });
+        .send({ email: 'test@example.com', password: 'password1234', name: 'Test User' });
 
-      expect(res.status).toBe(409);
+      expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
-      expect(res.body.error).toMatch(/already exists/i);
+      expect(res.body.error).not.toMatch(/already exists/i);
+      expect(res.body.error).toMatch(/could not create account/i);
     });
 
     it('rejects short password', async () => {
@@ -156,13 +157,13 @@ describe('Auth routes', () => {
         .send({ email: 'test@example.com', password: 'short', name: 'Test User' });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/8 characters/);
+      expect(res.body.error).toMatch(/12 characters/);
     });
 
     it('rejects missing name', async () => {
       const res = await request(app)
         .post('/api/auth/signup')
-        .send({ email: 'test@example.com', password: 'password123' });
+        .send({ email: 'test@example.com', password: 'password1234' });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/name/i);
@@ -188,7 +189,7 @@ describe('Auth routes', () => {
       const before = Date.now();
       await request(app)
         .post('/api/auth/signup')
-        .send({ email: 'trial@example.com', password: 'password123', name: 'Trial User' });
+        .send({ email: 'trial@example.com', password: 'password1234', name: 'Trial User' });
       const after = Date.now();
 
       expect(userCreate).toHaveBeenCalledTimes(1);
@@ -348,7 +349,7 @@ describe('Auth routes', () => {
       const res = await request(app)
         .put('/api/auth/change-password')
         .set('Authorization', `Bearer ${jwt}`)
-        .send({ currentPassword: 'oldpass123', newPassword: 'newpass1234' });
+        .send({ currentPassword: 'oldpass123', newPassword: 'newpassword123' });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -372,7 +373,7 @@ describe('Auth routes', () => {
       const res = await request(app)
         .put('/api/auth/change-password')
         .set('Authorization', `Bearer ${jwt}`)
-        .send({ currentPassword: 'wrongpass', newPassword: 'newpass1234' });
+        .send({ currentPassword: 'wrongpass', newPassword: 'newpassword123' });
 
       expect(res.status).toBe(401);
       expect(res.body.error).toMatch(/incorrect/i);

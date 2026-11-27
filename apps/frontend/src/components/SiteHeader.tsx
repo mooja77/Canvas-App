@@ -92,8 +92,9 @@ export default function SiteHeader({ hideAuthCtas = false }: SiteHeaderProps) {
         </div>
 
         <button
+          type="button"
           onClick={() => setMobileMenuOpen((v) => !v)}
-          className="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+          className="md:hidden inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
           aria-label="Toggle menu"
           aria-expanded={mobileMenuOpen}
         >
