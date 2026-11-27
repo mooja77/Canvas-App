@@ -163,4 +163,19 @@ describe('ConnectAiWizard', () => {
     fireEvent.keyDown(document.body, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('step 1 lets users explore the no-key worked AI coding sample on demo data and jump to provider setup', () => {
+    renderWizard();
+    expect(screen.queryByTestId('ai-coding-sample')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /See worked sample \(no key\)/i }));
+    expect(screen.getByTestId('ai-coding-sample')).toBeInTheDocument();
+    expect(screen.getByText(/Worked AI coding sample \(demo data, no key used\)/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Accept Identity transition' }));
+    expect(screen.getByTestId('ai-sample-summary')).toHaveTextContent('1 of 3 accepted');
+
+    fireEvent.click(screen.getByRole('button', { name: /Connect your AI key to code your own transcripts/i }));
+    expect(step()).toHaveTextContent('Choose a provider');
+  });
 });

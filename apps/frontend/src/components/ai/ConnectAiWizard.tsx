@@ -16,6 +16,7 @@ import {
   providerGuide,
   type AiProviderId,
 } from './aiProviders';
+import AiCodingSample from './AiCodingSample';
 
 /**
  * "Connect your AI account" — a step-by-step guide to creating a key with the
@@ -66,6 +67,7 @@ export default function ConnectAiWizard({ onClose, reason, initialProvider, onCo
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSample, setShowSample] = useState(false);
   const provider = providerGuide(providerId);
   const transcriptionReason = Boolean(reason && /transcri/i.test(reason));
 
@@ -231,7 +233,16 @@ export default function ConnectAiWizard({ onClose, reason, initialProvider, onCo
                   {OPENAI_PRICES_CHECKED}. Prices can change; that page is always the latest.
                 </p>
               </div>
-              <div className="flex justify-end">
+              {showSample && <AiCodingSample onConnectKey={() => go(1)} />}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary px-3 py-2 text-sm"
+                  aria-expanded={showSample}
+                  onClick={() => setShowSample((prev) => !prev)}
+                >
+                  {showSample ? 'Hide worked sample' : 'See worked sample (no key)'}
+                </button>
                 <button type="button" className="btn-primary px-4 py-2 text-sm" onClick={() => go(1)}>
                   Get started
                 </button>
