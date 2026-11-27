@@ -54,15 +54,15 @@ export default function LandingPage() {
   return (
     <PageShell>
       {/* ─── 1. Hero ─── */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-12 lg:pb-20">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-12 lg:py-16">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center lg:gap-10">
           <div className="max-w-4xl">
             <HairlineRule className="mb-6" />
             <Eyebrow className="mb-5">Qualitative coding software</Eyebrow>
-            <DisplayHeading size="xl" className="mb-7">
+            <DisplayHeading size="xl" className="mb-7 lg:!text-[72px]">
               Code interview transcripts on a visual canvas.
             </DisplayHeading>
-            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl leading-relaxed mb-8">
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl leading-relaxed mb-8 lg:mb-6">
               QualCanvas is for students, academics and research teams who analyze interviews. Highlight a passage and
               tag it with a code. Then drag codes into themes and write memos beside them, in your browser.
             </p>
