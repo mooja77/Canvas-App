@@ -41,6 +41,10 @@ describe('current, safe beginner guide', () => {
       expect(image).not.toHaveClass('w-full');
       expect(image.style.width).toBe(`${image.getAttribute('width')}px`);
       expect(image.style.aspectRatio).toBe(`${image.getAttribute('width')} / ${image.getAttribute('height')}`);
+      expect(image).toHaveAttribute('decoding', 'async');
+      const source = image.parentElement?.querySelector('source[type="image/webp"]');
+      expect(source).not.toBeNull();
+      expect(source?.getAttribute('srcset')).toBe(image.getAttribute('src')?.replace(/\.png$/, '.webp'));
     }
   });
   it('teaches first own coding and the detected five-step home guide without promising automatic analysis', () => {

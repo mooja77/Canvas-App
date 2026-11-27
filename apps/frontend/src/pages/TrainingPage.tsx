@@ -109,6 +109,18 @@ export function TrainingPage() {
               >
                 Browse all videos
               </a>
+              <Link
+                to="/course"
+                className="rounded-lg border border-slate-600 px-5 py-3 text-sm font-semibold text-white hover:border-slate-400"
+                onClick={() =>
+                  trackEvent('training_cta_clicked', {
+                    action: 'open_free_course',
+                    surface: 'training_hero',
+                  })
+                }
+              >
+                Take the free 6-module course
+              </Link>
             </div>
           </div>
           <dl className="grid grid-cols-2 gap-3 rounded-2xl border border-slate-700 bg-slate-900/70 p-5">

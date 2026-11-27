@@ -55,6 +55,7 @@ interface NodeContextMenuProps {
   onToggleCollapse: () => void;
   onResetSize: () => void;
   onSetNodeColor?: (nodeId: string, color: string) => void;
+  onConnectNode?: (nodeId: string) => void;
   onClose: () => void;
 }
 
@@ -79,6 +80,7 @@ export default function NodeContextMenu({
   onToggleCollapse,
   onResetSize,
   onSetNodeColor,
+  onConnectNode,
   onClose,
 }: NodeContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -539,6 +541,23 @@ export default function NodeContextMenu({
           <button onClick={handleRefresh} className={btnClass}>
             <Icon d={icons.refresh} />
             Refresh
+          </button>
+          {separator}
+        </>
+      )}
+
+      {/* ─── Connect node without dragging (codes & cases) ─── */}
+      {onConnectNode && (nodeType === 'question' || nodeType === 'case') && (
+        <>
+          <button
+            onClick={() => {
+              onConnectNode(nodeId);
+              onClose();
+            }}
+            className={btnClass}
+          >
+            <Icon d={icons.link} />
+            Connect to node...
           </button>
           {separator}
         </>

@@ -40,6 +40,7 @@ const MethodologyChapterPage = lazyRoute(() => import('./pages/MethodologyChapte
 const TrainingPage = lazyRoute(() =>
   import('./pages/TrainingPage').then((module) => ({ default: module.TrainingPage })),
 );
+const CoursePage = lazyRoute(() => import('./pages/CoursePage'));
 const CanvasPage = lazyRoute(() => import('./pages/CanvasPage'));
 const AccountPage = lazyRoute(() => import('./pages/AccountPage'));
 const RepositoryPage = lazyRoute(() => import('./pages/RepositoryPage'));
@@ -123,6 +124,7 @@ export default function App() {
                   "Try free" click got. public/_redirects catches it at the edge; this
                   catches in-app navigation and any host that is not Cloudflare. */}
                 <Route path="/register" element={<Navigate to="/login?mode=register" replace />} />
+                <Route path="/signup" element={<Navigate to="/login?mode=register" replace />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/cite" element={<CitePage />} />
                 <Route path="/colophon" element={<ColophonPage />} />
@@ -218,6 +220,14 @@ export default function App() {
                   element={
                     <Suspense fallback={<PageSkeleton />}>
                       <TrainingPage />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/course"
+                  element={
+                    <Suspense fallback={<PageSkeleton />}>
+                      <CoursePage />
                     </Suspense>
                   }
                 />

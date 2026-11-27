@@ -63,6 +63,34 @@ describe('ConnectAiWizard', () => {
     expect(pricing).toHaveAttribute('target', '_blank');
   });
 
+  it('step 1 and step 4 disclose transcript text provider and OpenAI-only audio accurately', async () => {
+    renderWizard();
+    const notice = screen.getByTestId('connect-ai-data-disclosure');
+    expect(notice).toHaveTextContent(
+      /transcript text you choose is sent to your connected provider \(OpenAI, Anthropic, or Google\)/i,
+    );
+    expect(notice).toHaveTextContent(/Audio for transcription is sent to OpenAI only/i);
+    expect(notice).not.toHaveTextContent(/ethics or IRB/i);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Get started' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Anthropic/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'I have my key' }));
+    const anthropicNotice = screen.getByTestId('connect-ai-provider-disclosure');
+    expect(anthropicNotice).toHaveTextContent(/transcript text you choose is sent to Anthropic/i);
+    expect(anthropicNotice).not.toHaveTextContent(/audio/i);
+  });
+
+  it('step 4 mentions audio only when OpenAI is selected', () => {
+    renderWizard({ initialProvider: 'openai' });
+    fireEvent.click(screen.getByRole('button', { name: 'Get started' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'I have my key' }));
+    expect(screen.getByTestId('connect-ai-provider-disclosure')).toHaveTextContent(
+      /transcript text or audio you choose is sent to OpenAI/i,
+    );
+  });
+
   it('step 3 gives numbered steps with links to the provider, including a spending limit', () => {
     renderWizard();
     fireEvent.click(screen.getByRole('button', { name: 'Get started' }));
@@ -134,5 +162,20 @@ describe('ConnectAiWizard', () => {
     const { onClose } = renderWizard();
     fireEvent.keyDown(document.body, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('step 1 lets users explore the no-key worked AI coding sample on demo data and jump to provider setup', () => {
+    renderWizard();
+    expect(screen.queryByTestId('ai-coding-sample')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /See worked sample \(no key\)/i }));
+    expect(screen.getByTestId('ai-coding-sample')).toBeInTheDocument();
+    expect(screen.getByText(/Worked AI coding sample \(demo data, no key used\)/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Accept Identity transition' }));
+    expect(screen.getByTestId('ai-sample-summary')).toHaveTextContent('1 of 3 accepted');
+
+    fireEvent.click(screen.getByRole('button', { name: /Connect your AI key to code your own transcripts/i }));
+    expect(step()).toHaveTextContent('Choose a provider');
   });
 });

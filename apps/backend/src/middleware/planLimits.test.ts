@@ -117,10 +117,23 @@ describe('plan-gate refusal copy is derived from PLAN_LIMITS', () => {
     expect(message).toContain('Team');
   });
 
-  it('names Student for auto-code, ethics and AI', async () => {
+  it('excludes Solo from auto-code, ethics and AI refusals when Solo is not enabled, and includes it when enabled', async () => {
+    delete process.env.STRIPE_SOLO_MONTHLY_PRICE_ID;
+    delete process.env.SOLO_PLAN_ENABLED;
     for (const mw of [checkAutoCode(), checkEthicsAccess(), checkAiAccess()]) {
       const { res } = await runMiddleware(mw, 'free');
       expect(bodyOf(res).error).toMatch(/Student, Pro, and Team/);
+      expect(bodyOf(res).error).not.toContain('Solo');
+    }
+
+    process.env.STRIPE_SOLO_MONTHLY_PRICE_ID = 'price_solo_monthly_test';
+    try {
+      for (const mw of [checkAutoCode(), checkEthicsAccess(), checkAiAccess()]) {
+        const { res } = await runMiddleware(mw, 'free');
+        expect(bodyOf(res).error).toMatch(/Student, Solo, Pro, and Team/);
+      }
+    } finally {
+      delete process.env.STRIPE_SOLO_MONTHLY_PRICE_ID;
     }
   });
 

@@ -178,14 +178,15 @@ describe('User auth integration tests', () => {
       expect(res.body.data.user.plan).toBe('free');
     });
 
-    it('rejects duplicate email with 409', async () => {
+    it('rejects duplicate email without disclosing whether the address is registered', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({ id: 'existing', email: 'newuser@example.com' });
 
       const res = await request(app).post('/api/auth/signup').send(validPayload);
 
-      expect(res.status).toBe(409);
+      expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
-      expect(res.body.error).toMatch(/already exists/i);
+      expect(res.body.error).not.toMatch(/already exists/i);
+      expect(res.body.error).toMatch(/could not create account/i);
     });
 
     it('rejects invalid email without @ symbol', async () => {
@@ -232,15 +233,15 @@ describe('User auth integration tests', () => {
       expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
     });
 
-    it('rejects password shorter than 8 characters', async () => {
+    it('rejects password shorter than 12 characters', async () => {
       const res = await request(app).post('/api/auth/signup').send({
         email: 'test@example.com',
-        password: 'short',
+        password: 'tenchars10',
         name: 'Test User',
       });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/8 characters/);
+      expect(res.body.error).toMatch(/12 characters/);
     });
 
     it('rejects missing name', async () => {
@@ -698,7 +699,7 @@ describe('User auth integration tests', () => {
       });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/8 characters/);
+      expect(res.body.error).toMatch(/12 characters/);
     });
 
     it('rejects missing required fields', async () => {

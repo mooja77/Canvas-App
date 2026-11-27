@@ -482,21 +482,21 @@ export default function CrossCaseAnalysisModal({ onClose }: CrossCaseAnalysisMod
                             className="px-2 py-2 text-center border-b border-gray-100 dark:border-gray-700/50 relative group"
                             style={{
                               backgroundColor:
-                                cell.count > 0 ? `rgba(99, 102, 241, ${0.08 + intensity * 0.35})` : undefined,
+                                cell.count > 0 ? `rgba(99, 102, 241, ${0.06 + intensity * 0.14})` : undefined,
                             }}
                           >
                             {cell.count > 0 && (
                               <>
-                                <span className="font-semibold text-gray-700 dark:text-gray-200">{cell.count}</span>
+                                <span className="font-semibold text-gray-900 dark:text-gray-100">{cell.count}</span>
                                 {cell.excerpts.length > 0 && (
                                   <details className="text-left text-xs">
-                                    <summary className="min-h-8 cursor-pointer text-gray-700 dark:text-gray-200">
+                                    <summary className="min-h-8 cursor-pointer text-gray-900 dark:text-gray-100">
                                       Read passages
                                     </summary>
                                     {cell.excerpts.map((ex, i) => (
                                       <p
                                         key={i}
-                                        className="max-w-48 whitespace-normal break-words text-gray-700 dark:text-gray-200"
+                                        className="max-w-48 whitespace-normal break-words text-gray-900 dark:text-gray-100"
                                       >
                                         {ex}
                                       </p>

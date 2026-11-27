@@ -1,4 +1,4 @@
-export type PlanTier = 'free' | 'student' | 'pro' | 'team';
+export type PlanTier = 'free' | 'student' | 'solo' | 'pro' | 'team';
 
 export interface PlanLimits {
   maxCanvases: number;
@@ -16,6 +16,13 @@ export interface PlanLimits {
   aiRequestsPerDay: number;
   fileUploadEnabled: boolean;
   maxStorageMb: number;
+  /**
+   * Audio/video files an account may ever import for transcription. Counted
+   * per account (User.audioImportsUsed) and never handed back when a file is
+   * deleted. Plans with fileUploadEnabled are unlimited. Free allows one, so
+   * a researcher can try transcription on their own OpenAI key before paying.
+   */
+  maxAudioImports: number;
   /** People (coders and viewers) the owner may share one canvas with. */
   maxCollaborators: number;
   /**
@@ -61,6 +68,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: 0,
     fileUploadEnabled: false,
     maxStorageMb: 0,
+    maxAudioImports: 1,
     maxCollaborators: 0,
     maxCoders: 0,
     repositoryEnabled: false,
@@ -100,6 +108,46 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
     fileUploadEnabled: true,
     maxStorageMb: 500,
+    maxAudioImports: Infinity,
+    maxCollaborators: 0,
+    maxCoders: 0,
+    repositoryEnabled: true,
+    integrationsEnabled: false,
+  },
+  // Solo tier ($9.99/mo): for an independent researcher coding a full project
+  // without needing unlimited canvases, share codes, QDPX, or collaborators.
+  // AI runs strictly on the customer's own provider key (never our key).
+  solo: {
+    maxCanvases: 5,
+    maxTranscriptsPerCanvas: Infinity,
+    maxWordsPerTranscript: 50000,
+    maxCodes: Infinity,
+    autoCodeEnabled: true,
+    allowedAnalysisTypes: [
+      'search',
+      'cooccurrence',
+      'matrix',
+      'stats',
+      'comparison',
+      'wordcloud',
+      'cluster',
+      'codingquery',
+      'sentiment',
+      'treemap',
+      'documentportrait',
+      'timeline',
+      'geomap',
+    ],
+    allowedExportFormats: ['csv', 'png', 'html', 'md', 'docx', 'xlsx'],
+    maxShares: 0,
+    ethicsEnabled: true,
+    casesEnabled: true,
+    intercoderEnabled: false,
+    aiEnabled: true,
+    aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
+    fileUploadEnabled: true,
+    maxStorageMb: 500,
+    maxAudioImports: Infinity,
     maxCollaborators: 0,
     maxCoders: 0,
     repositoryEnabled: true,
@@ -135,6 +183,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
     fileUploadEnabled: true,
     maxStorageMb: 500,
+    maxAudioImports: Infinity,
     // A one-person plan (John, 28 Sep 2026): unlimited free viewers, no extra
     // coders. Adding a coder offers the upgrade to Team (utils/seats.ts).
     maxCollaborators: Infinity,
@@ -172,6 +221,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     aiRequestsPerDay: AI_REQUESTS_PER_DAY_FAIR_USE,
     fileUploadEnabled: true,
     maxStorageMb: 5000,
+    maxAudioImports: Infinity,
     maxCollaborators: Infinity,
     maxCoders: Infinity,
     repositoryEnabled: true,
@@ -223,11 +273,12 @@ export function serializePlanLimits(limits: PlanLimits): PlanLimitsJson {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Cheapest → most capable. The order refusal messages list upgrades in. */
-const TIER_ORDER: PlanTier[] = ['free', 'student', 'pro', 'team'];
+const TIER_ORDER: PlanTier[] = ['free', 'student', 'solo', 'pro', 'team'];
 
 export const PLAN_LABELS: Record<PlanTier, string> = {
   free: 'Free',
   student: 'Student',
+  solo: 'Solo',
   pro: 'Pro',
   team: 'Team',
 };
@@ -238,14 +289,30 @@ export function planLabel(plan: string): string {
 }
 
 /**
+ * Solo ($9.99) stays hidden from refusal copy and upgrade suggestions until
+ * its Stripe billing object is configured on the server (`STRIPE_SOLO_MONTHLY_PRICE_ID`
+ * or `SOLO_PLAN_ENABLED=true`).
+ */
+export function isSoloPlanEnabled(): boolean {
+  return (
+    typeof process !== 'undefined' &&
+    Boolean(process.env?.STRIPE_SOLO_MONTHLY_PRICE_ID || process.env?.SOLO_PLAN_ENABLED === 'true')
+  );
+}
+
+function visibleTiers(includeSolo: boolean): PlanTier[] {
+  return includeSolo ? TIER_ORDER : TIER_ORDER.filter((tier) => tier !== 'solo');
+}
+
+/**
  * Tiers whose limits satisfy `has`, in upgrade order.
  *
  * Free is excluded: these lists are only ever rendered inside a refusal, and
  * "available on the Free plan" is never a useful thing to tell someone who was
  * just refused. (A capability Free has cannot produce a refusal anyway.)
  */
-export function plansWith(has: (limits: PlanLimits) => boolean): PlanTier[] {
-  return TIER_ORDER.filter((tier) => tier !== 'free' && has(PLAN_LIMITS[tier]));
+export function plansWith(has: (limits: PlanLimits) => boolean, includeSolo = isSoloPlanEnabled()): PlanTier[] {
+  return visibleTiers(includeSolo).filter((tier) => tier !== 'free' && has(PLAN_LIMITS[tier]));
 }
 
 function joinList(names: string[]): string {
@@ -268,9 +335,9 @@ export function planListPhrase(tiers: PlanTier[]): string {
 export function featureAvailabilityMessage(
   subject: string,
   has: (limits: PlanLimits) => boolean,
-  opts: { plural?: boolean } = {},
+  opts: { plural?: boolean; includeSolo?: boolean } = {},
 ): string {
-  const tiers = plansWith(has);
+  const tiers = plansWith(has, opts.includeSolo);
   const verb = opts.plural ? 'are' : 'is';
   if (tiers.length === 0) {
     // Reachable today: integrationsEnabled is false on every tier because the
@@ -291,8 +358,12 @@ export function formatAllowance(value: number): string {
  * Empty string when no plan offers more, which is itself the useful signal:
  * the caller must then NOT pitch an upgrade.
  */
-export function higherAllowancePhrase(current: number, pick: (limits: PlanLimits) => number): string {
-  const better = TIER_ORDER.filter((tier) => tier !== 'free' && pick(PLAN_LIMITS[tier]) > current);
+export function higherAllowancePhrase(
+  current: number,
+  pick: (limits: PlanLimits) => number,
+  includeSolo = isSoloPlanEnabled(),
+): string {
+  const better = visibleTiers(includeSolo).filter((tier) => tier !== 'free' && pick(PLAN_LIMITS[tier]) > current);
   const groups: { value: number; tiers: PlanTier[] }[] = [];
   for (const tier of better) {
     const value = pick(PLAN_LIMITS[tier]);

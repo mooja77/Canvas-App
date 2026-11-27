@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { waitForAnimations } from './helpers';
 import { randomBytes } from 'node:crypto';
 
 test.use({ storageState: { cookies: [], origins: [] }, serviceWorkers: 'block' });
@@ -156,6 +157,7 @@ test('email fallback and empty research panels recover without an AI key or prov
     await summary.getByRole('button', { name: 'Choose a source' }).click();
     await expect(summary.getByLabel('Transcript or code')).toBeFocused();
     await summary.getByLabel('Transcript or code').selectOption(transcriptId);
+    await waitForAnimations(summary);
     expect(
       (
         await new AxeBuilder({ page })

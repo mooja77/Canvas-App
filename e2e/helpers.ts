@@ -1,4 +1,19 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+
+export async function waitForAnimations(locator: Locator) {
+  // Contrast and geometry depend on ancestor animations as well as the panel's own.
+  await locator.evaluate(async (element) => {
+    const animations = element.getAnimations({ subtree: true });
+    for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+      animations.push(...parent.getAnimations());
+    }
+    await Promise.allSettled(
+      animations
+        .filter((animation) => Number.isFinite(animation.effect?.getComputedTiming().endTime))
+        .map((animation) => animation.finished),
+    );
+  });
+}
 
 const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 3007);
 const API_BASE = `http://127.0.0.1:${BACKEND_PORT}/api`;

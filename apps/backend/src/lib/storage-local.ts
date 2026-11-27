@@ -5,8 +5,9 @@
  */
 
 import fs from 'fs/promises';
-import { createReadStream } from 'fs';
+import { createReadStream, createWriteStream } from 'fs';
 import path from 'path';
+import { pipeline } from 'stream/promises';
 import { fileURLToPath } from 'url';
 import type { StorageProvider, UploadOptions, PresignedUrlOptions } from './storage.js';
 import { setStorageProvider } from './storage.js';
@@ -41,15 +42,11 @@ const localProvider: StorageProvider = {
       return { key: options.key, size: options.body.length };
     }
 
-    // Handle stream
-    const chunks: Buffer[] = [];
+    // Stream directly to disk so large uploads stay constant-memory.
     const stream = options.body as NodeJS.ReadableStream;
-    for await (const chunk of stream) {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    }
-    const buffer = Buffer.concat(chunks);
-    await fs.writeFile(filePath, buffer);
-    return { key: options.key, size: buffer.length };
+    await pipeline(stream, createWriteStream(filePath));
+    const stat = await fs.stat(filePath);
+    return { key: options.key, size: stat.size };
   },
 
   async getUploadUrl(options: PresignedUrlOptions) {

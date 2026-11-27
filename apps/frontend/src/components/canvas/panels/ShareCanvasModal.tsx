@@ -76,6 +76,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
   const shareRead = useRef(0);
   const collaboratorRead = useRef(0);
   const [generating, setGenerating] = useState(false);
+  const [expiresInDays, setExpiresInDays] = useState<number>(30);
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
   const [collaborators, setCollaborators] = useState<CollaboratorInfo[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -212,7 +213,7 @@ export default function ShareCanvasModal({ onClose }: Props) {
     if (!activeCanvasId || !sharesReady || generating) return;
     setGenerating(true);
     try {
-      const res = await canvasApi.shareCanvas(activeCanvasId);
+      const res = await canvasApi.shareCanvas(activeCanvasId, { expiresInDays });
       const newShare = res.data.data;
       setShares((prev) => [newShare, ...prev]);
       toast.success('Share code created');
@@ -381,18 +382,33 @@ export default function ShareCanvasModal({ onClose }: Props) {
 
           <div className="mt-5 border-t border-gray-200 pt-4 dark:border-gray-700">
             <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Share a copy</h4>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Generate a share code that others can use to clone your canvas as a starting point. Clones are independent
-              — changes don&apos;t sync back.
+            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400" data-testid="share-copy-warning">
+              Anyone with this code gets a full independent copy of every transcript, code, and memo on this canvas.
+              Changes do not sync back, and codes expire automatically.
             </p>
 
-            <button
-              onClick={handleGenerate}
-              disabled={generating || !sharesReady}
-              className="btn-primary mt-3 w-full text-sm"
-            >
-              {generating ? 'Generating...' : 'Generate Share Code'}
-            </button>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <label htmlFor="share-expiry-days" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                Code expires in
+              </label>
+              <select
+                id="share-expiry-days"
+                value={expiresInDays}
+                onChange={(e) => setExpiresInDays(Number(e.target.value))}
+                className="input h-9 w-32 text-sm"
+              >
+                <option value={7}>7 days</option>
+                <option value={30}>30 days</option>
+                <option value={90}>90 days</option>
+              </select>
+              <button
+                onClick={handleGenerate}
+                disabled={generating || !sharesReady}
+                className="btn-primary h-9 flex-1 text-sm"
+              >
+                {generating ? 'Generating...' : 'Generate Share Code'}
+              </button>
+            </div>
           </div>
 
           <div className="mt-5">
@@ -453,11 +469,12 @@ export default function ShareCanvasModal({ onClose }: Props) {
                           </svg>
                         </button>
                       </div>
-                      <div className="mt-1 flex gap-3 text-xs text-gray-600 dark:text-gray-300">
+                      <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-600 dark:text-gray-300">
                         <span>
                           {share.cloneCount} clone{share.cloneCount !== 1 ? 's' : ''}
                         </span>
                         <span>Created {new Date(share.createdAt).toLocaleDateString()}</span>
+                        {share.expiresAt && <span>Expires {new Date(share.expiresAt).toLocaleDateString()}</span>}
                       </div>
                     </div>
                     <button
