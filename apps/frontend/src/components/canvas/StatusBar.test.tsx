@@ -125,4 +125,11 @@ describe('StatusBar word cap', () => {
     act(() => window.dispatchEvent(new Event('offline')));
     expect(screen.getByTitle('Browser offline — changes will sync when you reconnect')).toHaveTextContent('offline');
   });
+
+  it('shows the node count indicator when large canvas optimizations activate', () => {
+    canvasState.transcripts = Array.from({ length: 50 }, () => words(50));
+    canvasState.questions = Array.from({ length: 40 }, (_, i) => ({ id: `q-${i}` }));
+    render(<StatusBar />);
+    expect(screen.getByTestId('status-bar-large-canvas')).toHaveTextContent('nodes 90');
+  });
 });

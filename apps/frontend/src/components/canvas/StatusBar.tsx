@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useActiveCanvas } from '../../stores/canvasStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useCanvasPlan, useCanvasPlanLimits } from '../../hooks/useCanvasPlan';
+import { summarizeCanvasScale } from './canvasPerformance';
 
 /**
  * Sprint G slice — bottom status bar.
@@ -31,18 +32,28 @@ export default function StatusBar() {
     };
   }, []);
 
+  const scale = useMemo(
+    () => summarizeCanvasScale(canvas),
+    [
+      canvas?.transcripts,
+      canvas?.questions,
+      canvas?.memos,
+      canvas?.cases,
+      canvas?.computedNodes,
+      canvas?.codings,
+      canvas?.relations,
+    ],
+  );
+
   if (zoomTier === 'minimal' || !canvas) return null;
 
-  const codeCount = canvas.questions?.length ?? 0;
-  const transcriptWordCounts = (canvas.transcripts ?? []).map(
-    (t) => t.content?.split(/\s+/).filter(Boolean).length ?? 0,
-  );
-  const wordCount = transcriptWordCounts.reduce((sum, n) => sum + n, 0);
+  const codeCount = scale.codeCount;
+  const wordCount = scale.totalWords;
   // The plan cap is PER TRANSCRIPT (see backend checkWordLimit), so the gauge
   // has to track the single longest transcript. Summing the whole canvas and
   // dividing by a per-transcript cap told compliant users they were over their
   // limit as soon as they added a third document.
-  const longestTranscript = transcriptWordCounts.length ? Math.max(...transcriptWordCounts) : 0;
+  const longestTranscript = scale.longestTranscriptWords;
   const wordPct = wordCap ? Math.min(100, Math.round((longestTranscript / wordCap) * 100)) : null;
 
   return (
@@ -84,6 +95,18 @@ export default function StatusBar() {
         )}
         <span className="text-gray-300 dark:text-gray-700">·</span>
         <span className="tabular-nums">codes {codeCount}</span>
+        {scale.isLarge && (
+          <>
+            <span className="text-gray-300 dark:text-gray-700">·</span>
+            <span
+              className="tabular-nums"
+              data-testid="status-bar-large-canvas"
+              title="Large canvas mode active: offscreen culling and compact edges keep pan and zoom smooth."
+            >
+              nodes {scale.nodeCount}
+            </span>
+          </>
+        )}
         <span className="text-gray-300 dark:text-gray-700">·</span>
         <span>
           plan <span className="font-medium capitalize text-gray-700 dark:text-gray-200">{effective}</span>
