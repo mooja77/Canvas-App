@@ -47,7 +47,7 @@ import AddComputedNodeMenu, {
   planAvailabilityMessage,
 } from './AddComputedNodeMenu';
 
-const TIERS: PlanTier[] = ['free', 'student', 'pro', 'team'];
+const TIERS: PlanTier[] = ['free', 'student', 'solo', 'pro', 'team'];
 
 /** The six tools the audit measured as dead ends on Free. */
 const FREE_LOCKED = ['cooccurrence', 'codingquery', 'cluster', 'matrix', 'comparison', 'treemap'];
@@ -62,11 +62,20 @@ describe('AddComputedNodeMenu — plan mirror stays in step with the backend', (
     expect([...ANALYSIS_TYPES_BY_PLAN[tier]].sort()).toEqual([...PLAN_LIMITS[tier].allowedAnalysisTypes].sort());
   });
 
-  it('produces the same refusal sentence the 403 would carry', () => {
+  it('produces the same refusal sentence the 403 would carry (Solo hidden by default, included when enabled)', () => {
     for (const type of PLAN_LIMITS.student.allowedAnalysisTypes) {
-      expect(planAvailabilityMessage(`${type} analysis`, plansWithAnalysis(type))).toBe(
-        featureAvailabilityMessage(`${type} analysis`, (l) => l.allowedAnalysisTypes.includes(type)),
+      expect(planAvailabilityMessage(`${type} analysis`, plansWithAnalysis(type, false))).toBe(
+        featureAvailabilityMessage(`${type} analysis`, (l) => l.allowedAnalysisTypes.includes(type), {
+          includeSolo: false,
+        }),
       );
+      expect(planAvailabilityMessage(`${type} analysis`, plansWithAnalysis(type, false))).not.toContain('Solo');
+      expect(planAvailabilityMessage(`${type} analysis`, plansWithAnalysis(type, true))).toBe(
+        featureAvailabilityMessage(`${type} analysis`, (l) => l.allowedAnalysisTypes.includes(type), {
+          includeSolo: true,
+        }),
+      );
+      expect(planAvailabilityMessage(`${type} analysis`, plansWithAnalysis(type, true))).toContain('Solo');
     }
   });
 });

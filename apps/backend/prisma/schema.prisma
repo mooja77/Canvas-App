@@ -41,6 +41,11 @@ model User {
   // existed (legacy / pre-2026 signups stay free unless they pay).
   trialEndsAt DateTime?
 
+  // Audio/video files this account has ever imported for transcription.
+  // Incremented when a file is accepted and never decremented, so deleting a
+  // file does not hand the Free plan's one-file allowance back.
+  audioImportsUsed Int @default(0)
+
   // Pricing v2 grandfather flag. Users created before 2026-05-13 keep their
   // original $12/mo Pro tier billing — Stripe subscription continues at the
   // grandfathered Price ID. When false, new users land on the v2 ladder

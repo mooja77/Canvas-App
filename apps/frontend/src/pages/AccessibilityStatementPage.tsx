@@ -75,8 +75,9 @@ export default function AccessibilityStatementPage() {
               parity is targeted for Q3 2026.
             </li>
             <li>
-              Some third-party embeds (Stripe checkout, GTM-loaded scripts) inherit their own accessibility profile,
-              which we cannot fully control. We avoid third-party embeds on critical paths where possible.
+              Some third-party embeds (Stripe checkout, and consent-gated marketing scripts on public pages) inherit
+              their own accessibility profile, which we cannot fully control. We avoid third-party embeds on critical
+              paths where possible.
             </li>
             <li>
               The interactive coding demo on the landing page is keyboard-navigable by design; the touch-selection

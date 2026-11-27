@@ -132,8 +132,8 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
     if (!isValidEmailAddress(email)) {
       return res.status(400).json({ success: false, error: 'Valid email is required' });
     }
-    if (!password || typeof password !== 'string' || password.length < 8) {
-      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+    if (!password || typeof password !== 'string' || password.length < 12) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 12 characters' });
     }
     if (!name || typeof name !== 'string' || name.trim().length < 1 || name.length > 100) {
       return res.status(400).json({ success: false, error: 'Name is required (1-100 characters)' });
@@ -141,10 +141,15 @@ userAuthRoutes.post('/auth/signup', authLimiter, async (req, res, next) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check for existing user
+    // Check for existing user without disclosing whether the address is registered.
+    // Run a dummy hash so response timing matches new-account creation.
     const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existing) {
-      return res.status(409).json({ success: false, error: 'An account with this email already exists' });
+      await bcrypt.hash(password, BCRYPT_ROUNDS);
+      return res.status(400).json({
+        success: false,
+        error: 'Could not create account. If you already have an account, sign in or reset your password.',
+      });
     }
 
     // Both bcrypt hashes are computed here, before the transaction opens, and
@@ -530,8 +535,8 @@ userAuthRoutes.post('/auth/reset-password', authLimiter, async (req, res, next) 
     if (!email || !token || !newPassword) {
       return res.status(400).json({ success: false, error: 'Email, token, and new password are required' });
     }
-    if (typeof newPassword !== 'string' || newPassword.length < 8) {
-      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+    if (typeof newPassword !== 'string' || newPassword.length < 12) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 12 characters' });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -748,8 +753,8 @@ userAuthRoutes.post('/auth/link-account', auth, async (req, res, next) => {
     if (!isValidEmailAddress(email)) {
       return res.status(400).json({ success: false, error: 'Valid email is required' });
     }
-    if (!password || typeof password !== 'string' || password.length < 8) {
-      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+    if (!password || typeof password !== 'string' || password.length < 12) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 12 characters' });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -911,8 +916,8 @@ userAuthRoutes.put('/auth/change-password', auth, async (req, res, next) => {
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ success: false, error: 'Current and new passwords are required' });
     }
-    if (typeof newPassword !== 'string' || newPassword.length < 8) {
-      return res.status(400).json({ success: false, error: 'New password must be at least 8 characters' });
+    if (typeof newPassword !== 'string' || newPassword.length < 12) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 12 characters' });
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });

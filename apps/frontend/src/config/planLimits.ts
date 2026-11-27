@@ -21,7 +21,7 @@
  *     and `maxShares` are account-wide (see planLimits.ts middleware).
  */
 
-export type PlanTier = 'free' | 'student' | 'pro' | 'team';
+export type PlanTier = 'free' | 'student' | 'solo' | 'pro' | 'team';
 
 export interface FrontendPlanLimits {
   /** Account-wide. */
@@ -53,6 +53,14 @@ export const FRONTEND_PLAN_LIMITS: Record<PlanTier, FrontendPlanLimits> = {
     maxWordsPerTranscript: 50000,
     maxCodesPerCanvas: null,
     maxShares: 2,
+    aiEnabled: true,
+  },
+  solo: {
+    maxCanvases: 5,
+    maxTranscriptsPerCanvas: null,
+    maxWordsPerTranscript: 50000,
+    maxCodesPerCanvas: null,
+    maxShares: 0,
     aiEnabled: true,
   },
   pro: {

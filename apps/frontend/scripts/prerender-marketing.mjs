@@ -85,9 +85,9 @@ const ROUTES = [
     path: '/vs',
     file: 'vs.html',
     component: 'VsIndexPage',
-    title: 'Compare QualCanvas — NVivo, ATLAS.ti, Dedoose',
+    title: 'NVivo, ATLAS.ti & Dedoose Alternative | Compare QualCanvas',
     description:
-      'Honest, sourced comparisons. How QualCanvas stacks up against NVivo, ATLAS.ti, and Dedoose. Pricing, features, migration path.',
+      'Looking for an NVivo, ATLAS.ti, or Dedoose alternative? Compare pricing, QDPX import and export, student rates ($48/yr), and browser-based qualitative coding.',
   },
   {
     path: '/for-institutions',
@@ -167,6 +167,15 @@ const ROUTES = [
     title: 'Guide — QualCanvas',
     description:
       'Complete guide to QualCanvas: transcripts, coding, analysis tools, AI features, collaboration, and more.',
+  },
+  {
+    path: '/course',
+    file: 'course.html',
+    component: 'CoursePage',
+    handoff: true,
+    title: 'Free Online Qualitative Coding Course | QualCanvas',
+    description:
+      'A free, self-paced 6-module online course covering privacy-first setup, codebook design, thematic analysis, cross-case comparison, team agreement, and defensible exports. No account required.',
   },
   {
     path: '/pilot',

@@ -16,6 +16,7 @@ import {
   providerGuide,
   type AiProviderId,
 } from './aiProviders';
+import AiCodingSample from './AiCodingSample';
 
 /**
  * "Connect your AI account" — a step-by-step guide to creating a key with the
@@ -66,6 +67,7 @@ export default function ConnectAiWizard({ onClose, reason, initialProvider, onCo
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSample, setShowSample] = useState(false);
   const provider = providerGuide(providerId);
   const transcriptionReason = Boolean(reason && /transcri/i.test(reason));
 
@@ -203,6 +205,17 @@ export default function ConnectAiWizard({ onClose, reason, initialProvider, onCo
                 <strong>You pay the provider directly</strong>, only for what you use. QualCanvas never charges for AI
                 and never sees your provider bill.
               </p>
+              <div
+                className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100"
+                data-testid="connect-ai-data-disclosure"
+              >
+                <p className="font-medium">What is sent to your AI provider</p>
+                <p className="mt-1">
+                  When you run an AI feature, the transcript text you choose is sent to your connected provider (OpenAI,
+                  Anthropic, or Google) to generate the result. Audio for transcription is sent to OpenAI only. AI stays
+                  off until you connect a key and run an AI tool.
+                </p>
+              </div>
               <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
                 <p className="font-medium text-gray-900 dark:text-gray-100">What it costs with OpenAI</p>
                 <ul className="mt-1 list-disc space-y-1 pl-5">
@@ -220,7 +233,16 @@ export default function ConnectAiWizard({ onClose, reason, initialProvider, onCo
                   {OPENAI_PRICES_CHECKED}. Prices can change; that page is always the latest.
                 </p>
               </div>
-              <div className="flex justify-end">
+              {showSample && <AiCodingSample onConnectKey={() => go(1)} />}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary px-3 py-2 text-sm"
+                  aria-expanded={showSample}
+                  onClick={() => setShowSample((prev) => !prev)}
+                >
+                  {showSample ? 'Hide worked sample' : 'See worked sample (no key)'}
+                </button>
                 <button type="button" className="btn-primary px-4 py-2 text-sm" onClick={() => go(1)}>
                   Get started
                 </button>
@@ -378,6 +400,14 @@ export default function ConnectAiWizard({ onClose, reason, initialProvider, onCo
                   <p className="mt-1">{error}</p>
                 </div>
               )}
+              <p
+                className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-950 dark:bg-amber-900/20 dark:text-amber-100"
+                data-testid="connect-ai-provider-disclosure"
+              >
+                {provider.id === 'openai'
+                  ? 'When you run an AI tool, the transcript text or audio you choose is sent to OpenAI.'
+                  : `When you run an AI tool, the transcript text you choose is sent to ${provider.name}.`}
+              </p>
               <div className="flex justify-between pt-2">
                 <button
                   type="button"

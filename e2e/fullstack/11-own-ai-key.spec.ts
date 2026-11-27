@@ -200,8 +200,8 @@ test.describe('Connect your AI account', () => {
     await wizard.getByRole('button', { name: 'Done' }).click();
     await expect(section.getByTestId('ai-connected')).toContainText('Connected: OpenAI');
     await noSeriousAxe(page, '#ai');
-    page.once('dialog', (d) => d.accept());
     await section.getByRole('button', { name: 'Remove key' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Remove key' }).click();
     await expect(section.getByTestId('ai-not-connected')).toBeVisible();
     expect((await ok(await s.ctx.get('ai-settings'))).data.hasApiKey).toBe(false);
   });

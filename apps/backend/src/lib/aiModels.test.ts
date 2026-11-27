@@ -12,9 +12,7 @@ const repoRoot = path.resolve(here, '../../../..');
 
 /** Every production source file that could name a model. Tests hold historical fixtures, so they are skipped. */
 function productionSources(): string[] {
-  const roots = ['apps/backend/src', 'apps/frontend/src', 'shared', 'workers', 'worker'].map((r) =>
-    path.join(repoRoot, r),
-  );
+  const roots = ['apps/backend/src', 'apps/frontend/src', 'shared', 'workers'].map((r) => path.join(repoRoot, r));
   const out: string[] = [];
   const walk = (dir: string) => {
     if (!fs.existsSync(dir)) return;

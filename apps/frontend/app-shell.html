@@ -1,0 +1,35 @@
+<!doctype html>
+<!--
+  Research app shell. Served by public/_worker.js (production) and the Vite
+  plugin in vite.config.ts (dev/preview) for every route in
+  src/utils/appShell.ts RESEARCH_ROUTE_PATTERNS (canvas, repository, team,
+  admin and the token pages: forgot-password, reset-password, verify-email).
+
+  This document must never contain, or load, the JMS support chat widget (it
+  lives only in support-shell.html, for /account and /support) or an
+  advertising or marketing tag:
+  no Google Tag Manager, gtag, Google Ads, Meta pixel, Plausible or
+  Consent-Mode defaults, and it does not reference the marketing consent
+  loader. The banner here is a separate, much smaller script that has none of
+  that code. Enforced by src/__tests__/appShell.test.ts.
+-->
+<html lang="en" data-shell="app">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%234f46e5'/%3E%3Ctext x='16' y='24' font-size='22' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QualCanvas</title>
+
+    <link rel="stylesheet" href="/cookie-consent.css" />
+    <script src="/cookie-consent-app.js" defer></script>
+  </head>
+  <body class="bg-gray-50 text-gray-900 antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

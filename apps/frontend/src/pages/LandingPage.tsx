@@ -127,7 +127,10 @@ export default function LandingPage() {
                 src="/product/canvas-workspace-1600.webp"
                 width={1600}
                 height={1000}
-                fetchPriority="high"
+                {...{
+                  // React 18 forwards the lowercase HTML attribute without a warning.
+                  fetchpriority: 'high',
+                }}
                 decoding="async"
                 alt="The QualCanvas workspace: a code list on the left, an interview transcript with highlighted passages in the middle, and the codes they are tagged with linked on the canvas."
                 className="w-full h-auto rounded-2xl ring-1 ring-gray-200 dark:ring-gray-700 shadow-xl shadow-ink-900/5"
@@ -164,7 +167,7 @@ export default function LandingPage() {
             {
               n: '1.0',
               title: 'Import',
-              body: 'Bring transcripts, field notes, and consent letters into one canvas. PDF, DOCX, audio, video.',
+              body: 'Bring transcripts, field notes, and consent letters into one canvas (PDF, DOCX, text, or QDPX projects from NVivo and ATLAS.ti). Free includes one audio file. Transcribe with your own OpenAI key.',
             },
             {
               n: '2.0',
@@ -184,7 +187,7 @@ export default function LandingPage() {
             {
               n: '5.0',
               title: 'Export',
-              body: "Out to QDPX for NVivo and ATLAS.ti. Or a Word report for your supervisor. Or to your institution's preservation archive.",
+              body: 'Export to QDPX for NVivo and ATLAS.ti, CSV, or Word and Excel reports for your supervisor.',
             },
           ].map((step) => (
             <li key={step.n} className="flex flex-col gap-3">
@@ -246,11 +249,40 @@ export default function LandingPage() {
           </BentoCell>
           <BentoCell span={2}>
             <FeatureContent
-              title="Export QDPX"
-              body="Take everything to NVivo or ATLAS.ti if you need to. Or hand a Word report to your committee. No lock-in by design."
+              title="Import & export QDPX"
+              body="Move existing projects in from NVivo or ATLAS.ti with QDPX import, and export back out or hand a Word report to your committee."
             />
           </BentoCell>
         </Bento>
+
+        <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" data-testid="research-extras">
+          {[
+            {
+              title: 'Methods statement',
+              body: 'Draft a methods section from your codebook, coding counts, and audit log (paid plans, with your own AI key).',
+            },
+            {
+              title: 'Coder training',
+              body: 'Set a gold-standard coded transcript so new coders can practice and check agreement before coding live data.',
+            },
+            {
+              title: 'Research repository',
+              body: 'Save key insights, quotes, and themes across projects so findings stay searchable beyond one study (paid plans).',
+            },
+            {
+              title: '30-day trash recovery',
+              body: 'Deleted canvases stay recoverable in Trash for 30 days before permanent removal, on every plan.',
+            },
+          ].map((item) => (
+            <div
+              key={item.title}
+              className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/60 p-5"
+            >
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1.5">{item.title}</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{item.body}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* ─── 5. Stats strip ─── */}

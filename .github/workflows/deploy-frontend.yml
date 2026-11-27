@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-frontend-${{ github.ref }}
+  group: deploy-frontend-${{ github.event.workflow_run.event == 'pull_request' && format('pr-{0}-{1}', github.event.workflow_run.head_repository.full_name, github.event.workflow_run.head_branch) || github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: true
 
 jobs:

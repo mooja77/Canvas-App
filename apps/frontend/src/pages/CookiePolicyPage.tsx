@@ -79,9 +79,13 @@ export default function CookiePolicyPage() {
 
         <h2>Optional analytics &amp; conversion measurement</h2>
         <p>
-          Google Analytics, Google Ads conversion measurement and Meta conversion measurement remain disabled until you
-          accept the banner. Cookieless Plausible analytics loads on public marketing pages and does not use an
-          advertising identifier.
+          This section applies to the public marketing pages only (home, pricing, sign-in and sign-up, and the guide,
+          methodology and legal pages). Google Analytics, Google Ads conversion measurement and Meta conversion
+          measurement remain disabled until you accept the banner. Cookieless Plausible analytics loads on those public
+          pages and does not use an advertising identifier. None of these tags, and no advertising consent signal, is
+          loaded once you are signed in or on any page that can show your projects, transcripts or account (the canvas,
+          account, team, repository and admin pages, and the password-reset and email-verification pages): those pages
+          are served a separate page template that does not contain them.
         </p>
         <table className="w-full text-sm">
           <thead>
@@ -114,13 +118,15 @@ export default function CookiePolicyPage() {
         <p>
           Sentry may use a short-lived <code>sentry-trace</code> value to connect frontend and backend errors. We use
           this for service reliability, not advertising, and QualCanvas does not enable Sentry Session Replay because
-          research content can be sensitive. Browser Sentry error reporting and Plausible analytics start only after you
-          accept optional analytics; if you reject, neither loads.
+          research content can be sensitive. Browser Sentry error reporting starts only after you accept optional
+          analytics; if you reject, it does not load. Inside the app, accepting enables only error reporting and
+          first-party product events sent to our own servers (event names only, never transcript or project content).
         </p>
 
         <h2>Boundaries</h2>
         <ul>
           <li>No optional analytics or advertising measurement is loaded before you accept.</li>
+          <li>No advertising or marketing tag is ever loaded inside the signed-in app, whatever you choose.</li>
           <li>No third-party social-button cookies on logged-out pages.</li>
           <li>No fingerprinting beyond what Cloudflare / Sentry use for security &amp; error attribution.</li>
         </ul>

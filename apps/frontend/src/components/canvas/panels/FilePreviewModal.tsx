@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 interface FilePreviewItem {
   file: File;
@@ -14,6 +16,9 @@ interface FilePreviewModalProps {
 }
 
 export default function FilePreviewModal({ files, onImport, onClose }: FilePreviewModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
+  useEscapeToClose(onClose);
   const [items, setItems] = useState<FilePreviewItem[]>(files.map((f) => ({ file: f, preview: '', selected: true })));
 
   const toggleItem = (idx: number) => {
@@ -24,12 +29,18 @@ export default function FilePreviewModal({ files, onImport, onClose }: FilePrevi
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-96 max-h-[80vh] rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800 flex flex-col">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="file-preview-modal-title"
+        className="w-96 max-h-[80vh] rounded-2xl bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800 flex flex-col"
+      >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+          <h3 id="file-preview-modal-title" className="text-sm font-semibold text-gray-800 dark:text-gray-200">
             Import {files.length} file{files.length > 1 ? 's' : ''}
           </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button type="button" onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-gray-600">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>

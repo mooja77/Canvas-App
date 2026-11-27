@@ -19,6 +19,29 @@ import { remapComputedConfig } from '../utils/cloneConfig.js';
 export const shareRoutes = Router();
 export const canvasPublicRoutes = Router();
 
+/** Chunk size for batched inserts when cloning large canvases. */
+export const CLONE_BATCH_SIZE = 500;
+
+async function createRowsInBatches<T>(
+  delegate: {
+    createMany?: (args: { data: T[] }) => Promise<unknown>;
+    create: (args: { data: T }) => Promise<unknown>;
+  },
+  rows: T[],
+  chunkSize = CLONE_BATCH_SIZE,
+): Promise<void> {
+  if (rows.length === 0) return;
+  if (typeof delegate.createMany === 'function') {
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      await delegate.createMany({ data: rows.slice(i, i + chunkSize) });
+    }
+    return;
+  }
+  for (const row of rows) {
+    await delegate.create({ data: row });
+  }
+}
+
 // ─── Canvas Sharing ───
 
 /** A share link may not outlive the ethics approval it sits under. */
@@ -265,49 +288,45 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
           memoIdMap.set(m.id, newM.id);
         }
 
+        const codingRows: Prisma.CanvasTextCodingCreateManyInput[] = [];
         for (const c of source.codings) {
           const newTranscriptId = transcriptIdMap.get(c.transcriptId);
           const newQuestionId = questionIdMap.get(c.questionId);
           if (newTranscriptId && newQuestionId) {
-            await tx.canvasTextCoding.create({
-              data: {
-                canvasId: newCanvas.id,
-                transcriptId: newTranscriptId,
-                questionId: newQuestionId,
-                startOffset: c.startOffset,
-                endOffset: c.endOffset,
-                codedText: c.codedText,
-                note: c.note,
-                annotation: c.annotation,
-                // Provenance MUST survive the clone. Omitting `source` let it
-                // default to 'human', so cloning a canvas rewrote every
-                // AI-accepted coding as hand-made and the IRB disclosure at
-                // GET /canvas/:id/ai/disclosure went from "1 (14.3%) originated
-                // from an accepted AI suggestion" to "0 (0%)". That endpoint
-                // promises figures "computed from stored provenance ... so the
-                // disclosure is reproducible, not self-reported" - after a
-                // clone it was neither. A researcher would then declare, in
-                // good faith, that no AI touched their coding.
-                source: c.source,
-                // Attribution must survive too: a Team's multi-coder work was
-                // handed on anonymous (7/7 codings attributed before a clone,
-                // 0/7 after), which is exactly the record the intercoder
-                // feature exists to produce.
-                coderUserId: c.coderUserId,
-              },
+            codingRows.push({
+              canvasId: newCanvas.id,
+              transcriptId: newTranscriptId,
+              questionId: newQuestionId,
+              startOffset: c.startOffset,
+              endOffset: c.endOffset,
+              codedText: c.codedText,
+              note: c.note,
+              annotation: c.annotation,
+              // Provenance MUST survive the clone so AI disclosure stays reproducible.
+              source: c.source,
+              // Attribution must survive too for multi-coder / intercoder records.
+              coderUserId: c.coderUserId,
             });
           }
         }
+        await createRowsInBatches(tx.canvasTextCoding, codingRows);
 
+        const relationRows: Prisma.CanvasRelationCreateManyInput[] = [];
         for (const r of source.relations) {
           const fromId = r.fromType === 'case' ? caseIdMap.get(r.fromId) : questionIdMap.get(r.fromId);
           const toId = r.toType === 'case' ? caseIdMap.get(r.toId) : questionIdMap.get(r.toId);
           if (fromId && toId) {
-            await tx.canvasRelation.create({
-              data: { canvasId: newCanvas.id, fromType: r.fromType, fromId, toType: r.toType, toId, label: r.label },
+            relationRows.push({
+              canvasId: newCanvas.id,
+              fromType: r.fromType,
+              fromId,
+              toType: r.toType,
+              toId,
+              label: r.label,
             });
           }
         }
+        await createRowsInBatches(tx.canvasRelation, relationRows);
 
         for (const n of source.computedNodes) {
           const newN = await tx.canvasComputedNode.create({
@@ -341,6 +360,7 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
         // `?? []` because a canvas that has never been arranged has no rows,
         // and iterating undefined turns a clone into a 500 - which is exactly
         // how this shipped: the whole clone failed for want of a layout.
+        const positionRows: Prisma.CanvasNodePositionCreateManyInput[] = [];
         for (const p of source.nodePositions ?? []) {
           const dash = p.nodeId.indexOf('-');
           if (dash === -1) continue;
@@ -349,19 +369,18 @@ shareRoutes.post('/canvas/clone/:code', validateParams(shareCodeParam), checkCan
           const newEntityId = idMapForNodeType[prefix]?.get(oldEntityId);
           if (!newEntityId) continue;
 
-          await tx.canvasNodePosition.create({
-            data: {
-              canvasId: newCanvas.id,
-              nodeId: `${prefix}-${newEntityId}`,
-              nodeType: p.nodeType,
-              x: p.x,
-              y: p.y,
-              width: p.width,
-              height: p.height,
-              collapsed: p.collapsed,
-            },
+          positionRows.push({
+            canvasId: newCanvas.id,
+            nodeId: `${prefix}-${newEntityId}`,
+            nodeType: p.nodeType,
+            x: p.x,
+            y: p.y,
+            width: p.width,
+            height: p.height,
+            collapsed: p.collapsed,
           });
         }
+        await createRowsInBatches(tx.canvasNodePosition, positionRows);
 
         await tx.canvasShare.update({
           where: { id: share.id },

@@ -285,7 +285,7 @@ describe('PricingPage comparison table vs the enforced plan limits', () => {
       ['CSV export', ['csv']],
       ['PNG / HTML / Markdown', ['png', 'html', 'md']],
       ['Word + Excel reports', ['docx', 'xlsx']],
-      ['QDPX (NVivo / ATLAS.ti)', ['qdpx']],
+      ['QDPX import & export (NVivo / ATLAS.ti)', ['qdpx']],
     ];
     for (const [feature, formats] of formatRows) {
       const row = cells(feature);
@@ -343,8 +343,23 @@ describe('PricingPage comparison table vs the enforced plan limits', () => {
 
   it('offers own-key transcription on exactly the tiers that can upload audio, and no included hours yet', () => {
     const row = cells('Audio transcription (with your own OpenAI key)');
-    TIERS.forEach((tier, i) => expect(row[i]).toBe(tick(PLAN_LIMITS[tier].fileUploadEnabled)));
+    // Free includes one file; every paid tier that can upload is unlimited.
+    expect(row[0]).toBe('1 file');
+    TIERS.slice(1).forEach((tier, i) => expect(row[i + 1]).toBe(tick(PLAN_LIMITS[tier].fileUploadEnabled)));
     // No server OpenAI key in production yet: included minutes are not sold.
     expect(document.body.textContent ?? '').not.toMatch(/hrs/);
+  });
+
+  it('shows the student price comparison side by side (qualcanvas-29)', () => {
+    const block = screen.getByTestId('student-price-comparison');
+    expect(within(block).getByRole('cell', { name: 'QualCanvas Student' })).toBeInTheDocument();
+    expect(
+      within(block).getByRole('cell', {
+        name: `$${PUBLISHED_PRICES_USD.student.annual}/year ($${PUBLISHED_PRICES_USD.student.monthly}/month) USD`,
+      }),
+    ).toBeInTheDocument();
+    expect(within(block).getByText(/EUR 115\/year \(Desktop\), EUR 170\/year \(AI Cloud\)/)).toBeInTheDocument();
+    expect(within(block).getByText(/\$12\.95\/active month/)).toBeInTheDocument();
+    expect(block.textContent ?? '').not.toMatch(/third-party|\$114/i);
   });
 });

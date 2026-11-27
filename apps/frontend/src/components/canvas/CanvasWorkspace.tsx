@@ -26,6 +26,7 @@ import CodingDetailPanel from './panels/CodingDetailPanel';
 import CanvasSearchOverlay from './panels/CanvasSearchOverlay';
 import CommandPalette from './panels/CommandPalette';
 import HelpMenu from './panels/HelpMenu';
+import NeedHelpLink from '../NeedHelpLink';
 import FullProductTour from '../help/FullProductTour';
 import WiseshiftWalkthrough from './WiseshiftWalkthrough';
 import CanvasContextMenu from './panels/CanvasContextMenu';
@@ -65,6 +66,7 @@ const CrossCaseAnalysisModal = React.lazy(() => import('./panels/CrossCaseAnalys
 const PresentationMode = React.lazy(() => import('./panels/PresentationMode'));
 const AiAutoCodeModal = React.lazy(() => import('./panels/AiAutoCodeModal'));
 const KeyboardShortcutsModal = React.lazy(() => import('./panels/KeyboardShortcutsModal'));
+const ConnectNodesModal = React.lazy(() => import('./panels/ConnectNodesModal'));
 import PresenceAvatars from './panels/PresenceAvatars';
 import NotificationBell from '../NotificationBell';
 import CollabCursors from './CollabCursors';
@@ -323,6 +325,7 @@ export default function CanvasWorkspace() {
   const edgesRef = useRef<Edge[]>(initialEdges);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fitViewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track collapsed state so header/keyboard/context-menu toggles persist.
   // onNodesChange only fires for position/dimension events, not data mutations.
   const collapsedDigestRef = useRef<string | null>(null);
@@ -347,6 +350,8 @@ export default function CanvasWorkspace() {
   // still handle later resizing and preserve explicit navigator choices.
   const [showNavigator, setShowNavigator] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 900);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showConnectNodes, setShowConnectNodes] = useState(false);
+  const [connectFromNodeId, setConnectFromNodeId] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showExcerpts, setShowExcerpts] = useState(false);
@@ -552,14 +557,19 @@ export default function CanvasWorkspace() {
     },
     [],
   );
+  const cancelPendingFit = useCallback(() => {
+    requestedFocusNodeRef.current = null;
+    if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
+    if (recoverTimeoutRef.current) clearTimeout(recoverTimeoutRef.current);
+  }, []);
+
   const handleRfMove = useCallback(
     (event: unknown, viewport: { x: number; y: number; zoom: number }) => {
-      // A real pan/zoom takes ownership back from the setup deep link. React
-      // Flow reports null for programmatic viewport animation callbacks.
-      if (event) requestedFocusNodeRef.current = null;
+      // React Flow reports null for programmatic viewport changes.
+      if (event) cancelPendingFit();
       scheduleViewportSync(viewport);
     },
-    [scheduleViewportSync],
+    [cancelPendingFit, scheduleViewportSync],
   );
   const handleRfMoveEnd = useCallback(
     (_event: unknown, viewport: { x: number; y: number; zoom: number }) => {
@@ -1189,7 +1199,6 @@ export default function CanvasWorkspace() {
   // the last fit's recorded size. See fit-framing-algorithm.md trigger
   // policy table. Maps to QA findings #17, #18.
   const lastFitSizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
-  const recoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!workspaceSize.width || !workspaceSize.height) return;
     const last = lastFitSizeRef.current;
@@ -2423,6 +2432,11 @@ export default function CanvasWorkspace() {
     canUndo,
     canRedo,
     onToggleMute: handleToggleMute,
+    onConnectNodes: () => {
+      const firstSelected = nodes.find((n) => n.selected && (n.type === 'question' || n.type === 'case'));
+      setConnectFromNodeId(firstSelected?.id ?? null);
+      setShowConnectNodes(true);
+    },
   });
 
   const handleFocusNode = useCallback(
@@ -2756,6 +2770,8 @@ export default function CanvasWorkspace() {
                 )}
                 {!focusMode && (
                   <Controls
+                    onZoomIn={cancelPendingFit}
+                    onZoomOut={cancelPendingFit}
                     onFitView={() => runFit('manual')}
                     className="!bg-white/90 !backdrop-blur-sm !shadow-node !rounded-xl dark:!bg-gray-800/90 !border-gray-200 dark:!border-gray-700"
                   />
@@ -2902,6 +2918,10 @@ export default function CanvasWorkspace() {
                   onToggleCollapse={handleNodeToggleCollapse}
                   onResetSize={handleNodeResetSize}
                   onSetNodeColor={setNodeColor}
+                  onConnectNode={(nId) => {
+                    setConnectFromNodeId(nId);
+                    setShowConnectNodes(true);
+                  }}
                   onClose={() => setNodeContextMenu(null)}
                 />
               )}
@@ -3320,7 +3340,7 @@ export default function CanvasWorkspace() {
                       mouse wheel; also keeps the status bar from overflowing. */}
                   <button
                     onClick={() => setScrollMode(scrollMode === 'zoom' ? 'pan' : 'zoom')}
-                    className="hidden sm:flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
+                    className="hidden sm:flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-600 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-gray-300 transition-colors"
                     title={`Mouse wheel ${scrollMode === 'zoom' ? 'zooms the canvas' : 'pans the canvas'} — click to switch`}
                     aria-label={`Scroll: ${scrollMode === 'zoom' ? 'Zoom' : 'Pan'}`}
                   >
@@ -3339,6 +3359,7 @@ export default function CanvasWorkspace() {
                     {scrollMode === 'zoom' ? 'Wheel zooms' : 'Wheel pans'}
                   </button>
                   <span className="tabular-nums">{zoomLevel}%</span>
+                  <NeedHelpLink className="flex min-h-11 items-center px-1 text-xs font-medium text-brand-700 hover:underline dark:text-brand-300" />
                   <HelpMenu onShowShortcuts={() => setShowShortcuts(true)} />
                 </div>
               </div>
@@ -3402,7 +3423,26 @@ export default function CanvasWorkspace() {
             setShowCommandPalette(false);
             setShowCrossCase(true);
           }}
+          onShowConnectNodes={() => {
+            setShowCommandPalette(false);
+            const firstSelected = nodes.find((n) => n.selected && (n.type === 'question' || n.type === 'case'));
+            setConnectFromNodeId(firstSelected?.id ?? null);
+            setShowConnectNodes(true);
+          }}
         />
+      )}
+
+      {/* Non-drag Connect Nodes modal */}
+      {showConnectNodes && (
+        <React.Suspense fallback={null}>
+          <ConnectNodesModal
+            initialFromNodeId={connectFromNodeId}
+            onClose={() => {
+              setShowConnectNodes(false);
+              setConnectFromNodeId(null);
+            }}
+          />
+        </React.Suspense>
       )}
 
       {/* Excerpt Browser */}
