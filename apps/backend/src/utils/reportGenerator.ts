@@ -1,14 +1,5 @@
 import { prisma } from '../lib/prisma.js';
 
-interface ReportData {
-  canvasName: string;
-  newCodingsCount: number;
-  totalCodingsCount: number;
-  questionsSummary: { text: string; codingCount: number }[];
-  canvasId: string;
-  collaboratorCount: number;
-}
-
 /**
  * Generate an HTML report for a user's canvas activity.
  * If canvasId is provided, report is scoped to that canvas.
@@ -49,16 +40,10 @@ export async function generateReport(
 
   const canvases = await prisma.codingCanvas.findMany({
     where: { ...canvasWhere, deletedAt: null },
-    include: {
-      // Totals via _count (was materializing every coding twice, unbounded).
+    select: {
+      // Editable titles and In Vivo codes can contain participant quotes.
+      id: true,
       _count: { select: { codings: true, collaborators: true } },
-      // Deliberately NOT selecting any coding rows: the report carries counts
-      // only, never participant (interview) text. The recent-period count is
-      // queried separately below.
-      // Per-question coding counts via _count instead of the full nested rows.
-      questions: {
-        include: { _count: { select: { codings: true } } },
-      },
     },
   });
 
@@ -75,67 +60,28 @@ export async function generateReport(
       : [];
   const recentCountByCanvas = new Map(recentCountRows.map((row) => [row.canvasId, row._count._all]));
 
-  const reports: ReportData[] = canvases.map((canvas) => {
-    const questionsSummary = canvas.questions
-      .map((q) => ({
-        text: q.text,
-        codingCount: q._count.codings,
-      }))
-      .sort((a, b) => b.codingCount - a.codingCount)
-      .slice(0, 10);
-
-    return {
-      canvasName: canvas.name,
-      newCodingsCount: recentCountByCanvas.get(canvas.id) ?? 0,
-      totalCodingsCount: canvas._count.codings,
-      questionsSummary,
-      canvasId: canvas.id,
-      collaboratorCount: canvas._count.collaborators,
-    };
-  });
-
   const periodLabel = periodDays === 1 ? 'Daily' : periodDays === 7 ? 'Weekly' : 'Monthly';
-  const subject = `QualCanvas ${periodLabel} Report — ${new Date().toLocaleDateString()}`;
+  const subject = `QualCanvas ${periodLabel} Report, ${new Date().toLocaleDateString()}`;
 
-  const canvasSections = reports
+  const canvasSections = canvases
     .map(
-      (r) => `
+      ({ id, _count }) => `
     <div style="margin-bottom:24px;padding:16px;border:1px solid #e5e7eb;border-radius:8px;">
-      <h3 style="margin:0 0 8px;color:#1f2937;font-size:16px;">${escapeHtml(r.canvasName)}</h3>
       <div style="display:flex;gap:24px;margin-bottom:12px;">
         <div style="text-align:center;">
-          <div style="font-size:24px;font-weight:bold;color:#3b82f6;">${r.newCodingsCount}</div>
+          <div style="font-size:24px;font-weight:bold;color:#1d4ed8;">${recentCountByCanvas.get(id) ?? 0}</div>
           <div style="font-size:12px;color:#4b5563;">New Codings</div>
         </div>
         <div style="text-align:center;">
-          <div style="font-size:24px;font-weight:bold;color:#10b981;">${r.totalCodingsCount}</div>
+          <div style="font-size:24px;font-weight:bold;color:#047857;">${_count.codings}</div>
           <div style="font-size:12px;color:#6b7280;">Total Codings</div>
         </div>
         <div style="text-align:center;">
-          <div style="font-size:24px;font-weight:bold;color:#8b5cf6;">${r.collaboratorCount}</div>
+          <div style="font-size:24px;font-weight:bold;color:#6d28d9;">${_count.collaborators}</div>
           <div style="font-size:12px;color:#6b7280;">Collaborators</div>
         </div>
       </div>
-      ${
-        r.questionsSummary.length > 0
-          ? `
-        <h4 style="margin:12px 0 8px;font-size:13px;color:#374151;">Top Codes</h4>
-        <table style="width:100%;font-size:13px;border-collapse:collapse;">
-          ${r.questionsSummary
-            .map(
-              (q) => `
-            <tr>
-              <td style="padding:4px 8px;border-bottom:1px solid #f3f4f6;">${escapeHtml(q.text)}</td>
-              <td style="padding:4px 8px;text-align:right;border-bottom:1px solid #f3f4f6;color:#6b7280;">${q.codingCount} codings</td>
-            </tr>
-          `,
-            )
-            .join('')}
-        </table>
-      `
-          : ''
-      }
-      <p style="margin:12px 0 0;font-size:13px;"><a href="${escapeHtml(appLink(`/canvas/${r.canvasId}`))}" style="color:#1d4ed8;text-decoration:underline;">Open this canvas in QualCanvas</a></p>
+      <p style="margin:12px 0 0;font-size:13px;"><a href="${escapeHtml(appLink(`/canvas/${id}`))}" style="color:#1d4ed8;text-decoration:underline;">Open this canvas in QualCanvas</a></p>
     </div>
   `,
     )
@@ -151,7 +97,7 @@ export async function generateReport(
       Hi ${escapeHtml(user.name)}, here's your activity summary for the past ${periodDays} day${periodDays > 1 ? 's' : ''}.
     </p>
   </div>
-  ${reports.length > 0 ? canvasSections : '<p style="text-align:center;color:#6b7280;">No canvas activity this period.</p>'}
+  ${canvases.length > 0 ? canvasSections : '<p style="text-align:center;color:#6b7280;">No canvas activity this period.</p>'}
   <p style="text-align:center;font-size:13px;color:#374151;">Your interview text stays in the app. <a href="${escapeHtml(appLink('/'))}" style="color:#1d4ed8;text-decoration:underline;">Open QualCanvas</a> to read it.</p>
   <div style="text-align:center;margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb;">
     <p style="font-size:11px;color:#6b7280;">

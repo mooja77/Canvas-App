@@ -18,6 +18,8 @@ vi.mock('../lib/logger.js', () => ({ logError: vi.fn() }));
 import { startReportScheduler, stopReportScheduler } from './reportScheduler.js';
 
 describe('weekly report email (scheduler end to end)', () => {
+  const quote = 'ZEBRA-QUOTE I told the nurse about my late husband';
+
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -40,10 +42,10 @@ describe('weekly report email (scheduler end to end)', () => {
     mockPrisma.codingCanvas.findMany.mockResolvedValue([
       {
         id: 'c1',
-        name: 'Study A',
+        name: 'CANVAS-TITLE-QUOTE I told the nurse about my late husband',
         _count: { codings: 5, collaborators: 0 },
         codings: [{ codedText: 'LEAKCHECK-SEGMENT private words', createdAt: new Date() }],
-        questions: [],
+        questions: [{ text: quote, _count: { codings: 3 } }],
       },
     ]);
     sendEmail.mockResolvedValue(true);
@@ -54,7 +56,7 @@ describe('weekly report email (scheduler end to end)', () => {
     vi.useRealTimers();
   });
 
-  it('sends one email whose subject and body contain no coded-segment text, for any plan', async () => {
+  it('sends a count-only email without participant text for any plan', async () => {
     startReportScheduler();
     await vi.advanceTimersByTimeAsync(10_500);
     expect(sendEmail).toHaveBeenCalledTimes(1);
@@ -63,6 +65,12 @@ describe('weekly report email (scheduler end to end)', () => {
     expect(subject).not.toContain('LEAKCHECK');
     expect(html).not.toContain('LEAKCHECK');
     expect(html).toContain('Open QualCanvas');
+    expect(subject).not.toContain(quote);
+    expect(html).not.toContain(quote);
+    expect(html).not.toContain('CANVAS-TITLE-QUOTE');
+    expect(html).toContain('>2<');
+    expect(html).toContain('>5<');
+    expect(html).toMatch(/href="[^"]*\/canvas\/c1"/);
     // No plan data is consulted: free and paid recipients get the same count-only report.
     expect(mockPrisma.user.findUnique.mock.calls[0][0].select).not.toHaveProperty('plan');
   });
