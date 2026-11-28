@@ -123,17 +123,17 @@ describe('generateReport canvas scoping', () => {
 
   it('includes canvases the user owns via userId', async () => {
     const { html } = await generateReport('u1');
-    expect(html).toContain('Owned Via UserId');
+    expect(html).toMatch(/href="[^"]*\/canvas\/c-own"/);
   });
 
   it('includes canvases owned via the legacy DashboardAccess row', async () => {
     const { html } = await generateReport('u1');
-    expect(html).toContain('Owned Via Legacy Access Code');
+    expect(html).toMatch(/href="[^"]*\/canvas\/c-legacy"/);
   });
 
   it('includes canvases shared with the user as a collaborator', async () => {
     const { html } = await generateReport('u1');
-    expect(html).toContain('Shared With Me');
+    expect(html).toMatch(/href="[^"]*\/canvas\/c-shared"/);
   });
 
   it('does not report "no activity" when the user has visible canvases', async () => {
@@ -143,24 +143,24 @@ describe('generateReport canvas scoping', () => {
 
   it('excludes canvases the user cannot see', async () => {
     const { html } = await generateReport('u1');
-    expect(html).not.toContain('Belongs To Someone Else');
+    expect(html).not.toMatch(/href="[^"]*\/canvas\/c-other"/);
   });
 
   it('excludes trashed canvases', async () => {
     const { html } = await generateReport('u1');
-    expect(html).not.toContain('Trashed Canvas');
+    expect(html).not.toMatch(/href="[^"]*\/canvas\/c-trashed"/);
   });
 
   it('scopes a single-canvas report to a shared canvas the user can see', async () => {
     const { html } = await generateReport('u1', 'c-shared');
-    expect(html).toContain('Shared With Me');
-    expect(html).not.toContain('Owned Via UserId');
+    expect(html).toMatch(/href="[^"]*\/canvas\/c-shared"/);
+    expect(html).not.toMatch(/href="[^"]*\/canvas\/(c-own|c-legacy)"/);
   });
 
   it('still refuses a single-canvas report for a canvas the user cannot see', async () => {
     const { html } = await generateReport('u1', 'c-other');
     expect(html).toContain('No canvas activity this period');
-    expect(html).not.toContain('Belongs To Someone Else');
+    expect(html).not.toMatch(/href="[^"]*\/canvas\/c-other"/);
   });
 
   it('works for users with no legacy DashboardAccess row', async () => {
@@ -170,7 +170,70 @@ describe('generateReport canvas scoping', () => {
       dashboardAccess: null,
     });
     const { html } = await generateReport('u1');
-    expect(html).toContain('Owned Via UserId');
-    expect(html).not.toContain('Owned Via Legacy Access Code');
+    expect(html).toMatch(/href="[^"]*\/canvas\/c-own"/);
+    expect(html).not.toMatch(/href="[^"]*\/canvas\/c-legacy"/);
+  });
+});
+
+describe('generateReport never carries participant text', () => {
+  const SECRET_QUOTE = 'ZEBRA-QUOTE I told the nurse about my late husband';
+  const SECRET_TRANSCRIPT = 'TRANSCRIPT-BODY-MARKER Participant 7 said something private';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma.user.findUnique.mockResolvedValue({
+      name: 'Rita Researcher',
+      email: 'rita@example.edu',
+      dashboardAccess: null,
+    });
+    mockPrisma.canvasTextCoding.groupBy.mockResolvedValue([{ canvasId: 'c-own', _count: { _all: 4 } }]);
+    // A backend that (wrongly) returns coded segments and transcript content must still not leak it.
+    mockPrisma.codingCanvas.findMany.mockResolvedValue([
+      {
+        id: 'c-own',
+        name: 'Study A',
+        _count: { codings: 9, collaborators: 1 },
+        codings: [{ codedText: SECRET_QUOTE, createdAt: new Date() }],
+        transcripts: [{ title: 'Interview 7', content: SECRET_TRANSCRIPT }],
+        questions: [{ text: SECRET_QUOTE, _count: { codings: 3 } }],
+      },
+    ]);
+  });
+
+  it('keeps transcript text and In Vivo code labels out of the html and subject', async () => {
+    for (const days of [1, 7, 30]) {
+      const { html, subject } = await generateReport('u1', null, days);
+      expect(html).not.toContain('ZEBRA-QUOTE');
+      expect(html).not.toContain('TRANSCRIPT-BODY-MARKER');
+      expect(html).not.toContain('late husband');
+      expect(subject).not.toContain('ZEBRA');
+    }
+  });
+
+  it('keeps editable canvas titles out of the email when they contain a quote', async () => {
+    mockPrisma.codingCanvas.findMany.mockResolvedValueOnce([
+      { id: 'c-own', name: SECRET_QUOTE, _count: { codings: 9, collaborators: 1 }, questions: [] },
+    ]);
+
+    const { html, subject } = await generateReport('u1', 'c-own');
+    expect(html).not.toContain(SECRET_QUOTE);
+    expect(subject).not.toContain(SECRET_QUOTE);
+    expect(html).toMatch(/href="[^"]*\/canvas\/c-own"[^>]*>Open this canvas in QualCanvas</);
+  });
+
+  it('does not ask the database for coding rows at all', async () => {
+    await generateReport('u1');
+    const args = mockPrisma.codingCanvas.findMany.mock.calls[0][0];
+    expect(args).toMatchObject({ select: { id: true, _count: { select: { codings: true, collaborators: true } } } });
+    expect(args.select).not.toHaveProperty('name');
+    expect(args.select).not.toHaveProperty('codings');
+    expect(args.select).not.toHaveProperty('questions');
+  });
+
+  it('sends counts and a link back into the app', async () => {
+    const { html } = await generateReport('u1');
+    expect(html).toContain('>4<'); // new codings this period
+    expect(html).toContain('>9<'); // total codings
+    expect(html).toMatch(/href="[^"]*\/canvas\/c-own"/);
   });
 });
