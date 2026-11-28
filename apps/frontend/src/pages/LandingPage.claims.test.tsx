@@ -30,6 +30,6 @@ describe('LandingPage factual claims (qualcanvas-7)', () => {
         <LandingPage />
       </MemoryRouter>,
     );
-    expect(screen.getByText(/Paid plans add audio transcription with your own OpenAI key/i)).toBeInTheDocument();
+    expect(screen.getByText(/Free includes one audio file\. Transcribe with your own OpenAI key/i)).toBeInTheDocument();
   });
 });
