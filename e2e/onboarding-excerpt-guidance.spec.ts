@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { randomBytes } from 'node:crypto';
+import { waitForAnimations } from './helpers';
 
 test.use({ storageState: { cookies: [], origins: [] }, serviceWorkers: 'block' });
 test.describe.configure({ timeout: 120_000 });
@@ -81,6 +82,7 @@ test('excerpt guidance, filter recovery and keyword search work without changing
     };
     const dialog = page.getByRole('dialog', { name: 'Excerpt Browser' });
     const checkAccess = async () => {
+      await waitForAnimations(dialog);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       for (const button of await dialog.getByRole('button').all()) {
         const box = await button.boundingBox();
